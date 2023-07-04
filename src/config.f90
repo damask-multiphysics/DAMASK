@@ -9,7 +9,9 @@ module config
   use YAML_types
   use result
   use parallelization
-
+#if   defined(MESH) || defined(GRID)
+  use CLI
+#endif
   implicit none(type,external)
   private
 
@@ -83,7 +85,7 @@ function config_listReferences(config,indent) result(references)
   else
     references = 'references:'
     do r = 1, ref%length
-      references = references//IO_EOL//filler//'- '//IO_wrapLines(ref%get_asString(r),filler=filler//'  ')
+      references = references//IO_EOL//filler//'- '//IO_wrapLines(ref%get_asStr(r),filler=filler//'  ')
     end do
   end if
 
@@ -96,17 +98,20 @@ end function config_listReferences
 subroutine parse_material()
 
   logical :: fileExists
-  character(len=:), allocatable :: fileContent
-
-
-  inquire(file='material.yaml',exist=fileExists)
-  if (.not. fileExists) call IO_error(100,ext_msg='material.yaml')
+  character(len=:), allocatable :: &
+    fileContent, fname
 
   if (worldrank == 0) then
-    print'(/,1x,a)', 'reading material.yaml'; flush(IO_STDOUT)
-    fileContent = IO_read('material.yaml')
+    print'(/,1x,a)', 'reading material configuration'; flush(IO_STDOUT)
+#if   defined(MESH) || defined(GRID)
+    fname = CLI_materialFile
+#else
+    fname = 'material.yaml'
+#endif
+    fileContent = IO_read(fname)
+    if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call result_openJobFile(parallel=.false.)
-    call result_writeDataset_str(fileContent,'setup','material.yaml','main configuration')
+    call result_writeDataset_str(fileContent,'setup',fname,'material configuration')
     call result_closeJobFile()
   end if
   call parallelization_bcast_str(fileContent)

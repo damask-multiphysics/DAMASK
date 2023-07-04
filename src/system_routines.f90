@@ -47,8 +47,8 @@ module system_routines
       use prec
       implicit none(type,external)
 
-      character(kind=C_CHAR), dimension(pStringLen+1), intent(out) :: hostname                        ! NULL-terminated array
-      integer(C_INT),                                  intent(out) :: stat
+      character(kind=C_CHAR), dimension(pSTRLEN+1), intent(out) :: hostname                         ! NULL-terminated array
+      integer(C_INT),                               intent(out) :: stat
     end subroutine getHostName_C
 
     subroutine getUserName_C(username, stat) bind(C)
@@ -56,8 +56,8 @@ module system_routines
       use prec
       implicit none(type,external)
 
-      character(kind=C_CHAR), dimension(pStringLen+1), intent(out) :: username                        ! NULL-terminated array
-      integer(C_INT),                                  intent(out) :: stat
+      character(kind=C_CHAR), dimension(pSTRLEN+1), intent(out) :: username                         ! NULL-terminated array
+      integer(C_INT),                               intent(out) :: stat
     end subroutine getUserName_C
 
     subroutine signalint_C(handler) bind(C)
@@ -135,7 +135,7 @@ function getHostName()
 
   character(len=:), allocatable :: getHostName
 
-  character(kind=C_CHAR), dimension(pStringLen+1) :: getHostName_Cstring
+  character(kind=C_CHAR), dimension(pSTRLEN+1) :: getHostName_Cstring
   integer(C_INT) :: stat
 
 
@@ -157,7 +157,7 @@ function getUserName()
 
   character(len=:), allocatable :: getUserName
 
-  character(kind=C_CHAR), dimension(pStringLen+1) :: getUserName_Cstring
+  character(kind=C_CHAR), dimension(pSTRLEN+1) :: getUserName_Cstring
   integer(C_INT) :: stat
 
 

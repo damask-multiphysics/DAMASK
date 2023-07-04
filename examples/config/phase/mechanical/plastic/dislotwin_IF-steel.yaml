@@ -12,6 +12,7 @@ output: [rho_dip, rho_mob]
 
 N_sl: [12, 12]
 
+f_edge: [1.0, 1.0]
 b_sl: [2.49e-10, 2.49e-10]
 rho_mob_0: [2.81e+12, 2.8e+12]
 rho_dip_0: [1.0, 1.0] # not given

@@ -8,6 +8,7 @@ module materialpoint
   use signal
   use CLI
   use prec
+  use misc
   use IO
   use YAML_types
   use YAML_parse
@@ -47,6 +48,7 @@ subroutine materialpoint_initAll()
   call CLI_init()                                                                                   ! grid and mesh commandline interface
   call signal_init()
   call prec_init()
+  call misc_init()
   call IO_init()
 #if   defined(MESH)
   call FEM_quadrature_init()
@@ -89,7 +91,7 @@ subroutine materialpoint_init()
 
 
   if (CLI_restartInc > 0) then
-    print'(/,a,i0,a)', ' reading restart information of increment from file'; flush(IO_STDOUT)
+    print'(/,1x,a,1x,i0)', 'loading restart information of increment',CLI_restartInc; flush(IO_STDOUT)
 
     fileHandle = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
 
@@ -110,7 +112,7 @@ subroutine materialpoint_restartWrite()
   integer(HID_T) :: fileHandle
 
 
-  print*, ' writing field and constitutive data required for restart to file';flush(IO_STDOUT)
+  print'(1x,a)', 'saving field and constitutive data required for restart';flush(IO_STDOUT)
 
   fileHandle = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
 
@@ -139,7 +141,7 @@ end subroutine materialpoint_forward
 subroutine materialpoint_result(inc,time)
 
   integer,     intent(in) :: inc
-  real(pReal), intent(in) :: time
+  real(pREAL), intent(in) :: time
 
   call result_openJobFile()
   call result_addIncrement(inc,time)

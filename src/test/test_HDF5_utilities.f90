@@ -22,7 +22,7 @@ end subroutine HDF5_utilities_test
 subroutine test_read_write()
 
   integer(HID_T) :: f
-  real(pReal), dimension(3) :: d_in,d_out
+  real(pREAL), dimension(3) :: d_in,d_out
 
 
   call random_number(d_in)

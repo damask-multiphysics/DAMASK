@@ -75,7 +75,7 @@ jobs:
         run: >
           sudo apt-get update &&
           sudo apt-get remove mysql* &&
-          sudo apt-get install python3-pandas python3-scipy python3-h5py python3-vtk7 python3-matplotlib python3-yaml -y
+          sudo apt-get install python3-pandas python3-scipy python3-h5py python3-vtk9 python3-matplotlib python3-yaml -y
 
       - name: Run unit tests
         run: |

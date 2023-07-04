@@ -38,21 +38,21 @@ module lattice
     CF_NTRANS    = sum(CF_NTRANSSYSTEM), &                                                          !< total # of transformation systems for cF
     CF_NCLEAVAGE = sum(CF_NCLEAVAGESYSTEM)                                                          !< total # of cleavage systems for cF
 
-  real(pReal), dimension(3+3,CF_NSLIP), parameter :: &
+  real(pREAL), dimension(3+3,CF_NSLIP), parameter :: &
     CF_SYSTEMSLIP = reshape(real([&
-    ! <110>{111} systems
-       0, 1,-1,     1, 1, 1, & ! B2
-      -1, 0, 1,     1, 1, 1, & ! B4
-       1,-1, 0,     1, 1, 1, & ! B5
-       0,-1,-1,    -1,-1, 1, & ! C1
-       1, 0, 1,    -1,-1, 1, & ! C3
-      -1, 1, 0,    -1,-1, 1, & ! C5
-       0,-1, 1,     1,-1,-1, & ! A2
-      -1, 0,-1,     1,-1,-1, & ! A3
-       1, 1, 0,     1,-1,-1, & ! A6
-       0, 1, 1,    -1, 1,-1, & ! D1
-       1, 0,-1,    -1, 1,-1, & ! D4
-      -1,-1, 0,    -1, 1,-1, & ! D6
+    ! <110>{111} systems (Thompson tetrahedron labeling according to Fig. 3 of 10.1016/S1572-4859(05)80003-8)
+       0, 1,-1,     1, 1, 1, & ! AC(d)
+      -1, 0, 1,     1, 1, 1, & ! CB(d)
+       1,-1, 0,     1, 1, 1, & ! BA(d)
+       0,-1,-1,    -1,-1, 1, & ! BD(c)
+       1, 0, 1,    -1,-1, 1, & ! DA(c)
+      -1, 1, 0,    -1,-1, 1, & ! AB(c)
+       0,-1, 1,     1,-1,-1, & ! CA(b)
+      -1, 0,-1,     1,-1,-1, & ! AD(b)
+       1, 1, 0,     1,-1,-1, & ! DC(b)
+       0, 1, 1,    -1, 1,-1, & ! DB(a)
+       1, 0,-1,    -1, 1,-1, & ! BC(a)
+      -1,-1, 0,    -1, 1,-1, & ! CD(a)
      ! <110>{110}/non-octahedral systems
        1, 1, 0,     1,-1, 0, &
        1,-1, 0,     1, 1, 0, &
@@ -60,9 +60,9 @@ module lattice
        1, 0,-1,     1, 0, 1, &
        0, 1, 1,     0, 1,-1, &
        0, 1,-1,     0, 1, 1  &
-      ],pReal),shape(CF_SYSTEMSLIP))                                                                !< cF slip systems
+      ],pREAL),shape(CF_SYSTEMSLIP))                                                                !< cF slip systems
 
-  real(pReal), dimension(3+3,CF_NTWIN), parameter :: &
+  real(pREAL), dimension(3+3,CF_NTWIN), parameter :: &
     CF_SYSTEMTWIN = reshape(real( [&
     ! <112>{111} systems
       -2, 1, 1,     1, 1, 1, &
@@ -77,7 +77,7 @@ module lattice
        2, 1,-1,    -1, 1,-1, &
       -1,-2,-1,    -1, 1,-1, &
       -1, 1, 2,    -1, 1,-1  &
-      ],pReal),shape(CF_SYSTEMTWIN))                                                                !< cF twin systems
+      ],pREAL),shape(CF_SYSTEMTWIN))                                                                !< cF twin systems
 
   integer, dimension(2,CF_NTWIN), parameter, public :: &
     lattice_CF_TWINNUCLEATIONSLIPPAIR = reshape( [&
@@ -95,13 +95,13 @@ module lattice
       10,11 &
       ],shape(lattice_CF_TWINNUCLEATIONSLIPPAIR))
 
-  real(pReal), dimension(3+3,CF_NCLEAVAGE), parameter :: &
+  real(pREAL), dimension(3+3,CF_NCLEAVAGE), parameter :: &
     CF_SYSTEMCLEAVAGE = reshape(real([&
     ! <001>{001} systems
        0, 1, 0,     1, 0, 0, &
        0, 0, 1,     0, 1, 0, &
        1, 0, 0,     0, 0, 1  &
-      ],pReal),shape(CF_SYSTEMCLEAVAGE))                                                            !< cF cleavage systems
+      ],pREAL),shape(CF_SYSTEMCLEAVAGE))                                                            !< cF cleavage systems
 
 !--------------------------------------------------------------------------------------------------
 ! cI: body centered cubic (bcc)
@@ -120,34 +120,34 @@ module lattice
     CI_NTWIN     = sum(CI_NTWINSYSTEM), &                                                           !< total # of twin systems for cI
     CI_NCLEAVAGE = sum(CI_NCLEAVAGESYSTEM)                                                          !< total # of cleavage systems for cI
 
-  real(pReal), dimension(3+3,CI_NSLIP), parameter :: &
+  real(pREAL), dimension(3+3,CI_NSLIP), parameter :: &
     CI_SYSTEMSLIP = reshape(real([&
     ! <111>{110} systems
-       1,-1, 1,     0, 1, 1, & ! D1
-      -1,-1, 1,     0, 1, 1, & ! C1
-       1, 1, 1,     0,-1, 1, & ! B2
-      -1, 1, 1,     0,-1, 1, & ! A2
-      -1, 1, 1,     1, 0, 1, & ! A3
-      -1,-1, 1,     1, 0, 1, & ! C3
-       1, 1, 1,    -1, 0, 1, & ! B4
-       1,-1, 1,    -1, 0, 1, & ! D4
-      -1, 1, 1,     1, 1, 0, & ! A6
-      -1, 1,-1,     1, 1, 0, & ! D6
-       1, 1, 1,    -1, 1, 0, & ! B5
-       1, 1,-1,    -1, 1, 0, & ! C5
+       1,-1, 1,     0, 1, 1, &
+      -1,-1, 1,     0, 1, 1, &
+       1, 1, 1,     0,-1, 1, &
+      -1, 1, 1,     0,-1, 1, &
+      -1, 1, 1,     1, 0, 1, &
+      -1,-1, 1,     1, 0, 1, &
+       1, 1, 1,    -1, 0, 1, &
+       1,-1, 1,    -1, 0, 1, &
+      -1, 1, 1,     1, 1, 0, &
+      -1, 1,-1,     1, 1, 0, &
+       1, 1, 1,    -1, 1, 0, &
+       1, 1,-1,    -1, 1, 0, &
      ! <111>{112} systems
-      -1, 1, 1,     2, 1, 1, & ! A-4
-       1, 1, 1,    -2, 1, 1, & ! B-3
-       1, 1,-1,     2,-1, 1, & ! C-10
-       1,-1, 1,     2, 1,-1, & ! D-9
-       1,-1, 1,     1, 2, 1, & ! D-6
-       1, 1,-1,    -1, 2, 1, & ! C-5
-       1, 1, 1,     1,-2, 1, & ! B-12
-      -1, 1, 1,     1, 2,-1, & ! A-11
-       1, 1,-1,     1, 1, 2, & ! C-2
-       1,-1, 1,    -1, 1, 2, & ! D-1
-      -1, 1, 1,     1,-1, 2, & ! A-8
-       1, 1, 1,     1, 1,-2, & ! B-7
+      -1, 1, 1,     2, 1, 1, &
+       1, 1, 1,    -2, 1, 1, &
+       1, 1,-1,     2,-1, 1, &
+       1,-1, 1,     2, 1,-1, &
+       1,-1, 1,     1, 2, 1, &
+       1, 1,-1,    -1, 2, 1, &
+       1, 1, 1,     1,-2, 1, &
+      -1, 1, 1,     1, 2,-1, &
+       1, 1,-1,     1, 1, 2, &
+       1,-1, 1,    -1, 1, 2, &
+      -1, 1, 1,     1,-1, 2, &
+       1, 1, 1,     1, 1,-2, &
      ! Slip system <111>{123}
        1, 1,-1,     1, 2, 3, &
        1,-1, 1,    -1, 2, 3, &
@@ -173,9 +173,9 @@ module lattice
        1, 1, 1,    -3, 2, 1, &
        1, 1,-1,     3,-2, 1, &
        1,-1, 1,     3, 2,-1  &
-      ],pReal),shape(CI_SYSTEMSLIP))                                                                !< cI slip systems
+      ],pREAL),shape(CI_SYSTEMSLIP))                                                                !< cI slip systems
 
-  real(pReal), dimension(3+3,CI_NTWIN), parameter :: &
+  real(pREAL), dimension(3+3,CI_NTWIN), parameter :: &
     CI_SYSTEMTWIN = reshape(real([&
     ! <111>{112} systems
       -1, 1, 1,     2, 1, 1, &
@@ -190,15 +190,15 @@ module lattice
        1,-1, 1,    -1, 1, 2, &
       -1, 1, 1,     1,-1, 2, &
        1, 1, 1,     1, 1,-2  &
-      ],pReal),shape(CI_SYSTEMTWIN))                                                                !< cI twin systems
+      ],pREAL),shape(CI_SYSTEMTWIN))                                                                !< cI twin systems
 
-  real(pReal), dimension(3+3,CI_NCLEAVAGE), parameter :: &
+  real(pREAL), dimension(3+3,CI_NCLEAVAGE), parameter :: &
     CI_SYSTEMCLEAVAGE = reshape(real([&
     ! <001>{001} systems
        0, 1, 0,     1, 0, 0, &
        0, 0, 1,     0, 1, 0, &
        1, 0, 0,     0, 0, 1  &
-      ],pReal),shape(CI_SYSTEMCLEAVAGE))                                                            !< cI cleavage systems
+      ],pREAL),shape(CI_SYSTEMCLEAVAGE))                                                            !< cI cleavage systems
 
 !--------------------------------------------------------------------------------------------------
 ! hP: hexagonal [close packed] (hex, hcp)
@@ -213,7 +213,7 @@ module lattice
     HP_NSLIP     = sum(HP_NSLIPSYSTEM), &                                                           !< total # of slip systems for hP
     HP_NTWIN     = sum(HP_NTWINSYSTEM)                                                              !< total # of twin systems for hP
 
-  real(pReal), dimension(4+4,HP_NSLIP), parameter :: &
+  real(pREAL), dimension(4+4,HP_NSLIP), parameter :: &
     HP_SYSTEMSLIP = reshape(real([&
     ! <-1-1.0>{00.1}/basal systems (independent of c/a-ratio)
        2, -1, -1,  0,     0,  0,  0,  1, &
@@ -250,9 +250,9 @@ module lattice
        1,  1, -2,  3,    -1, -1,  2,  2, &
       -1,  2, -1,  3,     1, -2,  1,  2, &
       -2,  1,  1,  3,     2, -1, -1,  2  &
-      ],pReal),shape(HP_SYSTEMSLIP))                                                                !< hP slip systems, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
+      ],pREAL),shape(HP_SYSTEMSLIP))                                                                !< hP slip systems, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
 
-  real(pReal), dimension(4+4,HP_NTWIN), parameter :: &
+  real(pREAL), dimension(4+4,HP_NTWIN), parameter :: &
     HP_SYSTEMTWIN =  reshape(real([&
     ! <-10.1>{10.2} systems, shear = (3-(c/a)^2)/(sqrt(3) c/a)
     ! tension in Co, Mg, Zr, Ti, and Be; compression in Cd and Zn
@@ -286,7 +286,7 @@ module lattice
       -1, -1,  2, -3,    -1, -1,  2,  2, &
        1, -2,  1, -3,     1, -2,  1,  2, &
        2, -1, -1, -3,     2, -1, -1,  2  &
-      ],pReal),shape(HP_SYSTEMTWIN))                                                                !< hP twin systems, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
+      ],pREAL),shape(HP_SYSTEMTWIN))                                                                !< hP twin systems, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
 
 !--------------------------------------------------------------------------------------------------
 ! tI: body centered tetragonal (bct)
@@ -297,7 +297,7 @@ module lattice
   integer, parameter :: &
     TI_NSLIP = sum(TI_NSLIPSYSTEM)                                                                 !< total # of slip systems for tI
 
-  real(pReal), dimension(3+3,TI_NSLIP), parameter :: &
+  real(pREAL), dimension(3+3,TI_NSLIP), parameter :: &
     TI_SYSTEMSLIP = reshape(real([&
     ! {100)<001] systems
        0, 0, 1,      1, 0, 0, &
@@ -364,7 +364,7 @@ module lattice
        1,-1, 1,     -2,-1, 1, &
       -1, 1, 1,     -1,-2, 1, &
        1, 1, 1,      1,-2, 1  &
-       ],pReal),shape(TI_SYSTEMSLIP))                                                               !< tI slip systems for c/a = 0.5456 (Sn), sorted by Bieler 2009 (https://doi.org/10.1007/s11664-009-0909-x)
+       ],pREAL),shape(TI_SYSTEMSLIP))                                                               !< tI slip systems for c/a = 0.5456 (Sn), sorted by Bieler 2009 (https://doi.org/10.1007/s11664-009-0909-x)
 
 
   interface lattice_forestProjection_edge
@@ -424,8 +424,8 @@ function lattice_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
 
   integer,     dimension(:),            intent(in) :: Ntwin                                         !< number of active twin systems per family
   character(len=*),                     intent(in) :: lattice                                       !< Bravais lattice (Pearson symbol)
-  real(pReal),                          intent(in) :: cOverA                                        !< c/a ratio
-  real(pReal), dimension(sum(Ntwin))               :: characteristicShear
+  real(pREAL),                          intent(in) :: cOverA                                        !< c/a ratio
+  real(pREAL), dimension(sum(Ntwin))               :: characteristicShear
 
   integer :: &
     a, &                                                                                            !< index of active system
@@ -467,20 +467,20 @@ function lattice_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
       a = a + 1
       select case(lattice)
         case('cF','cI')
-          characteristicShear(a) = 0.5_pReal*sqrt(2.0_pReal)
+          characteristicShear(a) = 0.5_pREAL*sqrt(2.0_pREAL)
         case('hP')
-          if (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal) &
+          if (cOverA < 1.0_pREAL .or. cOverA > 2.0_pREAL) &
             call IO_error(131,ext_msg='lattice_characteristicShear_Twin')
           p = sum(HP_NTWINSYSTEM(1:f-1))+s
           select case(HP_SHEARTWIN(p))                                                              ! from Christian & Mahajan 1995 p.29
             case (1)                                                                                ! <-10.1>{10.2}
-              characteristicShear(a) = (3.0_pReal-cOverA**2)/sqrt(3.0_pReal)/CoverA
+              characteristicShear(a) = (3.0_pREAL-cOverA**2)/sqrt(3.0_pREAL)/CoverA
             case (2)                                                                                ! <11.6>{-1-1.1}
-              characteristicShear(a) = 1.0_pReal/cOverA
+              characteristicShear(a) = 1.0_pREAL/cOverA
             case (3)                                                                                ! <10.-2>{10.1}
-              characteristicShear(a) = (4.0_pReal*cOverA**2-9.0_pReal)/sqrt(48.0_pReal)/cOverA
+              characteristicShear(a) = (4.0_pREAL*cOverA**2-9.0_pREAL)/sqrt(48.0_pREAL)/cOverA
             case (4)                                                                                ! <11.-3>{11.2}
-              characteristicShear(a) = 2.0_pReal*(cOverA**2-2.0_pReal)/3.0_pReal/cOverA
+              characteristicShear(a) = 2.0_pREAL*(cOverA**2-2.0_pREAL)/3.0_pREAL/cOverA
           end select
         case default
           call IO_error(137,ext_msg='lattice_characteristicShear_Twin: '//trim(lattice))
@@ -498,11 +498,11 @@ function lattice_C66_twin(Ntwin,C66,lattice,CoverA)
 
   integer,     dimension(:),            intent(in) :: Ntwin                                         !< number of active twin systems per family
   character(len=*),                     intent(in) :: lattice                                       !< Bravais lattice (Pearson symbol)
-  real(pReal), dimension(6,6),          intent(in) :: C66                                           !< unrotated parent stiffness matrix
-  real(pReal),                          intent(in) :: cOverA                                        !< c/a ratio
-  real(pReal), dimension(6,6,sum(Ntwin))           :: lattice_C66_twin
+  real(pREAL), dimension(6,6),          intent(in) :: C66                                           !< unrotated parent stiffness matrix
+  real(pREAL),                          intent(in) :: cOverA                                        !< c/a ratio
+  real(pREAL), dimension(6,6,sum(Ntwin))           :: lattice_C66_twin
 
-  real(pReal), dimension(3,3,sum(Ntwin)):: coordinateSystem
+  real(pREAL), dimension(3,3,sum(Ntwin)):: coordinateSystem
   type(tRotation)                       :: R
   integer                               :: i
 
@@ -510,10 +510,10 @@ function lattice_C66_twin(Ntwin,C66,lattice,CoverA)
   select case(lattice)
     case('cF')
       coordinateSystem = buildCoordinateSystem(Ntwin,CF_NSLIPSYSTEM,CF_SYSTEMTWIN,&
-                                               lattice,0.0_pReal)
+                                               lattice,0.0_pREAL)
     case('cI')
       coordinateSystem = buildCoordinateSystem(Ntwin,CI_NSLIPSYSTEM,CI_SYSTEMTWIN,&
-                                               lattice,0.0_pReal)
+                                               lattice,0.0_pREAL)
     case('hP')
       coordinateSystem = buildCoordinateSystem(Ntwin,HP_NSLIPSYSTEM,HP_SYSTEMTWIN,&
                                                lattice,cOverA)
@@ -537,12 +537,12 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
 
   integer,     dimension(:),             intent(in) :: Ntrans                                       !< number of active twin systems per family
   character(len=*),                      intent(in) :: lattice_target                               !< Bravais lattice (Pearson symbol)
-  real(pReal), dimension(6,6),           intent(in) :: C_parent66
-  real(pReal),                 optional, intent(in) :: cOverA_trans, a_cF, a_cI
-  real(pReal), dimension(6,6,sum(Ntrans))           :: lattice_C66_trans
+  real(pREAL), dimension(6,6),           intent(in) :: C_parent66
+  real(pREAL),                 optional, intent(in) :: cOverA_trans, a_cF, a_cI
+  real(pREAL), dimension(6,6,sum(Ntrans))           :: lattice_C66_trans
 
-  real(pReal), dimension(6,6)             :: C_bar66, C_target_unrotated66
-  real(pReal), dimension(3,3,sum(Ntrans)) :: Q,S
+  real(pREAL), dimension(6,6)             :: C_bar66, C_target_unrotated66
+  real(pREAL), dimension(3,3,sum(Ntrans)) :: Q,S
   type(tRotation)                         :: R
   integer                                 :: i
 
@@ -551,24 +551,24 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
   if (lattice_target == 'hP' .and. present(cOverA_trans)) then
     ! https://doi.org/10.1063/1.1663858 eq. (16), eq. (18), eq. (19)
     ! https://doi.org/10.1016/j.actamat.2016.07.032 eq. (47), eq. (48)
-    if (cOverA_trans < 1.0_pReal .or. cOverA_trans > 2.0_pReal) &
+    if (cOverA_trans < 1.0_pREAL .or. cOverA_trans > 2.0_pREAL) &
       call IO_error(131,ext_msg='lattice_C66_trans: '//trim(lattice_target))
-    C_bar66(1,1) = (C_parent66(1,1) + C_parent66(1,2) + 2.0_pReal*C_parent66(4,4))/2.0_pReal
-    C_bar66(1,2) = (C_parent66(1,1) + 5.0_pReal*C_parent66(1,2) - 2.0_pReal*C_parent66(4,4))/6.0_pReal
-    C_bar66(3,3) = (C_parent66(1,1) + 2.0_pReal*C_parent66(1,2) + 4.0_pReal*C_parent66(4,4))/3.0_pReal
-    C_bar66(1,3) = (C_parent66(1,1) + 2.0_pReal*C_parent66(1,2) - 2.0_pReal*C_parent66(4,4))/3.0_pReal
-    C_bar66(4,4) = (C_parent66(1,1) - C_parent66(1,2) + C_parent66(4,4))/3.0_pReal
-    C_bar66(1,4) = (C_parent66(1,1) - C_parent66(1,2) - 2.0_pReal*C_parent66(4,4)) /(3.0_pReal*sqrt(2.0_pReal))
+    C_bar66(1,1) = (C_parent66(1,1) + C_parent66(1,2) + 2.0_pREAL*C_parent66(4,4))/2.0_pREAL
+    C_bar66(1,2) = (C_parent66(1,1) + 5.0_pREAL*C_parent66(1,2) - 2.0_pREAL*C_parent66(4,4))/6.0_pREAL
+    C_bar66(3,3) = (C_parent66(1,1) + 2.0_pREAL*C_parent66(1,2) + 4.0_pREAL*C_parent66(4,4))/3.0_pREAL
+    C_bar66(1,3) = (C_parent66(1,1) + 2.0_pREAL*C_parent66(1,2) - 2.0_pREAL*C_parent66(4,4))/3.0_pREAL
+    C_bar66(4,4) = (C_parent66(1,1) - C_parent66(1,2) + C_parent66(4,4))/3.0_pREAL
+    C_bar66(1,4) = (C_parent66(1,1) - C_parent66(1,2) - 2.0_pREAL*C_parent66(4,4)) /(3.0_pREAL*sqrt(2.0_pREAL))
 
-    C_target_unrotated66 = 0.0_pReal
+    C_target_unrotated66 = 0.0_pREAL
     C_target_unrotated66(1,1) = C_bar66(1,1) - C_bar66(1,4)**2/C_bar66(4,4)
     C_target_unrotated66(1,2) = C_bar66(1,2) + C_bar66(1,4)**2/C_bar66(4,4)
     C_target_unrotated66(1,3) = C_bar66(1,3)
     C_target_unrotated66(3,3) = C_bar66(3,3)
-    C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2/(0.5_pReal*(C_bar66(1,1) - C_bar66(1,2)))
+    C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2/(0.5_pREAL*(C_bar66(1,1) - C_bar66(1,2)))
     C_target_unrotated66 = lattice_symmetrize_C66(C_target_unrotated66,'hP')
   elseif (lattice_target  == 'cI' .and. present(a_cF) .and. present(a_cI)) then
-    if (a_cI <= 0.0_pReal .or. a_cF <= 0.0_pReal) &
+    if (a_cI <= 0.0_pREAL .or. a_cF <= 0.0_pREAL) &
       call IO_error(134,ext_msg='lattice_C66_trans: '//trim(lattice_target))
     C_target_unrotated66 = C_parent66
   else
@@ -598,26 +598,26 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
 function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSchmidMatrix)
 
   integer,     dimension(:),                intent(in) :: Nslip                                     !< number of active slip systems per family
-  real(pReal), dimension(:),                intent(in) :: nonSchmidCoefficients                     !< non-Schmid coefficients for projections
+  real(pREAL), dimension(:),                intent(in) :: nonSchmidCoefficients                     !< non-Schmid coefficients for projections
   integer,                                  intent(in) :: sense                                     !< sense (-1,+1)
-  real(pReal), dimension(1:3,1:3,sum(Nslip))           :: nonSchmidMatrix
+  real(pREAL), dimension(1:3,1:3,sum(Nslip))           :: nonSchmidMatrix
 
-  real(pReal), dimension(1:3,1:3,sum(Nslip))           :: coordinateSystem                          !< coordinate system of slip system
-  real(pReal), dimension(3)                            :: direction, normal, np
+  real(pREAL), dimension(1:3,1:3,sum(Nslip))           :: coordinateSystem                          !< coordinate system of slip system
+  real(pREAL), dimension(3)                            :: direction, normal, np
   type(tRotation)                                      :: R
   integer                                              :: i
 
 
   if (abs(sense) /= 1) error stop 'Sense in lattice_nonSchmidMatrix'
 
-  coordinateSystem  = buildCoordinateSystem(Nslip,CI_NSLIPSYSTEM,CI_SYSTEMSLIP,'cI',0.0_pReal)
-  coordinateSystem(1:3,1,1:sum(Nslip)) = coordinateSystem(1:3,1,1:sum(Nslip))*real(sense,pReal)     ! convert unidirectional coordinate system
-  nonSchmidMatrix = lattice_SchmidMatrix_slip(Nslip,'cI',0.0_pReal)                                 ! Schmid contribution
+  coordinateSystem  = buildCoordinateSystem(Nslip,CI_NSLIPSYSTEM,CI_SYSTEMSLIP,'cI',0.0_pREAL)
+  coordinateSystem(1:3,1,1:sum(Nslip)) = coordinateSystem(1:3,1,1:sum(Nslip))*real(sense,pREAL)     ! convert unidirectional coordinate system
+  nonSchmidMatrix = lattice_SchmidMatrix_slip(Nslip,'cI',0.0_pREAL)                                 ! Schmid contribution
 
   do i = 1,sum(Nslip)
     direction = coordinateSystem(1:3,1,i)
     normal    = coordinateSystem(1:3,2,i)
-    call R%fromAxisAngle([direction,60.0_pReal],degrees=.true.,P=1)
+    call R%fromAxisAngle([direction,60.0_pREAL],degrees=.true.,P=1)
     np = R%rotate(normal)
 
     if (size(nonSchmidCoefficients)>0) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
@@ -647,9 +647,9 @@ end function lattice_nonSchmidMatrix
 function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(interactionMatrix)
 
   integer,         dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
-  real(pReal),     dimension(:),                   intent(in) :: interactionValues                  !< values for slip-slip interaction
+  real(pREAL),     dimension(:),                   intent(in) :: interactionValues                  !< values for slip-slip interaction
   character(len=*),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
-  real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: interactionMatrix
+  real(pREAL),     dimension(sum(Nslip),sum(Nslip))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NslipMax
   integer, dimension(:,:), allocatable :: interactionTypes
@@ -965,9 +965,9 @@ end function lattice_interaction_SlipBySlip
 function lattice_interaction_TwinByTwin(Ntwin,interactionValues,lattice) result(interactionMatrix)
 
   integer,         dimension(:),                   intent(in) :: Ntwin                              !< number of active twin systems per family
-  real(pReal),     dimension(:),                   intent(in) :: interactionValues                  !< values for twin-twin interaction
+  real(pREAL),     dimension(:),                   intent(in) :: interactionValues                  !< values for twin-twin interaction
   character(len=*),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
-  real(pReal),     dimension(sum(Ntwin),sum(Ntwin))           :: interactionMatrix
+  real(pREAL),     dimension(sum(Ntwin),sum(Ntwin))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NtwinMax
   integer, dimension(:,:), allocatable :: interactionTypes
@@ -1064,9 +1064,9 @@ end function lattice_interaction_TwinByTwin
 function lattice_interaction_TransByTrans(Ntrans,interactionValues,lattice) result(interactionMatrix)
 
   integer,         dimension(:),                     intent(in) :: Ntrans                           !< number of active trans systems per family
-  real(pReal),     dimension(:),                     intent(in) :: interactionValues                !< values for trans-trans interaction
+  real(pREAL),     dimension(:),                     intent(in) :: interactionValues                !< values for trans-trans interaction
   character(len=*),                                  intent(in) :: lattice                          !<Bravais lattice (Pearson symbol) (parent crystal)
-  real(pReal),     dimension(sum(Ntrans),sum(Ntrans))           :: interactionMatrix
+  real(pREAL),     dimension(sum(Ntrans),sum(Ntrans))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NtransMax
   integer, dimension(:,:), allocatable :: interactionTypes
@@ -1107,9 +1107,9 @@ function lattice_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,lattice) r
 
   integer,         dimension(:),                   intent(in) :: Nslip, &                           !< number of active slip systems per family
                                                                  Ntwin                              !< number of active twin systems per family
-  real(pReal),     dimension(:),                   intent(in) :: interactionValues                  !< values for slip-twin interaction
+  real(pREAL),     dimension(:),                   intent(in) :: interactionValues                  !< values for slip-twin interaction
   character(len=*),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
-  real(pReal),     dimension(sum(Nslip),sum(Ntwin))           :: interactionMatrix
+  real(pREAL),     dimension(sum(Nslip),sum(Ntwin))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NslipMax, &
                                           NtwinMax
@@ -1267,9 +1267,9 @@ function lattice_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,lattice)
 
   integer,         dimension(:),                    intent(in) :: Nslip, &                          !< number of active slip systems per family
                                                                   Ntrans                            !< number of active trans systems per family
-  real(pReal),     dimension(:),                    intent(in) :: interactionValues                 !< values for slip-trans interaction
+  real(pREAL),     dimension(:),                    intent(in) :: interactionValues                 !< values for slip-trans interaction
   character(len=*),                                 intent(in) :: lattice                           !< Bravais lattice (Pearson symbol) (parent crystal)
-  real(pReal),     dimension(sum(Nslip),sum(Ntrans))           :: interactionMatrix
+  real(pREAL),     dimension(sum(Nslip),sum(Ntrans))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NslipMax, &
                                           NtransMax
@@ -1320,9 +1320,9 @@ function lattice_interaction_TwinBySlip(Ntwin,Nslip,interactionValues,lattice) r
 
   integer,         dimension(:),                   intent(in) :: Ntwin, &                           !< number of active twin systems per family
                                                                  Nslip                              !< number of active slip systems per family
-  real(pReal),     dimension(:),                   intent(in) :: interactionValues                  !< values for twin-twin interaction
+  real(pREAL),     dimension(:),                   intent(in) :: interactionValues                  !< values for twin-twin interaction
   character(len=*),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
-  real(pReal),     dimension(sum(Ntwin),sum(Nslip))           :: interactionMatrix
+  real(pREAL),     dimension(sum(Ntwin),sum(Nslip))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NtwinMax, &
                                           NslipMax
@@ -1396,11 +1396,11 @@ function lattice_SchmidMatrix_slip(Nslip,lattice,cOverA) result(SchmidMatrix)
 
   integer,         dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
   character(len=*),                         intent(in) :: lattice                                   !< Bravais lattice (Pearson symbol)
-  real(pReal),                              intent(in) :: cOverA
-  real(pReal),     dimension(3,3,sum(Nslip))           :: SchmidMatrix
+  real(pREAL),                              intent(in) :: cOverA
+  real(pREAL),     dimension(3,3,sum(Nslip))           :: SchmidMatrix
 
-  real(pReal), dimension(3,3,sum(Nslip))             :: coordinateSystem
-  real(pReal), dimension(:,:),           allocatable :: slipSystems
+  real(pREAL), dimension(3,3,sum(Nslip))             :: coordinateSystem
+  real(pREAL), dimension(:,:),           allocatable :: slipSystems
   integer,     dimension(:),             allocatable :: NslipMax
   integer                                            :: i
 
@@ -1446,11 +1446,11 @@ function lattice_SchmidMatrix_twin(Ntwin,lattice,cOverA) result(SchmidMatrix)
 
   integer,         dimension(:),            intent(in) :: Ntwin                                     !< number of active twin systems per family
   character(len=*),                         intent(in) :: lattice                                   !< Bravais lattice (Pearson symbol)
-  real(pReal),                              intent(in) :: cOverA                                    !< c/a ratio
-  real(pReal),     dimension(3,3,sum(Ntwin))           :: SchmidMatrix
+  real(pREAL),                              intent(in) :: cOverA                                    !< c/a ratio
+  real(pREAL),     dimension(3,3,sum(Ntwin))           :: SchmidMatrix
 
-  real(pReal), dimension(3,3,sum(Ntwin))             :: coordinateSystem
-  real(pReal), dimension(:,:),           allocatable :: twinSystems
+  real(pREAL), dimension(3,3,sum(Ntwin))             :: coordinateSystem
+  real(pREAL), dimension(:,:),           allocatable :: twinSystems
   integer,     dimension(:),             allocatable :: NtwinMax
   integer                                            :: i
 
@@ -1493,18 +1493,18 @@ function lattice_SchmidMatrix_trans(Ntrans,lattice_target,cOverA,a_cF,a_cI) resu
 
   integer,         dimension(:),             intent(in) :: Ntrans                                   !< number of active twin systems per family
   character(len=*),                          intent(in) :: lattice_target                           !< Bravais lattice (Pearson symbol)
-  real(pReal),                     optional, intent(in) :: cOverA, a_cI, a_cF
-  real(pReal),     dimension(3,3,sum(Ntrans))           :: SchmidMatrix
+  real(pREAL),                     optional, intent(in) :: cOverA, a_cI, a_cF
+  real(pREAL),     dimension(3,3,sum(Ntrans))           :: SchmidMatrix
 
-  real(pReal), dimension(3,3,sum(Ntrans)) :: devNull
+  real(pREAL), dimension(3,3,sum(Ntrans)) :: devNull
 
 
   if (lattice_target == 'hP' .and. present(cOverA)) then
-    if (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal) &
+    if (cOverA < 1.0_pREAL .or. cOverA > 2.0_pREAL) &
     call IO_error(131,ext_msg='lattice_SchmidMatrix_trans: '//trim(lattice_target))
     call buildTransformationSystem(devNull,SchmidMatrix,Ntrans,cOverA=cOverA)
   else if (lattice_target == 'cI' .and. present(a_cF) .and. present(a_cI)) then
-    if (a_cI <= 0.0_pReal .or. a_cF <= 0.0_pReal) &
+    if (a_cI <= 0.0_pREAL .or. a_cF <= 0.0_pREAL) &
     call IO_error(134,ext_msg='lattice_SchmidMatrix_trans: '//trim(lattice_target))
     call buildTransformationSystem(devNull,SchmidMatrix,Ntrans,a_cF=a_cF,a_cI=a_cI)
   else
@@ -1522,11 +1522,11 @@ function lattice_SchmidMatrix_cleavage(Ncleavage,lattice,cOverA) result(SchmidMa
 
   integer,         dimension(:),                  intent(in) :: Ncleavage                           !< number of active cleavage systems per family
   character(len=*),                               intent(in) :: lattice                             !< Bravais lattice (Pearson symbol)
-  real(pReal),                                    intent(in) :: cOverA                              !< c/a ratio
-  real(pReal),     dimension(3,3,3,sum(Ncleavage))           :: SchmidMatrix
+  real(pREAL),                                    intent(in) :: cOverA                              !< c/a ratio
+  real(pREAL),     dimension(3,3,3,sum(Ncleavage))           :: SchmidMatrix
 
-  real(pReal), dimension(3,3,sum(Ncleavage))             :: coordinateSystem
-  real(pReal), dimension(:,:),               allocatable :: cleavageSystems
+  real(pREAL), dimension(3,3,sum(Ncleavage))             :: coordinateSystem
+  real(pREAL), dimension(:,:),               allocatable :: cleavageSystems
   integer,     dimension(:),                 allocatable :: NcleavageMax
   integer                                                :: i
 
@@ -1565,10 +1565,10 @@ function lattice_slip_direction(Nslip,lattice,cOverA) result(d)
 
   integer,         dimension(:),           intent(in) :: Nslip                                      !< number of active slip systems per family
   character(len=*),                        intent(in) :: lattice                                    !< Bravais lattice (Pearson symbol)
-  real(pReal),                             intent(in) :: cOverA                                     !< c/a ratio
-  real(pReal),     dimension(3,sum(Nslip))            :: d
+  real(pREAL),                             intent(in) :: cOverA                                     !< c/a ratio
+  real(pREAL),     dimension(3,sum(Nslip))            :: d
 
-  real(pReal), dimension(3,3,sum(Nslip)) :: coordinateSystem
+  real(pREAL), dimension(3,3,sum(Nslip)) :: coordinateSystem
 
   coordinateSystem = coordinateSystem_slip(Nslip,lattice,cOverA)
   d = coordinateSystem(1:3,1,1:sum(Nslip))
@@ -1583,10 +1583,10 @@ function lattice_slip_normal(Nslip,lattice,cOverA) result(n)
 
   integer,         dimension(:),           intent(in) :: Nslip                                      !< number of active slip systems per family
   character(len=*),                        intent(in) :: lattice                                    !< Bravais lattice (Pearson symbol)
-  real(pReal),                             intent(in) :: cOverA                                     !< c/a ratio
-  real(pReal),     dimension(3,sum(Nslip))            :: n
+  real(pREAL),                             intent(in) :: cOverA                                     !< c/a ratio
+  real(pREAL),     dimension(3,sum(Nslip))            :: n
 
-  real(pReal), dimension(3,3,sum(Nslip)) :: coordinateSystem
+  real(pREAL), dimension(3,3,sum(Nslip)) :: coordinateSystem
 
   coordinateSystem = coordinateSystem_slip(Nslip,lattice,cOverA)
   n = coordinateSystem(1:3,2,1:sum(Nslip))
@@ -1601,10 +1601,10 @@ function lattice_slip_transverse(Nslip,lattice,cOverA) result(t)
 
   integer,         dimension(:),           intent(in) :: Nslip                                      !< number of active slip systems per family
   character(len=*),                        intent(in) :: lattice                                    !< Bravais lattice (Pearson symbol)
-  real(pReal),                             intent(in) :: cOverA                                     !< c/a ratio
-  real(pReal),     dimension(3,sum(Nslip))            :: t
+  real(pREAL),                             intent(in) :: cOverA                                     !< c/a ratio
+  real(pREAL),     dimension(3,sum(Nslip))            :: t
 
-  real(pReal), dimension(3,3,sum(Nslip)) :: coordinateSystem
+  real(pREAL), dimension(3,3,sum(Nslip)) :: coordinateSystem
 
   coordinateSystem = coordinateSystem_slip(Nslip,lattice,cOverA)
   t = coordinateSystem(1:3,3,1:sum(Nslip))
@@ -1623,7 +1623,7 @@ function lattice_labels_slip(Nslip,lattice) result(labels)
 
   character(len=:), dimension(:),   allocatable :: labels
 
-  real(pReal),      dimension(:,:), allocatable :: slipSystems
+  real(pREAL),      dimension(:,:), allocatable :: slipSystems
   integer,          dimension(:),   allocatable :: NslipMax
 
   select case(lattice)
@@ -1658,13 +1658,13 @@ end function lattice_labels_slip
 !--------------------------------------------------------------------------------------------------
 pure function lattice_symmetrize_33(T,lattice) result(T_sym)
 
-  real(pReal), dimension(3,3) :: T_sym
+  real(pREAL), dimension(3,3) :: T_sym
 
-  real(pReal), dimension(3,3), intent(in) :: T
+  real(pREAL), dimension(3,3), intent(in) :: T
   character(len=*),            intent(in) :: lattice                                                !< Bravais lattice (Pearson symbol)
 
 
-  T_sym = 0.0_pReal
+  T_sym = 0.0_pREAL
 
   select case(lattice)
     case('cF','cI')
@@ -1686,15 +1686,15 @@ end function lattice_symmetrize_33
 !--------------------------------------------------------------------------------------------------
 pure function lattice_symmetrize_C66(C66,lattice) result(C66_sym)
 
-  real(pReal), dimension(6,6) :: C66_sym
+  real(pREAL), dimension(6,6) :: C66_sym
 
-  real(pReal), dimension(6,6), intent(in) :: C66
+  real(pREAL), dimension(6,6), intent(in) :: C66
   character(len=*),            intent(in) :: lattice                                                !< Bravais lattice (Pearson symbol)
 
   integer :: i,j
 
 
-  C66_sym = 0.0_pReal
+  C66_sym = 0.0_pREAL
 
   select case(lattice)
     case ('cF','cI')
@@ -1707,7 +1707,7 @@ pure function lattice_symmetrize_C66(C66,lattice) result(C66_sym)
       C66_sym(1,2) = C66(1,2)
       C66_sym(1,3) = C66(1,3); C66_sym(2,3) = C66(1,3)
       C66_sym(4,4) = C66(4,4); C66_sym(5,5) = C66(4,4)
-      C66_sym(6,6) = 0.5_pReal*(C66(1,1)-C66(1,2))
+      C66_sym(6,6) = 0.5_pREAL*(C66(1,1)-C66(1,2))
     case ('tI')
       C66_sym(1,1) = C66(1,1); C66_sym(2,2) = C66(1,1)
       C66_sym(3,3) = C66(3,3)
@@ -1737,7 +1737,7 @@ function lattice_labels_twin(Ntwin,lattice) result(labels)
 
   character(len=:), dimension(:),   allocatable :: labels
 
-  real(pReal),      dimension(:,:), allocatable :: twinSystems
+  real(pREAL),      dimension(:,:), allocatable :: twinSystems
   integer,          dimension(:),   allocatable :: NtwinMax
 
   select case(lattice)
@@ -1772,10 +1772,10 @@ function slipProjection_transverse(Nslip,lattice,cOverA) result(projection)
 
   integer,         dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
   character(len=*),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
-  real(pReal),                                     intent(in) :: cOverA                             !< c/a ratio
-  real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: projection
+  real(pREAL),                                     intent(in) :: cOverA                             !< c/a ratio
+  real(pREAL),     dimension(sum(Nslip),sum(Nslip))           :: projection
 
-  real(pReal), dimension(3,sum(Nslip)) :: n, t
+  real(pREAL), dimension(3,sum(Nslip)) :: n, t
   integer                              :: i, j
 
   n = lattice_slip_normal    (Nslip,lattice,cOverA)
@@ -1796,10 +1796,10 @@ function slipProjection_direction(Nslip,lattice,cOverA) result(projection)
 
   integer,         dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
   character(len=*),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
-  real(pReal),                                     intent(in) :: cOverA                             !< c/a ratio
-  real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: projection
+  real(pREAL),                                     intent(in) :: cOverA                             !< c/a ratio
+  real(pREAL),     dimension(sum(Nslip),sum(Nslip))           :: projection
 
-  real(pReal), dimension(3,sum(Nslip)) :: n, d
+  real(pREAL), dimension(3,sum(Nslip)) :: n, d
   integer                              :: i, j
 
   n = lattice_slip_normal   (Nslip,lattice,cOverA)
@@ -1820,10 +1820,10 @@ function coordinateSystem_slip(Nslip,lattice,cOverA) result(coordinateSystem)
 
   integer,          dimension(:),            intent(in) :: Nslip                                    !< number of active slip systems per family
   character(len=*),                          intent(in) :: lattice                                  !< Bravais lattice (Pearson symbol)
-  real(pReal),                               intent(in) :: cOverA                                   !< c/a ratio
-  real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+  real(pREAL),                               intent(in) :: cOverA                                   !< c/a ratio
+  real(pREAL),     dimension(3,3,sum(Nslip))            :: coordinateSystem
 
-  real(pReal), dimension(:,:), allocatable :: slipSystems
+  real(pREAL), dimension(:,:), allocatable :: slipSystems
   integer,     dimension(:),   allocatable :: NslipMax
 
   select case(lattice)
@@ -1864,9 +1864,9 @@ function buildInteraction(reacting_used,acting_used,reacting_max,acting_max,valu
     acting_used, &                                                                                  !< # of   acting systems per family as specified in material.config
     reacting_max, &                                                                                 !< max # of reacting systems per family for given lattice
     acting_max                                                                                      !< max # of   acting systems per family for given lattice
-  real(pReal), dimension(:),                                 intent(in) :: values                   !< interaction values
+  real(pREAL), dimension(:),                                 intent(in) :: values                   !< interaction values
   integer,     dimension(:,:),                               intent(in) :: matrix                   !< interaction types
-  real(pReal), dimension(sum(reacting_used),sum(acting_used))           :: buildInteraction
+  real(pREAL), dimension(sum(reacting_used),sum(acting_used))           :: buildInteraction
 
   integer :: &
     acting_family_index,     acting_family,   acting_system, &
@@ -1906,16 +1906,16 @@ function buildCoordinateSystem(active,potential,system,lattice,cOverA)
   integer, dimension(:), intent(in) :: &
     active, &                                                                                       !< # of active systems per family
     potential                                                                                       !< # of potential systems per family
-  real(pReal), dimension(:,:), intent(in) :: &
+  real(pREAL), dimension(:,:), intent(in) :: &
     system
   character(len=*),            intent(in) :: &
     lattice                                                                                         !< Bravais lattice (Pearson symbol)
-  real(pReal),                 intent(in) :: &
+  real(pREAL),                 intent(in) :: &
     cOverA
-  real(pReal), dimension(3,3,sum(active)) :: &
+  real(pREAL), dimension(3,3,sum(active)) :: &
     buildCoordinateSystem
 
-  real(pReal), dimension(3) :: &
+  real(pREAL), dimension(3) :: &
     direction, normal
   integer :: &
     a, &                                                                                            !< index of active system
@@ -1923,9 +1923,9 @@ function buildCoordinateSystem(active,potential,system,lattice,cOverA)
     f, &                                                                                            !< index of my family
     s                                                                                               !< index of my system in current family
 
-  if (lattice == 'tI' .and. cOverA > 2.0_pReal) &
+  if (lattice == 'tI' .and. cOverA > 2.0_pREAL) &
     call IO_error(131,ext_msg='buildCoordinateSystem:'//trim(lattice))
-  if (lattice == 'hP' .and. (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal)) &
+  if (lattice == 'hP' .and. (cOverA < 1.0_pREAL .or. cOverA > 2.0_pREAL)) &
     call IO_error(131,ext_msg='buildCoordinateSystem:'//trim(lattice))
 
   a = 0
@@ -1941,11 +1941,11 @@ function buildCoordinateSystem(active,potential,system,lattice,cOverA)
           normal    = system(4:6,p)
 
         case ('hP')
-          direction = [ system(1,p)*1.5_pReal, &
-                       (system(1,p)+2.0_pReal*system(2,p))*sqrt(0.75_pReal), &
+          direction = [ system(1,p)*1.5_pREAL, &
+                       (system(1,p)+2.0_pREAL*system(2,p))*sqrt(0.75_pREAL), &
                         system(4,p)*cOverA ]                                                        ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(p/a)])
           normal    = [ system(5,p), &
-                       (system(5,p)+2.0_pReal*system(6,p))/sqrt(3.0_pReal), &
+                       (system(5,p)+2.0_pREAL*system(6,p))/sqrt(3.0_pREAL), &
                         system(8,p)/cOverA ]                                                        ! plane (hkil)->(h (h+2k)/sqrt(3) l/(p/a))
 
         case default
@@ -1974,10 +1974,10 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
 
   integer,      dimension(:),               intent(in) :: &
     Ntrans
-  real(pReal),  dimension(3,3,sum(Ntrans)), intent(out) :: &
+  real(pREAL),  dimension(3,3,sum(Ntrans)), intent(out) :: &
     Q, &                                                                                            !< Total rotation: Q = R*B
     S                                                                                               !< Eigendeformation tensor for phase transformation
-  real(pReal),  optional,                   intent(in) :: &
+  real(pREAL),  optional,                   intent(in) :: &
     cOverA, &                                                                                       !< c/a for target hP lattice
     a_cF, &                                                                                         !< lattice parameter a for cF target lattice
     a_cI                                                                                            !< lattice parameter a for cI parent lattice
@@ -1985,14 +1985,14 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
   type(tRotation) :: &
     R, &                                                                                            !< Pitsch rotation
     B                                                                                               !< Rotation of cF to Bain coordinate system
-  real(pReal), dimension(3,3) :: &
+  real(pREAL), dimension(3,3) :: &
     U, &                                                                                            !< Bain deformation
     ss, sd
-  real(pReal), dimension(3) :: &
+  real(pREAL), dimension(3) :: &
     x, y, z
   integer :: &
     i
-  real(pReal), dimension(3+3,CF_NTRANS), parameter :: &
+  real(pREAL), dimension(3+3,CF_NTRANS), parameter :: &
     CFTOHP_SYSTEMTRANS = reshape(real( [&
       -2, 1, 1,     1, 1, 1, &
        1,-2, 1,     1, 1, 1, &
@@ -2006,9 +2006,9 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
        2, 1,-1,    -1, 1,-1, &
       -1,-2,-1,    -1, 1,-1, &
       -1, 1, 2,    -1, 1,-1  &
-      ],pReal),shape(CFTOHP_SYSTEMTRANS))
+      ],pREAL),shape(CFTOHP_SYSTEMTRANS))
 
-  real(pReal), dimension(4,cF_Ntrans), parameter :: &
+  real(pREAL), dimension(4,cF_Ntrans), parameter :: &
     CFTOCI_SYSTEMTRANS = real(reshape([&
       0.0, 1.0, 0.0,     10.26, &                                                                   ! Pitsch OR (Ma & Hartmaier 2014, Table 3)
       0.0,-1.0, 0.0,     10.26, &
@@ -2022,7 +2022,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
      -1.0, 0.0, 0.0,     10.26, &
       0.0, 1.0, 0.0,     10.26, &
       0.0,-1.0, 0.0,     10.26  &
-      ],shape(CFTOCI_SYSTEMTRANS)),pReal)
+      ],shape(CFTOCI_SYSTEMTRANS)),pREAL)
 
   integer, dimension(9,cF_Ntrans), parameter :: &
     CFTOCI_BAINVARIANT = reshape( [&
@@ -2040,7 +2040,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
       0, 0, 1, 1, 0, 0, 0, 1, 0  &
       ],shape(CFTOCI_BAINVARIANT))
 
-  real(pReal), dimension(4,cF_Ntrans), parameter :: &
+  real(pREAL), dimension(4,cF_Ntrans), parameter :: &
     CFTOCI_BAINROT = real(reshape([&
       1.0, 0.0, 0.0,     45.0, &                                                                    ! Rotate cF austensite to bain variant
       1.0, 0.0, 0.0,     45.0, &
@@ -2054,25 +2054,25 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
       0.0, 0.0, 1.0,     45.0, &
       0.0, 0.0, 1.0,     45.0, &
       0.0, 0.0, 1.0,     45.0  &
-      ],shape(CFTOCI_BAINROT)),pReal)
+      ],shape(CFTOCI_BAINROT)),pREAL)
 
   if (present(a_cI) .and. present(a_cF)) then
     do i = 1,sum(Ntrans)
       call R%fromAxisAngle(CFTOCI_SYSTEMTRANS(:,i),degrees=.true.,P=1)
       call B%fromAxisAngle(CFTOCI_BAINROT(:,i),    degrees=.true.,P=1)
-      x = real(CFTOCI_BAINVARIANT(1:3,i),pReal)
-      y = real(CFTOCI_BAINVARIANT(4:6,i),pReal)
-      z = real(CFTOCI_BAINVARIANT(7:9,i),pReal)
+      x = real(CFTOCI_BAINVARIANT(1:3,i),pREAL)
+      y = real(CFTOCI_BAINVARIANT(4:6,i),pREAL)
+      z = real(CFTOCI_BAINVARIANT(7:9,i),pREAL)
 
-      U = (a_cI/a_cF) * (math_outer(x,x) + (math_outer(y,y)+math_outer(z,z)) * sqrt(2.0_pReal))
+      U = (a_cI/a_cF) * (math_outer(x,x) + (math_outer(y,y)+math_outer(z,z)) * sqrt(2.0_pREAL))
       Q(1:3,1:3,i) = matmul(R%asMatrix(),B%asMatrix())
       S(1:3,1:3,i) = matmul(R%asMatrix(),U) - MATH_I3
     end do
   else if (present(cOverA)) then
     ss      = MATH_I3
     sd      = MATH_I3
-    ss(1,3) = sqrt(2.0_pReal)/4.0_pReal
-    sd(3,3) = cOverA/sqrt(8.0_pReal/3.0_pReal)
+    ss(1,3) = sqrt(2.0_pREAL)/4.0_pREAL
+    sd(3,3) = cOverA/sqrt(8.0_pREAL/3.0_pREAL)
 
     do i = 1,sum(Ntrans)
       x = CFTOHP_SYSTEMTRANS(1:3,i)/norm2(CFTOHP_SYSTEMTRANS(1:3,i))
@@ -2098,7 +2098,7 @@ function getlabels(active,potential,system) result(labels)
   integer,          dimension(:),   intent(in) :: &
     active, &                                                                                       !< # of active systems per family
     potential                                                                                       !< # of potential systems per family
-  real(pReal),      dimension(:,:), intent(in) :: &
+  real(pREAL),      dimension(:,:), intent(in) :: &
     system
 
   character(len=:), dimension(:), allocatable :: labels
@@ -2152,28 +2152,28 @@ end function getlabels
 !--------------------------------------------------------------------------------------------------
 pure function lattice_isotropic_nu(C,assumption,lattice) result(nu)
 
-  real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
+  real(pREAL), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
   character(len=*),            intent(in) :: assumption                                             !< Assumption (isostrain = 'Voigt', isostress = 'Reuss')
   character(len=*), optional,  intent(in) :: lattice
-  real(pReal) :: nu
+  real(pREAL) :: nu
 
-  real(pReal) :: K, mu
+  real(pREAL) :: K, mu
   logical                       :: error
-  real(pReal), dimension(6,6)   :: S
+  real(pREAL), dimension(6,6)   :: S
 
 
   if     (IO_lc(assumption) == 'isostrain') then
-    K = sum(C(1:3,1:3)) / 9.0_pReal
+    K = sum(C(1:3,1:3)) / 9.0_pREAL
   elseif (IO_lc(assumption) == 'isostress') then
     call math_invert(S,error,C)
     if (error) error stop 'matrix inversion failed'
-    K = 1.0_pReal / sum(S(1:3,1:3))
+    K = 1.0_pREAL / sum(S(1:3,1:3))
   else
     error stop 'invalid assumption'
   end if
 
-  mu = lattice_isotropic_mu(C,assumption,misc_optional(lattice,''))
-  nu = (1.5_pReal*K-mu)/(3.0_pReal*K+mu)
+  mu = lattice_isotropic_mu(C,assumption,lattice)
+  nu = (1.5_pREAL*K-mu)/(3.0_pREAL*K+mu)
 
 end function lattice_isotropic_nu
 
@@ -2185,36 +2185,36 @@ end function lattice_isotropic_nu
 !--------------------------------------------------------------------------------------------------
 pure function lattice_isotropic_mu(C,assumption,lattice) result(mu)
 
-  real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
+  real(pREAL), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
   character(len=*),            intent(in) :: assumption                                             !< Assumption (isostrain = 'Voigt', isostress = 'Reuss')
   character(len=*), optional,  intent(in) :: lattice
-  real(pReal) :: mu
+  real(pREAL) :: mu
 
   logical                       :: error
-  real(pReal), dimension(6,6)   :: S
+  real(pREAL), dimension(6,6)   :: S
 
 
   if     (IO_lc(assumption) == 'isostrain') then
       select case(misc_optional(lattice,''))
         case('cF','cI')
-          mu = ( C(1,1) - C(1,2) + C(4,4)*3.0_pReal) / 5.0_pReal
+          mu = ( C(1,1) - C(1,2) + C(4,4)*3.0_pREAL) / 5.0_pREAL
         case default
           mu = (  C(1,1)+C(2,2)+C(3,3) &
                 - C(1,2)-C(2,3)-C(1,3) &
-                +(C(4,4)+C(5,5)+C(6,6)) * 3.0_pReal &
-               ) / 15.0_pReal
+                +(C(4,4)+C(5,5)+C(6,6)) * 3.0_pREAL &
+               ) / 15.0_pREAL
       end select
 
   elseif (IO_lc(assumption) == 'isostress') then
       select case(misc_optional(lattice,''))
         case('cF','cI')
-          mu = 5.0_pReal &
-               / (4.0_pReal/(C(1,1)-C(1,2)) + 3.0_pReal/C(4,4))
+          mu = 5.0_pREAL &
+               / (4.0_pREAL/(C(1,1)-C(1,2)) + 3.0_pREAL/C(4,4))
         case default
           call math_invert(S,error,C)
           if (error) error stop 'matrix inversion failed'
-          mu = 15.0_pReal &
-              / (4.0_pReal*(S(1,1)+S(2,2)+S(3,3)-S(1,2)-S(2,3)-S(1,3)) + 3.0_pReal*(S(4,4)+S(5,5)+S(6,6)))
+          mu = 15.0_pREAL &
+              / (4.0_pREAL*(S(1,1)+S(2,2)+S(3,3)-S(1,2)-S(2,3)-S(1,3)) + 3.0_pREAL*(S(4,4)+S(5,5)+S(6,6)))
       end select
   else
     error stop 'invalid assumption'
@@ -2228,20 +2228,20 @@ end function lattice_isotropic_mu
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest
 
-  real(pReal), dimension(:,:,:), allocatable :: CoSy
-  real(pReal), dimension(:,:),   allocatable :: system
+  real(pREAL), dimension(:,:,:), allocatable :: CoSy
+  real(pREAL), dimension(:,:),   allocatable :: system
 
-  real(pReal), dimension(6,6) :: C, C_cF, C_cI, C_hP, C_tI
-  real(pReal), dimension(3,3) :: T, T_cF, T_cI, T_hP, T_tI
-  real(pReal), dimension(2)   :: r
-  real(pReal) :: lambda
+  real(pREAL), dimension(6,6) :: C, C_cF, C_cI, C_hP, C_tI
+  real(pREAL), dimension(3,3) :: T, T_cF, T_cI, T_hP, T_tI
+  real(pREAL), dimension(2)   :: r
+  real(pREAL) :: lambda
   integer     :: i
 
 
   call random_number(r)
 
-  system = reshape([1.0_pReal+r(1),0.0_pReal,0.0_pReal, 0.0_pReal,1.0_pReal+r(2),0.0_pReal],[6,1])
-  CoSy   = buildCoordinateSystem([1],[1],system,'cF',0.0_pReal)
+  system = reshape([1.0_pREAL+r(1),0.0_pREAL,0.0_pREAL, 0.0_pREAL,1.0_pREAL+r(2),0.0_pREAL],[6,1])
+  CoSy   = buildCoordinateSystem([1],[1],system,'cF',0.0_pREAL)
   if (any(dNeq(CoSy(1:3,1:3,1),math_I3))) error stop 'buildCoordinateSystem'
 
   do i = 1, 10
@@ -2274,9 +2274,9 @@ subroutine selfTest
     T_hP = lattice_symmetrize_33(T,'hP')
     T_tI = lattice_symmetrize_33(T,'tI')
 
-    if (any(dNeq0(T_cF) .and. math_I3<1.0_pReal))          error stop 'Symmetry33/c'
-    if (any(dNeq0(T_hP) .and. math_I3<1.0_pReal))          error stop 'Symmetry33/hP'
-    if (any(dNeq0(T_tI) .and. math_I3<1.0_pReal))          error stop 'Symmetry33/tI'
+    if (any(dNeq0(T_cF) .and. math_I3<1.0_pREAL))          error stop 'Symmetry33/c'
+    if (any(dNeq0(T_hP) .and. math_I3<1.0_pREAL))          error stop 'Symmetry33/hP'
+    if (any(dNeq0(T_tI) .and. math_I3<1.0_pREAL))          error stop 'Symmetry33/tI'
 
     if (any(dNeq(T(1,1),[T_cI(1,1),T_cI(2,2),T_cI(3,3)]))) error stop 'Symmetry33_11-22-33/c'
     if (any(dNeq(T(1,1),[T_hP(1,1),T_hP(2,2)])))           error stop 'Symmetry33_11-22/hP'
@@ -2285,52 +2285,52 @@ subroutine selfTest
   end do
 
   call random_number(C)
-  C(1,1) = C(1,1) + C(1,2) + 0.1_pReal
+  C(1,1) = C(1,1) + C(1,2) + 0.1_pREAL
   C(1,3) = C(1,2)
   C(3,3) = C(1,1)
-  C(4,4) = 0.5_pReal * (C(1,1) - C(1,2))
+  C(4,4) = 0.5_pREAL * (C(1,1) - C(1,2))
   C(6,6) = C(4,4)
 
   C_cI = lattice_symmetrize_C66(C,'cI')
-  if (dNeq(C_cI(4,4),lattice_isotropic_mu(C_cI,'isostrain','cI'),1.0e-12_pReal)) error stop 'isotropic_mu/isostrain/cI'
-  if (dNeq(C_cI(4,4),lattice_isotropic_mu(C_cI,'isostress','cI'),1.0e-12_pReal)) error stop 'isotropic_mu/isostress/cI'
+  if (dNeq(C_cI(4,4),lattice_isotropic_mu(C_cI,'isostrain','cI'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostrain/cI'
+  if (dNeq(C_cI(4,4),lattice_isotropic_mu(C_cI,'isostress','cI'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostress/cI'
 
   lambda = C_cI(1,2)
-  if (dNeq(lambda*0.5_pReal/(lambda+lattice_isotropic_mu(C_cI,'isostrain','cI')), &
-          lattice_isotropic_nu(C_cI,'isostrain','cI'),1.0e-12_pReal)) error stop 'isotropic_nu/isostrain/cI'
-  if (dNeq(lambda*0.5_pReal/(lambda+lattice_isotropic_mu(C_cI,'isostress','cI')), &
-          lattice_isotropic_nu(C_cI,'isostress','cI'),1.0e-12_pReal)) error stop 'isotropic_nu/isostress/cI'
+  if (dNeq(lambda*0.5_pREAL/(lambda+lattice_isotropic_mu(C_cI,'isostrain','cI')), &
+          lattice_isotropic_nu(C_cI,'isostrain','cI'),1.0e-12_pREAL)) error stop 'isotropic_nu/isostrain/cI'
+  if (dNeq(lambda*0.5_pREAL/(lambda+lattice_isotropic_mu(C_cI,'isostress','cI')), &
+          lattice_isotropic_nu(C_cI,'isostress','cI'),1.0e-12_pREAL)) error stop 'isotropic_nu/isostress/cI'
 
 
   C_hP = lattice_symmetrize_C66(C,'hP')
-  if (dNeq(C(4,4),lattice_isotropic_mu(C_hP,'isostrain','hP'),1.0e-12_pReal)) error stop 'isotropic_mu/isostrain/hP'
-  if (dNeq(C(4,4),lattice_isotropic_mu(C_hP,'isostress','hP'),1.0e-12_pReal)) error stop 'isotropic_mu/isostress/hP'
+  if (dNeq(C(4,4),lattice_isotropic_mu(C_hP,'isostrain','hP'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostrain/hP'
+  if (dNeq(C(4,4),lattice_isotropic_mu(C_hP,'isostress','hP'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostress/hP'
 
   lambda = C_hP(1,2)
-  if (dNeq(lambda*0.5_pReal/(lambda+lattice_isotropic_mu(C_hP,'isostrain','hP')), &
-          lattice_isotropic_nu(C_hP,'isostrain','hP'),1.0e-12_pReal)) error stop 'isotropic_nu/isostrain/hP'
-  if (dNeq(lambda*0.5_pReal/(lambda+lattice_isotropic_mu(C_hP,'isostress','hP')), &
-          lattice_isotropic_nu(C_hP,'isostress','hP'),1.0e-12_pReal)) error stop 'isotropic_nu/isostress/hP'
+  if (dNeq(lambda*0.5_pREAL/(lambda+lattice_isotropic_mu(C_hP,'isostrain','hP')), &
+          lattice_isotropic_nu(C_hP,'isostrain','hP'),1.0e-12_pREAL)) error stop 'isotropic_nu/isostrain/hP'
+  if (dNeq(lambda*0.5_pREAL/(lambda+lattice_isotropic_mu(C_hP,'isostress','hP')), &
+          lattice_isotropic_nu(C_hP,'isostress','hP'),1.0e-12_pREAL)) error stop 'isotropic_nu/isostress/hP'
 
   C_tI = lattice_symmetrize_C66(C,'tI')
-  if (dNeq(C(6,6),lattice_isotropic_mu(C_tI,'isostrain','tI'),1.0e-12_pReal)) error stop 'isotropic_mu/isostrain/tI'
-  if (dNeq(C(6,6),lattice_isotropic_mu(C_tI,'isostress','tI'),1.0e-12_pReal)) error stop 'isotropic_mu/isostress/tI'
+  if (dNeq(C(6,6),lattice_isotropic_mu(C_tI,'isostrain','tI'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostrain/tI'
+  if (dNeq(C(6,6),lattice_isotropic_mu(C_tI,'isostress','tI'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostress/tI'
 
   lambda = C_tI(1,2)
-  if (dNeq(lambda*0.5_pReal/(lambda+lattice_isotropic_mu(C_tI,'isostrain','tI')), &
-          lattice_isotropic_nu(C_tI,'isostrain','tI'),1.0e-12_pReal)) error stop 'isotropic_nu/isostrain/tI'
-  if (dNeq(lambda*0.5_pReal/(lambda+lattice_isotropic_mu(C_tI,'isostress','tI')), &
-          lattice_isotropic_nu(C_tI,'isostress','tI'),1.0e-12_pReal)) error stop 'isotropic_nu/isostress/tI'
+  if (dNeq(lambda*0.5_pREAL/(lambda+lattice_isotropic_mu(C_tI,'isostrain','tI')), &
+          lattice_isotropic_nu(C_tI,'isostrain','tI'),1.0e-12_pREAL)) error stop 'isotropic_nu/isostrain/tI'
+  if (dNeq(lambda*0.5_pREAL/(lambda+lattice_isotropic_mu(C_tI,'isostress','tI')), &
+          lattice_isotropic_nu(C_tI,'isostress','tI'),1.0e-12_pREAL)) error stop 'isotropic_nu/isostress/tI'
 
   call random_number(C)
   C = lattice_symmetrize_C66(C+math_eye(6),'cI')
-  if (dNeq(lattice_isotropic_mu(C,'isostrain','cI'), lattice_isotropic_mu(C,'isostrain','hP'), 1.0e-12_pReal)) &
+  if (dNeq(lattice_isotropic_mu(C,'isostrain','cI'), lattice_isotropic_mu(C,'isostrain','hP'), 1.0e-12_pREAL)) &
     error stop 'isotropic_mu/isostrain/cI-hP'
-  if (dNeq(lattice_isotropic_nu(C,'isostrain','cF'), lattice_isotropic_nu(C,'isostrain','cI'), 1.0e-12_pReal)) &
+  if (dNeq(lattice_isotropic_nu(C,'isostrain','cF'), lattice_isotropic_nu(C,'isostrain','cI'), 1.0e-12_pREAL)) &
     error stop 'isotropic_nu/isostrain/cF-tI'
-  if (dNeq(lattice_isotropic_mu(C,'isostress','cI'), lattice_isotropic_mu(C,'isostress'), 1.0e-12_pReal)) &
+  if (dNeq(lattice_isotropic_mu(C,'isostress','cI'), lattice_isotropic_mu(C,'isostress'), 1.0e-12_pREAL)) &
     error stop 'isotropic_mu/isostress/cI-hP'
-  if (dNeq(lattice_isotropic_nu(C,'isostress','cF'), lattice_isotropic_nu(C,'isostress'), 1.0e-12_pReal)) &
+  if (dNeq(lattice_isotropic_nu(C,'isostress','cF'), lattice_isotropic_nu(C,'isostress'), 1.0e-12_pREAL)) &
     error stop 'isotropic_nu/isostress/cF-tI'
 
 end subroutine selfTest

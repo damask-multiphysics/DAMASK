@@ -82,7 +82,7 @@ jobs:
 
       - name: DAMASK - Run
         run: |
-          ./bin/DAMASK_grid -l tensionX.yaml -g 20grains16x16x16.vti -w examples/grid
+          ./bin/DAMASK_grid -l tensionX.yaml -g 20grains16x16x16.vti -m material.yaml -w examples/grid
           ./bin/DAMASK_mesh -h
 
 
@@ -189,5 +189,5 @@ jobs:
 
       - name: DAMASK - Run
         run: |
-          ./bin/DAMASK_grid -l tensionX.yaml -g 20grains16x16x16.vti -w examples/grid
+          ./bin/DAMASK_grid -l tensionX.yaml -g 20grains16x16x16.vti -m material.yaml -w examples/grid
           ./bin/DAMASK_mesh -h

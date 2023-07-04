@@ -15,7 +15,7 @@ from typing import Optional, Union, Callable, Any, Sequence, Literal, Dict, List
 
 import h5py
 import numpy as np
-import numpy.ma as ma
+from numpy import ma
 
 import damask
 from . import VTK
@@ -106,10 +106,8 @@ class Result:
             self.version_major = f.attrs['DADF5_version_major']
             self.version_minor = f.attrs['DADF5_version_minor']
 
-            if (self.version_major != 0 or not 12 <= self.version_minor <= 14) and self.version_major != 1:
+            if (self.version_major != 0 or not 14 <= self.version_minor <= 14) and self.version_major != 1:
                 raise TypeError(f'unsupported DADF5 version "{self.version_major}.{self.version_minor}"')
-            if self.version_major == 0 and self.version_minor < 14:
-                self.export_simulation_setup = None                                                 # type: ignore
 
             self.structured = 'cells' in f['geometry'].attrs.keys()
 
@@ -1940,7 +1938,8 @@ class Result:
 
     def export_DADF5(self,
                      fname,
-                     output: Union[str, List[str]] = '*'):
+                     output: Union[str, List[str]] = '*',
+                     mapping = None):
         """
         Export visible components into a new DADF5 file.
 
@@ -1954,20 +1953,61 @@ class Result:
         output : (list of) str, optional
             Names of the datasets to export.
             Defaults to '*', in which case all visible datasets are exported.
+        mapping : numpy.ndarray of int, shape (:,:,:), optional
+            Indices for regridding.
 
         """
         if Path(fname).expanduser().absolute() == self.fname:
             raise PermissionError(f'cannot overwrite {self.fname}')
+
+        def cp(path_in,path_out,label,mapping):
+            if mapping is None:
+                path_in.copy(label,path_out)
+            else:
+                path_out.create_dataset(label,data=path_in[label][()][mapping])
+                path_out[label].attrs.update(path_in[label].attrs)
+
+
         with h5py.File(self.fname,'r') as f_in, h5py.File(fname,'w') as f_out:
-            for k,v in f_in.attrs.items():
-                f_out.attrs.create(k,v)
-            for g in ['setup','geometry','cell_to']:
+            f_out.attrs.update(f_in.attrs)
+            for g in ['setup','geometry'] + (['cell_to'] if mapping is None else []):
                 f_in.copy(g,f_out)
+
+            if mapping is not None:
+                cells = mapping.shape
+                mapping_flat = mapping.flatten(order='F')
+                f_out['geometry'].attrs['cells'] = cells
+                f_out.create_group('cell_to')                                                       # ToDo: attribute missing
+                mappings = {'phase':{},'homogenization':{}}                                         # type: ignore
+
+                mapping_phase = f_in['cell_to']['phase'][()][mapping_flat]
+                for p in np.unique(mapping_phase['label']):
+                    m = mapping_phase['label'] == p
+                    mappings['phase'][p] = mapping_phase[m]['entry']
+                    c = np.count_nonzero(m)
+                    mapping_phase[m] = list(zip((p,)*c,tuple(np.arange(c))))
+                f_out['cell_to'].create_dataset('phase',data=mapping_phase.reshape(np.prod(mapping_flat.shape),-1))
+
+                mapping_homog = f_in['cell_to']['homogenization'][()][mapping]
+                for h in np.unique(mapping_homog['label']):
+                    m = mapping_homog['label'] == h
+                    mappings['homogenization'][h] = mapping_homog[m]['entry']
+                    c = np.count_nonzero(m)
+                    mapping_homog[mapping_homog['label'] == h] = list(zip((h,)*c,tuple(np.arange(c))))
+                f_out['cell_to'].create_dataset('homogenization',data=mapping_homog.flatten())
+
 
             for inc in util.show_progress(self.visible['increments']):
                 f_in.copy(inc,f_out,shallow=True)
-                for out in _match(output,f_in['/'.join([inc,'geometry'])].keys()):
-                    f_in[inc]['geometry'].copy(out,f_out[inc]['geometry'])
+                if mapping is None:
+                    for label in ['u_p','u_n']:
+                        f_in[inc]['geometry'].copy(label,f_out[inc]['geometry'])
+                else:
+                    u_p = f_in[inc]['geometry']['u_p'][()][mapping_flat]
+                    f_out[inc]['geometry'].create_dataset('u_p',data=u_p)
+                    u_n = np.zeros((len(mapping_flat),3))                                           # ToDo: needs implementation
+                    f_out[inc]['geometry'].create_dataset('u_n',data=u_n)
+
 
                 for label in self.homogenizations:
                     f_in[inc]['homogenization'].copy(label,f_out[inc]['homogenization'],shallow=True)
@@ -1979,7 +2019,7 @@ class Result:
                         for field in _match(self.visible['fields'],f_in['/'.join([inc,ty,label])].keys()):
                             p = '/'.join([inc,ty,label,field])
                             for out in _match(output,f_in[p].keys()):
-                                f_in[p].copy(out,f_out[p])
+                                cp(f_in[p],f_out[p],out,None if mapping is None else mappings[ty][label.encode()])
 
 
     def export_simulation_setup(self,

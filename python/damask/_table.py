@@ -603,4 +603,7 @@ class Table:
         f = util.open_text(fname,'w')
 
         f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+('\n' if labels else ''))
-        self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,line_terminator='\n')
+        try:                                                                                        # backward compatibility
+            self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,lineterminator='\n')
+        except TypeError:
+            self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,line_terminator='\n')

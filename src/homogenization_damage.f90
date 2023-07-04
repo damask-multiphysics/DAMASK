@@ -11,13 +11,13 @@ submodule(homogenization) damage
   end interface
 
   type :: tDataContainer
-    real(pReal), dimension(:), allocatable :: phi
+    real(pREAL), dimension(:), allocatable :: phi
   end type tDataContainer
 
   type(tDataContainer), dimension(:), allocatable :: current
 
   type :: tParameters
-    character(len=pStringLen), allocatable, dimension(:) :: &
+    character(len=pSTRLEN), allocatable, dimension(:) :: &
       output
   end type tParameters
 
@@ -48,21 +48,21 @@ module subroutine damage_init()
 
   do ho = 1, configHomogenizations%length
     Nmembers = count(material_ID_homogenization == ho)
-    allocate(current(ho)%phi(Nmembers), source=1.0_pReal)
+    allocate(current(ho)%phi(Nmembers), source=1.0_pREAL)
     configHomogenization => configHomogenizations%get_dict(ho)
     associate(prm => param(ho))
       if (configHomogenization%contains('damage')) then
         configHomogenizationDamage => configHomogenization%get_dict('damage')
 #if defined (__GFORTRAN__)
-        prm%output = output_as1dString(configHomogenizationDamage)
+        prm%output = output_as1dStr(configHomogenizationDamage)
 #else
-        prm%output = configHomogenizationDamage%get_as1dString('output',defaultVal=emptyStringArray)
+        prm%output = configHomogenizationDamage%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
         damageState_h(ho)%sizeState = 1
-        allocate(damageState_h(ho)%state0(1,Nmembers), source=1.0_pReal)
-        allocate(damageState_h(ho)%state (1,Nmembers), source=1.0_pReal)
+        allocate(damageState_h(ho)%state0(1,Nmembers), source=1.0_pREAL)
+        allocate(damageState_h(ho)%state (1,Nmembers), source=1.0_pREAL)
       else
-        prm%output = emptyStringArray
+        prm%output = emptyStrArray
       end if
     end associate
   end do
@@ -91,7 +91,7 @@ module subroutine damage_partition(ce)
 
   integer, intent(in) :: ce
 
-  real(pReal) :: phi
+  real(pREAL) :: phi
   integer :: co
 
 
@@ -111,7 +111,7 @@ end subroutine damage_partition
 module function homogenization_mu_phi(ce) result(mu)
 
   integer, intent(in) :: ce
-  real(pReal) :: mu
+  real(pREAL) :: mu
 
 
   mu = phase_mu_phi(1,ce)
@@ -125,7 +125,7 @@ end function homogenization_mu_phi
 module function homogenization_K_phi(ce) result(K)
 
   integer, intent(in) :: ce
-  real(pReal), dimension(3,3) :: K
+  real(pREAL), dimension(3,3) :: K
 
 
   K = phase_K_phi(1,ce)
@@ -139,8 +139,8 @@ end function homogenization_K_phi
 module function homogenization_f_phi(phi,ce) result(f)
 
   integer, intent(in) :: ce
-  real(pReal), intent(in) :: phi
-  real(pReal) :: f
+  real(pREAL), intent(in) :: phi
+  real(pREAL) :: f
 
 
   f = phase_f_phi(phi, 1, ce)
@@ -154,7 +154,7 @@ end function homogenization_f_phi
 module subroutine homogenization_set_phi(phi,ce)
 
   integer, intent(in) :: ce
-  real(pReal), intent(in) :: phi
+  real(pREAL), intent(in) :: phi
 
   integer :: &
     ho, &

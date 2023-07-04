@@ -32,8 +32,8 @@ module spectral_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! grid related information
-  real(pReal), protected, public               :: wgt                                               !< weighting factor 1/Nelems
-  real(pReal), protected, public, dimension(3) :: scaledGeomSize                                    !< scaled geometry size for calculation of divergence
+  real(pREAL), protected, public               :: wgt                                               !< weighting factor 1/Nelems
+  real(pREAL), protected, public, dimension(3) :: scaledGeomSize                                    !< scaled geometry size for calculation of divergence
   integer :: &
     cells1Red, &                                                                                    !< cells(1)/2+1
     cells2, &                                                                                       !< (local) cells in 2nd direction
@@ -48,10 +48,10 @@ module spectral_utilities
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:,:,:),     pointer     :: tensorField_fourier           !< tensor field in Fourier space
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:,:),       pointer     :: vectorField_fourier           !< vector field in Fourier space
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:),         pointer     :: scalarField_fourier           !< scalar field in Fourier space
-  complex(pReal),            dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                     !< gamma operator (field) for spectral method
-  complex(pReal),            dimension(:,:,:,:),       allocatable :: xi1st                         !< wave vector field for first derivatives
-  complex(pReal),            dimension(:,:,:,:),       allocatable :: xi2nd                         !< wave vector field for second derivatives
-  real(pReal),               dimension(3,3,3,3)                    :: C_ref                         !< mechanic reference stiffness
+  complex(pREAL),            dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                     !< gamma operator (field) for spectral method
+  complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi1st                         !< wave vector field for first derivatives
+  complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi2nd                         !< wave vector field for second derivatives
+  real(pREAL),               dimension(3,3,3,3)                    :: C_ref                         !< mechanic reference stiffness
 
 
 !--------------------------------------------------------------------------------------------------
@@ -76,16 +76,16 @@ module spectral_utilities
   end type tSolutionState
 
   type, public :: tBoundaryCondition                                                                !< set of parameters defining a boundary condition
-    real(pReal), dimension(3,3)   :: values = 0.0_pReal
+    real(pREAL), dimension(3,3)   :: values = 0.0_pREAL
     logical,     dimension(3,3)   :: mask   = .true.
     character(len=:), allocatable :: myType
   end type tBoundaryCondition
 
   type, public :: tSolutionParams
-    real(pReal), dimension(3,3) :: stress_BC
+    real(pREAL), dimension(3,3) :: stress_BC
     logical, dimension(3,3)     :: stress_mask
     type(tRotation)             :: rotation_BC
-    real(pReal) :: Delta_t
+    real(pREAL) :: Delta_t
   end type tSolutionParams
 
   type :: tNumerics
@@ -168,11 +168,11 @@ subroutine spectral_utilities_init()
   call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,&
-                                num_grid%get_asString('PETSc_options',defaultVal=''),err_PETSc)
+                                num_grid%get_asStr('PETSc_options',defaultVal=''),err_PETSc)
   CHKERRQ(err_PETSc)
 
   cells1Red = cells(1)/2 + 1
-  wgt = real(product(cells),pReal)**(-1)
+  wgt = real(product(cells),pREAL)**(-1)
 
   num%memory_efficient      = num_grid%get_asInt('memory_efficient',      defaultVal=1) > 0         ! ToDo: should be logical in YAML file
   num%divergence_correction = num_grid%get_asInt('divergence_correction', defaultVal=2)
@@ -180,7 +180,7 @@ subroutine spectral_utilities_init()
   if (num%divergence_correction < 0 .or. num%divergence_correction > 2) &
     call IO_error(301,ext_msg='divergence_correction')
 
-  select case (num_grid%get_asString('derivative',defaultVal='continuous'))
+  select case (num_grid%get_asStr('derivative',defaultVal='continuous'))
     case ('continuous')
       spectral_derivative_ID = DERIVATIVE_CONTINUOUS_ID
     case ('central_difference')
@@ -188,7 +188,7 @@ subroutine spectral_utilities_init()
     case ('FWBW_difference')
       spectral_derivative_ID = DERIVATIVE_FWBW_DIFF_ID
     case default
-      call IO_error(892,ext_msg=trim(num_grid%get_asString('derivative')))
+      call IO_error(892,ext_msg=trim(num_grid%get_asStr('derivative')))
   end select
 
 !--------------------------------------------------------------------------------------------------
@@ -201,15 +201,15 @@ subroutine spectral_utilities_init()
     end do
   elseif (num%divergence_correction == 2) then
     do j = 1, 3
-     if (      j /= int(minloc(geomSize/real(cells,pReal),1)) &
-         .and. j /= int(maxloc(geomSize/real(cells,pReal),1))) &
-       scaledGeomSize = geomSize/geomSize(j)*real(cells(j),pReal)
+     if (      j /= int(minloc(geomSize/real(cells,pREAL),1)) &
+         .and. j /= int(maxloc(geomSize/real(cells,pREAL),1))) &
+       scaledGeomSize = geomSize/geomSize(j)*real(cells(j),pREAL)
     end do
   else
     scaledGeomSize = geomSize
   end if
 
-  select case(IO_lc(num_grid%get_asString('fftw_plan_mode',defaultVal='FFTW_MEASURE')))
+  select case(IO_lc(num_grid%get_asStr('fftw_plan_mode',defaultVal='FFTW_MEASURE')))
     case('fftw_estimate')                                                                           ! ordered from slow execution (but fast plan creation) to fast execution
       FFTW_planner_flag = FFTW_ESTIMATE
     case('fftw_measure')
@@ -219,14 +219,14 @@ subroutine spectral_utilities_init()
     case('fftw_exhaustive')
       FFTW_planner_flag = FFTW_EXHAUSTIVE
     case default
-      call IO_warning(47,'using default FFTW_MEASURE instead of "'//trim(num_grid%get_asString('fftw_plan_mode'))//'"')
+      call IO_warning(47,'using default FFTW_MEASURE instead of "'//trim(num_grid%get_asStr('fftw_plan_mode'))//'"')
       FFTW_planner_flag = FFTW_MEASURE
   end select
 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
-  if (pReal /= C_DOUBLE .or. kind(1) /= C_INT) error stop 'C and Fortran datatypes do not match'
-  call fftw_set_timelimit(num_grid%get_asFloat('fftw_timelimit',defaultVal=300.0_pReal))
+  if (pREAL /= C_DOUBLE .or. kind(1) /= C_INT) error stop 'C and Fortran datatypes do not match'
+  call fftw_set_timelimit(num_grid%get_asReal('fftw_timelimit',defaultVal=300.0_pREAL))
 
   print'(/,1x,a)', 'FFTW initialized'; flush(IO_STDOUT)
 
@@ -268,8 +268,8 @@ subroutine spectral_utilities_init()
 
 !--------------------------------------------------------------------------------------------------
 ! allocation
-  allocate (xi1st (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pReal,0.0_pReal,pReal))          ! frequencies for first derivatives, only half the size for first dimension
-  allocate (xi2nd (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pReal,0.0_pReal,pReal))          ! frequencies for second derivatives, only half the size for first dimension
+  allocate (xi1st (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))          ! frequencies for first derivatives, only half the size for first dimension
+  allocate (xi2nd (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))          ! frequencies for second derivatives, only half the size for first dimension
 
 !--------------------------------------------------------------------------------------------------
 ! tensor MPI fftw plans
@@ -321,16 +321,16 @@ subroutine spectral_utilities_init()
             xi2nd(1:3,i,k,j-cells2Offset) = utilities_getFreqDerivative(k_s)
             where(mod(cells,2)==0 .and. [i,j,k] == cells/2+1 .and. &
                   spectral_derivative_ID == DERIVATIVE_CONTINUOUS_ID)                               ! for even grids, set the Nyquist Freq component to 0.0
-              xi1st(1:3,i,k,j-cells2Offset) = cmplx(0.0_pReal,0.0_pReal,pReal)
+              xi1st(1:3,i,k,j-cells2Offset) = cmplx(0.0_pREAL,0.0_pREAL,pREAL)
             elsewhere
               xi1st(1:3,i,k,j-cells2Offset) = xi2nd(1:3,i,k,j-cells2Offset)
             endwhere
   end do; end do; end do
 
   if (num%memory_efficient) then                                                                    ! allocate just single fourth order tensor
-    allocate (gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pReal,0.0_pReal,pReal))
+    allocate (gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
   else                                                                                              ! precalculation of gamma_hat field
-    allocate (gamma_hat(3,3,3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pReal,0.0_pReal,pReal))
+    allocate (gamma_hat(3,3,3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
   end if
 
   call selfTest()
@@ -339,17 +339,17 @@ end subroutine spectral_utilities_init
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief updates reference stiffness and potentially precalculated gamma operator
-!> @details Sets the current reference stiffness to the stiffness given as an argument.
+!> @brief Update reference stiffness and potentially precalculated gamma operator.
+!> @details Set the current reference stiffness to the stiffness given as an argument.
 !> If the gamma operator is precalculated, it is calculated with this stiffness.
 !> In case of an on-the-fly calculation, only the reference stiffness is updated.
 !---------------------------------------------------------------------------------------------------
 subroutine utilities_updateGamma(C)
 
-  real(pReal), intent(in), dimension(3,3,3,3) :: C                                                  !< input stiffness to store as reference stiffness
+  real(pREAL), intent(in), dimension(3,3,3,3) :: C                                                  !< input stiffness to store as reference stiffness
 
-  complex(pReal),              dimension(3,3) :: temp33_cmplx, xiDyad_cmplx
-  real(pReal),                 dimension(6,6) :: A, A_inv
+  complex(pREAL),              dimension(3,3) :: temp33_cmplx, xiDyad_cmplx
+  real(pREAL),                 dimension(6,6) :: A, A_inv
   integer :: &
     i, j, k, &
     l, m, n, o
@@ -359,7 +359,7 @@ subroutine utilities_updateGamma(C)
   C_ref = C/wgt
 
   if (.not. num%memory_efficient) then
-    gamma_hat = cmplx(0.0_pReal,0.0_pReal,pReal)                                                    ! for the singular point and any non invertible A
+    gamma_hat = cmplx(0.0_pREAL,0.0_pREAL,pREAL)                                                    ! for the singular point and any non invertible A
     !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,xiDyad_cmplx,A,A_inv,err)
     do j = cells2Offset+1, cells2Offset+cells2; do k = 1, cells(3); do i = 1, cells1Red
       if (any([i,j,k] /= 1)) then                                                                   ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
@@ -368,19 +368,19 @@ subroutine utilities_updateGamma(C)
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,k,j-cells2Offset))*xi1st(m,i,k,j-cells2Offset)
         end do
         do concurrent(l = 1:3, m = 1:3)
-          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal,pReal)*xiDyad_cmplx)
+          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pREAL,pREAL)*xiDyad_cmplx)
         end do
 #else
         forall(l = 1:3, m = 1:3) &
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,k,j-cells2Offset))*xi1st(m,i,k,j-cells2Offset)
         forall(l = 1:3, m = 1:3) &
-          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal,pReal)*xiDyad_cmplx)
+          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pREAL,pREAL)*xiDyad_cmplx)
 #endif
         A(1:3,1:3) = temp33_cmplx%re; A(4:6,4:6) =  temp33_cmplx%re
         A(1:3,4:6) = temp33_cmplx%im; A(4:6,1:3) = -temp33_cmplx%im
-        if (abs(math_det33(A(1:3,1:3))) > 1.e-16_pReal) then
+        if (abs(math_det33(A(1:3,1:3))) > 1.e-16_pREAL) then
           call math_invert(A_inv, err, A)
-          temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
+          temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pREAL)
 #ifndef __INTEL_COMPILER
           do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
             gamma_hat(l,m,n,o,i,k,j-cells2Offset) = temp33_cmplx(l,n) * xiDyad_cmplx(o,m)
@@ -399,28 +399,17 @@ end subroutine utilities_updateGamma
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief backward FFT of data in field_fourier to field_real
-!> @details Does an weighted inverse FFT transform from complex to real
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTvectorBackward()
-
-  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
-  vectorField_real = vectorField_real * wgt                                                         ! normalize the result by number of elements
-
-end subroutine utilities_FFTvectorBackward
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief doing convolution gamma_hat * field_real, ensuring that average value = fieldAim
+!> @brief Calculate gamma_hat * field_real (convolution).
+!> @details The average value equals the given aim.
 !--------------------------------------------------------------------------------------------------
 function utilities_GammaConvolution(field, fieldAim) result(gammaField)
 
-  real(pReal), intent(in), dimension(3,3,cells(1),cells(2),cells3) :: field
-  real(pReal), intent(in), dimension(3,3) :: fieldAim                                               !< desired average value of the field after convolution
-  real(pReal),             dimension(3,3,cells(1),cells(2),cells3) :: gammaField
+  real(pREAL), intent(in), dimension(3,3,cells(1),cells(2),cells3) :: field
+  real(pREAL), intent(in), dimension(3,3) :: fieldAim                                               !< desired average value of the field after convolution
+  real(pREAL),             dimension(3,3,cells(1),cells(2),cells3) :: gammaField
 
-  complex(pReal), dimension(3,3) :: temp33_cmplx, xiDyad_cmplx
-  real(pReal),    dimension(6,6) :: A, A_inv
+  complex(pREAL), dimension(3,3) :: temp33_cmplx, xiDyad_cmplx
+  real(pREAL),    dimension(6,6) :: A, A_inv
   integer :: &
     i, j, k, &
     l, m, n, o
@@ -430,7 +419,7 @@ function utilities_GammaConvolution(field, fieldAim) result(gammaField)
   print'(/,1x,a)', '... doing gamma convolution ...............................................'
   flush(IO_STDOUT)
 
-  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL
   tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
@@ -443,19 +432,19 @@ function utilities_GammaConvolution(field, fieldAim) result(gammaField)
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,k,j))*xi1st(m,i,k,j)
         end do
         do concurrent(l = 1:3, m = 1:3)
-          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal,pReal)*xiDyad_cmplx)
+          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pREAL,pREAL)*xiDyad_cmplx)
         end do
 #else
         forall(l = 1:3, m = 1:3) &
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,k,j))*xi1st(m,i,k,j)
         forall(l = 1:3, m = 1:3) &
-          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal,pReal)*xiDyad_cmplx)
+          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pREAL,pREAL)*xiDyad_cmplx)
 #endif
         A(1:3,1:3) = temp33_cmplx%re; A(4:6,4:6) =  temp33_cmplx%re
         A(1:3,4:6) = temp33_cmplx%im; A(4:6,1:3) = -temp33_cmplx%im
-        if (abs(math_det33(A(1:3,1:3))) > 1.e-16_pReal) then
+        if (abs(math_det33(A(1:3,1:3))) > 1.e-16_pREAL) then
           call math_invert(A_inv, err, A)
-          temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
+          temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pREAL)
 #ifndef __INTEL_COMPILER
           do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
             gamma_hat(l,m,n,o,1,1,1) = temp33_cmplx(l,n)*xiDyad_cmplx(o,m)
@@ -471,7 +460,7 @@ function utilities_GammaConvolution(field, fieldAim) result(gammaField)
 #endif
           tensorField_fourier(1:3,1:3,i,k,j) = temp33_cmplx
         else
-          tensorField_fourier(1:3,1:3,i,k,j) = cmplx(0.0_pReal,0.0_pReal,pReal)
+          tensorField_fourier(1:3,1:3,i,k,j) = cmplx(0.0_pREAL,0.0_pREAL,pREAL)
         end if
       end if
     end do; end do; end do
@@ -492,7 +481,7 @@ function utilities_GammaConvolution(field, fieldAim) result(gammaField)
     !$OMP END PARALLEL DO
   end if memoryEfficient
 
-  if (cells3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim,0.0_pReal,pReal)
+  if (cells3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim,0.0_pREAL,pREAL)
 
   call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
   gammaField = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)
@@ -505,24 +494,24 @@ end function utilities_GammaConvolution
 !--------------------------------------------------------------------------------------------------
 function utilities_GreenConvolution(field, D_ref, mu_ref, Delta_t) result(greenField)
 
-  real(pReal), intent(in), dimension(cells(1),cells(2),cells3) :: field
-  real(pReal), dimension(3,3), intent(in) :: D_ref
-  real(pReal),                 intent(in) :: mu_ref, Delta_t
-  real(pReal), dimension(cells(1),cells(2),cells3) :: greenField
+  real(pREAL), intent(in), dimension(cells(1),cells(2),cells3) :: field
+  real(pREAL), dimension(3,3), intent(in) :: D_ref
+  real(pREAL),                 intent(in) :: mu_ref, Delta_t
+  real(pREAL), dimension(cells(1),cells(2),cells3) :: greenField
 
-  complex(pReal)                          :: GreenOp_hat
+  complex(pREAL)                          :: GreenOp_hat
   integer                                 :: i, j, k
 
 
-  scalarField_real(cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  scalarField_real(cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL
   scalarField_real(1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
 
   !$OMP PARALLEL DO PRIVATE(GreenOp_hat)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
-    GreenOp_hat = cmplx(wgt,0.0_pReal,pReal) &
-                / (cmplx(mu_ref,0.0_pReal,pReal) + cmplx(Delta_t,0.0_pReal,pReal) &
-                   * sum(conjg(xi1st(1:3,i,k,j))* matmul(cmplx(D_ref,0.0_pReal,pReal),xi1st(1:3,i,k,j))))
+    GreenOp_hat = cmplx(wgt,0.0_pREAL,pREAL) &
+                / (cmplx(mu_ref,0.0_pREAL,pREAL) + cmplx(Delta_t,0.0_pREAL,pREAL) &
+                   * sum(conjg(xi1st(1:3,i,k,j))* matmul(cmplx(D_ref,0.0_pREAL,pREAL),xi1st(1:3,i,k,j))))
     scalarField_fourier(i,k,j) = scalarField_fourier(i,k,j)*GreenOp_hat
   end do; end do; end do
   !$OMP END PARALLEL DO
@@ -536,28 +525,28 @@ end function utilities_GreenConvolution
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate root mean square of divergence.
 !--------------------------------------------------------------------------------------------------
-real(pReal) function utilities_divergenceRMS(tensorField)
+real(pREAL) function utilities_divergenceRMS(tensorField)
 
-  real(pReal), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: tensorField
+  real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: tensorField
 
   integer :: i, j, k
   integer(MPI_INTEGER_KIND) :: err_MPI
-  complex(pReal), dimension(3) :: rescaledGeom
+  complex(pREAL), dimension(3) :: rescaledGeom
 
 
-  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL
   tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = tensorField
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
-  rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal,pReal)
+  rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pREAL,pREAL)
 
 !--------------------------------------------------------------------------------------------------
 ! calculating RMS divergence criterion in Fourier space
-  utilities_divergenceRMS = 0.0_pReal
+  utilities_divergenceRMS = 0.0_pREAL
   do j = 1, cells2; do k = 1, cells(3)
     do i = 2, cells1Red -1                                                                          ! Has somewhere a conj. complex counterpart. Therefore count it twice.
       utilities_divergenceRMS = utilities_divergenceRMS &
-            + 2.0_pReal*(sum (real(matmul(tensorField_fourier(1:3,1:3,i,k,j), &                     ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2, i.e. do not take square root and square again
+            + 2.0_pREAL*(sum (real(matmul(tensorField_fourier(1:3,1:3,i,k,j), &                     ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2, i.e. do not take square root and square again
                                           conjg(-xi1st(1:3,i,k,j))*rescaledGeom))**2) &             ! --> sum squared L_2 norm of vector
                         +sum(aimag(matmul(tensorField_fourier(1:3,1:3,i,k,j),&
                                           conjg(-xi1st(1:3,i,k,j))*rescaledGeom))**2))
@@ -575,7 +564,7 @@ real(pReal) function utilities_divergenceRMS(tensorField)
   call MPI_Allreduce(MPI_IN_PLACE,utilities_divergenceRMS,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   utilities_divergenceRMS = sqrt(utilities_divergenceRMS) * wgt                                     ! RMS in real space calculated with Parsevals theorem from Fourier space
-  if (cells(1) == 1) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal                  ! counted twice in case of cells(1) == 1
+  if (cells(1) == 1) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pREAL                  ! counted twice in case of cells(1) == 1
 
 end function utilities_divergenceRMS
 
@@ -583,25 +572,25 @@ end function utilities_divergenceRMS
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate root mean square of curl.
 !--------------------------------------------------------------------------------------------------
-real(pReal) function utilities_curlRMS(tensorField)
+real(pREAL) function utilities_curlRMS(tensorField)
 
-  real(pReal), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: tensorField
+  real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: tensorField
 
   integer  ::  i, j, k, l
   integer(MPI_INTEGER_KIND) :: err_MPI
-  complex(pReal), dimension(3,3) :: curl_fourier
-  complex(pReal), dimension(3)   :: rescaledGeom
+  complex(pREAL), dimension(3,3) :: curl_fourier
+  complex(pREAL), dimension(3)   :: rescaledGeom
 
 
-  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL
   tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = tensorField
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
-  rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal,pReal)
+  rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pREAL,pREAL)
 
 !--------------------------------------------------------------------------------------------------
 ! calculating max curl criterion in Fourier space
-  utilities_curlRMS = 0.0_pReal
+  utilities_curlRMS = 0.0_pREAL
 
   do j = 1, cells2; do k = 1, cells(3);
     do i = 2, cells1Red - 1
@@ -614,7 +603,7 @@ real(pReal) function utilities_curlRMS(tensorField)
                              -tensorField_fourier(l,1,i,k,j)*xi1st(2,i,k,j)*rescaledGeom(2))
       end do
       utilities_curlRMS = utilities_curlRMS &
-                        +2.0_pReal*sum(curl_fourier%re**2+curl_fourier%im**2)                       ! Has somewhere a conj. complex counterpart. Therefore count it twice.
+                        +2.0_pREAL*sum(curl_fourier%re**2+curl_fourier%im**2)                       ! Has somewhere a conj. complex counterpart. Therefore count it twice.
     end do
     do l = 1, 3
        curl_fourier = (+tensorField_fourier(l,3,1,k,j)*xi1st(2,1,k,j)*rescaledGeom(2) &
@@ -641,7 +630,7 @@ real(pReal) function utilities_curlRMS(tensorField)
   call MPI_Allreduce(MPI_IN_PLACE,utilities_curlRMS,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   utilities_curlRMS = sqrt(utilities_curlRMS) * wgt                                                 ! RMS in real space calculated with Parsevals theorem from Fourier space
-  if (cells(1) == 1) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                              ! counted twice in case of cells(1) == 1
+  if (cells(1) == 1) utilities_curlRMS = utilities_curlRMS * 0.5_pREAL                              ! counted twice in case of cells(1) == 1
 
 end function utilities_curlRMS
 
@@ -651,22 +640,22 @@ end function utilities_curlRMS
 !--------------------------------------------------------------------------------------------------
 function utilities_maskedCompliance(rot_BC,mask_stress,C)
 
-  real(pReal),                dimension(3,3,3,3) :: utilities_maskedCompliance                      !< masked compliance
-  real(pReal),    intent(in), dimension(3,3,3,3) :: C                                               !< current average stiffness
+  real(pREAL),                dimension(3,3,3,3) :: utilities_maskedCompliance                      !< masked compliance
+  real(pREAL),    intent(in), dimension(3,3,3,3) :: C                                               !< current average stiffness
   type(tRotation), intent(in)                    :: rot_BC                                          !< rotation of load frame
   logical,        intent(in), dimension(3,3)     :: mask_stress                                     !< mask of stress BC
 
   integer :: i, j
   logical, dimension(9)   :: mask_stressVector
   logical, dimension(9,9) :: mask
-  real(pReal), dimension(9,9) :: temp99_real
+  real(pREAL), dimension(9,9) :: temp99_real
   integer :: size_reduced = 0
-  real(pReal),              dimension(:,:), allocatable ::  &
+  real(pREAL),              dimension(:,:), allocatable ::  &
     s_reduced, &                                                                                    !< reduced compliance matrix (depending on number of stress BC)
     c_reduced, &                                                                                    !< reduced stiffness (depending on number of stress BC)
     sTimesC                                                                                         !< temp variable to check inversion
   logical :: errmatinv
-  character(len=pStringLen):: formatString
+  character(len=pSTRLEN):: formatString
 
   mask_stressVector = .not. reshape(transpose(mask_stress), [9])
   size_reduced = count(mask_stressVector)
@@ -685,7 +674,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
 !--------------------------------------------------------------------------------------------------
 ! check if inversion was successful
     sTimesC = matmul(c_reduced,s_reduced)
-    errmatinv = errmatinv .or. any(dNeq(sTimesC,math_eye(size_reduced),1.0e-12_pReal))
+    errmatinv = errmatinv .or. any(dNeq(sTimesC,math_eye(size_reduced),1.0e-12_pREAL))
     if (errmatinv) then
       write(formatString, '(i2)') size_reduced
       formatString = '(/,1x,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
@@ -693,9 +682,9 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
       print trim(formatString), 'S (load) ', transpose(s_reduced)
       if (errmatinv) error stop 'matrix inversion error'
     end if
-    temp99_real = reshape(unpack(reshape(s_reduced,[size_reduced**2]),reshape(mask,[81]),0.0_pReal),[9,9])
+    temp99_real = reshape(unpack(reshape(s_reduced,[size_reduced**2]),reshape(mask,[81]),0.0_pREAL),[9,9])
   else
-    temp99_real = 0.0_pReal
+    temp99_real = 0.0_pREAL
   end if
 
   utilities_maskedCompliance = math_99to3333(temp99_Real)
@@ -708,13 +697,13 @@ end function utilities_maskedCompliance
 !--------------------------------------------------------------------------------------------------
 function utilities_scalarGradient(field) result(grad)
 
-  real(pReal), intent(in), dimension(  cells(1),cells(2),cells3) :: field
-  real(pReal),             dimension(3,cells(1),cells(2),cells3) :: grad
+  real(pREAL), intent(in), dimension(  cells(1),cells(2),cells3) :: field
+  real(pREAL),             dimension(3,cells(1),cells(2),cells3) :: grad
 
   integer :: i, j, k
 
 
-  scalarField_real(cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  scalarField_real(cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL
   scalarField_real(1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
   do j = 1, cells2;  do k = 1, cells(3);  do i = 1,cells1Red
@@ -731,11 +720,11 @@ end function utilities_scalarGradient
 !--------------------------------------------------------------------------------------------------
 function utilities_vectorDivergence(field) result(div)
 
-  real(pReal), intent(in), dimension(3,cells(1),cells(2),cells3) :: field
-  real(pReal),             dimension(  cells(1),cells(2),cells3) :: div
+  real(pREAL), intent(in), dimension(3,cells(1),cells(2),cells3) :: field
+  real(pREAL),             dimension(  cells(1),cells(2),cells3) :: div
 
 
-  vectorField_real(1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  vectorField_real(1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL
   vectorField_real(1:3,1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
   scalarField_fourier(1:cells1Red,1:cells(3),1:cells2) = sum(vectorField_fourier(1:3,1:cells1Red,1:cells(3),1:cells2) &
@@ -752,19 +741,19 @@ end function utilities_vectorDivergence
 subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
                                           F,Delta_t,rotation_BC)
 
-  real(pReal),    intent(out), dimension(3,3,3,3)                   :: C_volAvg, C_minmaxAvg        !< average stiffness
-  real(pReal),    intent(out), dimension(3,3)                       :: P_av                         !< average PK stress
-  real(pReal),    intent(out), dimension(3,3,cells(1),cells(2),cells3) :: P                         !< PK stress
-  real(pReal),    intent(in),  dimension(3,3,cells(1),cells(2),cells3) :: F                         !< deformation gradient target
-  real(pReal),    intent(in)                                        :: Delta_t                      !< loading time
+  real(pREAL),    intent(out), dimension(3,3,3,3)                   :: C_volAvg, C_minmaxAvg        !< average stiffness
+  real(pREAL),    intent(out), dimension(3,3)                       :: P_av                         !< average PK stress
+  real(pREAL),    intent(out), dimension(3,3,cells(1),cells(2),cells3) :: P                         !< PK stress
+  real(pREAL),    intent(in),  dimension(3,3,cells(1),cells(2),cells3) :: F                         !< deformation gradient target
+  real(pREAL),    intent(in)                                        :: Delta_t                      !< loading time
   type(tRotation), intent(in),  optional                            :: rotation_BC                  !< rotation of load frame
 
 
   integer :: i
   integer(MPI_INTEGER_KIND) :: err_MPI
-  real(pReal), dimension(3,3,3,3) :: dPdF_max,      dPdF_min
-  real(pReal)                     :: dPdF_norm_max, dPdF_norm_min
-  real(pReal), dimension(2) :: valueAndRank                                                         !< pair of min/max norm of dPdF to synchronize min/max of dPdF
+  real(pREAL), dimension(3,3,3,3) :: dPdF_max,      dPdF_min
+  real(pREAL)                     :: dPdF_norm_max, dPdF_norm_min
+  real(pREAL), dimension(2) :: valueAndRank                                                         !< pair of min/max norm of dPdF to synchronize min/max of dPdF
 
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
   flush(IO_STDOUT)
@@ -782,19 +771,19 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   if (present(rotation_BC)) then
-    if (any(dNeq(rotation_BC%asQuaternion(), real([1.0, 0.0, 0.0, 0.0],pReal)))) &
+    if (any(dNeq(rotation_BC%asQuaternion(), real([1.0, 0.0, 0.0, 0.0],pREAL)))) &
       print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
-      'Piola--Kirchhoff stress (lab) / MPa =', transpose(P_av)*1.e-6_pReal
+      'Piola--Kirchhoff stress (lab) / MPa =', transpose(P_av)*1.e-6_pREAL
     P_av = rotation_BC%rotate(P_av)
   end if
   print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
-    'Piola--Kirchhoff stress       / MPa =', transpose(P_av)*1.e-6_pReal
+    'Piola--Kirchhoff stress       / MPa =', transpose(P_av)*1.e-6_pREAL
   flush(IO_STDOUT)
 
-  dPdF_max = 0.0_pReal
-  dPdF_norm_max = 0.0_pReal
-  dPdF_min = huge(1.0_pReal)
-  dPdF_norm_min = huge(1.0_pReal)
+  dPdF_max = 0.0_pREAL
+  dPdF_norm_max = 0.0_pREAL
+  dPdF_min = huge(1.0_pREAL)
+  dPdF_norm_min = huge(1.0_pREAL)
   do i = 1, product(cells(1:2))*cells3
     if (dPdF_norm_max < sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)) then
       dPdF_max = homogenization_dPdF(1:3,1:3,1:3,1:3,i)
@@ -806,19 +795,19 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
     end if
   end do
 
-  valueAndRank = [dPdF_norm_max,real(worldrank,pReal)]
+  valueAndRank = [dPdF_norm_max,real(worldrank,pREAL)]
   call MPI_Allreduce(MPI_IN_PLACE,valueAndRank,1_MPI_INTEGER_KIND,MPI_2DOUBLE_PRECISION,MPI_MAXLOC,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call MPI_Bcast(dPdF_max,81_MPI_INTEGER_KIND,MPI_DOUBLE,int(valueAndRank(2),MPI_INTEGER_KIND),MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
-  valueAndRank = [dPdF_norm_min,real(worldrank,pReal)]
+  valueAndRank = [dPdF_norm_min,real(worldrank,pREAL)]
   call MPI_Allreduce(MPI_IN_PLACE,valueAndRank,1_MPI_INTEGER_KIND,MPI_2DOUBLE_PRECISION,MPI_MINLOC,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call MPI_Bcast(dPdF_min,81_MPI_INTEGER_KIND,MPI_DOUBLE,int(valueAndRank(2),MPI_INTEGER_KIND),MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
-  C_minmaxAvg = 0.5_pReal*(dPdF_max + dPdF_min)
+  C_minmaxAvg = 0.5_pREAL*(dPdF_max + dPdF_min)
 
   C_volAvg = sum(homogenization_dPdF,dim=5)
   call MPI_Allreduce(MPI_IN_PLACE,C_volAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
@@ -830,20 +819,20 @@ end subroutine utilities_constitutiveResponse
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates forward rate, either guessing or just add delta/Delta_t
+!> @brief Calculate forward rate, either as local guess or as homogeneous add on.
 !--------------------------------------------------------------------------------------------------
 pure function utilities_calculateRate(heterogeneous,field0,field,dt,avRate)
 
-  real(pReal), intent(in), dimension(3,3) :: &
+  real(pREAL), intent(in), dimension(3,3) :: &
     avRate                                                                                          !< homogeneous addon
-  real(pReal), intent(in) :: &
+  real(pREAL), intent(in) :: &
     dt                                                                                              !< Delta_t between field0 and field
   logical, intent(in) :: &
     heterogeneous                                                                                   !< calculate field of rates
-  real(pReal), intent(in), dimension(3,3,cells(1),cells(2),cells3) :: &
+  real(pREAL), intent(in), dimension(3,3,cells(1),cells(2),cells3) :: &
     field0, &                                                                                       !< data of previous step
     field                                                                                           !< data of current step
-  real(pReal),             dimension(3,3,cells(1),cells(2),cells3) :: &
+  real(pREAL),             dimension(3,3,cells(1),cells(2),cells3) :: &
     utilities_calculateRate
 
 
@@ -860,17 +849,17 @@ end function utilities_calculateRate
 !--------------------------------------------------------------------------------------------------
 function utilities_forwardField(Delta_t,field_lastInc,rate,aim)
 
-  real(pReal), intent(in) :: &
+  real(pREAL), intent(in) :: &
     Delta_t                                                                                         !< Delta_t of current step
-  real(pReal), intent(in),           dimension(3,3,cells(1),cells(2),cells3) :: &
+  real(pREAL), intent(in),           dimension(3,3,cells(1),cells(2),cells3) :: &
     field_lastInc, &                                                                                !< initial field
     rate                                                                                            !< rate by which to forward
-  real(pReal), intent(in), optional, dimension(3,3) :: &
+  real(pREAL), intent(in), optional, dimension(3,3) :: &
     aim                                                                                             !< average field value aim
 
-  real(pReal),                       dimension(3,3,cells(1),cells(2),cells3) :: &
+  real(pREAL),                       dimension(3,3,cells(1),cells(2),cells3) :: &
     utilities_forwardField
-  real(pReal),                       dimension(3,3) :: fieldDiff                                    !< <a + adot*t> - aim
+  real(pREAL),                       dimension(3,3) :: fieldDiff                                    !< <a + adot*t> - aim
   integer(MPI_INTEGER_KIND) :: err_MPI
 
 
@@ -896,42 +885,42 @@ pure function utilities_getFreqDerivative(k_s)
 
   integer, intent(in),  dimension(3) :: k_s                                                         !< indices of frequency
 
-  complex(pReal),       dimension(3) :: utilities_getFreqDerivative
+  complex(pREAL),       dimension(3) :: utilities_getFreqDerivative
 
 
   select case (spectral_derivative_ID)
     case (DERIVATIVE_CONTINUOUS_ID)
-      utilities_getFreqDerivative = cmplx(0.0_pReal, TAU*real(k_s,pReal)/geomSize,pReal)
+      utilities_getFreqDerivative = cmplx(0.0_pREAL, TAU*real(k_s,pREAL)/geomSize,pREAL)
 
     case (DERIVATIVE_CENTRAL_DIFF_ID)
-      utilities_getFreqDerivative = cmplx(0.0_pReal, sin(TAU*real(k_s,pReal)/real(cells,pReal)), pReal)/ &
-                                    cmplx(2.0_pReal*geomSize/real(cells,pReal), 0.0_pReal, pReal)
+      utilities_getFreqDerivative = cmplx(0.0_pREAL, sin(TAU*real(k_s,pREAL)/real(cells,pREAL)), pREAL)/ &
+                                    cmplx(2.0_pREAL*geomSize/real(cells,pREAL), 0.0_pREAL, pREAL)
 
     case (DERIVATIVE_FWBW_DIFF_ID)
       utilities_getFreqDerivative(1) = &
-                               cmplx(cos(TAU*real(k_s(1),pReal)/real(cells(1),pReal)) - 1.0_pReal, &
-                                     sin(TAU*real(k_s(1),pReal)/real(cells(1),pReal)), pReal)* &
-                               cmplx(cos(TAU*real(k_s(2),pReal)/real(cells(2),pReal)) + 1.0_pReal, &
-                                     sin(TAU*real(k_s(2),pReal)/real(cells(2),pReal)), pReal)* &
-                               cmplx(cos(TAU*real(k_s(3),pReal)/real(cells(3),pReal)) + 1.0_pReal, &
-                                     sin(TAU*real(k_s(3),pReal)/real(cells(3),pReal)), pReal)/ &
-                               cmplx(4.0_pReal*geomSize(1)/real(cells(1),pReal), 0.0_pReal, pReal)
+                               cmplx(cos(TAU*real(k_s(1),pREAL)/real(cells(1),pREAL)) - 1.0_pREAL, &
+                                     sin(TAU*real(k_s(1),pREAL)/real(cells(1),pREAL)), pREAL)* &
+                               cmplx(cos(TAU*real(k_s(2),pREAL)/real(cells(2),pREAL)) + 1.0_pREAL, &
+                                     sin(TAU*real(k_s(2),pREAL)/real(cells(2),pREAL)), pREAL)* &
+                               cmplx(cos(TAU*real(k_s(3),pREAL)/real(cells(3),pREAL)) + 1.0_pREAL, &
+                                     sin(TAU*real(k_s(3),pREAL)/real(cells(3),pREAL)), pREAL)/ &
+                               cmplx(4.0_pREAL*geomSize(1)/real(cells(1),pREAL), 0.0_pREAL, pREAL)
       utilities_getFreqDerivative(2) = &
-                               cmplx(cos(TAU*real(k_s(1),pReal)/real(cells(1),pReal)) + 1.0_pReal, &
-                                     sin(TAU*real(k_s(1),pReal)/real(cells(1),pReal)), pReal)* &
-                               cmplx(cos(TAU*real(k_s(2),pReal)/real(cells(2),pReal)) - 1.0_pReal, &
-                                     sin(TAU*real(k_s(2),pReal)/real(cells(2),pReal)), pReal)* &
-                               cmplx(cos(TAU*real(k_s(3),pReal)/real(cells(3),pReal)) + 1.0_pReal, &
-                                     sin(TAU*real(k_s(3),pReal)/real(cells(3),pReal)), pReal)/ &
-                               cmplx(4.0_pReal*geomSize(2)/real(cells(2),pReal), 0.0_pReal, pReal)
+                               cmplx(cos(TAU*real(k_s(1),pREAL)/real(cells(1),pREAL)) + 1.0_pREAL, &
+                                     sin(TAU*real(k_s(1),pREAL)/real(cells(1),pREAL)), pREAL)* &
+                               cmplx(cos(TAU*real(k_s(2),pREAL)/real(cells(2),pREAL)) - 1.0_pREAL, &
+                                     sin(TAU*real(k_s(2),pREAL)/real(cells(2),pREAL)), pREAL)* &
+                               cmplx(cos(TAU*real(k_s(3),pREAL)/real(cells(3),pREAL)) + 1.0_pREAL, &
+                                     sin(TAU*real(k_s(3),pREAL)/real(cells(3),pREAL)), pREAL)/ &
+                               cmplx(4.0_pREAL*geomSize(2)/real(cells(2),pREAL), 0.0_pREAL, pREAL)
       utilities_getFreqDerivative(3) = &
-                               cmplx(cos(TAU*real(k_s(1),pReal)/real(cells(1),pReal)) + 1.0_pReal, &
-                                     sin(TAU*real(k_s(1),pReal)/real(cells(1),pReal)), pReal)* &
-                               cmplx(cos(TAU*real(k_s(2),pReal)/real(cells(2),pReal)) + 1.0_pReal, &
-                                     sin(TAU*real(k_s(2),pReal)/real(cells(2),pReal)), pReal)* &
-                               cmplx(cos(TAU*real(k_s(3),pReal)/real(cells(3),pReal)) - 1.0_pReal, &
-                                     sin(TAU*real(k_s(3),pReal)/real(cells(3),pReal)), pReal)/ &
-                               cmplx(4.0_pReal*geomSize(3)/real(cells(3),pReal), 0.0_pReal, pReal)
+                               cmplx(cos(TAU*real(k_s(1),pREAL)/real(cells(1),pREAL)) + 1.0_pREAL, &
+                                     sin(TAU*real(k_s(1),pREAL)/real(cells(1),pREAL)), pREAL)* &
+                               cmplx(cos(TAU*real(k_s(2),pREAL)/real(cells(2),pREAL)) + 1.0_pREAL, &
+                                     sin(TAU*real(k_s(2),pREAL)/real(cells(2),pREAL)), pREAL)* &
+                               cmplx(cos(TAU*real(k_s(3),pREAL)/real(cells(3),pREAL)) - 1.0_pREAL, &
+                                     sin(TAU*real(k_s(3),pREAL)/real(cells(3),pREAL)), pREAL)/ &
+                               cmplx(4.0_pREAL*geomSize(3)/real(cells(3),pREAL), 0.0_pREAL, pREAL)
   end select
 
 end function utilities_getFreqDerivative
@@ -943,11 +932,11 @@ end function utilities_getFreqDerivative
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_updateCoords(F)
 
-  real(pReal),   dimension(3,3,cells(1),cells(2),cells3), intent(in) :: F
+  real(pREAL),   dimension(3,3,cells(1),cells(2),cells3), intent(in) :: F
 
-  real(pReal),   dimension(3,  cells(1),cells(2),cells3)             :: x_p                         !< Point/cell center coordinates
-  real(pReal),   dimension(3,  cells(1),cells(2),0:cells3+1)         :: u_tilde_p_padded            !< Fluctuation of cell center displacement (padded along z for MPI)
-  real(pReal),   dimension(3,  cells(1)+1,cells(2)+1,cells3+1)       :: x_n                         !< Node coordinates
+  real(pREAL),   dimension(3,  cells(1),cells(2),cells3)             :: x_p                         !< Point/cell center coordinates
+  real(pREAL),   dimension(3,  cells(1),cells(2),0:cells3+1)         :: u_tilde_p_padded            !< Fluctuation of cell center displacement (padded along z for MPI)
+  real(pREAL),   dimension(3,  cells(1)+1,cells(2)+1,cells3+1)       :: x_n                         !< Node coordinates
   integer :: &
     i,j,k,n, &
     c
@@ -961,8 +950,8 @@ subroutine utilities_updateCoords(F)
   integer, dimension(4) :: request
   integer, dimension(MPI_STATUS_SIZE,4) :: status
 #endif
-  real(pReal),   dimension(3)   :: step
-  real(pReal),   dimension(3,3) :: Favg
+  real(pREAL),   dimension(3)   :: step
+  real(pREAL),   dimension(3,3) :: Favg
   integer,       dimension(3)   :: me
   integer, dimension(3,8) :: &
     neighbor = reshape([ &
@@ -976,10 +965,10 @@ subroutine utilities_updateCoords(F)
                         0, 1, 1  ], [3,8])
 
 
-  step = geomSize/real(cells, pReal)
+  step = geomSize/real(cells, pREAL)
 
   tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = F
-  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
  !--------------------------------------------------------------------------------------------------
@@ -996,7 +985,7 @@ subroutine utilities_updateCoords(F)
       vectorField_fourier(1:3,i,k,j) = matmul(tensorField_fourier(1:3,1:3,i,k,j),xi2nd(1:3,i,k,j)) &
                                      / sum(conjg(-xi2nd(1:3,i,k,j))*xi2nd(1:3,i,k,j))
     else
-      vectorField_fourier(1:3,i,k,j) = cmplx(0.0,0.0,pReal)
+      vectorField_fourier(1:3,i,k,j) = cmplx(0.0,0.0,pREAL)
     end if
   end do; end do; end do
   !$OMP END PARALLEL DO
@@ -1032,13 +1021,13 @@ subroutine utilities_updateCoords(F)
 
  !--------------------------------------------------------------------------------------------------
  ! calculate nodal positions
-  x_n = 0.0_pReal
+  x_n = 0.0_pREAL
   do j = 0,cells(2); do k = 0,cells3; do i = 0,cells(1)
-    x_n(1:3,i+1,j+1,k+1) = matmul(Favg,step*(real([i,j,k+cells3Offset],pReal)))
+    x_n(1:3,i+1,j+1,k+1) = matmul(Favg,step*(real([i,j,k+cells3Offset],pREAL)))
     averageFluct: do n = 1,8
       me = [i+neighbor(1,n),j+neighbor(2,n),k+neighbor(3,n)]
       x_n(1:3,i+1,j+1,k+1) = x_n(1:3,i+1,j+1,k+1) &
-                           + u_tilde_p_padded(1:3,modulo(me(1)-1,cells(1))+1,modulo(me(2)-1,cells(2))+1,me(3))*0.125_pReal
+                           + u_tilde_p_padded(1:3,modulo(me(1)-1,cells(1))+1,modulo(me(2)-1,cells(2))+1,me(3))*0.125_pREAL
     end do averageFluct
   end do; end do; end do
 
@@ -1046,7 +1035,7 @@ subroutine utilities_updateCoords(F)
  ! calculate cell center/point positions
   do k = 1,cells3; do j = 1,cells(2); do i = 1,cells(1)
     x_p(1:3,i,j,k) = u_tilde_p_padded(1:3,i,j,k) &
-                   + matmul(Favg,step*(real([i,j,k+cells3Offset],pReal)-0.5_pReal))
+                   + matmul(Favg,step*(real([i,j,k+cells3Offset],pREAL)-0.5_pREAL))
   end do; end do; end do
 
   call discretization_setNodeCoords(reshape(x_n,[3,(cells(1)+1)*(cells(2)+1)*(cells3+1)]))
@@ -1060,62 +1049,62 @@ end subroutine utilities_updateCoords
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest()
 
-  real(pReal), allocatable, dimension(:,:,:,:,:) :: tensorField_real_
-  real(pReal), allocatable, dimension(:,:,:,:) :: vectorField_real_
-  real(pReal), allocatable, dimension(:,:,:) :: scalarField_real_
-  real(pReal), dimension(3,3) :: tensorSum
-  real(pReal), dimension(3) :: vectorSum
-  real(pReal) :: scalarSum
-  real(pReal), dimension(3,3) :: r
+  real(pREAL), allocatable, dimension(:,:,:,:,:) :: tensorField_real_
+  real(pREAL), allocatable, dimension(:,:,:,:) :: vectorField_real_
+  real(pREAL), allocatable, dimension(:,:,:) :: scalarField_real_
+  real(pREAL), dimension(3,3) :: tensorSum
+  real(pREAL), dimension(3) :: vectorSum
+  real(pREAL) :: scalarSum
+  real(pREAL), dimension(3,3) :: r
   integer(MPI_INTEGER_KIND) :: err_MPI
 
 
   call random_number(tensorField_real)
-  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
   tensorField_real_ = tensorField_real
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
   call MPI_Allreduce(sum(sum(sum(tensorField_real_,dim=5),dim=4),dim=3),tensorSum,9_MPI_INTEGER_KIND, &
                      MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   if (worldrank==0) then
-    if (any(dNeq(tensorSum/tensorField_fourier(:,:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) &
+    if (any(dNeq(tensorSum/tensorField_fourier(:,:,1,1,1)%re,1.0_pREAL,1.0e-12_pREAL))) &
       error stop 'mismatch avg tensorField FFT <-> real'
   end if
   call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
-  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(tensorField_real_ - tensorField_real*wgt))>5.0e-15_pReal) &
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
+  if (maxval(abs(tensorField_real_ - tensorField_real*wgt))>5.0e-15_pREAL) &
     error stop 'mismatch tensorField FFT/invFFT <-> real'
 
   call random_number(vectorField_real)
-  vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
+  vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
   vectorField_real_ = vectorField_real
   call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
   call MPI_Allreduce(sum(sum(sum(vectorField_real_,dim=4),dim=3),dim=2),vectorSum,3_MPI_INTEGER_KIND, &
                      MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   if (worldrank==0) then
-    if (any(dNeq(vectorSum/vectorField_fourier(:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) &
+    if (any(dNeq(vectorSum/vectorField_fourier(:,1,1,1)%re,1.0_pREAL,1.0e-12_pREAL))) &
       error stop 'mismatch avg vectorField FFT <-> real'
   end if
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
-  vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(vectorField_real_ - vectorField_real*wgt))>5.0e-15_pReal) &
+  vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
+  if (maxval(abs(vectorField_real_ - vectorField_real*wgt))>5.0e-15_pREAL) &
     error stop 'mismatch vectorField FFT/invFFT <-> real'
 
   call random_number(scalarField_real)
-  scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
+  scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
   scalarField_real_ = scalarField_real
   call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
   call MPI_Allreduce(sum(sum(sum(scalarField_real_,dim=3),dim=2),dim=1),scalarSum,1_MPI_INTEGER_KIND, &
                      MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   if (worldrank==0) then
-    if (dNeq(scalarSum/scalarField_fourier(1,1,1)%re,1.0_pReal,1.0e-12_pReal)) &
+    if (dNeq(scalarSum/scalarField_fourier(1,1,1)%re,1.0_pREAL,1.0e-12_pREAL)) &
       error stop 'mismatch avg scalarField FFT <-> real'
   end if
   call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
-  scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(scalarField_real_ - scalarField_real*wgt))>5.0e-15_pReal) &
+  scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
+  if (maxval(abs(scalarField_real_ - scalarField_real*wgt))>5.0e-15_pREAL) &
     error stop 'mismatch scalarField FFT/invFFT <-> real'
 
   call random_number(r)
@@ -1123,54 +1112,54 @@ subroutine selfTest()
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   scalarField_real_ = r(1,1)
-  if (maxval(abs(utilities_scalarGradient(scalarField_real_)))>5.0e-9_pReal)   error stop 'non-zero grad(const)'
+  if (maxval(abs(utilities_scalarGradient(scalarField_real_)))>5.0e-9_pREAL)   error stop 'non-zero grad(const)'
 
   vectorField_real_ = spread(spread(spread(r(1,:),2,cells(1)),3,cells(2)),4,cells3)
-  if (maxval(abs(utilities_vectorDivergence(vectorField_real_)))>5.0e-9_pReal) error stop 'non-zero div(const)'
+  if (maxval(abs(utilities_vectorDivergence(vectorField_real_)))>5.0e-9_pREAL) error stop 'non-zero div(const)'
 
   tensorField_real_ = spread(spread(spread(r,3,cells(1)),4,cells(2)),5,cells3)
-  if (utilities_divergenceRMS(tensorField_real_)>5.0e-14_pReal) error stop 'non-zero RMS div(const)'
-  if (utilities_curlRMS(tensorField_real_)>5.0e-14_pReal)       error stop 'non-zero RMS curl(const)'
+  if (utilities_divergenceRMS(tensorField_real_)>5.0e-14_pREAL) error stop 'non-zero RMS div(const)'
+  if (utilities_curlRMS(tensorField_real_)>5.0e-14_pREAL)       error stop 'non-zero RMS curl(const)'
 
   if (cells(1) > 2 .and.  spectral_derivative_ID == DERIVATIVE_CONTINUOUS_ID) then
     scalarField_real_ = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
     vectorField_real_ = utilities_scalarGradient(scalarField_real_)/TAU*geomSize(1)
     scalarField_real_ = -spread(spread(planeSine  (cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pReal) error stop 'grad cosine'
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pREAL) error stop 'grad cosine'
     scalarField_real_ = spread(spread(planeSine  (cells(1)),2,cells(2)),3,cells3)
     vectorField_real_ = utilities_scalarGradient(scalarField_real_)/TAU*geomSize(1)
     scalarField_real_ = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pReal) error stop 'grad sine'
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pREAL) error stop 'grad sine'
 
-    vectorField_real_(2:3,:,:,:) = 0.0_pReal
+    vectorField_real_(2:3,:,:,:) = 0.0_pREAL
     vectorField_real_(1,:,:,:) = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
     scalarField_real_ = utilities_vectorDivergence(vectorField_real_)/TAU*geomSize(1)
     vectorField_real_(1,:,:,:) =-spread(spread(planeSine(  cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pReal) error stop 'div cosine'
-    vectorField_real_(2:3,:,:,:) = 0.0_pReal
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pREAL) error stop 'div cosine'
+    vectorField_real_(2:3,:,:,:) = 0.0_pREAL
     vectorField_real_(1,:,:,:) = spread(spread(planeSine(  cells(1)),2,cells(2)),3,cells3)
     scalarField_real_ = utilities_vectorDivergence(vectorField_real_)/TAU*geomSize(1)
     vectorField_real_(1,:,:,:) = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pReal) error stop 'div sine'
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pREAL) error stop 'div sine'
   end if
 
   contains
 
     function planeCosine(n)
       integer, intent(in) :: n
-      real(pReal), dimension(n) :: planeCosine
+      real(pREAL), dimension(n) :: planeCosine
 
 
-      planeCosine = cos(real(math_range(n),pReal)/real(n,pReal)*TAU-TAU/real(n*2,pReal))
+      planeCosine = cos(real(math_range(n),pREAL)/real(n,pREAL)*TAU-TAU/real(n*2,pREAL))
 
     end function planeCosine
 
     function planeSine(n)
       integer, intent(in) :: n
-      real(pReal), dimension(n) :: planeSine
+      real(pREAL), dimension(n) :: planeSine
 
 
-      planeSine = sin(real(math_range(n),pReal)/real(n,pReal)*TAU-TAU/real(n*2,pReal))
+      planeSine = sin(real(math_range(n),pREAL)/real(n,pREAL)*TAU-TAU/real(n*2,pREAL))
 
     end function planeSine
 

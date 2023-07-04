@@ -18,13 +18,13 @@ submodule(homogenization) mechanical
 
 
     module subroutine isostrain_partitionDeformation(F,avgF)
-      real(pReal),   dimension (:,:,:), intent(out) :: F                                            !< partitioned deformation gradient
-      real(pReal),   dimension (3,3),   intent(in)  :: avgF                                         !< average deformation gradient at material point
+      real(pREAL),   dimension (:,:,:), intent(out) :: F                                            !< partitioned deformation gradient
+      real(pREAL),   dimension (3,3),   intent(in)  :: avgF                                         !< average deformation gradient at material point
     end subroutine isostrain_partitionDeformation
 
     module subroutine RGC_partitionDeformation(F,avgF,ce)
-      real(pReal),   dimension (:,:,:), intent(out) :: F                                            !< partitioned deformation gradient
-      real(pReal),   dimension (3,3),   intent(in)  :: avgF                                         !< average deformation gradient at material point
+      real(pREAL),   dimension (:,:,:), intent(out) :: F                                            !< partitioned deformation gradient
+      real(pREAL),   dimension (3,3),   intent(in)  :: avgF                                         !< average deformation gradient at material point
       integer,                          intent(in)  :: &
         ce
     end subroutine RGC_partitionDeformation
@@ -32,12 +32,12 @@ submodule(homogenization) mechanical
 
     module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
       logical, dimension(2) :: doneAndHappy
-      real(pReal), dimension(:,:,:),     intent(in)    :: &
+      real(pREAL), dimension(:,:,:),     intent(in)    :: &
         P,&                                                                                         !< partitioned stresses
         F                                                                                           !< partitioned deformation gradients
-      real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                         !< partitioned stiffnesses
-      real(pReal), dimension(3,3),       intent(in) :: avgF                                         !< average F
-      real(pReal),                       intent(in) :: dt                                           !< time increment
+      real(pREAL), dimension(:,:,:,:,:), intent(in) :: dPdF                                         !< partitioned stiffnesses
+      real(pREAL), dimension(3,3),       intent(in) :: avgF                                         !< average F
+      real(pREAL),                       intent(in) :: dt                                           !< time increment
       integer,                           intent(in) :: &
         ce                                                                                          !< cell
     end function RGC_updateState
@@ -51,7 +51,7 @@ submodule(homogenization) mechanical
   end interface
 
   type :: tOutput                                                                                   !< requested output (per phase)
-    character(len=pStringLen), allocatable, dimension(:) :: &
+    character(len=pSTRLEN), allocatable, dimension(:) :: &
       label
   end type tOutput
   type(tOutput), allocatable, dimension(:) :: output_mechanical
@@ -63,7 +63,7 @@ submodule(homogenization) mechanical
     MECHANICAL_RGC_ID
   end enum
   integer(kind(MECHANICAL_UNDEFINED_ID)), dimension(:),   allocatable :: &
-    mechanical_type                                                                             !< type of each homogenization
+    mechanical_type                                                                                 !< type of each homogenization
 
 contains
 
@@ -76,10 +76,10 @@ module subroutine mechanical_init()
 
   call parseMechanical()
 
-  allocate(homogenization_dPdF(3,3,3,3,discretization_Ncells), source=0.0_pReal)
+  allocate(homogenization_dPdF(3,3,3,3,discretization_Ncells), source=0.0_pREAL)
   homogenization_F0 = spread(math_I3,3,discretization_Ncells)
   homogenization_F = homogenization_F0
-  allocate(homogenization_P(3,3,discretization_Ncells),source=0.0_pReal)
+  allocate(homogenization_P(3,3,discretization_Ncells),source=0.0_pREAL)
 
   if (any(mechanical_type == MECHANICAL_PASS_ID))      call pass_init()
   if (any(mechanical_type == MECHANICAL_ISOSTRAIN_ID)) call isostrain_init()
@@ -93,13 +93,13 @@ end subroutine mechanical_init
 !--------------------------------------------------------------------------------------------------
 module subroutine mechanical_partition(subF,ce)
 
-  real(pReal), intent(in), dimension(3,3) :: &
+  real(pREAL), intent(in), dimension(3,3) :: &
     subF
   integer,     intent(in) :: &
     ce
 
   integer :: co
-  real(pReal), dimension (3,3,homogenization_Nconstituents(material_ID_homogenization(ce))) :: Fs
+  real(pREAL), dimension (3,3,homogenization_Nconstituents(material_ID_homogenization(ce))) :: Fs
 
 
   chosenHomogenization: select case(mechanical_type(material_ID_homogenization(ce)))
@@ -128,7 +128,7 @@ end subroutine mechanical_partition
 !--------------------------------------------------------------------------------------------------
 module subroutine mechanical_homogenize(Delta_t,ce)
 
-  real(pReal), intent(in) :: Delta_t
+  real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: ce
 
   integer :: co
@@ -152,18 +152,18 @@ end subroutine mechanical_homogenize
 !--------------------------------------------------------------------------------------------------
 module function mechanical_updateState(subdt,subF,ce) result(doneAndHappy)
 
-  real(pReal), intent(in) :: &
+  real(pREAL), intent(in) :: &
     subdt                                                                                           !< current time step
-  real(pReal), intent(in), dimension(3,3) :: &
+  real(pREAL), intent(in), dimension(3,3) :: &
     subF
   integer,     intent(in) :: &
     ce
   logical, dimension(2) :: doneAndHappy
 
   integer :: co
-  real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_ID_homogenization(ce)))
-  real(pReal) :: Fs(3,3,homogenization_Nconstituents(material_ID_homogenization(ce)))
-  real(pReal) :: Ps(3,3,homogenization_Nconstituents(material_ID_homogenization(ce)))
+  real(pREAL) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_ID_homogenization(ce)))
+  real(pREAL) :: Fs(3,3,homogenization_Nconstituents(material_ID_homogenization(ce)))
+  real(pREAL) :: Ps(3,3,homogenization_Nconstituents(material_ID_homogenization(ce)))
 
 
   if (mechanical_type(material_ID_homogenization(ce)) == MECHANICAL_RGC_ID) then
@@ -239,11 +239,11 @@ subroutine parseMechanical()
     homog => material_homogenization%get_dict(ho)
     mechanical => homog%get_dict('mechanical')
 #if defined(__GFORTRAN__)
-    output_mechanical(ho)%label = output_as1dString(mechanical)
+    output_mechanical(ho)%label = output_as1dStr(mechanical)
 #else
-    output_mechanical(ho)%label = mechanical%get_as1dString('output',defaultVal=emptyStringArray)
+    output_mechanical(ho)%label = mechanical%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
-    select case (mechanical%get_asString('type'))
+    select case (mechanical%get_asStr('type'))
       case('pass')
         mechanical_type(ho) = MECHANICAL_PASS_ID
       case('isostrain')
@@ -251,7 +251,7 @@ subroutine parseMechanical()
       case('RGC')
         mechanical_type(ho) = MECHANICAL_RGC_ID
       case default
-        call IO_error(500,ext_msg=mechanical%get_asString('type'))
+        call IO_error(500,ext_msg=mechanical%get_asStr('type'))
     end select
   end do
 

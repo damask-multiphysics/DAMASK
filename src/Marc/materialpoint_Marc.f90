@@ -27,11 +27,11 @@ module materialpoint_Marc
   implicit none(type,external)
   private
 
-  real(pReal), dimension (:,:,:),   allocatable, private :: &
+  real(pREAL), dimension (:,:,:),   allocatable, private :: &
     materialpoint_cs                                                                                !< Cauchy stress
-  real(pReal), dimension (:,:,:,:), allocatable, private :: &
+  real(pREAL), dimension (:,:,:,:), allocatable, private :: &
     materialpoint_dcsdE                                                                             !< Cauchy stress tangent
-  real(pReal), dimension (:,:,:,:), allocatable, private :: &
+  real(pREAL), dimension (:,:,:,:), allocatable, private :: &
     materialpoint_dcsdE_knownGood                                                                   !< known good tangent
 
   integer,                                       public :: &
@@ -95,9 +95,9 @@ subroutine materialpoint_init()
 
   print'(/,1x,a)', '<<<+-  materialpoint init  -+>>>'; flush(IO_STDOUT)
 
-  allocate(materialpoint_cs(               6,discretization_nIPs,discretization_Nelems), source= 0.0_pReal)
-  allocate(materialpoint_dcsdE(          6,6,discretization_nIPs,discretization_Nelems), source= 0.0_pReal)
-  allocate(materialpoint_dcsdE_knownGood(6,6,discretization_nIPs,discretization_Nelems), source= 0.0_pReal)
+  allocate(materialpoint_cs(               6,discretization_nIPs,discretization_Nelems), source= 0.0_pREAL)
+  allocate(materialpoint_dcsdE(          6,6,discretization_nIPs,discretization_Nelems), source= 0.0_pREAL)
+  allocate(materialpoint_dcsdE_knownGood(6,6,discretization_nIPs,discretization_Nelems), source= 0.0_pREAL)
 
 
 end subroutine materialpoint_init
@@ -110,25 +110,25 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
 
   integer, intent(in) ::                              elFE, &                                       !< FE element number
                                                       ip                                            !< integration point number
-  real(pReal), intent(in) ::                          dt                                            !< time increment
-  real(pReal), dimension (3,3), intent(in) ::         ffn, &                                        !< deformation gradient for t=t0
+  real(pREAL), intent(in) ::                          dt                                            !< time increment
+  real(pREAL), dimension (3,3), intent(in) ::         ffn, &                                        !< deformation gradient for t=t0
                                                       ffn1                                          !< deformation gradient for t=t1
   integer, intent(in) ::                              mode                                          !< computation mode  1: regular computation plus aging of results
-  real(pReal), intent(in) ::                          temperature_inp                               !< temperature
-  real(pReal), dimension(6), intent(out) ::           cauchyStress                                  !< stress as 6 vector
-  real(pReal), dimension(6,6), intent(out) ::         jacobian                                      !< jacobian as 66 tensor (Consistent tangent dcs/dE)
+  real(pREAL), intent(in) ::                          temperature_inp                               !< temperature
+  real(pREAL), dimension(6), intent(out) ::           cauchyStress                                  !< stress as 6 vector
+  real(pREAL), dimension(6,6), intent(out) ::         jacobian                                      !< jacobian as 66 tensor (Consistent tangent dcs/dE)
 
-  real(pReal)                                         J_inverse, &                                  ! inverse of Jacobian
+  real(pREAL)                                         J_inverse, &                                  ! inverse of Jacobian
                                                       rnd
-  real(pReal), dimension (3,3) ::                     Kirchhoff                                     ! Piola-Kirchhoff stress
-  real(pReal), dimension (3,3,3,3) ::                 H_sym, &
+  real(pREAL), dimension (3,3) ::                     Kirchhoff                                     ! Piola-Kirchhoff stress
+  real(pREAL), dimension (3,3,3,3) ::                 H_sym, &
                                                       H
 
   integer                                             elCP, &                                       ! crystal plasticity element number
                                                       i, j, k, l, m, n, ph, homog, mySource,ce
 
-  real(pReal), parameter ::                          ODD_STRESS    = 1e15_pReal, &                  !< return value for stress if terminallyIll
-                                                     ODD_JACOBIAN  = 1e50_pReal                     !< return value for jacobian if terminallyIll
+  real(pREAL), parameter ::                          ODD_STRESS    = 1e15_pREAL, &                  !< return value for stress if terminallyIll
+                                                     ODD_JACOBIAN  = 1e50_pREAL                     !< return value for jacobian if terminallyIll
 
 
   elCP = discretization_Marc_FEM2DAMASK_elem(elFE)
@@ -149,7 +149,7 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
 
     validCalculation: if (terminallyIll) then
       call random_number(rnd)
-      if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
+      if (rnd < 0.5_pREAL) rnd = rnd - 1.0_pREAL
       materialpoint_cs(1:6,ip,elCP)        = ODD_STRESS * rnd
       materialpoint_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_eye(6)
 
@@ -161,7 +161,7 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
       terminalIllness: if (terminallyIll) then
 
         call random_number(rnd)
-        if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
+        if (rnd < 0.5_pREAL) rnd = rnd - 1.0_pREAL
         materialpoint_cs(1:6,ip,elCP)        = ODD_STRESS * rnd
         materialpoint_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_eye(6)
 
@@ -169,22 +169,22 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
 
         ! translate from P to sigma
         Kirchhoff = matmul(homogenization_P(1:3,1:3,ce), transpose(homogenization_F(1:3,1:3,ce)))
-        J_inverse  = 1.0_pReal / math_det33(homogenization_F(1:3,1:3,ce))
+        J_inverse  = 1.0_pREAL / math_det33(homogenization_F(1:3,1:3,ce))
         materialpoint_cs(1:6,ip,elCP) = math_sym33to6(J_inverse * Kirchhoff,weighted=.false.)
 
         !  translate from dP/dF to dCS/dE
-        H = 0.0_pReal
+        H = 0.0_pREAL
         do i=1,3; do j=1,3; do k=1,3; do l=1,3; do m=1,3; do n=1,3
           H(i,j,k,l) = H(i,j,k,l) &
                      +  homogenization_F(j,m,ce) * homogenization_F(l,n,ce) &
                                                  * homogenization_dPdF(i,m,k,n,ce) &
                      -  math_delta(j,l) * homogenization_F(i,m,ce) * homogenization_P(k,m,ce) &
-                     +  0.5_pReal * (  Kirchhoff(j,l)*math_delta(i,k) + Kirchhoff(i,k)*math_delta(j,l) &
+                     +  0.5_pREAL * (  Kirchhoff(j,l)*math_delta(i,k) + Kirchhoff(i,k)*math_delta(j,l) &
                                      + Kirchhoff(j,k)*math_delta(i,l) + Kirchhoff(i,l)*math_delta(j,k))
         end do; end do; end do; end do; end do; end do
 
         forall(i=1:3, j=1:3,k=1:3,l=1:3) &
-          H_sym(i,j,k,l) = 0.25_pReal * (H(i,j,k,l) + H(j,i,k,l) + H(i,j,l,k) + H(j,i,l,k))
+          H_sym(i,j,k,l) = 0.25_pREAL * (H(i,j,k,l) + H(j,i,k,l) + H(i,j,l,k) + H(j,i,l,k))
 
         materialpoint_dcsde(1:6,1:6,ip,elCP) = math_sym3333to66(J_inverse * H_sym,weighted=.false.)
 
@@ -193,7 +193,7 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
 
   end if
 
-  if (all(abs(materialpoint_dcsdE(1:6,1:6,ip,elCP)) < 1e-10_pReal)) &
+  if (all(abs(materialpoint_dcsdE(1:6,1:6,ip,elCP)) < 1e-10_pREAL)) &
     call IO_warning(601,label1='element (CP)',ID1=elCP,label2='IP',ID2=ip)
 
   cauchyStress = materialpoint_cs   (1:6,    ip,elCP)
@@ -219,7 +219,7 @@ end subroutine materialpoint_forward
 subroutine materialpoint_result(inc,time)
 
   integer,     intent(in) :: inc
-  real(pReal), intent(in) :: time
+  real(pREAL), intent(in) :: time
 
   call result_openJobFile()
   call result_addIncrement(inc,time)

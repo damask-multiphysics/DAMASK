@@ -35,7 +35,7 @@ module grid_damage_spectral
   type :: tNumerics
     integer :: &
       itmax                                                                                         !< maximum number of iterations
-    real(pReal) :: &
+    real(pREAL) :: &
       phi_min, &                                                                                    !< non-zero residual damage
       eps_damage_atol, &                                                                            !< absolute tolerance for damage evolution
       eps_damage_rtol                                                                               !< relative tolerance for damage evolution
@@ -48,7 +48,7 @@ module grid_damage_spectral
 ! PETSc data
   SNES :: SNES_damage
   Vec  :: solution_vec
-  real(pReal), dimension(:,:,:), allocatable :: &
+  real(pREAL), dimension(:,:,:), allocatable :: &
     phi, &                                                                                          !< field of current damage
     phi_lastInc, &                                                                                  !< field of previous damage
     phi_stagInc                                                                                     !< field of staggered damage
@@ -56,8 +56,8 @@ module grid_damage_spectral
 !--------------------------------------------------------------------------------------------------
 ! reference diffusion tensor, mobility etc.
   integer                     :: totalIter = 0                                                      !< total iteration in current increment
-  real(pReal), dimension(3,3) :: K_ref
-  real(pReal)                 :: mu_ref
+  real(pREAL), dimension(3,3) :: K_ref
+  real(pREAL)                 :: mu_ref
 
   public :: &
     grid_damage_spectral_init, &
@@ -75,16 +75,16 @@ subroutine grid_damage_spectral_init()
   PetscInt, dimension(0:worldsize-1) :: localK
   integer :: i, j, k, ce
   DM :: damage_grid
-  real(pReal), dimension(:,:,:), pointer :: phi_PETSc
+  real(pREAL), dimension(:,:,:), pointer :: phi_PETSc
   Vec :: uBound, lBound
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
-  real(pReal), dimension(1,product(cells(1:2))*cells3) :: tempN
+  real(pREAL), dimension(1,product(cells(1:2))*cells3) :: tempN
   type(tDict), pointer :: &
     num_grid, &
     num_generic
-  character(len=pStringLen) :: &
+  character(len=pSTRLEN) :: &
     snes_type
 
   print'(/,1x,a)', '<<<+-  grid_spectral_damage init  -+>>>'
@@ -98,23 +98,23 @@ subroutine grid_damage_spectral_init()
 ! read numerical parameters and do sanity checks
   num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
   num%itmax           = num_grid%get_asInt   ('itmax',defaultVal=250)
-  num%eps_damage_atol = num_grid%get_asFloat ('eps_damage_atol',defaultVal=1.0e-2_pReal)
-  num%eps_damage_rtol = num_grid%get_asFloat ('eps_damage_rtol',defaultVal=1.0e-6_pReal)
+  num%eps_damage_atol = num_grid%get_asReal ('eps_damage_atol',defaultVal=1.0e-2_pREAL)
+  num%eps_damage_rtol = num_grid%get_asReal ('eps_damage_rtol',defaultVal=1.0e-6_pREAL)
 
   num_generic => config_numerics%get_dict('generic',defaultVal=emptyDict)
-  num%phi_min = num_generic%get_asFloat('phi_min', defaultVal=1.0e-6_pReal)
+  num%phi_min = num_generic%get_asReal('phi_min', defaultVal=1.0e-6_pREAL)
 
-  if (num%phi_min < 0.0_pReal) call IO_error(301,ext_msg='phi_min')
+  if (num%phi_min < 0.0_pREAL) call IO_error(301,ext_msg='phi_min')
   if (num%itmax <= 1)                    call IO_error(301,ext_msg='itmax')
-  if (num%eps_damage_atol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_damage_atol')
-  if (num%eps_damage_rtol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_damage_rtol')
+  if (num%eps_damage_atol <= 0.0_pREAL)  call IO_error(301,ext_msg='eps_damage_atol')
+  if (num%eps_damage_rtol <= 0.0_pREAL)  call IO_error(301,ext_msg='eps_damage_rtol')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-damage_snes_type newtonls -damage_snes_mf &
                                &-damage_snes_ksp_ew -damage_ksp_type fgmres',err_PETSc)
  CHKERRQ(err_PETSc)
- call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),err_PETSc)
+ call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asStr('petsc_options',defaultVal=''),err_PETSc)
  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -162,9 +162,9 @@ subroutine grid_damage_spectral_init()
     CHKERRQ(err_PETSc)
     call DMGetGlobalVector(damage_grid,uBound,err_PETSc)
     CHKERRQ(err_PETSc)
-    call VecSet(lBound,0.0_pReal,err_PETSc)
+    call VecSet(lBound,0.0_pREAL,err_PETSc)
     CHKERRQ(err_PETSc)
-    call VecSet(uBound,1.0_pReal,err_PETSc)
+    call VecSet(uBound,1.0_pREAL,err_PETSc)
     CHKERRQ(err_PETSc)
     call SNESVISetVariableBounds(SNES_damage,lBound,uBound,err_PETSc)                               ! variable bounds for variational inequalities
     CHKERRQ(err_PETSc)
@@ -175,7 +175,7 @@ subroutine grid_damage_spectral_init()
   end if
 
   restartRead: if (CLI_restartInc > 0) then
-    print'(/,1x,a,i0,a)', 'reading restart data of increment ', CLI_restartInc, ' from file'
+    print'(/,1x,a,1x,i0)', 'loading restart data of increment', CLI_restartInc
 
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
@@ -208,7 +208,7 @@ end subroutine grid_damage_spectral_init
 !--------------------------------------------------------------------------------------------------
 function grid_damage_spectral_solution(Delta_t) result(solution)
 
-  real(pReal), intent(in) :: &
+  real(pREAL), intent(in) :: &
     Delta_t                                                                                         !< increment in time for current solution
   integer :: i, j, k, ce
   type(tSolutionState) :: solution
@@ -219,7 +219,7 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
   PetscErrorCode :: err_PETSc
   SNESConvergedReason :: reason
 
-  solution%converged =.false.
+  solution%converged = .false.
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
@@ -275,7 +275,7 @@ subroutine grid_damage_spectral_forward(cutBack)
 
   integer :: i, j, k, ce
   DM :: dm_local
-  real(pReal),  dimension(:,:,:), pointer :: phi_PETSc
+  real(pREAL),  dimension(:,:,:), pointer :: phi_PETSc
   PetscErrorCode :: err_PETSc
 
 
@@ -319,7 +319,7 @@ subroutine grid_damage_spectral_restartWrite
   call DMDAVecGetArrayF90(dm_local,solution_vec,phi,err_PETSc);
   CHKERRQ(err_PETSc)
 
-  print'(1x,a)', 'writing damage solver data required for restart to file'; flush(IO_STDOUT)
+  print'(1x,a)', 'saving damage solver data required for restart'; flush(IO_STDOUT)
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
   groupHandle = HDF5_openGroup(fileHandle,'solver')
@@ -341,15 +341,15 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
 
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
     residual_subdomain
-  real(pReal), dimension(cells(1),cells(2),cells3), intent(in) :: &
+  real(pREAL), dimension(cells(1),cells(2),cells3), intent(in) :: &
     x_scal
-  real(pReal), dimension(cells(1),cells(2),cells3), intent(out) :: &
+  real(pREAL), dimension(cells(1),cells(2),cells3), intent(out) :: &
     r                                                                                               !< residual
   PetscObject :: dummy
   PetscErrorCode, intent(out) :: err_PETSc
 
   integer :: i, j, k, ce
-  real(pReal), dimension(3,cells(1),cells(2),cells3) :: vectorField
+  real(pREAL), dimension(3,cells(1),cells(2),cells3) :: vectorField
 
 
   phi = x_scal
@@ -384,8 +384,8 @@ subroutine updateReference()
   integer(MPI_INTEGER_KIND) :: err_MPI
 
 
-  K_ref = 0.0_pReal
-  mu_ref = 0.0_pReal
+  K_ref = 0.0_pREAL
+  mu_ref = 0.0_pREAL
   do ce = 1, product(cells(1:2))*cells3
     K_ref  = K_ref  + homogenization_K_phi(ce)
     mu_ref = mu_ref + homogenization_mu_phi(ce)

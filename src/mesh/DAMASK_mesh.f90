@@ -23,7 +23,7 @@ program DAMASK_mesh
   implicit none(type,external)
 
   type :: tLoadCase
-    real(pReal)  :: time                   = 0.0_pReal                                              !< length of increment
+    real(pREAL)  :: time                   = 0.0_pREAL                                              !< length of increment
     integer      :: incs                   = 0, &                                                   !< number of increments
                     outputfrequency        = 1                                                      !< frequency of result writes
     logical      :: followFormerTrajectory = .true.                                                 !< follow trajectory of former loadcase
@@ -43,12 +43,12 @@ program DAMASK_mesh
 ! loop variables, convergence etc.
   integer, parameter :: &
     subStepFactor = 2                                                                               !< for each substep, divide the last time increment by 2.0
-  real(pReal) :: &
-    time = 0.0_pReal, &                                                                             !< elapsed time
-    time0 = 0.0_pReal, &                                                                            !< begin of interval
-    timeinc = 0.0_pReal, &                                                                          !< current time interval
-    timeIncOld = 0.0_pReal, &                                                                       !< previous time interval
-    remainingLoadCaseTime = 0.0_pReal                                                               !< remaining time of current load case
+  real(pREAL) :: &
+    time = 0.0_pREAL, &                                                                             !< elapsed time
+    time0 = 0.0_pREAL, &                                                                            !< begin of interval
+    timeinc = 0.0_pREAL, &                                                                          !< current time interval
+    timeIncOld = 0.0_pREAL, &                                                                       !< previous time interval
+    remainingLoadCaseTime = 0.0_pREAL                                                               !< remaining time of current load case
   logical :: &
     guess, &                                                                                        !< guess along former trajectory
     stagIterate
@@ -67,8 +67,8 @@ program DAMASK_mesh
     component
   type(tDict), pointer :: &
     num_mesh
-  character(len=pStringLen), dimension(:), allocatable :: fileContent
-  character(len=pStringLen) :: &
+  character(len=pSTRLEN), dimension(:), allocatable :: fileContent
+  character(len=pSTRLEN) :: &
     incInfo, &
     loadcase_string
   integer :: &
@@ -109,9 +109,9 @@ program DAMASK_mesh
     line = fileContent(l)
     if (IO_isBlank(line)) cycle                                                                     ! skip empty lines
 
-    chunkPos = IO_stringPos(line)
+    chunkPos = IO_strPos(line)
     do i = 1, chunkPos(1)                                                                           ! reading compulsory parameters for loadcase
-      select case (IO_stringValue(line,chunkPos,i))
+      select case (IO_strValue(line,chunkPos,i))
         case('$Loadcase')
           N_def = N_def + 1
       end select
@@ -140,7 +140,7 @@ program DAMASK_mesh
       end select
     end do
     do component = 1, loadCases(i)%fieldBC(1)%nComponents
-      allocate(loadCases(i)%fieldBC(1)%componentBC(component)%Value(mesh_Nboundaries), source = 0.0_pReal)
+      allocate(loadCases(i)%fieldBC(1)%componentBC(component)%Value(mesh_Nboundaries), source = 0.0_pREAL)
       allocate(loadCases(i)%fieldBC(1)%componentBC(component)%Mask (mesh_Nboundaries), source = .false.)
     end do
   end do
@@ -151,9 +151,9 @@ program DAMASK_mesh
     line = fileContent(l)
     if (IO_isBlank(line)) cycle                                                                     ! skip empty lines
 
-    chunkPos = IO_stringPos(line)
+    chunkPos = IO_strPos(line)
     do i = 1, chunkPos(1)
-      select case (IO_stringValue(line,chunkPos,i))
+      select case (IO_strValue(line,chunkPos,i))
 !--------------------------------------------------------------------------------------------------
 ! loadcase information
         case('$Loadcase')
@@ -166,7 +166,7 @@ program DAMASK_mesh
           end do
           if (currentFaceSet < 0) call IO_error(error_ID = 837, ext_msg = 'invalid BC')
         case('t')
-          loadCases(currentLoadCase)%time = IO_floatValue(line,chunkPos,i+1)
+          loadCases(currentLoadCase)%time = IO_realValue(line,chunkPos,i+1)
         case('N')
           loadCases(currentLoadCase)%incs = IO_intValue(line,chunkPos,i+1)
         case('f_out')
@@ -177,7 +177,7 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! boundary condition information
         case('X','Y','Z')
-          select case(IO_stringValue(line,chunkPos,i))
+          select case(IO_strValue(line,chunkPos,i))
             case('X')
               ID = COMPONENT_MECH_X_ID
             case('Y')
@@ -191,7 +191,7 @@ program DAMASK_mesh
                loadCases(currentLoadCase)%fieldBC(1)%componentBC(component)%Mask (currentFaceSet) = &
                    .true.
                loadCases(currentLoadCase)%fieldBC(1)%componentBC(component)%Value(currentFaceSet) = &
-                   IO_floatValue(line,chunkPos,i+1)
+                   IO_realValue(line,chunkPos,i+1)
              end if
            end do
       end select
@@ -204,7 +204,7 @@ program DAMASK_mesh
   errorID = 0
   checkLoadcases: do currentLoadCase = 1, size(loadCases)
     write (loadcase_string, '(i0)' ) currentLoadCase
-    print'(/,1x,a,i0)', 'load case: ', currentLoadCase
+    print'(/,1x,a,1x,i0)', 'load case:', currentLoadCase
     if (.not. loadCases(currentLoadCase)%followFormerTrajectory) &
       print'(2x,a)', 'drop guessing along trajectory'
     print'(2x,a)', 'Field '//trim(FIELD_MECH_label)
@@ -238,9 +238,9 @@ program DAMASK_mesh
     write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                  ! statistics file
   end if
 
-  print'(/,1x,a)', '... writing initial configuration to file .................................'
+  print'(/,1x,a)', '... saving initial configuration ..........................................'
   flush(IO_STDOUT)
-  call materialpoint_result(0,0.0_pReal)
+  call materialpoint_result(0,0.0_pREAL)
 
   loadCaseLooping: do currentLoadCase = 1, size(loadCases)
     time0 = time                                                                                    ! load case start time
@@ -252,8 +252,8 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
       timeIncOld = timeinc                                                                          ! last timeinc that brought former inc to an end
-      timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pReal)
-      timeinc = timeinc * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                      ! depending on cut back level, decrease time step
+      timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pREAL)
+      timeinc = timeinc * real(subStepFactor,pREAL)**real(-cutBackLevel,pREAL)                      ! depending on cut back level, decrease time step
       stepFraction = 0                                                                              ! fraction scaled by stepFactor**cutLevel
 
       subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
@@ -298,7 +298,7 @@ program DAMASK_mesh
             stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
             cutBackLevel = cutBackLevel + 1
             time    = time - timeinc                                                                ! rewind time
-            timeinc = timeinc/2.0_pReal
+            timeinc = timeinc/2.0_pREAL
             print'(/,1x,a)', 'cutting back'
           else                                                                                      ! default behavior, exit if spectral solver does not converge
             if (worldrank == 0) close(statUnit)
@@ -318,13 +318,13 @@ program DAMASK_mesh
       cutBackLevel = max(0, cutBackLevel - 1)                                                       ! try half number of subincs next inc
 
       if (all(solres(:)%converged)) then
-        print'(/,1x,a,i0,a)', 'increment ', totalIncsCounter, ' converged'
+        print'(/,1x,a,1x,i0,1x,a)', 'increment', totalIncsCounter, 'converged'
       else
-        print'(/,1x,a,i0,a)', 'increment ', totalIncsCounter, ' NOT converged'
+        print'(/,1x,a,1x,i0,1x,a)', 'increment', totalIncsCounter, 'NOT converged'
       end if; flush(IO_STDOUT)
 
       if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                            ! at output frequency
-        print'(/,1x,a)', '... writing results to file ...............................................'
+        print'(/,1x,a)', '... saving results ........................................................'
         call FEM_mechanical_updateCoords()
         call materialpoint_result(totalIncsCounter,time)
       end if

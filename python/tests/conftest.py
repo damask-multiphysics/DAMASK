@@ -60,9 +60,9 @@ def update(request):
 
 
 @pytest.fixture
-def ref_path_base():
-    """Directory containing reference results."""
-    return Path(__file__).parent/'reference'
+def res_path_base():
+    """Directory containing testing resources."""
+    return Path(__file__).parent/'resources'
 
 
 @pytest.fixture

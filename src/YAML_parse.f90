@@ -122,7 +122,7 @@ recursive function parse_flow(YAML_flow) result(node)
       d = s + scan(flow_string(s+1_pI64:),':',kind=pI64)
       e = d + find_end(flow_string(d+1_pI64:),'}')
       key = trim(adjustl(flow_string(s+1_pI64:d-1_pI64)))
-      if (quotedString(key)) key = key(2:len(key)-1)
+      if (quotedStr(key)) key = key(2:len(key)-1)
       myVal => parse_flow(flow_string(d+1_pI64:e-1_pI64))                                           ! parse items (recursively)
 
       select type (node)
@@ -147,7 +147,7 @@ recursive function parse_flow(YAML_flow) result(node)
     allocate(tScalar::node)
       select type (node)
         class is (tScalar)
-          if (quotedString(flow_string)) then
+          if (quotedStr(flow_string)) then
             node = trim(adjustl(flow_string(2:len(flow_string)-1)))
           else
             node = trim(adjustl(flow_string))
@@ -191,21 +191,21 @@ end function find_end
 !--------------------------------------------------------------------------------------------------
 ! @brief Check whether a string is enclosed with single or double quotes.
 !--------------------------------------------------------------------------------------------------
-logical function quotedString(line)
+logical function quotedStr(line)
 
   character(len=*), intent(in) :: line
 
 
-  quotedString = .false.
+  quotedStr = .false.
 
   if (len(line) == 0) return
 
   if (scan(line(:1),IO_QUOTES) == 1) then
-    quotedString = .true.
+    quotedStr = .true.
     if (line(len(line):len(line)) /= line(:1)) call IO_error(710,ext_msg=line)
   end if
 
-end function quotedString
+end function quotedStr
 
 
 #ifdef FYAML
@@ -363,7 +363,7 @@ subroutine skip_empty_lines(blck,s_blck)
 
 
   empty = .true.
-  do while(empty .and. len_trim(blck(s_blck:)) /= 0)
+  do while (empty .and. len_trim(blck(s_blck:)) /= 0)
     empty = len_trim(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == 0
     if (empty) s_blck = s_blck + index(blck(s_blck:),IO_EOL)
   end do
@@ -439,10 +439,10 @@ subroutine remove_line_break(blck,s_blck,e_char,flow_line)
   logical :: line_end
 
 
-  line_end =.false.
+  line_end = .false.
   flow_line = ''
 
-  do while(.not.line_end)
+  do while (.not. line_end)
     flow_line = flow_line//IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))//' '
     line_end  = flow_is_closed(flow_line,e_char)
     s_blck    = s_blck + index(blck(s_blck:),IO_EOL)
@@ -472,7 +472,7 @@ subroutine list_item_inline(blck,s_blck,inline,offset)
 
   indent_next = indentDepth(blck(s_blck:))
 
-  do while(indent_next > indent)
+  do while (indent_next > indent)
     inline = inline//' '//trim(adjustl(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))))
     s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     indent_next = indentDepth(blck(s_blck:))
@@ -502,45 +502,45 @@ recursive subroutine line_isFlow(flow,s_flow,line)
   if (index(adjustl(line),'[') == 1) then
     s = index(line,'[')
     flow(s_flow:s_flow) = '['
-    s_flow = s_flow +1
-    do while(s < len_trim(line))
+    s_flow = s_flow+1
+    do while (s < len_trim(line))
       list_chunk = s + find_end(line(s+1:),']')
       if (iskeyValue(line(s+1:list_chunk-1))) then
         flow(s_flow:s_flow) = '{'
-        s_flow = s_flow +1
+        s_flow = s_flow+1
         call keyValue_toFlow(flow,s_flow,line(s+1:list_chunk-1))
         flow(s_flow:s_flow) = '}'
-        s_flow = s_flow +1
+        s_flow = s_flow+1
       elseif (isFlow(line(s+1:list_chunk-1))) then
         call line_isFlow(flow,s_flow,line(s+1:list_chunk-1))
       else
         call line_toFlow(flow,s_flow,line(s+1:list_chunk-1))
       end if
       flow(s_flow:s_flow+1) = ', '
-      s_flow = s_flow +2
+      s_flow = s_flow+2
       s = s + find_end(line(s+1:),']')
     end do
-    s_flow = s_flow - 1
-    if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow - 1
+    s_flow = s_flow-1
+    if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow-1
     flow(s_flow:s_flow) = ']'
     s_flow = s_flow+1
 
   elseif (index(adjustl(line),'{') == 1) then
     s = index(line,'{')
     flow(s_flow:s_flow) = '{'
-    s_flow = s_flow +1
-    do while(s < len_trim(line))
+    s_flow = s_flow+1
+    do while (s < len_trim(line))
       dict_chunk = s + find_end(line(s+1:),'}')
-      if ( .not. iskeyValue(line(s+1:dict_chunk-1))) call IO_error(705,ext_msg=line)
+      if (.not. iskeyValue(line(s+1:dict_chunk-1))) call IO_error(705,ext_msg=line)
       call keyValue_toFlow(flow,s_flow,line(s+1:dict_chunk-1))
       flow(s_flow:s_flow+1) = ', '
-      s_flow = s_flow +2
+      s_flow = s_flow+2
       s = s + find_end(line(s+1:),'}')
     end do
-    s_flow = s_flow -1
-    if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow -1
+    s_flow = s_flow-1
+    if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow-1
     flow(s_flow:s_flow) = '}'
-    s_flow = s_flow +1
+    s_flow = s_flow+1
   else
     call line_toFlow(flow,s_flow,line)
   end if
@@ -682,13 +682,13 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
 
     if (isScalar(line) .or. isFlow(line)) then
       flow(s_flow:s_flow+1) = ', '
-      s_flow = s_flow + 2
+      s_flow = s_flow+2
     end if
 
   end do
 
-  s_flow = s_flow - 1
-  if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow - 1
+  s_flow = s_flow-1
+  if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow-1
 
 end subroutine lst
 
@@ -739,7 +739,7 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
       line = line(indentDepth(line)+1:)
       if (previous_isKey) then
         flow(s_flow-1:s_flow) = ', '
-        s_flow = s_flow + 1
+        s_flow = s_flow+1
       end if
 
       if (isKeyValue(line)) then
@@ -763,19 +763,19 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
 
     if (isScalar(line) .or. isKeyValue(line)) then
       flow(s_flow:s_flow) = ','
-      s_flow = s_flow + 1
+      s_flow = s_flow+1
       previous_isKey = .false.
     else
       previous_isKey = .true.
     end if
 
     flow(s_flow:s_flow) = ' '
-    s_flow = s_flow + 1
+    s_flow = s_flow+1
     offset = 0
   end do
 
-  s_flow = s_flow - 1
-  if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow - 1
+  s_flow = s_flow-1
+  if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow-1
 
 end subroutine dct
 
@@ -800,20 +800,20 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
     if (trim(line) == '---' .or. trim(line) == '...') then
       continue                                                                                      ! end parsing at this point but not stop the simulation
     elseif (len_trim(line) == 0) then
-      s_blck = e_blck +2
+      s_blck = e_blck + 2
       call decide(blck,flow,s_blck,s_flow,offset)
-    elseif    (isListItem(line)) then
+    elseif (isListItem(line)) then
       flow(s_flow:s_flow) = '['
-      s_flow = s_flow + 1
+      s_flow = s_flow+1
       call lst(blck,flow,s_blck,s_flow,offset)
       flow(s_flow:s_flow) = ']'
-      s_flow = s_flow + 1
+      s_flow = s_flow+1
     elseif (isKey(line) .or. isKeyValue(line)) then
       flow(s_flow:s_flow) = '{'
-      s_flow = s_flow + 1
+      s_flow = s_flow+1
       call dct(blck,flow,s_blck,s_flow,offset)
       flow(s_flow:s_flow) = '}'
-      s_flow = s_flow + 1
+      s_flow = s_flow+1
     elseif (isFlow(line)) then
       if (isFlowList(line)) then
         call remove_line_break(blck,s_blck,']',flow_line)
@@ -824,7 +824,7 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
     else
       line = line(indentDepth(line)+1:)
       call line_toFlow(flow,s_flow,line)
-      s_blck = e_blck +2
+      s_blck = e_blck + 2
     end if
   end if
 
@@ -876,7 +876,7 @@ subroutine selfTest()
   if (indentDepth('a')  /= 0)     error stop 'indentDepth'
   if (indentDepth('x ') /= 0)     error stop 'indentDepth'
 
-  if (.not. quotedString("'a'"))  error stop 'quotedString'
+  if (.not. quotedStr("'a'"))     error stop 'quotedStr'
 
   if (      isFlow(' a'))         error stop 'isFLow'
   if (.not. isFlow('{'))          error stop 'isFlow'
@@ -1025,9 +1025,9 @@ subroutine selfTest()
       dct = '{a: 1, b: 2}'
 
     list => YAML_parse_str_asList(lst//IO_EOL)
-    if (list%asFormattedString() /= lst) error stop 'str_asList'
+    if (list%asFormattedStr() /= lst) error stop 'str_asList'
     dict => YAML_parse_str_asDict(dct//IO_EOL)
-    if (dict%asFormattedString() /= dct) error stop 'str_asDict'
+    if (dict%asFormattedStr() /= dct) error stop 'str_asDict'
 
   end block parse
 
