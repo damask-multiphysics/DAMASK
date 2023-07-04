@@ -1252,6 +1252,11 @@ class Result:
 
         .. math::
 
+            m = 0 \\\\
+            \vb*{\epsilon}_V^{(0)} = \ln (\vb{V}) \\\\
+            \vb*{\epsilon}_U^{(0)} = \ln (\vb{U}) \\\\
+
+            m \neq 0 \\\\
             \vb*{\epsilon}_V^{(m)} = \frac{1}{2m} (\vb{V}^{2m} - \vb{I}) \\\\
             \vb*{\epsilon}_U^{(m)} = \frac{1}{2m} (\vb{U}^{2m} - \vb{I})
 
