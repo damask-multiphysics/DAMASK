@@ -1,7 +1,8 @@
+---
 homogenization:
   direct:
-    N_constituents: 1
-    mechanical: {type: pass}
+  N_constituents: 1
+  mechanical: {type: pass}
 
 material:
   - constituents:
