@@ -93,8 +93,6 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS},pointers")
 #   ... for certain disassociated or uninitialized pointers or unallocated allocatable objects.
 set (DEBUG_FLAGS "${DEBUG_FLAGS},uninit")
 #   ... for uninitialized variables.
-set (DEBUG_FLAGS "${DEBUG_FLAGS} -ftrapuv")
-#   ... initializes stack local variables to an unusual value to aid error detection
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0 -ftz")
 #   ... capture all floating-point exceptions, need to overwrite -no-ftz
 

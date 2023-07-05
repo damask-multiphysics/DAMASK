@@ -35,8 +35,8 @@ class Rotation:
     Rotate vector 'a' (defined in coordinate system 'A') to
     coordinates 'b' expressed in system 'B':
 
-    >>> import damask
     >>> import numpy as np
+    >>> import damask
     >>> Q = damask.Rotation.from_random()
     >>> a = np.random.rand(3)
     >>> b = Q @ a
@@ -45,8 +45,8 @@ class Rotation:
 
     Compound rotations R1 (first) and R2 (second):
 
-    >>> import damask
     >>> import numpy as np
+    >>> import damask
     >>> R1 = damask.Rotation.from_random()
     >>> R2 = damask.Rotation.from_random()
     >>> R = R2 * R1
@@ -69,7 +69,7 @@ class Rotation:
 
         Parameters
         ----------
-        rotation : list, numpy.ndarray, Rotation, optional
+        rotation : list, numpy.ndarray, or Rotation, optional
             Unit quaternion in positive real hemisphere.
             Use .from_quaternion to perform a sanity check.
             Defaults to no rotation.
@@ -88,7 +88,7 @@ class Rotation:
         """
         Return repr(self).
 
-        Give short human-readable summary.
+        Give short, human-readable summary.
 
         """
         return f'Quaternion{" " if self.quaternion.shape == (4,) else "s of shape "+str(self.quaternion.shape[:-1])+chr(10)}'\

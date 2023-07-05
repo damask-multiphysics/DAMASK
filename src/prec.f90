@@ -19,30 +19,28 @@ module prec
   public
 
   ! https://stevelionel.com/drfortran/2017/03/27/doctor-fortran-in-it-takes-all-kinds
-  integer,     parameter :: pReal      = IEEE_selected_real_kind(15,307)                            !< number with 15 significant digits, up to 1e+-307 (typically 64 bit)
+  integer,     parameter :: pREAL      = IEEE_selected_real_kind(15,307)                            !< number with 15 significant digits, up to 1e+-307 (typically 64 bit)
   integer,     parameter :: pI32       = selected_int_kind(9)                                       !< number with at least up to +-1e9 (typically 32 bit)
   integer,     parameter :: pI64       = selected_int_kind(18)                                      !< number with at least up to +-1e18 (typically 64 bit)
 #ifdef PETSC
   PetscInt,    private   :: dummy_int
   integer,     parameter :: pPETSCINT  = kind(dummy_int)
   PetscScalar, private   :: dummy_scalar
-  real(pReal), parameter, private :: pPETSCSCALAR = kind(dummy_scalar)
+  real(pREAL), parameter, private :: pPETSCSCALAR = kind(dummy_scalar)
 #endif
-  integer,     parameter :: pSTRINGLEN = 256                                                        !< default string length
+  integer,     parameter :: pSTRLEN = 256                                                           !< default string length
   integer,     parameter :: pPATHLEN   = 4096                                                       !< maximum length of a path name on linux
 
-  real(pReal), parameter :: tol_math_check = 1.0e-8_pReal                                           !< tolerance for internal math self-checks (rotation)
+  real(pREAL), parameter :: tol_math_check = 1.0e-8_pREAL                                           !< tolerance for internal math self-checks (rotation)
 
 
-  real(pReal), private, parameter :: PREAL_EPSILON = epsilon(0.0_pReal)                             !< minimum positive number such that 1.0 + EPSILON /= 1.0.
-  real(pReal), private, parameter :: PREAL_MIN     = tiny(0.0_pReal)                                !< smallest normalized floating point number
+  real(pREAL), private, parameter :: PREAL_EPSILON = epsilon(0.0_pREAL)                             !< minimum positive number such that 1.0 + EPSILON /= 1.0.
+  real(pREAL), private, parameter :: PREAL_MIN     = tiny(0.0_pREAL)                                !< smallest normalized floating point number
 
-  integer,                   dimension(0), parameter :: emptyIntArray    = [integer::]
-  real(pReal),               dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
-  character(len=pStringLen), dimension(0), parameter :: emptyStringArray = [character(len=pStringLen)::]
+  integer,                dimension(0), parameter :: emptyIntArray  = [integer::]
+  real(pREAL),            dimension(0), parameter :: emptyRealArray = [real(pREAL)::]
+  character(len=pSTRLEN), dimension(0), parameter :: emptyStrArray  = [character(len=pSTRLEN)::]
 
-  private :: &
-    selfTest
 
 contains
 
@@ -54,15 +52,15 @@ subroutine prec_init()
 
   print'(/,1x,a)', '<<<+-  prec init  -+>>>'
 
-  print'(/,a,i3)',    ' integer size / bit:   ',bit_size(0)
-  print'(  a,i19)',   '   maximum value:      ',huge(0)
-  print'(/,a,i3)',    ' float size / bit:     ',storage_size(0.0_pReal)
-  print'(  a,e10.3)', '   maximum value:      ',huge(0.0_pReal)
-  print'(  a,e10.3)', '   minimum value:      ',PREAL_MIN
-  print'(  a,e10.3)', '   epsilon value:      ',PREAL_EPSILON
-  print'(  a,i3)',    '   decimal precision:  ',precision(0.0_pReal)
+  print'(/,a,i3)',    ' integer size / bit:  ',bit_size(0)
+  print'(  a,i19)',   '   maximum value:     ',huge(0)
+  print'(/,a,i3)',    ' real size / bit:     ',storage_size(0.0_pREAL)
+  print'(  a,e10.3)', '   maximum value:     ',huge(0.0_pREAL)
+  print'(  a,e10.3)', '   minimum value:     ',PREAL_MIN
+  print'(  a,e10.3)', '   epsilon value:     ',PREAL_EPSILON
+  print'(  a,i3)',    '   decimal precision: ',precision(0.0_pREAL)
 
-  call selfTest()
+  call prec_selfTest()
 
 end subroutine prec_init
 
@@ -76,8 +74,8 @@ end subroutine prec_init
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dEq(a,b,tol)
 
-  real(pReal), intent(in)           :: a,b
-  real(pReal), intent(in), optional :: tol
+  real(pREAL), intent(in)           :: a,b
+  real(pREAL), intent(in), optional :: tol
 
 
   if (present(tol)) then
@@ -97,8 +95,8 @@ end function dEq
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dNeq(a,b,tol)
 
-  real(pReal), intent(in)           :: a,b
-  real(pReal), intent(in), optional :: tol
+  real(pREAL), intent(in)           :: a,b
+  real(pREAL), intent(in), optional :: tol
 
 
   dNeq = .not. dEq(a,b,tol)
@@ -114,14 +112,14 @@ end function dNeq
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dEq0(a,tol)
 
-  real(pReal), intent(in)           :: a
-  real(pReal), intent(in), optional :: tol
+  real(pREAL), intent(in)           :: a
+  real(pREAL), intent(in), optional :: tol
 
 
   if (present(tol)) then
     dEq0 = abs(a) <= tol
   else
-    dEq0 = abs(a) <= PREAL_MIN * 10.0_pReal
+    dEq0 = abs(a) <= PREAL_MIN * 10.0_pREAL
   end if
 
 end function dEq0
@@ -135,8 +133,8 @@ end function dEq0
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dNeq0(a,tol)
 
-  real(pReal), intent(in)           :: a
-  real(pReal), intent(in), optional :: tol
+  real(pREAL), intent(in)           :: a
+  real(pREAL), intent(in), optional :: tol
 
 
   dNeq0 = .not. dEq0(a,tol)
@@ -153,8 +151,8 @@ end function dNeq0
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function cEq(a,b,tol)
 
-  complex(pReal), intent(in)           :: a,b
-  real(pReal),    intent(in), optional :: tol
+  complex(pREAL), intent(in)           :: a,b
+  real(pREAL),    intent(in), optional :: tol
 
 
   if (present(tol)) then
@@ -175,8 +173,8 @@ end function cEq
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function cNeq(a,b,tol)
 
-  complex(pReal), intent(in)           :: a,b
-  real(pReal),    intent(in), optional :: tol
+  complex(pREAL), intent(in)           :: a,b
+  real(pREAL),    intent(in), optional :: tol
 
 
   cNeq = .not. cEq(a,b,tol)
@@ -247,16 +245,16 @@ end function prec_bytesToC_INT64_T
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some prec functions.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest()
+subroutine prec_selfTest()
 
   integer, allocatable, dimension(:) :: realloc_lhs_test
-  real(pReal),   dimension(1) :: f
+  real(pREAL),   dimension(1) :: f
   integer(pI64), dimension(1) :: i
-  real(pReal),   dimension(2) :: r
+  real(pREAL),   dimension(2) :: r
 
 
 #ifdef PETSC
-  if (pReal /= pPETSCSCALAR)                error stop 'PETSc and DAMASK scalar datatypes do not match'
+  if (pREAL /= pPETSCSCALAR)                error stop 'PETSc and DAMASK scalar datatypes do not match'
 #endif
   realloc_lhs_test = [1,2]
   if (any(realloc_lhs_test/=[1,2]))         error stop 'LHS allocation'
@@ -269,11 +267,11 @@ subroutine selfTest()
 
   ! https://www.binaryconvert.com
   ! https://www.rapidtables.com/convert/number/binary-to-decimal.html
-  f = real(prec_bytesToC_FLOAT(int([-65,+11,-102,+75],C_SIGNED_CHAR)),pReal)
-  if (dNeq(f(1),20191102.0_pReal,0.0_pReal)) error stop 'prec_bytesToC_FLOAT'
+  f = real(prec_bytesToC_FLOAT(int([-65,+11,-102,+75],C_SIGNED_CHAR)),pREAL)
+  if (dNeq(f(1),20191102.0_pREAL,0.0_pREAL)) error stop 'prec_bytesToC_FLOAT'
 
-  f = real(prec_bytesToC_DOUBLE(int([0,0,0,-32,+119,+65,+115,65],C_SIGNED_CHAR)),pReal)
-  if (dNeq(f(1),20191102.0_pReal,0.0_pReal)) error stop 'prec_bytesToC_DOUBLE'
+  f = real(prec_bytesToC_DOUBLE(int([0,0,0,-32,+119,+65,+115,65],C_SIGNED_CHAR)),pREAL)
+  if (dNeq(f(1),20191102.0_pREAL,0.0_pREAL)) error stop 'prec_bytesToC_DOUBLE'
 
   i = int(prec_bytesToC_INT32_T(int([+126,+23,+52,+1],C_SIGNED_CHAR)),pI64)
   if (i(1) /= 20191102_pI64)                 error stop 'prec_bytesToC_INT32_T'
@@ -281,6 +279,6 @@ subroutine selfTest()
   i = int(prec_bytesToC_INT64_T(int([+126,+23,+52,+1,0,0,0,0],C_SIGNED_CHAR)),pI64)
   if (i(1) /= 20191102_pI64)                 error stop 'prec_bytesToC_INT64_T'
 
-end subroutine selfTest
+end subroutine prec_selfTest
 
 end module prec

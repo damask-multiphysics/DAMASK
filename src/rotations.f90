@@ -53,10 +53,10 @@ module rotations
   implicit none(type,external)
   private
 
-  real(pReal), parameter :: P = -1.0_pReal                                                          !< parameter for orientation conversion.
+  real(pREAL), parameter :: P = -1.0_pREAL                                                          !< parameter for orientation conversion.
 
   type, public :: tRotation
-    real(pReal), dimension(4) :: q
+    real(pREAL), dimension(4) :: q
     contains
       procedure, public :: asQuaternion
       procedure, public :: asEulers
@@ -79,16 +79,16 @@ module rotations
       procedure, public  :: standardize
   end type tRotation
 
-  real(pReal), parameter :: &
-    PREF = sqrt(6.0_pReal/PI), &
-    A    = PI**(5.0_pReal/6.0_pReal)/6.0_pReal**(1.0_pReal/6.0_pReal), &
-    AP   = PI**(2.0_pReal/3.0_pReal), &
+  real(pREAL), parameter :: &
+    PREF = sqrt(6.0_pREAL/PI), &
+    A    = PI**(5.0_pREAL/6.0_pREAL)/6.0_pREAL**(1.0_pREAL/6.0_pREAL), &
+    AP   = PI**(2.0_pREAL/3.0_pREAL), &
     SC   = A/AP, &
-    BETA = A/2.0_pReal, &
-    R1   = (3.0_pReal*PI/4.0_pReal)**(1.0_pReal/3.0_pReal), &
-    R2   = sqrt(2.0_pReal), &
-    PI12 = PI/12.0_pReal, &
-    PREK = R1 * 2.0_pReal**(1.0_pReal/4.0_pReal)/BETA
+    BETA = A/2.0_pREAL, &
+    R1   = (3.0_pREAL*PI/4.0_pREAL)**(1.0_pREAL/3.0_pREAL), &
+    R2   = sqrt(2.0_pREAL), &
+    PI12 = PI/12.0_pREAL, &
+    PREK = R1 * 2.0_pREAL**(1.0_pREAL/4.0_pREAL)/BETA
 
   public :: &
     rotations_init, &
@@ -106,7 +106,7 @@ subroutine rotations_init
   print'(/,1x,a)', 'D. Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015'
   print'(  1x,a)', 'https://doi.org/10.1088/0965-0393/23/8/083501'
 
-  call selfTest
+  call selfTest()
 
 end subroutine rotations_init
 
@@ -117,7 +117,7 @@ end subroutine rotations_init
 pure function asQuaternion(self)
 
   class(tRotation), intent(in) :: self
-  real(pReal), dimension(4)    :: asQuaternion
+  real(pREAL), dimension(4)    :: asQuaternion
 
 
   asQuaternion = self%q
@@ -127,7 +127,7 @@ end function asQuaternion
 pure function asEulers(self)
 
   class(tRotation), intent(in) :: self
-  real(pReal), dimension(3)    :: asEulers
+  real(pREAL), dimension(3)    :: asEulers
 
 
   asEulers = qu2eu(self%q)
@@ -137,7 +137,7 @@ end function asEulers
 pure function asAxisAngle(self)
 
   class(tRotation), intent(in) :: self
-  real(pReal), dimension(4)    :: asAxisAngle
+  real(pREAL), dimension(4)    :: asAxisAngle
 
 
   asAxisAngle = qu2ax(self%q)
@@ -147,7 +147,7 @@ end function asAxisAngle
 pure function asMatrix(self)
 
   class(tRotation), intent(in) :: self
-  real(pReal), dimension(3,3)  :: asMatrix
+  real(pREAL), dimension(3,3)  :: asMatrix
 
 
   asMatrix = qu2om(self%q)
@@ -160,10 +160,10 @@ end function asMatrix
 subroutine fromQuaternion(self,qu)
 
   class(tRotation), intent(out)         :: self
-  real(pReal), dimension(4), intent(in) :: qu
+  real(pREAL), dimension(4), intent(in) :: qu
 
 
-  if (dNeq(norm2(qu),1.0_pReal,1.0e-8_pReal)) call IO_error(402,ext_msg='fromQuaternion')
+  if (dNeq(norm2(qu),1.0_pREAL,1.0e-8_pREAL)) call IO_error(402,ext_msg='fromQuaternion')
 
   self%q = qu
 
@@ -172,19 +172,15 @@ end subroutine fromQuaternion
 subroutine fromEulers(self,eu,degrees)
 
   class(tRotation), intent(out)         :: self
-  real(pReal), dimension(3), intent(in) :: eu
+  real(pREAL), dimension(3), intent(in) :: eu
   logical, intent(in), optional         :: degrees
 
-  real(pReal), dimension(3)             :: Eulers
+  real(pREAL), dimension(3)             :: Eulers
 
 
-  if (.not. present(degrees)) then
-    Eulers = eu
-  else
-    Eulers = merge(eu*INRAD,eu,degrees)
-  end if
+  Eulers = merge(eu*INRAD,eu,misc_optional(degrees,.false.))
 
-  if (any(Eulers<0.0_pReal) .or. any(Eulers>TAU) .or. Eulers(2) > PI) &
+  if (any(Eulers<0.0_pREAL) .or. any(Eulers>TAU) .or. Eulers(2) > PI) &
     call IO_error(402,ext_msg='fromEulers')
 
   self%q = eu2qu(Eulers)
@@ -194,28 +190,20 @@ end subroutine fromEulers
 subroutine fromAxisAngle(self,ax,degrees,P)
 
   class(tRotation), intent(out)         :: self
-  real(pReal), dimension(4), intent(in) :: ax
+  real(pREAL), dimension(4), intent(in) :: ax
   logical, intent(in), optional         :: degrees
   integer, intent(in), optional         :: P
 
-  real(pReal)                           :: angle
-  real(pReal),dimension(3)              :: axis
+  real(pREAL)                           :: angle
+  real(pREAL),dimension(3)              :: axis
 
 
-  if (.not. present(degrees)) then
-    angle = ax(4)
-  else
-    angle = merge(ax(4)*INRAD,ax(4),degrees)
-  end if
+  angle = merge(ax(4)*INRAD,ax(4),misc_optional(degrees,.false.))
 
-  if (.not. present(P)) then
-    axis = ax(1:3)
-  else
-    axis = ax(1:3) * merge(-1.0_pReal,1.0_pReal,P == 1)
-    if (abs(P) /= 1) call IO_error(402,ext_msg='fromAxisAngle (P)')
-  end if
+  axis = ax(1:3) * merge(-1.0_pREAL,1.0_pREAL,misc_optional(P,-1) == 1)
+  if (abs(misc_optional(P,-1)) /= 1) call IO_error(402,ext_msg='fromAxisAngle (P)')
 
-  if (dNeq(norm2(axis),1.0_pReal) .or. angle < 0.0_pReal .or. angle > PI) &
+  if (dNeq(norm2(axis),1.0_pREAL) .or. angle < 0.0_pREAL .or. angle > PI) &
     call IO_error(402,ext_msg='fromAxisAngle')
 
   self%q = ax2qu([axis,angle])
@@ -225,10 +213,10 @@ end subroutine fromAxisAngle
 subroutine fromMatrix(self,om)
 
   class(tRotation), intent(out)           :: self
-  real(pReal), dimension(3,3), intent(in) :: om
+  real(pREAL), dimension(3,3), intent(in) :: om
 
 
-  if (dNeq(math_det33(om),1.0_pReal,tol=1.0e-5_pReal)) &
+  if (dNeq(math_det33(om),1.0_pREAL,tol=1.0e-5_pREAL)) &
     call IO_error(402,ext_msg='fromMatrix')
 
   self%q = om2qu(om)
@@ -260,7 +248,7 @@ pure elemental subroutine standardize(self)
   class(tRotation), intent(inout) :: self
 
 
-  if (sign(1.0_pReal,self%q(1)) < 0.0_pReal) self%q = - self%q
+  if (sign(1.0_pREAL,self%q(1)) < 0.0_pREAL) self%q = - self%q
 
 end subroutine standardize
 
@@ -271,28 +259,21 @@ end subroutine standardize
 !--------------------------------------------------------------------------------------------------
 pure function rotVector(self,v,active) result(vRot)
 
-  real(pReal),                 dimension(3) :: vRot
+  real(pREAL),                 dimension(3) :: vRot
   class(tRotation), intent(in)              :: self
-  real(pReal),     intent(in), dimension(3) :: v
+  real(pREAL),     intent(in), dimension(3) :: v
   logical,         intent(in), optional     :: active
 
-  real(pReal), dimension(4) :: v_normed, q
-  logical                   :: passive
+  real(pREAL), dimension(4) :: v_normed, q
 
-
-  if (present(active)) then
-    passive = .not. active
-  else
-    passive = .true.
-  end if
 
   if (dEq0(norm2(v))) then
     vRot = v
   else
-    v_normed = [0.0_pReal,v]/norm2(v)
-    q = merge(multiplyQuaternion(self%q, multiplyQuaternion(v_normed, conjugateQuaternion(self%q))), &
-              multiplyQuaternion(conjugateQuaternion(self%q), multiplyQuaternion(v_normed, self%q)), &
-              passive)
+    v_normed = [0.0_pREAL,v]/norm2(v)
+    q = merge(multiplyQuaternion(conjugateQuaternion(self%q), multiplyQuaternion(v_normed, self%q)), &
+              multiplyQuaternion(self%q, multiplyQuaternion(v_normed, conjugateQuaternion(self%q))), &
+              misc_optional(active,.false.))
     vRot = q(2:4)*norm2(v)
   end if
 
@@ -306,23 +287,15 @@ end function rotVector
 !--------------------------------------------------------------------------------------------------
 pure function rotTensor2(self,T,active) result(tRot)
 
-  real(pReal),                 dimension(3,3) :: tRot
+  real(pREAL),                 dimension(3,3) :: tRot
   class(tRotation), intent(in)                :: self
-  real(pReal),     intent(in), dimension(3,3) :: T
+  real(pREAL),     intent(in), dimension(3,3) :: T
   logical,         intent(in), optional       :: active
 
-  logical           :: passive
 
-
-  if (present(active)) then
-    passive = .not. active
-  else
-    passive = .true.
-  end if
-
-  tRot = merge(matmul(matmul(self%asMatrix(),T),transpose(self%asMatrix())), &
-               matmul(matmul(transpose(self%asMatrix()),T),self%asMatrix()), &
-               passive)
+  tRot = merge(matmul(matmul(transpose(self%asMatrix()),T),self%asMatrix()), &
+               matmul(matmul(self%asMatrix(),T),transpose(self%asMatrix())), &
+               misc_optional(active,.false.))
 
 end function rotTensor2
 
@@ -334,22 +307,17 @@ end function rotTensor2
 !--------------------------------------------------------------------------------------------------
 pure function rotTensor4(self,T,active) result(tRot)
 
-  real(pReal),                 dimension(3,3,3,3) :: tRot
+  real(pREAL),                 dimension(3,3,3,3) :: tRot
   class(tRotation), intent(in)                    :: self
-  real(pReal),     intent(in), dimension(3,3,3,3) :: T
+  real(pREAL),     intent(in), dimension(3,3,3,3) :: T
   logical,         intent(in), optional           :: active
 
-  real(pReal), dimension(3,3) :: R
+  real(pREAL), dimension(3,3) :: R
   integer :: i,j,k,l,m,n,o,p
 
+  R = merge(transpose(self%asMatrix()),self%asMatrix(),misc_optional(active,.false.))
 
-  if (present(active)) then
-    R = merge(transpose(self%asMatrix()),self%asMatrix(),active)
-  else
-    R = self%asMatrix()
-  end if
-
-  tRot = 0.0_pReal
+  tRot = 0.0_pREAL
   do i = 1,3;do j = 1,3;do k = 1,3;do l = 1,3
   do m = 1,3;do n = 1,3;do o = 1,3;do p = 1,3
     tRot(i,j,k,l) = tRot(i,j,k,l) &
@@ -366,20 +334,16 @@ end function rotTensor4
 !--------------------------------------------------------------------------------------------------
 pure function rotStiffness(self,C,active) result(cRot)
 
-  real(pReal),                 dimension(6,6) :: cRot
+  real(pREAL),                 dimension(6,6) :: cRot
   class(tRotation), intent(in)                :: self
-  real(pReal),     intent(in), dimension(6,6) :: C
+  real(pREAL),     intent(in), dimension(6,6) :: C
   logical,         intent(in), optional       :: active
 
-  real(pReal), dimension(3,3) :: R
-  real(pReal), dimension(6,6) :: M
+  real(pREAL), dimension(3,3) :: R
+  real(pREAL), dimension(6,6) :: M
 
 
-  if (present(active)) then
-    R = merge(transpose(self%asMatrix()),self%asMatrix(),active)
-  else
-    R = self%asMatrix()
-  end if
+  R = merge(transpose(self%asMatrix()),self%asMatrix(),misc_optional(active,.false.))
 
   M = reshape([R(1,1)**2,                   R(2,1)**2,                   R(3,1)**2, &
                R(2,1)*R(3,1),               R(1,1)*R(3,1),               R(1,1)*R(2,1), &
@@ -387,11 +351,11 @@ pure function rotStiffness(self,C,active) result(cRot)
                R(2,2)*R(3,2),               R(1,2)*R(3,2),               R(1,2)*R(2,2), &
                R(1,3)**2,                   R(2,3)**2,                   R(3,3)**2, &
                R(2,3)*R(3,3),               R(1,3)*R(3,3),               R(1,3)*R(2,3), &
-               2.0_pReal*R(1,2)*R(1,3),     2.0_pReal*R(2,2)*R(2,3),     2.0_pReal*R(3,2)*R(3,3), &
+               2.0_pREAL*R(1,2)*R(1,3),     2.0_pREAL*R(2,2)*R(2,3),     2.0_pREAL*R(3,2)*R(3,3), &
                R(2,2)*R(3,3)+R(2,3)*R(3,2), R(1,2)*R(3,3)+R(1,3)*R(3,2), R(1,2)*R(2,3)+R(1,3)*R(2,2), &
-               2.0_pReal*R(1,3)*R(1,1),     2.0_pReal*R(2,3)*R(2,1),     2.0_pReal*R(3,3)*R(3,1), &
+               2.0_pREAL*R(1,3)*R(1,1),     2.0_pREAL*R(2,3)*R(2,1),     2.0_pREAL*R(3,3)*R(3,1), &
                R(2,3)*R(3,1)+R(2,1)*R(3,3), R(1,3)*R(3,1)+R(1,1)*R(3,3), R(1,3)*R(2,1)+R(1,1)*R(2,3), &
-               2.0_pReal*R(1,1)*R(1,2),     2.0_pReal*R(2,1)*R(2,2),     2.0_pReal*R(3,1)*R(3,2), &
+               2.0_pREAL*R(1,1)*R(1,2),     2.0_pREAL*R(2,1)*R(2,2),     2.0_pREAL*R(3,1)*R(3,2), &
                R(2,1)*R(3,2)+R(2,2)*R(3,1), R(1,1)*R(3,2)+R(1,2)*R(3,1), R(1,1)*R(2,2)+R(1,2)*R(2,1)],[6,6])
 
   cRot = matmul(M,matmul(C,transpose(M)))
@@ -419,27 +383,27 @@ end function misorientation
 !--------------------------------------------------------------------------------------------------
 pure function qu2om(qu) result(om)
 
-  real(pReal), intent(in), dimension(4)   :: qu
-  real(pReal),             dimension(3,3) :: om
+  real(pREAL), intent(in), dimension(4)   :: qu
+  real(pREAL),             dimension(3,3) :: om
 
-  real(pReal)                             :: qq
+  real(pREAL)                             :: qq
 
 
   qq = qu(1)**2-sum(qu(2:4)**2)
 
-  om(1,1) = qq+2.0_pReal*qu(2)**2
-  om(2,2) = qq+2.0_pReal*qu(3)**2
-  om(3,3) = qq+2.0_pReal*qu(4)**2
+  om(1,1) = qq+2.0_pREAL*qu(2)**2
+  om(2,2) = qq+2.0_pREAL*qu(3)**2
+  om(3,3) = qq+2.0_pREAL*qu(4)**2
 
-  om(1,2) = 2.0_pReal*(qu(2)*qu(3)-qu(1)*qu(4))
-  om(2,3) = 2.0_pReal*(qu(3)*qu(4)-qu(1)*qu(2))
-  om(3,1) = 2.0_pReal*(qu(4)*qu(2)-qu(1)*qu(3))
-  om(2,1) = 2.0_pReal*(qu(3)*qu(2)+qu(1)*qu(4))
-  om(3,2) = 2.0_pReal*(qu(4)*qu(3)+qu(1)*qu(2))
-  om(1,3) = 2.0_pReal*(qu(2)*qu(4)+qu(1)*qu(3))
+  om(1,2) = 2.0_pREAL*(qu(2)*qu(3)-qu(1)*qu(4))
+  om(2,3) = 2.0_pREAL*(qu(3)*qu(4)-qu(1)*qu(2))
+  om(3,1) = 2.0_pREAL*(qu(4)*qu(2)-qu(1)*qu(3))
+  om(2,1) = 2.0_pREAL*(qu(3)*qu(2)+qu(1)*qu(4))
+  om(3,2) = 2.0_pREAL*(qu(4)*qu(3)+qu(1)*qu(2))
+  om(1,3) = 2.0_pREAL*(qu(2)*qu(4)+qu(1)*qu(3))
 
-  if (sign(1.0_pReal,P) < 0.0_pReal) om = transpose(om)
-  om = om/math_det33(om)**(1.0_pReal/3.0_pReal)
+  if (sign(1.0_pREAL,P) < 0.0_pREAL) om = transpose(om)
+  om = om/math_det33(om)**(1.0_pREAL/3.0_pREAL)
 
 end function qu2om
 
@@ -450,10 +414,10 @@ end function qu2om
 !--------------------------------------------------------------------------------------------------
 pure function qu2eu(qu) result(eu)
 
-  real(pReal), intent(in), dimension(4) :: qu
-  real(pReal),             dimension(3) :: eu
+  real(pREAL), intent(in), dimension(4) :: qu
+  real(pREAL),             dimension(3) :: eu
 
-  real(pReal)                           :: q12, q03, chi
+  real(pREAL)                           :: q12, q03, chi
 
 
   q03 = qu(1)**2+qu(4)**2
@@ -461,15 +425,15 @@ pure function qu2eu(qu) result(eu)
   chi = sqrt(q03*q12)
 
   degenerated: if (dEq0(q12)) then
-    eu = [atan2(-P*2.0_pReal*qu(1)*qu(4),qu(1)**2-qu(4)**2), 0.0_pReal, 0.0_pReal]
+    eu = [atan2(-P*2.0_pREAL*qu(1)*qu(4),qu(1)**2-qu(4)**2), 0.0_pREAL, 0.0_pREAL]
   elseif          (dEq0(q03)) then
-    eu = [atan2(   2.0_pReal*qu(2)*qu(3),qu(2)**2-qu(3)**2), PI,        0.0_pReal]
+    eu = [atan2(   2.0_pREAL*qu(2)*qu(3),qu(2)**2-qu(3)**2), PI,        0.0_pREAL]
   else degenerated
     eu = [atan2((-P*qu(1)*qu(3)+qu(2)*qu(4))*chi, (-P*qu(1)*qu(2)-qu(3)*qu(4))*chi ), &
-          atan2( 2.0_pReal*chi, q03-q12 ), &
+          atan2( 2.0_pREAL*chi, q03-q12 ), &
           atan2(( P*qu(1)*qu(3)+qu(2)*qu(4))*chi, (-P*qu(1)*qu(2)+qu(3)*qu(4))*chi )]
   end if degenerated
-  where(sign(1.0_pReal,eu)<0.0_pReal) eu = mod(eu+TAU,[TAU,PI,TAU])
+  where(sign(1.0_pREAL,eu)<0.0_pREAL) eu = mod(eu+TAU,[TAU,PI,TAU])
 
 end function qu2eu
 
@@ -480,17 +444,17 @@ end function qu2eu
 !--------------------------------------------------------------------------------------------------
 pure function qu2ax(qu) result(ax)
 
-  real(pReal), intent(in), dimension(4) :: qu
-  real(pReal),             dimension(4) :: ax
+  real(pREAL), intent(in), dimension(4) :: qu
+  real(pREAL),             dimension(4) :: ax
 
-  real(pReal)                           :: omega, s
+  real(pREAL)                           :: omega, s
 
 
   if (dEq0(sum(qu(2:4)**2))) then
-    ax = [ 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal ]                                             ! axis = [001]
+    ax = [ 0.0_pREAL, 0.0_pREAL, 1.0_pREAL, 0.0_pREAL ]                                             ! axis = [001]
   elseif (dNeq0(qu(1))) then
-    s =  sign(1.0_pReal,qu(1))/norm2(qu(2:4))
-    omega = 2.0_pReal * acos(math_clip(qu(1),-1.0_pReal,1.0_pReal))
+    s =  sign(1.0_pREAL,qu(1))/norm2(qu(2:4))
+    omega = 2.0_pREAL * acos(math_clip(qu(1),-1.0_pREAL,1.0_pREAL))
     ax = [ qu(2)*s, qu(3)*s, qu(4)*s, omega ]
   else
     ax = [ qu(2),   qu(3),   qu(4),   PI ]
@@ -506,29 +470,29 @@ end function qu2ax
 !--------------------------------------------------------------------------------------------------
 pure function om2qu(om) result(qu)
 
-  real(pReal), intent(in), dimension(3,3) :: om
-  real(pReal),             dimension(4)   :: qu
+  real(pREAL), intent(in), dimension(3,3) :: om
+  real(pREAL),             dimension(4)   :: qu
 
-  real(pReal) :: trace,s
+  real(pREAL) :: trace,s
   trace = math_trace33(om)
 
 
-  if (trace > 0.0_pReal) then
-    s = 0.5_pReal / sqrt(trace+1.0_pReal)
-    qu = [0.25_pReal/s, (om(3,2)-om(2,3))*s,(om(1,3)-om(3,1))*s,(om(2,1)-om(1,2))*s]
+  if (trace > 0.0_pREAL) then
+    s = 0.5_pREAL / sqrt(trace+1.0_pREAL)
+    qu = [0.25_pREAL/s, (om(3,2)-om(2,3))*s,(om(1,3)-om(3,1))*s,(om(2,1)-om(1,2))*s]
   else
       if ( om(1,1) > om(2,2) .and. om(1,1) > om(3,3) ) then
-          s = 2.0_pReal * sqrt( 1.0_pReal + om(1,1) - om(2,2) - om(3,3))
-          qu = [ (om(3,2) - om(2,3)) /s,0.25_pReal * s,(om(1,2) + om(2,1)) / s,(om(1,3) + om(3,1)) / s]
+          s = 2.0_pREAL * sqrt( 1.0_pREAL + om(1,1) - om(2,2) - om(3,3))
+          qu = [ (om(3,2) - om(2,3)) /s,0.25_pREAL * s,(om(1,2) + om(2,1)) / s,(om(1,3) + om(3,1)) / s]
       elseif (om(2,2) > om(3,3)) then
-          s = 2.0_pReal * sqrt( 1.0_pReal + om(2,2) - om(1,1) - om(3,3))
-          qu = [ (om(1,3) - om(3,1)) /s,(om(1,2) + om(2,1)) / s,0.25_pReal * s,(om(2,3) + om(3,2)) / s]
+          s = 2.0_pREAL * sqrt( 1.0_pREAL + om(2,2) - om(1,1) - om(3,3))
+          qu = [ (om(1,3) - om(3,1)) /s,(om(1,2) + om(2,1)) / s,0.25_pREAL * s,(om(2,3) + om(3,2)) / s]
       else
-          s = 2.0_pReal * sqrt( 1.0_pReal + om(3,3) - om(1,1) - om(2,2) )
-          qu = [ (om(2,1) - om(1,2)) /s,(om(1,3) + om(3,1)) / s,(om(2,3) + om(3,2)) / s,0.25_pReal * s]
+          s = 2.0_pREAL * sqrt( 1.0_pREAL + om(3,3) - om(1,1) - om(2,2) )
+          qu = [ (om(2,1) - om(1,2)) /s,(om(1,3) + om(3,1)) / s,(om(2,3) + om(3,2)) / s,0.25_pREAL * s]
       end if
   end if
-  if (sign(1.0_pReal,qu(1))<0.0_pReal) qu =-1.0_pReal * qu
+  if (sign(1.0_pREAL,qu(1))<0.0_pREAL) qu =-1.0_pREAL * qu
   qu(2:4) = merge(qu(2:4),qu(2:4)*P,dEq0(qu(2:4)))
   qu = qu/norm2(qu)
 
@@ -542,21 +506,21 @@ end function om2qu
 !--------------------------------------------------------------------------------------------------
 pure function om2eu(om) result(eu)
 
-  real(pReal), intent(in), dimension(3,3) :: om
-  real(pReal),             dimension(3)   :: eu
-  real(pReal)                             :: zeta
+  real(pREAL), intent(in), dimension(3,3) :: om
+  real(pREAL),             dimension(3)   :: eu
+  real(pREAL)                             :: zeta
 
 
-  if    (dNeq(abs(om(3,3)),1.0_pReal,1.e-8_pReal)) then
-    zeta = 1.0_pReal/sqrt(math_clip(1.0_pReal-om(3,3)**2,1e-64_pReal,1.0_pReal))
+  if    (dNeq(abs(om(3,3)),1.0_pREAL,1.e-8_pREAL)) then
+    zeta = 1.0_pREAL/sqrt(math_clip(1.0_pREAL-om(3,3)**2,1e-64_pREAL,1.0_pREAL))
     eu = [atan2(om(3,1)*zeta,-om(3,2)*zeta), &
-          acos(math_clip(om(3,3),-1.0_pReal,1.0_pReal)), &
+          acos(math_clip(om(3,3),-1.0_pREAL,1.0_pREAL)), &
           atan2(om(1,3)*zeta, om(2,3)*zeta)]
   else
-    eu = [atan2(om(1,2),om(1,1)), 0.5_pReal*PI*(1.0_pReal-om(3,3)),0.0_pReal ]
+    eu = [atan2(om(1,2),om(1,1)), 0.5_pREAL*PI*(1.0_pREAL-om(3,3)),0.0_pREAL ]
   end if
-  where(abs(eu) < 1.e-8_pReal) eu = 0.0_pReal
-  where(sign(1.0_pReal,eu)<0.0_pReal) eu = mod(eu+TAU,[TAU,PI,TAU])
+  where(abs(eu) < 1.e-8_pREAL) eu = 0.0_pREAL
+  where(sign(1.0_pREAL,eu)<0.0_pREAL) eu = mod(eu+TAU,[TAU,PI,TAU])
 
 end function om2eu
 
@@ -567,28 +531,28 @@ end function om2eu
 !--------------------------------------------------------------------------------------------------
 function om2ax(om) result(ax)
 
-  real(pReal), intent(in), dimension(3,3) :: om
-  real(pReal),             dimension(4)   :: ax
+  real(pREAL), intent(in), dimension(3,3) :: om
+  real(pREAL),             dimension(4)   :: ax
 
-  real(pReal)                      :: t
-  real(pReal), dimension(3)        :: Wr, Wi
-  real(pReal), dimension((64+2)*3) :: work
-  real(pReal), dimension(3,3)      :: VR, devNull, om_
+  real(pREAL)                      :: t
+  real(pREAL), dimension(3)        :: Wr, Wi
+  real(pREAL), dimension((64+2)*3) :: work
+  real(pREAL), dimension(3,3)      :: VR, devNull, om_
   integer                          :: ierr, i
 
 
   om_ = om
 
   ! first get the rotation angle
-  t = 0.5_pReal * (math_trace33(om) - 1.0_pReal)
-  ax(4) = acos(math_clip(t,-1.0_pReal,1.0_pReal))
+  t = 0.5_pREAL * (math_trace33(om) - 1.0_pREAL)
+  ax(4) = acos(math_clip(t,-1.0_pREAL,1.0_pREAL))
 
   if (dEq0(ax(4))) then
-    ax(1:3) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal ]
+    ax(1:3) = [ 0.0_pREAL, 0.0_pREAL, 1.0_pREAL ]
   else
     call dgeev('N','V',3,om_,3,Wr,Wi,devNull,3,VR,3,work,size(work,1),ierr)
     if (ierr /= 0) error stop 'LAPACK error'
-    i = findloc(cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal),.true.,dim=1) !find eigenvalue (1,0)
+    i = findloc(cEq(cmplx(Wr,Wi,pREAL),cmplx(1.0_pREAL,0.0_pREAL,pREAL),tol=1.0e-14_pREAL),.true.,dim=1) !find eigenvalue (1,0)
     if (i == 0) error stop 'om2ax conversion failed'
     ax(1:3) = VR(1:3,i)
     where (                dNeq0([om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])) &
@@ -604,13 +568,13 @@ end function om2ax
 !--------------------------------------------------------------------------------------------------
 pure function eu2qu(eu) result(qu)
 
-  real(pReal), intent(in), dimension(3) :: eu
-  real(pReal),             dimension(4) :: qu
-  real(pReal),             dimension(3) :: ee
-  real(pReal)                           :: cPhi, sPhi
+  real(pREAL), intent(in), dimension(3) :: eu
+  real(pREAL),             dimension(4) :: qu
+  real(pREAL),             dimension(3) :: ee
+  real(pREAL)                           :: cPhi, sPhi
 
 
-  ee = 0.5_pReal*eu
+  ee = 0.5_pREAL*eu
 
   cPhi = cos(ee(2))
   sPhi = sin(ee(2))
@@ -619,7 +583,7 @@ pure function eu2qu(eu) result(qu)
         -P*sPhi*cos(ee(1)-ee(3)), &
         -P*sPhi*sin(ee(1)-ee(3)), &
         -P*cPhi*sin(ee(1)+ee(3))]
-  if (sign(1.0_pReal,qu(1)) < 0.0_pReal) qu = qu * (-1.0_pReal)
+  if (sign(1.0_pREAL,qu(1)) < 0.0_pREAL) qu = qu * (-1.0_pREAL)
 
 end function eu2qu
 
@@ -630,10 +594,10 @@ end function eu2qu
 !--------------------------------------------------------------------------------------------------
 pure function eu2om(eu) result(om)
 
-  real(pReal), intent(in), dimension(3)   :: eu
-  real(pReal),             dimension(3,3) :: om
+  real(pREAL), intent(in), dimension(3)   :: eu
+  real(pREAL),             dimension(3,3) :: om
 
-  real(pReal),             dimension(3)   :: c, s
+  real(pREAL),             dimension(3)   :: c, s
 
 
   c = cos(eu)
@@ -649,7 +613,7 @@ pure function eu2om(eu) result(om)
   om(2,3) =  c(3)*s(2)
   om(3,3) =  c(2)
 
-  where(abs(om)<1.0e-12_pReal) om = 0.0_pReal
+  where(abs(om)<1.0e-12_pREAL) om = 0.0_pREAL
 
 end function eu2om
 
@@ -660,25 +624,25 @@ end function eu2om
 !--------------------------------------------------------------------------------------------------
 pure function eu2ax(eu) result(ax)
 
-  real(pReal), intent(in), dimension(3) :: eu
-  real(pReal),             dimension(4) :: ax
+  real(pREAL), intent(in), dimension(3) :: eu
+  real(pREAL),             dimension(4) :: ax
 
-  real(pReal)                           :: t, delta, tau, alpha, sigma
+  real(pREAL)                           :: t, delta, tau, alpha, sigma
 
 
-  t     = tan(eu(2)*0.5_pReal)
-  sigma = 0.5_pReal*(eu(1)+eu(3))
-  delta = 0.5_pReal*(eu(1)-eu(3))
+  t     = tan(eu(2)*0.5_pREAL)
+  sigma = 0.5_pREAL*(eu(1)+eu(3))
+  delta = 0.5_pREAL*(eu(1)-eu(3))
   tau   = sqrt(t**2+sin(sigma)**2)
 
-  alpha = merge(PI, 2.0_pReal*atan(tau/cos(sigma)), dEq(sigma,PI*0.5_pReal,tol=1.0e-15_pReal))
+  alpha = merge(PI, 2.0_pREAL*atan(tau/cos(sigma)), dEq(sigma,PI*0.5_pREAL,tol=1.0e-15_pREAL))
 
   if (dEq0(alpha)) then                                                                             ! return a default identity axis-angle pair
-    ax = [ 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal ]
+    ax = [ 0.0_pREAL, 0.0_pREAL, 1.0_pREAL, 0.0_pREAL ]
   else
     ax(1:3) = -P/tau * [ t*cos(delta), t*sin(delta), sin(sigma) ]                                   ! passive axis-angle pair so a minus sign in front
     ax(4) = alpha
-    if (sign(1.0_pReal,alpha) < 0.0_pReal) ax = -ax                                                 ! ensure alpha is positive
+    if (sign(1.0_pREAL,alpha) < 0.0_pREAL) ax = -ax                                                 ! ensure alpha is positive
   end if
 
 end function eu2ax
@@ -690,17 +654,17 @@ end function eu2ax
 !--------------------------------------------------------------------------------------------------
 pure function ax2qu(ax) result(qu)
 
-  real(pReal), intent(in), dimension(4) :: ax
-  real(pReal),             dimension(4) :: qu
+  real(pREAL), intent(in), dimension(4) :: ax
+  real(pREAL),             dimension(4) :: qu
 
-  real(pReal)                           :: c, s
+  real(pREAL)                           :: c, s
 
 
   if (dEq0(ax(4))) then
-    qu = [ 1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal ]
+    qu = [ 1.0_pREAL, 0.0_pREAL, 0.0_pREAL, 0.0_pREAL ]
   else
-    c = cos(ax(4)*0.5_pReal)
-    s = sin(ax(4)*0.5_pReal)
+    c = cos(ax(4)*0.5_pREAL)
+    s = sin(ax(4)*0.5_pREAL)
     qu = [ c, ax(1)*s, ax(2)*s, ax(3)*s ]
   end if
 
@@ -713,15 +677,15 @@ end function ax2qu
 !--------------------------------------------------------------------------------------------------
 pure function ax2om(ax) result(om)
 
-  real(pReal), intent(in), dimension(4)   :: ax
-  real(pReal),             dimension(3,3) :: om
+  real(pREAL), intent(in), dimension(4)   :: ax
+  real(pREAL),             dimension(3,3) :: om
 
-  real(pReal)                             :: q, c, s, omc
+  real(pREAL)                             :: q, c, s, omc
 
 
   c = cos(ax(4))
   s = sin(ax(4))
-  omc = 1.0_pReal-c
+  omc = 1.0_pREAL-c
 
   om(1,1) = ax(1)**2*omc + c
   om(2,2) = ax(2)**2*omc + c
@@ -739,7 +703,7 @@ pure function ax2om(ax) result(om)
   om(3,1) = q + s*ax(2)
   om(1,3) = q - s*ax(2)
 
-  if (P > 0.0_pReal) om = transpose(om)
+  if (P > 0.0_pREAL) om = transpose(om)
 
 end function ax2om
 
@@ -750,8 +714,8 @@ end function ax2om
 !--------------------------------------------------------------------------------------------------
 pure function ax2eu(ax) result(eu)
 
-  real(pReal), intent(in), dimension(4) :: ax
-  real(pReal),             dimension(3) :: eu
+  real(pREAL), intent(in), dimension(4) :: ax
+  real(pREAL),             dimension(3) :: eu
 
 
   eu = om2eu(ax2om(ax))
@@ -764,8 +728,8 @@ end function ax2eu
 !--------------------------------------------------------------------------------------------------
 pure function multiplyQuaternion(qu1,qu2)
 
-  real(pReal), dimension(4), intent(in) :: qu1, qu2
-  real(pReal), dimension(4) :: multiplyQuaternion
+  real(pREAL), dimension(4), intent(in) :: qu1, qu2
+  real(pREAL), dimension(4) :: multiplyQuaternion
 
 
   multiplyQuaternion(1) = qu1(1)*qu2(1) - qu1(2)*qu2(2) -      qu1(3)*qu2(3) - qu1(4)*qu2(4)
@@ -781,8 +745,8 @@ end function multiplyQuaternion
 !--------------------------------------------------------------------------------------------------
 pure function conjugateQuaternion(qu)
 
-  real(pReal), dimension(4), intent(in) :: qu
-  real(pReal), dimension(4) :: conjugateQuaternion
+  real(pREAL), dimension(4), intent(in) :: qu
+  real(pREAL), dimension(4) :: conjugateQuaternion
 
 
   conjugateQuaternion = [qu(1), -qu(2), -qu(3), -qu(4)]
@@ -796,36 +760,36 @@ end function conjugateQuaternion
 subroutine selfTest()
 
   type(tRotation)                 :: R
-  real(pReal), dimension(4)       :: qu
-  real(pReal), dimension(3)       :: x, eu, v3
-  real(pReal), dimension(3,3)     :: om, t33
-  real(pReal), dimension(3,3,3,3) :: t3333
-  real(pReal), dimension(6,6)     :: C
-  real(pReal) :: A,B
+  real(pREAL), dimension(4)       :: qu
+  real(pREAL), dimension(3)       :: x, eu, v3
+  real(pREAL), dimension(3,3)     :: om, t33
+  real(pREAL), dimension(3,3,3,3) :: t3333
+  real(pREAL), dimension(6,6)     :: C
+  real(pREAL) :: A,B
   integer :: i
 
 
   do i = 1, 20
 
     if (i==1) then
-      qu = [1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]
+      qu = [1.0_pREAL, 0.0_pREAL, 0.0_pREAL, 0.0_pREAL]
     elseif (i==2) then
-      qu = [1.0_pReal,-0.0_pReal,-0.0_pReal,-0.0_pReal]
+      qu = [1.0_pREAL,-0.0_pREAL,-0.0_pREAL,-0.0_pREAL]
     elseif (i==3) then
-      qu = [0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal]
+      qu = [0.0_pREAL, 1.0_pREAL, 0.0_pREAL, 0.0_pREAL]
     elseif (i==4) then
-      qu = [0.0_pReal,0.0_pReal,1.0_pReal,0.0_pReal]
+      qu = [0.0_pREAL,0.0_pREAL,1.0_pREAL,0.0_pREAL]
     elseif (i==5) then
-      qu = [0.0_pReal, 0.0_pReal, 0.0_pReal, 1.0_pReal]
+      qu = [0.0_pREAL, 0.0_pREAL, 0.0_pREAL, 1.0_pREAL]
     else
       call random_number(x)
       A = sqrt(x(3))
-      B = sqrt(1-0_pReal -x(3))
+      B = sqrt(1-0_pREAL -x(3))
       qu = [cos(TAU*x(1))*A,&
             sin(TAU*x(2))*B,&
             cos(TAU*x(2))*B,&
             sin(TAU*x(1))*A]
-      if (qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
+      if (qu(1)<0.0_pREAL) qu = qu * (-1.0_pREAL)
     end if
 
 
@@ -843,24 +807,24 @@ subroutine selfTest()
     call R%fromMatrix(om)
 
     call random_number(v3)
-    if (any(dNeq(R%rotVector(R%rotVector(v3),active=.true.),v3,1.0e-12_pReal))) &
+    if (any(dNeq(R%rotVector(R%rotVector(v3),active=.true.),v3,1.0e-12_pREAL))) &
       error stop 'rotVector'
 
     call random_number(t33)
-    if (any(dNeq(R%rotTensor2(R%rotTensor2(t33),active=.true.),t33,1.0e-12_pReal))) &
+    if (any(dNeq(R%rotTensor2(R%rotTensor2(t33),active=.true.),t33,1.0e-12_pREAL))) &
       error stop 'rotTensor2'
 
     call random_number(t3333)
-    if (any(dNeq(R%rotTensor4(R%rotTensor4(t3333),active=.true.),t3333,1.0e-12_pReal))) &
+    if (any(dNeq(R%rotTensor4(R%rotTensor4(t3333),active=.true.),t3333,1.0e-12_pREAL))) &
       error stop 'rotTensor4'
 
     call random_number(C)
     C = C+transpose(C)
     if (any(dNeq(R%rotStiffness(C), &
-                 math_3333toVoigt66_stiffness(R%rotate(math_Voigt66to3333_stiffness(C))),1.0e-12_pReal))) &
+                 math_3333toVoigt66_stiffness(R%rotate(math_Voigt66to3333_stiffness(C))),1.0e-12_pREAL))) &
       error stop 'rotStiffness'
 
-    call R%fromQuaternion(qu * (1.0_pReal + merge(+5.e-9_pReal,-5.e-9_pReal, mod(i,2) == 0)))       ! allow reasonable tolerance for ASCII/YAML
+    call R%fromQuaternion(qu * (1.0_pREAL + merge(+5.e-9_pREAL,-5.e-9_pREAL, mod(i,2) == 0)))       ! allow reasonable tolerance for ASCII/YAML
 
   end do
 
@@ -868,12 +832,12 @@ subroutine selfTest()
 
   pure recursive function quaternion_equal(qu1,qu2) result(ok)
 
-    real(pReal), intent(in), dimension(4) :: qu1,qu2
+    real(pREAL), intent(in), dimension(4) :: qu1,qu2
     logical :: ok
 
-    ok = all(dEq(qu1,qu2,1.0e-7_pReal))
-    if (dEq0(qu1(1),1.0e-12_pReal)) &
-      ok = ok .or. all(dEq(-1.0_pReal*qu1,qu2,1.0e-7_pReal))
+    ok = all(dEq(qu1,qu2,1.0e-7_pREAL))
+    if (dEq0(qu1(1),1.0e-12_pREAL)) &
+      ok = ok .or. all(dEq(-1.0_pREAL*qu1,qu2,1.0e-7_pREAL))
 
   end function quaternion_equal
 

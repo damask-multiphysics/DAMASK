@@ -32,10 +32,10 @@ class Grid:
     """
     Geometry definition for grid solvers.
 
-    Create and manipulate geometry definitions for storage as VTK
-    image data files ('.vti' extension). A grid contains the
-    material ID (referring to the entry in 'material.yaml') and
-    the physical size.
+    Create and manipulate geometry definitions for storage as VTK ImageData
+    files ('.vti' extension). A grid has a physical size, a coordinate origin,
+    and contains the material ID (indexing an entry in 'material.yaml')
+    as well as initial condition fields.
     """
 
     def __init__(self,
@@ -57,7 +57,7 @@ class Grid:
         origin : sequence of float, len (3), optional
             Coordinates of grid origin in meter. Defaults to [0.0,0.0,0.0].
         initial_conditions : dictionary, optional
-            Labels and values of the inital conditions at each material point.
+            Initial condition label and field values at each grid point.
         comments : (sequence of) str, optional
             Additional, human-readable information, e.g. history of operations.
 
@@ -74,7 +74,7 @@ class Grid:
         """
         Return repr(self).
 
-        Give short human-readable summary.
+        Give short, human-readable summary.
 
         """
         mat_min = np.nanmin(self.material)
@@ -144,7 +144,7 @@ class Grid:
 
     @property
     def size(self) -> np.ndarray:
-        """Physical size of grid in meter."""
+        """Edge lengths of grid in meter."""
         return self._size
 
     @size.setter
@@ -157,7 +157,7 @@ class Grid:
 
     @property
     def origin(self) -> np.ndarray:
-        """Coordinates of grid origin in meter."""
+        """Vector to grid origin in meter."""
         return self._origin
 
     @origin.setter
@@ -186,7 +186,7 @@ class Grid:
 
     @property
     def cells(self) -> np.ndarray:
-        """Number of cells in x,y,z direction."""
+        """Cell counts along x,y,z direction."""
         return np.asarray(self.material.shape)
 
 
@@ -199,7 +199,7 @@ class Grid:
     @staticmethod
     def load(fname: Union[str, Path]) -> 'Grid':
         """
-        Load from VTK image data file.
+        Load from VTK ImageData file.
 
         Parameters
         ----------
@@ -317,6 +317,11 @@ class Grid:
         loaded : damask.Grid
             Grid-based geometry from file.
 
+        Notes
+        -----
+        Material indices in Neper usually start at 1 unless
+        a buffer material with index 0 is added.
+
         Examples
         --------
         Read a periodic polycrystal generated with Neper.
@@ -325,7 +330,7 @@ class Grid:
         >>> N_grains = 20
         >>> cells = (32,32,32)
         >>> damask.util.run(f'neper -T -n {N_grains} -tesrsize {cells[0]}:{cells[1]}:{cells[2]} -periodicity all -format vtk')
-        >>> damask.Grid.load_Neper(f'n{N_grains}-id1.vtk')
+        >>> damask.Grid.load_Neper(f'n{N_grains}-id1.vtk').renumber()
         cells:  32 × 32 × 32
         size:   1.0 × 1.0 × 1.0 m³
         origin: 0.0   0.0   0.0 m
@@ -336,7 +341,7 @@ class Grid:
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
 
-        return Grid(material = v.get('MaterialId').reshape(cells,order='F').astype('int32',casting='unsafe') - 1,
+        return Grid(material = v.get('MaterialId').reshape(cells,order='F').astype('int32',casting='unsafe'),
                     size     = bbox[1] - bbox[0],
                     origin   = bbox[0],
                     comments = util.execution_stamp('Grid','load_Neper'),
@@ -470,9 +475,9 @@ class Grid:
         Parameters
         ----------
         cells : sequence of int, len (3)
-            Number of cells in x,y,z direction.
+            Cell counts along x,y,z direction.
         size : sequence of float, len (3)
-            Physical size of the grid in meter.
+            Edge lengths of the grid in meter.
         seeds : numpy.ndarray of float, shape (:,3)
             Position of the seed points in meter. All points need to lay within the box.
         weights : sequence of float, len (seeds.shape[0])
@@ -527,9 +532,9 @@ class Grid:
         Parameters
         ----------
         cells : sequence of int, len (3)
-            Number of cells in x,y,z direction.
+            Cell counts along x,y,z direction.
         size : sequence of float, len (3)
-            Physical size of the grid in meter.
+            Edge lengths of the grid in meter.
         seeds : numpy.ndarray of float, shape (:,3)
             Position of the seed points in meter. All points need to lay within the box.
         material : sequence of int, len (seeds.shape[0]), optional
@@ -608,14 +613,14 @@ class Grid:
                              periods: int = 1,
                              materials: IntSequence = (0,1)) -> 'Grid':
         """
-        Create grid from definition of triply periodic minimal surface.
+        Create grid from definition of triply-periodic minimal surface.
 
         Parameters
         ----------
         cells : sequence of int, len (3)
-            Number of cells in x,y,z direction.
+            Cell counts along x,y,z direction.
         size : sequence of float, len (3)
-            Physical size of the grid in meter.
+            Edge lengths of the grid in meter.
         surface : str
             Type of the minimal surface. See notes for details.
         threshold : float, optional.
@@ -664,19 +669,19 @@ class Grid:
         >>> import numpy as np
         >>> import damask
         >>> damask.Grid.from_minimal_surface([64]*3,np.ones(3)*1.e-4,'Gyroid')
-        cells : 64 x 64 x 64
-        size  : 0.0001 x 0.0001 x 0.0001 m³
+        cells : 64 × 64 × 64
+        size  : 0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
         # materials: 2
 
-        Minimal surface of 'Neovius' type with non-default material IDs.
+        Minimal surface of 'Neovius' type with specific material IDs.
 
         >>> import numpy as np
         >>> import damask
         >>> damask.Grid.from_minimal_surface([80]*3,np.ones(3)*5.e-4,
         ...                                  'Neovius',materials=(1,5))
-        cells : 80 x 80 x 80
-        size  : 0.0005 x 0.0005 x 0.0005 m³
+        cells : 80 × 80 × 80
+        size  : 0.0005 × 0.0005 × 0.0005 m³
         origin: 0.0   0.0   0.0 m
         # materials: 2 (min: 1, max: 5)
 
@@ -695,12 +700,13 @@ class Grid:
              fname: Union[str, Path],
              compress: bool = True):
         """
-        Save as VTK image data file.
+        Save as VTK ImageData file.
 
         Parameters
         ----------
         fname : str or pathlib.Path
-            Filename to write. Valid extension is .vti, it will be appended if not given.
+            Filename to write.
+            Valid extension is .vti, which will be appended if not given.
         compress : bool, optional
             Compress with zlib algorithm. Defaults to True.
 
@@ -727,7 +733,7 @@ class Grid:
         fname : str or file handle
             Geometry file to write with extension '.geom'.
         compress : bool, optional
-            Compress geometry with 'x of y' and 'a to b'.
+            Compress geometry using 'x of y' and 'a to b'.
 
         """
         warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.0.0', DeprecationWarning,2)
@@ -771,13 +777,13 @@ class Grid:
         Parameters
         ----------
         cells : sequence of int, len (3), optional
-            Number of cells  x,y,z direction.
+            Cell counts along x,y,z direction.
         offset : sequence of int, len (3), optional
             Offset (measured in cells) from old to new grid.
             Defaults to [0,0,0].
         fill : int, optional
             Material ID to fill the background.
-            Defaults to material.max() + 1.
+            Defaults to material.max()+1.
 
         Returns
         -------
@@ -790,11 +796,11 @@ class Grid:
 
         >>> import numpy as np
         >>> import damask
-        >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4)
+        >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-3)
         >>> g.canvas([32,32,16],[0,0,16])
-        cells : 33 x 32 x 16
-        size  : 0.0001 x 0.0001 x 5e-05 m³
-        origin: 0.0   0.0   5e-05 m
+        cells:  32 × 32 × 16
+        size:   0.001 × 0.001 × 0.0005 m³
+        origin: 0.0   0.0   0.0005 m
         # materials: 1
 
         """
@@ -837,16 +843,33 @@ class Grid:
 
         Examples
         --------
-        Mirror along x- and y-direction.
+        Mirror along y-direction.
 
         >>> import numpy as np
         >>> import damask
-        >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4)
-        >>> g.mirror('xy',True)
-        cells : 64 x 64 x 32
-        size  : 0.0002 x 0.0002 x 0.0001 m³
+        >>> (g := damask.Grid(np.arange(4*5*6).reshape([4,5,6]),np.ones(3)))
+        cells:  4 × 5 × 6
+        size:   1.0 × 1.0 × 1.0 m³
         origin: 0.0   0.0   0.0 m
-        # materials: 1
+        # materials: 120
+        >>> g.mirror('y')
+        cells:  4 × 8 × 6
+        size:   1.0 × 1.6 × 1.0 m³
+        origin: 0.0   0.0   0.0 m
+        # materials: 120
+
+        Reflect along x- and y-direction.
+
+        >>> g.mirror('xy',reflect=True)
+        cells:  8 × 10 × 6
+        size:   2.0 × 2.0 × 1.0 m³
+        origin: 0.0   0.0   0.0 m
+        # materials: 120
+
+        Independence of mirroring order.
+
+        >>> g.mirror('xy') == g.mirror(['y','x'])
+        True
 
         """
         if not set(directions).issubset(valid := ['x', 'y', 'z']):
@@ -884,10 +907,28 @@ class Grid:
         updated : damask.Grid
             Updated grid-based geometry.
 
+        Examples
+        --------
+        Invariance of flipping order.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> (g := damask.Grid(np.arange(4*5*6).reshape([4,5,6]),np.ones(3)))
+        cells:  4 × 5 × 6
+        size:   1.0 × 1.0 × 1.0 m³
+        origin: 0.0   0.0   0.0 m
+        # materials: 120
+        >>> g.flip('xyz') == g.flip(['x','z','y'])
+        True
+
+        Invariance of flipping a (fully) mirrored grid.
+
+        >>> g.mirror('x',True) == g.mirror('x',True).flip('x')
+        True
+
         """
         if not set(directions).issubset(valid := ['x', 'y', 'z']):
             raise ValueError(f'invalid direction "{set(directions).difference(valid)}" specified')
-
 
         mat = np.flip(self.material, [valid.index(d) for d in directions if d in valid])
 
@@ -902,7 +943,7 @@ class Grid:
                R: Rotation,
                fill: Optional[int] = None) -> 'Grid':
         """
-        Rotate grid (and pad if required).
+        Rotate grid (possibly extending its bounding box).
 
         Parameters
         ----------
@@ -910,12 +951,26 @@ class Grid:
             Rotation to apply to the grid.
         fill : int, optional
             Material ID to fill enlarged bounding box.
-            Defaults to material.max() + 1.
+            Defaults to material.max()+1.
 
         Returns
         -------
         updated : damask.Grid
             Updated grid-based geometry.
+
+        Examples
+        --------
+        Rotation by 180° (π) is equivalent to twice flipping.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> (g := damask.Grid(np.arange(4*5*6).reshape([4,5,6]),np.ones(3)))
+        cells:  4 × 5 × 6
+        size:   1.0 × 1.0 × 1.0 m³
+        origin: 0.0   0.0   0.0 m
+        # materials: 120
+        >>> g.rotate(damask.Rotation.from_axis_angle([0,0,1,180],degrees=True)) == g.flip('xy')
+        True
 
         """
         material = self.material
@@ -941,12 +996,12 @@ class Grid:
     def scale(self,
               cells: IntSequence) -> 'Grid':
         """
-        Scale grid to new cell count.
+        Scale grid to new cell counts.
 
         Parameters
         ----------
         cells : sequence of int, len (3)
-            Number of cells in x,y,z direction.
+            Cell counts along x,y,z direction.
 
         Returns
         -------
@@ -955,7 +1010,7 @@ class Grid:
 
         Examples
         --------
-        Double resolution.
+        Double grid resolution.
 
         >>> import numpy as np
         >>> import damask
@@ -965,8 +1020,8 @@ class Grid:
         origin: 0.0   0.0   0.0 m
         # materials: 1
         >>> g.scale(g.cells*2)
-        cells : 64 x 64 x 64
-        size  : 0.0001 x 0.0001 x 0.0001 m³
+        cells : 64 × 64 × 64
+        size  : 0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
         # materials: 1
 
@@ -994,7 +1049,7 @@ class Grid:
         Parameters
         ----------
         idx : numpy.ndarray of int, shape (:,:,:) or (:,:,:,3)
-          Grid of flat indices or coordinate indices.
+            Grid of flat indices or coordinate indices.
 
         Returns
         -------
@@ -1069,7 +1124,7 @@ class Grid:
 
     def sort(self) -> 'Grid':
         """
-        Sort material indices such that min(material) is located at (0,0,0).
+        Sort material indices such that min(material ID) is located at (0,0,0).
 
         Returns
         -------
@@ -1186,7 +1241,7 @@ class Grid:
         fill : int, optional
             Fill value for primitive. Defaults to material.max()+1.
         R : damask.Rotation, optional
-            Rotation of primitive. Defaults to no rotation.
+            Rotation of the primitive. Defaults to no rotation.
         inverse : bool, optional
             Retain original materials within primitive and fill outside.
             Defaults to False.
@@ -1206,8 +1261,8 @@ class Grid:
         >>> import damask
         >>> g = damask.Grid(np.zeros([64]*3,int), np.ones(3)*1e-4)
         >>> g.add_primitive(np.ones(3)*5e-5,np.ones(3)*5e-5,1)
-        cells : 64 x 64 x 64
-        size  : 0.0001 x 0.0001 x 0.0001 m³
+        cells : 64 × 64 × 64
+        size  : 0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
         # materials: 2
 
@@ -1217,8 +1272,8 @@ class Grid:
         >>> import damask
         >>> g = damask.Grid(np.zeros([64]*3,int), np.ones(3)*1e-4)
         >>> g.add_primitive(np.ones(3,int)*32,np.zeros(3),np.inf)
-        cells : 64 x 64 x 64
-        size  : 0.0001 x 0.0001 x 0.0001 m³
+        cells : 64 × 64 × 64
+        size  : 0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
         # materials: 2
 

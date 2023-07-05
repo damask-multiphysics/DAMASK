@@ -3,6 +3,7 @@
 !> @author Yi-Chin Yang, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Jennifer Nastola, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Michigan State University
 !--------------------------------------------------------------------------------------------------
 module HDF5_utilities
   use HDF5
@@ -17,6 +18,7 @@ module HDF5_utilities
 
   use prec
   use parallelization
+  use misc
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
@@ -26,7 +28,7 @@ module HDF5_utilities
   private
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads integer or float data of defined shape from file
+!> @brief Read integer or real data of defined shape from file.
 !> @details for parallel IO, all dimension except for the last need to match
 !--------------------------------------------------------------------------------------------------
   interface HDF5_read
@@ -48,7 +50,7 @@ module HDF5_utilities
   end interface HDF5_read
 
 !--------------------------------------------------------------------------------------------------
-!> @brief writes integer or real data of defined shape to file
+!> @brief Write integer or real data of defined shape to file.
 !> @details for parallel IO, all dimension except for the last need to match
 !--------------------------------------------------------------------------------------------------
   interface HDF5_write
@@ -74,7 +76,7 @@ module HDF5_utilities
   end interface HDF5_write
 
 !--------------------------------------------------------------------------------------------------
-!> @brief attached attributes of type char, integer or real to a file/dataset/group
+!> @brief Attach attribute of type char, integer, or real to a file/dataset/group.
 !--------------------------------------------------------------------------------------------------
   interface HDF5_addAttribute
     module procedure HDF5_addAttribute_str
@@ -94,6 +96,7 @@ module HDF5_utilities
 
   public :: &
     HDF5_utilities_init, &
+    HDF5_chkerr, &
     HDF5_read, &
     HDF5_write, &
     HDF5_write_str, &
@@ -110,56 +113,69 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief initialize HDF5 libary and do sanity checks
+!> @brief Initialize HDF5 libary and perform sanity checks.
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_utilities_init
+subroutine HDF5_utilities_init()
 
   integer :: hdferr, HDF5_major, HDF5_minor, HDF5_release, configFlags
   logical :: avail
   integer(SIZE_T) :: typeSize
 
 
-  print'(/,1x,a)', '<<<+-  HDF5_Utilities init  -+>>>'
+  print'(/,1x,a)', '<<<+-  HDF5_utilities init  -+>>>'
 
 
   call H5Open_f(hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Tget_size_f(H5T_NATIVE_INTEGER,typeSize, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   if (int(bit_size(0),SIZE_T)/=typeSize*8) &
     error stop 'Default integer size does not match H5T_NATIVE_INTEGER'
 
   call H5Tget_size_f(H5T_NATIVE_DOUBLE,typeSize, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
-  if (int(storage_size(0.0_pReal),SIZE_T)/=typeSize*8) &
-    error stop 'pReal does not match H5T_NATIVE_DOUBLE'
+  call HDF5_chkerr(hdferr)
+  if (int(storage_size(0.0_pREAL),SIZE_T)/=typeSize*8) &
+    error stop 'pREAL does not match H5T_NATIVE_DOUBLE'
 
   call H5get_libversion_f(HDF5_major,HDF5_minor,HDF5_release,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   compression_possible = (HDF5_major == 1 .and. HDF5_minor >= 12)                                   ! https://forum.hdfgroup.org/t/6186
 
   call H5Zfilter_avail_f(H5Z_FILTER_DEFLATE_F,avail,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   compression_possible = compression_possible .and. avail
 
   if (avail) then
     call H5Zget_filter_info_f(H5Z_FILTER_DEFLATE_F,configFlags,hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
     compression_possible = compression_possible .and. iand(H5Z_FILTER_ENCODE_ENABLED_F,configFlags) > 0
   end if
 
   call H5Zfilter_avail_f(H5Z_FILTER_SHUFFLE_F,avail,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   compression_possible = compression_possible .and. avail
 
   if (avail) then
     call H5Zget_filter_info_f(H5Z_FILTER_SHUFFLE_F,configFlags,hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
     compression_possible = compression_possible .and. iand(H5Z_FILTER_ENCODE_ENABLED_F,configFlags) > 0
   end if
 
 end subroutine HDF5_utilities_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check for HDF5 error.
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_chkerr(e)
+
+  integer, intent(in) :: e
+
+
+  if (e<0) error stop 'HDF5 error'
+
+end subroutine HDF5_chkerr
 
 
 !--------------------------------------------------------------------------------------------------
@@ -176,51 +192,42 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
   integer :: hdferr
 
 
-  if (present(mode)) then
-    m = mode
-  else
-    m = 'r'
-  end if
+  m = misc_optional(mode,'r')
 
   call H5Pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 #ifdef PETSC
-  if (present(parallel)) then
+  if (misc_optional(parallel,.true.)) &
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
-    if (parallel) call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL_F90, hdferr)
-  else
     call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL_F90, hdferr)
 #else
-    if (parallel) call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
-  else
-    call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
+    call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL,     hdferr)
 #endif
-  end if
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 #endif
 
-  if    (m == 'w') then
+  if     (m == 'w') then
     call H5Fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr,access_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   elseif (m == 'a') then
     call H5Fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr,access_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   elseif (m == 'r') then
     call H5Fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr,access_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   else
     error stop 'unknown access mode'
   end if
 
   call H5Pclose_f(plist_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 end function HDF5_openFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief close the opened HDF5 output file
+!> @brief Close an open HDF5 file.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_closeFile(fileHandle)
 
@@ -229,13 +236,13 @@ subroutine HDF5_closeFile(fileHandle)
   integer     :: hdferr
 
   call H5Fclose_f(fileHandle,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 end subroutine HDF5_closeFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a new group to the fileHandle
+!> @brief Add a new group to the file.
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function HDF5_addGroup(fileHandle,groupName)
 
@@ -248,19 +255,19 @@ integer(HID_T) function HDF5_addGroup(fileHandle,groupName)
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for data access properties
   call H5Pcreate_f(H5P_GROUP_ACCESS_F, aplist_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 !-------------------------------------------------------------------------------------------------
 ! setting I/O mode to collective
 #ifdef PETSC
   call H5Pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 #endif
 
 !-------------------------------------------------------------------------------------------------
 ! Create group
   call H5Gcreate_f(fileHandle, trim(groupName), HDF5_addGroup, hdferr, OBJECT_NAMELEN_DEFAULT_F,gapl_id = aplist_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Pclose_f(aplist_id,hdferr)
 
@@ -268,7 +275,7 @@ end function HDF5_addGroup
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief open an existing group of a file
+!> @brief Open an existing group in a file.
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function HDF5_openGroup(fileHandle,groupName)
 
@@ -284,19 +291,19 @@ integer(HID_T) function HDF5_openGroup(fileHandle,groupName)
  !-------------------------------------------------------------------------------------------------
  ! creating a property list for data access properties
   call H5Pcreate_f(H5P_GROUP_ACCESS_F, aplist_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
  !-------------------------------------------------------------------------------------------------
  ! setting I/O mode to collective
 #ifdef PETSC
   call H5Pget_all_coll_metadata_ops_f(aplist_id, is_collective, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 #endif
 
  !-------------------------------------------------------------------------------------------------
  ! opening the group
   call H5Gopen_f(fileHandle, trim(groupName), HDF5_openGroup, hdferr, gapl_id = aplist_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Pclose_f(aplist_id,hdferr)
 
@@ -304,7 +311,7 @@ end function HDF5_openGroup
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief close a group
+!> @brief Close a group.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_closeGroup(group_id)
 
@@ -313,7 +320,7 @@ subroutine HDF5_closeGroup(group_id)
   integer :: hdferr
 
   call H5Gclose_f(group_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 end subroutine HDF5_closeGroup
 
@@ -330,18 +337,14 @@ logical function HDF5_objectExists(loc_id,path)
   character(len=:), allocatable :: p
 
 
-  if (present(path)) then
-    p = trim(path)
-  else
-    p = '.'
-  end if
+  p = trim(misc_optional(path,'.'))
 
   call H5Lexists_f(loc_id, p, HDF5_objectExists, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   if (HDF5_objectExists) then
     call H5Oexists_by_name_f(loc_id, p, HDF5_objectExists, hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
 end function HDF5_objectExists
@@ -364,34 +367,30 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
   type(C_PTR), target, dimension(1) :: ptr
 
 
-  if (present(path)) then
-    p = trim(path)
-  else
-    p = '.'
-  end if
+  p = trim(misc_optional(path,'.'))
 
   attrValue_(1) = trim(attrValue)//C_NULL_CHAR
   ptr(1) = c_loc(attrValue_(1))
 
   call H5Screate_f(H5S_SCALAR_F,space_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
-  call H5Aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call H5Aexists_by_name_f(loc_id,p,attrLabel,attrExists,hdferr)
+  call HDF5_chkerr(hdferr)
   if (attrExists) then
-    call H5Adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call H5Adelete_by_name_f(loc_id,p,attrLabel,hdferr)
+    call HDF5_chkerr(hdferr)
   end if
 
-  call H5Acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_STRING,space_id,attr_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call H5Acreate_by_name_f(loc_id,p,trim(attrLabel),H5T_STRING,space_id,attr_id,hdferr)
+  call HDF5_chkerr(hdferr)
   call H5Awrite_f(attr_id, H5T_STRING, c_loc(ptr), hdferr)                                          ! ptr instead of c_loc(ptr) works on gfortran, not on ifort
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Aclose_f(attr_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sclose_f(space_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 end subroutine HDF5_addAttribute_str
 
@@ -412,31 +411,27 @@ subroutine HDF5_addAttribute_int(loc_id,attrLabel,attrValue,path)
   character(len=:), allocatable :: p
 
 
-  if (present(path)) then
-    p = trim(path)
-  else
-    p = '.'
-  end if
+  p = trim(misc_optional(path,'.'))
 
   call H5Screate_f(H5S_SCALAR_F,space_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
-  call H5Aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call H5Aexists_by_name_f(loc_id,p,attrLabel,attrExists,hdferr)
+  call HDF5_chkerr(hdferr)
   if (attrExists) then
-    call H5Adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call H5Adelete_by_name_f(loc_id,p,attrLabel,hdferr)
+    call HDF5_chkerr(hdferr)
   end if
 
-  call H5Acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_NATIVE_INTEGER,space_id,attr_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call H5Acreate_by_name_f(loc_id,p,trim(attrLabel),H5T_NATIVE_INTEGER,space_id,attr_id,hdferr)
+  call HDF5_chkerr(hdferr)
   call H5Awrite_f(attr_id, H5T_NATIVE_INTEGER, attrValue, int([1],HSIZE_T), hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Aclose_f(attr_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sclose_f(space_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 end subroutine HDF5_addAttribute_int
 
@@ -448,7 +443,7 @@ subroutine HDF5_addAttribute_real(loc_id,attrLabel,attrValue,path)
 
   integer(HID_T),   intent(in)           :: loc_id
   character(len=*), intent(in)           :: attrLabel
-  real(pReal),      intent(in)           :: attrValue
+  real(pREAL),      intent(in)           :: attrValue
   character(len=*), intent(in), optional :: path
 
   integer(HID_T) :: attr_id, space_id
@@ -457,31 +452,27 @@ subroutine HDF5_addAttribute_real(loc_id,attrLabel,attrValue,path)
   character(len=:), allocatable :: p
 
 
-  if (present(path)) then
-    p = trim(path)
-  else
-    p = '.'
-  end if
+  p = trim(misc_optional(path,'.'))
 
   call H5Screate_f(H5S_SCALAR_F,space_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
-  call H5Aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call H5Aexists_by_name_f(loc_id,p,attrLabel,attrExists,hdferr)
+  call HDF5_chkerr(hdferr)
   if (attrExists) then
-    call H5Adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call H5Adelete_by_name_f(loc_id,p,attrLabel,hdferr)
+    call HDF5_chkerr(hdferr)
   end if
 
-  call H5Acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_NATIVE_DOUBLE,space_id,attr_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call H5Acreate_by_name_f(loc_id,p,trim(attrLabel),H5T_NATIVE_DOUBLE,space_id,attr_id,hdferr)
+  call HDF5_chkerr(hdferr)
   call H5Awrite_f(attr_id, H5T_NATIVE_DOUBLE, attrValue, int([1],HSIZE_T), hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Aclose_f(attr_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sclose_f(space_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 end subroutine HDF5_addAttribute_real
 
@@ -504,11 +495,7 @@ subroutine HDF5_addAttribute_str_array(loc_id,attrLabel,attrValue,path)
   type(C_PTR), target, dimension(size(attrValue))  :: ptr
 
 
-  if (present(path)) then
-    p = trim(path)
-  else
-    p = '.'
-  end if
+  p = trim(misc_optional(path,'.'))
 
   do i=1,size(attrValue)
     attrValue_(i) = attrValue(i)//C_NULL_CHAR
@@ -516,24 +503,24 @@ subroutine HDF5_addAttribute_str_array(loc_id,attrLabel,attrValue,path)
   end do
 
   call H5Screate_simple_f(1,shape(attrValue_,kind=HSIZE_T),space_id,hdferr,shape(attrValue_,kind=HSIZE_T))
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
-  call H5Aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call H5Aexists_by_name_f(loc_id,p,attrLabel,attrExists,hdferr)
+  call HDF5_chkerr(hdferr)
   if (attrExists) then
-    call H5Adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call H5Adelete_by_name_f(loc_id,p,attrLabel,hdferr)
+    call HDF5_chkerr(hdferr)
   end if
 
-  call H5Acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_STRING,space_id,attr_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call H5Acreate_by_name_f(loc_id,p,trim(attrLabel),H5T_STRING,space_id,attr_id,hdferr)
+  call HDF5_chkerr(hdferr)
   call H5Awrite_f(attr_id, H5T_STRING, c_loc(ptr), hdferr)                                          ! ptr instead of c_loc(ptr) works on gfortran, not on ifort
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Aclose_f(attr_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sclose_f(space_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 end subroutine HDF5_addAttribute_str_array
 
@@ -555,33 +542,29 @@ subroutine HDF5_addAttribute_int_array(loc_id,attrLabel,attrValue,path)
   character(len=:), allocatable :: p
 
 
-  if (present(path)) then
-    p = trim(path)
-  else
-    p = '.'
-  end if
+  p = trim(misc_optional(path,'.'))
 
   array_size = size(attrValue,kind=HSIZE_T)
 
   call H5Screate_simple_f(1, array_size, space_id, hdferr, array_size)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
-  call H5Aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call H5Aexists_by_name_f(loc_id,p,attrLabel,attrExists,hdferr)
+  call HDF5_chkerr(hdferr)
   if (attrExists) then
-    call H5Adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call H5Adelete_by_name_f(loc_id,p,attrLabel,hdferr)
+    call HDF5_chkerr(hdferr)
   end if
 
-  call H5Acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_NATIVE_INTEGER,space_id,attr_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call H5Acreate_by_name_f(loc_id,p,trim(attrLabel),H5T_NATIVE_INTEGER,space_id,attr_id,hdferr)
+  call HDF5_chkerr(hdferr)
   call H5Awrite_f(attr_id, H5T_NATIVE_INTEGER, attrValue, array_size, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Aclose_f(attr_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sclose_f(space_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 end subroutine HDF5_addAttribute_int_array
 
@@ -593,7 +576,7 @@ subroutine HDF5_addAttribute_real_array(loc_id,attrLabel,attrValue,path)
 
   integer(HID_T),   intent(in)               :: loc_id
   character(len=*), intent(in)               :: attrLabel
-  real(pReal),      intent(in), dimension(:) :: attrValue
+  real(pREAL),      intent(in), dimension(:) :: attrValue
   character(len=*), intent(in), optional     :: path
 
   integer(HSIZE_T),dimension(1) :: array_size
@@ -603,33 +586,29 @@ subroutine HDF5_addAttribute_real_array(loc_id,attrLabel,attrValue,path)
   character(len=:), allocatable :: p
 
 
-  if (present(path)) then
-    p = trim(path)
-  else
-    p = '.'
-  end if
+  p = trim(misc_optional(path,'.'))
 
   array_size = size(attrValue,kind=HSIZE_T)
 
   call H5Screate_simple_f(1, array_size, space_id, hdferr, array_size)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
-  call H5Aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call H5Aexists_by_name_f(loc_id,p,attrLabel,attrExists,hdferr)
+  call HDF5_chkerr(hdferr)
   if (attrExists) then
-    call H5Adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call H5Adelete_by_name_f(loc_id,p,attrLabel,hdferr)
+    call HDF5_chkerr(hdferr)
   end if
 
-  call H5Acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_NATIVE_DOUBLE,space_id,attr_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call H5Acreate_by_name_f(loc_id,p,trim(attrLabel),H5T_NATIVE_DOUBLE,space_id,attr_id,hdferr)
+  call HDF5_chkerr(hdferr)
   call H5Awrite_f(attr_id, H5T_NATIVE_DOUBLE, attrValue, array_size, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Aclose_f(attr_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sclose_f(space_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 end subroutine HDF5_addAttribute_real_array
 
@@ -645,13 +624,13 @@ subroutine HDF5_setLink(loc_id,target_name,link_name)
   logical                      :: linkExists
 
   call H5Lexists_f(loc_id, link_name,linkExists, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   if (linkExists) then
     call H5Ldelete_f(loc_id,link_name, hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
   call H5Lcreate_soft_f(target_name, loc_id, link_name, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 end subroutine HDF5_setLink
 
@@ -661,7 +640,7 @@ end subroutine HDF5_setLink
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real1(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(out), dimension(:) :: dataset                                            !< data read from file
+  real(pREAL),      intent(out), dimension(:) :: dataset                                            !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -676,18 +655,15 @@ subroutine HDF5_read_real1(dataset,loc_id,datasetName,parallel)
 
   myShape = int(shape(dataset),HSIZE_T)
 
-  if (present(parallel)) then
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel)
-  else
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
-  end if
+  call initialize_read(dset_id,filespace_id,memspace_id,plist_id, aplist_id, &
+                       myStart,totalShape,loc_id,myShape,datasetName, &
+                       misc_optional(parallel,parallel_default))
+
   if (any(totalShape == 0)) return
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -698,7 +674,7 @@ end subroutine HDF5_read_real1
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real2(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(out), dimension(:,:) :: dataset                                          !< data read from file
+  real(pREAL),      intent(out), dimension(:,:) :: dataset                                          !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -713,18 +689,15 @@ subroutine HDF5_read_real2(dataset,loc_id,datasetName,parallel)
 
   myShape = int(shape(dataset),HSIZE_T)
 
-  if (present(parallel)) then
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel)
-  else
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
-  end if
+  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
+                       myStart,totalShape,loc_id,myShape,datasetName, &
+                       misc_optional(parallel,parallel_default))
+
   if (any(totalShape == 0)) return
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -735,7 +708,7 @@ end subroutine HDF5_read_real2
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real3(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(out), dimension(:,:,:) :: dataset                                        !< data read from file
+  real(pREAL),      intent(out), dimension(:,:,:) :: dataset                                        !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -750,18 +723,15 @@ subroutine HDF5_read_real3(dataset,loc_id,datasetName,parallel)
 
   myShape = int(shape(dataset),HSIZE_T)
 
-  if (present(parallel)) then
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel)
-  else
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
-  end if
+  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
+                       myStart,totalShape,loc_id,myShape,datasetName, &
+                       misc_optional(parallel,parallel_default))
+
   if (any(totalShape == 0)) return
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -772,7 +742,7 @@ end subroutine HDF5_read_real3
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real4(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(out), dimension(:,:,:,:) :: dataset                                      !< read data
+  real(pREAL),      intent(out), dimension(:,:,:,:) :: dataset                                      !< read data
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -788,18 +758,15 @@ subroutine HDF5_read_real4(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel)
-  else
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
-  end if
+  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
+                       myStart,totalShape,loc_id,myShape,datasetName, &
+                       misc_optional(parallel,parallel_default))
+
   if (any(totalShape == 0)) return
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -810,7 +777,7 @@ end subroutine HDF5_read_real4
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real5(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(out), dimension(:,:,:,:,:) :: dataset                                    !< data read from file
+  real(pREAL),      intent(out), dimension(:,:,:,:,:) :: dataset                                    !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -826,18 +793,15 @@ subroutine HDF5_read_real5(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel)
-  else
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
-  end if
+  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
+                       myStart,totalShape,loc_id,myShape,datasetName, &
+                       misc_optional(parallel,parallel_default))
+
   if (any(totalShape == 0)) return
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -848,7 +812,7 @@ end subroutine HDF5_read_real5
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real6(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(out), dimension(:,:,:,:,:,:) :: dataset                                  !< data read from file
+  real(pREAL),      intent(out), dimension(:,:,:,:,:,:) :: dataset                                  !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -864,18 +828,15 @@ subroutine HDF5_read_real6(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel)
-  else
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
-  end if
-  if (any(totalShape == 0)) return
+  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
+                       myStart,totalShape,loc_id,myShape,datasetName, &
+                       misc_optional(parallel,parallel_default))
+
+if (any(totalShape == 0)) return
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -886,7 +847,7 @@ end subroutine HDF5_read_real6
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real7(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(out), dimension(:,:,:,:,:,:,:) :: dataset                                !< data read from file
+  real(pREAL),      intent(out), dimension(:,:,:,:,:,:,:) :: dataset                                !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -902,18 +863,15 @@ subroutine HDF5_read_real7(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel)
-  else
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
-  end if
+  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
+                       myStart,totalShape,loc_id,myShape,datasetName, &
+                       misc_optional(parallel,parallel_default))
+
   if (any(totalShape == 0)) return
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -940,18 +898,15 @@ subroutine HDF5_read_int1(dataset,loc_id,datasetName,parallel)
 
   myShape = int(shape(dataset),HSIZE_T)
 
-  if (present(parallel)) then
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel)
-  else
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
-  end if
-  if (any(totalShape == 0)) return
+  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
+                       myStart,totalShape,loc_id,myShape,datasetName, &
+                       misc_optional(parallel,parallel_default))
+
+if (any(totalShape == 0)) return
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -978,18 +933,15 @@ subroutine HDF5_read_int2(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel)
-  else
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
-  end if
+  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
+                       myStart,totalShape,loc_id,myShape,datasetName, &
+                       misc_optional(parallel,parallel_default))
+
   if (any(totalShape == 0)) return
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -1015,18 +967,15 @@ subroutine HDF5_read_int3(dataset,loc_id,datasetName,parallel)
 
   myShape = int(shape(dataset),HSIZE_T)
 
-  if (present(parallel)) then
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel)
-  else
-   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
-  end if
+  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
+                         myStart,totalShape,loc_id,myShape,datasetName, &
+                         misc_optional(parallel,parallel_default))
+
   if (any(totalShape == 0)) return
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -1052,18 +1001,15 @@ subroutine HDF5_read_int4(dataset,loc_id,datasetName,parallel)
 
   myShape = int(shape(dataset),HSIZE_T)
 
-  if (present(parallel)) then
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel)
-  else
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
-  end if
+  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
+                         myStart,totalShape,loc_id,myShape,datasetName, &
+                         misc_optional(parallel,parallel_default))
+
   if (any(totalShape == 0)) return
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -1089,18 +1035,15 @@ subroutine HDF5_read_int5(dataset,loc_id,datasetName,parallel)
 
   myShape = int(shape(dataset),HSIZE_T)
 
-  if (present(parallel)) then
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel)
-  else
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
-  end if
+  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
+                         myStart,totalShape,loc_id,myShape,datasetName, &
+                         misc_optional(parallel,parallel_default))
+
   if (any(totalShape == 0)) return
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -1127,18 +1070,15 @@ subroutine HDF5_read_int6(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel)
-  else
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
-  end if
+  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
+                       myStart,totalShape,loc_id,myShape,datasetName, &
+                       misc_optional(parallel,parallel_default))
+
   if (any(totalShape == 0)) return
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -1165,18 +1105,15 @@ subroutine HDF5_read_int7(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel)
-  else
-    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
-  end if
+  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
+                       myStart,totalShape,loc_id,myShape,datasetName, &
+                       misc_optional(parallel,parallel_default))
+
   if (any(totalShape == 0)) return
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -1189,7 +1126,7 @@ end subroutine HDF5_read_int7
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real1(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(:) :: dataset                                             !< data written to file
+  real(pREAL),      intent(in), dimension(:) :: dataset                                             !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1207,18 +1144,14 @@ subroutine HDF5_write_real1(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1230,7 +1163,7 @@ end subroutine HDF5_write_real1
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real2(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(:,:) :: dataset                                           !< data written to file
+  real(pREAL),      intent(in), dimension(:,:) :: dataset                                           !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1248,18 +1181,14 @@ subroutine HDF5_write_real2(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1271,7 +1200,7 @@ end subroutine HDF5_write_real2
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real3(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(:,:,:) :: dataset                                         !< data written to file
+  real(pREAL),      intent(in), dimension(:,:,:) :: dataset                                         !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1289,18 +1218,14 @@ subroutine HDF5_write_real3(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1312,7 +1237,7 @@ end subroutine HDF5_write_real3
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real4(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(:,:,:,:) :: dataset                                       !< data written to file
+  real(pREAL),      intent(in), dimension(:,:,:,:) :: dataset                                       !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1330,18 +1255,14 @@ subroutine HDF5_write_real4(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1354,7 +1275,7 @@ end subroutine HDF5_write_real4
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real5(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(:,:,:,:,:) :: dataset                                     !< data written to file
+  real(pREAL),      intent(in), dimension(:,:,:,:,:) :: dataset                                     !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1372,18 +1293,14 @@ subroutine HDF5_write_real5(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1395,7 +1312,7 @@ end subroutine HDF5_write_real5
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real6(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(:,:,:,:,:,:) :: dataset                                   !< data written to file
+  real(pREAL),      intent(in), dimension(:,:,:,:,:,:) :: dataset                                   !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1413,18 +1330,14 @@ subroutine HDF5_write_real6(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1436,7 +1349,7 @@ end subroutine HDF5_write_real6
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real7(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(:,:,:,:,:,:,:) :: dataset                                 !< data written to file
+  real(pREAL),      intent(in), dimension(:,:,:,:,:,:,:) :: dataset                                 !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1454,18 +1367,14 @@ subroutine HDF5_write_real7(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1479,7 +1388,7 @@ end subroutine HDF5_write_real7
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(..) :: dataset                                            !< data written to file
+  real(pREAL),      intent(in), dimension(..) :: dataset                                            !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1497,13 +1406,9 @@ subroutine HDF5_write_real(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     select rank(dataset)
@@ -1529,7 +1434,7 @@ subroutine HDF5_write_real(dataset,loc_id,datasetName,parallel)
         call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                         file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
     end select
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1550,59 +1455,59 @@ subroutine HDF5_write_str(dataset,loc_id,datasetName)
 
   integer(HID_T)  :: filetype_id, memtype_id, space_id, dataset_id, dcpl
   integer :: hdferr
-  character(len=len_trim(dataset),kind=C_CHAR), target :: dataset_
+  character(len=len_trim(dataset,pI64),kind=C_CHAR), target :: dataset_
 
 
   dataset_ = trim(dataset)
 
   call H5Tcopy_f(H5T_C_S1, filetype_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
-  call H5Tset_size_f(filetype_id, int(len(dataset_)+1,HSIZE_T), hdferr)                            ! +1 for NULL
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
+  call H5Tset_size_f(filetype_id, len(dataset_,SIZE_T)+1_SIZE_T, hdferr)                            ! +1 for NULL
+  call HDF5_chkerr(hdferr)
 
   call H5Tcopy_f(H5T_FORTRAN_S1, memtype_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
-  call H5Tset_size_f(memtype_id, int(len(dataset_),HSIZE_T), hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
+  call H5Tset_size_f(memtype_id, len(dataset_,SIZE_T), hdferr)
+  call HDF5_chkerr(hdferr)
 
   call H5Pcreate_f(H5P_DATASET_CREATE_F, dcpl, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Pset_chunk_f(dcpl, 1, [1_HSIZE_T], hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Pset_Fletcher32_f(dcpl,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
-  if (compression_possible .and. len(dataset) > 1024*256) then
+  call HDF5_chkerr(hdferr)
+  if (compression_possible .and. len(dataset,pI64) > 1024_pI64*256_pI64) then
     call H5Pset_shuffle_f(dcpl, hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
     call H5Pset_deflate_f(dcpl, 6, hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call H5Screate_simple_f(1, [1_HSIZE_T], space_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   CALL H5Dcreate_f(loc_id, datasetName, filetype_id, space_id, dataset_id, hdferr, dcpl)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Dwrite_f(dataset_id, memtype_id, c_loc(dataset_(1:1)), hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Pclose_f(dcpl, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Dclose_f(dataset_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sclose_f(space_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tclose_f(memtype_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tclose_f(filetype_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 end subroutine HDF5_write_str
 
 #if defined(__GFORTRAN__)
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 1 dimension
+!> @brief Write dataset of type integer with 1 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int1(dataset,loc_id,datasetName,parallel)
 
@@ -1624,18 +1529,14 @@ subroutine HDF5_write_int1(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_INTEGER, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1643,7 +1544,7 @@ subroutine HDF5_write_int1(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_int1
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 2 dimensions
+!> @brief Write dataset of type integer with 2 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int2(dataset,loc_id,datasetName,parallel)
 
@@ -1665,18 +1566,14 @@ subroutine HDF5_write_int2(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_INTEGER, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1684,7 +1581,7 @@ subroutine HDF5_write_int2(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_int2
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 3 dimensions
+!> @brief Write dataset of type integer with 3 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int3(dataset,loc_id,datasetName,parallel)
 
@@ -1706,18 +1603,14 @@ subroutine HDF5_write_int3(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_INTEGER, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1725,7 +1618,7 @@ subroutine HDF5_write_int3(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_int3
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 4 dimensions
+!> @brief Write dataset of type integer with 4 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int4(dataset,loc_id,datasetName,parallel)
 
@@ -1747,18 +1640,14 @@ subroutine HDF5_write_int4(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_INTEGER, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1766,7 +1655,7 @@ subroutine HDF5_write_int4(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_int4
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 5 dimensions
+!> @brief Write dataset of type integer with 5 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int5(dataset,loc_id,datasetName,parallel)
 
@@ -1788,18 +1677,14 @@ subroutine HDF5_write_int5(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_INTEGER, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-   if (hdferr < 0) error stop 'HDF5 error'
+   call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1807,7 +1692,7 @@ subroutine HDF5_write_int5(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_int5
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 6 dimensions
+!> @brief Write dataset of type integer with 6 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int6(dataset,loc_id,datasetName,parallel)
 
@@ -1829,18 +1714,14 @@ subroutine HDF5_write_int6(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_INTEGER, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1848,7 +1729,7 @@ subroutine HDF5_write_int6(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_int6
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 7 dimensions
+!> @brief Write dataset of type integer with 7 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int7(dataset,loc_id,datasetName,parallel)
 
@@ -1870,18 +1751,14 @@ subroutine HDF5_write_int7(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_INTEGER, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1891,7 +1768,7 @@ end subroutine HDF5_write_int7
 #else
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 1-7 dimension
+!> @brief Write dataset of type integer with 1-7 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int(dataset,loc_id,datasetName,parallel)
 
@@ -1913,13 +1790,9 @@ subroutine HDF5_write_int(dataset,loc_id,datasetName,parallel)
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
-  if (present(parallel)) then
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
-  else
-    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
-  end if
+  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
+                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_INTEGER, &
+                        misc_optional(parallel,parallel_default))
 
   if (product(totalShape) /= 0) then
     select rank(dataset)
@@ -1945,7 +1818,7 @@ subroutine HDF5_write_int(dataset,loc_id,datasetName,parallel)
         call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                        file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
     end select
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1954,7 +1827,7 @@ end subroutine HDF5_write_int
 #endif
 
 !--------------------------------------------------------------------------------------------------
-!> @brief initialize HDF5 handles, determines global shape and start for parallel read
+!> @brief Initialize read handles and determine global shape in case of parallel IO.
 !--------------------------------------------------------------------------------------------------
 subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                            myStart, globalShape, &
@@ -1978,7 +1851,7 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties (is collective for MPI)
   call H5Pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 !--------------------------------------------------------------------------------------------------
   readSize = 0_MPI_INTEGER_KIND
@@ -1986,7 +1859,7 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
 #ifdef PETSC
   if (parallel) then
     call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
     call MPI_Allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI) ! get total output size over each process
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   end if
@@ -1997,41 +1870,41 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
 
   if (any(globalShape == 0)) then
     call H5Pclose_f(plist_id, hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
     return
   end if
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
   call H5Screate_simple_f(size(localShape), localShape, memspace_id, hdferr, localShape)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! creating a property list for IO and set it to collective
   call H5Pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 #ifdef PETSC
   call H5Pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 #endif
 
 !--------------------------------------------------------------------------------------------------
 ! open the dataset in the file and get the space ID
   call H5Dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Dget_space_f(dset_id, filespace_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! select a hyperslab (the portion of the current process) in the file
   call H5Sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, localShape, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 end subroutine initialize_read
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief closes HDF5 handles
+!> @brief Close read handles.
 !--------------------------------------------------------------------------------------------------
 subroutine finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -2039,21 +1912,21 @@ subroutine finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer :: hdferr
 
   call H5Pclose_f(plist_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Pclose_f(aplist_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Dclose_f(dset_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sclose_f(filespace_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sclose_f(memspace_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 end subroutine finalize_read
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief initialize HDF5 handles, determines global shape and start for parallel write
+!> @brief Initialize write handles and determine global shape in case of parallel IO.
 !--------------------------------------------------------------------------------------------------
 subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
                             myStart, totalShape, &
@@ -2080,11 +1953,11 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties (is collective when writing in parallel)
   call H5Pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 #ifdef PETSC
   if (parallel) then
     call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
   end if
 #endif
 
@@ -2105,47 +1978,47 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 !--------------------------------------------------------------------------------------------------
 ! chunk dataset, enable compression for larger datasets
   call H5Pcreate_f(H5P_DATASET_CREATE_F, dcpl, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   if (product(totalShape) > 0) then
     call H5Pset_Fletcher32_f(dcpl,hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
+    call HDF5_chkerr(hdferr)
 
     if (product(totalShape) >= chunkSize*2_HSIZE_T) then
       call H5Pset_chunk_f(dcpl, size(totalShape), getChunks(totalShape,chunkSize), hdferr)
-      if (hdferr < 0) error stop 'HDF5 error'
+      call HDF5_chkerr(hdferr)
       if (compression_possible) then
         call H5Pset_shuffle_f(dcpl, hdferr)
-        if (hdferr < 0) error stop 'HDF5 error'
+        call HDF5_chkerr(hdferr)
         call H5Pset_deflate_f(dcpl, 6, hdferr)
-        if (hdferr < 0) error stop 'HDF5 error'
+        call HDF5_chkerr(hdferr)
       end if
     else
       call H5Pset_chunk_f(dcpl, size(totalShape), totalShape, hdferr)
-      if (hdferr < 0) error stop 'HDF5 error'
+      call HDF5_chkerr(hdferr)
     end if
   end if
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape) and in file (global shape)
   call H5Screate_simple_f(size(myShape), myShape, memspace_id, hdferr, myShape)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Screate_simple_f(size(totalShape), totalShape, filespace_id, hdferr, totalShape)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! create dataset in the file and select a hyperslab from it (the portion of the current process)
   call H5Dcreate_f(loc_id, trim(datasetName), datatype, filespace_id, dset_id, hdferr, dcpl)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, myShape, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Pclose_f(dcpl , hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   contains
   !------------------------------------------------------------------------------------------------
-  !> @brief determine chunk layout
+  !> @brief Determine chunk layout.
   !------------------------------------------------------------------------------------------------
   pure function getChunks(totalShape,chunkSize)
 
@@ -2162,7 +2035,7 @@ end subroutine initialize_write
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief closes HDF5 handles
+!> @brief Closes write handles.
 !--------------------------------------------------------------------------------------------------
 subroutine finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
@@ -2170,13 +2043,13 @@ subroutine finalize_write(plist_id, dset_id, filespace_id, memspace_id)
   integer :: hdferr
 
   call H5Pclose_f(plist_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Dclose_f(dset_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sclose_f(filespace_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sclose_f(memspace_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 end subroutine finalize_write
 

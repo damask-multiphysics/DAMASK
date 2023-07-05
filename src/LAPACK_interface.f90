@@ -12,11 +12,11 @@ module LAPACK_interface
 
       character,   intent(in)                             :: jobvl,jobvr
       integer,     intent(in)                             :: n,lda,ldvl,ldvr,lwork
-      real(pReal), intent(inout), dimension(lda,n)        :: a
-      real(pReal), intent(out),   dimension(n)            :: wr,wi
-      real(pReal), intent(out),   dimension(ldvl,n)       :: vl
-      real(pReal), intent(out),   dimension(ldvr,n)       :: vr
-      real(pReal), intent(out),   dimension(max(1,lwork)) :: work
+      real(pREAL), intent(inout), dimension(lda,n)        :: a
+      real(pREAL), intent(out),   dimension(n)            :: wr,wi
+      real(pREAL), intent(out),   dimension(ldvl,n)       :: vl
+      real(pREAL), intent(out),   dimension(ldvr,n)       :: vr
+      real(pREAL), intent(out),   dimension(max(1,lwork)) :: work
       integer,     intent(out)                            :: info
     end subroutine dgeev
 
@@ -25,9 +25,9 @@ module LAPACK_interface
       implicit none(type,external)
 
       integer,     intent(in)                             :: n,nrhs,lda,ldb
-      real(pReal), intent(inout), dimension(lda,n)        :: a
+      real(pREAL), intent(inout), dimension(lda,n)        :: a
       integer,     intent(out),   dimension(n)            :: ipiv
-      real(pReal), intent(inout), dimension(ldb,nrhs)     :: b
+      real(pREAL), intent(inout), dimension(ldb,nrhs)     :: b
       integer,     intent(out)                            :: info
     end subroutine dgesv
 
@@ -36,7 +36,7 @@ module LAPACK_interface
       implicit none(type,external)
 
       integer,     intent(in)                             :: m,n,lda
-      real(pReal), intent(inout), dimension(lda,n)        :: a
+      real(pREAL), intent(inout), dimension(lda,n)        :: a
       integer,     intent(out),   dimension(min(m,n))     :: ipiv
       integer,     intent(out)                            :: info
     end subroutine dgetrf
@@ -46,9 +46,9 @@ module LAPACK_interface
       implicit none(type,external)
 
       integer,     intent(in)                             :: n,lda,lwork
-      real(pReal), intent(inout), dimension(lda,n)        :: a
+      real(pREAL), intent(inout), dimension(lda,n)        :: a
       integer,     intent(in),    dimension(n)            :: ipiv
-      real(pReal), intent(out),   dimension(max(1,lwork)) :: work
+      real(pREAL), intent(out),   dimension(max(1,lwork)) :: work
       integer,     intent(out)                            :: info
     end subroutine dgetri
 
@@ -58,9 +58,9 @@ module LAPACK_interface
 
       character,   intent(in)                             :: jobz,uplo
       integer,     intent(in)                             :: n,lda,lwork
-      real(pReal), intent(inout), dimension(lda,n)        :: a
-      real(pReal), intent(out),   dimension(n)            :: w
-      real(pReal), intent(out),   dimension(max(1,lwork)) :: work
+      real(pREAL), intent(inout), dimension(lda,n)        :: a
+      real(pREAL), intent(out),   dimension(n)            :: w
+      real(pREAL), intent(out),   dimension(max(1,lwork)) :: work
       integer,     intent(out)                            :: info
     end subroutine dsyev
 

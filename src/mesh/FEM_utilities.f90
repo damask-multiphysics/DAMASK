@@ -29,7 +29,7 @@ module FEM_utilities
   private
 
   logical,     public             :: cutBack = .false.                                              !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
-  real(pReal), public, protected  :: wgt                                                            !< weighting factor 1/Nelems
+  real(pREAL), public, protected  :: wgt                                                            !< weighting factor 1/Nelems
 
 
 !--------------------------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ module FEM_utilities
 
   type, public :: tComponentBC
     integer(kind(COMPONENT_UNDEFINED_ID)) :: ID
-    real(pReal), allocatable, dimension(:) :: Value
+    real(pREAL), allocatable, dimension(:) :: Value
     logical,     allocatable, dimension(:) :: Mask
   end type tComponentBC
 
@@ -88,21 +88,17 @@ contains
 
 !ToDo: use functions in variable call
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all neccessary fields, sets debug flags
+!> @brief Allocate all neccessary fields.
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_utilities_init
 
-  character(len=pStringLen) :: petsc_optionsOrder
+  character(len=pSTRLEN) :: petsc_optionsOrder
   type(tDict), pointer :: &
-    num_mesh, &
-    debug_mesh                                                                                      ! pointer to mesh debug options
+    num_mesh
   integer :: &
     p_s, &                                                                                          !< order of shape functions
     p_i                                                                                             !< integration order (quadrature rule)
-  character(len=*), parameter :: &
-    PETSCDEBUG = ' -snes_view -snes_monitor '
   PetscErrorCode :: err_PETSc
-  logical :: debugPETSc                                                                             !< use some in debug defined options for more verbose PETSc solution
 
 
   print'(/,1x,a)',   '<<<+-  FEM_utilities init  -+>>>'
@@ -117,30 +113,22 @@ subroutine FEM_utilities_init
   if (p_i < max(1,p_s-1) .or. p_i > p_s) &
     call IO_error(821,ext_msg='integration order (p_i) out of bounds')
 
-  debug_mesh => config_debug%get_dict('mesh',defaultVal=emptyDict)
-  debugPETSc =  debug_mesh%contains('PETSc')
-
-  if (debugPETSc) print'(3(/,1x,a),/)', &
-                 'Initializing PETSc with debug options: ', &
-                 trim(PETScDebug), &
-                 'add more using the "PETSc_options" keyword in numerics.yaml'
   flush(IO_STDOUT)
   call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
   CHKERRQ(err_PETSc)
-  if (debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mechanical_snes_type newtonls &
                                &-mechanical_snes_linesearch_type cp -mechanical_snes_ksp_ew &
                                &-mechanical_snes_ksp_ew_rtol0 0.01 -mechanical_snes_ksp_ew_rtolmax 0.01 &
                                &-mechanical_ksp_type fgmres -mechanical_ksp_max_it 25', err_PETSc)
   CHKERRQ(err_PETSc)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_mesh%get_asString('PETSc_options',defaultVal=''),err_PETSc)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_mesh%get_asStr('PETSc_options',defaultVal=''),err_PETSc)
   CHKERRQ(err_PETSc)
   write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', p_s
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsOrder),err_PETSc)
   CHKERRQ(err_PETSc)
 
-  wgt = real(mesh_maxNips*mesh_NcpElemsGlobal,pReal)**(-1)
+  wgt = real(mesh_maxNips*mesh_NcpElemsGlobal,pREAL)**(-1)
 
 
 end subroutine FEM_utilities_init
@@ -151,9 +139,9 @@ end subroutine FEM_utilities_init
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
 
-  real(pReal), intent(in)                 :: timeinc                                                !< loading time
+  real(pREAL), intent(in)                 :: timeinc                                                !< loading time
   logical,     intent(in)                 :: forwardData                                            !< age results
-  real(pReal),intent(out), dimension(3,3) :: P_av                                                   !< average PK stress
+  real(pREAL),intent(out), dimension(3,3) :: P_av                                                   !< average PK stress
 
   integer(MPI_INTEGER_KIND) :: err_MPI
 
@@ -182,8 +170,8 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
   PetscSection         :: section
   IS                   :: bcPointsIS
   PetscInt,    pointer :: bcPoints(:)
-  real(pReal), pointer :: localArray(:)
-  real(pReal)          :: BCValue,BCDotValue,timeinc
+  real(pREAL), pointer :: localArray(:)
+  real(pREAL)          :: BCValue,BCDotValue,timeinc
   PetscErrorCode       :: err_PETSc
 
 

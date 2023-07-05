@@ -29,15 +29,15 @@ module phase
       sizeDotState     = 0, &                                                                       !< size of dot state, i.e. state(1:sizeDot) follows time evolution by dotState rates
       offsetDeltaState = 0, &                                                                       !< index offset of delta state
       sizeDeltaState   = 0                                                                          !< size of delta state, i.e. state(offset+1:offset+sizeDelta) follows time evolution by deltaState increments
-    real(pReal), allocatable, dimension(:) :: &
+    real(pREAL), allocatable, dimension(:) :: &
       atol
     ! http://stackoverflow.com/questions/3948210
-    real(pReal), pointer,     dimension(:,:), contiguous :: &                                       !< is basically an allocatable+target, but in a type needs to be pointer
+    real(pREAL), pointer,     dimension(:,:), contiguous :: &                                       !< is basically an allocatable+target, but in a type needs to be pointer
       state0, &
       state, &                                                                                      !< state
       dotState, &                                                                                   !< rate of state change
       deltaState                                                                                    !< increment of state change
-    real(pReal), pointer,     dimension(:,:)  :: &
+    real(pREAL), pointer,     dimension(:,:)  :: &
       deltaState2
   end type
 
@@ -51,8 +51,8 @@ module phase
 
 
   character(len=2), allocatable, dimension(:) :: phase_lattice
-  real(pReal),      allocatable, dimension(:) :: phase_cOverA
-  real(pReal),      allocatable, dimension(:) :: phase_rho
+  real(pREAL),      allocatable, dimension(:) :: phase_cOverA
+  real(pREAL),      allocatable, dimension(:) :: phase_rho
 
   type(tRotationContainer), dimension(:), allocatable :: &
     phase_O_0, &
@@ -63,7 +63,7 @@ module phase
       iJacoLpresiduum, &                                                                            !< frequency of Jacobian update of residuum in Lp
       nState, &                                                                                     !< state loop limit
       nStress                                                                                       !< stress loop limit
-    real(pReal) :: &
+    real(pREAL) :: &
       subStepMinCryst, &                                                                            !< minimum (relative) size of sub-step allowed during cutback
       subStepSizeCryst, &                                                                           !< size of first substep when cutback
       subStepSizeLp, &                                                                              !< size of first substep when cutback in Lp calculation
@@ -75,17 +75,6 @@ module phase
   end type tNumerics
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
-
-  type :: tDebugOptions
-    logical :: &
-      basic, &
-      extensive, &
-      selective
-    integer :: &
-      element, &
-      ip, &
-      grain
-  end type tDebugOptions
 
   type(tPlasticState), allocatable, dimension(:), public :: &
     plasticState
@@ -144,11 +133,11 @@ module phase
 
 
     module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
-      real(pReal), intent(in) :: Delta_t
+      real(pREAL), intent(in) :: Delta_t
       integer, intent(in) :: &
         co, &                                                                                       !< counter in constituent loop
         ce
-      real(pReal), dimension(3,3,3,3) :: dPdF
+      real(pREAL), dimension(3,3,3,3) :: dPdF
     end function phase_mechanical_dPdF
 
     module subroutine mechanical_restartWrite(groupHandle,ph)
@@ -183,101 +172,105 @@ module phase
 
     module function mechanical_S(ph,en) result(S)
       integer, intent(in) :: ph,en
-      real(pReal), dimension(3,3) :: S
+      real(pREAL), dimension(3,3) :: S
     end function mechanical_S
 
     module function mechanical_L_p(ph,en) result(L_p)
       integer, intent(in) :: ph,en
-      real(pReal), dimension(3,3) :: L_p
+      real(pREAL), dimension(3,3) :: L_p
     end function mechanical_L_p
 
     module function mechanical_F_e(ph,en) result(F_e)
       integer, intent(in) :: ph,en
-      real(pReal), dimension(3,3) :: F_e
+      real(pREAL), dimension(3,3) :: F_e
     end function mechanical_F_e
 
+    module function mechanical_F_i(ph,en) result(F_i)
+      integer, intent(in) :: ph,en
+      real(pREAL), dimension(3,3) :: F_i
+    end function mechanical_F_i
 
     module function phase_F(co,ce) result(F)
       integer, intent(in) :: co, ce
-      real(pReal), dimension(3,3) :: F
+      real(pREAL), dimension(3,3) :: F
     end function phase_F
 
     module function phase_P(co,ce) result(P)
       integer, intent(in) :: co, ce
-      real(pReal), dimension(3,3) :: P
+      real(pREAL), dimension(3,3) :: P
     end function phase_P
 
     pure module function thermal_T(ph,en) result(T)
       integer, intent(in) :: ph,en
-      real(pReal) :: T
+      real(pREAL) :: T
     end function thermal_T
 
     module function thermal_dot_T(ph,en) result(dot_T)
       integer, intent(in) :: ph,en
-      real(pReal) :: dot_T
+      real(pREAL) :: dot_T
     end function thermal_dot_T
 
     module function damage_phi(ph,en) result(phi)
       integer, intent(in) :: ph,en
-      real(pReal) :: phi
+      real(pREAL) :: phi
     end function damage_phi
 
 
     module subroutine phase_set_F(F,co,ce)
-      real(pReal), dimension(3,3), intent(in) :: F
+      real(pREAL), dimension(3,3), intent(in) :: F
       integer, intent(in) :: co, ce
     end subroutine phase_set_F
 
     module subroutine phase_thermal_setField(T,dot_T, co,ce)
-      real(pReal), intent(in) :: T, dot_T
+      real(pREAL), intent(in) :: T, dot_T
       integer, intent(in) :: co, ce
     end subroutine phase_thermal_setField
 
     module subroutine phase_set_phi(phi,co,ce)
-      real(pReal), intent(in) :: phi
+      real(pREAL), intent(in) :: phi
       integer, intent(in) :: co, ce
     end subroutine phase_set_phi
 
 
     module function phase_mu_phi(co,ce) result(mu)
       integer, intent(in) :: co, ce
-      real(pReal) :: mu
+      real(pREAL) :: mu
     end function phase_mu_phi
 
     module function phase_K_phi(co,ce) result(K)
       integer, intent(in) :: co, ce
-      real(pReal), dimension(3,3) :: K
+      real(pREAL), dimension(3,3) :: K
     end function phase_K_phi
 
 
     module function phase_mu_T(co,ce) result(mu)
       integer, intent(in) :: co, ce
-      real(pReal) :: mu
+      real(pREAL) :: mu
     end function phase_mu_T
 
     module function phase_K_T(co,ce) result(K)
       integer, intent(in) :: co, ce
-      real(pReal), dimension(3,3) :: K
+      real(pREAL), dimension(3,3) :: K
     end function phase_K_T
 
 ! == cleaned:end ===================================================================================
 
     module function phase_thermal_constitutive(Delta_t,ph,en) result(converged_)
 
-      real(pReal), intent(in) :: Delta_t
+      real(pREAL), intent(in) :: Delta_t
       integer, intent(in) :: ph, en
       logical :: converged_
 
     end function phase_thermal_constitutive
 
     module function phase_damage_constitutive(Delta_t,co,ce) result(converged_)
-      real(pReal), intent(in) :: Delta_t
+      real(pREAL), intent(in) :: Delta_t
       integer, intent(in) :: co, ce
       logical :: converged_
     end function phase_damage_constitutive
 
     module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
-      real(pReal), intent(in) :: Delta_t
+      real(pREAL), intent(in) :: Delta_t
       integer, intent(in) :: co, ce
       logical :: converged_
     end function phase_mechanical_constitutive
@@ -285,25 +278,25 @@ module phase
     !ToDo: Merge all the stiffness functions
     module function phase_homogenizedC66(ph,en) result(C)
       integer, intent(in) :: ph, en
-      real(pReal), dimension(6,6) :: C
+      real(pREAL), dimension(6,6) :: C
     end function phase_homogenizedC66
     module function phase_damage_C66(C66,ph,en) result(C66_degraded)
-      real(pReal), dimension(6,6), intent(in)  :: C66
+      real(pREAL), dimension(6,6), intent(in)  :: C66
       integer,                     intent(in)  :: ph,en
-      real(pReal), dimension(6,6) :: C66_degraded
+      real(pREAL), dimension(6,6) :: C66_degraded
     end function phase_damage_C66
 
     module function phase_f_phi(phi,co,ce) result(f)
       integer, intent(in) :: ce,co
-      real(pReal), intent(in) :: &
+      real(pREAL), intent(in) :: &
         phi                                                                                         !< damage parameter
-      real(pReal) :: &
+      real(pREAL) :: &
         f
     end function phase_f_phi
 
     module function phase_f_T(ph,en) result(f)
       integer, intent(in) :: ph, en
-      real(pReal) :: f
+      real(pREAL) :: f
     end function phase_f_T
 
     module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,ip,el)
@@ -321,20 +314,19 @@ module phase
     end subroutine plastic_dependentState
 
 
-    module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,en)
+    module subroutine damage_anisobrittle_LiAndItsTangent(L_i, dL_i_dM_i, M_i, ph,en)
       integer, intent(in) :: ph, en
-      real(pReal),   intent(in),  dimension(3,3) :: &
-        S
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                          !< damage velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
+      real(pREAL),   intent(in),  dimension(3,3) :: &
+        M_i
+      real(pREAL),   intent(out), dimension(3,3) :: &
+        L_i                                                                                         !< damage velocity gradient
+      real(pREAL),   intent(out), dimension(3,3,3,3) :: &
+        dL_i_dM_i                                                                                   !< derivative of L_i with respect to M_i
     end subroutine damage_anisobrittle_LiAndItsTangent
 
   end interface
 
 
-  type(tDebugOptions) :: debugConstitutive
 #if __INTEL_COMPILER >= 1900
   public :: &
     prec, &
@@ -390,35 +382,28 @@ subroutine phase_init
   type(tDict), pointer :: &
     phases, &
     phase
-  type(tList), pointer :: &
-    debug_constitutive
+  character(len=:), allocatable :: refs
 
 
   print'(/,1x,a)', '<<<+-  phase init  -+>>>'; flush(IO_STDOUT)
 
-  debug_constitutive => config_debug%get_list('phase', defaultVal=emptyList)
-  debugConstitutive%basic     = debug_constitutive%contains('basic')
-  debugConstitutive%extensive = debug_constitutive%contains('extensive')
-  debugConstitutive%selective = debug_constitutive%contains('selective')
-  debugConstitutive%element   = config_debug%get_asInt('element',         defaultVal = 1)
-  debugConstitutive%ip        = config_debug%get_asInt('integrationpoint',defaultVal = 1)
-  debugConstitutive%grain     = config_debug%get_asInt('constituent',     defaultVal = 1)
-
-
   phases => config_material%get_dict('phase')
   allocate(phase_lattice(phases%length))
-  allocate(phase_cOverA(phases%length),source=-1.0_pReal)
+  allocate(phase_cOverA(phases%length),source=-1.0_pREAL)
   allocate(phase_rho(phases%length))
   allocate(phase_O_0(phases%length))
 
   do ph = 1,phases%length
+    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
     phase => phases%get_dict(ph)
-    phase_lattice(ph) = phase%get_asString('lattice')
+    refs = config_listReferences(phase,indent=3)
+    if (len(refs) > 0) print'(/,1x,a)', refs
+    phase_lattice(ph) = phase%get_asStr('lattice')
     if (all(phase_lattice(ph) /= ['cF','cI','hP','tI'])) &
-      call IO_error(130,ext_msg='phase_init: '//phase%get_asString('lattice'))
+      call IO_error(130,ext_msg='phase_init: '//phase%get_asStr('lattice'))
     if (any(phase_lattice(ph) == ['hP','tI'])) &
-      phase_cOverA(ph) = phase%get_asFloat('c/a')
-    phase_rho(ph) = phase%get_asFloat('rho',defaultVal=0.0_pReal)
+      phase_cOverA(ph) = phase%get_asReal('c/a')
+    phase_rho(ph) = phase%get_asReal('rho',defaultVal=0.0_pREAL)
     allocate(phase_O_0(ph)%data(count(material_ID_phase==ph)))
   end do
 
@@ -436,7 +421,7 @@ subroutine phase_init
   end do
 
   call mechanical_init(phases)
-  call damage_init
+  call damage_init()
   call thermal_init(phases)
 
   call crystallite_init()
@@ -469,13 +454,13 @@ subroutine phase_allocateState(state, &
     state%offsetDeltaState = sizeState-sizeDeltaState                                               ! deltaState occupies latter part of state by definition
   end if
 
-  allocate(state%atol             (sizeState),          source=0.0_pReal)
-  allocate(state%state0           (sizeState,NEntries), source=0.0_pReal)
-  allocate(state%state            (sizeState,NEntries), source=0.0_pReal)
+  allocate(state%atol             (sizeState),          source=0.0_pREAL)
+  allocate(state%state0           (sizeState,NEntries), source=0.0_pREAL)
+  allocate(state%state            (sizeState,NEntries), source=0.0_pREAL)
 
-  allocate(state%dotState      (sizeDotState,NEntries), source=0.0_pReal)
+  allocate(state%dotState      (sizeDotState,NEntries), source=0.0_pREAL)
 
-  allocate(state%deltaState  (sizeDeltaState,NEntries), source=0.0_pReal)
+  allocate(state%deltaState  (sizeDeltaState,NEntries), source=0.0_pREAL)
   state%deltaState2 => state%state(state%offsetDeltaState+1: &
                                    state%offsetDeltaState+state%sizeDeltaState,:)
 
@@ -535,7 +520,7 @@ end subroutine phase_result
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates and initialize per grain variables
+!> @brief Allocate and initialize.
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_init()
 
@@ -553,27 +538,27 @@ subroutine crystallite_init()
 
   num_crystallite => config_numerics%get_dict('crystallite',defaultVal=emptyDict)
 
-  num%subStepMinCryst        = num_crystallite%get_asFloat ('subStepMin',       defaultVal=1.0e-3_pReal)
-  num%subStepSizeCryst       = num_crystallite%get_asFloat ('subStepSize',      defaultVal=0.25_pReal)
-  num%stepIncreaseCryst      = num_crystallite%get_asFloat ('stepIncrease',     defaultVal=1.5_pReal)
-  num%subStepSizeLp          = num_crystallite%get_asFloat ('subStepSizeLp',    defaultVal=0.5_pReal)
-  num%subStepSizeLi          = num_crystallite%get_asFloat ('subStepSizeLi',    defaultVal=0.5_pReal)
-  num%rtol_crystalliteState  = num_crystallite%get_asFloat ('rtol_State',       defaultVal=1.0e-6_pReal)
-  num%rtol_crystalliteStress = num_crystallite%get_asFloat ('rtol_Stress',      defaultVal=1.0e-6_pReal)
-  num%atol_crystalliteStress = num_crystallite%get_asFloat ('atol_Stress',      defaultVal=1.0e-8_pReal)
-  num%iJacoLpresiduum        = num_crystallite%get_asInt   ('iJacoLpresiduum',  defaultVal=1)
-  num%nState                 = num_crystallite%get_asInt   ('nState',           defaultVal=20)
-  num%nStress                = num_crystallite%get_asInt   ('nStress',          defaultVal=40)
+  num%subStepMinCryst        = num_crystallite%get_asReal ('subStepMin',       defaultVal=1.0e-3_pREAL)
+  num%subStepSizeCryst       = num_crystallite%get_asReal ('subStepSize',      defaultVal=0.25_pREAL)
+  num%stepIncreaseCryst      = num_crystallite%get_asReal ('stepIncrease',     defaultVal=1.5_pREAL)
+  num%subStepSizeLp          = num_crystallite%get_asReal ('subStepSizeLp',    defaultVal=0.5_pREAL)
+  num%subStepSizeLi          = num_crystallite%get_asReal ('subStepSizeLi',    defaultVal=0.5_pREAL)
+  num%rtol_crystalliteState  = num_crystallite%get_asReal ('rtol_State',       defaultVal=1.0e-6_pREAL)
+  num%rtol_crystalliteStress = num_crystallite%get_asReal ('rtol_Stress',      defaultVal=1.0e-6_pREAL)
+  num%atol_crystalliteStress = num_crystallite%get_asReal ('atol_Stress',      defaultVal=1.0e-8_pREAL)
+  num%iJacoLpresiduum        = num_crystallite%get_asInt  ('iJacoLpresiduum',  defaultVal=1)
+  num%nState                 = num_crystallite%get_asInt  ('nState',           defaultVal=20)
+  num%nStress                = num_crystallite%get_asInt  ('nStress',          defaultVal=40)
 
   extmsg = ''
-  if (num%subStepMinCryst   <= 0.0_pReal)      extmsg = trim(extmsg)//' subStepMinCryst'
-  if (num%subStepSizeCryst  <= 0.0_pReal)      extmsg = trim(extmsg)//' subStepSizeCryst'
-  if (num%stepIncreaseCryst <= 0.0_pReal)      extmsg = trim(extmsg)//' stepIncreaseCryst'
-  if (num%subStepSizeLp <= 0.0_pReal)          extmsg = trim(extmsg)//' subStepSizeLp'
-  if (num%subStepSizeLi <= 0.0_pReal)          extmsg = trim(extmsg)//' subStepSizeLi'
-  if (num%rtol_crystalliteState  <= 0.0_pReal) extmsg = trim(extmsg)//' rtol_crystalliteState'
-  if (num%rtol_crystalliteStress <= 0.0_pReal) extmsg = trim(extmsg)//' rtol_crystalliteStress'
-  if (num%atol_crystalliteStress <= 0.0_pReal) extmsg = trim(extmsg)//' atol_crystalliteStress'
+  if (num%subStepMinCryst   <= 0.0_pREAL)      extmsg = trim(extmsg)//' subStepMinCryst'
+  if (num%subStepSizeCryst  <= 0.0_pREAL)      extmsg = trim(extmsg)//' subStepSizeCryst'
+  if (num%stepIncreaseCryst <= 0.0_pREAL)      extmsg = trim(extmsg)//' stepIncreaseCryst'
+  if (num%subStepSizeLp <= 0.0_pREAL)          extmsg = trim(extmsg)//' subStepSizeLp'
+  if (num%subStepSizeLi <= 0.0_pREAL)          extmsg = trim(extmsg)//' subStepSizeLi'
+  if (num%rtol_crystalliteState  <= 0.0_pREAL) extmsg = trim(extmsg)//' rtol_crystalliteState'
+  if (num%rtol_crystalliteStress <= 0.0_pREAL) extmsg = trim(extmsg)//' rtol_crystalliteStress'
+  if (num%atol_crystalliteStress <= 0.0_pREAL) extmsg = trim(extmsg)//' atol_crystalliteStress'
   if (num%iJacoLpresiduum < 1)                 extmsg = trim(extmsg)//' iJacoLpresiduum'
   if (num%nState  < 1)                         extmsg = trim(extmsg)//' nState'
   if (num%nStress < 1)                         extmsg = trim(extmsg)//' nStress'
@@ -630,13 +615,13 @@ end subroutine crystallite_orientations
 !--------------------------------------------------------------------------------------------------
 function crystallite_push33ToRef(co,ce, tensor33)
 
-  real(pReal), dimension(3,3), intent(in) :: tensor33
+  real(pREAL), dimension(3,3), intent(in) :: tensor33
   integer, intent(in):: &
     co, &
     ce
-  real(pReal), dimension(3,3) :: crystallite_push33ToRef
+  real(pREAL), dimension(3,3) :: crystallite_push33ToRef
 
-  real(pReal), dimension(3,3) :: T
+  real(pREAL), dimension(3,3) :: T
   integer :: ph, en
 
 
@@ -654,9 +639,9 @@ end function crystallite_push33ToRef
 !--------------------------------------------------------------------------------------------------
 logical pure function converged(residuum,state,atol)
 
-  real(pReal), intent(in), dimension(:) ::&
+  real(pREAL), intent(in), dimension(:) ::&
     residuum, state, atol
-  real(pReal) :: &
+  real(pREAL) :: &
     rTol
 
   rTol = num%rTol_crystalliteState

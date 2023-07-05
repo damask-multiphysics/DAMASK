@@ -15,7 +15,7 @@ from typing import Optional, Union, Callable, Any, Sequence, Literal, Dict, List
 
 import h5py
 import numpy as np
-import numpy.ma as ma
+from numpy import ma
 
 import damask
 from . import VTK
@@ -90,9 +90,9 @@ h5py._hl.attrs.AttributeManager = AttributeManagerNullterm # 'Monkey patch'
 
 class Result:
     """
-    Add data to and export data from a DADF5 file.
+    Add data to and export data from a DADF5 (DAMASK HDF5) file.
 
-    A DADF5 (DAMASK HDF5) file contains DAMASK results.
+    A DADF5 file contains DAMASK results.
     Its group/folder structure reflects the layout in material.yaml.
 
     This class provides a customizable view on the DADF5 file.
@@ -118,7 +118,7 @@ class Result:
 
     def __init__(self, fname: Union[str, Path]):
         """
-        New result view bound to a HDF5 file.
+        New result view bound to a DADF5 file.
 
         Parameters
         ----------
@@ -131,10 +131,8 @@ class Result:
             self.version_major = f.attrs['DADF5_version_major']
             self.version_minor = f.attrs['DADF5_version_minor']
 
-            if (self.version_major != 0 or not 12 <= self.version_minor <= 14) and self.version_major != 1:
+            if (self.version_major != 0 or not 14 <= self.version_minor <= 14) and self.version_major != 1:
                 raise TypeError(f'unsupported DADF5 version "{self.version_major}.{self.version_minor}"')
-            if self.version_major == 0 and self.version_minor < 14:
-                self.export_simulation_setup = None                                                 # type: ignore
 
             self.structured = 'cells' in f['geometry'].attrs.keys()
 
@@ -192,7 +190,7 @@ class Result:
         """
         Return repr(self).
 
-        Give short human-readable summary.
+        Give short, human-readable summary.
 
         """
         with h5py.File(self.fname,'r') as f:
@@ -220,7 +218,7 @@ class Result:
                      homogenizations: Union[None, str, Sequence[str], bool] = None,
                      fields: Union[None, str, Sequence[str], bool] = None) -> "Result":
         """
-        Manages the visibility of the groups.
+        Manage the visibility of the groups.
 
         Parameters
         ----------
@@ -344,15 +342,15 @@ class Result:
         Parameters
         ----------
         increments: (list of) int, (list of) str, or bool, optional.
-            Number(s) of increments to select.
+            Numbers of increments to select.
         times: (list of) float, (list of) str, or bool, optional.
-            Simulation time(s) of increments to select.
+            Simulation times of increments to select.
         phases: (list of) str, or bool, optional.
-            Name(s) of phases to select.
+            Names of phases to select.
         homogenizations: (list of) str, or bool, optional.
-            Name(s) of homogenizations to select.
+            Names of homogenizations to select.
         fields: (list of) str, or bool, optional.
-            Name(s) of fields to select.
+            Names of fields to select.
         protected: bool, optional.
             Protection status of existing data.
 
@@ -400,15 +398,15 @@ class Result:
         Parameters
         ----------
         increments: (list of) int, (list of) str, or bool, optional.
-            Number(s) of increments to select.
+            Numbers of increments to select.
         times: (list of) float, (list of) str, or bool, optional.
-            Simulation time(s) of increments to select.
+            Simulation times of increments to select.
         phases: (list of) str, or bool, optional.
-            Name(s) of phases to select.
+            Names of phases to select.
         homogenizations: (list of) str, or bool, optional.
-            Name(s) of homogenizations to select.
+            Names of homogenizations to select.
         fields: (list of) str, or bool, optional.
-            Name(s) of fields to select.
+            Names of fields to select.
 
         Returns
         -------
@@ -443,15 +441,15 @@ class Result:
         Parameters
         ----------
         increments: (list of) int, (list of) str, or bool, optional.
-            Number(s) of increments to select.
+            Numbers of increments to select.
         times: (list of) float, (list of) str, or bool, optional.
-            Simulation time(s) of increments to select.
+            Simulation times of increments to select.
         phases: (list of) str, or bool, optional.
-            Name(s) of phases to select.
+            Names of phases to select.
         homogenizations: (list of) str, or bool, optional.
-            Name(s) of homogenizations to select.
+            Names of homogenizations to select.
         fields: (list of) str, or bool, optional.
-            Name(s) of fields to select.
+            Names of fields to select.
 
         Returns
         -------
@@ -703,7 +701,7 @@ class Result:
         ...                    '1/m²','total mobile dislocation density')
         >>> r.add_calculation('np.sum(#rho_dip#,axis=1)','rho_dip_total',
         ...                    '1/m²','total dislocation dipole density')
-        >>> r.add_calculation('#rho_dip_total#+#rho_mob_total','rho_total',
+        >>> r.add_calculation('#rho_dip_total#+#rho_mob_total#','rho_total',
         ...                    '1/m²','total dislocation density')
 
         Add Mises equivalent of the Cauchy stress without storage of
@@ -746,9 +744,11 @@ class Result:
         Parameters
         ----------
         P : str, optional
-            Name of the dataset containing the first Piola-Kirchhoff stress. Defaults to 'P'.
+            Name of the dataset containing the first Piola-Kirchhoff stress.
+            Defaults to 'P'.
         F : str, optional
-            Name of the dataset containing the deformation gradient. Defaults to 'F'.
+            Name of the dataset containing the deformation gradient.
+            Defaults to 'F'.
 
         """
         self._add_generic_pointwise(self._add_stress_Cauchy,{'P':P,'F':F})
@@ -1048,14 +1048,14 @@ class Result:
                  x: str,
                  ord: Union[None, int, float, Literal['fro', 'nuc']] = None):
         """
-        Add the norm of vector or tensor.
+        Add the norm of a vector or tensor.
 
         Parameters
         ----------
         x : str
             Name of vector or tensor dataset.
         ord : {non-zero int, inf, -inf, 'fro', 'nuc'}, optional
-            Order of the norm. inf means NumPy’s inf object. For details refer to numpy.linalg.norm.
+            Order of the norm. inf means NumPy's inf object. For details refer to numpy.linalg.norm.
 
         """
         self._add_generic_pointwise(self._add_norm,{'x':x},{'ord':ord})
@@ -1077,7 +1077,7 @@ class Result:
     def add_stress_second_Piola_Kirchhoff(self,
                                           P: str = 'P',
                                           F: str = 'F'):
-        """
+        r"""
         Add second Piola-Kirchhoff stress calculated from first Piola-Kirchhoff stress and deformation gradient.
 
         Parameters
@@ -1089,9 +1089,10 @@ class Result:
 
         Notes
         -----
-        The definition of the second Piola-Kirchhoff stress (S = [F^-1 P]_sym)
+        The definition of the second Piola-Kirchhoff stress
+        :math:`\vb{S} = \left(\vb{F}^{-1} \vb{P}\right)_\text{sym}`
         follows the standard definition in nonlinear continuum mechanics.
-        As such, no intermediate configuration, for instance that reached by F_p,
+        As such, no intermediate configuration, for instance that reached by :math:`\vb{F}_\text{p}`,
         is taken into account.
 
         """
@@ -1265,10 +1266,11 @@ class Result:
 
         Notes
         -----
-        The incoporation of rotational parts into the elastic and plastic
-        deformation gradient requires it to use material/Lagragian strain measures
-        (based on 'U') for plastic strains and spatial/Eulerian strain measures
-        (based on 'V') for elastic strains when calculating averages.
+        The presence of rotational parts in the elastic and plastic deformation gradient
+        calls for the use of
+        material/Lagragian strain measures (based on 'U') for plastic strains and
+        spatial/Eulerian strain measures (based on 'V') for elastic strains
+        when calculating averages.
 
         """
         self._add_generic_pointwise(self._add_strain,{'F':F},{'t':t,'m':m})
@@ -1327,7 +1329,7 @@ class Result:
         Notes
         -----
         This function is only available for structured grids,
-        i.e. results from the grid solver.
+        i.e. fields resulting from the grid solver.
 
         """
         self._add_generic_grid(self._add_curl,{'f':f},{'size':self.size})
@@ -1356,7 +1358,7 @@ class Result:
         Notes
         -----
         This function is only available for structured grids,
-        i.e. results from the grid solver.
+        i.e. fields resulting from the grid solver.
 
         """
         self._add_generic_grid(self._add_divergence,{'f':f},{'size':self.size})
@@ -1386,7 +1388,7 @@ class Result:
         Notes
         -----
         This function is only available for structured grids,
-        i.e. results from the grid solver.
+        i.e. fields resulting from the grid solver.
 
         """
         self._add_generic_grid(self._add_gradient,{'f':f},{'size':self.size})
@@ -1404,10 +1406,10 @@ class Result:
         ----------
         func : function
             Callback function that calculates a new dataset from one or
-            more datasets per HDF5 group.
+            more datasets per DADF5 group.
         datasets : dictionary
             Details of the datasets to be used:
-            {arg (name to which the data is passed in func): label (in HDF5 file)}.
+            {arg (name to which the data is passed in func): label (in DADF5 file)}.
         args : dictionary, optional
             Arguments parsed to func.
 
@@ -1487,10 +1489,10 @@ class Result:
         ----------
         callback : function
             Callback function that calculates a new dataset from one or
-            more datasets per HDF5 group.
+            more datasets per DADF5 group.
         datasets : dictionary
             Details of the datasets to be used:
-            {arg (name to which the data is passed in func): label (in HDF5 file)}.
+            {arg (name to which the data is passed in func): label (in DADF5 file)}.
         args : dictionary, optional
             Arguments parsed to func.
 
@@ -1525,7 +1527,7 @@ class Result:
                         dataset.attrs['overwritten'] = True
                     else:
                         shape = result['data'].shape
-                        if compress := (result['data'].size >= chunk_size*2):
+                        if compress := result['data'].size >= chunk_size*2:
                             chunks = (chunk_size//np.prod(shape[1:]),)+shape[1:]
                         else:
                             chunks = shape
@@ -1853,9 +1855,10 @@ class Result:
         Export to VTK cell/point data.
 
         One VTK file per visible increment is created.
-        For point data, the VTK format is poly data (.vtp).
-        For cell data, either an image (.vti) or unstructured (.vtu) dataset
-        is written for grid-based or mesh-based simulations, respectively.
+        For point data, the VTK format is PolyData (.vtp).
+        For cell data, the file format is either ImageData (.vti)
+        or UnstructuredGrid (.vtu) for grid-based or mesh-based simulations,
+        respectively.
 
         Parameters
         ----------
@@ -2068,7 +2071,8 @@ class Result:
 
     def export_DADF5(self,
                      fname,
-                     output: Union[str, List[str]] = '*'):
+                     output: Union[str, List[str]] = '*',
+                     mapping = None):
         """
         Export visible components into a new DADF5 file.
 
@@ -2082,20 +2086,61 @@ class Result:
         output : (list of) str, optional
             Names of the datasets to export.
             Defaults to '*', in which case all visible datasets are exported.
+        mapping : numpy.ndarray of int, shape (:,:,:), optional
+            Indices for regridding.
 
         """
         if Path(fname).expanduser().absolute() == self.fname:
             raise PermissionError(f'cannot overwrite {self.fname}')
+
+        def cp(path_in,path_out,label,mapping):
+            if mapping is None:
+                path_in.copy(label,path_out)
+            else:
+                path_out.create_dataset(label,data=path_in[label][()][mapping])
+                path_out[label].attrs.update(path_in[label].attrs)
+
+
         with h5py.File(self.fname,'r') as f_in, h5py.File(fname,'w') as f_out:
-            for k,v in f_in.attrs.items():
-                f_out.attrs.create(k,v)
-            for g in ['setup','geometry','cell_to']:
+            f_out.attrs.update(f_in.attrs)
+            for g in ['setup','geometry'] + (['cell_to'] if mapping is None else []):
                 f_in.copy(g,f_out)
+
+            if mapping is not None:
+                cells = mapping.shape
+                mapping_flat = mapping.flatten(order='F')
+                f_out['geometry'].attrs['cells'] = cells
+                f_out.create_group('cell_to')                                                       # ToDo: attribute missing
+                mappings = {'phase':{},'homogenization':{}}                                         # type: ignore
+
+                mapping_phase = f_in['cell_to']['phase'][()][mapping_flat]
+                for p in np.unique(mapping_phase['label']):
+                    m = mapping_phase['label'] == p
+                    mappings['phase'][p] = mapping_phase[m]['entry']
+                    c = np.count_nonzero(m)
+                    mapping_phase[m] = list(zip((p,)*c,tuple(np.arange(c))))
+                f_out['cell_to'].create_dataset('phase',data=mapping_phase.reshape(np.prod(mapping_flat.shape),-1))
+
+                mapping_homog = f_in['cell_to']['homogenization'][()][mapping]
+                for h in np.unique(mapping_homog['label']):
+                    m = mapping_homog['label'] == h
+                    mappings['homogenization'][h] = mapping_homog[m]['entry']
+                    c = np.count_nonzero(m)
+                    mapping_homog[mapping_homog['label'] == h] = list(zip((h,)*c,tuple(np.arange(c))))
+                f_out['cell_to'].create_dataset('homogenization',data=mapping_homog.flatten())
+
 
             for inc in util.show_progress(self.visible['increments']):
                 f_in.copy(inc,f_out,shallow=True)
-                for out in _match(output,f_in['/'.join([inc,'geometry'])].keys()):
-                    f_in[inc]['geometry'].copy(out,f_out[inc]['geometry'])
+                if mapping is None:
+                    for label in ['u_p','u_n']:
+                        f_in[inc]['geometry'].copy(label,f_out[inc]['geometry'])
+                else:
+                    u_p = f_in[inc]['geometry']['u_p'][()][mapping_flat]
+                    f_out[inc]['geometry'].create_dataset('u_p',data=u_p)
+                    u_n = np.zeros((len(mapping_flat),3))                                           # ToDo: needs implementation
+                    f_out[inc]['geometry'].create_dataset('u_n',data=u_n)
+
 
                 for label in self.homogenizations:
                     f_in[inc]['homogenization'].copy(label,f_out[inc]['homogenization'],shallow=True)
@@ -2107,7 +2152,7 @@ class Result:
                         for field in _match(self.visible['fields'],f_in['/'.join([inc,ty,label])].keys()):
                             p = '/'.join([inc,ty,label,field])
                             for out in _match(output,f_in[p].keys()):
-                               f_in[p].copy(out,f_out[p])
+                                cp(f_in[p],f_out[p],out,None if mapping is None else mappings[ty][label.encode()])
 
 
     def export_simulation_setup(self,

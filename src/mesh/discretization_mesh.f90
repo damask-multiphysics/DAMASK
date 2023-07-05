@@ -49,11 +49,11 @@ module discretization_mesh
   PetscInt, dimension(:), allocatable, public, protected :: &
     mesh_boundaries
 
-  real(pReal), dimension(:,:), allocatable :: &
+  real(pREAL), dimension(:,:), allocatable :: &
     mesh_ipVolume, &                                                                                !< volume associated with IP (initially!)
     mesh_node0                                                                                      !< node x,y,z coordinates (initially!)
 
-  real(pReal), dimension(:,:,:), allocatable :: &
+  real(pREAL), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
 #ifdef PETSC_USE_64BIT_INDICES
@@ -78,8 +78,7 @@ subroutine discretization_mesh_init(restart)
 
   PetscInt :: dimPlex, &
     mesh_Nnodes, &                                                                                  !< total number of nodes in mesh
-    j, &
-    debug_element, debug_ip
+    j
   PetscSF :: sf
   DM :: globalMesh
   PetscInt :: nFaceSets, Nboundaries, NelemsGlobal, Nelems
@@ -93,7 +92,7 @@ subroutine discretization_mesh_init(restart)
     num_mesh
   integer :: p_i, dim                                                                               !< integration order (quadrature rule)
   type(tvec) :: coords_node0
-  real(pReal), pointer, dimension(:) :: &
+  real(pREAL), pointer, dimension(:) :: &
     mesh_node0_temp
 
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'
@@ -102,11 +101,6 @@ subroutine discretization_mesh_init(restart)
 ! read numerics parameter
   num_mesh => config_numerics%get_dict('mesh',defaultVal=emptyDict)
   p_i = num_mesh%get_asInt('p_i',defaultVal = 2)
-
-!---------------------------------------------------------------------------------
-! read debug parameters
-  debug_element = config_debug%get_asInt('element',defaultVal=1)
-  debug_ip      = config_debug%get_asInt('integrationpoint',defaultVal=1)
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>16)
   call DMPlexCreateFromFile(PETSC_COMM_WORLD,CLI_geomFile,'n/a',PETSC_TRUE,globalMesh,err_PETSc)
@@ -182,10 +176,7 @@ subroutine discretization_mesh_init(restart)
   end do
   materialAt = materialAt + 1_pPETSCINT
 
-  if (debug_element < 1 .or. debug_element > mesh_NcpElems) call IO_error(602,ext_msg='element')
-  if (debug_ip < 1 .or. debug_ip > mesh_maxNips)            call IO_error(602,ext_msg='IP')
-
-  allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
+  allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pREAL)
   mesh_node0(1:dimPlex,:) = reshape(mesh_node0_temp,[dimPlex,mesh_Nnodes])
 
 
@@ -209,7 +200,7 @@ subroutine mesh_FEM_build_ipVolumes(dimPlex)
   PetscInt           :: cellStart, cellEnd, cell
   PetscErrorCode     :: err_PETSc
 
-  allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
+  allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems),source=0.0_pREAL)
 
   call DMPlexGetHeightStratum(geomMesh,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -218,7 +209,7 @@ subroutine mesh_FEM_build_ipVolumes(dimPlex)
   do cell = cellStart, cellEnd-1
     call  DMPlexComputeCellGeometryFVM(geomMesh,cell,vol,pCent,pNorm,err_PETSc)
     CHKERRQ(err_PETSc)
-    mesh_ipVolume(:,cell+1) = vol/real(mesh_maxNips,pReal)
+    mesh_ipVolume(:,cell+1) = vol/real(mesh_maxNips,pREAL)
   end do
 
 end subroutine mesh_FEM_build_ipVolumes
@@ -238,7 +229,7 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
   PetscErrorCode            :: err_PETSc
 
 
-  allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
+  allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems),source=0.0_pREAL)
 
   allocate(pV0(dimPlex))
   allocatE(pCellJ(dimPlex**2))
@@ -254,7 +245,7 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
         mesh_ipCoordinates(dirI,qPt,cell+1) = pV0(dirI)
         do dirJ = 1_pPETSCINT, dimPlex
           mesh_ipCoordinates(dirI,qPt,cell+1) = mesh_ipCoordinates(dirI,qPt,cell+1) + &
-                                                pCellJ((dirI-1)*dimPlex+dirJ)*(qPoints(qOffset+dirJ) + 1.0_pReal)
+                                                pCellJ((dirI-1)*dimPlex+dirJ)*(qPoints(qOffset+dirJ) + 1.0_pREAL)
         end do
       end do
       qOffset = qOffset + dimPlex
@@ -268,11 +259,11 @@ end subroutine mesh_FEM_build_ipCoordinates
 !--------------------------------------------------------------------------------------------------
 subroutine writeGeometry(coordinates_points,coordinates_nodes)
 
-  real(pReal), dimension(:,:), intent(in) :: &
+  real(pREAL), dimension(:,:), intent(in) :: &
   coordinates_nodes, &
   coordinates_points
 
-  call result_openJobFile
+  call result_openJobFile()
   call result_closeGroup(result_addGroup('geometry'))
 
   call result_writeDataset(coordinates_nodes,'geometry','x_n', &
@@ -281,7 +272,7 @@ subroutine writeGeometry(coordinates_points,coordinates_nodes)
   call result_writeDataset(coordinates_points,'geometry','x_p', &
                            'initial coordinates of the materialpoints (cell centers)','m')
 
-  call result_closeJobFile
+  call result_closeJobFile()
 
   end subroutine writeGeometry
 

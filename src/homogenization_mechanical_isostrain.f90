@@ -40,9 +40,9 @@ end subroutine isostrain_init
 !--------------------------------------------------------------------------------------------------
 module subroutine isostrain_partitionDeformation(F,avgF)
 
-  real(pReal),   dimension (:,:,:), intent(out) :: F                                                !< partitioned deformation gradient
+  real(pREAL),   dimension (:,:,:), intent(out) :: F                                                !< partitioned deformation gradient
 
-  real(pReal),   dimension (3,3),   intent(in)  :: avgF                                             !< average deformation gradient at material point
+  real(pREAL),   dimension (3,3),   intent(in)  :: avgF                                             !< average deformation gradient at material point
 
 
   F = spread(avgF,3,size(F,3))

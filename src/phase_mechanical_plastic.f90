@@ -38,11 +38,11 @@ submodule(phase:mechanical) plastic
     end function plastic_nonlocal_init
 
     module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
-      real(pReal), dimension(3,3),     intent(out) :: &
+      real(pREAL), dimension(3,3),     intent(out) :: &
         Lp
-      real(pReal), dimension(3,3,3,3), intent(out) :: &
+      real(pREAL), dimension(3,3,3,3), intent(out) :: &
         dLp_dMp
-      real(pReal), dimension(3,3),     intent(in) :: &
+      real(pREAL), dimension(3,3),     intent(in) :: &
         Mp
       integer,                         intent(in) :: &
         ph, &
@@ -50,11 +50,11 @@ submodule(phase:mechanical) plastic
     end subroutine isotropic_LpAndItsTangent
 
     pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
-      real(pReal), dimension(3,3),     intent(out) :: &
+      real(pREAL), dimension(3,3),     intent(out) :: &
         Lp
-      real(pReal), dimension(3,3,3,3), intent(out) :: &
+      real(pREAL), dimension(3,3,3,3), intent(out) :: &
         dLp_dMp
-      real(pReal), dimension(3,3),     intent(in) :: &
+      real(pREAL), dimension(3,3),     intent(in) :: &
         Mp
       integer,                         intent(in) :: &
         ph, &
@@ -62,11 +62,11 @@ submodule(phase:mechanical) plastic
     end subroutine phenopowerlaw_LpAndItsTangent
 
     pure module subroutine kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
-      real(pReal), dimension(3,3),     intent(out) :: &
+      real(pREAL), dimension(3,3),     intent(out) :: &
         Lp
-      real(pReal), dimension(3,3,3,3), intent(out) :: &
+      real(pREAL), dimension(3,3,3,3), intent(out) :: &
         dLp_dMp
-      real(pReal), dimension(3,3),     intent(in) :: &
+      real(pREAL), dimension(3,3),     intent(in) :: &
         Mp
       integer,                         intent(in) :: &
         ph, &
@@ -74,11 +74,11 @@ submodule(phase:mechanical) plastic
     end subroutine kinehardening_LpAndItsTangent
 
     module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
-      real(pReal), dimension(3,3),     intent(out) :: &
+      real(pREAL), dimension(3,3),     intent(out) :: &
         Lp
-      real(pReal), dimension(3,3,3,3), intent(out) :: &
+      real(pREAL), dimension(3,3,3,3), intent(out) :: &
         dLp_dMp
-      real(pReal), dimension(3,3),     intent(in) :: &
+      real(pREAL), dimension(3,3),     intent(in) :: &
         Mp
       integer,                         intent(in) :: &
         ph, &
@@ -86,11 +86,11 @@ submodule(phase:mechanical) plastic
     end subroutine dislotwin_LpAndItsTangent
 
     pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
-      real(pReal), dimension(3,3),     intent(out) :: &
+      real(pREAL), dimension(3,3),     intent(out) :: &
         Lp
-      real(pReal), dimension(3,3,3,3), intent(out) :: &
+      real(pREAL), dimension(3,3,3,3), intent(out) :: &
         dLp_dMp
-      real(pReal), dimension(3,3),     intent(in) :: &
+      real(pREAL), dimension(3,3),     intent(in) :: &
         Mp
       integer,                         intent(in) :: &
         ph, &
@@ -98,11 +98,11 @@ submodule(phase:mechanical) plastic
     end subroutine dislotungsten_LpAndItsTangent
 
     module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
-      real(pReal), dimension(3,3),     intent(out) :: &
+      real(pREAL), dimension(3,3),     intent(out) :: &
         Lp
-      real(pReal), dimension(3,3,3,3), intent(out) :: &
+      real(pREAL), dimension(3,3,3,3), intent(out) :: &
         dLp_dMp
-      real(pReal), dimension(3,3),     intent(in) :: &
+      real(pREAL), dimension(3,3),     intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                         intent(in) :: &
         ph, &
@@ -111,59 +111,59 @@ submodule(phase:mechanical) plastic
 
 
     module function isotropic_dotState(Mp,ph,en) result(dotState)
-      real(pReal), dimension(3,3),  intent(in) :: &
+      real(pREAL), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
         ph, &
         en
-      real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+      real(pREAL), dimension(plasticState(ph)%sizeDotState) :: &
         dotState
     end function isotropic_dotState
 
     module function phenopowerlaw_dotState(Mp,ph,en) result(dotState)
-      real(pReal), dimension(3,3),  intent(in) :: &
+      real(pREAL), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
         ph, &
         en
-      real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+      real(pREAL), dimension(plasticState(ph)%sizeDotState) :: &
         dotState
     end function phenopowerlaw_dotState
 
     module function plastic_kinehardening_dotState(Mp,ph,en) result(dotState)
-      real(pReal), dimension(3,3),  intent(in) :: &
+      real(pREAL), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
         ph, &
         en
-      real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+      real(pREAL), dimension(plasticState(ph)%sizeDotState) :: &
         dotState
     end function plastic_kinehardening_dotState
 
     module function dislotwin_dotState(Mp,ph,en) result(dotState)
-      real(pReal), dimension(3,3),  intent(in) :: &
+      real(pREAL), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
         ph, &
         en
-      real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+      real(pREAL), dimension(plasticState(ph)%sizeDotState) :: &
         dotState
     end function dislotwin_dotState
 
     module function dislotungsten_dotState(Mp,ph,en) result(dotState)
-      real(pReal), dimension(3,3),  intent(in) :: &
+      real(pREAL), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
         ph, &
         en
-      real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+      real(pREAL), dimension(plasticState(ph)%sizeDotState) :: &
         dotState
     end function dislotungsten_dotState
 
     module subroutine nonlocal_dotState(Mp,timestep,ph,en)
-      real(pReal), dimension(3,3), intent(in) :: &
+      real(pREAL), dimension(3,3), intent(in) :: &
         Mp                                                                                          !< MandelStress
-      real(pReal), intent(in) :: &
+      real(pREAL), intent(in) :: &
         timestep                                                                                    !< substepped crystallite time increment
       integer, intent(in) :: &
         ph, &
@@ -189,7 +189,7 @@ submodule(phase:mechanical) plastic
     end subroutine nonlocal_dependentState
 
     module subroutine plastic_kinehardening_deltaState(Mp,ph,en)
-      real(pReal), dimension(3,3),  intent(in) :: &
+      real(pREAL), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
         ph, &
@@ -197,7 +197,7 @@ submodule(phase:mechanical) plastic
     end subroutine plastic_kinehardening_deltaState
 
     module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
-      real(pReal), dimension(3,3), intent(in) :: &
+      real(pREAL), dimension(3,3), intent(in) :: &
         Mp
       integer, intent(in) :: &
         ph, &
@@ -234,27 +234,27 @@ module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
                                            S, Fi, ph,en)
   integer, intent(in) :: &
     ph,en
-  real(pReal),   intent(in),  dimension(3,3) :: &
+  real(pREAL),   intent(in),  dimension(3,3) :: &
     S, &                                                                                            !< 2nd Piola-Kirchhoff stress
     Fi                                                                                              !< intermediate deformation gradient
-  real(pReal),   intent(out), dimension(3,3) :: &
+  real(pREAL),   intent(out), dimension(3,3) :: &
     Lp                                                                                              !< plastic velocity gradient
-  real(pReal),   intent(out), dimension(3,3,3,3) :: &
+  real(pREAL),   intent(out), dimension(3,3,3,3) :: &
     dLp_dS, &
     dLp_dFi                                                                                         !< derivative en Lp with respect to Fi
 
-  real(pReal), dimension(3,3,3,3) :: &
+  real(pREAL), dimension(3,3,3,3) :: &
     dLp_dMp                                                                                         !< derivative of Lp with respect to Mandel stress
-  real(pReal), dimension(3,3) :: &
+  real(pREAL), dimension(3,3) :: &
     Mp                                                                                              !< Mandel stress work conjugate with Lp
   integer :: &
     i, j
 
 
   if (phase_plasticity(ph) == PLASTIC_NONE_ID) then
-    Lp      = 0.0_pReal
-    dLp_dFi = 0.0_pReal
-    dLp_dS  = 0.0_pReal
+    Lp      = 0.0_pREAL
+    dLp_dFi = 0.0_pREAL
+    dLp_dS  = 0.0_pREAL
   else
 
     Mp = matmul(matmul(transpose(Fi),Fi),S)
@@ -300,11 +300,11 @@ module function plastic_dotState(subdt,ph,en) result(dotState)
   integer, intent(in) :: &
     ph, &
     en
-  real(pReal),  intent(in) :: &
+  real(pREAL),  intent(in) :: &
     subdt                                                                                           !< timestep
-  real(pReal),              dimension(3,3) :: &
+  real(pREAL),              dimension(3,3) :: &
     Mp
-  real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+  real(pREAL), dimension(plasticState(ph)%sizeDotState) :: &
     dotState
 
 
@@ -376,7 +376,7 @@ module function plastic_deltaState(ph, en) result(broken)
     en
   logical :: broken
 
-  real(pReal), dimension(3,3) :: &
+  real(pREAL), dimension(3,3) :: &
     Mp
   integer :: &
     mySize
@@ -434,7 +434,7 @@ function plastic_active(plastic_label) result(active_plastic)
     phase => phases%get_dict(ph)
     mech  => phase%get_dict('mechanical')
     pl    => mech%get_dict('plastic',defaultVal = emptyDict)
-    active_plastic(ph) = pl%get_asString('type',defaultVal='none') == plastic_label
+    active_plastic(ph) = pl%get_asStr('type',defaultVal='none') == plastic_label
   end do
 
 end function plastic_active

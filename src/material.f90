@@ -22,7 +22,7 @@ module material
   end type tRotationContainer
 
   type, public :: tTensorContainer
-    real(pReal), dimension(:,:,:), allocatable :: data
+    real(pREAL), dimension(:,:,:), allocatable :: data
   end type tTensorContainer
 
 
@@ -45,7 +45,7 @@ module material
     material_ID_phase, &                                                                            !< Number of the phase
     material_entry_phase                                                                            !< Position in array of used phase
 
-  real(pReal), dimension(:,:), allocatable, public, protected :: &
+  real(pREAL), dimension(:,:), allocatable, public, protected :: &
     material_v                                                                                      ! fraction
 
   public :: &
@@ -69,17 +69,17 @@ subroutine material_init(restart)
 
 
   if (.not. restart) then
-    call result_openJobFile
+    call result_openJobFile()
     call result_mapping_phase(material_ID_phase,material_entry_phase,material_name_phase)
     call result_mapping_homogenization(material_ID_homogenization,material_entry_homogenization,material_name_homogenization)
-    call result_closeJobFile
+    call result_closeJobFile()
   end if
 
 end subroutine material_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Parse material.yaml to get the global structure
+!> @brief Parse material.yaml to get the global structure.
 !--------------------------------------------------------------------------------------------------
 subroutine parse()
 
@@ -97,9 +97,9 @@ subroutine parse()
     counterHomogenization, &
     ho_of
   integer, dimension(:,:), allocatable :: ph_of
-  real(pReal), dimension(:,:), allocatable :: v_of
+  real(pREAL), dimension(:,:), allocatable :: v_of
 
-  real(pReal) :: v
+  real(pREAL) :: v
   integer :: &
     el, ip, &
     ho, ph, &
@@ -125,20 +125,20 @@ subroutine parse()
   end do
   homogenization_maxNconstituents = maxval(homogenization_Nconstituents)
 
-  allocate(material_v(homogenization_maxNconstituents,discretization_Ncells),source=0.0_pReal)
+  allocate(material_v(homogenization_maxNconstituents,discretization_Ncells),source=0.0_pREAL)
 
   allocate(material_O_0(materials%length))
   allocate(material_V_e_0(materials%length))
 
   allocate(ho_of(materials%length))
   allocate(ph_of(materials%length,homogenization_maxNconstituents),source=-1)
-  allocate( v_of(materials%length,homogenization_maxNconstituents),source=0.0_pReal)
+  allocate( v_of(materials%length,homogenization_maxNconstituents),source=0.0_pREAL)
 
   ! Parse YAML structure. Manual loop over linked list to have O(n) instead of O(n^2) complexity
   item => materials%first
   do ma = 1, materials%length
     material => item%node%asDict()
-    ho_of(ma) = homogenizations%index(material%get_asString('homogenization'))
+    ho_of(ma) = homogenizations%index(material%get_asStr('homogenization'))
     constituents => material%get_list('constituents')
 
     homogenization => homogenizations%get_dict(ho_of(ma))
@@ -149,16 +149,16 @@ subroutine parse()
 
     do co = 1, constituents%length
       constituent => constituents%get_dict(co)
-       v_of(ma,co) = constituent%get_asFloat('v')
-      ph_of(ma,co) = phases%index(constituent%get_asString('phase'))
+       v_of(ma,co) = constituent%get_asReal('v')
+      ph_of(ma,co) = phases%index(constituent%get_asStr('phase'))
 
-      call material_O_0(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
-      material_V_e_0(ma)%data(1:3,1:3,co) = constituent%get_as2dFloat('V_e',defaultVal=math_I3,requiredShape=[3,3])
+      call material_O_0(ma)%data(co)%fromQuaternion(constituent%get_as1dReal('O',requiredSize=4))
+      material_V_e_0(ma)%data(1:3,1:3,co) = constituent%get_as2dReal('V_e',defaultVal=math_I3,requiredShape=[3,3])
       if (any(dNeq(material_V_e_0(ma)%data(1:3,1:3,co),transpose(material_V_e_0(ma)%data(1:3,1:3,co))))) &
         call IO_error(147)
 
     end do
-    if (dNeq(sum(v_of(ma,:)),1.0_pReal,1.e-9_pReal)) call IO_error(153,ext_msg='constituent')
+    if (dNeq(sum(v_of(ma,:)),1.0_pREAL,1.e-9_pREAL)) call IO_error(153,ext_msg='constituent')
 
     item => item%next
   end do
@@ -212,8 +212,8 @@ end subroutine parse
 function getKeys(dict)
 
   type(tDict), intent(in) :: dict
-  character(len=:),          dimension(:), allocatable :: getKeys
-  character(len=pStringLen), dimension(:), allocatable :: temp
+  character(len=:),       dimension(:), allocatable :: getKeys
+  character(len=pSTRLEN), dimension(:), allocatable :: temp
 
   integer :: i,l
 

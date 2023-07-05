@@ -47,8 +47,8 @@ module system_routines
       use prec
       implicit none(type,external)
 
-      character(kind=C_CHAR), dimension(pStringLen+1), intent(out) :: hostname                        ! NULL-terminated array
-      integer(C_INT),                                  intent(out) :: stat
+      character(kind=C_CHAR), dimension(pSTRLEN+1), intent(out) :: hostname                         ! NULL-terminated array
+      integer(C_INT),                               intent(out) :: stat
     end subroutine getHostName_C
 
     subroutine getUserName_C(username, stat) bind(C)
@@ -56,8 +56,8 @@ module system_routines
       use prec
       implicit none(type,external)
 
-      character(kind=C_CHAR), dimension(pStringLen+1), intent(out) :: username                        ! NULL-terminated array
-      integer(C_INT),                                  intent(out) :: stat
+      character(kind=C_CHAR), dimension(pSTRLEN+1), intent(out) :: username                         ! NULL-terminated array
+      integer(C_INT),                               intent(out) :: stat
     end subroutine getUserName_C
 
     subroutine signalint_C(handler) bind(C)
@@ -94,7 +94,7 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief set the current working directory
+!> @brief Set the current working directory.
 !--------------------------------------------------------------------------------------------------
 logical function setCWD(path)
 
@@ -107,7 +107,7 @@ end function setCWD
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief get the current working directory
+!> @brief Get the current working directory.
 !--------------------------------------------------------------------------------------------------
 function getCWD()
 
@@ -129,13 +129,13 @@ end function getCWD
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief get the host name
+!> @brief Get the host name.
 !--------------------------------------------------------------------------------------------------
 function getHostName()
 
   character(len=:), allocatable :: getHostName
 
-  character(kind=C_CHAR), dimension(pStringLen+1) :: getHostName_Cstring
+  character(kind=C_CHAR), dimension(pSTRLEN+1) :: getHostName_Cstring
   integer(C_INT) :: stat
 
 
@@ -151,13 +151,13 @@ end function getHostName
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief get the user name
+!> @brief Get the user name.
 !--------------------------------------------------------------------------------------------------
 function getUserName()
 
   character(len=:), allocatable :: getUserName
 
-  character(kind=C_CHAR), dimension(pStringLen+1) :: getUserName_Cstring
+  character(kind=C_CHAR), dimension(pSTRLEN+1) :: getUserName_Cstring
   integer(C_INT) :: stat
 
 
@@ -181,15 +181,15 @@ pure function c_f_string(c_string) result(f_string)
   character(kind=C_CHAR), dimension(:), intent(in) :: c_string
   character(len=:),       allocatable              :: f_string
 
-  integer :: i
+  integer(pI64) :: i
 
 
-  allocate(character(len=size(c_string))::f_string)
-  arrayToString: do i=1,len(f_string)
+  allocate(character(len=size(c_string,kind=pI64))::f_string)
+  arrayToString: do i=1_pI64,len(f_string,pI64)
     if (c_string(i) /= C_NULL_CHAR) then
       f_string(i:i)=c_string(i)
     else
-      f_string = f_string(:i-1)
+      f_string = f_string(:i-1_pI64)
       exit
     end if
   end do arrayToString
@@ -203,11 +203,11 @@ end function c_f_string
 !--------------------------------------------------------------------------------------------------
 pure function f_c_string(f_string) result(c_string)
 
-  character(len=*), intent(in)                            :: f_string
-  character(kind=C_CHAR), dimension(len_trim(f_string)+1) :: c_string
+  character(len=*), intent(in) :: f_string
+  character(kind=C_CHAR), dimension(len_trim(f_string,pI64)+1_pI64) :: c_string
 
 
-  c_string = transfer(trim(f_string)//C_NULL_CHAR,c_string,size=size(c_string))
+  c_string = transfer(trim(f_string)//C_NULL_CHAR,c_string,size=size(c_string,kind=pI64))
 
 end function f_c_string
 

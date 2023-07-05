@@ -8,11 +8,11 @@
 submodule(phase:plastic) dislotungsten
 
   type :: tParameters
-    real(pReal) :: &
-      D    = 1.0_pReal, &                                                                           !< grain size
-      D_0  = 1.0_pReal, &                                                                           !< prefactor for self-diffusion coefficient
-      Q_cl = 1.0_pReal                                                                              !< activation energy for dislocation climb
-    real(pReal),               allocatable, dimension(:) :: &
+    real(pREAL) :: &
+      D    = 1.0_pREAL, &                                                                           !< grain size
+      D_0  = 1.0_pREAL, &                                                                           !< prefactor for self-diffusion coefficient
+      Q_cl = 1.0_pREAL                                                                              !< activation energy for dislocation climb
+    real(pREAL),               allocatable, dimension(:) :: &
       b_sl, &                                                                                       !< magnitude of Burgers vector [m]
       d_caron, &                                                                                    !< distance of spontaneous annhihilation
       i_sl, &                                                                                       !< Adj. parameter for distance between 2 forest dislocations
@@ -26,10 +26,10 @@ submodule(phase:plastic) dislotungsten
       h, &                                                                                          !< height of the kink pair
       w, &                                                                                          !< width of the kink pair
       omega                                                                                         !< attempt frequency for kink pair nucleation
-    real(pReal),               allocatable, dimension(:,:) :: &
+    real(pREAL),               allocatable, dimension(:,:) :: &
       h_sl_sl, &                                                                                    !< slip resistance from slip activity
       forestProjection
-    real(pReal),               allocatable, dimension(:,:,:) :: &
+    real(pREAL),               allocatable, dimension(:,:,:) :: &
       P_sl, &
       P_nS_pos, &
       P_nS_neg
@@ -37,7 +37,7 @@ submodule(phase:plastic) dislotungsten
       sum_N_sl                                                                                      !< total number of active slip system
     character(len=:),          allocatable               :: &
       isotropic_bound
-    character(len=pStringLen), allocatable, dimension(:) :: &
+    character(len=pSTRLEN), allocatable, dimension(:) :: &
       output
     logical :: &
       dipoleFormation                                                                               !< flag indicating consideration of dipole formation
@@ -53,14 +53,14 @@ submodule(phase:plastic) dislotungsten
   end type tIndexDotState
 
   type :: tDislotungstenState
-    real(pReal), dimension(:,:), pointer :: &
+    real(pREAL), dimension(:,:), pointer :: &
       rho_mob, &
       rho_dip, &
       gamma_sl
   end type tDislotungstenState
 
   type :: tDislotungstenDependentState
-    real(pReal), dimension(:,:), allocatable :: &
+    real(pREAL), dimension(:,:), allocatable :: &
       Lambda_sl, &
       tau_pass
   end type tDislotungstenDependentState
@@ -83,17 +83,20 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    ph, &
+    ph, i, &
     Nmembers, &
     sizeState, sizeDotState, &
     startIndex, endIndex
   integer,    dimension(:), allocatable :: &
     N_sl
-  real(pReal),dimension(:), allocatable :: &
+  real(pREAL),dimension(:), allocatable :: &
+    f_edge, &                                                                                       !< edge character fraction of total dislocation density
     rho_mob_0, &                                                                                    !< initial dislocation density
     rho_dip_0, &                                                                                    !< initial dipole density
     a                                                                                               !< non-Schmid coefficients
-  character(len=:), allocatable :: extmsg
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &
@@ -121,20 +124,25 @@ module function plastic_dislotungsten_init() result(myPlasticity)
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
 
-    associate(prm => param(ph), stt => state(ph), dst => dependentState(ph), &
+    associate(prm => param(ph), &
+              stt => state(ph), dst => dependentState(ph), &
               idx_dot => indexDotState(ph))
 
     phase => phases%get_dict(ph)
     mech  => phase%get_dict('mechanical')
     pl  => mech%get_dict('plastic')
 
+    print'(/,1x,a,1x,i0,a)', 'phase',ph,': '//phases%key(ph)
+    refs = config_listReferences(pl,indent=3)
+    if (len(refs) > 0) print'(/,1x,a)', refs
+
 #if defined (__GFORTRAN__)
-    prm%output = output_as1dString(pl)
+    prm%output = output_as1dStr(pl)
 #else
-    prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
+    prm%output = pl%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
 
-    prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='isostrain')
+    prm%isotropic_bound = pl%get_asStr('isotropic_bound',defaultVal='isostrain')
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -145,7 +153,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
-        a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
+        a = pl%get_as1dReal('a_nonSchmid',defaultVal = emptyRealArray)
         prm%P_nS_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
         prm%P_nS_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
       else
@@ -153,65 +161,64 @@ module function plastic_dislotungsten_init() result(myPlasticity)
         prm%P_nS_neg = prm%P_sl
       end if
 
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'), &
+      prm%dipoleformation = .not. pl%get_asBool('no_dipole_formation', defaultVal=.false.)
+
+      prm%D    = pl%get_asReal('D')
+      prm%D_0  = pl%get_asReal('D_0')
+      prm%Q_cl = pl%get_asReal('Q_cl')
+
+      f_edge          = math_expand(pl%get_as1dReal('f_edge',      requiredSize=size(N_sl), &
+                                                    defaultVal=[(0.5_pREAL, i=1,size(N_sl))]),N_sl)
+      rho_mob_0       = math_expand(pl%get_as1dReal('rho_mob_0',   requiredSize=size(N_sl)),N_sl)
+      rho_dip_0       = math_expand(pl%get_as1dReal('rho_dip_0',   requiredSize=size(N_sl)),N_sl)
+      prm%b_sl        = math_expand(pl%get_as1dReal('b_sl',        requiredSize=size(N_sl)),N_sl)
+      prm%Q_s         = math_expand(pl%get_as1dReal('Q_s',         requiredSize=size(N_sl)),N_sl)
+      prm%i_sl        = math_expand(pl%get_as1dReal('i_sl',        requiredSize=size(N_sl)),N_sl)
+      prm%tau_Peierls = math_expand(pl%get_as1dReal('tau_Peierls', requiredSize=size(N_sl)),N_sl)
+      prm%p           = math_expand(pl%get_as1dReal('p_sl',        requiredSize=size(N_sl)),N_sl)
+      prm%q           = math_expand(pl%get_as1dReal('q_sl',        requiredSize=size(N_sl)),N_sl)
+      prm%h           = math_expand(pl%get_as1dReal('h',           requiredSize=size(N_sl)),N_sl)
+      prm%w           = math_expand(pl%get_as1dReal('w',           requiredSize=size(N_sl)),N_sl)
+      prm%omega       = math_expand(pl%get_as1dReal('omega',       requiredSize=size(N_sl)),N_sl)
+      prm%B           = math_expand(pl%get_as1dReal('B',           requiredSize=size(N_sl)),N_sl)
+      prm%d_caron     = prm%b_sl *  pl%get_asReal('D_a')
+      prm%f_at        = prm%b_sl**3*pl%get_asReal('f_at')
+
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
                                                    phase_lattice(ph))
-      prm%forestProjection = lattice_forestProjection_edge(N_sl,phase_lattice(ph),&
-                                                           phase_cOverA(ph))
-      prm%forestProjection = transpose(prm%forestProjection)
 
-      rho_mob_0       = pl%get_as1dFloat('rho_mob_0',     requiredSize=size(N_sl))
-      rho_dip_0       = pl%get_as1dFloat('rho_dip_0',     requiredSize=size(N_sl))
-      prm%b_sl        = pl%get_as1dFloat('b_sl',          requiredSize=size(N_sl))
-      prm%Q_s         = pl%get_as1dFloat('Q_s',           requiredSize=size(N_sl))
-
-      prm%i_sl        = pl%get_as1dFloat('i_sl',          requiredSize=size(N_sl))
-      prm%tau_Peierls = pl%get_as1dFloat('tau_Peierls',   requiredSize=size(N_sl))
-      prm%p           = pl%get_as1dFloat('p_sl',          requiredSize=size(N_sl))
-      prm%q           = pl%get_as1dFloat('q_sl',          requiredSize=size(N_sl))
-      prm%h           = pl%get_as1dFloat('h',             requiredSize=size(N_sl))
-      prm%w           = pl%get_as1dFloat('w',             requiredSize=size(N_sl))
-      prm%omega       = pl%get_as1dFloat('omega',         requiredSize=size(N_sl))
-      prm%B           = pl%get_as1dFloat('B',             requiredSize=size(N_sl))
-
-      prm%D    = pl%get_asFloat('D')
-      prm%D_0  = pl%get_asFloat('D_0')
-      prm%Q_cl = pl%get_asFloat('Q_cl')
-      prm%f_at = pl%get_asFloat('f_at') * prm%b_sl**3
-
-      prm%dipoleformation = .not. pl%get_asBool('no_dipole_formation', defaultVal = .false.)
-
-      ! expand: family => system
-      rho_mob_0          = math_expand(rho_mob_0,       N_sl)
-      rho_dip_0          = math_expand(rho_dip_0,       N_sl)
-      prm%q              = math_expand(prm%q,           N_sl)
-      prm%p              = math_expand(prm%p,           N_sl)
-      prm%Q_s            = math_expand(prm%Q_s,         N_sl)
-      prm%b_sl           = math_expand(prm%b_sl,        N_sl)
-      prm%h              = math_expand(prm%h,           N_sl)
-      prm%w              = math_expand(prm%w,           N_sl)
-      prm%omega          = math_expand(prm%omega,       N_sl)
-      prm%tau_Peierls    = math_expand(prm%tau_Peierls, N_sl)
-      prm%B              = math_expand(prm%B,           N_sl)
-      prm%i_sl           = math_expand(prm%i_sl,        N_sl)
-      prm%f_at           = math_expand(prm%f_at,        N_sl)
-      prm%d_caron        = pl%get_asFloat('D_a') * prm%b_sl
+      prm%forestProjection = spread(          f_edge,1,prm%sum_N_sl) &
+                           * lattice_forestProjection_edge (N_sl,phase_lattice(ph),phase_cOverA(ph)) &
+                           + spread(1.0_pREAL-f_edge,1,prm%sum_N_sl) &
+                           * lattice_forestProjection_screw(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
       ! sanity checks
-      if (    prm%D_0          <  0.0_pReal)  extmsg = trim(extmsg)//' D_0'
-      if (    prm%Q_cl         <= 0.0_pReal)  extmsg = trim(extmsg)//' Q_cl'
-      if (any(rho_mob_0        <  0.0_pReal)) extmsg = trim(extmsg)//' rho_mob_0'
-      if (any(rho_dip_0        <  0.0_pReal)) extmsg = trim(extmsg)//' rho_dip_0'
-      if (any(prm%b_sl         <= 0.0_pReal)) extmsg = trim(extmsg)//' b_sl'
-      if (any(prm%Q_s          <= 0.0_pReal)) extmsg = trim(extmsg)//' Q_s'
-      if (any(prm%tau_Peierls  <  0.0_pReal)) extmsg = trim(extmsg)//' tau_Peierls'
-      if (any(prm%B            <  0.0_pReal)) extmsg = trim(extmsg)//' B'
-      if (any(prm%d_caron      <  0.0_pReal)) extmsg = trim(extmsg)//' d_caron(D_a,b_sl)'
-      if (any(prm%f_at         <= 0.0_pReal)) extmsg = trim(extmsg)//' f_at or b_sl'
+      if (    prm%D_0          <  0.0_pREAL)  extmsg = trim(extmsg)//' D_0'
+      if (    prm%Q_cl         <= 0.0_pREAL)  extmsg = trim(extmsg)//' Q_cl'
+      if (any(rho_mob_0        <  0.0_pREAL)) extmsg = trim(extmsg)//' rho_mob_0'
+      if (any(rho_dip_0        <  0.0_pREAL)) extmsg = trim(extmsg)//' rho_dip_0'
+      if (any(prm%b_sl         <= 0.0_pREAL)) extmsg = trim(extmsg)//' b_sl'
+      if (any(prm%Q_s          <= 0.0_pREAL)) extmsg = trim(extmsg)//' Q_s'
+      if (any(prm%tau_Peierls  <  0.0_pREAL)) extmsg = trim(extmsg)//' tau_Peierls'
+      if (any(prm%B            <  0.0_pREAL)) extmsg = trim(extmsg)//' B'
+      if (any(prm%d_caron      <  0.0_pREAL)) extmsg = trim(extmsg)//' d_caron(D_a,b_sl)'
+      if (any(prm%f_at         <= 0.0_pREAL)) extmsg = trim(extmsg)//' f_at or b_sl'
 
     else slipActive
-      rho_mob_0 = emptyRealArray; rho_dip_0 = emptyRealArray
-      allocate(prm%b_sl,prm%d_caron,prm%i_sl,prm%f_at,prm%tau_Peierls, &
-               prm%Q_s,prm%p,prm%q,prm%B,prm%h,prm%w,prm%omega, &
+      rho_mob_0 = emptyRealArray
+      rho_dip_0 = emptyRealArray
+      allocate(prm%b_sl, &
+               prm%d_caron, &
+               prm%i_sl, &
+               prm%f_at, &
+               prm%tau_Peierls, &
+               prm%Q_s, &
+               prm%p, &
+               prm%q, &
+               prm%B, &
+               prm%h, &
+               prm%w, &
+               prm%omega, &
                source = emptyRealArray)
       allocate(prm%forestProjection(0,0))
       allocate(prm%h_sl_sl         (0,0))
@@ -232,26 +239,26 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     endIndex   = prm%sum_N_sl
     idx_dot%rho_mob = [startIndex,endIndex]
     stt%rho_mob => plasticState(ph)%state(startIndex:endIndex,:)
-    stt%rho_mob =  spread(rho_mob_0,2,Nmembers)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
-    if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_rho'
+    stt%rho_mob = spread(rho_mob_0,2,Nmembers)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_rho',defaultVal=1.0_pREAL)
+    if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pREAL)) extmsg = trim(extmsg)//' atol_rho'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     idx_dot%rho_dip = [startIndex,endIndex]
     stt%rho_dip => plasticState(ph)%state(startIndex:endIndex,:)
-    stt%rho_dip =  spread(rho_dip_0,2,Nmembers)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
+    stt%rho_dip = spread(rho_dip_0,2,Nmembers)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_rho',defaultVal=1.0_pREAL)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     idx_dot%gamma_sl = [startIndex,endIndex]
     stt%gamma_sl => plasticState(ph)%state(startIndex:endIndex,:)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
-    if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_gamma',defaultVal=1.0e-6_pREAL)
+    if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pREAL)) extmsg = trim(extmsg)//' atol_gamma'
 
-    allocate(dst%Lambda_sl(prm%sum_N_sl,Nmembers), source=0.0_pReal)
-    allocate(dst%tau_pass(prm%sum_N_sl,Nmembers),  source=0.0_pReal)
+    allocate(dst%Lambda_sl(prm%sum_N_sl,Nmembers), source=0.0_pREAL)
+    allocate(dst%tau_pass (prm%sum_N_sl,Nmembers), source=0.0_pREAL)
 
     end associate
 
@@ -269,11 +276,11 @@ end function plastic_dislotungsten_init
 !--------------------------------------------------------------------------------------------------
 pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
                                                      Mp,ph,en)
-  real(pReal), dimension(3,3),     intent(out) :: &
+  real(pREAL), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
-  real(pReal), dimension(3,3,3,3), intent(out) :: &
+  real(pREAL), dimension(3,3,3,3), intent(out) :: &
     dLp_dMp                                                                                         !< derivative of Lp with respect to the Mandel stress
-  real(pReal), dimension(3,3), intent(in) :: &
+  real(pREAL), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                     intent(in) :: &
     ph, &
@@ -281,16 +288,16 @@ pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
 
   integer :: &
     i,k,l,m,n
-  real(pReal) :: &
+  real(pREAL) :: &
     T                                                                                               !< temperature
-  real(pReal), dimension(param(ph)%sum_N_sl) :: &
+  real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma_pos,dot_gamma_neg, &
     ddot_gamma_dtau_pos,ddot_gamma_dtau_neg
 
 
   T = thermal_T(ph,en)
-  Lp = 0.0_pReal
-  dLp_dMp = 0.0_pReal
+  Lp = 0.0_pREAL
+  dLp_dMp = 0.0_pREAL
 
   associate(prm => param(ph))
 
@@ -313,15 +320,15 @@ end subroutine dislotungsten_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 module function dislotungsten_dotState(Mp,ph,en) result(dotState)
 
-  real(pReal), dimension(3,3),  intent(in) :: &
+  real(pREAL), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
     ph, &
     en
-  real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+  real(pREAL), dimension(plasticState(ph)%sizeDotState) :: &
     dotState
 
-  real(pReal), dimension(param(ph)%sum_N_sl) :: &
+  real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma_pos, dot_gamma_neg,&
     tau_pos,&
     tau_neg, &
@@ -329,7 +336,7 @@ module function dislotungsten_dotState(Mp,ph,en) result(dotState)
     dot_rho_dip_formation, &
     dot_rho_dip_climb, &
     d_hat
-  real(pReal) :: &
+  real(pREAL) :: &
     mu, T
 
 
@@ -347,26 +354,26 @@ module function dislotungsten_dotState(Mp,ph,en) result(dotState)
 
     dot_gamma_sl = abs(dot_gamma_pos+dot_gamma_neg)
 
-    where(dEq0((tau_pos+tau_neg)*0.5_pReal))
-      dot_rho_dip_formation = 0.0_pReal
-      dot_rho_dip_climb     = 0.0_pReal
+    where(dEq0((tau_pos+tau_neg)*0.5_pREAL))
+      dot_rho_dip_formation = 0.0_pREAL
+      dot_rho_dip_climb     = 0.0_pREAL
     else where
-      d_hat = math_clip(3.0_pReal*mu*prm%b_sl/(16.0_pReal*PI*abs(tau_pos+tau_neg)*0.5_pReal), &
+      d_hat = math_clip(3.0_pREAL*mu*prm%b_sl/(16.0_pREAL*PI*abs(tau_pos+tau_neg)*0.5_pREAL), &
                         prm%d_caron, &                                                              ! lower limit
                         dst%Lambda_sl(:,en))                                                        ! upper limit
-      dot_rho_dip_formation = merge(2.0_pReal*(d_hat-prm%d_caron)*stt%rho_mob(:,en)*dot_gamma_sl/prm%b_sl, &
-                                    0.0_pReal, &
+      dot_rho_dip_formation = merge(2.0_pREAL*(d_hat-prm%d_caron)*stt%rho_mob(:,en)*dot_gamma_sl/prm%b_sl, &
+                                    0.0_pREAL, &
                                     prm%dipoleformation)
-      v_cl = (3.0_pReal*mu*prm%D_0*exp(-prm%Q_cl/(K_B*T))*prm%f_at/(TAU*K_B*T)) &
-           * (1.0_pReal/(d_hat+prm%d_caron))
-      dot_rho_dip_climb = (4.0_pReal*v_cl*stt%rho_dip(:,en))/(d_hat-prm%d_caron)                    ! ToDo: Discuss with Franz: Stress dependency?
+      v_cl = (3.0_pREAL*mu*prm%D_0*exp(-prm%Q_cl/(K_B*T))*prm%f_at/(TAU*K_B*T)) &
+           * (1.0_pREAL/(d_hat+prm%d_caron))
+      dot_rho_dip_climb = (4.0_pREAL*v_cl*stt%rho_dip(:,en))/(d_hat-prm%d_caron)                    ! ToDo: Discuss with Franz: Stress dependency?
     end where
 
     dot_rho_mob = dot_gamma_sl/(prm%b_sl*dst%Lambda_sl(:,en)) &                                     ! multiplication
                       - dot_rho_dip_formation &
-                - (2.0_pReal*prm%d_caron)/prm%b_sl*stt%rho_mob(:,en)*dot_gamma_sl                   ! Spontaneous annihilation of 2 edges
+                - (2.0_pREAL*prm%d_caron)/prm%b_sl*stt%rho_mob(:,en)*dot_gamma_sl                   ! Spontaneous annihilation of 2 edges
     dot_rho_dip = dot_rho_dip_formation &
-                - (2.0_pReal*prm%d_caron)/prm%b_sl*stt%rho_dip(:,en)*dot_gamma_sl &                 ! Spontaneous annihilation of an edge with a dipole
+                - (2.0_pREAL*prm%d_caron)/prm%b_sl*stt%rho_dip(:,en)*dot_gamma_sl &                 ! Spontaneous annihilation of an edge with a dipole
                       - dot_rho_dip_climb
 
   end associate
@@ -383,7 +390,7 @@ module subroutine dislotungsten_dependentState(ph,en)
     ph, &
     en
 
-  real(pReal), dimension(param(ph)%sum_N_sl) :: &
+  real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     Lambda_sl_inv
 
 
@@ -392,9 +399,9 @@ module subroutine dislotungsten_dependentState(ph,en)
     dst%tau_pass(:,en) = elastic_mu(ph,en,prm%isotropic_bound)*prm%b_sl &
                        * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
 
-    Lambda_sl_inv = 1.0_pReal/prm%D &
+    Lambda_sl_inv = 1.0_pREAL/prm%D &
                   + sqrt(matmul(prm%forestProjection,stt%rho_mob(:,en)+stt%rho_dip(:,en)))/prm%i_sl
-    dst%Lambda_sl(:,en) = Lambda_sl_inv**(-1.0_pReal)
+    dst%Lambda_sl(:,en) = Lambda_sl_inv**(-1.0_pREAL)
 
   end associate
 
@@ -452,24 +459,24 @@ end subroutine plastic_dislotungsten_result
 pure subroutine kinetics(Mp,T,ph,en, &
                  dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg,tau_pos_out,tau_neg_out)
 
-  real(pReal), dimension(3,3),  intent(in) :: &
+  real(pREAL), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
-  real(pReal),                  intent(in) :: &
+  real(pREAL),                  intent(in) :: &
     T                                                                                               !< temperature
   integer,                      intent(in) :: &
     ph, &
     en
 
-  real(pReal),                  intent(out), dimension(param(ph)%sum_N_sl) :: &
+  real(pREAL),                  intent(out), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma_pos, &
     dot_gamma_neg
-  real(pReal),                  intent(out), optional, dimension(param(ph)%sum_N_sl) :: &
+  real(pREAL),                  intent(out), optional, dimension(param(ph)%sum_N_sl) :: &
     ddot_gamma_dtau_pos, &
     ddot_gamma_dtau_neg, &
     tau_pos_out, &
     tau_neg_out
 
-  real(pReal), dimension(param(ph)%sum_N_sl) :: &
+  real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     StressRatio, &
     StressRatio_p,StressRatio_pminus1, &
     dvel, &
@@ -489,7 +496,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
     if (present(tau_neg_out)) tau_neg_out = tau_neg
 
     associate(BoltzmannRatio  => prm%Q_s/(K_B*T), &
-              b_rho_half      => stt%rho_mob(:,en) * prm%b_sl * 0.5_pReal, &
+              b_rho_half      => stt%rho_mob(:,en) * prm%b_sl * 0.5_pREAL, &
               effectiveLength => dst%Lambda_sl(:,en) - prm%w)
 
       tau_eff = abs(tau_pos)-dst%tau_pass(:,en)
@@ -497,28 +504,28 @@ pure subroutine kinetics(Mp,T,ph,en, &
       significantPositiveTau: where(tau_eff > tol_math_check)
         StressRatio = tau_eff/prm%tau_Peierls
         StressRatio_p       = StressRatio** prm%p
-        StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
+        StressRatio_pminus1 = StressRatio**(prm%p-1.0_pREAL)
 
-        t_n = prm%b_sl*exp(BoltzmannRatio*(1.0_pReal-StressRatio_p) ** prm%q) &
+        t_n = prm%b_sl*exp(BoltzmannRatio*(1.0_pREAL-StressRatio_p) ** prm%q) &
             / (prm%omega*effectiveLength)
-        t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_eff)                                 ! corrected eq. (14)
+        t_k = effectiveLength * prm%B /(2.0_pREAL*prm%b_sl*tau_eff)                                 ! corrected eq. (14)
 
         dot_gamma_pos = b_rho_half * sign(prm%h/(t_n + t_k),tau_pos)
       else where significantPositiveTau
-        dot_gamma_pos = 0.0_pReal
+        dot_gamma_pos = 0.0_pREAL
       end where significantPositiveTau
 
       if (present(ddot_gamma_dtau_pos)) then
         significantPositiveTau2: where(abs(tau_pos)-dst%tau_pass(:,en) > tol_math_check)
-          dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
+          dtn = -1.0_pREAL * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pREAL-StressRatio_p)**(prm%q - 1.0_pREAL) &
               * StressRatio_pminus1 / prm%tau_Peierls
-          dtk = -1.0_pReal * t_k / tau_pos
+          dtk = -1.0_pREAL * t_k / tau_pos
 
-          dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2
+          dvel = -1.0_pREAL * prm%h * (dtk + dtn) / (t_n + t_k)**2
 
           ddot_gamma_dtau_pos = b_rho_half * dvel
         else where significantPositiveTau2
-          ddot_gamma_dtau_pos = 0.0_pReal
+          ddot_gamma_dtau_pos = 0.0_pREAL
         end where significantPositiveTau2
       end if
 
@@ -527,28 +534,28 @@ pure subroutine kinetics(Mp,T,ph,en, &
       significantNegativeTau: where(tau_eff > tol_math_check)
         StressRatio = tau_eff/prm%tau_Peierls
         StressRatio_p       = StressRatio** prm%p
-        StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
+        StressRatio_pminus1 = StressRatio**(prm%p-1.0_pREAL)
 
-        t_n = prm%b_sl*exp(BoltzmannRatio*(1.0_pReal-StressRatio_p) ** prm%q) &
+        t_n = prm%b_sl*exp(BoltzmannRatio*(1.0_pREAL-StressRatio_p) ** prm%q) &
             / (prm%omega*effectiveLength)
-        t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_eff)                                 ! corrected eq. (14)
+        t_k = effectiveLength * prm%B /(2.0_pREAL*prm%b_sl*tau_eff)                                 ! corrected eq. (14)
 
         dot_gamma_neg = b_rho_half * sign(prm%h/(t_n + t_k),tau_neg)
       else where significantNegativeTau
-        dot_gamma_neg = 0.0_pReal
+        dot_gamma_neg = 0.0_pREAL
       end where significantNegativeTau
 
       if (present(ddot_gamma_dtau_neg)) then
         significantNegativeTau2: where(abs(tau_neg)-dst%tau_pass(:,en) > tol_math_check)
-          dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
+          dtn = -1.0_pREAL * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pREAL-StressRatio_p)**(prm%q - 1.0_pREAL) &
               * StressRatio_pminus1 / prm%tau_Peierls
-          dtk = -1.0_pReal * t_k / tau_neg
+          dtk = -1.0_pREAL * t_k / tau_neg
 
-          dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2
+          dvel = -1.0_pREAL * prm%h * (dtk + dtn) / (t_n + t_k)**2
 
           ddot_gamma_dtau_neg = b_rho_half * dvel
         else where significantNegativeTau2
-          ddot_gamma_dtau_neg = 0.0_pReal
+          ddot_gamma_dtau_neg = 0.0_pREAL
         end where significantNegativeTau2
       end if
 

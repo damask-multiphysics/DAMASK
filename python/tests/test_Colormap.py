@@ -10,9 +10,9 @@ from PIL import ImageChops
 from damask import Colormap
 
 @pytest.fixture
-def ref_path(ref_path_base):
-    """Directory containing reference results."""
-    return ref_path_base/'Colormap'
+def res_path(res_path_base):
+    """Directory containing testing resources."""
+    return res_path_base/'Colormap'
 
 class TestColormap:
 
@@ -156,13 +156,13 @@ class TestColormap:
                            rtol=0.005)
 
     @pytest.mark.parametrize('bounds',[None,[2,10]])
-    def test_shade(self,ref_path,update,bounds):
+    def test_shade(self,res_path,update,bounds):
         data = np.add(*np.indices((10, 11)))
         img_current = Colormap.from_predefined('orientation').shade(data,bounds=bounds)
         if update:
-            img_current.save(ref_path/f'shade_{bounds}.png')
+            img_current.save(res_path/f'shade_{bounds}.png')
         else:
-            img_reference = Image.open(ref_path/f'shade_{bounds}.png')
+            img_reference = Image.open(res_path/f'shade_{bounds}.png')
             diff = ImageChops.difference(img_reference.convert('RGB'),img_current.convert('RGB'))
             assert not diff.getbbox()
 
@@ -174,14 +174,14 @@ class TestColormap:
                                            ('GOM','.legend'),
                                            ('gmsh','.msh')
                                           ])
-    def test_compare_reference(self,format,ext,tmp_path,ref_path,update):
+    def test_compare_reference(self,format,ext,tmp_path,res_path,update):
         name = 'binary'
         c = Colormap.from_predefined(name)                                              # noqa
         if update:
-            os.chdir(ref_path)
+            os.chdir(res_path)
             eval(f'c.save_{format}()')
         else:
             os.chdir(tmp_path)
             eval(f'c.save_{format}()')
             time.sleep(.5)
-            assert filecmp.cmp(tmp_path/(name+ext),ref_path/(name+ext))
+            assert filecmp.cmp(tmp_path/(name+ext),res_path/(name+ext))

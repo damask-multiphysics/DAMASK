@@ -21,7 +21,7 @@ def from_random(size: _FloatSequence,
     Parameters
     ----------
     size : sequence of float, len (3)
-        Physical size of the seeding domain.
+        Edge lengths of the seeding domain.
     N_seeds : int
         Number of seeds.
     cells : sequence of int, len (3), optional.
@@ -56,12 +56,12 @@ def from_Poisson_disc(size: _FloatSequence,
                       periodic: bool = True,
                       rng_seed: _Optional[_NumpyRngSeed] = None) -> _np.ndarray:
     """
-    Place seeds according to a Poisson disc distribution.
+    Place seeds following a Poisson disc distribution.
 
     Parameters
     ----------
     size : sequence of float, len (3)
-        Physical size of the seeding domain.
+        Edge lengths of the seeding domain.
     N_seeds : int
         Number of seeds.
     N_candidates : int
@@ -70,6 +70,7 @@ def from_Poisson_disc(size: _FloatSequence,
         Minimum acceptable distance to other seeds.
     periodic : bool, optional
         Calculate minimum distance for periodically repeated grid.
+        Defaults to True.
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
         A seed to initialize the BitGenerator. Defaults to None.
         If None, then fresh, unpredictable entropy will be pulled from the OS.
@@ -123,13 +124,35 @@ def from_grid(grid,
         Consider all material IDs except those in selection. Defaults to False.
     average : bool, optional
         Seed corresponds to center of gravity of material ID cloud.
+        Defaults to False.
     periodic : bool, optional
         Center of gravity accounts for periodic boundaries.
+        Defaults to True.
 
     Returns
     -------
     coords, materials : numpy.ndarray, shape (:,3); numpy.ndarray, shape (:)
         Seed coordinates in 3D space, material IDs.
+
+    Examples
+    --------
+    Recreate seeds from Voronoi tessellation.
+
+    >>> import numpy as np
+    >>> import scipy.spatial
+    >>> import damask
+    >>> seeds = damask.seeds.from_random(np.ones(3),29,[128]*3)
+    >>> (g := damask.Grid.from_Voronoi_tessellation([128]*3,np.ones(3),seeds))
+    cells:  128 × 128 × 128
+    size:   1.0 × 1.0 × 1.0 m³
+    origin: 0.0   0.0   0.0 m
+    # materials: 29
+    >>> COG,matID = damask.seeds.from_grid(g,average=True)
+    >>> distance,ID = scipy.spatial.KDTree(COG,boxsize=g.size).query(seeds)
+    >>> np.max(distance) / np.linalg.norm(g.size/g.cells)
+    7.8057356746350415
+    >>> (ID == matID).all()
+    True
 
     """
     material = grid.material.reshape((-1,1),order='F')

@@ -186,8 +186,6 @@ def displacement_fluct_point(size: _FloatSequence,
         Fluctuating part of the cell center displacements.
 
     """
-    integrator = 0.5j*_np.array(size,float)/_np.pi
-
     k_s = _ks(size,F.shape[:3],False)
     k_s_squared = _np.einsum('...l,...l',k_s,k_s)
     k_s_squared[0,0,0] = 1.0
@@ -195,8 +193,8 @@ def displacement_fluct_point(size: _FloatSequence,
     displacement = -_np.einsum('ijkml,ijkl,l->ijkm',
                               _np.fft.rfftn(F,axes=(0,1,2)),
                               k_s,
-                              integrator,
-                             ) / k_s_squared[...,_np.newaxis]
+                              _np.array([0.5j/_np.pi]*3),
+                              ) / k_s_squared[...,_np.newaxis]
 
     return _np.fft.irfftn(displacement,axes=(0,1,2),s=F.shape[:3])
 
@@ -402,7 +400,7 @@ def displacement_node(size: _FloatSequence,
 
     Returns
     -------
-    u_p : numpy.ndarray, shape (:,:,:,3)
+    u_n : numpy.ndarray, shape (:,:,:,3)
         Nodal displacements.
 
     """
@@ -564,17 +562,10 @@ def unravel_index(idx: _np.ndarray) -> _np.ndarray:
     >>> seq = np.arange(6).reshape((3,2,1),order='F')
     >>> (coord_idx := damask.grid_filters.unravel_index(seq))
     array([[[[0, 0, 0]],
-
             [[0, 1, 0]]],
-
-
            [[[1, 0, 0]],
-
             [[1, 1, 0]]],
-
-
            [[[2, 0, 0]],
-
             [[2, 1, 0]]]])
     >>> coord_idx[1,1,0]
     array([1, 1, 0])
@@ -608,17 +599,12 @@ def ravel_index(idx: _np.ndarray) -> _np.ndarray:
     >>> import damask
     >>> (rev := np.array([[1,1,0],[0,1,0],[1,0,0],[0,0,0]]).reshape((2,2,1,3)))
     array([[[[1, 1, 0]],
-
             [[0, 1, 0]]],
-
-
            [[[1, 0, 0]],
-
             [[0, 0, 0]]]])
     >>> (flat_idx := damask.grid_filters.ravel_index(rev))
     array([[[3],
             [2]],
-
            [[1],
             [0]]])
 

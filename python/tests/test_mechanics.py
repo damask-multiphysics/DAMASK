@@ -215,3 +215,7 @@ class TestMechanics:
     def test_invalid_decomposition(self):
         with pytest.raises(ValueError):
             mechanics._polar_decomposition(np.random.rand(10,3,3),'A')
+
+    def test_invalid_strain(self):
+        with pytest.raises(ValueError):
+            mechanics.strain(np.random.rand(10,3,3),'A',0)

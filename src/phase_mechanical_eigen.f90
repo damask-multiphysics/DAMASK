@@ -20,9 +20,9 @@ submodule(phase:mechanical) eigen
 
     module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
       integer, intent(in) :: ph, me
-      real(pReal),   intent(out), dimension(3,3) :: &
+      real(pREAL),   intent(out), dimension(3,3) :: &
         Li                                                                                          !< thermal velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
+      real(pREAL),   intent(out), dimension(3,3,3,3) :: &
         dLi_dTstar                                                                                  !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
     end subroutine thermalexpansion_LiAndItsTangent
 
@@ -101,7 +101,7 @@ function kinematics_active(kinematics_label,kinematics_length)  result(active_ki
     kinematics => mechanics%get_list('eigen',defaultVal=emptyList)
     do k = 1, kinematics%length
       kinematic => kinematics%get_dict(k)
-      active_kinematics(k,ph) = kinematic%get_asString('type') == kinematics_label
+      active_kinematics(k,ph) = kinematic%get_asStr('type') == kinematics_label
     end do
   end do
 
@@ -121,8 +121,6 @@ function kinematics_active2(kinematics_label)  result(active_kinematics)
     phases, &
     phase, &
     kinematics_type
-  type(tList), pointer :: &
-    kinematics
   integer :: ph
 
 
@@ -131,7 +129,7 @@ function kinematics_active2(kinematics_label)  result(active_kinematics)
   do ph = 1, phases%length
     phase => phases%get_dict(ph)
     kinematics_type => phase%get_dict('damage',defaultVal=emptyDict)
-    active_kinematics(ph) = kinematics_type%get_asString('type',defaultVal='n/a') == kinematics_label
+    active_kinematics(ph) = kinematics_type%get_asStr('type',defaultVal='n/a') == kinematics_label
   end do
 
 
@@ -147,32 +145,32 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
 
   integer, intent(in) :: &
     ph,en
-  real(pReal),   intent(in),  dimension(3,3) :: &
+  real(pREAL),   intent(in),  dimension(3,3) :: &
     S                                                                                               !< 2nd Piola-Kirchhoff stress
-  real(pReal),   intent(in),  dimension(3,3) :: &
+  real(pREAL),   intent(in),  dimension(3,3) :: &
     Fi                                                                                              !< intermediate deformation gradient
-  real(pReal),   intent(out), dimension(3,3) :: &
+  real(pREAL),   intent(out), dimension(3,3) :: &
     Li                                                                                              !< intermediate velocity gradient
-  real(pReal),   intent(out), dimension(3,3,3,3) :: &
+  real(pREAL),   intent(out), dimension(3,3,3,3) :: &
     dLi_dS, &                                                                                       !< derivative of Li with respect to S
     dLi_dFi
 
-  real(pReal), dimension(3,3) :: &
+  real(pREAL), dimension(3,3) :: &
     my_Li, &                                                                                        !< intermediate velocity gradient
     FiInv, &
     temp_33
-  real(pReal), dimension(3,3,3,3) :: &
+  real(pREAL), dimension(3,3,3,3) :: &
     my_dLi_dS
-  real(pReal) :: &
+  real(pREAL) :: &
     detFi
   integer :: &
     k, i, j
   logical :: active
 
   active = .false.
-  Li = 0.0_pReal
-  dLi_dS  = 0.0_pReal
-  dLi_dFi = 0.0_pReal
+  Li = 0.0_pREAL
+  dLi_dS  = 0.0_pREAL
+  dLi_dFi = 0.0_pREAL
 
 
   plasticType: select case (phase_plasticity(ph))

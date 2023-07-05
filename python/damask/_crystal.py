@@ -307,15 +307,13 @@ class Crystal():
     Cubic crystal family:
 
     >>> import damask
-    >>> cubic = damask.Crystal(family='cubic')
-    >>> cubic
+    >>> (cubic := damask.Crystal(family='cubic'))
     Crystal family: cubic
 
     Body-centered cubic Bravais lattice with parameters of iron:
 
     >>> import damask
-    >>> Fe = damask.Crystal(lattice='cI', a=287e-12)
-    >>> Fe
+    >>> (Fe := damask.Crystal(lattice='cI', a=287e-12))
     Crystal family: cubic
     Bravais lattice: cI
     a=2.87e-10 m, b=2.87e-10 m, c=2.87e-10 m
@@ -406,7 +404,7 @@ class Crystal():
         """
         Return repr(self).
 
-        Give short human-readable summary.
+        Give short, human-readable summary.
 
         """
         family = f'Crystal family: {self.family}'

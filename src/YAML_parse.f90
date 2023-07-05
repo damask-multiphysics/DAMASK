@@ -1,11 +1,12 @@
 !----------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Sharan Roongta, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Parser for YAML files
-!> @details module converts a YAML input file to an equivalent YAML flow style which is then parsed.
+!> @brief Parser for YAML files.
+!> @details Module converts a YAML input file to an equivalent YAML flow style which is then parsed.
 !----------------------------------------------------------------------------------------------------
 module YAML_parse
   use prec
+  use misc
   use IO
   use YAML_types
 #ifdef FYAML
@@ -24,11 +25,11 @@ module YAML_parse
   interface
 
     subroutine to_flow_C(flow,length_flow,mixed) bind(C)
-      use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR, C_PTR
+      use, intrinsic :: ISO_C_Binding, only: C_LONG, C_CHAR, C_PTR
       implicit none(type,external)
 
       type(C_PTR), intent(out) :: flow
-      integer(C_INT), intent(out) :: length_flow
+      integer(C_LONG), intent(out) :: length_flow
       character(kind=C_CHAR), dimension(*), intent(in) :: mixed
     end subroutine to_flow_C
 
@@ -54,7 +55,7 @@ end subroutine YAML_parse_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Parse a YAML string with list as root into a a structure of nodes.
+!> @brief Parse a YAML string with list at root into a structure of nodes.
 !> @details The string needs to end with a newline (unless using libfyaml).
 !--------------------------------------------------------------------------------------------------
 function YAML_parse_str_asList(str) result(list)
@@ -72,7 +73,7 @@ end function YAML_parse_str_asList
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Parse a YAML string with dict as root into a a structure of nodes.
+!> @brief Parse a YAML string with dict at root into a structure of nodes.
 !> @details The string needs to end with a newline (unless using libfyaml).
 !--------------------------------------------------------------------------------------------------
 function YAML_parse_str_asDict(str) result(dict)
@@ -90,38 +91,39 @@ end function YAML_parse_str_asDict
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads the flow style string and stores it in the form of dictionaries, lists and scalars.
-!> @details A node type pointer can either point to a dictionary, list or scalar type entities.
+!> @brief Read a string in flow style and store it in the form of dictionaries, lists, and scalars.
+!> @details A node-type pointer can either point to a dictionary, list, or scalar type entities.
 !--------------------------------------------------------------------------------------------------
 recursive function parse_flow(YAML_flow) result(node)
 
-  character(len=*), intent(in)    :: YAML_flow                                                      !< YAML file in flow style
-  class(tNode), pointer          :: node
+  character(len=*), intent(in) :: YAML_flow                                                         !< YAML file in flow style
+  class(tNode), pointer        :: node
 
-  class(tNode),    pointer       :: &
+  class(tNode), pointer :: &
     myVal
-  character(len=:), allocatable   :: &
+  character(len=:), allocatable :: &
     flow_string, &
     key
-  integer :: &
+  integer(pI64) :: &
     e, &                                                                                            ! end position of dictionary or list
     s, &                                                                                            ! start position of dictionary or list
     d                                                                                               ! position of key: value separator (':')
 
+
   flow_string = trim(adjustl(YAML_flow))
-  if (len_trim(flow_string) == 0) then
+  if (len_trim(flow_string,pI64) == 0_pI64) then
     node => emptyDict
     return
   elseif (flow_string(1:1) == '{') then                                                             ! start of a dictionary
-    e = 1
+    e = 1_pI64
     allocate(tDict::node)
-    do while (e < len_trim(flow_string))
+    do while (e < len_trim(flow_string,pI64))
       s = e
-      d = s + scan(flow_string(s+1:),':')
-      e = d + find_end(flow_string(d+1:),'}')
-      key = trim(adjustl(flow_string(s+1:d-1)))
-      if (quotedString(key)) key = key(2:len(key)-1)
-      myVal => parse_flow(flow_string(d+1:e-1))                                                     ! parse items (recursively)
+      d = s + scan(flow_string(s+1_pI64:),':',kind=pI64)
+      e = d + find_end(flow_string(d+1_pI64:),'}')
+      key = trim(adjustl(flow_string(s+1_pI64:d-1_pI64)))
+      if (quotedStr(key)) key = key(2:len(key)-1)
+      myVal => parse_flow(flow_string(d+1_pI64:e-1_pI64))                                           ! parse items (recursively)
 
       select type (node)
         class is (tDict)
@@ -129,12 +131,12 @@ recursive function parse_flow(YAML_flow) result(node)
       end select
     end do
   elseif (flow_string(1:1) == '[') then                                                             ! start of a list
-    e = 1
+    e = 1_pI64
     allocate(tList::node)
-    do while (e < len_trim(flow_string))
+    do while (e < len_trim(flow_string,pI64))
       s = e
-      e = s + find_end(flow_string(s+1:),']')
-      myVal => parse_flow(flow_string(s+1:e-1))                                                     ! parse items (recursively)
+      e = s + find_end(flow_string(s+1_pI64:),']')
+      myVal => parse_flow(flow_string(s+1_pI64:e-1_pI64))                                           ! parse items (recursively)
 
       select type (node)
         class is (tList)
@@ -145,7 +147,7 @@ recursive function parse_flow(YAML_flow) result(node)
     allocate(tScalar::node)
       select type (node)
         class is (tScalar)
-          if (quotedString(flow_string)) then
+          if (quotedStr(flow_string)) then
             node = trim(adjustl(flow_string(2:len(flow_string)-1)))
           else
             node = trim(adjustl(flow_string))
@@ -157,7 +159,7 @@ end function parse_flow
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief finds location of chunk end: ',' or '}' or  ']'
+!> @brief Find location of chunk end: ',' '}', or ']'.
 !> @details leaves nested lists ( '[...]' and dicts '{...}') intact
 !--------------------------------------------------------------------------------------------------
 integer function find_end(str,e_char)
@@ -165,21 +167,21 @@ integer function find_end(str,e_char)
   character(len=*), intent(in) :: str                                                               !< chunk of YAML flow string
   character,        intent(in) :: e_char                                                            !< end of list/dict  ( '}' or ']')
 
-  integer                      :: N_sq, &                                                           !< number of open square brackets
-                                  N_cu, &                                                           !< number of open curly brackets
+  integer(pI64) :: N_sq, &                                                                          !< number of open square brackets
+                   N_cu, &                                                                          !< number of open curly brackets
                                   i
 
-  N_sq = 0
-  N_cu = 0
-  i = 1
-  do while(i<=len_trim(str))
-    if (scan(str(i:i),IO_QUOTES) == 1)  i = i + scan(str(i+1:),str(i:i))
-    if (N_sq==0 .and. N_cu==0 .and. scan(str(i:i),e_char//',') == 1) exit
-    N_sq = N_sq + merge(1,0,str(i:i) == '[')
-    N_cu = N_cu + merge(1,0,str(i:i) == '{')
-    N_sq = N_sq - merge(1,0,str(i:i) == ']')
-    N_cu = N_cu - merge(1,0,str(i:i) == '}')
-    i = i + 1
+  N_sq = 0_pI64
+  N_cu = 0_pI64
+  i = 1_pI64
+  do while(i<=len_trim(str,pI64))
+    if (scan(str(i:i),IO_QUOTES,kind=pI64) == 1_pI64)  i = i + scan(str(i+1:),str(i:i),kind=pI64)
+    if (N_sq==0 .and. N_cu==0 .and. scan(str(i:i),e_char//',',kind=pI64) == 1_pI64) exit
+    N_sq = N_sq + merge(1_pI64,0_pI64,str(i:i) == '[')
+    N_cu = N_cu + merge(1_pI64,0_pI64,str(i:i) == '{')
+    N_sq = N_sq - merge(1_pI64,0_pI64,str(i:i) == ']')
+    N_cu = N_cu - merge(1_pI64,0_pI64,str(i:i) == '}')
+    i = i + 1_pI64
   end do
   find_end = i
 
@@ -187,28 +189,28 @@ end function find_end
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string is enclosed with single or double quotes
+! @brief Check whether a string is enclosed with single or double quotes.
 !--------------------------------------------------------------------------------------------------
-logical function quotedString(line)
+logical function quotedStr(line)
 
   character(len=*), intent(in) :: line
 
 
-  quotedString = .false.
+  quotedStr = .false.
 
   if (len(line) == 0) return
 
   if (scan(line(:1),IO_QUOTES) == 1) then
-    quotedString = .true.
+    quotedStr = .true.
     if (line(len(line):len(line)) /= line(:1)) call IO_error(710,ext_msg=line)
   end if
 
-end function quotedString
+end function quotedStr
 
 
 #ifdef FYAML
 !--------------------------------------------------------------------------------------------------
-! @brief Convert all block style YAML parts to flow style.
+! @brief Convert all block-style YAML parts to flow style.
 !--------------------------------------------------------------------------------------------------
 function to_flow(mixed) result(flow)
 
@@ -216,17 +218,17 @@ function to_flow(mixed) result(flow)
   character(:,C_CHAR), allocatable :: flow
 
   type(C_PTR) :: str_ptr
-  integer(C_INT) :: strlen
+  integer(C_LONG) :: strlen
 
 
   call to_flow_C(str_ptr,strlen,f_c_string(mixed))
-  if (strlen < 1) call IO_error(703,ext_msg='libyfaml')
+  if (strlen < 1_C_LONG) call IO_error(703,ext_msg='libyfaml')
   allocate(character(len=strlen,kind=c_char) :: flow)
 
   block
     character(len=strlen,kind=c_char), pointer :: s
     call c_f_pointer(str_ptr,s)
-    flow = s(:len(s)-1)
+    flow = s(:len(s,pI64)-1_pI64)
   end block
 
   call free_C(str_ptr)
@@ -236,28 +238,29 @@ end function to_flow
 
 #else
 !--------------------------------------------------------------------------------------------------
-! @brief Determine Indentation.
-! @details It determines the indentation level for a given block/line.
-! In cases for nested lists, an offset is added to determine the indent of the item block (skip
-! leading dashes)
+! @brief Determine indentation depth.
+! @details Indentation level is determined for a given block/line.
+! In case of nested lists, an offset is added to determine the indent of the item block (skip
+! leading dashes).
 !--------------------------------------------------------------------------------------------------
 integer function indentDepth(line,offset)
 
   character(len=*), intent(in) :: line
   integer, optional,intent(in) :: offset
 
-  indentDepth = verify(line,IO_WHITESPACE) -1
-  if (present(offset)) indentDepth = indentDepth + offset
+
+  indentDepth = verify(line,IO_WHITESPACE) - 1 + misc_optional(offset,0)
 
 end function indentDepth
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string is in flow style, i.e. starts with '{' or '['
+! @brief Check whether a string is in flow style, i.e. starts with '{' or '['.
 !--------------------------------------------------------------------------------------------------
 logical function isFlow(line)
 
   character(len=*), intent(in) :: line
+
 
   isFlow = index(adjustl(line),'[') == 1 .or. index(adjustl(line),'{') == 1
 
@@ -265,11 +268,12 @@ end function isFlow
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string is a scalar item, i.e. starts without any special symbols
+! @brief Check whether a string is a scalar item, i.e. starts without any special symbols.
 !--------------------------------------------------------------------------------------------------
 logical function isScalar(line)
 
   character(len=*), intent(in) :: line
+
 
   isScalar = (.not. isKeyValue(line) .and. &
               .not. isKey(line) .and. &
@@ -280,11 +284,12 @@ end function isScalar
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string is a list item, i.e. starts with '-'
+! @brief Check whether a string is a list item, i.e. starts with '-'.
 !--------------------------------------------------------------------------------------------------
 logical function isListItem(line)
 
   character(len=*), intent(in) :: line
+
 
   isListItem = .false.
   if (len_trim(adjustl(line))> 2 .and. index(trim(adjustl(line)), '-') == 1) then
@@ -297,12 +302,13 @@ end function isListItem
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string contains a key value pair of the for '<key>: <value>'
+! @brief Check whether a string contains a key-value pair of the form '<key>: <value>'.
 !--------------------------------------------------------------------------------------------------
 logical function isKeyValue(line)
 
   character(len=*), intent(in) :: line
   isKeyValue = .false.
+
 
   if ( .not. isKey(line) .and. index(IO_rmComment(line),':') > 0 .and. .not. isFlow(line)) then
     if (index(IO_rmComment(line),': ') > 0) isKeyValue = .true.
@@ -312,12 +318,13 @@ end function isKeyValue
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string contains a key without a value, i.e. it ends with ':'
-! ToDo: check whether this is safe for trailing spaces followed by a new line character
+! @brief Check whether a string contains a key without a value, i.e. it ends in ':'.
+! ToDo: check whether this is safe for trailing spaces followed by a newline character
 !--------------------------------------------------------------------------------------------------
 logical function isKey(line)
 
   character(len=*), intent(in) :: line
+
 
   if (len(IO_rmComment(line)) == 0) then
     isKey = .false.
@@ -331,11 +338,12 @@ end function isKey
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string is a list in flow style
+! @brief Check whether a string is a list in flow style.
 !--------------------------------------------------------------------------------------------------
 logical function isFlowList(line)
 
   character(len=*), intent(in) :: line
+
 
   isFlowList = index(adjustl(line),'[') == 1
 
@@ -343,8 +351,8 @@ end function isFlowList
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief skip empty lines
-! @details update start position in the block by skipping empty lines if present.
+! @brief Skip empty lines.
+! @details Update start position in the block by skipping empty lines if present.
 !--------------------------------------------------------------------------------------------------
 subroutine skip_empty_lines(blck,s_blck)
 
@@ -353,8 +361,9 @@ subroutine skip_empty_lines(blck,s_blck)
 
   logical :: empty
 
+
   empty = .true.
-  do while(empty .and. len_trim(blck(s_blck:)) /= 0)
+  do while (empty .and. len_trim(blck(s_blck:)) /= 0)
     empty = len_trim(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == 0
     if (empty) s_blck = s_blck + index(blck(s_blck:),IO_EOL)
   end do
@@ -363,8 +372,8 @@ end subroutine skip_empty_lines
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief skip file header
-! @details update start position in the block by skipping file header if present.
+! @brief Skip file header.
+! @details Update start position in the block by skipping file header if present.
 !--------------------------------------------------------------------------------------------------
 subroutine skip_file_header(blck,s_blck)
 
@@ -372,6 +381,7 @@ subroutine skip_file_header(blck,s_blck)
   integer,          intent(inout)  :: s_blck
 
   character(len=:), allocatable    :: line
+
 
   line = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
   if (index(adjustl(line),'%YAML') == 1) then
@@ -388,7 +398,7 @@ end subroutine skip_file_header
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check if a line in flow YAML starts and ends in the same line
+!> @brief Check whether a line in flow style starts and ends on the same line.
 !--------------------------------------------------------------------------------------------------
 logical function flow_is_closed(str,e_char)
 
@@ -398,6 +408,7 @@ logical function flow_is_closed(str,e_char)
                                   N_cu, &                                                           !< number of open curly brackets
                                   i
   character(len=:), allocatable:: line
+
 
   flow_is_closed = .false.
   N_sq = 0
@@ -417,7 +428,7 @@ end function flow_is_closed
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return the flow YAML line without line break
+!> @brief Return a flow-style line without line break.
 !--------------------------------------------------------------------------------------------------
 subroutine remove_line_break(blck,s_blck,e_char,flow_line)
 
@@ -427,10 +438,11 @@ subroutine remove_line_break(blck,s_blck,e_char,flow_line)
   character(len=:), allocatable, intent(out) :: flow_line
   logical :: line_end
 
-  line_end =.false.
+
+  line_end = .false.
   flow_line = ''
 
-  do while(.not.line_end)
+  do while (.not. line_end)
     flow_line = flow_line//IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))//' '
     line_end  = flow_is_closed(flow_line,e_char)
     s_blck    = s_blck + index(blck(s_blck:),IO_EOL)
@@ -440,7 +452,7 @@ end subroutine remove_line_break
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return the scalar list item without line break
+!> @brief Return a scalar list item without line break.
 !--------------------------------------------------------------------------------------------------
 subroutine list_item_inline(blck,s_blck,inline,offset)
 
@@ -452,6 +464,7 @@ subroutine list_item_inline(blck,s_blck,inline,offset)
   character(len=:), allocatable :: line
   integer :: indent,indent_next
 
+
   indent = indentDepth(blck(s_blck:),offset)
   line   = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
   inline = line(indent-offset+3:)
@@ -459,7 +472,7 @@ subroutine list_item_inline(blck,s_blck,inline,offset)
 
   indent_next = indentDepth(blck(s_blck:))
 
-  do while(indent_next > indent)
+  do while (indent_next > indent)
     inline = inline//' '//trim(adjustl(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))))
     s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     indent_next = indentDepth(blck(s_blck:))
@@ -471,8 +484,8 @@ end subroutine list_item_inline
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief reads a line of YAML block which is already in flow style
-! @details A dict should be enclosed within '{}' for it to be consistent with the DAMASK YAML parser
+! @brief Read a line of YAML block that is already in flow style.
+! @details A dict should be enclosed within '{}' for it to be consistent with the DAMASK YAML parser.
 !--------------------------------------------------------------------------------------------------
 recursive subroutine line_isFlow(flow,s_flow,line)
 
@@ -485,48 +498,49 @@ recursive subroutine line_isFlow(flow,s_flow,line)
     list_chunk, &
     dict_chunk
 
+
   if (index(adjustl(line),'[') == 1) then
     s = index(line,'[')
     flow(s_flow:s_flow) = '['
-    s_flow = s_flow +1
-    do while(s < len_trim(line))
+    s_flow = s_flow+1
+    do while (s < len_trim(line))
       list_chunk = s + find_end(line(s+1:),']')
       if (iskeyValue(line(s+1:list_chunk-1))) then
         flow(s_flow:s_flow) = '{'
-        s_flow = s_flow +1
+        s_flow = s_flow+1
         call keyValue_toFlow(flow,s_flow,line(s+1:list_chunk-1))
         flow(s_flow:s_flow) = '}'
-        s_flow = s_flow +1
+        s_flow = s_flow+1
       elseif (isFlow(line(s+1:list_chunk-1))) then
         call line_isFlow(flow,s_flow,line(s+1:list_chunk-1))
       else
         call line_toFlow(flow,s_flow,line(s+1:list_chunk-1))
       end if
       flow(s_flow:s_flow+1) = ', '
-      s_flow = s_flow +2
+      s_flow = s_flow+2
       s = s + find_end(line(s+1:),']')
     end do
-    s_flow = s_flow - 1
-    if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow - 1
+    s_flow = s_flow-1
+    if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow-1
     flow(s_flow:s_flow) = ']'
     s_flow = s_flow+1
 
   elseif (index(adjustl(line),'{') == 1) then
     s = index(line,'{')
     flow(s_flow:s_flow) = '{'
-    s_flow = s_flow +1
-    do while(s < len_trim(line))
+    s_flow = s_flow+1
+    do while (s < len_trim(line))
       dict_chunk = s + find_end(line(s+1:),'}')
-      if ( .not. iskeyValue(line(s+1:dict_chunk-1))) call IO_error(705,ext_msg=line)
+      if (.not. iskeyValue(line(s+1:dict_chunk-1))) call IO_error(705,ext_msg=line)
       call keyValue_toFlow(flow,s_flow,line(s+1:dict_chunk-1))
       flow(s_flow:s_flow+1) = ', '
-      s_flow = s_flow +2
+      s_flow = s_flow+2
       s = s + find_end(line(s+1:),'}')
     end do
-    s_flow = s_flow -1
-    if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow -1
+    s_flow = s_flow-1
+    if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow-1
     flow(s_flow:s_flow) = '}'
-    s_flow = s_flow +1
+    s_flow = s_flow+1
   else
     call line_toFlow(flow,s_flow,line)
   end if
@@ -535,8 +549,8 @@ end subroutine line_isFlow
 
 
 !-------------------------------------------------------------------------------------------------
-! @brief reads a line of YAML block of type <key>: <value> and places it in the YAML flow style structure
-! @details Makes sure that the <value> is consistent with the input required in DAMASK YAML parser
+! @brief Transform a line of YAML of type <key>: <value> to flow style.
+! @details Ensures that the <value> is consistent with the input required in the DAMASK YAML parser.
 !-------------------------------------------------------------------------------------------------
 recursive subroutine keyValue_toFlow(flow,s_flow,line)
 
@@ -549,6 +563,7 @@ recursive subroutine keyValue_toFlow(flow,s_flow,line)
     d_flow, &
     col_pos, &
     offset_value
+
 
   col_pos = index(line,':')
   if (line(col_pos+1:col_pos+1) /= ' ') call IO_error(704,ext_msg=line)
@@ -567,7 +582,7 @@ end subroutine keyValue_toFlow
 
 
 !-------------------------------------------------------------------------------------------------
-! @brief reads a line of YAML block and places it in the YAML flow style structure
+! @brief Transform a line of YAML to flow style.
 !-------------------------------------------------------------------------------------------------
 subroutine line_toFlow(flow,s_flow,line)
 
@@ -586,7 +601,7 @@ end subroutine line_toFlow
 
 
 !-------------------------------------------------------------------------------------------------
-! @brief convert a yaml list in block style to a yaml list in flow style
+! @brief Transform a block-style list to flow style.
 ! @details enters the function when encountered with the list indicator '- '
 ! reads each scalar list item and separates each other with a ','
 ! If list item is non scalar, it stores the offset for that list item block
@@ -667,19 +682,19 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
 
     if (isScalar(line) .or. isFlow(line)) then
       flow(s_flow:s_flow+1) = ', '
-      s_flow = s_flow + 2
+      s_flow = s_flow+2
     end if
 
   end do
 
-  s_flow = s_flow - 1
-  if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow - 1
+  s_flow = s_flow-1
+  if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow-1
 
 end subroutine lst
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief convert a yaml dict in block style to a yaml dict in flow style
+! @brief Transform a block-style dict to flow style.
 ! @details enters the function when encountered with the dictionary indicator ':'
 ! parses each line in the block and compares indentation of a line with the preceding line
 ! upon increase in indentation level -> 'decide' function decides if the line is a list or dict
@@ -724,7 +739,7 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
       line = line(indentDepth(line)+1:)
       if (previous_isKey) then
         flow(s_flow-1:s_flow) = ', '
-        s_flow = s_flow + 1
+        s_flow = s_flow+1
       end if
 
       if (isKeyValue(line)) then
@@ -748,19 +763,19 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
 
     if (isScalar(line) .or. isKeyValue(line)) then
       flow(s_flow:s_flow) = ','
-      s_flow = s_flow + 1
+      s_flow = s_flow+1
       previous_isKey = .false.
     else
       previous_isKey = .true.
     end if
 
     flow(s_flow:s_flow) = ' '
-    s_flow = s_flow + 1
+    s_flow = s_flow+1
     offset = 0
   end do
 
-  s_flow = s_flow - 1
-  if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow - 1
+  s_flow = s_flow-1
+  if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow-1
 
 end subroutine dct
 
@@ -785,20 +800,20 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
     if (trim(line) == '---' .or. trim(line) == '...') then
       continue                                                                                      ! end parsing at this point but not stop the simulation
     elseif (len_trim(line) == 0) then
-      s_blck = e_blck +2
+      s_blck = e_blck + 2
       call decide(blck,flow,s_blck,s_flow,offset)
-    elseif    (isListItem(line)) then
+    elseif (isListItem(line)) then
       flow(s_flow:s_flow) = '['
-      s_flow = s_flow + 1
+      s_flow = s_flow+1
       call lst(blck,flow,s_blck,s_flow,offset)
       flow(s_flow:s_flow) = ']'
-      s_flow = s_flow + 1
+      s_flow = s_flow+1
     elseif (isKey(line) .or. isKeyValue(line)) then
       flow(s_flow:s_flow) = '{'
-      s_flow = s_flow + 1
+      s_flow = s_flow+1
       call dct(blck,flow,s_blck,s_flow,offset)
       flow(s_flow:s_flow) = '}'
-      s_flow = s_flow + 1
+      s_flow = s_flow+1
     elseif (isFlow(line)) then
       if (isFlowList(line)) then
         call remove_line_break(blck,s_blck,']',flow_line)
@@ -809,7 +824,7 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
     else
       line = line(indentDepth(line)+1:)
       call line_toFlow(flow,s_flow,line)
-      s_blck = e_blck +2
+      s_blck = e_blck + 2
     end if
   end if
 
@@ -817,7 +832,7 @@ end subroutine decide
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert all block style YAML parts to flow style.
+!> @brief Convert all block-style parts to flow style.
 !> @details The input needs to end with a newline.
 !--------------------------------------------------------------------------------------------------
 function to_flow(blck)
@@ -861,7 +876,7 @@ subroutine selfTest()
   if (indentDepth('a')  /= 0)     error stop 'indentDepth'
   if (indentDepth('x ') /= 0)     error stop 'indentDepth'
 
-  if (.not. quotedString("'a'"))  error stop 'quotedString'
+  if (.not. quotedStr("'a'"))     error stop 'quotedStr'
 
   if (      isFlow(' a'))         error stop 'isFLow'
   if (.not. isFlow('{'))          error stop 'isFlow'
@@ -1010,9 +1025,9 @@ subroutine selfTest()
       dct = '{a: 1, b: 2}'
 
     list => YAML_parse_str_asList(lst//IO_EOL)
-    if (list%asFormattedString() /= lst) error stop 'str_asList'
+    if (list%asFormattedStr() /= lst) error stop 'str_asList'
     dict => YAML_parse_str_asDict(dct//IO_EOL)
-    if (dict%asFormattedString() /= dct) error stop 'str_asDict'
+    if (dict%asFormattedStr() /= dct) error stop 'str_asDict'
 
   end block parse
 

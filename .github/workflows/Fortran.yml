@@ -2,7 +2,7 @@ name: Grid and Mesh Solver
 on: [push]
 
 env:
-  PETSC_VERSION: '3.18.2'
+  PETSC_VERSION: '3.18.4'
   HOMEBREW_NO_ANALYTICS: 'ON'     # Make Homebrew installation a little quicker
   HOMEBREW_NO_AUTO_UPDATE: 'ON'
   HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK: 'ON'
@@ -82,7 +82,8 @@ jobs:
 
       - name: DAMASK - Run
         run: |
-          ./bin/DAMASK_grid -l tensionX.yaml -g 20grains16x16x16.vti -w examples/grid
+          ./bin/DAMASK_grid -l tensionX.yaml -g 20grains16x16x16.vti -m material.yaml -w examples/grid
+          ./bin/DAMASK_mesh -h
 
 
   intel:
@@ -129,7 +130,7 @@ jobs:
       - name: PETSc - Prepare
         run: |
           tar -xf download/petsc-${PETSC_VERSION}.tar.gz -C .
-          sed -i "1718s/if not os.path.isfile(os.path.join(self.packageDir,'configure')):/if True:/g" \
+          sed -i "1719s/if not os.path.isfile(os.path.join(self.packageDir,'configure')):/if True:/g" \
           ./petsc-${PETSC_VERSION}/config/BuildSystem/config/package.py
           export PETSC_DIR=${PWD}/petsc-${PETSC_VERSION}
           export PETSC_ARCH=intel-${INTEL_V}
@@ -165,6 +166,7 @@ jobs:
           make all
 
       - name: DAMASK - Compile
+        if: contains( matrix.intel_v, 'classic')
         run: |
           cmake -B build/grid -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=${PWD}
           cmake --build build/grid --parallel
@@ -173,6 +175,19 @@ jobs:
           cmake --build build/mesh --parallel
           cmake --install build/mesh
 
+      # ifx has issue with openMP
+      # https://community.intel.com/t5/Intel-Fortran-Compiler/ifx-ICE-and-SEGFAULT/m-p/1459877
+      - name: DAMASK - Compile
+        if: contains( matrix.intel_v, 'llvm')
+        run: |
+          cmake -B build/grid -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=${PWD} -DOPENMP=OFF
+          cmake --build build/grid --parallel
+          cmake --install build/grid
+          cmake -B build/mesh -DDAMASK_SOLVER=mesh -DCMAKE_INSTALL_PREFIX=${PWD} -DOPENMP=OFF
+          cmake --build build/mesh --parallel
+          cmake --install build/mesh
+
       - name: DAMASK - Run
         run: |
-          ./bin/DAMASK_grid -l tensionX.yaml -g 20grains16x16x16.vti -w examples/grid
+          ./bin/DAMASK_grid -l tensionX.yaml -g 20grains16x16x16.vti -m material.yaml -w examples/grid
+          ./bin/DAMASK_mesh -h

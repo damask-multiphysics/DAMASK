@@ -20,7 +20,7 @@ module discretization_Marc
   implicit none(type,external)
   private
 
-  real(pReal),                         public, protected :: &
+  real(pREAL),                         public, protected :: &
     mesh_unitlength                                                                                 !< physical length of one unit in mesh MD: needs systematic_name
 
   integer,  dimension(:), allocatable, public, protected :: &
@@ -51,7 +51,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_Marc_init
 
-  real(pReal), dimension(:,:),     allocatable :: &
+  real(pREAL), dimension(:,:),     allocatable :: &
    node0_elem, &                                                                                    !< node x,y,z coordinates (initially!)
    node0_cell
   type(tElement) :: elem
@@ -59,14 +59,13 @@ subroutine discretization_Marc_init
   integer,     dimension(:),       allocatable :: &
     materialAt
   integer:: &
-    Nelems, &                                                                                       !< total number of elements in the mesh
-    debug_e, debug_i
+    Nelems                                                                                          !< total number of elements in the mesh
 
-  real(pReal), dimension(:,:),     allocatable :: &
+  real(pREAL), dimension(:,:),     allocatable :: &
     IP_reshaped
   integer,     dimension(:,:),     allocatable :: &
     connectivity_elem
-  real(pReal), dimension(:,:,:,:), allocatable :: &
+  real(pREAL), dimension(:,:,:,:), allocatable :: &
     unscaledNormals
 
   type(tDict), pointer :: &
@@ -75,18 +74,12 @@ subroutine discretization_Marc_init
 
   print'(/,a)', ' <<<+-  discretization_Marc init  -+>>>'; flush(6)
 
-  debug_e = config_debug%get_asInt('element',defaultVal=1)
-  debug_i = config_debug%get_asInt('integrationpoint',defaultVal=1)
-
   num_commercialFEM => config_numerics%get_dict('commercialFEM',defaultVal = emptyDict)
-  mesh_unitlength = num_commercialFEM%get_asFloat('unitlength',defaultVal=1.0_pReal)                ! set physical extent of a length unit in mesh
-  if (mesh_unitlength <= 0.0_pReal) call IO_error(301,'unitlength')
+  mesh_unitlength = num_commercialFEM%get_asReal('unitlength',defaultVal=1.0_pREAL)                 ! set physical extent of a length unit in mesh
+  if (mesh_unitlength <= 0.0_pREAL) call IO_error(301,'unitlength')
 
   call inputRead(elem,node0_elem,connectivity_elem,materialAt)
   nElems = size(connectivity_elem,2)
-
-  if (debug_e < 1 .or. debug_e > nElems)    call IO_error(602,'element')
-  if (debug_i < 1 .or. debug_i > elem%nIPs) call IO_error(602,'IP')
 
   allocate(cellNodeDefinition(elem%nNodes-1))
   allocate(connectivity_cell(elem%NcellNodesPerCell,elem%nIPs,nElems))
@@ -110,7 +103,7 @@ subroutine discretization_Marc_init
   call geometry_plastic_nonlocal_setIParea(norm2(unscaledNormals,1))
   call geometry_plastic_nonlocal_setIPareaNormal(unscaledNormals/spread(norm2(unscaledNormals,1),1,3))
   call geometry_plastic_nonlocal_setIPneighborhood(IPneighborhood(elem))
-  call geometry_plastic_nonlocal_result
+  call geometry_plastic_nonlocal_result()
 
 end subroutine discretization_Marc_init
 
@@ -120,9 +113,9 @@ end subroutine discretization_Marc_init
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_Marc_updateNodeAndIpCoords(d_n)
 
-  real(pReal), dimension(:,:), intent(in)  :: d_n
+  real(pREAL), dimension(:,:), intent(in)  :: d_n
 
-  real(pReal), dimension(:,:), allocatable :: node_cell
+  real(pREAL), dimension(:,:), allocatable :: node_cell
 
 
   node_cell = buildCellNodes(discretization_NodeCoords0(1:3,1:maxval(discretization_Marc_FEM2DAMASK_node)) + d_n)
@@ -141,7 +134,7 @@ function discretization_Marc_FEM2DAMASK_cell(IP_FEM,elem_FEM) result(cell)
   integer, intent(in) :: IP_FEM, elem_FEM
   integer :: cell
 
-  real(pReal), dimension(:,:), allocatable :: node_cell
+  real(pREAL), dimension(:,:), allocatable :: node_cell
 
 
   cell = (discretization_Marc_FEM2DAMASK_elem(elem_FEM)-1)*discretization_nIPs + IP_FEM
@@ -162,12 +155,12 @@ subroutine writeGeometry(elem, &
   integer, dimension(:,:),     intent(in) :: &
     connectivity_elem, &
     connectivity_cell_reshaped
-  real(pReal), dimension(:,:), intent(in) :: &
+  real(pREAL), dimension(:,:), intent(in) :: &
     coordinates_nodes, &
     coordinates_points
 
 
-  call result_openJobFile
+  call result_openJobFile()
   call result_closeGroup(result_addGroup('geometry'))
 
   call result_writeDataset(connectivity_elem,'geometry','T_e',&
@@ -183,7 +176,7 @@ subroutine writeGeometry(elem, &
   call result_writeDataset(coordinates_points,'geometry','x_p', &
                            'initial coordinates of the materialpoints (cell centers)','m')
 
-  call result_closeJobFile
+  call result_closeJobFile()
 
 end subroutine writeGeometry
 
@@ -194,7 +187,7 @@ end subroutine writeGeometry
 subroutine inputRead(elem,node0_elem,connectivity_elem,materialAt)
 
   type(tElement), intent(out) :: elem
-  real(pReal), dimension(:,:), allocatable, intent(out) :: &
+  real(pREAL), dimension(:,:), allocatable, intent(out) :: &
     node0_elem                                                                                      !< node x,y,z coordinates (initially!)
   integer, dimension(:,:),     allocatable, intent(out) :: &
     connectivity_elem
@@ -209,18 +202,18 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,materialAt)
     nElems
   integer, dimension(:), allocatable :: &
     matNumber                                                                                       !< material numbers for hypoelastic material
-  character(len=pStringLen), dimension(:), allocatable :: &
+  character(len=pSTRLEN), dimension(:), allocatable :: &
     inputFile, &                                                                                    !< file content, separated per lines
     nameElemSet
   integer, dimension(:,:), allocatable :: &
     mapElemSet                                                                                      !< list of elements in elementSet
 
 
-  call result_openJobFile
+  call result_openJobFile()
   call result_writeDataset_str(IO_read(trim(getSolverJobName())//InputFileExtension), 'setup', &
                                         trim(getSolverJobName())//InputFileExtension, &
                                         'MSC.Marc input deck')
-  call result_closeJobFile
+  call result_closeJobFile()
 
   inputFile = IO_readlines(trim(getSolverJobName())//InputFileExtension)
   call inputRead_fileFormat(fileFormatVersion, &
@@ -270,9 +263,9 @@ subroutine inputRead_fileFormat(fileFormat,fileContent)
   integer :: l
 
   do l = 1, size(fileContent)
-    chunkPos = IO_stringPos(fileContent(l))
+    chunkPos = IO_strPos(fileContent(l))
     if (chunkPos(1) < 2) cycle
-    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'version') then
+    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'version') then
       fileFormat = IO_intValue(fileContent(l),chunkPos,2)
       exit
     end if
@@ -296,9 +289,9 @@ subroutine inputRead_tableStyles(initialcond,hypoelastic,fileContent)
   hypoelastic = 0
 
   do l = 1, size(fileContent)
-    chunkPos = IO_stringPos(fileContent(l))
+    chunkPos = IO_strPos(fileContent(l))
     if (chunkPos(1) < 6) cycle
-    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'table') then
+    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'table') then
       initialcond = IO_intValue(fileContent(l),chunkPos,4)
       hypoelastic = IO_intValue(fileContent(l),chunkPos,5)
       exit
@@ -323,11 +316,11 @@ subroutine inputRead_matNumber(matNumber, &
 
 
   do l = 1, size(fileContent)
-    chunkPos = IO_stringPos(fileContent(l))
+    chunkPos = IO_strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
-    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'hypoelastic') then
+    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'hypoelastic') then
       if (len_trim(fileContent(l+1))/=0) then
-        chunkPos = IO_stringPos(fileContent(l+1))
+        chunkPos = IO_strPos(fileContent(l+1))
         data_blocks = IO_intValue(fileContent(l+1),chunkPos,1)
       else
         data_blocks = 1
@@ -335,7 +328,7 @@ subroutine inputRead_matNumber(matNumber, &
       allocate(matNumber(data_blocks), source = 0)
       do i = 0, data_blocks - 1
         j = i*(2+tableStyle) + 1
-        chunkPos = IO_stringPos(fileContent(l+1+j))
+        chunkPos = IO_strPos(fileContent(l+1+j))
         matNumber(i+1) = IO_intValue(fileContent(l+1+j),chunkPos,1)
       end do
       exit
@@ -361,12 +354,12 @@ subroutine inputRead_NnodesAndElements(nNodes,nElems,&
   nElems = 0
 
   do l = 1, size(fileContent)
-    chunkPos = IO_stringPos(fileContent(l))
+    chunkPos = IO_strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
-    if    (IO_lc(IO_StringValue(fileContent(l),chunkPos,1)) == 'sizing') then
+    if    (IO_lc(IO_StrValue(fileContent(l),chunkPos,1)) == 'sizing') then
       nElems = IO_IntValue (fileContent(l),chunkPos,3)
-    elseif (IO_lc(IO_StringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
-      chunkPos = IO_stringPos(fileContent(l+1))
+    elseif (IO_lc(IO_StrValue(fileContent(l),chunkPos,1)) == 'coordinates') then
+      chunkPos = IO_strPos(fileContent(l+1))
       nNodes = IO_IntValue (fileContent(l+1),chunkPos,2)
     end if
   end do
@@ -391,13 +384,13 @@ subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
   maxNelemInSet = 0
 
   do l = 1, size(fileContent)
-    chunkPos = IO_stringPos(fileContent(l))
+    chunkPos = IO_strPos(fileContent(l))
     if (chunkPos(1) < 2) cycle
-    if (IO_lc(IO_StringValue(fileContent(l),chunkPos,1)) == 'define' .and. &
-       IO_lc(IO_StringValue(fileContent(l),chunkPos,2)) == 'element') then
+    if (IO_lc(IO_StrValue(fileContent(l),chunkPos,1)) == 'define' .and. &
+       IO_lc(IO_StrValue(fileContent(l),chunkPos,2)) == 'element') then
       nElemSets = nElemSets + 1
 
-      chunkPos = IO_stringPos(fileContent(l+1))
+      chunkPos = IO_strPos(fileContent(l+1))
       if (containsRange(fileContent(l+1),chunkPos)) then
         elemInCurrentSet = 1 + abs( IO_intValue(fileContent(l+1),chunkPos,3) &
                                    -IO_intValue(fileContent(l+1),chunkPos,1))
@@ -406,9 +399,9 @@ subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
         i = 0
         do while (.true.)
           i = i + 1
-          chunkPos = IO_stringPos(fileContent(l+i))
+          chunkPos = IO_strPos(fileContent(l+i))
           elemInCurrentSet = elemInCurrentSet + chunkPos(1) - 1                                     ! add line's count when assuming 'c'
-          if (IO_lc(IO_stringValue(fileContent(l+i),chunkPos,chunkPos(1))) /= 'c') then              ! line finished, read last value
+          if (IO_lc(IO_strValue(fileContent(l+i),chunkPos,chunkPos(1))) /= 'c') then                ! line finished, read last value
             elemInCurrentSet = elemInCurrentSet + 1                                                 ! data ended
             exit
           end if
@@ -427,7 +420,7 @@ end subroutine inputRead_NelemSets
 subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,&
                                  fileContent)
 
-  character(len=pStringLen), dimension(:),   allocatable, intent(out) :: nameElemSet
+  character(len=pSTRLEN), dimension(:),   allocatable, intent(out) :: nameElemSet
   integer,                   dimension(:,:), allocatable, intent(out) :: mapElemSet
   character(len=*),          dimension(:),                intent(in)  :: fileContent                !< file content, separated per lines
 
@@ -441,12 +434,12 @@ subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,&
   elemSet = 0
 
   do l = 1, size(fileContent)
-    chunkPos = IO_stringPos(fileContent(l))
+    chunkPos = IO_strPos(fileContent(l))
     if (chunkPos(1) < 2) cycle
-    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'define' .and. &
-       IO_lc(IO_stringValue(fileContent(l),chunkPos,2)) == 'element') then
+    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'define' .and. &
+       IO_lc(IO_strValue(fileContent(l),chunkPos,2)) == 'element') then
        elemSet = elemSet+1
-       nameElemSet(elemSet)  = trim(IO_stringValue(fileContent(l),chunkPos,4))
+       nameElemSet(elemSet)  = trim(IO_strValue(fileContent(l),chunkPos,4))
        mapElemSet(:,elemSet) = continuousIntValues(fileContent(l+1:),size(mapElemSet,1)-1,nameElemSet,mapElemSet,size(nameElemSet))
     end if
   end do
@@ -472,17 +465,17 @@ subroutine inputRead_mapElems(FEM2DAMASK, &
 
 
   do l = 1, size(fileContent)
-    chunkPos = IO_stringPos(fileContent(l))
+    chunkPos = IO_strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
-    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity') then
+    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'connectivity') then
       j = 0
       do i = 1,nElems
-        chunkPos = IO_stringPos(fileContent(l+1+i+j))
+        chunkPos = IO_strPos(fileContent(l+1+i+j))
         map_unsorted(:,i) = [IO_intValue(fileContent(l+1+i+j),chunkPos,1),i]
         nNodesAlreadyRead = chunkPos(1) - 2
         do while(nNodesAlreadyRead < nNodesPerElem)                                                 ! read on if not all nodes in one line
           j = j + 1
-          chunkPos = IO_stringPos(fileContent(l+1+i+j))
+          chunkPos = IO_strPos(fileContent(l+1+i+j))
           nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
         end do
       end do
@@ -516,9 +509,9 @@ subroutine inputRead_mapNodes(FEM2DAMASK, &
 
 
   do l = 1, size(fileContent)
-    chunkPos = IO_stringPos(fileContent(l))
+    chunkPos = IO_strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
-    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
+    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'coordinates') then
       chunkPos = [1,1,10]
       do i = 1,nNodes
         map_unsorted(:,i) = [IO_intValue(fileContent(l+1+i),chunkPos,1),i]
@@ -542,7 +535,7 @@ end subroutine inputRead_mapNodes
 subroutine inputRead_elemNodes(nodes, &
                                nNode,fileContent)
 
-  real(pReal), allocatable,  dimension(:,:), intent(out) :: nodes
+  real(pREAL), allocatable,  dimension(:,:), intent(out) :: nodes
   integer,                                   intent(in)  :: nNode
   character(len=*),            dimension(:), intent(in)  :: fileContent                             !< file content, separated per lines
 
@@ -553,13 +546,13 @@ subroutine inputRead_elemNodes(nodes, &
   allocate(nodes(3,nNode))
 
   do l = 1, size(fileContent)
-    chunkPos = IO_stringPos(fileContent(l))
+    chunkPos = IO_strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
-    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
+    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'coordinates') then
       chunkPos = [4,1,10,11,30,31,50,51,70]
       do i=1,nNode
         m = discretization_Marc_FEM2DAMASK_node(IO_intValue(fileContent(l+1+i),chunkPos,1))
-        nodes(1:3,m) = [(mesh_unitlength * IO_floatValue(fileContent(l+1+i),chunkPos,j+1),j=1,3)]
+        nodes(1:3,m) = [(mesh_unitlength * IO_realValue(fileContent(l+1+i),chunkPos,j+1),j=1,3)]
       end do
       exit
     end if
@@ -584,23 +577,23 @@ subroutine inputRead_elemType(elem, &
 
   t = -1
   do l = 1, size(fileContent)
-    chunkPos = IO_stringPos(fileContent(l))
+    chunkPos = IO_strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
-    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity') then
+    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'connectivity') then
       j = 0
       do i=1,nElem                                                                                  ! read all elements
-        chunkPos = IO_stringPos(fileContent(l+1+i+j))
+        chunkPos = IO_strPos(fileContent(l+1+i+j))
         if (t == -1) then
-          t = mapElemtype(IO_stringValue(fileContent(l+1+i+j),chunkPos,2))
+          t = mapElemtype(IO_strValue(fileContent(l+1+i+j),chunkPos,2))
           call elem%init(t)
         else
-          t_ = mapElemtype(IO_stringValue(fileContent(l+1+i+j),chunkPos,2))
-          if (t /= t_) call IO_error(191,IO_stringValue(fileContent(l+1+i+j),chunkPos,2),label1='type',ID1=t)
+          t_ = mapElemtype(IO_strValue(fileContent(l+1+i+j),chunkPos,2))
+          if (t /= t_) call IO_error(191,IO_strValue(fileContent(l+1+i+j),chunkPos,2),label1='type',ID1=t)
         end if
         remainingChunks = elem%nNodes - (chunkPos(1) - 2)
         do while(remainingChunks > 0)
           j = j + 1
-          chunkPos = IO_stringPos(fileContent(l+1+i+j))
+          chunkPos = IO_strPos(fileContent(l+1+i+j))
           remainingChunks = remainingChunks - chunkPos(1)
         end do
       end do
@@ -675,12 +668,12 @@ function inputRead_connectivityElem(nElem,nNodes,fileContent)
 
 
   do l = 1, size(fileContent)
-    chunkPos = IO_stringPos(fileContent(l))
+    chunkPos = IO_strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
-    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity') then
+    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'connectivity') then
       j = 0
       do i = 1,nElem
-        chunkPos = IO_stringPos(fileContent(l+1+i+j))
+        chunkPos = IO_strPos(fileContent(l+1+i+j))
         e = discretization_Marc_FEM2DAMASK_elem(IO_intValue(fileContent(l+1+i+j),chunkPos,1))
         if (e /= 0) then                                                                            ! disregard non CP elems
           do k = 1,chunkPos(1)-2
@@ -690,7 +683,7 @@ function inputRead_connectivityElem(nElem,nNodes,fileContent)
           nNodesAlreadyRead = chunkPos(1) - 2
           do while(nNodesAlreadyRead < nNodes)                                                      ! read on if not all nodes in one line
             j = j + 1
-            chunkPos = IO_stringPos(fileContent(l+1+i+j))
+            chunkPos = IO_strPos(fileContent(l+1+i+j))
             do k = 1,chunkPos(1)
               inputRead_connectivityElem(nNodesAlreadyRead+k,e) = &
                 discretization_Marc_FEM2DAMASK_node(IO_IntValue(fileContent(l+1+i+j),chunkPos,k))
@@ -732,18 +725,18 @@ subroutine inputRead_material(materialAt,&
   allocate(materialAt(nElem))
 
   do l = 1, size(fileContent)
-    chunkPos = IO_stringPos(fileContent(l))
+    chunkPos = IO_strPos(fileContent(l))
     if (chunkPos(1) < 2) cycle
-    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'initial' .and. &
-       IO_lc(IO_stringValue(fileContent(l),chunkPos,2)) == 'state') then
+    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'initial' .and. &
+       IO_lc(IO_strValue(fileContent(l),chunkPos,2)) == 'state') then
       k = merge(2,1,initialcondTableStyle == 2)
-      chunkPos = IO_stringPos(fileContent(l+k))
+      chunkPos = IO_strPos(fileContent(l+k))
       sv = IO_IntValue(fileContent(l+k),chunkPos,1)                                                 ! # of state variable
       if (sv == 2) then                                                                             ! state var 2 gives material ID
         m = 1
-        chunkPos = IO_stringPos(fileContent(l+k+m))
-        do while (scan(IO_stringValue(fileContent(l+k+m),chunkPos,1),'+-',back=.true.)>1)           ! is noEfloat value?
-          ID = nint(IO_floatValue(fileContent(l+k+m),chunkPos,1))
+        chunkPos = IO_strPos(fileContent(l+k+m))
+        do while (scan(IO_strValue(fileContent(l+k+m),chunkPos,1),'+-',back=.true.)>1)              ! is no Efloat value?
+          ID = nint(IO_realValue(fileContent(l+k+m),chunkPos,1))
           if (initialcondTableStyle == 2) m = m + 2
           contInts = continuousIntValues(fileContent(l+k+m+1:),nElem,nameElemSet,mapElemSet,size(nameElemSet)) ! get affected elements
           do i = 1,contInts(1)
@@ -921,8 +914,8 @@ end subroutine buildCells
 !--------------------------------------------------------------------------------------------------
 pure function buildCellNodes(node_elem)
 
-  real(pReal),               dimension(:,:), intent(in)  :: node_elem                               !< element nodes
-  real(pReal),               dimension(:,:), allocatable :: buildCellNodes                          !< cell node coordinates
+  real(pREAL),               dimension(:,:), intent(in)  :: node_elem                               !< element nodes
+  real(pREAL),               dimension(:,:), allocatable :: buildCellNodes                          !< cell node coordinates
 
   integer :: i, j, k, n
 
@@ -934,13 +927,13 @@ pure function buildCellNodes(node_elem)
   do i = 1, size(cellNodeDefinition)
     do j = 1, size(cellNodeDefinition(i)%parents,1)
       n = n+1
-      buildCellNodes(:,n) = 0.0_pReal
+      buildCellNodes(:,n) = 0.0_pREAL
       do k = 1, size(cellNodeDefinition(i)%parents,2)
         buildCellNodes(:,n) = buildCellNodes(:,n) &
                             + buildCellNodes(:,cellNodeDefinition(i)%parents(j,k)) &
-                            * real(cellNodeDefinition(i)%weights(j,k),pReal)
+                            * real(cellNodeDefinition(i)%weights(j,k),pREAL)
       end do
-      buildCellNodes(:,n) = buildCellNodes(:,n)/real(sum(cellNodeDefinition(i)%weights(j,:)),pReal)
+      buildCellNodes(:,n) = buildCellNodes(:,n)/real(sum(cellNodeDefinition(i)%weights(j,:)),pREAL)
     end do
   end do
 
@@ -952,8 +945,8 @@ end function buildCellNodes
 !--------------------------------------------------------------------------------------------------
 pure function buildIPcoordinates(node_cell)
 
-  real(pReal), dimension(:,:), intent(in)  :: node_cell                                             !< cell node coordinates
-  real(pReal), dimension(:,:), allocatable :: buildIPcoordinates                                    !< cell-center/IP coordinates
+  real(pREAL), dimension(:,:), intent(in)  :: node_cell                                             !< cell node coordinates
+  real(pREAL), dimension(:,:), allocatable :: buildIPcoordinates                                    !< cell-center/IP coordinates
 
   integer, dimension(:,:), allocatable :: connectivity_cell_reshaped
   integer :: i, n, NcellNodesPerCell,Ncells
@@ -966,12 +959,12 @@ pure function buildIPcoordinates(node_cell)
   allocate(buildIPcoordinates(3,Ncells))
 
   do i = 1, size(connectivity_cell_reshaped,2)
-    buildIPcoordinates(:,i) = 0.0_pReal
+    buildIPcoordinates(:,i) = 0.0_pREAL
     do n = 1, size(connectivity_cell_reshaped,1)
       buildIPcoordinates(:,i) = buildIPcoordinates(:,i) &
                               + node_cell(:,connectivity_cell_reshaped(n,i))
     end do
-    buildIPcoordinates(:,i) = buildIPcoordinates(:,i)/real(size(connectivity_cell_reshaped,1),pReal)
+    buildIPcoordinates(:,i) = buildIPcoordinates(:,i)/real(size(connectivity_cell_reshaped,1),pREAL)
   end do
 
 end function buildIPcoordinates
@@ -985,10 +978,10 @@ end function buildIPcoordinates
 pure function IPvolume(elem,node)
 
   type(tElement),                intent(in) :: elem
-  real(pReal), dimension(:,:),   intent(in) :: node
+  real(pREAL), dimension(:,:),   intent(in) :: node
 
-  real(pReal), dimension(elem%nIPs,size(connectivity_cell,3)) :: IPvolume
-  real(pReal), dimension(3) :: x0,x1,x2,x3,x4,x5,x6,x7
+  real(pREAL), dimension(elem%nIPs,size(connectivity_cell,3)) :: IPvolume
+  real(pREAL), dimension(3) :: x0,x1,x2,x3,x4,x5,x6,x7
 
   integer :: e,i
 
@@ -1029,7 +1022,7 @@ pure function IPvolume(elem,node)
           IPvolume(i,e) = dot_product((x7-x1)+(x6-x0),math_cross((x7-x2),        (x3-x0))) &
                         + dot_product((x6-x0),        math_cross((x7-x2)+(x5-x0),(x7-x4))) &
                         + dot_product((x7-x1),        math_cross((x5-x0),        (x7-x4)+(x3-x0)))
-          IPvolume(i,e) = IPvolume(i,e)/12.0_pReal
+          IPvolume(i,e) = IPvolume(i,e)/12.0_pREAL
       end select
     end do
   end do
@@ -1044,11 +1037,11 @@ pure function IPareaNormal(elem,nElem,node)
 
   type(tElement),                intent(in) :: elem
   integer,                       intent(in) :: nElem
-  real(pReal), dimension(:,:),   intent(in) :: node
+  real(pREAL), dimension(:,:),   intent(in) :: node
 
-  real(pReal), dimension(3,elem%nIPneighbors,elem%nIPs,nElem) :: ipAreaNormal
+  real(pREAL), dimension(3,elem%nIPneighbors,elem%nIPs,nElem) :: ipAreaNormal
 
-  real(pReal), dimension (3,size(elem%cellFace,1)) :: nodePos
+  real(pREAL), dimension (3,size(elem%cellFace,1)) :: nodePos
   integer :: e,i,f,n,m
 
   m = size(elem%cellFace,1)
@@ -1062,7 +1055,7 @@ pure function IPareaNormal(elem,nElem,node)
           case (1,2)                                                                                ! 2D 3 or 4 node
             IPareaNormal(1,f,i,e) =   nodePos(2,2) - nodePos(2,1)                                   ! x_normal =  y_connectingVector
             IPareaNormal(2,f,i,e) = -(nodePos(1,2) - nodePos(1,1))                                  ! y_normal = -x_connectingVector
-            IPareaNormal(3,f,i,e) = 0.0_pReal
+            IPareaNormal(3,f,i,e) = 0.0_pREAL
           case (3)                                                                                  ! 3D 4node
             IPareaNormal(1:3,f,i,e) = math_cross(nodePos(1:3,2) - nodePos(1:3,1), &
                                                  nodePos(1:3,3) - nodePos(1:3,1))
@@ -1070,11 +1063,11 @@ pure function IPareaNormal(elem,nElem,node)
             ! Get the normal of the quadrilateral face as the average of four normals of triangular
             ! subfaces. Since the face consists only of two triangles, the sum has to be divided
             ! by two. This procedure tries to compensate for probable non-planar cell surfaces
-            IPareaNormal(1:3,f,i,e) = 0.0_pReal
+            IPareaNormal(1:3,f,i,e) = 0.0_pREAL
             do n = 1, m
               IPareaNormal(1:3,f,i,e) = IPareaNormal(1:3,f,i,e) &
                                       + math_cross(nodePos(1:3,mod(n+0,m)+1) - nodePos(1:3,n), &
-                                                   nodePos(1:3,mod(n+1,m)+1) - nodePos(1:3,n)) * 0.5_pReal
+                                                   nodePos(1:3,mod(n+1,m)+1) - nodePos(1:3,n)) * 0.5_pREAL
             end do
         end select
       end do
@@ -1163,12 +1156,12 @@ function continuousIntValues(fileContent,maxN,lookupName,lookupMap,lookupMaxN)
   rangeGeneration = .false.
 
   do l = 1, size(fileContent)
-    chunkPos = IO_stringPos(fileContent(l))
+    chunkPos = IO_strPos(fileContent(l))
     if (chunkPos(1) < 1) then                                                                       ! empty line
       exit
-    elseif (verify(IO_stringValue(fileContent(l),chunkPos,1),'0123456789') > 0) then                ! a non-int, i.e. set name
+    elseif (verify(IO_strValue(fileContent(l),chunkPos,1),'0123456789') > 0) then                   ! a non-int, i.e. set name
       do i = 1, lookupMaxN                                                                          ! loop over known set names
-        if (IO_stringValue(fileContent(l),chunkPos,1) == lookupName(i)) then                        ! found matching name
+        if (IO_strValue(fileContent(l),chunkPos,1) == lookupName(i)) then                           ! found matching name
           continuousIntValues = lookupMap(:,i)                                                      ! return resp. entity list
           exit
         end if
@@ -1187,7 +1180,7 @@ function continuousIntValues(fileContent,maxN,lookupName,lookupMap,lookupMaxN)
         continuousIntValues(1) = continuousIntValues(1) + 1
         continuousIntValues(1+continuousIntValues(1)) = IO_intValue(fileContent(l),chunkPos,i)
       end do
-      if ( IO_lc(IO_stringValue(fileContent(l),chunkPos,chunkPos(1))) /= 'c' ) then                 ! line finished, read last value
+      if ( IO_lc(IO_strValue(fileContent(l),chunkPos,chunkPos(1))) /= 'c' ) then                    ! line finished, read last value
         continuousIntValues(1) = continuousIntValues(1) + 1
         continuousIntValues(1+continuousIntValues(1)) = IO_intValue(fileContent(l),chunkPos,chunkPos(1))
         exit
@@ -1209,7 +1202,7 @@ logical function containsRange(str,chunkPos)
 
   containsRange = .False.
   if (chunkPos(1) == 3) then
-    if (IO_lc(IO_stringValue(str,chunkPos,2)) == 'to') containsRange = .True.
+    if (IO_lc(IO_strValue(str,chunkPos,2)) == 'to') containsRange = .True.
   end if
 
 end function containsRange

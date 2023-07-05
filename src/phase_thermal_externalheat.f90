@@ -36,6 +36,7 @@ module function externalheat_init(source_length) result(mySources)
     src
   type(tList), pointer :: &
     sources
+  character(len=:), allocatable :: refs
   integer :: so,Nmembers,ph
 
 
@@ -60,6 +61,9 @@ module function externalheat_init(source_length) result(mySources)
         source_thermal_externalheat_offset(ph) = so
         associate(prm  => param(ph))
           src => sources%get_dict(so)
+          print'(1x,a,i0,a,i0)', 'phase ',ph,' source ',so
+          refs = config_listReferences(src,indent=3)
+          if (len(refs) > 0) print'(/,1x,a)', refs
 
           prm%f = table(src,'t','f')
 
@@ -88,7 +92,7 @@ module subroutine externalheat_dotState(ph, en)
 
   so = source_thermal_externalheat_offset(ph)
 
-  thermalState(ph)%p(so)%dotState(1,en) = 1.0_pReal                                                 ! state is current time
+  thermalState(ph)%p(so)%dotState(1,en) = 1.0_pREAL                                                 ! state is current time
 
 end subroutine externalheat_dotState
 
@@ -101,7 +105,7 @@ module function externalheat_f_T(ph,en) result(f_T)
   integer, intent(in) :: &
     ph, &
     en
-  real(pReal) :: &
+  real(pREAL) :: &
     f_T
 
   integer :: &

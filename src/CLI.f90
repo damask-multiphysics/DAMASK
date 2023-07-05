@@ -6,7 +6,7 @@
 !> @brief Parse command line interface for PETSc-based solvers
 !--------------------------------------------------------------------------------------------------
 #define PETSC_MINOR_MIN 12
-#define PETSC_MINOR_MAX 18
+#define PETSC_MINOR_MAX 19
 
 module CLI
   use, intrinsic :: ISO_fortran_env
@@ -16,6 +16,7 @@ module CLI
   use prec
   use parallelization
   use system_routines
+  use IO
 
   implicit none(type,external)
   private
@@ -23,7 +24,8 @@ module CLI
     CLI_restartInc = 0                                                                              !< Increment at which calculation starts
   character(len=:), allocatable, public, protected :: &
     CLI_geomFile, &                                                                                 !< parameter given for geometry file
-    CLI_loadFile                                                                                    !< parameter given for load case file
+    CLI_loadFile, &                                                                                 !< parameter given for load case file
+    CLI_materialFile
 
   public :: &
     getSolverJobName, &
@@ -35,157 +37,186 @@ contains
 !> @brief initializes the solver by interpreting the command line arguments. Also writes
 !! information on computation to screen
 !--------------------------------------------------------------------------------------------------
-subroutine CLI_init
+subroutine CLI_init()
 #include <petsc/finclude/petscsys.h>
 
 #if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR<PETSC_MINOR_MIN || PETSC_VERSION_MINOR>PETSC_MINOR_MAX
 --  UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION ---
 #endif
 
-  character(len=pPathLen*3+pStringLen) :: &
-    commandLine                                                                                     !< command line call as string
-  character(len=pPathLen) :: &
+  character(len=:), allocatable :: &
+    commandLine, &                                                                                  !< command line call as string
     arg, &                                                                                          !< individual argument
-    loadCaseArg   = '', &                                                                           !< -l argument given to the executable
-    geometryArg   = '', &                                                                           !< -g argument given to the executable
-    workingDirArg = ''                                                                              !< -w argument given to the executable
+    loadCaseArg, &                                                                                  !< -l argument given to the executable
+    geometryArg, &                                                                                  !< -g argument given to the executable
+    materialArg, &                                                                                  !< -m argument given to the executable
+    workingDirArg                                                                                   !< -w argument given to the executable
   integer :: &
     stat, &
     i
   integer, dimension(8) :: &
     dateAndTime
-  integer        :: err
   external :: &
     quit
 
 
-  print'(/,1x,a)', '<<<+-  CLI init  -+>>>'
+  workingDirArg = getCWD()
+
+  print '(/,1x,a)', '<<<+-  CLI init  -+>>>'
 
  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
 #ifdef DEBUG
-  print*, achar(27)//'[31m'
-  print'(a,/)', ' debug version - debug version - debug version - debug version - debug version'
+  print '(a)', achar(27)//'[31m'
+  print '(1x,a,/)', 'debug version - debug version - debug version - debug version - debug version'
 #else
-  print*, achar(27)//'[94m'
+  print '(a)', achar(27)//'[94m'
 #endif
-  print*, '     _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/    _/_/_/'
-  print*, '    _/    _/  _/    _/  _/_/  _/_/  _/    _/  _/        _/  _/            _/'
-  print*, '   _/    _/  _/_/_/_/  _/  _/  _/  _/_/_/_/    _/_/    _/_/          _/_/'
-  print*, '  _/    _/  _/    _/  _/      _/  _/    _/        _/  _/  _/            _/'
-  print*, ' _/_/_/    _/    _/  _/      _/  _/    _/  _/_/_/    _/    _/    _/_/_/'
+  print '(1x,a)', '    _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/    _/_/_/'
+  print '(1x,a)', '   _/    _/  _/    _/  _/_/  _/_/  _/    _/  _/        _/  _/            _/'
+  print '(1x,a)', '  _/    _/  _/_/_/_/  _/  _/  _/  _/_/_/_/    _/_/    _/_/          _/_/'
+  print '(1x,a)', ' _/    _/  _/    _/  _/      _/  _/    _/        _/  _/  _/            _/'
+  print '(1x,a)', '_/_/_/    _/    _/  _/      _/  _/    _/  _/_/_/    _/    _/    _/_/_/'
 #if   defined(GRID)
-  print*, ' Grid solver'
+  print '(1x,a)', 'Grid solver'
 #elif defined(MESH)
-  print*, ' Mesh solver'
+  print '(1x,a)', 'Mesh solver'
 #endif
 #ifdef DEBUG
-  print'(/,a)', ' debug version - debug version - debug version - debug version - debug version'
+  print '(/,1x,a)', 'debug version - debug version - debug version - debug version - debug version'
 #endif
-  print*, achar(27)//'[0m'
+  print '(a)', achar(27)//'[0m'
 
-  print*, 'F. Roters et al., Computational Materials Science 158:420–478, 2019'
-  print*, 'https://doi.org/10.1016/j.commatsci.2018.04.030'
+  print '(1x,a)', 'F. Roters et al., Computational Materials Science 158:420–478, 2019'
+  print '(1x,a)', 'https://doi.org/10.1016/j.commatsci.2018.04.030'
 
-  print'(/,a)', ' Version: '//DAMASKVERSION
+  print '(/,1x,a)', 'Version: '//DAMASKVERSION
 
-  print'(/,a)', ' Compiled with: '//compiler_version()
-  print'(a)',   ' Compiled on: '//CMAKE_SYSTEM
-  print'(a)',   ' Compiler options: '//compiler_options()
+  print '(/,1x,a)', 'Compiled with: '//compiler_version()
+  print '(1x,a)',   'Compiled on: '//CMAKE_SYSTEM
+  print '(1x,a)',   'Compiler options: '//compiler_options()
 
   ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
-  print'(/,a)', ' Compiled on: '//__DATE__//' at '//__TIME__
+  print '(/,1x,a)', 'Compiled on: '//__DATE__//' at '//__TIME__
 
-  print'(/,a,i0,a,i0,a,i0)', &
-                ' PETSc version: ',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.',PETSC_VERSION_SUBMINOR
+  print '(/,1x,a,1x,i0,a,i0,a,i0)', &
+                'PETSc version:',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.',PETSC_VERSION_SUBMINOR
 
   call date_and_time(values = dateAndTime)
-  print'(/,a,2(i2.2,a),i4.4)', ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
-  print'(a,2(i2.2,a),i2.2)',   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
+  print '(/,1x,a,1x,2(i2.2,a),i4.4)', 'Date:',dateAndTime(3),'/',dateAndTime(2),'/',dateAndTime(1)
+  print '(1x,a,1x,2(i2.2,a),i2.2)',   'Time:',dateAndTime(5),':',dateAndTime(6),':',dateAndTime(7)
 
   do i = 1, command_argument_count()
-    call get_command_argument(i,arg,status=err)
-    if (err /= 0) call quit(1)
+    arg = getArg(i)
     select case(trim(arg))                                                                          ! extract key
       case ('-h','--help')
-        print'(/,a)',' #######################################################################'
-        print'(a)',  ' DAMASK Command Line Interface:'
-        print'(a)',  ' Düsseldorf Advanced Material Simulation Kit with PETSc-based solvers'
-        print'(a,/)',' #######################################################################'
-        print'(a,/)',' Valid command line switches:'
-        print'(a)',  '    --geom         (-g, --geometry)'
-        print'(a)',  '    --load         (-l, --loadcase)'
-        print'(a)',  '    --workingdir   (-w, --wd, --workingdirectory)'
-        print'(a)',  '    --restart      (-r, --rs)'
-        print'(a)',  '    --help         (-h)'
-        print'(/,a)',' -----------------------------------------------------------------------'
-        print'(a)',  ' Mandatory arguments:'
-        print'(/,a)','   --geom PathToGeomFile/NameOfGeom'
-        print'(a)',  '        Specifies the location of the geometry definition file.'
-        print'(/,a)','   --load PathToLoadFile/NameOfLoadFile'
-        print'(a)',  '        Specifies the location of the load case definition file.'
-        print'(/,a)',' -----------------------------------------------------------------------'
-        print'(a)',  ' Optional arguments:'
-        print'(/,a)','   --workingdirectory PathToWorkingDirectory'
-        print'(a)',  '        Specifies the working directory and overwrites the default ./'
-        print'(a)',  '        Make sure the file "material.yaml" exists in the working'
-        print'(a)',  '            directory.'
-        print'(a)',  '        For further configuration place "numerics.yaml"'
-        print'(a)','            and "debug.yaml" in that directory.'
-        print'(/,a)','   --restart N'
-        print'(a)',  '        Reads in increment N and continues with calculating'
-        print'(a)',  '            increment N+1, N+2, ... based on this.'
-        print'(a)',  '        Appends to existing results file'
-        print'(a)',  '            "NameOfGeom_NameOfLoadFile.hdf5".'
-        print'(a)',  '        Works only if the restart information for increment N'
-        print'(a)',  '            is available in the working directory.'
-        print'(/,a)',' -----------------------------------------------------------------------'
-        print'(a)',  ' Help:'
-        print'(/,a)','   --help'
-        print'(a,/)','        Prints this message and exits'
+        print '(/,1x,a)','#######################################################################'
+        print '(1x,a)',  'DAMASK Command Line Interface:'
+        print '(1x,a)',  'Düsseldorf Advanced Material Simulation Kit with PETSc-based solvers'
+        print '(1x,a,/)','#######################################################################'
+        print '(1x,a,/)','Valid command line switches:'
+        print '(1x,a)',  '   --geom         (-g, --geometry)'
+        print '(1x,a)',  '   --load         (-l, --loadcase)'
+        print '(1x,a)',  '   --material     (-m, --materialconfig)'
+        print '(1x,a)',  '   --workingdir   (-w, --wd, --workingdirectory)'
+        print '(1x,a)',  '   --restart      (-r, --rs)'
+        print '(1x,a)',  '   --help         (-h)'
+        print '(/,1x,a)','-----------------------------------------------------------------------'
+        print '(1x,a)',  'Mandatory arguments:'
+        print '(/,1x,a)','  --geom PathToGeomFile/NameOfGeom'
+        print '(1x,a)',  '       Specifies the location of the geometry definition file.'
+        print '(/,1x,a)','  --load PathToLoadFile/NameOfLoadFile'
+        print '(1x,a)',  '       Specifies the location of the load case definition file.'
+        print '(/,1x,a)','  --material PathToMaterialConfigurationFile/NameOfMaterialConfigurationFile'
+        print '(1x,a)',  '       Specifies the location of the material configuration file.'
+        print '(/,1x,a)','-----------------------------------------------------------------------'
+        print '(1x,a)',  'Optional arguments:'
+        print '(/,1x,a)','  --workingdirectory PathToWorkingDirectory'
+        print '(1x,a)',  '       Specifies the base directory of relative paths.'
+        print '(/,1x,a)','  --restart N'
+        print '(1x,a)',  '       Reads in increment N and continues with calculating'
+        print '(1x,a)',  '           increment N+1, N+2, ... based on this.'
+        print '(1x,a)',  '       Appends to existing results file'
+        print '(1x,a)',  '           "NameOfGeom_NameOfLoadFile_NameOfMaterialConfigurationFile.hdf5".'
+        print '(1x,a)',  '       Works only if the restart information for increment N'
+        print '(1x,a)',  '           is available in the base directory.'
+        print '(/,1x,a)','-----------------------------------------------------------------------'
+        print '(1x,a)',  'Help:'
+        print '(/,1x,a)','  --help'
+        print '(1x,a,/)','       Prints this message and exits'
         call quit(0)                                                                                ! normal Termination
       case ('-l', '--load', '--loadcase')
-        call get_command_argument(i+1,loadCaseArg,status=err)
+        loadCaseArg = getArg(i+1)
       case ('-g', '--geom', '--geometry')
-        call get_command_argument(i+1,geometryArg,status=err)
+        geometryArg = getArg(i+1)
+      case ('-m', '--material', '--materialconfig')
+        materialArg = getArg(i+1)
       case ('-w', '--wd', '--workingdir', '--workingdirectory')
-        call get_command_argument(i+1,workingDirArg,status=err)
+        workingDirArg = getArg(i+1)
       case ('-r', '--rs', '--restart')
-        call get_command_argument(i+1,arg,status=err)
+        arg = getArg(i+1)
         read(arg,*,iostat=stat) CLI_restartInc
-        if (CLI_restartInc < 0 .or. stat /=0) then
-          print'(/,a)', ' ERROR: Could not parse restart increment: '//trim(arg)
+        if (CLI_restartInc < 0 .or. stat /= 0) then
+          print'(/,1x,a)', 'ERROR: Could not parse restart increment: '//trim(arg)
           call quit(1)
         end if
     end select
-    if (err /= 0) call quit(1)
   end do
 
-  if (len_trim(loadcaseArg) == 0 .or. len_trim(geometryArg) == 0) then
-    print'(/,a)', ' ERROR: Please specify geometry AND load case (-h for help)'
+  if (.not. all([allocated(loadcaseArg),allocated(geometryArg),allocated(materialArg)])) then
+    print '(/,1x,a)', 'ERROR: Please specify geometry AND load case AND material configuration (-h for help)'
     call quit(1)
   end if
 
-  if (len_trim(workingDirArg) > 0) call setWorkingDirectory(trim(workingDirArg))
-  CLI_geomFile = getGeometryFile(geometryArg)
-  CLI_loadFile = getLoadCaseFile(loadCaseArg)
+  call setWorkingDirectory(trim(workingDirArg))
+  CLI_geomFile = getPathRelCWD(geometryArg,'geometry')
+  CLI_loadFile = getPathRelCWD(loadCaseArg,'load case')
+  CLI_materialFile = getPathRelCWD(materialArg,'material configuration')
 
-  call get_command(commandLine)
-  print'(/,a)',      ' Host name: '//getHostName()
-  print'(a)',        ' User name: '//getUserName()
+  commandLine = getArg(-1)
 
-  print'(/a)',       ' Command line call:      '//trim(commandLine)
-  if (len_trim(workingDirArg) > 0) &
-    print'(a)',      ' Working dir argument:   '//trim(workingDirArg)
-  print'(a)',        ' Geometry argument:      '//trim(geometryArg)
-  print'(a)',        ' Load case argument:     '//trim(loadcaseArg)
-  print'(/,a)',      ' Working directory:      '//getCWD()
-  print'(a)',        ' Geometry file:          '//CLI_geomFile
-  print'(a)',        ' Load case file:         '//CLI_loadFile
-  print'(a)',        ' Solver job name:        '//getSolverJobName()
+  print '(/,1x,a)',      'Host name: '//getHostName()
+  print '(1x,a)',        'User name: '//getUserName()
+
+  print '(/,1x,a,/)',    'Command line call:      '//trim(commandLine)
+  print '(1x,a)',        'Working directory:      '//IO_glueDiffering(getCWD(),workingDirArg)
+  print '(1x,a)',        'Geometry:               '//IO_glueDiffering(CLI_geomFile,geometryArg)
+  print '(1x,a)',        'Load case:              '//IO_glueDiffering(CLI_loadFile,loadCaseArg)
+  print '(1x,a)',        'Material config:        '//IO_glueDiffering(CLI_materialFile,materialArg)
+  print '(1x,a)',        'Solver job name:        '//getSolverJobName()
   if (CLI_restartInc > 0) &
-    print'(a,i6.6)', ' Restart from increment: ', CLI_restartInc
+    print '(1x,a,i6.6)', 'Restart from increment: ', CLI_restartInc
+
 
 end subroutine CLI_init
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Get argument from command line.
+!--------------------------------------------------------------------------------------------------
+function getArg(n)
+
+  integer, intent(in) :: n                                                                          !< number of the argument
+  character(len=:), allocatable :: getArg
+
+  integer :: l,err
+  external :: quit
+
+
+  allocate(character(len=0)::getArg)
+  if (n<0) then
+    call get_command(getArg, length=l)
+  else
+    call get_command_argument(n,getArg,length=l)
+  endif
+  deallocate(getArg)
+  allocate(character(len=l)::getArg)
+  if (n<0) then
+    call get_command(getArg, status=err)
+  else
+    call get_command_argument(n,getArg,status=err)
+  endif
+  if (err /= 0) call quit(1)
+
+end function getArg
 
 
 !--------------------------------------------------------------------------------------------------
@@ -196,8 +227,10 @@ subroutine setWorkingDirectory(workingDirectoryArg)
 
   character(len=*), intent(in)  :: workingDirectoryArg                                              !< working directory argument
   character(len=:), allocatable :: workingDirectory
+
   logical                       :: error
   external                      :: quit
+
 
   absolutePath: if (workingDirectoryArg(1:1) == '/') then
     workingDirectory = workingDirectoryArg
@@ -206,10 +239,10 @@ subroutine setWorkingDirectory(workingDirectoryArg)
     workingDirectory = trim(workingDirectory)//'/'//workingDirectoryArg
   end if absolutePath
 
-  workingDirectory = trim(rectifyPath(workingDirectory))
+  workingDirectory = trim(normpath(workingDirectory))
   error = setCWD(trim(workingDirectory))
   if (error) then
-    print*, 'ERROR: Invalid Working directory: '//trim(workingDirectory)
+    print '(1x,a)', 'ERROR: Invalid Working directory: '//trim(workingDirectory)
     call quit(1)
   end if
 
@@ -222,7 +255,9 @@ end subroutine setWorkingDirectory
 function getSolverJobName()
 
   character(len=:), allocatable :: getSolverJobName
+
   integer :: posExt,posSep
+
 
   posExt = scan(CLI_geomFile,'.',back=.true.)
   posSep = scan(CLI_geomFile,'/',back=.true.)
@@ -238,123 +273,107 @@ end function getSolverJobName
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief basename of geometry file with extension from command line arguments
+!> @brief Translate path as relative to CWD and check for existence.
 !--------------------------------------------------------------------------------------------------
-function getGeometryFile(geometryParameter)
+function getPathRelCWD(path,fileType)
 
-  character(len=:), allocatable :: getGeometryFile
-  character(len=*),  intent(in) :: geometryParameter
+  character(len=:), allocatable :: getPathRelCWD
+  character(len=*),  intent(in) :: path
+  character(len=*),  intent(in) :: fileType
+
   logical                       :: file_exists
   external                      :: quit
 
-  getGeometryFile = trim(geometryParameter)
-  if (scan(getGeometryFile,'/') /= 1) getGeometryFile = getCWD()//'/'//trim(getGeometryFile)
-  getGeometryFile = trim(makeRelativePath(getCWD(), getGeometryFile))
 
-  inquire(file=getGeometryFile, exist=file_exists)
+  getPathRelCWD = trim(path)
+  if (scan(getPathRelCWD,'/') /= 1) getPathRelCWD = getCWD()//'/'//trim(getPathRelCWD)
+  getPathRelCWD = trim(relpath(getPathRelCWD,getCWD()))
+
+  inquire(file=getPathRelCWD, exist=file_exists)
   if (.not. file_exists) then
-    print*, 'ERROR: Geometry file does not exists: '//trim(getGeometryFile)
+    print '(1x,a)', 'ERROR: '//fileType//' file does not exist: '//trim(getPathRelCWD)
     call quit(1)
   end if
 
-end function getGeometryFile
+end function getPathRelCWD
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief relative path of load case from command line arguments
+!> @brief Remove ../, /./, and // from path.
+!> @details Works only if absolute path is given.
 !--------------------------------------------------------------------------------------------------
-function getLoadCaseFile(loadCaseParameter)
-
-  character(len=:), allocatable :: getLoadCaseFile
-  character(len=*),  intent(in) :: loadCaseParameter
-  logical                       :: file_exists
-  external                      :: quit
-
-  getLoadCaseFile = trim(loadCaseParameter)
-  if (scan(getLoadCaseFile,'/') /= 1) getLoadCaseFile = getCWD()//'/'//trim(getLoadCaseFile)
-  getLoadCaseFile = trim(makeRelativePath(getCWD(), getLoadCaseFile))
-
-  inquire(file=getLoadCaseFile, exist=file_exists)
-  if (.not. file_exists) then
-    print*, 'ERROR: Load case file does not exists: '//trim(getLoadCaseFile)
-    call quit(1)
-  end if
-
-end function getLoadCaseFile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief remove ../, /./, and // from path.
-!> @details works only if absolute path is given
-!--------------------------------------------------------------------------------------------------
-function rectifyPath(path)
+function normpath(path)
 
   character(len=*), intent(in)  :: path
-  character(len=:), allocatable :: rectifyPath
+  character(len=:), allocatable :: normpath
+
   integer :: i,j,k,l
+
 
 !--------------------------------------------------------------------------------------------------
 ! remove /./ from path
-  rectifyPath = trim(path)
-  l = len_trim(rectifyPath)
+  normpath = trim(path)
+  l = len_trim(normpath)
   do i = l,3,-1
-    if (rectifyPath(i-2:i) == '/./') rectifyPath(i-1:l) = rectifyPath(i+1:l)//'  '
+    if (normpath(i-2:i) == '/./') normpath(i-1:l) = normpath(i+1:l)//'  '
   end do
 
 !--------------------------------------------------------------------------------------------------
 ! remove // from path
-  l = len_trim(rectifyPath)
+  l = len_trim(normpath)
   do i = l,2,-1
-    if (rectifyPath(i-1:i) == '//') rectifyPath(i-1:l) = rectifyPath(i:l)//' '
+    if (normpath(i-1:i) == '//') normpath(i-1:l) = normpath(i:l)//' '
   end do
 
 !--------------------------------------------------------------------------------------------------
-! remove ../ and corresponding directory from rectifyPath
-  l = len_trim(rectifyPath)
-  i = index(rectifyPath(i:l),'../')
+! remove ../ and corresponding directory from path
+  l = len_trim(normpath)
+  i = index(normpath(i:l),'../')
   j = 0
   do while (i > j)
-     j = scan(rectifyPath(1:i-2),'/',back=.true.)
-     rectifyPath(j+1:l) = rectifyPath(i+3:l)//repeat(' ',2+i-j)
-     if (rectifyPath(j+1:j+1) == '/') then                                                          !search for '//' that appear in case of XXX/../../XXX
-       k = len_trim(rectifyPath)
-       rectifyPath(j+1:k-1) = rectifyPath(j+2:k)
-       rectifyPath(k:k) = ' '
+     j = scan(normpath(1:i-2),'/',back=.true.)
+     normpath(j+1:l) = normpath(i+3:l)//repeat(' ',2+i-j)
+     if (normpath(j+1:j+1) == '/') then                                                             !search for '//' that appear in case of XXX/../../XXX
+       k = len_trim(normpath)
+       normpath(j+1:k-1) = normpath(j+2:k)
+       normpath(k:k) = ' '
      end if
-     i = j+index(rectifyPath(j+1:l),'../')
+     i = j+index(normpath(j+1:l),'../')
   end do
-  if (len_trim(rectifyPath) == 0) rectifyPath = '/'
+  if (len_trim(normpath) == 0) normpath = '/'
 
-  rectifyPath = trim(rectifyPath)
+  normpath = trim(normpath)
 
-end function rectifyPath
+end function normpath
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Determine relative path from absolute a to absolute b
+!> @brief Determine relative path.
 !--------------------------------------------------------------------------------------------------
-function makeRelativePath(a,b)
+function relpath(path,start)
 
-  character(len=*), intent(in)  :: a,b
-  character(len=pPathLen)       :: a_cleaned,b_cleaned
-  character(len=:), allocatable :: makeRelativePath
+  character(len=*), intent(in)  :: start,path
+  character(len=:), allocatable :: relpath
+
+  character(len=:), allocatable :: start_cleaned,path_cleaned
   integer :: i,posLastCommonSlash,remainingSlashes
+
 
   posLastCommonSlash = 0
   remainingSlashes = 0
-  a_cleaned = rectifyPath(trim(a)//'/')
-  b_cleaned = rectifyPath(b)
+  start_cleaned = normpath(trim(start)//'/')
+  path_cleaned = normpath(path)
 
-  do i = 1, min(len_trim(a_cleaned),len_trim(rectifyPath(b_cleaned)))
-    if (a_cleaned(i:i) /= b_cleaned(i:i)) exit
-    if (a_cleaned(i:i) == '/') posLastCommonSlash = i
+  do i = 1, min(len_trim(start_cleaned),len_trim(path_cleaned))
+    if (start_cleaned(i:i) /= path_cleaned(i:i)) exit
+    if (start_cleaned(i:i) == '/') posLastCommonSlash = i
   end do
-  do i = posLastCommonSlash+1,len_trim(a_cleaned)
-    if (a_cleaned(i:i) == '/') remainingSlashes = remainingSlashes + 1
+  do i = posLastCommonSlash+1,len_trim(start_cleaned)
+    if (start_cleaned(i:i) == '/') remainingSlashes = remainingSlashes + 1
   end do
 
-  makeRelativePath = repeat('..'//'/',remainingSlashes)//b_cleaned(posLastCommonSlash+1:len_trim(b_cleaned))
+  relpath = repeat('..'//'/',remainingSlashes)//path_cleaned(posLastCommonSlash+1:len_trim(path_cleaned))
 
-end function makeRelativePath
+end function relpath
 
 end module CLI

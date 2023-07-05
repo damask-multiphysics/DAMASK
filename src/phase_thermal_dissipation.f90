@@ -1,13 +1,14 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for thermal source due to plastic dissipation
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
 submodule(phase:thermal) dissipation
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
-    real(pReal) :: &
+    real(pREAL) :: &
       kappa                                                                                         !< TAYLOR-QUINNEY factor
   end type tParameters
 
@@ -33,6 +34,7 @@ module function dissipation_init(source_length) result(mySources)
     src
   class(tList), pointer :: &
     sources
+  character(len=:), allocatable :: refs
   integer :: so,Nmembers,ph
 
 
@@ -55,8 +57,11 @@ module function dissipation_init(source_length) result(mySources)
       if (mySources(so,ph)) then
         associate(prm  => param(ph))
           src => sources%get_dict(so)
+          print'(1x,a,i0,a,i0)', 'phase ',ph,' source ',so
+          refs = config_listReferences(src,indent=3)
+          if (len(refs) > 0) print'(/,1x,a)', refs
 
-          prm%kappa = src%get_asFloat('kappa')
+          prm%kappa = src%get_asReal('kappa')
           Nmembers = count(material_ID_phase == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,0,0,0)
 
@@ -75,12 +80,15 @@ end function dissipation_init
 module function dissipation_f_T(ph,en) result(f_T)
 
   integer, intent(in) :: ph, en
-  real(pReal) :: &
+  real(pREAL) :: &
     f_T
+  real(pREAL), dimension(3,3) :: &
+    Mp                                                                                              !< Mandel stress work conjugate with Lp
 
+  Mp = matmul(matmul(transpose(mechanical_F_i(ph,en)),mechanical_F_i(ph,en)),mechanical_S(ph,en))
 
   associate(prm => param(ph))
-    f_T = prm%kappa*sum(abs(mechanical_S(ph,en)*mechanical_L_p(ph,en)))
+    f_T = prm%kappa*sum(abs(Mp*mechanical_L_p(ph,en)))
   end associate
 
 end function dissipation_f_T

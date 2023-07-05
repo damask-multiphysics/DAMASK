@@ -9,7 +9,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ['3.8', '3.9', '3.10']
+        python-version: ['3.8', '3.9', '3.10', '3.11']
         os: [ubuntu-latest, macos-latest, windows-latest]
       fail-fast: false
 
@@ -75,7 +75,7 @@ jobs:
         run: >
           sudo apt-get update &&
           sudo apt-get remove mysql* &&
-          sudo apt-get install python3-pandas python3-scipy python3-h5py python3-vtk7 python3-matplotlib python3-yaml -y
+          sudo apt-get install python3-pandas python3-scipy python3-h5py python3-vtk9 python3-matplotlib python3-yaml -y
 
       - name: Run unit tests
         run: |

@@ -40,21 +40,19 @@ module grid_mechanical_spectral_polarisation
     integer :: &
       itmin, &                                                                                      !< minimum number of iterations
       itmax                                                                                         !< maximum number of iterations
-    real(pReal) :: &
+    real(pREAL) :: &
       eps_div_atol, &                                                                               !< absolute tolerance for equilibrium
       eps_div_rtol, &                                                                               !< relative tolerance for equilibrium
       eps_curl_atol, &                                                                              !< absolute tolerance for compatibility
       eps_curl_rtol, &                                                                              !< relative tolerance for compatibility
       eps_stress_atol, &                                                                            !< absolute tolerance for fullfillment of stress BC
       eps_stress_rtol                                                                               !< relative tolerance for fullfillment of stress BC
-    real(pReal) :: &
+    real(pREAL) :: &
       alpha, &                                                                                      !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
       beta                                                                                          !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
   end type tNumerics
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
-
-  logical :: debugRotation
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
@@ -64,7 +62,7 @@ module grid_mechanical_spectral_polarisation
 
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
-  real(pReal), dimension(:,:,:,:,:), allocatable :: &
+  real(pREAL), dimension(:,:,:,:,:), allocatable :: &
     F_lastInc, &                                                                                    !< field of previous compatible deformation gradients
     F_tau_lastInc, &                                                                                !< field of previous incompatible deformation gradient
     Fdot, &                                                                                         !< field of assumed rate of compatible deformation gradient
@@ -72,25 +70,25 @@ module grid_mechanical_spectral_polarisation
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
-  real(pReal), dimension(3,3) :: &
-    F_aimDot = 0.0_pReal, &                                                                         !< assumed rate of average deformation gradient
+  real(pREAL), dimension(3,3) :: &
+    F_aimDot = 0.0_pREAL, &                                                                         !< assumed rate of average deformation gradient
     F_aim = math_I3, &                                                                              !< current prescribed deformation gradient
     F_aim_lastInc = math_I3, &                                                                      !< previous average deformation gradient
-    F_av = 0.0_pReal, &                                                                             !< average incompatible def grad field
-    P_av = 0.0_pReal, &                                                                             !< average 1st Piola--Kirchhoff stress
-    P_aim = 0.0_pReal
+    F_av = 0.0_pREAL, &                                                                             !< average incompatible def grad field
+    P_av = 0.0_pREAL, &                                                                             !< average 1st Piola--Kirchhoff stress
+    P_aim = 0.0_pREAL
   character(len=:), allocatable :: incInfo                                                          !< time and increment information
-  real(pReal), dimension(3,3,3,3) :: &
-    C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness
-    C_volAvgLastInc = 0.0_pReal, &                                                                  !< previous volume average stiffness
-    C_minMaxAvg = 0.0_pReal, &                                                                      !< current (min+max)/2 stiffness
-    C_minMaxAvgLastInc = 0.0_pReal, &                                                               !< previous (min+max)/2 stiffness
-    C_minMaxAvgRestart = 0.0_pReal, &                                                              !< (min+max)/2 stiffnes (restart)
-    S = 0.0_pReal, &                                                                                !< current compliance (filled up with zeros)
-    C_scale = 0.0_pReal, &
-    S_scale = 0.0_pReal
+  real(pREAL), dimension(3,3,3,3) :: &
+    C_volAvg = 0.0_pREAL, &                                                                         !< current volume average stiffness
+    C_volAvgLastInc = 0.0_pREAL, &                                                                  !< previous volume average stiffness
+    C_minMaxAvg = 0.0_pREAL, &                                                                      !< current (min+max)/2 stiffness
+    C_minMaxAvgLastInc = 0.0_pREAL, &                                                               !< previous (min+max)/2 stiffness
+    C_minMaxAvgRestart = 0.0_pREAL, &                                                              !< (min+max)/2 stiffnes (restart)
+    S = 0.0_pREAL, &                                                                                !< current compliance (filled up with zeros)
+    C_scale = 0.0_pREAL, &
+    S_scale = 0.0_pREAL
 
-  real(pReal) :: &
+  real(pREAL) :: &
     err_BC, &                                                                                       !< deviation from stress BC
     err_curl, &                                                                                     !< RMS of curl of F
     err_div                                                                                         !< RMS of div of P
@@ -118,60 +116,54 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mechanical_spectral_polarisation_init()
 
-  real(pReal), dimension(3,3,cells(1),cells(2),cells3) :: P
+  real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: P
   PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
-  real(pReal), pointer, dimension(:,:,:,:) :: &
+  real(pREAL), pointer, dimension(:,:,:,:) :: &
     FandF_tau, &                                                                                    ! overall pointer to solution data
     F, &                                                                                            ! specific (sub)pointer
     F_tau                                                                                           ! specific (sub)pointer
   PetscInt, dimension(0:worldsize-1) :: localK
-  real(pReal), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
+  real(pREAL), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
   integer(HID_T) :: fileHandle, groupHandle
   type(tDict), pointer :: &
     num_grid
-  type(tList), pointer :: &
-    debug_grid
-  character(len=pStringLen) :: &
+  character(len=pSTRLEN) :: &
     extmsg = ''
 
 
-  print'(/,1x,a)', '<<<+-  grid_mechanical_spectral_polarization init  -+>>>'; flush(IO_STDOUT)
+  print '(/,1x,a)', '<<<+-  grid_mechanical_spectral_polarization init  -+>>>'; flush(IO_STDOUT)
 
-  print'(/,1x,a)', 'P. Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
-  print'(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2014.02.006'
+  print '(/,1x,a)', 'P. Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
+  print '(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2014.02.006'
 
-!-------------------------------------------------------------------------------------------------
-! debugging options
-  debug_grid => config_debug%get_list('grid',defaultVal=emptyList)
-  debugRotation = debug_grid%contains('rotation')
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
   num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
 
-  num%update_gamma    = num_grid%get_asBool ('update_gamma',   defaultVal=.false.)
-  num%eps_div_atol    = num_grid%get_asFloat('eps_div_atol',   defaultVal=1.0e-4_pReal)
-  num%eps_div_rtol    = num_grid%get_asFloat('eps_div_rtol',   defaultVal=5.0e-4_pReal)
-  num%eps_curl_atol   = num_grid%get_asFloat('eps_curl_atol',  defaultVal=1.0e-10_pReal)
-  num%eps_curl_rtol   = num_grid%get_asFloat('eps_curl_rtol',  defaultVal=5.0e-4_pReal)
-  num%eps_stress_atol = num_grid%get_asFloat('eps_stress_atol',defaultVal=1.0e3_pReal)
-  num%eps_stress_rtol = num_grid%get_asFloat('eps_stress_rtol',defaultVal=1.0e-3_pReal)
-  num%itmin           = num_grid%get_asInt  ('itmin',          defaultVal=1)
-  num%itmax           = num_grid%get_asInt  ('itmax',          defaultVal=250)
-  num%alpha           = num_grid%get_asFloat('alpha',          defaultVal=1.0_pReal)
-  num%beta            = num_grid%get_asFloat('beta',           defaultVal=1.0_pReal)
+  num%update_gamma    = num_grid%get_asBool('update_gamma',   defaultVal=.false.)
+  num%eps_div_atol    = num_grid%get_asReal('eps_div_atol',   defaultVal=1.0e-4_pREAL)
+  num%eps_div_rtol    = num_grid%get_asReal('eps_div_rtol',   defaultVal=5.0e-4_pREAL)
+  num%eps_curl_atol   = num_grid%get_asReal('eps_curl_atol',  defaultVal=1.0e-10_pREAL)
+  num%eps_curl_rtol   = num_grid%get_asReal('eps_curl_rtol',  defaultVal=5.0e-4_pREAL)
+  num%eps_stress_atol = num_grid%get_asReal('eps_stress_atol',defaultVal=1.0e3_pREAL)
+  num%eps_stress_rtol = num_grid%get_asReal('eps_stress_rtol',defaultVal=1.0e-3_pREAL)
+  num%itmin           = num_grid%get_asInt ('itmin',          defaultVal=1)
+  num%itmax           = num_grid%get_asInt ('itmax',          defaultVal=250)
+  num%alpha           = num_grid%get_asReal('alpha',          defaultVal=1.0_pREAL)
+  num%beta            = num_grid%get_asReal('beta',           defaultVal=1.0_pREAL)
 
-  if (num%eps_div_atol <= 0.0_pReal)                      extmsg = trim(extmsg)//' eps_div_atol'
-  if (num%eps_div_rtol < 0.0_pReal)                       extmsg = trim(extmsg)//' eps_div_rtol'
-  if (num%eps_curl_atol <= 0.0_pReal)                     extmsg = trim(extmsg)//' eps_curl_atol'
-  if (num%eps_curl_rtol < 0.0_pReal)                      extmsg = trim(extmsg)//' eps_curl_rtol'
-  if (num%eps_stress_atol <= 0.0_pReal)                   extmsg = trim(extmsg)//' eps_stress_atol'
-  if (num%eps_stress_rtol < 0.0_pReal)                    extmsg = trim(extmsg)//' eps_stress_rtol'
+  if (num%eps_div_atol <= 0.0_pREAL)                      extmsg = trim(extmsg)//' eps_div_atol'
+  if (num%eps_div_rtol < 0.0_pREAL)                       extmsg = trim(extmsg)//' eps_div_rtol'
+  if (num%eps_curl_atol <= 0.0_pREAL)                     extmsg = trim(extmsg)//' eps_curl_atol'
+  if (num%eps_curl_rtol < 0.0_pREAL)                      extmsg = trim(extmsg)//' eps_curl_rtol'
+  if (num%eps_stress_atol <= 0.0_pREAL)                   extmsg = trim(extmsg)//' eps_stress_atol'
+  if (num%eps_stress_rtol < 0.0_pREAL)                    extmsg = trim(extmsg)//' eps_stress_rtol'
   if (num%itmax <= 1)                                     extmsg = trim(extmsg)//' itmax'
   if (num%itmin > num%itmax .or. num%itmin < 1)           extmsg = trim(extmsg)//' itmin'
-  if (num%alpha <= 0.0_pReal .or. num%alpha >  2.0_pReal) extmsg = trim(extmsg)//' alpha'
-  if (num%beta < 0.0_pReal .or. num%beta > 2.0_pReal)     extmsg = trim(extmsg)//' beta'
+  if (num%alpha <= 0.0_pREAL .or. num%alpha >  2.0_pREAL) extmsg = trim(extmsg)//' alpha'
+  if (num%beta < 0.0_pREAL .or. num%beta > 2.0_pREAL)     extmsg = trim(extmsg)//' beta'
 
   if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 
@@ -179,15 +171,15 @@ subroutine grid_mechanical_spectral_polarisation_init()
 ! set default and user defined options for PETSc
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mechanical_snes_type ngmres',err_PETSc)
   CHKERRQ(err_PETSc)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),err_PETSc)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asStr('petsc_options',defaultVal=''),err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
-  allocate(F_lastInc    (3,3,cells(1),cells(2),cells3),source = 0.0_pReal)
-  allocate(Fdot         (3,3,cells(1),cells(2),cells3),source = 0.0_pReal)
-  allocate(F_tau_lastInc(3,3,cells(1),cells(2),cells3),source = 0.0_pReal)
-  allocate(F_tauDot     (3,3,cells(1),cells(2),cells3),source = 0.0_pReal)
+  allocate(F_lastInc    (3,3,cells(1),cells(2),cells3),source = 0.0_pREAL)
+  allocate(Fdot         (3,3,cells(1),cells(2),cells3),source = 0.0_pREAL)
+  allocate(F_tau_lastInc(3,3,cells(1),cells(2),cells3),source = 0.0_pREAL)
+  allocate(F_tauDot     (3,3,cells(1),cells(2),cells3),source = 0.0_pREAL)
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -231,7 +223,7 @@ subroutine grid_mechanical_spectral_polarisation_init()
   F_tau => FandF_tau(9:17,:,:,:)
 
   restartRead: if (CLI_restartInc > 0) then
-    print'(/,1x,a,i0,a)', 'reading restart data of increment ', CLI_restartInc, ' from file'
+    print '(/,1x,a,1x,i0)', 'loading restart data of increment', CLI_restartInc
 
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
@@ -260,20 +252,20 @@ subroutine grid_mechanical_spectral_polarisation_init()
   elseif (CLI_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,cells(1)),4,cells(2)),5,cells3)                      ! initialize to identity
     F = reshape(F_lastInc,[9,cells(1),cells(2),cells3])
-    F_tau = 2.0_pReal*F
-    F_tau_lastInc = 2.0_pReal*F_lastInc
+    F_tau = 2.0_pREAL*F
+    F_tau_lastInc = 2.0_pREAL*F_lastInc
   end if restartRead
 
   homogenization_F0 = reshape(F_lastInc, [3,3,product(cells(1:2))*cells3])                          ! set starting condition for homogenization_mechanical_response
   call utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call utilities_constitutiveResponse(P,P_av,C_volAvg,C_minMaxAvg, &                                ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
-                                      0.0_pReal)                                                    ! time increment
+                                      0.0_pREAL)                                                    ! time increment
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,err_PETSc)                                  ! deassociate pointer
   CHKERRQ(err_PETSc)
 
   restartRead2: if (CLI_restartInc > 0) then
-    print'(1x,a,i0,a)', 'reading more restart data of increment ', CLI_restartInc, ' from file'
+    print '(1x,a,1x,i0)', 'loading additional restart data of increment', CLI_restartInc
     call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
     call MPI_Bcast(C_volAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
@@ -348,7 +340,7 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
   logical,                  intent(in) :: &
     cutBack, &
     guess
-  real(pReal),              intent(in) :: &
+  real(pREAL),              intent(in) :: &
     Delta_t_old, &
     Delta_t, &
     t_remaining                                                                                     !< remaining time of current load case
@@ -358,9 +350,9 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
   type(tRotation),           intent(in) :: &
     rotation_BC
   PetscErrorCode :: err_PETSc
-  real(pReal), pointer, dimension(:,:,:,:) :: FandF_tau, F, F_tau
+  real(pREAL), pointer, dimension(:,:,:,:) :: FandF_tau, F, F_tau
   integer :: i, j, k
-  real(pReal), dimension(3,3) :: F_lambda33
+  real(pREAL), dimension(3,3) :: F_lambda33
 
 
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,err_PETSc)
@@ -375,20 +367,20 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
     C_volAvgLastInc    = C_volAvg
     C_minMaxAvgLastInc = C_minMaxAvg
 
-    F_aimDot = merge(merge(.0_pReal,(F_aim-F_aim_lastInc)/Delta_t_old,stress_BC%mask),.0_pReal,guess)  ! estimate deformation rate for prescribed stress components
+    F_aimDot = merge(merge(.0_pREAL,(F_aim-F_aim_lastInc)/Delta_t_old,stress_BC%mask),.0_pREAL,guess)  ! estimate deformation rate for prescribed stress components
     F_aim_lastInc = F_aim
 
     !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
     if     (deformation_BC%myType=='L') then                                                        ! calculate F_aimDot from given L and current F
       F_aimDot = F_aimDot &
-               + matmul(merge(.0_pReal,deformation_BC%values,deformation_BC%mask),F_aim_lastInc)
+               + matmul(merge(.0_pREAL,deformation_BC%values,deformation_BC%mask),F_aim_lastInc)
     elseif (deformation_BC%myType=='dot_F') then                                                    ! F_aimDot is prescribed
       F_aimDot = F_aimDot &
-               + merge(.0_pReal,deformation_BC%values,deformation_BC%mask)
+               + merge(.0_pREAL,deformation_BC%values,deformation_BC%mask)
     elseif (deformation_BC%myType=='F') then                                                        ! aim at end of load case is prescribed
       F_aimDot = F_aimDot &
-               + merge(.0_pReal,(deformation_BC%values - F_aim_lastInc)/t_remaining,deformation_BC%mask)
+               + merge(.0_pREAL,(deformation_BC%values - F_aim_lastInc)/t_remaining,deformation_BC%mask)
     end if
 
     Fdot     = utilities_calculateRate(guess, &
@@ -407,9 +399,9 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * Delta_t
   if (stress_BC%myType=='P')     P_aim = P_aim &
-                                      + merge(.0_pReal,(stress_BC%values - P_aim)/t_remaining,stress_BC%mask)*Delta_t
+                                      + merge(.0_pREAL,(stress_BC%values - P_aim)/t_remaining,stress_BC%mask)*Delta_t
   if (stress_BC%myType=='dot_P') P_aim = P_aim &
-                                      + merge(.0_pReal,stress_BC%values,stress_BC%mask)*Delta_t
+                                      + merge(.0_pREAL,stress_BC%values,stress_BC%mask)*Delta_t
 
   F = reshape(utilities_forwardField(Delta_t,F_lastInc,Fdot, &                                      ! estimate of F at end of time+Delta_t that matches rotated F_aim on average
                                      rotation_BC%rotate(F_aim,active=.true.)),&
@@ -421,7 +413,7 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
     do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
        F_lambda33 = reshape(F_tau(1:9,i,j,k)-F(1:9,i,j,k),[3,3])
        F_lambda33 = math_I3 &
-                  + math_mul3333xx33(S_scale,0.5_pReal*matmul(F_lambda33, &
+                  + math_mul3333xx33(S_scale,0.5_pREAL*matmul(F_lambda33, &
                     math_mul3333xx33(C_scale,matmul(transpose(F_lambda33),F_lambda33)-math_I3)))
        F_tau(1:9,i,j,k) = reshape(F_lambda33,[9])+F(1:9,i,j,k)
     end do; end do; end do
@@ -445,7 +437,7 @@ end subroutine grid_mechanical_spectral_polarisation_forward
 subroutine grid_mechanical_spectral_polarisation_updateCoords
 
   PetscErrorCode :: err_PETSc
-  real(pReal), dimension(:,:,:,:), pointer :: FandF_tau
+  real(pREAL), dimension(:,:,:,:), pointer :: FandF_tau
 
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -463,7 +455,7 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite
 
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
-  real(pReal), dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
+  real(pREAL), dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
 
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -472,7 +464,7 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite
 
   if (num%update_gamma) C_minMaxAvgRestart = C_minMaxAvg
 
-  print'(1x,a)', 'writing solver data required for restart to file'; flush(IO_STDOUT)
+  print '(1x,a)', 'saving solver data required for restart'; flush(IO_STDOUT)
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
@@ -517,7 +509,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   SNESConvergedReason :: reason
   PetscObject :: dummy
   PetscErrorCode :: err_PETSc
-  real(pReal) :: &
+  real(pREAL) :: &
     curlTol, &
     divTol, &
     BCTol
@@ -526,7 +518,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   divTol = max(maxval(abs(P_av))*num%eps_div_rtol, num%eps_div_atol)
   BCTol = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
-  if ((totalIter >= num%itmin .and. all([err_div/divTol, err_curl/curlTol, err_BC/BCTol] < 1.0_pReal)) &
+  if ((totalIter >= num%itmin .and. all([err_div/divTol, err_curl/curlTol, err_BC/BCTol] < 1.0_pREAL)) &
        .or. terminallyIll) then
     reason = 1
   elseif (totalIter >= num%itmax) then
@@ -535,14 +527,14 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
     reason = 0
   end if
 
-  print'(/,1x,a)', '... reporting .............................................................'
-  print'(/,1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error divergence = ', &
+  print '(/,1x,a)', '... reporting .............................................................'
+  print '(/,1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error divergence = ', &
             err_div/divTol,  ' (',err_div, ' / m, tol = ',divTol,')'
-  print  '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error curl       = ', &
+  print   '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error curl       = ', &
             err_curl/curlTol,' (',err_curl,' -,   tol = ',curlTol,')'
-  print  '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error mech BC    = ', &
+  print   '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error mech BC    = ', &
             err_BC/BCTol,    ' (',err_BC,  ' Pa,  tol = ',BCTol,')'
-  print'(/,1x,a)', '==========================================================================='
+  print '(/,1x,a)', '==========================================================================='
   flush(IO_STDOUT)
   err_PETSc = 0
 
@@ -556,14 +548,14 @@ subroutine formResidual(residual_subdomain, FandF_tau, &
                         r, dummy,err_PETSc)
 
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: residual_subdomain                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
-  real(pReal), dimension(3,3,2,cells(1),cells(2),cells3), target, intent(in) :: &
+  real(pREAL), dimension(3,3,2,cells(1),cells(2),cells3), target, intent(in) :: &
     FandF_tau                                                                                       !< deformation gradient field
-  real(pReal), dimension(3,3,2,cells(1),cells(2),cells3), target, intent(out) :: &
+  real(pREAL), dimension(3,3,2,cells(1),cells(2),cells3), target, intent(out) :: &
     r                                                                                               !< residuum field
   PetscObject :: dummy
   PetscErrorCode :: err_PETSc
 
-  real(pReal), pointer, dimension(:,:,:,:,:) :: &
+  real(pREAL), pointer, dimension(:,:,:,:,:) :: &
     F, &
     F_tau, &
     r_F, &
@@ -594,10 +586,11 @@ subroutine formResidual(residual_subdomain, FandF_tau, &
 
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
-    print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
-    if (debugRotation) print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+    print '(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
+    if (any(dNeq(params%rotation_BC%asQuaternion(), real([1.0, 0.0, 0.0, 0.0],pREAL)))) &
+      print '(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
       'deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
-    print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+    print '(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
       'deformation gradient aim       =', transpose(F_aim)
     flush(IO_STDOUT)
   end if newIteration
