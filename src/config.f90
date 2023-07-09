@@ -68,10 +68,9 @@ end subroutine config_numerics_deallocate
 !--------------------------------------------------------------------------------------------------
 function config_listReferences(config,indent) result(references)
 
-  type(tDict) :: config
-  integer, optional :: indent
+  type(tDict), intent(in) :: config
+  integer, intent(in), optional :: indent
   character(len=:), allocatable :: references
-
 
   type(tList), pointer :: ref
   character(len=:), allocatable :: filler
@@ -97,13 +96,13 @@ end function config_listReferences
 !--------------------------------------------------------------------------------------------------
 subroutine parse_material()
 
-  logical :: fileExists
   character(len=:), allocatable :: &
     fileContent, fname
 
+
   if (worldrank == 0) then
     print'(/,1x,a)', 'reading material configuration'; flush(IO_STDOUT)
-#if   defined(MESH) || defined(GRID)
+#if defined(MESH) || defined(GRID)
     fname = CLI_materialFile
 #else
     fname = 'material.yaml'
@@ -126,23 +125,30 @@ end subroutine parse_material
 !--------------------------------------------------------------------------------------------------
 subroutine parse_numerics()
 
-  logical :: fileExists
-  character(len=:), allocatable :: fileContent
+  character(len=:), allocatable :: &
+    fileContent, fname
+  logical :: parse
 
 
   config_numerics => emptyDict
 
-  inquire(file='numerics.yaml', exist=fileExists)
-  if (fileExists) then
+#if defined(MESH) || defined(GRID)
+    fname = CLI_numericsFile
+    parse = len_trim(CLI_numericsFile) > 0
+#else
+    fname = 'numerics.yaml'
+    inquire(file=fname, exist=parse)
+#endif
+
+ if (parse) then
 
     if (worldrank == 0) then
-      print'(1x,a)', 'reading numerics.yaml'; flush(IO_STDOUT)
-      fileContent = IO_read('numerics.yaml')
-      if (len(fileContent) > 0) then
-        call result_openJobFile(parallel=.false.)
-        call result_writeDataset_str(fileContent,'setup','numerics.yaml','numerics configuration')
-        call result_closeJobFile()
-      end if
+      print'(1x,a)', 'reading numerics configuration'; flush(IO_STDOUT)
+      fileContent = IO_read(fname)
+      if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
+      call result_openJobFile(parallel=.false.)
+      call result_writeDataset_str(fileContent,'setup',fname,'numerics configuration')
+      call result_closeJobFile()
     end if
     call parallelization_bcast_str(fileContent)
 
