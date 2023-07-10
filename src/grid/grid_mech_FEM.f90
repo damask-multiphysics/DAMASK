@@ -351,14 +351,7 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
     rotation_BC
 
   PetscErrorCode :: err_PETSc
-  PetscScalar, pointer, dimension(:,:,:,:) :: &
-    u,u_lastInc
 
-
-  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
-  CHKERRQ(err_PETSc)
 
   if (cutBack) then
     C_volAvg = C_volAvgLastInc
@@ -407,10 +400,6 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
                                        + merge(.0_pREAL,stress_BC%values,stress_BC%mask)*Delta_t
 
   call VecAXPY(solution_current,Delta_t,solution_rate,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
