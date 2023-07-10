@@ -377,15 +377,15 @@ end subroutine grid_mechanical_spectral_basic_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief Update coordinates
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_basic_updateCoords
+subroutine grid_mechanical_spectral_basic_updateCoords()
 
   PetscErrorCode :: err_PETSc
   real(pREAL), dimension(:,:,:,:), pointer :: F
 
-  call DMDAVecGetArrayF90(da,solution_vec,F,err_PETSc)
+  call DMDAVecGetArrayReadF90(da,solution_vec,F,err_PETSc)
   CHKERRQ(err_PETSc)
   call utilities_updateCoords(F)
-  call DMDAVecRestoreArrayF90(da,solution_vec,F,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(da,solution_vec,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_spectral_basic_updateCoords
@@ -394,13 +394,13 @@ end subroutine grid_mechanical_spectral_basic_updateCoords
 !--------------------------------------------------------------------------------------------------
 !> @brief Write current solver and constitutive data for restart to file
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_basic_restartWrite
+subroutine grid_mechanical_spectral_basic_restartWrite()
 
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
   real(pREAL), dimension(:,:,:,:), pointer :: F
 
-  call DMDAVecGetArrayF90(da,solution_vec,F,err_PETSc)
+  call DMDAVecGetArrayReadF90(da,solution_vec,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (num%update_gamma) C_minMaxAvgRestart = C_minMaxAvg
@@ -428,7 +428,7 @@ subroutine grid_mechanical_spectral_basic_restartWrite
     call HDF5_closeFile(fileHandle)
   end if
 
-  call DMDAVecRestoreArrayF90(da,solution_vec,F,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(da,solution_vec,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_spectral_basic_restartWrite

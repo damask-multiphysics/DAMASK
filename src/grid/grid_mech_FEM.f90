@@ -414,7 +414,7 @@ end subroutine grid_mechanical_FEM_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief Update coordinates
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_FEM_updateCoords
+subroutine grid_mechanical_FEM_updateCoords()
 
   call utilities_updateCoords(F)
 
@@ -424,16 +424,16 @@ end subroutine grid_mechanical_FEM_updateCoords
 !--------------------------------------------------------------------------------------------------
 !> @brief Write current solver and constitutive data for restart to file
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_FEM_restartWrite
+subroutine grid_mechanical_FEM_restartWrite()
 
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
   PetscScalar, dimension(:,:,:,:), pointer :: u,u_lastInc
 
 
-  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u,err_PETSc)
+  call DMDAVecGetArrayReadF90(mechanical_grid,solution_current,u,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
+  call DMDAVecGetArrayReadF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
 
   print'(1x,a)', 'saving solver data required for restart'; flush(IO_STDOUT)
@@ -460,9 +460,9 @@ subroutine grid_mechanical_FEM_restartWrite
     call HDF5_closeFile(fileHandle)
   end if
 
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(mechanical_grid,solution_current,u,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_FEM_restartWrite
@@ -555,7 +555,7 @@ subroutine formResidual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! get deformation gradient
-  call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc)
+  call DMDAVecGetArrayReadF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, cells(1)
     ctr = 0
@@ -565,7 +565,7 @@ subroutine formResidual(da_local,x_local, &
     end do; end do; end do
     F(1:3,1:3,i,j,k-cells3Offset) = params%rotation_BC%rotate(F_aim,active=.true.) + transpose(matmul(BMat,x_elem))
   end do; end do; end do
-  call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -585,7 +585,7 @@ subroutine formResidual(da_local,x_local, &
 ! constructing residual
   call DMDAVecGetArrayF90(da_local,f_local,r,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc)
+  call DMDAVecGetArrayReadF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   ele = 0
   r = 0.0_pREAL
@@ -606,7 +606,7 @@ subroutine formResidual(da_local,x_local, &
       r(0:2,i+ii,j+jj,k+kk) = r(0:2,i+ii,j+jj,k+kk) + f_elem(ctr,1:3)
     end do; end do; end do
   end do; end do; end do
-  call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------

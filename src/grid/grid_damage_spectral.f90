@@ -307,7 +307,7 @@ end subroutine grid_damage_spectral_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief Write current solver and constitutive data for restart to file.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_damage_spectral_restartWrite
+subroutine grid_damage_spectral_restartWrite()
 
   PetscErrorCode :: err_PETSc
   DM :: dm_local
@@ -316,7 +316,7 @@ subroutine grid_damage_spectral_restartWrite
 
   call SNESGetDM(SNES_damage,dm_local,err_PETSc);
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(dm_local,solution_vec,phi,err_PETSc);
+  call DMDAVecGetArrayReadF90(dm_local,solution_vec,phi,err_PETSc);
   CHKERRQ(err_PETSc)
 
   print'(1x,a)', 'saving damage solver data required for restart'; flush(IO_STDOUT)
@@ -328,7 +328,7 @@ subroutine grid_damage_spectral_restartWrite
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 
-  call DMDAVecRestoreArrayF90(dm_local,solution_vec,phi,err_PETSc);
+  call DMDAVecRestoreArrayReadF90(dm_local,solution_vec,phi,err_PETSc);
   CHKERRQ(err_PETSc)
 
 end subroutine grid_damage_spectral_restartWrite
