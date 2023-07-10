@@ -185,11 +185,8 @@ subroutine CLI_init()
   CLI_geomFile = getPathRelCWD(geomArg,'geometry')
   CLI_loadFile = getPathRelCWD(loadArg,'load case')
   CLI_materialFile = getPathRelCWD(materialArg,'material configuration')
-  if (allocated(numericsArg)) then
+  if (allocated(numericsArg)) &
     CLI_numericsFile = getPathRelCWD(numericsArg,'numerics configuration')
-  else
-    CLI_numericsFile = ''
-  endif
 
   if (.not. allocated(solverJobname)) then
     solverJobname = jobname(CLI_geomFile,CLI_loadFile,CLI_materialFile,CLI_numericsFile)
@@ -295,11 +292,12 @@ end function getSolverJobname
 function jobname(geomFile,LoadFile,materialsFile,numericsFile)
 
   character(len=:), allocatable :: jobname
-  character(len=*), intent(in)  :: geomFile,loadFile,materialsFile,numericsFile
+  character(len=*), intent(in)  :: geomFile,loadFile,materialsFile
+  character(len=:), allocatable, intent(in) :: numericsFile
 
 
   jobname = stem(geomFile)//'_'//stem(loadFile)//'_'//stem(materialsFile)
-  if (len_trim(numericsFile) > 0) jobname = jobname//'_'//stem(numericsFile)
+  if (allocated(numericsFile)) jobname = jobname//'_'//stem(numericsFile)
 
   contains
 
