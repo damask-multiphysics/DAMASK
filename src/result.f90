@@ -226,24 +226,19 @@ subroutine result_addSetupFile(content,fname,description)
   character(len=*), intent(in) :: content, fname, description
 
   integer(HID_T) :: groupHandle
-  character(len=:), allocatable :: fname_
+  character(len=:), allocatable :: name,suffix
   integer :: i
 
   groupHandle = result_openGroup('setup')
-  fname_ = fname(scan(fname,'/',.true.)+1:)
-  if (.not. HDF5_objectExists(groupHandle,fname_)) then
-    call result_writeDataset_str(content,'setup',fname_,description)
-  else
-    i = 1
-    do
-      fname_ = fname(scan(fname,'/',.true.)+1:)//'.'//IO_intAsStr(i)
-      if (.not. HDF5_objectExists(groupHandle,fname_)) then
-        call result_writeDataset_str(content,'setup',fname_,description)
-        exit
-        i = i+1
-      end if
-    end do
-  end if
+  name = fname(scan(fname,'/',.true.)+1:)
+  suffix = ''
+  i = 0
+
+  do while (HDF5_objectExists(groupHandle,name//suffix))
+      i = i+1
+      suffix = '.'//IO_intAsStr(i)
+  end do
+  call result_writeDataset_str(content,'setup',name//suffix,description)
   call result_closeGroup(groupHandle)
 
 end subroutine result_addSetupFile
