@@ -155,18 +155,25 @@ subroutine CLI_init()
         print'(1x,a,/)','       Prints this message and exits'
         call quit(0)                                                                                ! normal Termination
       case ('-g', '--geom', '--geometry')
+        if (i+1 > command_argument_count()) print'(/,1x,a)', 'ERROR: Missing argument for --geom'
         geomArg = getArg(i+1)
       case ('-l', '--load', '--loadcase')
+        if (i+1 > command_argument_count()) print'(/,1x,a)', 'ERROR: Missing argument for --load'
         loadArg = getArg(i+1)
       case ('-m', '--material', '--materialconfig')
+        if (i+1 > command_argument_count()) print'(/,1x,a)', 'ERROR: Missing argument for --material'
         materialArg = getArg(i+1)
       case ('-n', '--numerics', '--numericsconfig')
+        if (i+1 > command_argument_count()) print'(/,1x,a)', 'ERROR: Missing argument for --numerics'
         numericsArg = getArg(i+1)
       case ('-j', '--job', '--jobname')
+        if (i+1 > command_argument_count()) print'(/,1x,a)', 'ERROR: Missing argument for --jobname'
         solverJobname = getArg(i+1)
       case ('-w', '--wd', '--workingdir', '--workingdirectory')
+        if (i+1 > command_argument_count()) print'(/,1x,a)', 'ERROR: Missing argument for --workingdirectory'
         workingDirArg = getArg(i+1)
       case ('-r', '--rs', '--restart')
+        if (i+1 > command_argument_count()) print'(/,1x,a)', 'ERROR: Missing argument for --restart'
         arg = getArg(i+1)
         read(arg,*,iostat=stat) CLI_restartInc
         if (CLI_restartInc < 0 .or. stat /= 0) then
