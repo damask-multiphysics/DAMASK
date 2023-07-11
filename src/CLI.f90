@@ -158,36 +158,46 @@ subroutine CLI_init()
         print'(1x,a,/)','       Prints this message and exits'
         call quit(0)                                                                                ! normal Termination
       case ('-g', '--geom', '--geometry')
-        if (.not. hasArg) print'(/,1x,a)', 'ERROR: Missing argument for --geom'
+        if (.not. hasArg) print'(/,1x,a)', 'ERROR: missing argument for --geom'
         geomArg = getArg(i+1)
       case ('-l', '--load', '--loadcase')
-        if (.not. hasArg) print'(/,1x,a)', 'ERROR: Missing argument for --load'
+        if (.not. hasArg) print'(/,1x,a)', 'ERROR: missing argument for --load'
         loadArg = getArg(i+1)
       case ('-m', '--material', '--materialconfig')
-        if (.not. hasArg) print'(/,1x,a)', 'ERROR: Missing argument for --material'
+        if (.not. hasArg) print'(/,1x,a)', 'ERROR: missing argument for --material'
         materialArg = getArg(i+1)
       case ('-n', '--numerics', '--numericsconfig')
-        if (.not. hasArg) print'(/,1x,a)', 'ERROR: Missing argument for --numerics'
+        if (.not. hasArg) print'(/,1x,a)', 'ERROR: missing argument for --numerics'
         numericsArg = getArg(i+1)
       case ('-j', '--job', '--jobname')
-        if (.not. hasArg) print'(/,1x,a)', 'ERROR: Missing argument for --jobname'
+        if (.not. hasArg) print'(/,1x,a)', 'ERROR: missing argument for --jobname'
         solverJobname = getArg(i+1)
       case ('-w', '--wd', '--workingdir', '--workingdirectory')
-        if (.not. hasArg) print'(/,1x,a)', 'ERROR: Missing argument for --workingdirectory'
+        if (.not. hasArg) print'(/,1x,a)', 'ERROR: missing argument for --workingdirectory'
         workingDirArg = getArg(i+1)
       case ('-r', '--rs', '--restart')
-        if (.not. hasArg) print'(/,1x,a)', 'ERROR: Missing argument for --restart'
+        if (.not. hasArg) print'(/,1x,a)', 'ERROR: missing argument for --restart'
         arg = getArg(i+1)
         read(arg,*,iostat=stat) CLI_restartInc
         if (CLI_restartInc < 0 .or. stat /= 0) then
-          print'(/,1x,a)', 'ERROR: Could not parse restart increment: '//trim(arg)
+          print'(/,1x,a)', 'ERROR: could not parse restart increment: '//trim(arg)
           call quit(1)
         end if
     end select
   end do
 
-  if (.not. all([allocated(loadArg),allocated(geomArg),allocated(materialArg)])) then
-    print'(/,1x,a)', 'ERROR: Please specify geometry AND load case AND material configuration (-h for help)'
+  if (.not. allocated(loadArg)) then
+    print'(/,1x,a)', 'Error: no load case specified (-h for help)'
+    call quit(1)
+  end if
+
+  if (.not. allocated(geomArg)) then
+    print'(/,1x,a)', 'Error: no geometry specified (-h for help)'
+    call quit(1)
+  end if
+
+  if (.not. allocated(materialArg)) then
+    print'(/,1x,a)', 'Error: no material configuration specified (-h for help)'
     call quit(1)
   end if
 
@@ -276,7 +286,7 @@ subroutine setWorkingDirectory(workingDirectoryArg)
   workingDirectory = trim(normpath(workingDirectory))
   error = setCWD(trim(workingDirectory))
   if (error) then
-    print'(1x,a)', 'ERROR: Invalid Working directory: '//trim(workingDirectory)
+    print'(1x,a)', 'ERROR: invalid working directory: '//trim(workingDirectory)
     call quit(1)
   end if
 
