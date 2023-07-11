@@ -74,7 +74,7 @@ subroutine CLI_init()
   print'(a)', achar(27)//'[31m'
   print'(1x,a,/)', 'debug version - debug version - debug version - debug version - debug version'
 #else
-  print'(a)', achar(27)//'[94m'
+  print'(a)', achar(27)//'[1;94m'
 #endif
   print'(1x,a)', '    _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/    _/_/_/'
   print'(1x,a)', '   _/    _/  _/    _/  _/_/  _/_/  _/    _/  _/        _/  _/            _/'
@@ -158,48 +158,34 @@ subroutine CLI_init()
         print'(1x,a,/)','       Prints this message and exits'
         call quit(0)                                                                                ! normal Termination
       case ('-g', '--geom', '--geometry')
-        if (.not. hasArg) print'(/,1x,a)', asError('missing argument for --geom')
+        if (.not. hasArg) call IO_error(610)
         geomArg = getArg(i+1)
       case ('-l', '--load', '--loadcase')
-        if (.not. hasArg) print'(/,1x,a)', asError('missing argument for --load')
+        if (.not. hasArg) call IO_error(611)
         loadArg = getArg(i+1)
       case ('-m', '--material', '--materialconfig')
-        if (.not. hasArg) print'(/,1x,a)', asError('missing argument for --material')
+        if (.not. hasArg) call IO_error(612)
         materialArg = getArg(i+1)
       case ('-n', '--numerics', '--numericsconfig')
-        if (.not. hasArg) print'(/,1x,a)', asError('missing argument for --numerics')
+        if (.not. hasArg) call IO_error(613)
         numericsArg = getArg(i+1)
       case ('-j', '--job', '--jobname')
-        if (.not. hasArg) print'(/,1x,a)', asError('missing argument for --jobname')
+        if (.not. hasArg) call IO_error(614)
         solverJobname = getArg(i+1)
       case ('-w', '--wd', '--workingdir', '--workingdirectory')
-        if (.not. hasArg) print'(/,1x,a)', asError('missing argument for --workingdirectory')
+        if (.not. hasArg) call IO_error(615)
         workingDirArg = getArg(i+1)
       case ('-r', '--rs', '--restart')
-        if (.not. hasArg) print'(/,1x,a)', asError('missing argument for --restart')
+        if (.not. hasArg) call IO_error(616)
         arg = getArg(i+1)
         read(arg,*,iostat=stat) CLI_restartInc
-        if (CLI_restartInc < 0 .or. stat /= 0) then
-          print'(/,1x,a)', asError('could not parse restart increment: '//trim(arg))
-          call quit(1)
-        end if
+        if (CLI_restartInc < 0 .or. stat /= 0) call IO_error(617,ext_msg=arg)
     end select
   end do
 
-  if (.not. allocated(loadArg)) then
-    print'(/,1x,a)', asError('no load case specified (-h for help)')
-    call quit(1)
-  end if
-
-  if (.not. allocated(geomArg)) then
-    print'(/,1x,a)', asError('no geometry specified (-h for help)')
-    call quit(1)
-  end if
-
-  if (.not. allocated(materialArg)) then
-    print'(/,1x,a)', asError('no material configuration specified (-h for help)')
-    call quit(1)
-  end if
+  if (.not. allocated(geomArg))     call IO_error(620,ext_msg='-h for help')
+  if (.not. allocated(loadArg))     call IO_error(621,ext_msg='-h for help')
+  if (.not. allocated(materialArg)) call IO_error(622,ext_msg='-h for help')
 
   call setWorkingDirectory(trim(workingDirArg))
   CLI_geomFile = getPathRelCWD(geomArg,'geometry')
@@ -211,8 +197,7 @@ subroutine CLI_init()
   if (.not. allocated(solverJobname)) then
     solverJobname = jobname(CLI_geomFile,CLI_loadFile,CLI_materialFile,CLI_numericsFile)
   elseif (scan(solverJobname,'/') > 0) then
-    print'(/,1x,a)', asError('JOBNAME must not contain any slashes')
-    call quit(1)
+    call IO_error(630)
   endif
 
   commandLine = getArg(-1)
@@ -272,9 +257,6 @@ subroutine setWorkingDirectory(workingDirectoryArg)
   character(len=*), intent(in)  :: workingDirectoryArg                                              !< working directory argument
   character(len=:), allocatable :: workingDirectory
 
-  logical                       :: error
-  external                      :: quit
-
 
   absolutePath: if (workingDirectoryArg(1:1) == '/') then
     workingDirectory = workingDirectoryArg
@@ -284,11 +266,7 @@ subroutine setWorkingDirectory(workingDirectoryArg)
   end if absolutePath
 
   workingDirectory = trim(normpath(workingDirectory))
-  error = setCWD(trim(workingDirectory))
-  if (error) then
-    print'(1x,a)', asError('invalid Working directory: '//trim(workingDirectory))
-    call quit(1)
-  end if
+  if (setCWD(trim(workingDirectory))) call IO_error(640,ext_msg=workingDirectory)
 
 end subroutine setWorkingDirectory
 
@@ -344,7 +322,6 @@ function getPathRelCWD(path,fileType)
   character(len=*),  intent(in) :: fileType
 
   logical                       :: file_exists
-  external                      :: quit
 
 
   getPathRelCWD = trim(path)
@@ -352,10 +329,7 @@ function getPathRelCWD(path,fileType)
   getPathRelCWD = trim(relpath(getPathRelCWD,getCWD()))
 
   inquire(file=getPathRelCWD, exist=file_exists)
-  if (.not. file_exists) then
-    print'(/,1x,a)', asError(fileType//' file does not exist: '//trim(getPathRelCWD))
-    call quit(1)
-  end if
+  if (.not. file_exists) call IO_error(100,ext_msg=fileType//' "'//trim(getPathRelCWD)//'"')
 
 end function getPathRelCWD
 
@@ -437,19 +411,6 @@ function relpath(path,start)
   relpath = repeat('..'//'/',remainingSlashes)//path_cleaned(posLastCommonSlash+1:len_trim(path_cleaned))
 
 end function relpath
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Prefix string with 'ERROR: ' and color it red.
-!--------------------------------------------------------------------------------------------------
-function asError(str)
-
-  character(len=*), intent(in)  :: str
-  character(len=:), allocatable :: asError
-
-  asError = 'ERROR: '//achar(27)//'[31m'//trim(str)//achar(27)//'[0m'
-
-end function asError
-
 
 
 end module CLI
