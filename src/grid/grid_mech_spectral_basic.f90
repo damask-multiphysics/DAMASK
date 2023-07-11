@@ -382,11 +382,10 @@ subroutine grid_mechanical_spectral_basic_updateCoords()
   PetscErrorCode :: err_PETSc
   real(pREAL), dimension(:,:,:,:), pointer :: F
 
-
-  call DMDAVecGetArrayF90(da,solution_vec,F,err_PETSc)
+  call DMDAVecGetArrayReadF90(da,solution_vec,F,err_PETSc)
   CHKERRQ(err_PETSc)
   call utilities_updateCoords(reshape(F,[3,3,size(F,2),size(F,3),size(F,4)]))
-  call DMDAVecRestoreArrayF90(da,solution_vec,F,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(da,solution_vec,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_spectral_basic_updateCoords
@@ -401,8 +400,7 @@ subroutine grid_mechanical_spectral_basic_restartWrite()
   integer(HID_T) :: fileHandle, groupHandle
   real(pREAL), dimension(:,:,:,:), pointer :: F
 
-
-  call DMDAVecGetArrayF90(da,solution_vec,F,err_PETSc)
+  call DMDAVecGetArrayReadF90(da,solution_vec,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (num%update_gamma) C_minMaxAvgRestart = C_minMaxAvg
@@ -430,7 +428,7 @@ subroutine grid_mechanical_spectral_basic_restartWrite()
     call HDF5_closeFile(fileHandle)
   end if
 
-  call DMDAVecRestoreArrayF90(da,solution_vec,F,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(da,solution_vec,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_spectral_basic_restartWrite
