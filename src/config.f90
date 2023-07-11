@@ -121,7 +121,7 @@ function parse(fname,description)
     print'(/,1x,a)', 'reading '//description; flush(IO_STDOUT)
     fileContent = IO_read(fname)
     call result_openJobFile(parallel=.false.)
-    call result_writeDataset_str(fileContent,'setup',fname(scan(fname,'/',.true.)+1:),description)
+    call result_addSetupFile(fileContent,fname,description)
     call result_closeJobFile()
   end if
   call parallelization_bcast_str(fileContent)

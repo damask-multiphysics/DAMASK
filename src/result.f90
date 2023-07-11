@@ -62,6 +62,7 @@ module result
     result_writeDataset, &
     result_writeDataset_str, &
     result_setLink, &
+    result_addSetupFile, &
     result_addAttribute, &
     result_removeLink, &
     result_mapping_phase, &
@@ -166,7 +167,7 @@ end subroutine result_finalizeIncrement
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief open a group from the result file
+!> @brief Open a group from the result file.
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function result_openGroup(groupName)
 
@@ -179,7 +180,7 @@ end function result_openGroup
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a new group to the result file
+!> @brief Add a new group to the result file.
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function result_addGroup(groupName)
 
@@ -192,7 +193,7 @@ end function result_addGroup
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief close a group
+!> @brief Close a group.
 !--------------------------------------------------------------------------------------------------
 subroutine result_closeGroup(group_id)
 
@@ -205,7 +206,7 @@ end subroutine result_closeGroup
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief set link to object in result file
+!> @brief Set link to object in result file.
 !--------------------------------------------------------------------------------------------------
 subroutine result_setLink(path,link)
 
@@ -215,6 +216,38 @@ subroutine result_setLink(path,link)
   call HDF5_setLink(resultFile,path,link)
 
 end subroutine result_setLink
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Add file to setup folder and ensure unique name.
+!--------------------------------------------------------------------------------------------------
+subroutine result_addSetupFile(content,fname,description)
+
+  character(len=*), intent(in) :: content, fname, description
+
+  integer(HID_T) :: groupHandle
+  character(len=:), allocatable :: fname_
+  integer :: i
+
+  groupHandle = result_openGroup('setup')
+  fname_ = fname(scan(fname,'/',.true.)+1:)
+  if (.not. HDF5_objectExists(groupHandle,fname_)) then
+    call result_writeDataset_str(content,'setup',fname_,description)
+  else
+    i = 1
+    do
+      fname_ = fname(scan(fname,'/',.true.)+1:)//'.'//IO_intAsStr(i)
+      if (.not. HDF5_objectExists(groupHandle,fname_)) then
+        call result_writeDataset_str(content,'setup',fname_,description)
+        exit
+        i = i+1
+      end if
+    end do
+  end if
+  call result_closeGroup(groupHandle)
+
+end subroutine result_addSetupFile
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Add a string attribute to an object in the result file.

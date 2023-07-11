@@ -89,7 +89,7 @@ subroutine discretization_grid_init(restart)
     fname = CLI_geomFile
     if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call result_openJobFile(parallel=.false.)
-    call result_writeDataset_str(fileContent,'setup',fname,'geometry definition (grid solver)')
+    call result_addSetupFile(fileContent,fname,'geometry definition (grid solver)')
     call result_closeJobFile()
   else
     allocate(materialAt_global(0))                                                                  ! needed for IntelMPI
