@@ -70,7 +70,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data
 !--------------------------------------------------------------------------------------------------
-subroutine grid_damage_spectral_init()
+subroutine grid_damage_spectral_init(num_grid)
+
+  type(tDict), pointer, intent(in) :: num_grid
 
   PetscInt, dimension(0:worldsize-1) :: localK
   integer :: i, j, k, ce
@@ -82,10 +84,12 @@ subroutine grid_damage_spectral_init()
   integer(HID_T) :: fileHandle, groupHandle
   real(pREAL), dimension(1,product(cells(1:2))*cells3) :: tempN
   type(tDict), pointer :: &
-    num_grid, &
-    num_generic
+    num_grid_damage
   character(len=pSTRLEN) :: &
     snes_type
+  character(len=:), allocatable :: &
+    petsc_options
+
 
   print'(/,1x,a)', '<<<+-  grid_spectral_damage init  -+>>>'
 
@@ -96,26 +100,25 @@ subroutine grid_damage_spectral_init()
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
-  num%itmax           = num_grid%get_asInt   ('itmax',defaultVal=250)
-  num%eps_damage_atol = num_grid%get_asReal ('eps_damage_atol',defaultVal=1.0e-2_pREAL)
-  num%eps_damage_rtol = num_grid%get_asReal ('eps_damage_rtol',defaultVal=1.0e-6_pREAL)
+  num_grid_damage => num_grid%get_dict('damage',defaultVal=emptyDict)
 
-  num_generic => config_numerics%get_dict('generic',defaultVal=emptyDict)
-  num%phi_min = num_generic%get_asReal('phi_min', defaultVal=1.0e-6_pREAL)
+  num%itmax           = num_grid_damage%get_asInt('N_iter_max', defaultVal=250)
 
-  if (num%phi_min < 0.0_pREAL) call IO_error(301,ext_msg='phi_min')
-  if (num%itmax <= 1)                    call IO_error(301,ext_msg='itmax')
-  if (num%eps_damage_atol <= 0.0_pREAL)  call IO_error(301,ext_msg='eps_damage_atol')
-  if (num%eps_damage_rtol <= 0.0_pREAL)  call IO_error(301,ext_msg='eps_damage_rtol')
+  num%eps_damage_atol = num_grid_damage%get_asReal('eps_abs_phi',defaultVal=1.0e-2_pReal)
+  num%eps_damage_rtol = num_grid_damage%get_asReal('eps_rel_phi',defaultVal=1.0e-6_pReal)
+  num%phi_min         = num_grid_damage%get_asReal('phi_min',    defaultVal=1.0e-6_pReal)
+
+  if (num%phi_min < 0.0_pReal) call IO_error(301,ext_msg='phi_min')
+  if (num%itmax <= 1)                    call IO_error(301,ext_msg='N_iter_max')
+  if (num%eps_damage_atol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_abs_phi')
+  if (num%eps_damage_rtol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_rel_phi')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
- call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-damage_snes_type newtonls -damage_snes_mf &
-                               &-damage_snes_ksp_ew -damage_ksp_type fgmres',err_PETSc)
- CHKERRQ(err_PETSc)
- call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asStr('petsc_options',defaultVal=''),err_PETSc)
- CHKERRQ(err_PETSc)
+  petsc_options = IO_postfix('-snes_type newtonls -snes_mf -snes_ksp_ew -ksp_type fgmres '// &
+                              num_grid_damage%get_asStr('PETSc_options',defaultVal=''), '-','damage_')
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
+  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields

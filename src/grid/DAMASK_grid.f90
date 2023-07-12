@@ -108,6 +108,7 @@ program DAMASK_grid
     quit
   type(tDict), pointer :: &
     config_load, &
+    num_solver, &
     num_grid, &
     load_step, &
     solver, &
@@ -121,6 +122,7 @@ program DAMASK_grid
     load_steps
   character(len=:), allocatable :: &
     fileContent, fname
+
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
@@ -151,8 +153,11 @@ program DAMASK_grid
   end if
 
   call parallelization_bcast_str(fileContent)
-  config_load => YAML_parse_str_asDict(fileContent)
+  config_load => YAML_parse_str_asDict(fileContent) !ToDo: misleading prefix (overlaps with entities from config module)
   solver => config_load%get_dict('solver')
+
+  num_solver => config_numerics%get_dict('solver',defaultVal=emptyDict)
+  num_grid => num_solver%get_dict('grid',defaultVal=emptyDict)
 
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
@@ -313,21 +318,21 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
-  call spectral_Utilities_init()
+  call spectral_utilities_init()
 
   do field = 2, nActiveFields
     select case (ID(field))
 
       case (FIELD_THERMAL_ID)
-        call grid_thermal_spectral_init()
+        call grid_thermal_spectral_init(num_grid)
 
       case (FIELD_DAMAGE_ID)
-        call grid_damage_spectral_init()
+        call grid_damage_spectral_init(num_grid)
 
     end select
   end do
 
-  call mechanical_init()
+  call mechanical_init(num_grid)
   call config_numerics_deallocate()
 
 !--------------------------------------------------------------------------------------------------

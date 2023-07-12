@@ -22,7 +22,6 @@ module grid_mechanical_spectral_basic
   use math
   use rotations
   use spectral_utilities
-  use config
   use homogenization
   use discretization_grid
 
@@ -103,7 +102,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_basic_init()
+subroutine grid_mechanical_spectral_basic_init(num_grid)
+
+  type(tDict), pointer, intent(in) :: num_grid
 
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: P
   PetscErrorCode :: err_PETSc
@@ -114,9 +115,12 @@ subroutine grid_mechanical_spectral_basic_init()
   real(pREAL), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
   integer(HID_T) :: fileHandle, groupHandle
   type(tDict), pointer :: &
-    num_grid
+    num_grid_fft, &
+    num_grid_mech
   character(len=pSTRLEN) :: &
     extmsg = ''
+  character(len=:), allocatable :: &
+    petsc_options
 
 
   print'(/,1x,a)', '<<<+-  grid_mechanical_spectral_basic init  -+>>>'; flush(IO_STDOUT)
@@ -129,30 +133,32 @@ subroutine grid_mechanical_spectral_basic_init()
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
+  num_grid_fft =>  num_grid%get_dict('FFT',defaultVal=emptyDict)
+  num_grid_mech => num_grid%get_dict('mechanical',defaultVal=emptyDict)
 
-  num%update_gamma    = num_grid%get_asBool('update_gamma',   defaultVal=.false.)
-  num%eps_div_atol    = num_grid%get_asReal('eps_div_atol',   defaultVal=1.0e-4_pREAL)
-  num%eps_div_rtol    = num_grid%get_asReal('eps_div_rtol',   defaultVal=5.0e-4_pREAL)
-  num%eps_stress_atol = num_grid%get_asReal('eps_stress_atol',defaultVal=1.0e3_pREAL)
-  num%eps_stress_rtol = num_grid%get_asReal('eps_stress_rtol',defaultVal=1.0e-3_pREAL)
-  num%itmin           = num_grid%get_asInt ('itmin',defaultVal=1)
-  num%itmax           = num_grid%get_asInt ('itmax',defaultVal=250)
+  num%itmin           = num_grid_mech%get_asInt  ('N_iter_min',defaultVal=1)
+  num%itmax           = num_grid_mech%get_asInt  ('N_iter_max',defaultVal=250)
 
-  if (num%eps_div_atol <= 0.0_pREAL)             extmsg = trim(extmsg)//' eps_div_atol'
-  if (num%eps_div_rtol < 0.0_pREAL)              extmsg = trim(extmsg)//' eps_div_rtol'
-  if (num%eps_stress_atol <= 0.0_pREAL)          extmsg = trim(extmsg)//' eps_stress_atol'
-  if (num%eps_stress_rtol < 0.0_pREAL)           extmsg = trim(extmsg)//' eps_stress_rtol'
-  if (num%itmax <= 1)                            extmsg = trim(extmsg)//' itmax'
-  if (num%itmin > num%itmax .or. num%itmin < 1)  extmsg = trim(extmsg)//' itmin'
+  num%update_gamma    = num_grid_fft%get_asBool ('update_gamma',defaultVal=.false.)
+
+  num%eps_div_atol    = num_grid_mech%get_asReal('eps_abs_div(P)', defaultVal=1.0e-4_pReal)
+  num%eps_div_rtol    = num_grid_mech%get_asReal('eps_rel_div(P)', defaultVal=5.0e-4_pReal)
+  num%eps_stress_atol = num_grid_mech%get_asReal('eps_abs_P',      defaultVal=1.0e3_pReal)
+  num%eps_stress_rtol = num_grid_mech%get_asReal('eps_rel_P',      defaultVal=1.0e-3_pReal)
+
+  if (num%eps_div_atol <= 0.0_pReal)             extmsg = trim(extmsg)//' eps_abs_div(P)'
+  if (num%eps_div_rtol < 0.0_pReal)              extmsg = trim(extmsg)//' eps_rel_div(P)'
+  if (num%eps_stress_atol <= 0.0_pReal)          extmsg = trim(extmsg)//' eps_abs_P'
+  if (num%eps_stress_rtol < 0.0_pReal)           extmsg = trim(extmsg)//' eps_rel_P'
+  if (num%itmax <= 1)                            extmsg = trim(extmsg)//' N_iter_max'
+  if (num%itmin > num%itmax .or. num%itmin < 1)  extmsg = trim(extmsg)//' N_iter_min'
 
   if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mechanical_snes_type ngmres',err_PETSc)
-  CHKERRQ(err_PETSc)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asStr('petsc_options',defaultVal=''),err_PETSc)
+  petsc_options = IO_postfix('-snes_type ngmres '//num_grid_mech%get_asStr('PETSc_options',defaultVal=''), '-','mechanical_')
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------

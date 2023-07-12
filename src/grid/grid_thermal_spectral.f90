@@ -69,7 +69,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data
 !--------------------------------------------------------------------------------------------------
-subroutine grid_thermal_spectral_init()
+subroutine grid_thermal_spectral_init(num_grid)
+
+  type(tDict), pointer, intent(in) :: num_grid
 
   PetscInt, dimension(0:worldsize-1) :: localK
   integer :: i, j, k, ce
@@ -80,7 +82,10 @@ subroutine grid_thermal_spectral_init()
   integer(HID_T) :: fileHandle, groupHandle
   real(pREAL), dimension(1,product(cells(1:2))*cells3) :: tempN
   type(tDict), pointer :: &
-    num_grid
+    num_grid_thermal
+  character(len=:), allocatable :: &
+    petsc_options
+
 
   print'(/,1x,a)', '<<<+-  grid_thermal_spectral init  -+>>>'
 
@@ -91,22 +96,23 @@ subroutine grid_thermal_spectral_init()
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
-  num%itmax            = num_grid%get_asInt ('itmax',           defaultVal=250)
-  num%eps_thermal_atol = num_grid%get_asReal('eps_thermal_atol',defaultVal=1.0e-2_pREAL)
-  num%eps_thermal_rtol = num_grid%get_asReal('eps_thermal_rtol',defaultVal=1.0e-6_pREAL)
+  num_grid_thermal => num_grid%get_dict('thermal',defaultVal=emptyDict)
 
-  if (num%itmax <= 1)                    call IO_error(301,ext_msg='itmax')
-  if (num%eps_thermal_atol <= 0.0_pREAL) call IO_error(301,ext_msg='eps_thermal_atol')
-  if (num%eps_thermal_rtol <= 0.0_pREAL) call IO_error(301,ext_msg='eps_thermal_rtol')
+  num%itmax            = num_grid_thermal%get_asInt('N_iter_max', defaultVal=250)
+
+  num%eps_thermal_atol = num_grid_thermal%get_asReal('eps_abs_T',  defaultVal=1.0e-2_pReal)
+  num%eps_thermal_rtol = num_grid_thermal%get_asReal('eps_rel_T',  defaultVal=1.0e-6_pReal)
+
+  if (num%itmax <= 1)                    call IO_error(301,ext_msg='N_iter_max')
+  if (num%eps_thermal_atol <= 0.0_pReal) call IO_error(301,ext_msg='eps_abs_T')
+  if (num%eps_thermal_rtol <= 0.0_pReal) call IO_error(301,ext_msg='eps_rel_T')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
- call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-thermal_snes_type newtonls -thermal_snes_mf &
-                               &-thermal_snes_ksp_ew -thermal_ksp_type fgmres',err_PETSc)
- CHKERRQ(err_PETSc)
- call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asStr('petsc_options',defaultVal=''),err_PETSc)
- CHKERRQ(err_PETSc)
+  petsc_options = IO_postfix('-snes_type newtonls -snes_mf -snes_ksp_ew -ksp_type fgmres '// &
+                              num_grid_thermal%get_asStr('PETSc_options',defaultVal=''), '-','thermal_')
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
+  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields

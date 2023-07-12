@@ -146,8 +146,9 @@ subroutine spectral_utilities_init()
     vectorSize = 3_C_INTPTR_T, &
     tensorSize = 9_C_INTPTR_T
   type(tDict) , pointer :: &
-    num_grid
-
+    num_solver, &
+    num_grid, &
+    num_grid_fft
 
   print'(/,1x,a)', '<<<+-  spectral_utilities init  -+>>>'
 
@@ -163,8 +164,10 @@ subroutine spectral_utilities_init()
   print'(  1x,a)', 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   print'(  1x,a)', 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
+  num_solver      => config_numerics%get_dict('solver',defaultVal=emptyDict)
+  num_grid        => num_solver%get_dict('grid',defaultVal=emptyDict)
+  num_grid_fft    => num_grid%get_dict('FFT',defaultVal=emptyDict)
 
-  num_grid  => config_numerics%get_dict('grid',defaultVal=emptyDict)
   call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,&
@@ -174,13 +177,13 @@ subroutine spectral_utilities_init()
   cells1Red = cells(1)/2 + 1
   wgt = real(product(cells),pREAL)**(-1)
 
-  num%memory_efficient      = num_grid%get_asInt('memory_efficient',      defaultVal=1) > 0         ! ToDo: should be logical in YAML file
-  num%divergence_correction = num_grid%get_asInt('divergence_correction', defaultVal=2)
+  num%memory_efficient      = num_grid_fft%get_asBool('memory_efficient',     defaultVal=.true.)
+  num%divergence_correction = num_grid_fft%get_asInt('divergence_correction', defaultVal=2)
 
   if (num%divergence_correction < 0 .or. num%divergence_correction > 2) &
     call IO_error(301,ext_msg='divergence_correction')
 
-  select case (num_grid%get_asStr('derivative',defaultVal='continuous'))
+  select case (num_grid_fft%get_asStr('derivative',defaultVal='continuous'))
     case ('continuous')
       spectral_derivative_ID = DERIVATIVE_CONTINUOUS_ID
     case ('central_difference')
@@ -188,7 +191,7 @@ subroutine spectral_utilities_init()
     case ('FWBW_difference')
       spectral_derivative_ID = DERIVATIVE_FWBW_DIFF_ID
     case default
-      call IO_error(892,ext_msg=trim(num_grid%get_asStr('derivative')))
+      call IO_error(892,ext_msg=trim(num_grid_fft%get_asStr('derivative')))
   end select
 
 !--------------------------------------------------------------------------------------------------
@@ -209,7 +212,7 @@ subroutine spectral_utilities_init()
     scaledGeomSize = geomSize
   end if
 
-  select case(IO_lc(num_grid%get_asStr('fftw_plan_mode',defaultVal='FFTW_MEASURE')))
+  select case(IO_lc(num_grid_fft%get_asStr('plan_mode',defaultVal='FFTW_MEASURE')))
     case('fftw_estimate')                                                                           ! ordered from slow execution (but fast plan creation) to fast execution
       FFTW_planner_flag = FFTW_ESTIMATE
     case('fftw_measure')
@@ -219,14 +222,14 @@ subroutine spectral_utilities_init()
     case('fftw_exhaustive')
       FFTW_planner_flag = FFTW_EXHAUSTIVE
     case default
-      call IO_warning(47,'using default FFTW_MEASURE instead of "'//trim(num_grid%get_asStr('fftw_plan_mode'))//'"')
+      call IO_warning(47,'using default FFTW_MEASURE instead of "'//trim(num_grid_fft%get_asStr('plan_mode'))//'"')
       FFTW_planner_flag = FFTW_MEASURE
   end select
 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
   if (pREAL /= C_DOUBLE .or. kind(1) /= C_INT) error stop 'C and Fortran datatypes do not match'
-  call fftw_set_timelimit(num_grid%get_asReal('fftw_timelimit',defaultVal=300.0_pREAL))
+  call fftw_set_timelimit(num_grid_fft%get_asReal('fftw_timelimit',defaultVal=300.0_pREAL))
 
   print'(/,1x,a)', 'FFTW initialized'; flush(IO_STDOUT)
 
