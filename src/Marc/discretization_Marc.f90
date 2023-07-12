@@ -210,9 +210,9 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,materialAt)
 
 
   call result_openJobFile()
-  call result_writeDataset_str(IO_read(trim(getSolverJobName())//InputFileExtension), 'setup', &
-                                        trim(getSolverJobName())//InputFileExtension, &
-                                        'MSC.Marc input deck')
+  call result_addSetupFile(IO_read(trim(getSolverJobName())//InputFileExtension), &
+                                   trim(getSolverJobName())//InputFileExtension, &
+                                   'MSC.Marc input deck')
   call result_closeJobFile()
 
   inputFile = IO_readlines(trim(getSolverJobName())//InputFileExtension)
