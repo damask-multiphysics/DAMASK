@@ -146,7 +146,7 @@ program DAMASK_grid
     fname = CLI_loadFile
     if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call result_openJobFile(parallel=.false.)
-    call result_writeDataset_str(fileContent,'setup',fname,'load case definition (grid solver)')
+    call result_addSetupFile(fileContent,fname,'load case definition (grid solver)')
     call result_closeJobFile()
   end if
 
