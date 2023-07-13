@@ -68,7 +68,7 @@ module grid_damage_spectral
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all neccessary fields and fills them with data
+!> @brief Allocate all necessary fields and fill them with data, potentially from restart file.
 !--------------------------------------------------------------------------------------------------
 subroutine grid_damage_spectral_init(num_grid)
 
@@ -102,14 +102,14 @@ subroutine grid_damage_spectral_init(num_grid)
 ! read numerical parameters and do sanity checks
   num_grid_damage => num_grid%get_dict('damage',defaultVal=emptyDict)
 
-  num%itmax           = num_grid_damage%get_asInt('N_iter_max', defaultVal=250)
+  num%itmax           = num_grid_damage%get_asInt('N_iter_max', defaultVal=100)
 
   num%eps_damage_atol = num_grid_damage%get_asReal('eps_abs_phi',defaultVal=1.0e-2_pReal)
   num%eps_damage_rtol = num_grid_damage%get_asReal('eps_rel_phi',defaultVal=1.0e-6_pReal)
   num%phi_min         = num_grid_damage%get_asReal('phi_min',    defaultVal=1.0e-6_pReal)
 
-  if (num%phi_min < 0.0_pReal) call IO_error(301,ext_msg='phi_min')
-  if (num%itmax <= 1)                    call IO_error(301,ext_msg='N_iter_max')
+  if (num%phi_min < 0.0_pReal)           call IO_error(301,ext_msg='phi_min')
+  if (num%itmax < 1)                     call IO_error(301,ext_msg='N_iter_max')
   if (num%eps_damage_atol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_abs_phi')
   if (num%eps_damage_rtol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_rel_phi')
 

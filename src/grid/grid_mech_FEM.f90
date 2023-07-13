@@ -94,7 +94,7 @@ module grid_mechanical_FEM
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Allocate all necessary fields and fills them with data, potentially from restart info.
+!> @brief Allocate all necessary fields and fill them with data, potentially from restart info.
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mechanical_FEM_init(num_grid)
 
@@ -139,13 +139,13 @@ subroutine grid_mechanical_FEM_init(num_grid)
   num%eps_stress_rtol = num_grid_mech%get_asReal('eps_rel_P',     defaultVal=1.0e-3_pReal)
 
   num%itmin           = num_grid_mech%get_asInt('N_iter_min',defaultVal=1)
-  num%itmax           = num_grid_mech%get_asInt('N_iter_max',defaultVal=250)
+  num%itmax           = num_grid_mech%get_asInt('N_iter_max',defaultVal=100)
 
   if (num%eps_div_atol <= 0.0_pReal)             extmsg = trim(extmsg)//' eps_abs_div(P)'
   if (num%eps_div_rtol < 0.0_pReal)              extmsg = trim(extmsg)//' eps_rel_div(P)'
   if (num%eps_stress_atol <= 0.0_pReal)          extmsg = trim(extmsg)//' eps_abs_P'
   if (num%eps_stress_rtol < 0.0_pReal)           extmsg = trim(extmsg)//' eps_rel_P'
-  if (num%itmax <= 1)                            extmsg = trim(extmsg)//' N_iter_max'
+  if (num%itmax < 1)                             extmsg = trim(extmsg)//' N_iter_max'
   if (num%itmin > num%itmax .or. num%itmin < 1)  extmsg = trim(extmsg)//' N_iter_min'
 
   if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))

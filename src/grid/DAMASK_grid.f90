@@ -136,12 +136,16 @@ program DAMASK_grid
 
 !-------------------------------------------------------------------------------------------------
 ! read (and check) field parameters from numerics file
-  num_grid => config_numerics%get_dict('grid', defaultVal=emptyDict)
-  stagItMax  = num_grid%get_asInt('maxStaggeredIter',defaultVal=10)
-  maxCutBack = num_grid%get_asInt('maxCutBack',defaultVal=3)
 
-  if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
-  if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
+  num_solver => config_numerics%get_dict('solver',defaultVal=emptyDict)
+  num_grid => num_solver%get_dict('grid',defaultVal=emptyDict)
+
+  stagItMax  = num_grid%get_asInt('N_staggered_iter_max',defaultVal=10)
+  maxCutBack = num_grid%get_asInt('N_cutback_max',defaultVal=3)
+
+  if (stagItMax < 0)    call IO_error(301,ext_msg='N_staggered_iter_max')
+  if (maxCutBack < 0)   call IO_error(301,ext_msg='N_cutback_max')
+
 
   if (worldrank == 0) then
     fileContent = IO_read(CLI_loadFile)
@@ -155,9 +159,6 @@ program DAMASK_grid
   call parallelization_bcast_str(fileContent)
   config_load => YAML_parse_str_asDict(fileContent) !ToDo: misleading prefix (overlaps with entities from config module)
   solver => config_load%get_dict('solver')
-
-  num_solver => config_numerics%get_dict('solver',defaultVal=emptyDict)
-  num_grid => num_solver%get_dict('grid',defaultVal=emptyDict)
 
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type

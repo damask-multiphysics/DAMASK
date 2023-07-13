@@ -112,7 +112,7 @@ module grid_mechanical_spectral_polarisation
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Allocate all necessary fields and fills them with data, potentially from restart info.
+!> @brief Allocate all necessary fields and fill them with data, potentially from restart info.
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mechanical_spectral_polarisation_init(num_grid)
 
@@ -159,7 +159,7 @@ subroutine grid_mechanical_spectral_polarisation_init(num_grid)
   num%beta            = num_grid_mech%get_asReal('beta',           defaultVal=1.0_pReal)
 
   num%itmin           = num_grid_mech%get_asInt  ('N_iter_min',defaultVal=1)
-  num%itmax           = num_grid_mech%get_asInt  ('N_iter_max',defaultVal=250)
+  num%itmax           = num_grid_mech%get_asInt  ('N_iter_max',defaultVal=100)
 
   if (num%eps_div_atol <= 0.0_pReal)                      extmsg = trim(extmsg)//' eps_abs_div(P)'
   if (num%eps_div_rtol < 0.0_pReal)                       extmsg = trim(extmsg)//' eps_rel_div(P)'
@@ -167,7 +167,7 @@ subroutine grid_mechanical_spectral_polarisation_init(num_grid)
   if (num%eps_curl_rtol < 0.0_pReal)                      extmsg = trim(extmsg)//' eps_rel_curl(F)'
   if (num%eps_stress_atol <= 0.0_pReal)                   extmsg = trim(extmsg)//' eps_abs_P'
   if (num%eps_stress_rtol < 0.0_pReal)                    extmsg = trim(extmsg)//' eps_rel_P'
-  if (num%itmax <= 1)                                     extmsg = trim(extmsg)//' N_iter_max'
+  if (num%itmax < 1)                                      extmsg = trim(extmsg)//' N_iter_max'
   if (num%itmin > num%itmax .or. num%itmin < 1)           extmsg = trim(extmsg)//' N_iter_min'
   if (num%alpha <= 0.0_pReal .or. num%alpha >  2.0_pReal) extmsg = trim(extmsg)//' alpha'
   if (num%beta < 0.0_pReal .or. num%beta > 2.0_pReal)     extmsg = trim(extmsg)//' beta'
