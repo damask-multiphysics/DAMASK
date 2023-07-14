@@ -183,9 +183,9 @@ subroutine CLI_init()
     end select
   end do
 
-  if (.not. allocated(geomArg))     call IO_error(612,ext_msg='--help for instructions',label1='--geom')
-  if (.not. allocated(loadArg))     call IO_error(612,ext_msg='--help for instructions',label1='--load')
-  if (.not. allocated(materialArg)) call IO_error(612,ext_msg='--help for instructions',label1='--material')
+  if (.not. allocated(geomArg))     call IO_error(612,ext_msg='--geom')
+  if (.not. allocated(loadArg))     call IO_error(612,ext_msg='--load')
+  if (.not. allocated(materialArg)) call IO_error(612,ext_msg='--material')
 
   call setWorkingDirectory(trim(workingDirArg))
   CLI_geomFile = getPathRelCWD(geomArg,'geometry')

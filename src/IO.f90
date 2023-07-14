@@ -556,11 +556,11 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
     case (603)
       msg = 'invalid data for table'
     case (610)
-      msg = 'no argument value specified'
+      msg = 'missing argument for option'
     case (611)
       msg = 'could not parse restart increment'
     case (612)
-      msg = 'missing argument'
+      msg = 'missing option'
     case (630)
       msg = 'JOBNAME must not contain any slashes'
     case (640)
