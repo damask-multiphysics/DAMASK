@@ -20,7 +20,7 @@ module materialpoint
   use rotations
   use polynomials
   use tables
-  use lattice
+  use crystal
   use material
   use phase
   use homogenization
@@ -64,7 +64,7 @@ subroutine materialpoint_initAll()
   call rotations_init()
   call polynomials_init()
   call tables_init()
-  call lattice_init()
+  call crystal_init()
 #if   defined(MESH)
   call discretization_mesh_init(restart=CLI_restartInc>0)
 #elif defined(GRID)

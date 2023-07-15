@@ -139,14 +139,14 @@ module function plastic_kinehardening_init() result(myPlasticity)
     N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%systems_sl = lattice_labels_slip(N_sl,phase_lattice(ph))
-      prm%P = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
+      prm%systems_sl = crystal_labels_slip(N_sl,phase_lattice(ph))
+      prm%P = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
         a = pl%get_as1dReal('a_nonSchmid',defaultVal=emptyRealArray)
         prm%nonSchmidActive = size(a) > 0
-        prm%P_nS_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
-        prm%P_nS_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
+        prm%P_nS_pos = crystal_nonSchmidMatrix(N_sl,a,+1)
+        prm%P_nS_neg = crystal_nonSchmidMatrix(N_sl,a,-1)
       else
         prm%P_nS_pos = prm%P
         prm%P_nS_neg = prm%P
@@ -155,7 +155,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
       prm%dot_gamma_0 = pl%get_asReal('dot_gamma_0')
       prm%n           = pl%get_asReal('n')
 
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
+      prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
                                                    phase_lattice(ph))
 
       xi_0          = math_expand(pl%get_as1dReal('xi_0',      requiredSize=size(N_sl)),N_sl)

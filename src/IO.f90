@@ -476,7 +476,7 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
     case (131)
       msg = 'hex lattice structure with invalid c/a ratio'
     case (132)
-      msg = 'trans_lattice_structure not possible'
+      msg = 'invalid parameters for transformation'
     case (134)
       msg = 'negative lattice parameter'
     case (135)

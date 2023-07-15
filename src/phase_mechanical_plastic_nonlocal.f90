@@ -249,30 +249,30 @@ module function plastic_nonlocal_init() result(myPlasticity)
     ini%N_sl     = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(ini%N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%systems_sl = lattice_labels_slip(ini%N_sl,phase_lattice(ph))
-      prm%P_sl = lattice_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph), phase_cOverA(ph))
+      prm%systems_sl = crystal_labels_slip(ini%N_sl,phase_lattice(ph))
+      prm%P_sl = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph), phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
         a = pl%get_as1dReal('a_nonSchmid',defaultVal = emptyRealArray)
         if (size(a) > 0) prm%nonSchmidActive = .true.
-        prm%P_nS_pos = lattice_nonSchmidMatrix(ini%N_sl,a,+1)
-        prm%P_nS_neg = lattice_nonSchmidMatrix(ini%N_sl,a,-1)
+        prm%P_nS_pos = crystal_nonSchmidMatrix(ini%N_sl,a,+1)
+        prm%P_nS_neg = crystal_nonSchmidMatrix(ini%N_sl,a,-1)
       else
         prm%P_nS_pos = prm%P_sl
         prm%P_nS_neg = prm%P_sl
       end if
 
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(ini%N_sl,pl%get_as1dReal('h_sl-sl'), &
+      prm%h_sl_sl = crystal_interaction_SlipBySlip(ini%N_sl,pl%get_as1dReal('h_sl-sl'), &
                                                    phase_lattice(ph))
 
-      prm%forestProjection_edge  = lattice_forestProjection_edge (ini%N_sl,phase_lattice(ph),&
+      prm%forestProjection_edge  = crystal_forestProjection_edge (ini%N_sl,phase_lattice(ph),&
                                                                   phase_cOverA(ph))
-      prm%forestProjection_screw = lattice_forestProjection_screw(ini%N_sl,phase_lattice(ph),&
+      prm%forestProjection_screw = crystal_forestProjection_screw(ini%N_sl,phase_lattice(ph),&
                                                                   phase_cOverA(ph))
 
-      prm%slip_direction  = lattice_slip_direction (ini%N_sl,phase_lattice(ph),phase_cOverA(ph))
-      prm%slip_transverse = lattice_slip_transverse(ini%N_sl,phase_lattice(ph),phase_cOverA(ph))
-      prm%slip_normal     = lattice_slip_normal    (ini%N_sl,phase_lattice(ph),phase_cOverA(ph))
+      prm%slip_direction  = crystal_slip_direction (ini%N_sl,phase_lattice(ph),phase_cOverA(ph))
+      prm%slip_transverse = crystal_slip_transverse(ini%N_sl,phase_lattice(ph),phase_cOverA(ph))
+      prm%slip_normal     = crystal_slip_normal    (ini%N_sl,phase_lattice(ph),phase_cOverA(ph))
 
       ! collinear systems (only for octahedral slip systems in fcc)
       allocate(prm%colinearSystem(prm%sum_N_sl), source = -1)
