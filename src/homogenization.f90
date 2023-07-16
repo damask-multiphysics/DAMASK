@@ -16,7 +16,7 @@ module homogenization
   use HDF5
   use HDF5_utilities
   use result
-  use lattice
+  use crystal
 
   implicit none(type,external)
   private

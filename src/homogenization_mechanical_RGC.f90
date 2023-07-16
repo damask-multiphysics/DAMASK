@@ -8,7 +8,7 @@
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization:mechanical) RGC
   use rotations
-  use lattice
+  use crystal
 
   type :: tParameters
     integer, dimension(:), allocatable :: &
@@ -654,7 +654,7 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
 
     C = phase_homogenizedC66(material_ID_phase(co,ce),material_entry_phase(co,ce))                  ! damage not included!
 
-    equivalentMu = lattice_isotropic_mu(C,'isostrain')
+    equivalentMu = crystal_isotropic_mu(C,'isostrain')
 
   end function equivalentMu
 

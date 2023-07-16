@@ -1,7 +1,7 @@
 # special flags for some files
 if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     # long lines for interaction matrix
-    set_source_files_properties("lattice.f90" PROPERTIES COMPILE_FLAGS "-ffree-line-length-240")
+    set_source_files_properties("crystal.f90" PROPERTIES COMPILE_FLAGS "-ffree-line-length-240")
     set_source_files_properties("parallelization.f90" PROPERTIES COMPILE_FLAGS "-ffree-line-length-none")
 endif()
 
