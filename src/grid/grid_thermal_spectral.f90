@@ -46,9 +46,8 @@ module grid_thermal_spectral
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   SNES :: SNES_thermal
-  Vec :: solution_vec
+  Vec :: T_PETSc
   real(pREAL), dimension(:,:,:), allocatable :: &
-    T, &                                                                                            !< field of current temperature
     T_lastInc, &                                                                                    !< field of previous temperature
     T_stagInc, &                                                                                    !< field of staggered temperature
     dotT_lastInc
@@ -73,8 +72,8 @@ subroutine grid_thermal_spectral_init()
 
   PetscInt, dimension(0:worldsize-1) :: localK
   integer :: i, j, k, ce
-  DM :: thermal_grid
-  real(pREAL), dimension(:,:,:), pointer :: T_PETSc
+  DM :: DM_thermal
+  real(pREAL), dimension(:,:,:), pointer :: T                                                       ! 0-indexed
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
@@ -109,13 +108,6 @@ subroutine grid_thermal_spectral_init()
  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
-! init fields
-  T = discretization_grid_getInitialCondition('T')
-  T_lastInc = T
-  T_stagInc = T
-  dotT_lastInc = 0.0_pREAL * T
-
-!--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,SNES_thermal,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -132,21 +124,23 @@ subroutine grid_thermal_spectral_init()
          1_pPetscInt, 1_pPetscInt, int(worldsize,pPetscInt), &
          1_pPetscInt, 0_pPetscInt, &                                                                ! #dof (T, scalar), ghost boundary width (domain overlap)
          [int(cells(1),pPetscInt)],[int(cells(2),pPetscInt)],localK, &                              ! local cells
-         thermal_grid,err_PETSc)                                                                    ! handle, error
+         DM_thermal,err_PETSc)                                                                      ! handle, error
   CHKERRQ(err_PETSc)
-  call DMsetFromOptions(thermal_grid,err_PETSc)
+  call DMsetFromOptions(DM_thermal,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMsetUp(thermal_grid,err_PETSc)
+  call DMsetUp(DM_thermal,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMCreateGlobalVector(thermal_grid,solution_vec,err_PETSc)                                    ! global solution vector (cells x 1, i.e. every def grad tensor)
+  call DMCreateGlobalVector(DM_thermal,T_PETSc,err_PETSc)                                           ! global solution vector (cells x 1, i.e. every def grad tensor)
   CHKERRQ(err_PETSc)
-  call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)  ! residual vector of same shape as solution vector
+  call DMDASNESSetFunctionLocal(DM_thermal,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)    ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
-  call SNESSetDM(SNES_thermal,thermal_grid,err_PETSc)
+  call SNESSetDM(SNES_thermal,DM_thermal,err_PETSc)
   CHKERRQ(err_PETSc)
   call SNESSetFromOptions(SNES_thermal,err_PETSc)                                                   ! pull it all together with additional CLI arguments
   CHKERRQ(err_PETSc)
 
+  call DMDAVecGetArrayF90(DM_thermal,T_PETSc,T,err_PETSc)                                           ! returns 0-indexed T
+  CHKERRQ(err_PETSc)
 
   restartRead: if (CLI_restartInc > 0) then
     print'(/,1x,a,1x,i0)', 'loading restart data of increment', CLI_restartInc
@@ -158,20 +152,23 @@ subroutine grid_thermal_spectral_init()
     T = reshape(tempN,[cells(1),cells(2),cells3])
     call HDF5_read(tempN,groupHandle,'T_lastInc',.false.)
     T_lastInc = reshape(tempN,[cells(1),cells(2),cells3])
+    T_stagInc = T_lastInc
     call HDF5_read(tempN,groupHandle,'dotT_lastInc',.false.)
     dotT_lastInc = reshape(tempN,[cells(1),cells(2),cells3])
+  else
+    T = discretization_grid_getInitialCondition('T')
+    T_lastInc = T(0:,0:,0:)
+    T_stagInc = T_lastInc
+    dotT_lastInc = 0.0_pREAL * T_lastInc
   end if restartRead
 
   ce = 0
-  do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
+  do k = 0, cells3-1; do j = 0, cells(2)-1; do i = 0, cells(1)-1
     ce = ce + 1
     call homogenization_thermal_setField(T(i,j,k),0.0_pREAL,ce)
   end do; end do; end do
 
-  call DMDAVecGetArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
-  CHKERRQ(err_PETSc)
-  T_PETSc = T
-  call DMDAVecRestoreArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
+  call DMDAVecRestoreArrayF90(DM_thermal,T_PETSc,T,err_PETSc)
   CHKERRQ(err_PETSc)
 
   call updateReference()
@@ -186,14 +183,17 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
 
   real(pREAL), intent(in) :: &
     Delta_t                                                                                         !< increment in time for current solution
+
   integer :: i, j, k, ce
   type(tSolutionState) :: solution
   PetscInt  :: devNull
   PetscReal :: T_min, T_max, stagNorm
-
+  DM :: DM_thermal
+  real(pREAL), dimension(:,:,:), pointer :: T                                                       ! 0-indexed
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
   SNESConvergedReason :: reason
+
 
   solution%converged = .false.
 
@@ -201,22 +201,25 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
 ! set module wide availabe data
   params%Delta_t = Delta_t
 
-  call SNESSolve(SNES_thermal,PETSC_NULL_VEC,solution_vec,err_PETSc)
+  call SNESSolve(SNES_thermal,PETSC_NULL_VEC,T_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
   call SNESGetConvergedReason(SNES_thermal,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  if (reason < 1) then
-    solution%converged = .false.
-    solution%iterationsNeeded = num%itmax
-  else
-    solution%converged = .true.
-    solution%iterationsNeeded = totalIter
-  end if
+  solution%converged = reason > 0
+  solution%iterationsNeeded = merge(totalIter,num%itmax,solution%converged)
+
+  call SNESGetDM(SNES_thermal,DM_thermal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(DM_thermal,T_PETSc,T,err_PETSc)                                           ! returns 0-indexed T
+  CHKERRQ(err_PETSc)
+
   stagNorm = maxval(abs(T - T_stagInc))
+  T_min = minval(T)
+  T_max = maxval(T)
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  solution%stagConverged = stagNorm < max(num%eps_thermal_atol, num%eps_thermal_rtol*maxval(T))
+  solution%stagConverged = stagNorm < max(num%eps_thermal_atol, num%eps_thermal_rtol*T_max)
   call MPI_Allreduce(MPI_IN_PLACE,solution%stagConverged,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LAND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   T_stagInc = T
@@ -224,15 +227,14 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
 !--------------------------------------------------------------------------------------------------
 ! updating thermal state
   ce = 0
-  do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
+  do k = 0, cells3-1;  do j = 0, cells(2)-1;  do i = 0, cells(1)-1
     ce = ce + 1
-    call homogenization_thermal_setField(T(i,j,k),(T(i,j,k)-T_lastInc(i,j,k))/params%Delta_t,ce)
+    call homogenization_thermal_setField(T(i,j,k),(T(i,j,k)-T_lastInc(i+1,j+1,k+1))/params%Delta_t,ce)
   end do; end do; end do
 
-  call VecMin(solution_vec,devNull,T_min,err_PETSc)
+  call DMDAVecRestoreArrayF90(DM_thermal,T_PETSc,T,err_PETSc)
   CHKERRQ(err_PETSc)
-  call VecMax(solution_vec,devNull,T_max,err_PETSc)
-  CHKERRQ(err_PETSc)
+
   if (solution%converged) &
     print'(/,1x,a)', '... thermal conduction converged ..................................'
   print'(/,1x,a,f8.4,2x,f8.4,2x,f8.4)', 'Minimum|Maximum|Delta Temperature / K = ', T_min, T_max, stagNorm
@@ -243,41 +245,39 @@ end function grid_thermal_spectral_solution
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forwarding routine
+!> @brief Set DAMASK data to current solver status.
 !--------------------------------------------------------------------------------------------------
 subroutine grid_thermal_spectral_forward(cutBack)
 
   logical, intent(in) :: cutBack
 
   integer :: i, j, k, ce
-  DM :: dm_local
-  real(pREAL),  dimension(:,:,:), pointer :: T_PETSc
+  DM :: DM_thermal
+  real(pREAL),  dimension(:,:,:), pointer :: T                                                      ! 0-indexed
   PetscErrorCode :: err_PETSc
 
 
-  if (cutBack) then
-    T = T_lastInc
-    T_stagInc = T_lastInc
+  call SNESGetDM(SNES_thermal,DM_thermal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(DM_thermal,T_PETSc,T,err_PETSc)                                           ! returns 0-indexed T
+  CHKERRQ(err_PETSc)
 
-!--------------------------------------------------------------------------------------------------
-! reverting thermal field state
-    call SNESGetDM(SNES_thermal,dm_local,err_PETSc)
-    CHKERRQ(err_PETSc)
-    call DMDAVecGetArrayF90(dm_local,solution_vec,T_PETSc,err_PETSc)                                 !< get the data out of PETSc to work with
-    CHKERRQ(err_PETSc)
-    T_PETSc = T
-    call DMDAVecRestoreArrayF90(dm_local,solution_vec,T_PETSc,err_PETSc)
-    CHKERRQ(err_PETSc)
+  if (cutBack) then
     ce = 0
     do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
       ce = ce + 1
-      call homogenization_thermal_setField(T(i,j,k),dotT_lastInc(i,j,k),ce)
+      call homogenization_thermal_setField(T_lastInc(i,j,k),dotT_lastInc(i,j,k),ce)
     end do; end do; end do
+    T = T_lastInc
+    T_stagInc = T_lastInc
   else
     dotT_lastInc = (T - T_lastInc)/params%Delta_t
     T_lastInc = T
     call updateReference()
   end if
+
+  call DMDAVecRestoreArrayF90(DM_thermal,T_PETSc,T,err_PETSc)
+  CHKERRQ(err_PETSc)
 
 end subroutine grid_thermal_spectral_forward
 
@@ -288,13 +288,13 @@ end subroutine grid_thermal_spectral_forward
 subroutine grid_thermal_spectral_restartWrite()
 
   PetscErrorCode :: err_PETSc
-  DM :: dm_local
+  DM :: DM_thermal
   integer(HID_T) :: fileHandle, groupHandle
-  real(pREAL), dimension(:,:,:), pointer :: T
+  real(pREAL), dimension(:,:,:), pointer :: T                                                       ! 0-indexed
 
-  call SNESGetDM(SNES_thermal,dm_local,err_PETSc);
+  call SNESGetDM(SNES_thermal,DM_thermal,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayReadF90(dm_local,solution_vec,T,err_PETSc);
+  call DMDAVecGetArrayReadF90(DM_thermal,T_PETSc,T,err_PETSc)                                       ! returns 0-indexed T
   CHKERRQ(err_PETSc)
 
   print'(1x,a)', 'saving thermal solver data required for restart'; flush(IO_STDOUT)
@@ -307,7 +307,7 @@ subroutine grid_thermal_spectral_restartWrite()
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 
-  call DMDAVecRestoreArrayReadF90(dm_local,solution_vec,T,err_PETSc);
+  call DMDAVecRestoreArrayReadF90(DM_thermal,T_PETSc,T,err_PETSc);
   CHKERRQ(err_PETSc)
 
 end subroutine grid_thermal_spectral_restartWrite
@@ -324,7 +324,7 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
   real(pREAL), dimension(cells(1),cells(2),cells3), intent(in) :: &
     x_scal
   real(pREAL), dimension(cells(1),cells(2),cells3), intent(out) :: &
-    r                                                                                                     !< residual
+    r                                                                                               !< residual
   PetscObject :: dummy
   PetscErrorCode, intent(out) :: err_PETSc
 
@@ -332,25 +332,26 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
   real(pREAL), dimension(3,cells(1),cells(2),cells3) :: vectorField
 
 
-  T = x_scal
-  vectorField = utilities_ScalarGradient(T)
-  ce = 0
-  do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
-    ce = ce + 1
-    vectorField(1:3,i,j,k) = matmul(homogenization_K_T(ce) - K_ref, vectorField(1:3,i,j,k))
-  end do; end do; end do
-  r = utilities_VectorDivergence(vectorField)
-  ce = 0
-  do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
-    ce = ce + 1
-    r(i,j,k) = params%Delta_t*(r(i,j,k) + homogenization_f_T(ce)) &
-             + homogenization_mu_T(ce) * (T_lastInc(i,j,k) - T(i,j,k)) &
-             + mu_ref*T(i,j,k)
-  end do; end do; end do
+  associate(T => x_scal)
+    vectorField = utilities_ScalarGradient(T)
+    ce = 0
+    do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
+      ce = ce + 1
+      vectorField(1:3,i,j,k) = matmul(homogenization_K_T(ce) - K_ref, vectorField(1:3,i,j,k))
+    end do; end do; end do
+    r = utilities_VectorDivergence(vectorField)
+    ce = 0
+    do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
+      ce = ce + 1
+      r(i,j,k) = params%Delta_t*(r(i,j,k) + homogenization_f_T(ce)) &
+               + homogenization_mu_T(ce) * (T_lastInc(i,j,k) - T(i,j,k)) &
+               + mu_ref*T(i,j,k)
+    end do; end do; end do
 
-  r = T &
-    - utilities_GreenConvolution(r, K_ref, mu_ref, params%Delta_t)
-  err_PETSc = 0
+    r = T &
+      - utilities_GreenConvolution(r, K_ref, mu_ref, params%Delta_t)
+    err_PETSc = 0
+  end associate
 
 end subroutine formResidual
 
