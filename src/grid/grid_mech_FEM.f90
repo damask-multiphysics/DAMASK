@@ -115,7 +115,7 @@ subroutine grid_mechanical_FEM_init
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscScalar, pointer, dimension(:,:,:,:) :: &
     u,u_lastInc
-  PetscInt, dimension(0:worldsize-1) :: localK
+  integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: cells3_global
   integer(HID_T) :: fileHandle, groupHandle
   type(tDict), pointer :: &
     num_grid
@@ -167,17 +167,16 @@ subroutine grid_mechanical_FEM_init
   CHKERRQ(err_PETSc)
   call SNESSetOptionsPrefix(SNES_mechanical,'mechanical_',err_PETSc)
   CHKERRQ(err_PETSc)
-  localK            = 0_pPetscInt
-  localK(worldrank) = int(cells3,pPetscInt)
-  call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  call MPI_Allgather(int(cells3,MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
+                     cells3_global,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, &
          DMDA_STENCIL_BOX, &
-         int(cells(1),pPetscInt),int(cells(2),pPetscInt),int(cells(3),pPetscInt), &                 ! global cells
-         1_pPetscInt, 1_pPetscInt, int(worldsize,pPetscInt), &
-         3_pPetscInt, 1_pPetscInt, &                                                                ! #dof (u, vector), ghost boundary width (domain overlap)
-         [int(cells(1),pPetscInt)],[int(cells(2),pPetscInt)],localK, &                              ! local cells
+         int(cells(1),pPETSCINT),int(cells(2),pPETSCINT),int(cells(3),pPETSCINT), &                 ! global cells
+         1_pPETSCINT, 1_pPETSCINT, int(worldsize,pPETSCINT), &
+         3_pPETSCINT, 1_pPETSCINT, &                                                                ! #dof (u, vector), ghost boundary width (domain overlap)
+         [int(cells(1),pPETSCINT)],[int(cells(2),pPETSCINT)],int(cells3_global,pPETSCINT), &        ! local cells
          mechanical_grid,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMsetFromOptions(mechanical_grid,err_PETSc)
@@ -198,7 +197,7 @@ subroutine grid_mechanical_FEM_init
   CHKERRQ(err_PETSc)
   call SNESSetConvergenceTest(SNES_mechanical,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc) ! specify custom convergence check function "_converged"
   CHKERRQ(err_PETSc)
-  call SNESSetMaxLinearSolveFailures(SNES_mechanical, huge(1_pPetscInt), err_PETSc)                 ! ignore linear solve failures
+  call SNESSetMaxLinearSolveFailures(SNES_mechanical, huge(1_pPETSCINT), err_PETSc)                 ! ignore linear solve failures
   CHKERRQ(err_PETSc)
   call SNESSetDM(SNES_mechanical,mechanical_grid,err_PETSc)
   CHKERRQ(err_PETSc)

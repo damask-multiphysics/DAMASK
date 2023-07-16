@@ -68,7 +68,7 @@ subroutine discretization_grid_init(restart)
     j
   integer(MPI_INTEGER_KIND) :: err_MPI
   integer(C_INTPTR_T) :: &
-    devNull, z, z_offset
+    devNull, cells3_, cells3Offset_
   integer, dimension(worldsize) :: &
     displs, sendcounts
   character(len=:), allocatable :: &
@@ -113,12 +113,12 @@ subroutine discretization_grid_init(restart)
   call fftw_mpi_init()
   devNull = fftw_mpi_local_size_3d(int(cells(3),C_INTPTR_T),int(cells(2),C_INTPTR_T),int(cells(1)/2+1,C_INTPTR_T), &
                                    PETSC_COMM_WORLD, &
-                                   z, &                                                             ! domain cells size along z
-                                   z_offset)                                                        ! domain cells offset along z
-  if (z==0_C_INTPTR_T) call IO_error(894, ext_msg='Cannot distribute MPI processes')
+                                   cells3_, &                                                       ! domain cells size along z
+                                   cells3Offset_)                                                   ! domain cells offset along z
+  if (cells3_==0_C_INTPTR_T) call IO_error(894, ext_msg='Cannot distribute MPI processes')
 
-  cells3       = int(z)
-  cells3Offset = int(z_offset)
+  cells3       = int(cells3_)
+  cells3Offset = int(cells3Offset_)
   size3       = geomSize(3)*real(cells3,pREAL)      /real(cells(3),pREAL)
   size3Offset = geomSize(3)*real(cells3Offset,pREAL)/real(cells(3),pREAL)
   myGrid = [cells(1:2),cells3]

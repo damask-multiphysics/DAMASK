@@ -110,7 +110,7 @@ subroutine grid_mechanical_spectral_basic_init()
   integer(MPI_INTEGER_KIND) :: err_MPI
   real(pREAL), pointer, dimension(:,:,:,:) :: &
     F                                                                                               ! pointer to solution data
-  PetscInt, dimension(0:worldsize-1) :: localK
+  integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: cells3_global
   real(pREAL), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
   integer(HID_T) :: fileHandle, groupHandle
   type(tDict), pointer :: &
@@ -166,17 +166,16 @@ subroutine grid_mechanical_spectral_basic_init()
   CHKERRQ(err_PETSc)
   call SNESSetOptionsPrefix(SNES_mechanical,'mechanical_',err_PETSc)
   CHKERRQ(err_PETSc)
-  localK            = 0_pPetscInt
-  localK(worldrank) = int(cells3,pPetscInt)
-  call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  call MPI_Allgather(int(cells3,MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
+                     cells3_global,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
-         int(cells(1),pPetscInt),int(cells(2),pPetscInt),int(cells(3),pPetscInt), &                 ! global cells
-         1_pPetscInt, 1_pPetscInt, int(worldsize,pPetscInt), &
-         9_pPetscInt, 0_pPetscInt, &                                                                ! #dof (F, tensor), ghost boundary width (domain overlap)
-         [int(cells(1),pPetscInt)],[int(cells(2),pPetscInt)],localK, &                              ! local cells
+         int(cells(1),pPETSCINT),int(cells(2),pPETSCINT),int(cells(3),pPETSCINT), &                 ! global cells
+         1_pPETSCINT, 1_pPETSCINT, int(worldsize,pPETSCINT), &
+         9_pPETSCINT, 0_pPETSCINT, &                                                                ! #dof (F, tensor), ghost boundary width (domain overlap)
+         [int(cells(1),pPETSCINT)],[int(cells(2),pPETSCINT)],int(cells3_global,pPETSCINT), &        ! local cells
          da,err_PETSc)                                                                              ! handle, error
   CHKERRQ(err_PETSc)
   call DMsetFromOptions(da,err_PETSc)

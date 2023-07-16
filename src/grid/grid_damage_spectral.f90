@@ -72,7 +72,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine grid_damage_spectral_init()
 
-  PetscInt, dimension(0:worldsize-1) :: localK
+  integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: cells3_global
   integer :: i, j, k, ce
   DM :: damage_grid
   real(pREAL), dimension(:,:,:), pointer :: phi_PETSc
@@ -129,17 +129,16 @@ subroutine grid_damage_spectral_init()
   CHKERRQ(err_PETSc)
   call SNESSetOptionsPrefix(SNES_damage,'damage_',err_PETSc)
   CHKERRQ(err_PETSc)
-  localK            = 0_pPetscInt
-  localK(worldrank) = int(cells3,pPetscInt)
-  call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  call MPI_Allgather(int(cells3,MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
+                     cells3_global,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call DMDACreate3D(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
-         int(cells(1),pPetscInt),int(cells(2),pPetscInt),int(cells(3),pPetscInt), &                 ! global cells
-         1_pPetscInt, 1_pPetscInt, int(worldsize,pPetscInt), &
-         1_pPetscInt, 0_pPetscInt, &                                                                ! #dof (phi, scalar), ghost boundary width (domain overlap)
-         [int(cells(1),pPetscInt)],[int(cells(2),pPetscInt)],localK, &                              ! local cells
+         int(cells(1),pPETSCINT),int(cells(2),pPETSCINT),int(cells(3),pPETSCINT), &                 ! global cells
+         1_pPETSCINT, 1_pPETSCINT, int(worldsize,pPETSCINT), &
+         1_pPETSCINT, 0_pPETSCINT, &                                                                ! #dof (phi, scalar), ghost boundary width (domain overlap)
+         [int(cells(1),pPetscInt)],[int(cells(2),pPetscInt)],int(cells3_global,pPETSCINT), &        ! local cells
          damage_grid,err_PETSc)                                                                     ! handle, error
   CHKERRQ(err_PETSc)
   call DMsetFromOptions(damage_grid,err_PETSc)
