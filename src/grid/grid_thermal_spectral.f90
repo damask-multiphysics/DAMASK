@@ -81,6 +81,7 @@ subroutine grid_thermal_spectral_init()
   type(tDict), pointer :: &
     num_grid
 
+
   print'(/,1x,a)', '<<<+-  grid_thermal_spectral init  -+>>>'
 
   print'(/,1x,a)', 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
@@ -291,6 +292,7 @@ subroutine grid_thermal_spectral_restartWrite()
   integer(HID_T) :: fileHandle, groupHandle
   real(pREAL), dimension(:,:,:), pointer :: T                                                       ! 0-indexed
 
+
   call SNESGetDM(SNES_thermal,DM_thermal,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayReadF90(DM_thermal,T_PETSc,T,err_PETSc)                                       ! returns 0-indexed T
@@ -310,7 +312,6 @@ subroutine grid_thermal_spectral_restartWrite()
   CHKERRQ(err_PETSc)
 
 end subroutine grid_thermal_spectral_restartWrite
-
 
 
 !--------------------------------------------------------------------------------------------------
@@ -349,8 +350,8 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
 
     r = T &
       - utilities_GreenConvolution(r, K_ref, mu_ref, params%Delta_t)
-    err_PETSc = 0
   end associate
+  err_PETSc = 0
 
 end subroutine formResidual
 
