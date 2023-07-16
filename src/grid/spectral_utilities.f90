@@ -100,11 +100,17 @@ module spectral_utilities
   enum, bind(c); enumerator :: &
     DERIVATIVE_CONTINUOUS_ID, &
     DERIVATIVE_CENTRAL_DIFF_ID, &
-    DERIVATIVE_FWBW_DIFF_ID
+    DERIVATIVE_FWBW_DIFF_ID, &
+    DIVERGENCE_CORRECTION_NONE_ID, &
+    DIVERGENCE_CORRECTION_SIZE_ID, &
+    DIVERGENCE_CORRECTION_SIZE_GRID_ID
   end enum
 
   integer(kind(DERIVATIVE_CONTINUOUS_ID)) :: &
     spectral_derivative_ID
+
+  integer(kind(DIVERGENCE_CORRECTION_NONE_ID)) :: &
+    divergence_correction_ID
 
   public :: &
     spectral_utilities_init, &
@@ -178,10 +184,18 @@ subroutine spectral_utilities_init()
   wgt = real(product(cells),pREAL)**(-1)
 
   num%memory_efficient      = num_grid_fft%get_asBool('memory_efficient',     defaultVal=.true.)
-  num%divergence_correction = num_grid_fft%get_asInt('divergence_correction', defaultVal=2)
 
-  if (num%divergence_correction < 0 .or. num%divergence_correction > 2) &
-    call IO_error(301,ext_msg='divergence_correction')
+  select case (num_grid_fft%get_asStr('divergence_correction',defaultVal='grid+size'))
+    case ('none')
+      divergence_correction_ID = DIVERGENCE_CORRECTION_NONE_ID
+    case ('size')
+      divergence_correction_ID = DIVERGENCE_CORRECTION_SIZE_ID
+    case ('grid+size', 'size+grid')
+      divergence_correction_ID = DIVERGENCE_CORRECTION_SIZE_GRID_ID
+    case default
+      call IO_error(301,ext_msg=trim(num_grid_fft%get_asStr('divergence_correction')))
+  end select
+
 
   select case (num_grid_fft%get_asStr('derivative',defaultVal='continuous'))
     case ('continuous')
@@ -197,12 +211,12 @@ subroutine spectral_utilities_init()
 !--------------------------------------------------------------------------------------------------
 ! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and
 ! resolution-independent divergence
-  if (num%divergence_correction == 1) then
+  if (divergence_correction_ID == DIVERGENCE_CORRECTION_NONE_ID) then
     do j = 1, 3
      if (j /= minloc(geomSize,1) .and. j /= maxloc(geomSize,1)) &
        scaledGeomSize = geomSize/geomSize(j)
     end do
-  elseif (num%divergence_correction == 2) then
+  elseif (divergence_correction_ID == DIVERGENCE_CORRECTION_SIZE_GRID_ID) then
     do j = 1, 3
      if (      j /= int(minloc(geomSize/real(cells,pREAL),1)) &
          .and. j /= int(maxloc(geomSize/real(cells,pREAL),1))) &
