@@ -24,7 +24,7 @@ program DAMASK_grid
   use material
   use spectral_utilities
   use grid_mechanical_spectral_basic
-  use grid_mechanical_spectral_polarisation
+  use grid_mechanical_spectral_polarization
   use grid_mechanical_FEM
   use grid_damage_spectral
   use grid_thermal_spectral
@@ -173,11 +173,11 @@ program DAMASK_grid
       mechanical_restartWrite => grid_mechanical_spectral_basic_restartWrite
 
     case ('spectral_polarization')
-      mechanical_init         => grid_mechanical_spectral_polarisation_init
-      mechanical_forward      => grid_mechanical_spectral_polarisation_forward
-      mechanical_solution     => grid_mechanical_spectral_polarisation_solution
-      mechanical_updateCoords => grid_mechanical_spectral_polarisation_updateCoords
-      mechanical_restartWrite => grid_mechanical_spectral_polarisation_restartWrite
+      mechanical_init         => grid_mechanical_spectral_polarization_init
+      mechanical_forward      => grid_mechanical_spectral_polarization_forward
+      mechanical_solution     => grid_mechanical_spectral_polarization_solution
+      mechanical_updateCoords => grid_mechanical_spectral_polarization_updateCoords
+      mechanical_restartWrite => grid_mechanical_spectral_polarization_restartWrite
 
     case ('FEM')
       mechanical_init         => grid_mechanical_FEM_init
