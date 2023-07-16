@@ -500,7 +500,7 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
     case (131)
       msg = 'hex lattice structure with invalid c/a ratio'
     case (132)
-      msg = 'trans_lattice_structure not possible'
+      msg = 'invalid parameters for transformation'
     case (134)
       msg = 'negative lattice parameter'
     case (135)
@@ -579,6 +579,18 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
 ! user errors
     case (603)
       msg = 'invalid data for table'
+    case (610)
+      msg = 'missing argument for option'
+    case (611)
+      msg = 'could not parse restart increment'
+    case (612)
+      msg = 'missing option'
+    case (630)
+      msg = 'JOBNAME must not contain any slashes'
+    case (640)
+      msg = 'invalid working directory'
+
+
 
 !------------------------------------------------------------------------------------------------
 ! errors related to YAML data
@@ -646,9 +658,9 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
   end select
 
   call panel('error',error_ID,msg, &
-                 ext_msg=ext_msg, &
-                 label1=label1,ID1=ID1, &
-                 label2=label2,ID2=ID2)
+                     ext_msg=ext_msg, &
+                     label1=label1,ID1=ID1, &
+                     label2=label2,ID2=ID2)
   call quit(9000+error_ID)
 
 end subroutine IO_error
@@ -728,38 +740,43 @@ subroutine panel(paneltype,ID,msg,ext_msg,label1,ID1,label2,ID2)
 
   character(len=pSTRLEN)                 :: formatString
   integer, parameter                     :: panelwidth = 69
+  character(len=:), allocatable          :: msg_,ID_,msg1,msg2
   character(len=*), parameter            :: DIVIDER = repeat('─',panelwidth)
 
 
   if (.not. present(label1) .and.       present(ID1)) error stop 'missing label for value 1'
   if (.not. present(label2) .and.       present(ID2)) error stop 'missing label for value 2'
-  if (      present(label1) .and. .not. present(ID1)) error stop 'missing value for label 1'
-  if (      present(label2) .and. .not. present(ID2)) error stop 'missing value for label 2'
 
+  ID_ = IO_intAsStr(ID)
+  if (present(label1)) msg1 = label1
+  if (present(label2)) msg2 = label2
+  if (present(ID1)) msg1 = msg1//' '//IO_intAsStr(ID1)
+  if (present(ID2)) msg2 = msg2//' '//IO_intAsStr(ID2)
+
+  if (paneltype == 'error')   msg_ = achar(27)//'[31m'//trim(msg)//achar(27)//'[0m'
+  if (paneltype == 'warning') msg_ = achar(27)//'[33m'//trim(msg)//achar(27)//'[0m'
   !$OMP CRITICAL (write2out)
   write(IO_STDERR,'(/,a)')                ' ┌'//DIVIDER//'┐'
-  write(formatString,'(a,i2,a)') '(a,24x,a,',max(1,panelwidth-24-len_trim(paneltype)),'x,a)'
-  write(IO_STDERR,formatString)          ' │',trim(paneltype),                                      '│'
-  write(formatString,'(a,i2,a)') '(a,24x,i3,',max(1,panelwidth-24-3),'x,a)'
-  write(IO_STDERR,formatString)          ' │',ID,                                                   '│'
+  write(formatString,'(a,i2,a)') '(a,24x,a,1x,i0,',max(1,panelwidth-24-len_trim(paneltype)-1-len_trim(ID_)),'x,a)'
+  write(IO_STDERR,formatString)          ' │',trim(paneltype),ID,                                   '│'
   write(IO_STDERR,'(a)')                  ' ├'//DIVIDER//'┤'
-  write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
+  write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a4,a',max(1,len_trim(msg_)),',',&
                                                      max(1,panelwidth+3-len_trim(msg)-4),'x,a)'
-  write(IO_STDERR,formatString)            '│ ',trim(msg),                                          '│'
+  write(IO_STDERR,formatString)            '│ ',trim(msg_),                                         '│'
   if (present(ext_msg)) then
     write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
                                                        max(1,panelwidth+3-len_trim(ext_msg)-4),'x,a)'
     write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
   end if
   if (present(label1)) then
-    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(label1)),',i9,',&
-                                                       max(1,panelwidth+3-len_trim(label1)-9-7),'x,a)'
-    write(IO_STDERR,formatString)          '│ at ',trim(label1),ID1,                                '│'
+    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(msg1)),',',&
+                                                       max(1,panelwidth+3-len_trim(msg1)-7),'x,a)'
+    write(IO_STDERR,formatString)          '│ at ',trim(msg1),                                     '│'
   end if
   if (present(label2)) then
-    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(label2)),',i9,',&
-                                                       max(1,panelwidth+3-len_trim(label2)-9-7),'x,a)'
-    write(IO_STDERR,formatString)          '│ at ',trim(label2),ID2,                                '│'
+    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(msg2)),',',&
+                                                       max(1,panelwidth+3-len_trim(msg2)-7),'x,a)'
+    write(IO_STDERR,formatString)          '│ at ',trim(msg2),                                     '│'
   end if
   write(formatString,'(a,i2.2,a)') '(a,',max(1,panelwidth),'x,a)'
   write(IO_STDERR,formatString)          ' │',                                                     '│'

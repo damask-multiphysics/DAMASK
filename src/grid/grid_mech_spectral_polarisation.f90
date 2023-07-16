@@ -438,7 +438,7 @@ end subroutine grid_mechanical_spectral_polarisation_forward
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Update coordinates
+!> @brief Update coordinates.
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mechanical_spectral_polarisation_updateCoords()
 
@@ -447,7 +447,7 @@ subroutine grid_mechanical_spectral_polarisation_updateCoords()
 
   call DMDAVecGetArrayReadF90(da,solution_vec,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
-  call utilities_updateCoords(FandF_tau(0:8,:,:,:))
+  call utilities_updateCoords(reshape(FandF_tau(0:8,:,:,:),[3,3,size(FandF_tau,2),size(FandF_tau,3),size(FandF_tau,4)]))
   call DMDAVecRestoreArrayReadF90(da,solution_vec,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
 
@@ -455,7 +455,7 @@ end subroutine grid_mechanical_spectral_polarisation_updateCoords
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Write current solver and constitutive data for restart to file
+!> @brief Write current solver and constitutive data for restart to file.
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mechanical_spectral_polarisation_restartWrite()
 

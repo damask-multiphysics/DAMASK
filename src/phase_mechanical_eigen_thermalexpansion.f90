@@ -92,7 +92,7 @@ module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
     Alpha = 0.0_pREAL
     Alpha(1,1) = prm%Alpha_11%at(T)
     if (any(phase_lattice(ph) == ['hP','tI'])) Alpha(3,3) = prm%Alpha_33%at(T)
-    Alpha = lattice_symmetrize_33(Alpha,phase_lattice(ph))
+    Alpha = crystal_symmetrize_33(Alpha,phase_lattice(ph))
     Li = dot_T * Alpha
 
   end associate

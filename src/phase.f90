@@ -14,7 +14,7 @@ module phase
   use config
   use material
   use result
-  use lattice
+  use crystal
   use discretization
   use parallelization
   use HDF5
@@ -336,7 +336,7 @@ module phase
     config, &
     material, &
     result, &
-    lattice, &
+    crystal, &
     discretization, &
     HDF5_utilities
 #endif
