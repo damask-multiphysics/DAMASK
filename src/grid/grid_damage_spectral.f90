@@ -16,6 +16,7 @@ module grid_damage_spectral
   use prec
   use parallelization
   use IO
+  use misc
   use CLI
   use HDF5_utilities
   use HDF5
@@ -118,8 +119,8 @@ subroutine grid_damage_spectral_init(num_grid)
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
-  petsc_options = IO_postfix('-snes_type newtonls -snes_mf -snes_ksp_ew -ksp_type fgmres '// &
-                              num_grid_damage%get_asStr('PETSc_options',defaultVal=''), '-','damage_')
+  petsc_options = misc_prefixOptions('-snes_type newtonls -snes_mf -snes_ksp_ew -ksp_type fgmres '// &
+                                     num_grid_damage%get_asStr('PETSc_options',defaultVal=''),'damage_')
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
 

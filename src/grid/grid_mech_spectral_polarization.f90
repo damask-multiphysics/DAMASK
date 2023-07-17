@@ -16,6 +16,7 @@ module grid_mechanical_spectral_polarization
   use prec
   use parallelization
   use CLI
+  use misc
   use IO
   use HDF5
   use HDF5_utilities
@@ -174,7 +175,8 @@ subroutine grid_mechanical_spectral_polarization_init(num_grid)
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
-  petsc_options = IO_postfix('-snes_type ngmres '//num_grid_mech%get_asStr('PETSc_options',defaultVal=''), '-','mechanical_')
+  petsc_options = misc_prefixOptions('-snes_type ngmres '//num_grid_mech%get_asStr('PETSc_options',defaultVal=''), &
+                                     'mechanical_')
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
 

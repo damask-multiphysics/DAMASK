@@ -11,6 +11,7 @@ module IO
     IO_STDERR => ERROR_UNIT
 
   use prec
+  use constants
   use misc
 
   implicit none(type,external)
@@ -20,13 +21,8 @@ module IO
     IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13), &                         !< whitespace characters
     IO_QUOTES  = "'"//'"'
   character, parameter, public :: &
-    IO_EOL = new_line('DAMASK'), &                                                                  !< end of line character
+    IO_EOL = LF, &                                                                                  !< end of line character
     IO_COMMENT = '#'
-  character(len=*),          parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
-  character(len=len(LOWER)), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  character, parameter :: &
-    CR = achar(13), &
-    LF = IO_EOL
 
   public :: &
     IO_init, &
@@ -34,7 +30,6 @@ module IO
     IO_readlines, &
     IO_isBlank, &
     IO_wrapLines, &
-    IO_postfix, &
     IO_strPos, &
     IO_strValue, &
     IO_intValue, &
@@ -239,30 +234,6 @@ pure function IO_strPos(str)
   end do
 
 end function IO_strPos
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Append postfix to each indicator character that is followed by a lowercase letter.
-!--------------------------------------------------------------------------------------------------
-function IO_postfix(string,indicator,postfix)
-
-  character(len=*), intent(in)  :: string
-  character,        intent(in)  :: indicator
-  character(len=*), intent(in)  :: postfix
-  character(len=:), allocatable :: IO_postfix
-
-  integer :: i,N
-
-
-  IO_postfix = ''
-  N = len(string)
-  do i = 1, N
-    IO_postfix = IO_postfix//string(i:i)
-    if (string(i:i) == indicator .and. verify(IO_lc(string(min(i+1,N):min(i+1,N))),LOWER) == 0) &
-      IO_postfix = IO_postfix//postfix
-  end do
-
-end function IO_postfix
 
 
 !--------------------------------------------------------------------------------------------------
@@ -872,10 +843,6 @@ subroutine selfTest()
                                                      error stop 'IO_wrapLines/6'
   if ('abc,'//IO_EOL//'xxdefg,'//IO_EOL//'xxhij' /= IO_wrapLines('abc,defg, hij',filler='xx',length=4)) &
                                                      error stop 'IO_wrapLines/7'
-
-  str='-a -1 -more 123 -flag -'
-  out=IO_postfix(str,'-+','p_')
-  if (out /= '-p_a -1 -p_more 123 -p_flag -')        error stop 'IO_postfix'
 
 end subroutine selfTest
 

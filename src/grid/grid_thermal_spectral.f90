@@ -16,6 +16,7 @@ module grid_thermal_spectral
   use prec
   use parallelization
   use IO
+  use misc
   use CLI
   use HDF5_utilities
   use HDF5
@@ -111,8 +112,8 @@ subroutine grid_thermal_spectral_init(num_grid)
   if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
-  petsc_options = IO_postfix('-snes_type newtonls -snes_mf -snes_ksp_ew -ksp_type fgmres '// &
-                              num_grid_thermal%get_asStr('PETSc_options',defaultVal=''), '-','thermal_')
+  petsc_options = misc_prefixOptions('-snes_type newtonls -snes_mf -snes_ksp_ew -ksp_type fgmres '// &
+                                     num_grid_thermal%get_asStr('PETSc_options',defaultVal=''), 'thermal_')
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
 

@@ -15,8 +15,9 @@ module grid_mechanical_FEM
 
   use prec
   use parallelization
-  use CLI
   use IO
+  use misc
+  use CLI
   use HDF5
   use HDF5_utilities
   use math
@@ -152,8 +153,8 @@ subroutine grid_mechanical_FEM_init(num_grid)
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
 
-  petsc_options = IO_postfix('-snes_type newtonls -ksp_type fgmres -ksp_max_it 25 '// &
-                              num_grid_mech%get_asStr('PETSc_options',defaultVal=''), '-','mechanical_')
+  petsc_options = misc_prefixOptions('-snes_type newtonls -ksp_type fgmres -ksp_max_it 25 '// &
+                                     num_grid_mech%get_asStr('PETSc_options',defaultVal='') ,'mechanical_')
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
 
