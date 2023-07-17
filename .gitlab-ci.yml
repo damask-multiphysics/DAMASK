@@ -209,7 +209,7 @@ grid_performance:
     - make -j2 all install
     - export PATH=${PWD}/bin:${PATH}
     - cd $(mktemp -d)
-    - git clone -q git@git.damask.mpie.de:damask/performance.git .
+    - git clone -q git@git.damask.mpie.de:damask/statistics.git .
     - ./measure_performance.py --input_dir ${CI_PROJECT_DIR}/examples/grid --tag ${CI_COMMIT_SHA}
     - >
         if [ ${CI_COMMIT_BRANCH} == development ]; then
@@ -222,7 +222,7 @@ update_plots:
   stage: statistics
   script:
     - cd $(mktemp -d)
-    - git clone -q git@git.damask.mpie.de:damask/performance.git .
+    - git clone -q git@git.damask.mpie.de:damask/statistics.git .
     - ./plot_commithistory.py --color green -n 5 -N 100
     - ./plot_commithistory.py --color green -n 5 -N 1000
     - ./plot_commithistory.py --color green -n 5 -N 10000
