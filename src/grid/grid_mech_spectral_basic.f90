@@ -51,9 +51,9 @@ module grid_mechanical_spectral_basic
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
-  DM   :: da
-  SNES :: SNES_mechanical
-  Vec  :: solution_vec
+  DM   :: DM_mech
+  SNES :: SNES_mech
+  Vec  :: F_PETSc
 
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
@@ -162,9 +162,9 @@ subroutine grid_mechanical_spectral_basic_init()
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
-  call SNESCreate(PETSC_COMM_WORLD,SNES_mechanical,err_PETSc)
+  call SNESCreate(PETSC_COMM_WORLD,SNES_mech,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESSetOptionsPrefix(SNES_mechanical,'mechanical_',err_PETSc)
+  call SNESSetOptionsPrefix(SNES_mech,'mechanical_',err_PETSc)
   CHKERRQ(err_PETSc)
   call MPI_Allgather(int(cells3,MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
                      cells3_global,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
@@ -176,26 +176,26 @@ subroutine grid_mechanical_spectral_basic_init()
          1_pPETSCINT, 1_pPETSCINT, int(worldsize,pPETSCINT), &
          9_pPETSCINT, 0_pPETSCINT, &                                                                ! #dof (F, tensor), ghost boundary width (domain overlap)
          [int(cells(1),pPETSCINT)],[int(cells(2),pPETSCINT)],int(cells3_global,pPETSCINT), &        ! local cells
-         da,err_PETSc)                                                                              ! handle, error
+         DM_mech,err_PETSc)                                                                         ! handle, error
   CHKERRQ(err_PETSc)
-  call DMsetFromOptions(da,err_PETSc)
+  call DMsetFromOptions(DM_mech,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMsetUp(da,err_PETSc)
+  call DMsetUp(DM_mech,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMcreateGlobalVector(da,solution_vec,err_PETSc)                                              ! global solution vector (cells x 9, i.e. every def grad tensor)
+  call DMcreateGlobalVector(DM_mech,F_PETSc,err_PETSc)                                              ! global solution vector (cells x 9, i.e. every def grad tensor)
   CHKERRQ(err_PETSc)
-  call DMDASNESsetFunctionLocal(da,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)            ! residual vector of same shape as solution vector
+  call DMDASNESsetFunctionLocal(DM_mech,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)       ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
-  call SNESsetConvergenceTest(SNES_mechanical,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc) ! specify custom convergence check function "converged"
+  call SNESsetConvergenceTest(SNES_mech,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc)    ! specify custom convergence check function "converged"
   CHKERRQ(err_PETSc)
-  call SNESSetDM(SNES_mechanical,da,err_PETSc)
+  call SNESSetDM(SNES_mech,DM_mech,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESsetFromOptions(SNES_mechanical,err_PETSc)                                                ! pull it all together with additional CLI arguments
+  call SNESsetFromOptions(SNES_mech,err_PETSc)                                                      ! pull it all together with additional CLI arguments
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  call DMDAVecGetArrayF90(da,solution_vec,F,err_PETSc)                                              ! places pointer on PETSc data
+  call DMDAVecGetArrayF90(DM_mech,F_PETSc,F,err_PETSc)                                              ! places pointer on PETSc data
   CHKERRQ(err_PETSc)
 
   restartRead: if (CLI_restartInc > 0) then
@@ -231,7 +231,7 @@ subroutine grid_mechanical_spectral_basic_init()
   call utilities_constitutiveResponse(P,P_av,C_volAvg,C_minMaxAvg, &                                ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
                                       0.0_pREAL)                                                    ! time increment
-  call DMDAVecRestoreArrayF90(da,solution_vec,F,err_PETSc)                                          ! deassociate pointer
+  call DMDAVecRestoreArrayF90(DM_mech,F_PETSc,F,err_PETSc)                                          ! deassociate pointer
   CHKERRQ(err_PETSc)
 
   restartRead2: if (CLI_restartInc > 0) then
@@ -280,9 +280,9 @@ function grid_mechanical_spectral_basic_solution(incInfoIn) result(solution)
   S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
   if (num%update_gamma) call utilities_updateGamma(C_minMaxAvg)
 
-  call SNESsolve(SNES_mechanical,PETSC_NULL_VEC,solution_vec,err_PETSc)
+  call SNESsolve(SNES_mech,PETSC_NULL_VEC,F_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESGetConvergedReason(SNES_mechanical,reason,err_PETSc)
+  call SNESGetConvergedReason(SNES_mech,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
   solution%converged = reason > 0
@@ -317,7 +317,7 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
   real(pREAL), pointer, dimension(:,:,:,:) :: F
 
 
-  call DMDAVecGetArrayF90(da,solution_vec,F,err_PETSc)
+  call DMDAVecGetArrayF90(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (cutBack) then
@@ -361,7 +361,7 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
 
   F = reshape(utilities_forwardField(Delta_t,F_lastInc,Fdot, &                                      ! estimate of F at end of time+Delta_t that matches rotated F_aim on average
               rotation_BC%rotate(F_aim,active=.true.)),[9,cells(1),cells(2),cells3])
-  call DMDAVecRestoreArrayF90(da,solution_vec,F,err_PETSc)
+  call DMDAVecRestoreArrayF90(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -381,10 +381,10 @@ subroutine grid_mechanical_spectral_basic_updateCoords()
   PetscErrorCode :: err_PETSc
   real(pREAL), dimension(:,:,:,:), pointer :: F
 
-  call DMDAVecGetArrayReadF90(da,solution_vec,F,err_PETSc)
+  call DMDAVecGetArrayReadF90(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
   call utilities_updateCoords(reshape(F,[3,3,size(F,2),size(F,3),size(F,4)]))
-  call DMDAVecRestoreArrayReadF90(da,solution_vec,F,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_spectral_basic_updateCoords
@@ -399,7 +399,7 @@ subroutine grid_mechanical_spectral_basic_restartWrite()
   integer(HID_T) :: fileHandle, groupHandle
   real(pREAL), dimension(:,:,:,:), pointer :: F
 
-  call DMDAVecGetArrayReadF90(da,solution_vec,F,err_PETSc)
+  call DMDAVecGetArrayReadF90(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (num%update_gamma) C_minMaxAvgRestart = C_minMaxAvg
@@ -427,7 +427,7 @@ subroutine grid_mechanical_spectral_basic_restartWrite()
     call HDF5_closeFile(fileHandle)
   end if
 
-  call DMDAVecRestoreArrayReadF90(da,solution_vec,F,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_spectral_basic_restartWrite
@@ -498,9 +498,9 @@ subroutine formResidual(residual_subdomain, F, &
   integer(MPI_INTEGER_KIND) :: err_MPI
 
 
-  call SNESGetNumberFunctionEvals(SNES_mechanical,nfuncs,err_PETSc)
+  call SNESGetNumberFunctionEvals(SNES_mech,nfuncs,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESGetIterationNumber(SNES_mechanical,PETScIter,err_PETSc)
+  call SNESGetIterationNumber(SNES_mech,PETScIter,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment

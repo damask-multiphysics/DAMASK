@@ -56,9 +56,9 @@ module grid_mechanical_spectral_polarisation
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
-  DM   :: da
-  SNES :: SNES_mechanical
-  Vec  :: solution_vec
+  DM   :: DM_mech
+  SNES :: SNES_mech
+  Vec  :: FandF_tau_PETSc
 
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
@@ -183,9 +183,9 @@ subroutine grid_mechanical_spectral_polarisation_init()
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
-  call SNESCreate(PETSC_COMM_WORLD,SNES_mechanical,err_PETSc)
+  call SNESCreate(PETSC_COMM_WORLD,SNES_mech,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESSetOptionsPrefix(SNES_mechanical,'mechanical_',err_PETSc)
+  call SNESSetOptionsPrefix(SNES_mech,'mechanical_',err_PETSc)
   CHKERRQ(err_PETSc)
   call MPI_Allgather(int(cells3,pPetscInt),1_MPI_INTEGER_KIND,MPI_INTEGER,&
                      cells3_global,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
@@ -197,26 +197,26 @@ subroutine grid_mechanical_spectral_polarisation_init()
          1_pPETSCINT, 1_pPETSCINT, int(worldsize,pPETSCINT), &
          18_pPETSCINT, 0_pPETSCINT, &                                                               ! #dof (2xtensor), ghost boundary width (domain overlap)
          [int(cells(1),pPETSCINT)],[int(cells(2),pPETSCINT)],int(cells3_global,pPETSCINT), &        ! local cells
-         da,err_PETSc)                                                                              ! handle, error
+         DM_mech,err_PETSc)                                                                         ! handle, error
   CHKERRQ(err_PETSc)
-  call DMsetFromOptions(da,err_PETSc)
+  call DMsetFromOptions(DM_mech,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMsetUp(da,err_PETSc)
+  call DMsetUp(DM_mech,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMcreateGlobalVector(da,solution_vec,err_PETSc)                                              ! global solution vector (cells x 18, i.e. every def grad tensor)
+  call DMcreateGlobalVector(DM_mech,FandF_tau_PETSc,err_PETSc)                                      ! global solution vector (cells x 18, i.e. every def grad tensor)
   CHKERRQ(err_PETSc)
-  call DMDASNESsetFunctionLocal(da,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)            ! residual vector of same shape as solution vector
+  call DMDASNESsetFunctionLocal(DM_mech,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)       ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
-  call SNESsetConvergenceTest(SNES_mechanical,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc) ! specify custom convergence check function "converged"
+  call SNESsetConvergenceTest(SNES_mech,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc)    ! specify custom convergence check function "converged"
   CHKERRQ(err_PETSc)
-  call SNESSetDM(SNES_mechanical,da,err_PETSc)
+  call SNESSetDM(SNES_mech,DM_mech,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESsetFromOptions(SNES_mechanical,err_PETSc)                                                ! pull it all together with additional CLI arguments
+  call SNESsetFromOptions(SNES_mech,err_PETSc)                                                      ! pull it all together with additional CLI arguments
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,err_PETSc)                                      ! places pointer on PETSc data
+  call DMDAVecGetArrayF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)                              ! places pointer on PETSc data
   CHKERRQ(err_PETSc)
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
@@ -260,7 +260,7 @@ subroutine grid_mechanical_spectral_polarisation_init()
   call utilities_constitutiveResponse(P,P_av,C_volAvg,C_minMaxAvg, &                                ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
                                       0.0_pREAL)                                                    ! time increment
-  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,err_PETSc)                                  ! deassociate pointer
+  call DMDAVecRestoreArrayF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)                          ! deassociate pointer
   CHKERRQ(err_PETSc)
 
   restartRead2: if (CLI_restartInc > 0) then
@@ -315,9 +315,9 @@ function grid_mechanical_spectral_polarisation_solution(incInfoIn) result(soluti
     S_scale = math_invSym3333(C_minMaxAvg)
   end if
 
-  call SNESSolve(SNES_mechanical,PETSC_NULL_VEC,solution_vec,err_PETSc)
+  call SNESSolve(SNES_mech,PETSC_NULL_VEC,FandF_tau_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESGetConvergedReason(SNES_mechanical,reason,err_PETSc)
+  call SNESGetConvergedReason(SNES_mech,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
   solution%converged = reason > 0
@@ -354,7 +354,7 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
   real(pREAL), dimension(3,3) :: F_lambda33
 
 
-  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,err_PETSc)
+  call DMDAVecGetArrayF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
@@ -418,7 +418,7 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
     end do; end do; end do
   end if
 
-  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,err_PETSc)
+  call DMDAVecRestoreArrayF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -438,10 +438,10 @@ subroutine grid_mechanical_spectral_polarisation_updateCoords()
   PetscErrorCode :: err_PETSc
   real(pREAL), dimension(:,:,:,:), pointer :: FandF_tau
 
-  call DMDAVecGetArrayReadF90(da,solution_vec,FandF_tau,err_PETSc)
+  call DMDAVecGetArrayReadF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
   call utilities_updateCoords(reshape(FandF_tau(0:8,:,:,:),[3,3,size(FandF_tau,2),size(FandF_tau,3),size(FandF_tau,4)]))
-  call DMDAVecRestoreArrayReadF90(da,solution_vec,FandF_tau,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_spectral_polarisation_updateCoords
@@ -456,7 +456,7 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite()
   integer(HID_T) :: fileHandle, groupHandle
   real(pREAL), dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
 
-  call DMDAVecGetArrayReadF90(da,solution_vec,FandF_tau,err_PETSc)
+  call DMDAVecGetArrayReadF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
@@ -488,7 +488,7 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite()
     call HDF5_closeFile(fileHandle)
   end if
 
-  call DMDAVecRestoreArrayReadF90(da,solution_vec,FandF_tau,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_spectral_polarisation_restartWrite
@@ -576,9 +576,9 @@ subroutine formResidual(residual_subdomain, FandF_tau, &
   call MPI_Allreduce(MPI_IN_PLACE,F_av,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
-  call SNESGetNumberFunctionEvals(SNES_mechanical,nfuncs,err_PETSc)
+  call SNESGetNumberFunctionEvals(SNES_mech,nfuncs,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESGetIterationNumber(SNES_mechanical,PETScIter,err_PETSc)
+  call SNESGetIterationNumber(SNES_mech,PETScIter,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
