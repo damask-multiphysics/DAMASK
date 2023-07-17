@@ -1,3 +1,4 @@
 grid:
-  itmin: 4
-  itmax: 40
+  mechanical:
+    itmin: 4
+    itmax: 40

@@ -226,7 +226,7 @@ subroutine spectral_utilities_init()
     scaledGeomSize = geomSize
   end if
 
-  select case(IO_lc(num_grid_fft%get_asStr('plan_mode',defaultVal='FFTW_MEASURE')))
+  select case(IO_lc(num_grid_fft%get_asStr('FFTW_plan_mode',defaultVal='FFTW_MEASURE')))
     case('fftw_estimate', 'FFTW_ESTIMATE')                                                          ! ordered from slow execution (but fast plan creation) to fast execution
       FFTW_planner_flag = FFTW_ESTIMATE
     case('fftw_measure', 'FFTW_MEASURE')
@@ -243,7 +243,7 @@ subroutine spectral_utilities_init()
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
   if (pREAL /= C_DOUBLE .or. kind(1) /= C_INT) error stop 'C and Fortran datatypes do not match'
-  call fftw_set_timelimit(num_grid_fft%get_asReal('fftw_timelimit',defaultVal=300.0_pREAL))
+  call fftw_set_timelimit(num_grid_fft%get_asReal('FFTW_timelimit',defaultVal=300.0_pREAL))
 
   print'(/,1x,a)', 'FFTW initialized'; flush(IO_STDOUT)
 
