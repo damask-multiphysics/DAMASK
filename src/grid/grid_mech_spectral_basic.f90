@@ -117,9 +117,8 @@ subroutine grid_mechanical_spectral_basic_init(num_grid)
   type(tDict), pointer :: &
     num_grid_fft, &
     num_grid_mech
-  character(len=pSTRLEN) :: &
-    extmsg = ''
   character(len=:), allocatable :: &
+    extmsg, &
     petsc_options
 
 
@@ -139,16 +138,16 @@ subroutine grid_mechanical_spectral_basic_init(num_grid)
   num%itmin           = num_grid_mech%get_asInt  ('N_iter_min',defaultVal=1)
   num%itmax           = num_grid_mech%get_asInt  ('N_iter_max',defaultVal=100)
   num%update_gamma    = num_grid_mech%get_asBool ('update_gamma',defaultVal=.false.)
-
   num%eps_div_atol    = num_grid_mech%get_asReal('eps_abs_div(P)', defaultVal=1.0e-4_pREAL)
   num%eps_div_rtol    = num_grid_mech%get_asReal('eps_rel_div(P)', defaultVal=5.0e-4_pREAL)
   num%eps_stress_atol = num_grid_mech%get_asReal('eps_abs_P',      defaultVal=1.0e3_pREAL)
   num%eps_stress_rtol = num_grid_mech%get_asReal('eps_rel_P',      defaultVal=1.0e-3_pREAL)
 
-  if (num%eps_div_atol <= 0.0_pREAL)             extmsg = trim(extmsg)//' eps_abs_div(P)'
-  if (num%eps_div_rtol <= 0.0_pREAL)             extmsg = trim(extmsg)//' eps_rel_div(P)'
-  if (num%eps_stress_atol <= 0.0_pREAL)          extmsg = trim(extmsg)//' eps_abs_P'
-  if (num%eps_stress_rtol <= 0.0_pREAL)          extmsg = trim(extmsg)//' eps_rel_P'
+  extmsg = ''
+  if (num%eps_div_atol <= 0.0_pReal)             extmsg = trim(extmsg)//' eps_abs_div(P)'
+  if (num%eps_div_rtol <= 0.0_pReal)             extmsg = trim(extmsg)//' eps_rel_div(P)'
+  if (num%eps_stress_atol <= 0.0_pReal)          extmsg = trim(extmsg)//' eps_abs_P'
+  if (num%eps_stress_rtol <= 0.0_pReal)          extmsg = trim(extmsg)//' eps_rel_P'
   if (num%itmax < 1)                             extmsg = trim(extmsg)//' N_iter_max'
   if (num%itmin > num%itmax .or. num%itmin < 1)  extmsg = trim(extmsg)//' N_iter_min'
 

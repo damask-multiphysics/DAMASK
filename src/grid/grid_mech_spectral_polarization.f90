@@ -131,9 +131,8 @@ subroutine grid_mechanical_spectral_polarization_init(num_grid)
   type(tDict), pointer :: &
     num_grid_fft,&
     num_grid_mech
-  character(len=pSTRLEN) :: &
-    extmsg = ''
   character(len=:), allocatable :: &
+    extmsg, &
     petsc_options
 
 
@@ -147,6 +146,8 @@ subroutine grid_mechanical_spectral_polarization_init(num_grid)
   num_grid_fft  => num_grid%get_dict('FFT',defaultVal=emptyDict)
   num_grid_mech => num_grid%get_dict('mechanical',defaultVal=emptyDict)
 
+  num%itmin           = num_grid_mech%get_asInt  ('N_iter_min',defaultVal=1)
+  num%itmax           = num_grid_mech%get_asInt  ('N_iter_max',defaultVal=100)
   num%update_gamma    = num_grid_mech%get_asBool ('update_gamma',defaultVal=.false.)
   num%eps_div_atol    = num_grid_mech%get_asReal('eps_abs_div(P)', defaultVal=1.0e-4_pREAL)
   num%eps_div_rtol    = num_grid_mech%get_asReal('eps_rel_div(P)', defaultVal=5.0e-4_pREAL)
@@ -157,19 +158,17 @@ subroutine grid_mechanical_spectral_polarization_init(num_grid)
   num%alpha           = num_grid_mech%get_asReal('alpha',          defaultVal=1.0_pREAL)
   num%beta            = num_grid_mech%get_asReal('beta',           defaultVal=1.0_pREAL)
 
-  num%itmin           = num_grid_mech%get_asInt  ('N_iter_min',defaultVal=1)
-  num%itmax           = num_grid_mech%get_asInt  ('N_iter_max',defaultVal=100)
-
-  if (num%eps_div_atol <= 0.0_pREAL)                      extmsg = trim(extmsg)//' eps_abs_div(P)'
-  if (num%eps_div_rtol <= 0.0_pREAL)                      extmsg = trim(extmsg)//' eps_rel_div(P)'
-  if (num%eps_curl_atol <= 0.0_pREAL)                     extmsg = trim(extmsg)//' eps_abs_curl(F)'
-  if (num%eps_curl_rtol <= 0.0_pREAL)                     extmsg = trim(extmsg)//' eps_rel_curl(F)'
-  if (num%eps_stress_atol <= 0.0_pREAL)                   extmsg = trim(extmsg)//' eps_abs_P'
-  if (num%eps_stress_rtol <= 0.0_pREAL)                   extmsg = trim(extmsg)//' eps_rel_P'
-  if (num%itmax < 1)                                      extmsg = trim(extmsg)//' N_iter_max'
-  if (num%itmin > num%itmax .or. num%itmin < 1)           extmsg = trim(extmsg)//' N_iter_min'
+  extmsg = ''
+  if (num%eps_div_atol <= 0.0_pReal)                      extmsg = trim(extmsg)//' eps_abs_div(P)'
+  if (num%eps_div_rtol <= 0.0_pReal)                      extmsg = trim(extmsg)//' eps_rel_div(P)'
+  if (num%eps_curl_atol <= 0.0_pReal)                     extmsg = trim(extmsg)//' eps_abs_curl(F)'
+  if (num%eps_curl_rtol <= 0.0_pReal)                     extmsg = trim(extmsg)//' eps_rel_curl(F)'
+  if (num%eps_stress_atol <= 0.0_pReal)                   extmsg = trim(extmsg)//' eps_abs_P'
+  if (num%eps_stress_rtol <= 0.0_pReal)                   extmsg = trim(extmsg)//' eps_rel_P'
   if (num%alpha <= 0.0_pREAL .or. num%alpha >  2.0_pREAL) extmsg = trim(extmsg)//' alpha'
   if (num%beta < 0.0_pREAL .or. num%beta > 2.0_pREAL)     extmsg = trim(extmsg)//' beta'
+  if (num%itmax < 1)                                      extmsg = trim(extmsg)//' N_iter_max'
+  if (num%itmin > num%itmax .or. num%itmin < 1)           extmsg = trim(extmsg)//' N_iter_min'
 
   if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 
