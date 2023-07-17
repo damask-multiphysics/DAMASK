@@ -107,7 +107,7 @@ program DAMASK_grid
   external :: &
     quit
   type(tDict), pointer :: &
-    config_load, &
+    load, &
     num_solver, &
     num_grid, &
     load_step, &
@@ -157,8 +157,8 @@ program DAMASK_grid
   end if
 
   call parallelization_bcast_str(fileContent)
-  config_load => YAML_parse_str_asDict(fileContent) !ToDo: misleading prefix (overlaps with entities from config module)
-  solver => config_load%get_dict('solver')
+  load => YAML_parse_str_asDict(fileContent)
+  solver => load%get_dict('solver')
 
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
@@ -212,7 +212,7 @@ program DAMASK_grid
 
 
 !--------------------------------------------------------------------------------------------------
-  load_steps => config_load%get_list('loadstep')
+  load_steps => load%get_list('loadstep')
   allocate(loadCases(load_steps%length))                                                            ! array of load cases
 
   do l = 1, load_steps%length
