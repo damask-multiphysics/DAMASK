@@ -144,10 +144,10 @@ subroutine grid_mechanical_spectral_basic_init(num_grid)
   num%eps_stress_rtol = num_grid_mech%get_asReal('eps_rel_P',      defaultVal=1.0e-3_pREAL)
 
   extmsg = ''
-  if (num%eps_div_atol <= 0.0_pReal)             extmsg = trim(extmsg)//' eps_abs_div(P)'
-  if (num%eps_div_rtol <= 0.0_pReal)             extmsg = trim(extmsg)//' eps_rel_div(P)'
-  if (num%eps_stress_atol <= 0.0_pReal)          extmsg = trim(extmsg)//' eps_abs_P'
-  if (num%eps_stress_rtol <= 0.0_pReal)          extmsg = trim(extmsg)//' eps_rel_P'
+  if (num%eps_div_atol <= 0.0_pREAL)             extmsg = trim(extmsg)//' eps_abs_div(P)'
+  if (num%eps_div_rtol <= 0.0_pREAL)             extmsg = trim(extmsg)//' eps_rel_div(P)'
+  if (num%eps_stress_atol <= 0.0_pREAL)          extmsg = trim(extmsg)//' eps_abs_P'
+  if (num%eps_stress_rtol <= 0.0_pREAL)          extmsg = trim(extmsg)//' eps_rel_P'
   if (num%itmax < 1)                             extmsg = trim(extmsg)//' N_iter_max'
   if (num%itmin > num%itmax .or. num%itmin < 1)  extmsg = trim(extmsg)//' N_iter_min'
 

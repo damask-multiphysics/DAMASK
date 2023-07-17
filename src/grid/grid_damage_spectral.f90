@@ -109,9 +109,9 @@ subroutine grid_damage_spectral_init(num_grid)
   num%phi_min         = num_grid_damage%get_asReal('phi_min',    defaultVal=1.0e-6_pREAL)
 
   extmsg = ''
-  if (num%eps_damage_atol <= 0.0_pReal) extmsg = trim(extmsg)//' eps_abs_phi'
-  if (num%eps_damage_rtol <= 0.0_pReal) extmsg = trim(extmsg)//' eps_rel_phi'
-  if (num%phi_min < 0.0_pReal)          extmsg = trim(extmsg)//' phi_min'
+  if (num%eps_damage_atol <= 0.0_pREAL) extmsg = trim(extmsg)//' eps_abs_phi'
+  if (num%eps_damage_rtol <= 0.0_pREAL) extmsg = trim(extmsg)//' eps_rel_phi'
+  if (num%phi_min < 0.0_pREAL)          extmsg = trim(extmsg)//' phi_min'
   if (num%itmax < 1)                    extmsg = trim(extmsg)//' N_iter_max'
 
   if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))

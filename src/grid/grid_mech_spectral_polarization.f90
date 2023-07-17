@@ -159,12 +159,12 @@ subroutine grid_mechanical_spectral_polarization_init(num_grid)
   num%beta            = num_grid_mech%get_asReal('beta',           defaultVal=1.0_pREAL)
 
   extmsg = ''
-  if (num%eps_div_atol <= 0.0_pReal)                      extmsg = trim(extmsg)//' eps_abs_div(P)'
-  if (num%eps_div_rtol <= 0.0_pReal)                      extmsg = trim(extmsg)//' eps_rel_div(P)'
-  if (num%eps_curl_atol <= 0.0_pReal)                     extmsg = trim(extmsg)//' eps_abs_curl(F)'
-  if (num%eps_curl_rtol <= 0.0_pReal)                     extmsg = trim(extmsg)//' eps_rel_curl(F)'
-  if (num%eps_stress_atol <= 0.0_pReal)                   extmsg = trim(extmsg)//' eps_abs_P'
-  if (num%eps_stress_rtol <= 0.0_pReal)                   extmsg = trim(extmsg)//' eps_rel_P'
+  if (num%eps_div_atol <= 0.0_pREAL)                      extmsg = trim(extmsg)//' eps_abs_div(P)'
+  if (num%eps_div_rtol <= 0.0_pREAL)                      extmsg = trim(extmsg)//' eps_rel_div(P)'
+  if (num%eps_curl_atol <= 0.0_pREAL)                     extmsg = trim(extmsg)//' eps_abs_curl(F)'
+  if (num%eps_curl_rtol <= 0.0_pREAL)                     extmsg = trim(extmsg)//' eps_rel_curl(F)'
+  if (num%eps_stress_atol <= 0.0_pREAL)                   extmsg = trim(extmsg)//' eps_abs_P'
+  if (num%eps_stress_rtol <= 0.0_pREAL)                   extmsg = trim(extmsg)//' eps_rel_P'
   if (num%alpha <= 0.0_pREAL .or. num%alpha >  2.0_pREAL) extmsg = trim(extmsg)//' alpha'
   if (num%beta < 0.0_pREAL .or. num%beta > 2.0_pREAL)     extmsg = trim(extmsg)//' beta'
   if (num%itmax < 1)                                      extmsg = trim(extmsg)//' N_iter_max'

@@ -100,12 +100,12 @@ subroutine grid_thermal_spectral_init(num_grid)
   num_grid_thermal => num_grid%get_dict('thermal',defaultVal=emptyDict)
 
   num%itmax            = num_grid_thermal%get_asInt('N_iter_max', defaultVal=100)
-  num%eps_thermal_atol = num_grid_thermal%get_asReal('eps_abs_T', defaultVal=1.0e-2_pReal)
-  num%eps_thermal_rtol = num_grid_thermal%get_asReal('eps_rel_T', defaultVal=1.0e-6_pReal)
+  num%eps_thermal_atol = num_grid_thermal%get_asReal('eps_abs_T', defaultVal=1.0e-2_pREAL)
+  num%eps_thermal_rtol = num_grid_thermal%get_asReal('eps_rel_T', defaultVal=1.0e-6_pREAL)
 
   extmsg = ''
-  if (num%eps_thermal_atol <= 0.0_pReal)        extmsg = trim(extmsg)//' eps_abs_T'
-  if (num%eps_thermal_rtol <= 0.0_pReal)        extmsg = trim(extmsg)//' eps_rel_T'
+  if (num%eps_thermal_atol <= 0.0_pREAL)        extmsg = trim(extmsg)//' eps_abs_T'
+  if (num%eps_thermal_rtol <= 0.0_pREAL)        extmsg = trim(extmsg)//' eps_rel_T'
   if (num%itmax < 1)                            extmsg = trim(extmsg)//' N_iter_max'
 
   if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
