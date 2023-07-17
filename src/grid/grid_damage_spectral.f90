@@ -104,14 +104,14 @@ subroutine grid_damage_spectral_init(num_grid)
 
   num%itmax           = num_grid_damage%get_asInt('N_iter_max', defaultVal=100)
 
-  num%eps_damage_atol = num_grid_damage%get_asReal('eps_abs_phi',defaultVal=1.0e-2_pReal)
-  num%eps_damage_rtol = num_grid_damage%get_asReal('eps_rel_phi',defaultVal=1.0e-6_pReal)
-  num%phi_min         = num_grid_damage%get_asReal('phi_min',    defaultVal=1.0e-6_pReal)
+  num%eps_damage_atol = num_grid_damage%get_asReal('eps_abs_phi',defaultVal=1.0e-2_pREAL)
+  num%eps_damage_rtol = num_grid_damage%get_asReal('eps_rel_phi',defaultVal=1.0e-6_pREAL)
+  num%phi_min         = num_grid_damage%get_asReal('phi_min',    defaultVal=1.0e-6_pREAL)
 
-  if (num%phi_min < 0.0_pReal)           call IO_error(301,ext_msg='phi_min')
+  if (num%phi_min < 0.0_pREAL)           call IO_error(301,ext_msg='phi_min')
   if (num%itmax < 1)                     call IO_error(301,ext_msg='N_iter_max')
-  if (num%eps_damage_atol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_abs_phi')
-  if (num%eps_damage_rtol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_rel_phi')
+  if (num%eps_damage_atol <= 0.0_pREAL)  call IO_error(301,ext_msg='eps_abs_phi')
+  if (num%eps_damage_rtol <= 0.0_pREAL)  call IO_error(301,ext_msg='eps_rel_phi')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
