@@ -48,9 +48,8 @@ module grid_damage_spectral
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   SNES :: SNES_damage
-  Vec  :: solution_vec
+  Vec :: phi_PETSc
   real(pREAL), dimension(:,:,:), allocatable :: &
-    phi, &                                                                                          !< field of current damage
     phi_lastInc, &                                                                                  !< field of previous damage
     phi_stagInc                                                                                     !< field of staggered damage
 
@@ -75,10 +74,10 @@ subroutine grid_damage_spectral_init(num_grid)
 
   type(tDict), pointer, intent(in) :: num_grid
 
-  PetscInt, dimension(0:worldsize-1) :: localK
+  integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: cells3_global
   integer :: i, j, k, ce
-  DM :: damage_grid
-  real(pREAL), dimension(:,:,:), pointer :: phi_PETSc
+  DM :: DM_damage
+  real(pREAL), dimension(:,:,:), pointer :: phi                                                     ! 0-indexed
   Vec :: uBound, lBound
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
@@ -91,6 +90,7 @@ subroutine grid_damage_spectral_init(num_grid)
   character(len=:), allocatable :: &
     extmsg, &
     petsc_options
+
 
 
   print'(/,1x,a)', '<<<+-  grid_spectral_damage init  -+>>>'
@@ -125,39 +125,32 @@ subroutine grid_damage_spectral_init(num_grid)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
-! init fields
-  phi = discretization_grid_getInitialCondition('phi')
-  phi_lastInc = phi
-  phi_stagInc = phi
-
-!--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,SNES_damage,err_PETSc)
   CHKERRQ(err_PETSc)
   call SNESSetOptionsPrefix(SNES_damage,'damage_',err_PETSc)
   CHKERRQ(err_PETSc)
-  localK            = 0_pPetscInt
-  localK(worldrank) = int(cells3,pPetscInt)
-  call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  call MPI_Allgather(int(cells3,MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
+                     cells3_global,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call DMDACreate3D(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
-         int(cells(1),pPetscInt),int(cells(2),pPetscInt),int(cells(3),pPetscInt), &                 ! global cells
-         1_pPetscInt, 1_pPetscInt, int(worldsize,pPetscInt), &
-         1_pPetscInt, 0_pPetscInt, &                                                                ! #dof (phi, scalar), ghost boundary width (domain overlap)
-         [int(cells(1),pPetscInt)],[int(cells(2),pPetscInt)],localK, &                              ! local cells
-         damage_grid,err_PETSc)                                                                     ! handle, error
+         int(cells(1),pPETSCINT),int(cells(2),pPETSCINT),int(cells(3),pPETSCINT), &                 ! global cells
+         1_pPETSCINT, 1_pPETSCINT, int(worldsize,pPETSCINT), &
+         1_pPETSCINT, 0_pPETSCINT, &                                                                ! #dof (phi, scalar), ghost boundary width (domain overlap)
+         [int(cells(1),pPetscInt)],[int(cells(2),pPetscInt)],int(cells3_global,pPETSCINT), &        ! local cells
+         DM_damage,err_PETSc)                                                                     ! handle, error
   CHKERRQ(err_PETSc)
-  call DMsetFromOptions(damage_grid,err_PETSc)
+  call DMsetFromOptions(DM_damage,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMsetUp(damage_grid,err_PETSc)
+  call DMsetUp(DM_damage,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMCreateGlobalVector(damage_grid,solution_vec,err_PETSc)                                     ! global solution vector (cells x 1, i.e. every def grad tensor)
+  call DMCreateGlobalVector(DM_damage,phi_PETSc,err_PETSc)                                          ! global solution vector (cells x 1, i.e. every def grad tensor)
   CHKERRQ(err_PETSc)
-  call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)   ! residual vector of same shape as solution vector
+  call DMDASNESSetFunctionLocal(DM_damage,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)     ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
-  call SNESSetDM(SNES_damage,damage_grid,err_PETSc)
+  call SNESSetDM(SNES_damage,DM_damage,err_PETSc)
   CHKERRQ(err_PETSc)
   call SNESSetFromOptions(SNES_damage,err_PETSc)                                                    ! pull it all together with additional CLI arguments
   CHKERRQ(err_PETSc)
@@ -165,9 +158,9 @@ subroutine grid_damage_spectral_init(num_grid)
   CHKERRQ(err_PETSc)
   if (trim(snes_type) == 'vinewtonrsls' .or. &
       trim(snes_type) == 'vinewtonssls') then
-    call DMGetGlobalVector(damage_grid,lBound,err_PETSc)
+    call DMGetGlobalVector(DM_damage,lBound,err_PETSc)
     CHKERRQ(err_PETSc)
-    call DMGetGlobalVector(damage_grid,uBound,err_PETSc)
+    call DMGetGlobalVector(DM_damage,uBound,err_PETSc)
     CHKERRQ(err_PETSc)
     call VecSet(lBound,0.0_pREAL,err_PETSc)
     CHKERRQ(err_PETSc)
@@ -175,11 +168,14 @@ subroutine grid_damage_spectral_init(num_grid)
     CHKERRQ(err_PETSc)
     call SNESVISetVariableBounds(SNES_damage,lBound,uBound,err_PETSc)                               ! variable bounds for variational inequalities
     CHKERRQ(err_PETSc)
-    call DMRestoreGlobalVector(damage_grid,lBound,err_PETSc)
+    call DMRestoreGlobalVector(DM_damage,lBound,err_PETSc)
     CHKERRQ(err_PETSc)
-    call DMRestoreGlobalVector(damage_grid,uBound,err_PETSc)
+    call DMRestoreGlobalVector(DM_damage,uBound,err_PETSc)
     CHKERRQ(err_PETSc)
   end if
+
+  call DMDAVecGetArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)                                        ! returns 0-indexed phi
+  CHKERRQ(err_PETSc)
 
   restartRead: if (CLI_restartInc > 0) then
     print'(/,1x,a,1x,i0)', 'loading restart data of increment', CLI_restartInc
@@ -191,18 +187,20 @@ subroutine grid_damage_spectral_init(num_grid)
     phi = reshape(tempN,[cells(1),cells(2),cells3])
     call HDF5_read(tempN,groupHandle,'phi_lastInc',.false.)
     phi_lastInc = reshape(tempN,[cells(1),cells(2),cells3])
+    phi_stagInc = phi_lastInc
+  else
+    phi = discretization_grid_getInitialCondition('phi')
+    phi_lastInc = phi(0:,0:,0:)
+    phi_stagInc = phi_lastInc
   end if restartRead
 
   ce = 0
-  do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
+  do k = 0, cells3-1; do j = 0, cells(2)-1; do i = 0, cells(1)-1
     ce = ce + 1
     call homogenization_set_phi(phi(i,j,k),ce)
   end do; end do; end do
 
-  call DMDAVecGetArrayF90(damage_grid,solution_vec,phi_PETSc,err_PETSc)
-  CHKERRQ(err_PETSc)
-  phi_PETSc = phi
-  call DMDAVecRestoreArrayF90(damage_grid,solution_vec,phi_PETSc,err_PETSc)
+  call DMDAVecRestoreArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)
   CHKERRQ(err_PETSc)
 
   call updateReference()
@@ -217,14 +215,17 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
 
   real(pREAL), intent(in) :: &
     Delta_t                                                                                         !< increment in time for current solution
+
   integer :: i, j, k, ce
   type(tSolutionState) :: solution
   PetscInt  :: devNull
   PetscReal :: phi_min, phi_max, stagNorm
-
+  DM :: DM_damage
+  real(pREAL), dimension(:,:,:), pointer :: phi                                                     ! 0-indexed
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
   SNESConvergedReason :: reason
+
 
   solution%converged = .false.
 
@@ -232,22 +233,25 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
 ! set module wide availabe data
   params%Delta_t = Delta_t
 
-  call SNESSolve(SNES_damage,PETSC_NULL_VEC,solution_vec,err_PETSc)
+  call SNESSolve(SNES_damage,PETSC_NULL_VEC,phi_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
   call SNESGetConvergedReason(SNES_damage,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  if (reason < 1) then
-    solution%converged = .false.
-    solution%iterationsNeeded = num%itmax
-  else
-    solution%converged = .true.
-    solution%iterationsNeeded = totalIter
-  end if
+  solution%converged = reason > 0
+  solution%iterationsNeeded = merge(totalIter,num%itmax,solution%converged)
+
+  call SNESGetDM(SNES_damage,DM_damage,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)                                        ! returns 0-indexed phi
+  CHKERRQ(err_PETSc)
+
+  phi_min = minval(phi)
+  phi_max = maxval(phi)
   stagNorm = maxval(abs(phi - phi_stagInc))
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  solution%stagConverged = stagNorm < max(num%eps_damage_atol, num%eps_damage_rtol*maxval(phi))
+  solution%stagConverged = stagNorm < max(num%eps_damage_atol, num%eps_damage_rtol*phi_max)
   call MPI_Allreduce(MPI_IN_PLACE,solution%stagConverged,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LAND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   phi_stagInc = phi
@@ -255,15 +259,14 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
 !--------------------------------------------------------------------------------------------------
 ! updating damage state
   ce = 0
-  do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
+  do k = 0, cells3-1;  do j = 0, cells(2)-1;  do i = 0,cells(1)-1
     ce = ce + 1
     call homogenization_set_phi(phi(i,j,k),ce)
   end do; end do; end do
 
-  call VecMin(solution_vec,devNull,phi_min,err_PETSc)
+  call DMDAVecRestoreArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)
   CHKERRQ(err_PETSc)
-  call VecMax(solution_vec,devNull,phi_max,err_PETSc)
-  CHKERRQ(err_PETSc)
+
   if (solution%converged) &
     print'(/,1x,a)', '... nonlocal damage converged .....................................'
   print'(/,1x,a,f8.6,2x,f8.6,2x,e11.4)', 'Minimum|Maximum|Delta Damage      = ', phi_min, phi_max, stagNorm
@@ -274,35 +277,31 @@ end function grid_damage_spectral_solution
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief spectral damage forwarding routine
+!> @brief Set DAMASK data to current solver status.
 !--------------------------------------------------------------------------------------------------
 subroutine grid_damage_spectral_forward(cutBack)
 
   logical, intent(in) :: cutBack
 
   integer :: i, j, k, ce
-  DM :: dm_local
-  real(pREAL),  dimension(:,:,:), pointer :: phi_PETSc
+  DM :: DM_damage
+  real(pREAL),  dimension(:,:,:), pointer :: phi                                                    ! 0-indexed
   PetscErrorCode :: err_PETSc
 
 
+  call SNESGetDM(SNES_damage,DM_damage,err_PETSc)
+    CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)                                        ! returns 0-indexed T
+    CHKERRQ(err_PETSc)
+
   if (cutBack) then
-    phi = phi_lastInc
-    phi_stagInc = phi_lastInc
-!--------------------------------------------------------------------------------------------------
-! reverting damage field state
-    call SNESGetDM(SNES_damage,dm_local,err_PETSc)
-    CHKERRQ(err_PETSc)
-    call DMDAVecGetArrayF90(dm_local,solution_vec,phi_PETSc,err_PETSc)                              !< get the data out of PETSc to work with
-    CHKERRQ(err_PETSc)
-    phi_PETSc = phi
-    call DMDAVecRestoreArrayF90(dm_local,solution_vec,phi_PETSc,err_PETSc)
-    CHKERRQ(err_PETSc)
     ce = 0
     do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
       ce = ce + 1
-      call homogenization_set_phi(phi(i,j,k),ce)
+      call homogenization_set_phi(phi_lastInc(i,j,k),ce)
     end do; end do; end do
+    phi = phi_lastInc
+    phi_stagInc = phi_lastInc
   else
     phi_lastInc = phi
     call updateReference()
@@ -317,13 +316,14 @@ end subroutine grid_damage_spectral_forward
 subroutine grid_damage_spectral_restartWrite()
 
   PetscErrorCode :: err_PETSc
-  DM :: dm_local
+  DM :: DM_damage
   integer(HID_T) :: fileHandle, groupHandle
-  PetscScalar, dimension(:,:,:), pointer :: phi
+  real(pREAL), dimension(:,:,:), pointer :: phi                                                     ! 0-indexed
 
-  call SNESGetDM(SNES_damage,dm_local,err_PETSc);
+
+  call SNESGetDM(SNES_damage,DM_damage,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayReadF90(dm_local,solution_vec,phi,err_PETSc);
+  call DMDAVecGetArrayReadF90(DM_damage,phi_PETSc,phi,err_PETSc)                                    ! returns 0-indexed T
   CHKERRQ(err_PETSc)
 
   print'(1x,a)', 'saving damage solver data required for restart'; flush(IO_STDOUT)
@@ -335,7 +335,7 @@ subroutine grid_damage_spectral_restartWrite()
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 
-  call DMDAVecRestoreArrayReadF90(dm_local,solution_vec,phi,err_PETSc);
+  call DMDAVecRestoreArrayReadF90(DM_damage,phi_PETSc,phi,err_PETSc);
   CHKERRQ(err_PETSc)
 
 end subroutine grid_damage_spectral_restartWrite
@@ -359,24 +359,25 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
   real(pREAL), dimension(3,cells(1),cells(2),cells3) :: vectorField
 
 
-  phi = x_scal
-  vectorField = utilities_ScalarGradient(phi)
-  ce = 0
-  do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
-    ce = ce + 1
-    vectorField(1:3,i,j,k) = matmul(homogenization_K_phi(ce) - K_ref, vectorField(1:3,i,j,k))
-  end do; end do; end do
-  r = utilities_VectorDivergence(vectorField)
-  ce = 0
-  do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
-    ce = ce + 1
-    r(i,j,k) = params%Delta_t*(r(i,j,k) + homogenization_f_phi(phi(i,j,k),ce)) &
-             + homogenization_mu_phi(ce)*(phi_lastInc(i,j,k) - phi(i,j,k)) &
-             + mu_ref*phi(i,j,k)
-  end do; end do; end do
+  associate(phi => x_scal)
+    vectorField = utilities_ScalarGradient(phi)
+    ce = 0
+    do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
+      ce = ce + 1
+      vectorField(1:3,i,j,k) = matmul(homogenization_K_phi(ce) - K_ref, vectorField(1:3,i,j,k))
+    end do; end do; end do
+    r = utilities_VectorDivergence(vectorField)
+    ce = 0
+    do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
+      ce = ce + 1
+      r(i,j,k) = params%Delta_t*(r(i,j,k) + homogenization_f_phi(phi(i,j,k),ce)) &
+               + homogenization_mu_phi(ce)*(phi_lastInc(i,j,k) - phi(i,j,k)) &
+               + mu_ref*phi(i,j,k)
+    end do; end do; end do
 
-  r = max(min(utilities_GreenConvolution(r, K_ref, mu_ref, params%Delta_t),phi_lastInc),num%phi_min) &
-    - phi
+    r = max(min(utilities_GreenConvolution(r, K_ref, mu_ref, params%Delta_t),phi_lastInc),num%phi_min) &
+      - phi
+  end associate
   err_PETSc = 0
 
 end subroutine formResidual

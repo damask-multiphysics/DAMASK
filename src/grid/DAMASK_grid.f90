@@ -372,7 +372,7 @@ program DAMASK_grid
       end if
       Delta_t = Delta_t * real(subStepFactor,pREAL)**real(-cutBackLevel,pREAL)                      ! depending on cut back level, decrease time step
 
-      skipping: if (totalIncsCounter <= CLI_restartInc) then                                  ! not yet at restart inc?
+      skipping: if (totalIncsCounter <= CLI_restartInc) then                                        ! not yet at restart inc?
         t = t + Delta_t                                                                             ! just advance time, skip already performed calculation
         guess = .true.                                                                              ! QUESTION:why forced guessing instead of inheriting loadcase preference
       else skipping
