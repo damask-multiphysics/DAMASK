@@ -3,15 +3,10 @@ submodule(phase:mechanical) eigen
   integer, dimension(:), allocatable :: &
     Nmodels
 
-  integer(kind(EIGEN_UNDEFINED_ID)),  dimension(:,:), allocatable :: &
+  integer(kind(UNDEFINED)),  dimension(:,:), allocatable :: &
     model
-  integer(kind(EIGEN_UNDEFINED_ID)),  dimension(:), allocatable :: &
-    model_damage
 
   interface
-    module function damage_anisobrittle_init() result(myKinematics)
-      logical, dimension(:), allocatable :: myKinematics
-    end function damage_anisobrittle_init
 
     module function thermalexpansion_init(kinematics_length) result(myKinematics)
       integer, intent(in) :: kinematics_length
@@ -60,16 +55,11 @@ module subroutine eigen_init(phases)
     Nmodels(ph) = kinematics%length
   end do
 
-  allocate(model(maxval(Nmodels),phases%length), source = EIGEN_undefined_ID)
+  allocate(model(maxval(Nmodels),phases%length), source = UNDEFINED)
 
   if (maxval(Nmodels) /= 0) then
-    where(thermalexpansion_init(maxval(Nmodels))) model = EIGEN_thermal_expansion_ID
+    where(thermalexpansion_init(maxval(Nmodels))) model = MECHANICAL_EIGEN_THERMALEXPANSION
   end if
-
-  allocate(model_damage(phases%length),  source = EIGEN_UNDEFINED_ID)
-
-  where(kinematics_active2('anisobrittle'))  model_damage = EIGEN_cleavage_opening_ID
-
 
 end subroutine eigen_init
 
@@ -175,7 +165,7 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
 
   KinematicsLoop: do k = 1, Nmodels(ph)
     kinematicsType: select case (model(k,ph))
-      case (EIGEN_thermal_expansion_ID) kinematicsType
+      case (MECHANICAL_EIGEN_THERMALEXPANSION) kinematicsType
         call thermalexpansion_LiAndItsTangent(my_Li, my_dLi_dS, ph,en)
         Li = Li + my_Li
         dLi_dS = dLi_dS + my_dLi_dS
@@ -183,16 +173,16 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
     end select kinematicsType
   end do KinematicsLoop
 
-  plasticType: select case (phase_plasticity(ph))
-    case (PLASTIC_isotropic_ID) plasticType
+  plasticType: select case (mechanical_plasticity_type(ph))
+    case (MECHANICAL_PLASTICITY_ISOTROPIC) plasticType
       call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,ph,en)
       Li = Li + my_Li
       dLi_dS = dLi_dS + my_dLi_dS
       active = .true.
   end select plasticType
 
-  damageType: select case (model_damage(ph))
-    case (EIGEN_cleavage_opening_ID)
+  damageType: select case (damage_type(ph))
+    case (DAMAGE_ANISOBRITTLE)
       call damage_anisobrittle_LiAndItsTangent(my_Li, my_dLi_dS, S, ph, en)
       Li = Li + my_Li
       dLi_dS = dLi_dS + my_dLi_dS

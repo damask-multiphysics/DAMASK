@@ -15,17 +15,9 @@ submodule(phase) thermal
   type(tSourceState),  allocatable, dimension(:) :: &
     thermalState
 
-  enum, bind(c); enumerator :: &
-    THERMAL_UNDEFINED_ID ,&
-    THERMAL_DISSIPATION_ID, &
-    THERMAL_EXTERNALHEAT_ID
-  end enum
-
   type :: tFieldQuantities
     real(pREAL), dimension(:), allocatable :: T, dot_T
   end type tFieldQuantities
-  integer(kind(THERMAL_UNDEFINED_ID)),  dimension(:,:), allocatable :: &
-    thermal_source
 
   type(tFieldQuantities), dimension(:), allocatable :: current
 
@@ -129,11 +121,11 @@ module subroutine thermal_init(phases)
 
   end do
 
-  allocate(thermal_source(maxval(thermal_Nsources),phases%length), source = THERMAL_UNDEFINED_ID)
+  allocate(thermal_source_type(maxval(thermal_Nsources),phases%length), source = UNDEFINED)
 
   if (maxval(thermal_Nsources) /= 0) then
-    where(source_dissipation_init (maxval(thermal_Nsources))) thermal_source = THERMAL_DISSIPATION_ID
-    where(source_externalheat_init(maxval(thermal_Nsources))) thermal_source = THERMAL_EXTERNALHEAT_ID
+    where(source_dissipation_init (maxval(thermal_Nsources))) thermal_source_type = THERMAL_SOURCE_DISSIPATION
+    where(source_externalheat_init(maxval(thermal_Nsources))) thermal_source_type = THERMAL_SOURCE_EXTERNALHEAT
   end if
 
   thermal_source_maxSizeDotState = 0
@@ -165,12 +157,12 @@ module function phase_f_T(ph,en) result(f)
   f = 0.0_pREAL
 
   do so = 1, thermal_Nsources(ph)
-   select case(thermal_source(so,ph))
+   select case(thermal_source_type(so,ph))
 
-     case (THERMAL_DISSIPATION_ID)
+     case (THERMAL_SOURCE_DISSIPATION)
        f = f + source_dissipation_f_T(ph,en)
 
-     case (THERMAL_EXTERNALHEAT_ID)
+     case (THERMAL_SOURCE_EXTERNALHEAT)
        f = f + source_externalheat_f_T(ph,en)
 
    end select
@@ -195,7 +187,7 @@ function phase_thermal_collectDotState(ph,en) result(ok)
 
   SourceLoop: do i = 1, thermal_Nsources(ph)
 
-    if (thermal_source(i,ph) == THERMAL_EXTERNALHEAT_ID) &
+    if (thermal_source_type(i,ph) == THERMAL_SOURCE_EXTERNALHEAT) &
       call source_externalheat_dotState(ph,en)
 
     ok = ok .and. .not. any(IEEE_is_NaN(thermalState(ph)%p(i)%dotState(:,en)))

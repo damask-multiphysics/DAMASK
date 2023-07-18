@@ -211,17 +211,17 @@ contains
 module subroutine plastic_init
 
 
-  print'(/,1x,a)', '<<<+-  phase:mechanical:plastic init  -+>>>'
+  print'(/,1x,a)', '<<<+-  phase:mechanical:plasticity init  -+>>>'
 
-  where(plastic_none_init())              phase_plasticity = PLASTIC_NONE_ID
-  where(plastic_isotropic_init())         phase_plasticity = PLASTIC_ISOTROPIC_ID
-  where(plastic_phenopowerlaw_init())     phase_plasticity = PLASTIC_PHENOPOWERLAW_ID
-  where(plastic_kinehardening_init())     phase_plasticity = PLASTIC_KINEHARDENING_ID
-  where(plastic_dislotwin_init())         phase_plasticity = PLASTIC_DISLOTWIN_ID
-  where(plastic_dislotungsten_init())     phase_plasticity = PLASTIC_DISLOTUNGSTEN_ID
-  where(plastic_nonlocal_init())          phase_plasticity = PLASTIC_NONLOCAL_ID
+  where(plastic_none_init())              mechanical_plasticity_type = MECHANICAL_PLASTICITY_NONE
+  where(plastic_isotropic_init())         mechanical_plasticity_type = MECHANICAL_PLASTICITY_ISOTROPIC
+  where(plastic_phenopowerlaw_init())     mechanical_plasticity_type = MECHANICAL_PLASTICITY_PHENOPOWERLAW
+  where(plastic_kinehardening_init())     mechanical_plasticity_type = MECHANICAL_PLASTICITY_KINEHARDENING
+  where(plastic_dislotwin_init())         mechanical_plasticity_type = MECHANICAL_PLASTICITY_DISLOTWIN
+  where(plastic_dislotungsten_init())     mechanical_plasticity_type = MECHANICAL_PLASTICITY_DISLOTUNGSTEN
+  where(plastic_nonlocal_init())          mechanical_plasticity_type = MECHANICAL_PLASTICITY_NONLOCAL
 
-  if (any(phase_plasticity == PLASTIC_undefined_ID)) call IO_error(201)
+  if (any(mechanical_plasticity_type == UNDEFINED)) call IO_error(201)
 
 end subroutine plastic_init
 
@@ -251,7 +251,7 @@ module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
     i, j
 
 
-  if (phase_plasticity(ph) == PLASTIC_NONE_ID) then
+  if (mechanical_plasticity_type(ph) == MECHANICAL_PLASTICITY_NONE) then
     Lp      = 0.0_pREAL
     dLp_dFi = 0.0_pREAL
     dLp_dS  = 0.0_pREAL
@@ -259,24 +259,24 @@ module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
 
     Mp = matmul(matmul(transpose(Fi),Fi),S)
 
-    plasticType: select case (phase_plasticity(ph))
+    plasticType: select case (mechanical_plasticity_type(ph))
 
-      case (PLASTIC_ISOTROPIC_ID) plasticType
+      case (MECHANICAL_PLASTICITY_ISOTROPIC) plasticType
         call isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
-      case (PLASTIC_PHENOPOWERLAW_ID) plasticType
+      case (MECHANICAL_PLASTICITY_PHENOPOWERLAW) plasticType
         call phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
-      case (PLASTIC_KINEHARDENING_ID) plasticType
+      case (MECHANICAL_PLASTICITY_KINEHARDENING) plasticType
         call kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
-      case (PLASTIC_NONLOCAL_ID) plasticType
+      case (MECHANICAL_PLASTICITY_NONLOCAL) plasticType
         call nonlocal_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
-      case (PLASTIC_DISLOTWIN_ID) plasticType
+      case (MECHANICAL_PLASTICITY_DISLOTWIN) plasticType
         call dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
-      case (PLASTIC_DISLOTUNGSTEN_ID) plasticType
+      case (MECHANICAL_PLASTICITY_DISLOTUNGSTEN) plasticType
         call dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
     end select plasticType
@@ -308,28 +308,28 @@ module function plastic_dotState(subdt,ph,en) result(dotState)
     dotState
 
 
-  if (phase_plasticity(ph) /= PLASTIC_NONE_ID) then
+  if (mechanical_plasticity_type(ph) /= MECHANICAL_PLASTICITY_NONE) then
     Mp = matmul(matmul(transpose(phase_mechanical_Fi(ph)%data(1:3,1:3,en)),&
                        phase_mechanical_Fi(ph)%data(1:3,1:3,en)),phase_mechanical_S(ph)%data(1:3,1:3,en))
 
-    plasticType: select case (phase_plasticity(ph))
+    plasticType: select case (mechanical_plasticity_type(ph))
 
-      case (PLASTIC_ISOTROPIC_ID) plasticType
+      case (MECHANICAL_PLASTICITY_ISOTROPIC) plasticType
         dotState = isotropic_dotState(Mp,ph,en)
 
-      case (PLASTIC_PHENOPOWERLAW_ID) plasticType
+      case (MECHANICAL_PLASTICITY_PHENOPOWERLAW) plasticType
         dotState = phenopowerlaw_dotState(Mp,ph,en)
 
-      case (PLASTIC_KINEHARDENING_ID) plasticType
+      case (MECHANICAL_PLASTICITY_KINEHARDENING) plasticType
         dotState = plastic_kinehardening_dotState(Mp,ph,en)
 
-      case (PLASTIC_DISLOTWIN_ID) plasticType
+      case (MECHANICAL_PLASTICITY_DISLOTWIN) plasticType
         dotState = dislotwin_dotState(Mp,ph,en)
 
-      case (PLASTIC_DISLOTUNGSTEN_ID) plasticType
+      case (MECHANICAL_PLASTICITY_DISLOTUNGSTEN) plasticType
         dotState = dislotungsten_dotState(Mp,ph,en)
 
-      case (PLASTIC_NONLOCAL_ID) plasticType
+      case (MECHANICAL_PLASTICITY_NONLOCAL) plasticType
         call nonlocal_dotState(Mp,subdt,ph,en)
         dotState = plasticState(ph)%dotState(:,en)
 
@@ -349,15 +349,15 @@ module subroutine plastic_dependentState(ph,en)
     en
 
 
-  plasticType: select case (phase_plasticity(ph))
+  plasticType: select case (mechanical_plasticity_type(ph))
 
-    case (PLASTIC_DISLOTWIN_ID) plasticType
+    case (MECHANICAL_PLASTICITY_DISLOTWIN) plasticType
       call dislotwin_dependentState(ph,en)
 
-    case (PLASTIC_DISLOTUNGSTEN_ID) plasticType
+    case (MECHANICAL_PLASTICITY_DISLOTUNGSTEN) plasticType
       call dislotungsten_dependentState(ph,en)
 
-    case (PLASTIC_NONLOCAL_ID) plasticType
+    case (MECHANICAL_PLASTICITY_NONLOCAL) plasticType
       call nonlocal_dependentState(ph,en)
 
   end select plasticType
@@ -384,19 +384,19 @@ module function plastic_deltaState(ph, en) result(broken)
 
   broken = .false.
 
-  select case (phase_plasticity(ph))
-    case (PLASTIC_NONLOCAL_ID,PLASTIC_KINEHARDENING_ID)
+  select case (mechanical_plasticity_type(ph))
+    case (MECHANICAL_PLASTICITY_NONLOCAL,MECHANICAL_PLASTICITY_KINEHARDENING)
 
       Mp = matmul(matmul(transpose(phase_mechanical_Fi(ph)%data(1:3,1:3,en)),&
                          phase_mechanical_Fi(ph)%data(1:3,1:3,en)),&
                   phase_mechanical_S(ph)%data(1:3,1:3,en))
 
-      plasticType: select case (phase_plasticity(ph))
+      plasticType: select case (mechanical_plasticity_type(ph))
 
-        case (PLASTIC_KINEHARDENING_ID) plasticType
+        case (MECHANICAL_PLASTICITY_KINEHARDENING) plasticType
           call plastic_kinehardening_deltaState(Mp,ph,en)
 
-        case (PLASTIC_NONLOCAL_ID) plasticType
+        case (MECHANICAL_PLASTICITY_NONLOCAL) plasticType
           call plastic_nonlocal_deltaState(Mp,ph,en)
 
       end select plasticType

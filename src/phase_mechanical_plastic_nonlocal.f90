@@ -1252,7 +1252,7 @@ function rhoDotFlux(timestep,ph,en)
       !* The entering flux from my neighbor will be distributed on my slip systems according to the
       !* compatibility
       if (neighbor_n > 0) then
-      if (phase_plasticity(np) == PLASTIC_NONLOCAL_ID .and. &
+      if (mechanical_plasticity_type(np) == MECHANICAL_PLASTICITY_NONLOCAL .and. &
           any(dependentState(ph)%compatibility(:,:,:,n,en) > 0.0_pREAL)) then
 
         forall (s = 1:ns, t = 1:4)
@@ -1298,7 +1298,7 @@ function rhoDotFlux(timestep,ph,en)
       !* In case of reduced transmissivity, part of the leaving flux is stored as dead dislocation density.
       !* That means for an interface of zero transmissivity the leaving flux is fully converted to dead dislocations.
       if (opposite_n > 0) then
-      if (phase_plasticity(np) == PLASTIC_NONLOCAL_ID) then
+      if (mechanical_plasticity_type(np) == MECHANICAL_PLASTICITY_NONLOCAL) then
 
         normal_me2neighbor_defConf = math_det33(Favg) &
                                    * matmul(math_inv33(transpose(Favg)),geom(ph)%IPareaNormal(1:3,n,en))  ! normal of the interface in (average) deformed configuration (pointing en => neighbor)

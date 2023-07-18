@@ -49,6 +49,28 @@ module phase
     type(tState), dimension(:), allocatable :: p                                                    !< tState for each active source mechanism in a phase
   end type
 
+  enum, bind(c); enumerator :: &
+    UNDEFINED, &
+    MECHANICAL_PLASTICITY_NONE, &
+    MECHANICAL_PLASTICITY_ISOTROPIC, &
+    MECHANICAL_PLASTICITY_PHENOPOWERLAW, &
+    MECHANICAL_PLASTICITY_KINEHARDENING, &
+    MECHANICAL_PLASTICITY_DISLOTWIN, &
+    MECHANICAL_PLASTICITY_DISLOTUNGSTEN, &
+    MECHANICAL_PLASTICITY_NONLOCAL, &
+    MECHANICAL_EIGEN_THERMALEXPANSION, &
+    DAMAGE_ISOBRITTLE, &
+    DAMAGE_ANISOBRITTLE, &
+    THERMAL_SOURCE_DISSIPATION, &
+    THERMAL_SOURCE_EXTERNALHEAT
+  end enum
+
+
+  integer(kind(UNDEFINED)), dimension(:), allocatable :: &
+    mechanical_plasticity_type, &                                                                   !< plasticity of each phase
+    damage_type                                                                                     !< active sources mechanisms of each phase
+  integer(kind(UNDEFINED)),  dimension(:,:), allocatable :: &
+    thermal_source_type
 
   character(len=2), allocatable, dimension(:) :: phase_lattice
   real(pREAL),      allocatable, dimension(:) :: phase_cOverA
