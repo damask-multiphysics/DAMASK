@@ -173,14 +173,6 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
   dLi_dFi = 0.0_pREAL
 
 
-  plasticType: select case (phase_plasticity(ph))
-    case (PLASTIC_isotropic_ID) plasticType
-      call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,ph,en)
-      Li = Li + my_Li
-      dLi_dS = dLi_dS + my_dLi_dS
-      active = .true.
-  end select plasticType
-
   KinematicsLoop: do k = 1, Nmodels(ph)
     kinematicsType: select case (model(k,ph))
       case (EIGEN_thermal_expansion_ID) kinematicsType
@@ -190,6 +182,14 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
         active = .true.
     end select kinematicsType
   end do KinematicsLoop
+
+  plasticType: select case (phase_plasticity(ph))
+    case (PLASTIC_isotropic_ID) plasticType
+      call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,ph,en)
+      Li = Li + my_Li
+      dLi_dS = dLi_dS + my_dLi_dS
+      active = .true.
+  end select plasticType
 
   damageType: select case (model_damage(ph))
     case (EIGEN_cleavage_opening_ID)
