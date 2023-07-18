@@ -104,7 +104,7 @@ module subroutine thermal_init(phases)
       param(ph)%C_p = thermal%get_asReal('C_p')
       param(ph)%K(1,1) = thermal%get_asReal('K_11')
       if (any(phase_lattice(ph) == ['hP','tI'])) param(ph)%K(3,3) = thermal%get_asReal('K_33')
-      param(ph)%K = lattice_symmetrize_33(param(ph)%K,phase_lattice(ph))
+      param(ph)%K = crystal_symmetrize_33(param(ph)%K,phase_lattice(ph))
 
 #if defined(__GFORTRAN__)
       param(ph)%output = output_as1dStr(thermal)

@@ -149,13 +149,13 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%systems_sl = lattice_labels_slip(N_sl,phase_lattice(ph))
-      prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
+      prm%systems_sl = crystal_labels_slip(N_sl,phase_lattice(ph))
+      prm%P_sl = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
         a = pl%get_as1dReal('a_nonSchmid',defaultVal = emptyRealArray)
-        prm%P_nS_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
-        prm%P_nS_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
+        prm%P_nS_pos = crystal_nonSchmidMatrix(N_sl,a,+1)
+        prm%P_nS_neg = crystal_nonSchmidMatrix(N_sl,a,-1)
       else
         prm%P_nS_pos = prm%P_sl
         prm%P_nS_neg = prm%P_sl
@@ -184,13 +184,13 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       prm%d_caron     = prm%b_sl *  pl%get_asReal('D_a')
       prm%f_at        = prm%b_sl**3*pl%get_asReal('f_at')
 
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
+      prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
                                                    phase_lattice(ph))
 
       prm%forestProjection = spread(          f_edge,1,prm%sum_N_sl) &
-                           * lattice_forestProjection_edge (N_sl,phase_lattice(ph),phase_cOverA(ph)) &
+                           * crystal_forestProjection_edge (N_sl,phase_lattice(ph),phase_cOverA(ph)) &
                            + spread(1.0_pREAL-f_edge,1,prm%sum_N_sl) &
-                           * lattice_forestProjection_screw(N_sl,phase_lattice(ph),phase_cOverA(ph))
+                           * crystal_forestProjection_screw(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
       ! sanity checks
       if (    prm%D_0          <  0.0_pREAL)  extmsg = trim(extmsg)//' D_0'

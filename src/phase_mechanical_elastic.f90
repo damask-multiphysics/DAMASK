@@ -97,7 +97,7 @@ pure module function elastic_C66(ph,en) result(C66)
 
     if (phase_lattice(ph) == 'tI') C66(6,6) = prm%C_66%at(T)
 
-    C66 = lattice_symmetrize_C66(C66,phase_lattice(ph))
+    C66 = crystal_symmetrize_C66(C66,phase_lattice(ph))
 
   end associate
 
@@ -119,7 +119,7 @@ pure module function elastic_mu(ph,en,isotropic_bound) result(mu)
 
   associate(prm => param(ph))
 
-    mu = lattice_isotropic_mu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
+    mu = crystal_isotropic_mu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
 
   end associate
 
@@ -141,7 +141,7 @@ pure module function elastic_nu(ph,en,isotropic_bound) result(nu)
 
   associate(prm => param(ph))
 
-    nu = lattice_isotropic_nu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
+    nu = crystal_isotropic_nu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
 
   end associate
 

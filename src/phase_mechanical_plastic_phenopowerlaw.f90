@@ -149,21 +149,21 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%h_int     = math_expand(pl%get_as1dReal('h_int',     requiredSize=size(N_sl), &
                                                         defaultVal=[(0.0_pREAL,i=1,size(N_sl))]),N_sl)
 
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
+      prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
 
-      prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
+      prm%P_sl = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
         a = pl%get_as1dReal('a_nonSchmid',defaultVal=emptyRealArray)
         if (size(a) > 0) prm%nonSchmidActive = .true.
-        prm%P_nS_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
-        prm%P_nS_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
+        prm%P_nS_pos = crystal_nonSchmidMatrix(N_sl,a,+1)
+        prm%P_nS_neg = crystal_nonSchmidMatrix(N_sl,a,-1)
       else
         prm%P_nS_pos = prm%P_sl
         prm%P_nS_neg = prm%P_sl
       end if
 
-      prm%systems_sl = lattice_labels_slip(N_sl,phase_lattice(ph))
+      prm%systems_sl = crystal_labels_slip(N_sl,phase_lattice(ph))
 
       ! sanity checks
       if (    prm%dot_gamma_0_sl <= 0.0_pREAL)    extmsg = trim(extmsg)//' dot_gamma_0_sl'
@@ -196,11 +196,11 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
       xi_0_tw = math_expand(pl%get_as1dReal('xi_0_tw',requiredSize=size(N_tw)),N_tw)
 
-      prm%gamma_char = lattice_characteristicShear_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
-      prm%h_tw_tw    = lattice_interaction_TwinByTwin(N_tw,pl%get_as1dReal('h_tw-tw'),phase_lattice(ph))
+      prm%gamma_char = crystal_characteristicShear_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
+      prm%h_tw_tw    = crystal_interaction_TwinByTwin(N_tw,pl%get_as1dReal('h_tw-tw'),phase_lattice(ph))
 
-      prm%P_tw       = lattice_SchmidMatrix_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
-      prm%systems_tw = lattice_labels_twin(N_tw,phase_lattice(ph))
+      prm%P_tw       = crystal_SchmidMatrix_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
+      prm%systems_tw = crystal_labels_twin(N_tw,phase_lattice(ph))
 
       ! sanity checks
       if (prm%dot_gamma_0_tw <= 0.0_pREAL)  extmsg = trim(extmsg)//' dot_gamma_0_tw'
@@ -216,9 +216,9 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 ! slip-twin related parameters
     slipAndTwinActive: if (prm%sum_N_sl > 0 .and. prm%sum_N_tw > 0) then
       prm%h_0_tw_sl  = pl%get_asReal('h_0_tw-sl')
-      prm%h_sl_tw    = lattice_interaction_SlipByTwin(N_sl,N_tw,pl%get_as1dReal('h_sl-tw'), &
+      prm%h_sl_tw    = crystal_interaction_SlipByTwin(N_sl,N_tw,pl%get_as1dReal('h_sl-tw'), &
                                                       phase_lattice(ph))
-      prm%h_tw_sl    = lattice_interaction_TwinBySlip(N_tw,N_sl,pl%get_as1dReal('h_tw-sl'), &
+      prm%h_tw_sl    = crystal_interaction_TwinBySlip(N_tw,N_sl,pl%get_as1dReal('h_tw-sl'), &
                                                       phase_lattice(ph))
     else slipAndTwinActive
       allocate(prm%h_sl_tw(prm%sum_N_sl,prm%sum_N_tw))                                              ! at least one dimension is 0

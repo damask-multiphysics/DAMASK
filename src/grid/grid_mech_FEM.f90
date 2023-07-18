@@ -15,8 +15,9 @@ module grid_mechanical_FEM
 
   use prec
   use parallelization
-  use CLI
   use IO
+  use misc
+  use CLI
   use HDF5
   use HDF5_utilities
   use math
@@ -94,9 +95,11 @@ module grid_mechanical_FEM
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all necessary fields and fills them with data, potentially from restart info
+!> @brief Allocate all necessary fields and fill them with data, potentially from restart info.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_FEM_init
+subroutine grid_mechanical_FEM_init(num_grid)
+
+  type(tDict), pointer, intent(in) :: num_grid
 
   real(pREAL), parameter :: HGCoeff = 0.0e-2_pREAL
   real(pREAL), parameter, dimension(4,8) :: &
@@ -118,41 +121,41 @@ subroutine grid_mechanical_FEM_init
   integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: cells3_global
   integer(HID_T) :: fileHandle, groupHandle
   type(tDict), pointer :: &
-    num_grid
-  character(len=pSTRLEN) :: &
-    extmsg = ''
+    num_grid_mech
+  character(len=:), allocatable :: &
+    extmsg, &
+    petsc_options
 
 
   print'(/,1x,a)', '<<<+-  grid_mechanical_FEM init  -+>>>'; flush(IO_STDOUT)
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
+  num_grid_mech => num_grid%get_dict('mechanical',defaultVal=emptyDict)
 
-  num%eps_div_atol    = num_grid%get_asReal('eps_div_atol',   defaultVal=1.0e-4_pREAL)
-  num%eps_div_rtol    = num_grid%get_asReal('eps_div_rtol',   defaultVal=5.0e-4_pREAL)
-  num%eps_stress_atol = num_grid%get_asReal('eps_stress_atol',defaultVal=1.0e3_pREAL)
-  num%eps_stress_rtol = num_grid%get_asReal('eps_stress_rtol',defaultVal=1.0e-3_pREAL)
-  num%itmin           = num_grid%get_asInt ('itmin',defaultVal=1)
-  num%itmax           = num_grid%get_asInt ('itmax',defaultVal=250)
+  num%itmin           = num_grid_mech%get_asInt('N_iter_min',defaultVal=1)
+  num%itmax           = num_grid_mech%get_asInt('N_iter_max',defaultVal=100)
+  num%eps_div_atol    = num_grid_mech%get_asReal('eps_abs_div(P)',defaultVal=1.0e-4_pREAL)
+  num%eps_div_rtol    = num_grid_mech%get_asReal('eps_rel_div(P)',defaultVal=5.0e-4_pREAL)
+  num%eps_stress_atol = num_grid_mech%get_asReal('eps_abs_P',     defaultVal=1.0e3_pREAL)
+  num%eps_stress_rtol = num_grid_mech%get_asReal('eps_rel_P',     defaultVal=1.0e-3_pREAL)
 
-  if (num%eps_div_atol <= 0.0_pREAL)             extmsg = trim(extmsg)//' eps_div_atol'
-  if (num%eps_div_rtol < 0.0_pREAL)              extmsg = trim(extmsg)//' eps_div_rtol'
-  if (num%eps_stress_atol <= 0.0_pREAL)          extmsg = trim(extmsg)//' eps_stress_atol'
-  if (num%eps_stress_rtol < 0.0_pREAL)           extmsg = trim(extmsg)//' eps_stress_rtol'
-  if (num%itmax <= 1)                            extmsg = trim(extmsg)//' itmax'
-  if (num%itmin > num%itmax .or. num%itmin < 1)  extmsg = trim(extmsg)//' itmin'
+  extmsg = ''
+  if (num%eps_div_atol <= 0.0_pREAL)             extmsg = trim(extmsg)//' eps_abs_div(P)'
+  if (num%eps_div_rtol <= 0.0_pREAL)             extmsg = trim(extmsg)//' eps_rel_div(P)'
+  if (num%eps_stress_atol <= 0.0_pREAL)          extmsg = trim(extmsg)//' eps_abs_P'
+  if (num%eps_stress_rtol <= 0.0_pREAL)          extmsg = trim(extmsg)//' eps_rel_P'
+  if (num%itmax < 1)                             extmsg = trim(extmsg)//' N_iter_max'
+  if (num%itmin > num%itmax .or. num%itmin < 1)  extmsg = trim(extmsg)//' N_iter_min'
 
   if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS, &
-                                '-mechanical_snes_type newtonls -mechanical_ksp_type fgmres &
-                                &-mechanical_ksp_max_it 25', &
-                                err_PETSc)
-  CHKERRQ(err_PETSc)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asStr('petsc_options',defaultVal=''),err_PETSc)
+
+  petsc_options = misc_prefixOptions('-snes_type newtonls -ksp_type fgmres -ksp_max_it 25 '// &
+                                     num_grid_mech%get_asStr('PETSc_options',defaultVal='') ,'mechanical_')
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------

@@ -25,30 +25,40 @@ homogenization:
     stepIncrease:             1.5          # increase of next substep size when previous substep converged in homogenization (value higher than 1)
     nMPstate:                 10           # materialpoint state loop limit
 
-grid:
-  eps_div_atol:                1.0e-3       # absolute tolerance for fulfillment of stress equilibrium
-  eps_div_rtol:                5.0e-4       # relative tolerance for fulfillment of stress equilibrium
-  eps_curl_atol:               1.0e-12      # absolute tolerance for fulfillment of strain compatibility
-  eps_curl_rtol:               5.0e-4       # relative tolerance for fulfillment of strain compatibility
-  eps_stress_atol:             1.0e+3        # absolute tolerance for fulfillment of stress BC
-  eps_stress_rtol:             0.01         # relative tolerance for fulfillment of stress BC
-  eps_damage_atol:             1.0e-2       # absolute tolerance for damage evolution
-  eps_damage_rtol:             1.0e-6       # relative tolerance for damage evolution
-  eps_thermal_atol:            1.0e-2       # absolute tolerance for thermal equilibrium
-  eps_thermal_rtol:            1.0e-6       # relative tolerance for thermal equilibrium
-  itmax:                       250          # Maximum iteration number
-  itmin:                       2            # Minimum iteration number
-  fftw_timelimit:              -1.0          # timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
-  fftw_plan_mode:              FFTW_PATIENT # reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
-  maxCutBack:                  3            # maximum cut back level (0: 1, 1: 0.5, 2: 0.25, etc)
-  maxStaggeredIter:            10           # max number of field level staggered iterations
-  memory_efficient:            1            # Precalculate Gamma-operator (81 double per point)
-  update_gamma:                false        # Update Gamma-operator with current dPdF (not possible if memory_efficient=1)
-  divergence_correction:       2            # Use size-independent divergence criterion
-  derivative:                  continuous   # Approximation used for derivatives in Fourier space
-  petsc_options:               -snes_type ngmres -snes_ngmres_anderson # PetSc solver options
-  alpha:                       1.0          # polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
-  beta:                        1.0          # polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
+solver:
+  grid:
+    N_staggered_iter_max: 10           # max number of field level staggered iterations
+    N_cutback_max:        3            # maximum cut back level (0: 1, 1: 0.5, 2: 0.25, etc)
+
+    damage:
+      N_iter_max: 100      # maximum iteration number
+      eps_abs_phi: 1.0e-2  # absolute tolerance for damage evolution
+      eps_rel_phi: 1.0e-6  # relative tolerance for damage evolution
+    thermal:
+      N_iter_max: 100      # maximum iteration number
+      eps_abs_T: 1.0e-2    # absolute tolerance for thermal equilibrium
+      eps_rel_T: 1.0e-6    # relative tolerance for thermal equilibrium
+
+    mechanical:
+      eps_abs_div(P): 1.0e-4 # absolute tolerance for fulfillment of stress equilibrium
+      eps_rel_div(P): 5.0e-4 # relative tolerance for fulfillment of stress equilibrium
+      eps_abs_P: 1.0e3       # absolute tolerance for fulfillment of stress BC
+      eps_rel_P: 1.0e-3      # relative tolerance for fulfillment of stress BC
+      N_iter_min: 1          # minimum iteration number
+      N_iter_max: 100        # maximum iteration number
+      update_gamma: false        # Update Gamma-operator with current dPdF (not possible if memory_efficient=1)
+
+    FFT:
+      memory_efficient: True           # Precalculate Gamma-operator (81 double per point)
+      divergence_correction: size+grid # Use size-independent divergence criterion
+      derivative:  continuous          # Approximation used for derivatives in Fourier space
+      FFTW_plan_mode: FFTW_MEASURE # planing-rigor flag, see manual on www.fftw.org
+      FFTW_timelimit: -1.0         # timelimit of plan creation for FFTW, see manual on www.fftw.org. -1.0: disable timelimit
+      PETSc_options:   -snes_type ngmres -snes_ngmres_anderson # PETSc solver options
+      alpha: 1.0 # polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
+      beta: 1.0 # polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
+      eps_abs_curl(F): 1.0e-10 # absolute tolerance for fulfillment of strain compatibility
+      eps_rel_curl(F): 5.0e-4  # relative tolerance for fulfillment of strain compatibility
 
 mesh:
   maxCutBack:                  3            # maximum cut back level (0: 1, 1: 0.5, 2: 0.25, etc)

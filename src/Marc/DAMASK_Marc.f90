@@ -142,8 +142,8 @@ end function solverIsSymmetric
 end module DAMASK_interface
 
 #include "../parallelization.f90"
-#include "../misc.f90"
 #include "../constants.f90"
+#include "../misc.f90"
 #include "../IO.f90"
 #include "../YAML_types.f90"
 #include "../YAML_parse.f90"
@@ -155,7 +155,7 @@ end module DAMASK_interface
 #include "../rotations.f90"
 #include "../polynomials.f90"
 #include "../tables.f90"
-#include "../lattice.f90"
+#include "../crystal.f90"
 #include "element.f90"
 #include "../geometry_plastic_nonlocal.f90"
 #include "../discretization.f90"
