@@ -18,14 +18,14 @@ submodule(phase) damage
   integer :: phase_damage_maxSizeDotState
 
 
-  type :: tDataContainer
+  type :: tFieldQuantities
     real(pREAL), dimension(:), allocatable :: phi
-  end type tDataContainer
+  end type tFieldQuantities
 
   integer(kind(DAMAGE_UNDEFINED_ID)),     dimension(:), allocatable :: &
     phase_damage                                                                                    !< active sources mechanisms of each phase
 
-  type(tDataContainer), dimension(:), allocatable :: current
+  type(tFieldQuantities), dimension(:), allocatable :: current
 
   type(tDamageParameters), dimension(:), allocatable :: param
 

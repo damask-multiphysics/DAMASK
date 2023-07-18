@@ -173,7 +173,6 @@ end module DAMASK_interface
 #include "../phase_mechanical_plastic_dislotungsten.f90"
 #include "../phase_mechanical_plastic_nonlocal.f90"
 #include "../phase_mechanical_eigen.f90"
-#include "../phase_mechanical_eigen_cleavageopening.f90"
 #include "../phase_mechanical_eigen_thermalexpansion.f90"
 #include "../phase_thermal.f90"
 #include "../phase_thermal_source_dissipation.f90"

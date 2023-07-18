@@ -68,7 +68,7 @@ module subroutine eigen_init(phases)
 
   allocate(model_damage(phases%length),  source = EIGEN_UNDEFINED_ID)
 
-  where(damage_anisobrittle_init())  model_damage = EIGEN_cleavage_opening_ID
+  where(kinematics_active2('anisobrittle'))  model_damage = EIGEN_cleavage_opening_ID
 
 
 end subroutine eigen_init
@@ -191,13 +191,13 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
     end select kinematicsType
   end do KinematicsLoop
 
-  select case (model_damage(ph))
+  damageType: select case (model_damage(ph))
     case (EIGEN_cleavage_opening_ID)
       call damage_anisobrittle_LiAndItsTangent(my_Li, my_dLi_dS, S, ph, en)
       Li = Li + my_Li
       dLi_dS = dLi_dS + my_dLi_dS
       active = .true.
-  end select
+  end select damageType
 
   if (.not. active) return
 
