@@ -5,7 +5,7 @@
 !> @brief material subroutine for thermal source due to plastic dissipation
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(phase:thermal) dissipation
+submodule(phase:thermal) source_dissipation
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pREAL) :: &
@@ -22,7 +22,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function dissipation_init(source_length) result(mySources)
+module function source_dissipation_init(source_length) result(mySources)
 
   integer, intent(in)                  :: source_length
   logical, dimension(:,:), allocatable :: mySources
@@ -41,7 +41,7 @@ module function dissipation_init(source_length) result(mySources)
   mySources = thermal_active('dissipation',source_length)
   if (count(mySources) == 0) return
 
-  print'(/,1x,a)', '<<<+-  phase:thermal:dissipation init  -+>>>'
+  print'(/,1x,a)', '<<<+-  phase:thermal:source_dissipation init  -+>>>'
   print'(/,a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
 
@@ -71,13 +71,13 @@ module function dissipation_init(source_length) result(mySources)
   end do
 
 
-end function dissipation_init
+end function source_dissipation_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Ninstancess dissipation rate
 !--------------------------------------------------------------------------------------------------
-module function dissipation_f_T(ph,en) result(f_T)
+module function source_dissipation_f_T(ph,en) result(f_T)
 
   integer, intent(in) :: ph, en
   real(pREAL) :: &
@@ -91,6 +91,6 @@ module function dissipation_f_T(ph,en) result(f_T)
     f_T = prm%kappa*sum(abs(Mp*mechanical_L_p(ph,en)))
   end associate
 
-end function dissipation_f_T
+end function source_dissipation_f_T
 
-end submodule dissipation
+end submodule source_dissipation

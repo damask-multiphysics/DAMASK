@@ -21,13 +21,13 @@ submodule(phase) thermal
     THERMAL_EXTERNALHEAT_ID
   end enum
 
-  type :: tDataContainer             ! ?? not very telling name. Better: "fieldQuantities" ??
+  type :: tFieldQuantities
     real(pREAL), dimension(:), allocatable :: T, dot_T
-  end type tDataContainer
+  end type tFieldQuantities
   integer(kind(THERMAL_UNDEFINED_ID)),  dimension(:,:), allocatable :: &
     thermal_source
 
-  type(tDataContainer), dimension(:), allocatable :: current          ! ?? not very telling name. Better: "field" ?? MD: current(ho)%T(en) reads quite good
+  type(tFieldQuantities), dimension(:), allocatable :: current
 
   type(tThermalParameters), dimension(:), allocatable :: param
 
@@ -36,36 +36,36 @@ submodule(phase) thermal
 
   interface
 
-    module function dissipation_init(source_length) result(mySources)
+    module function source_dissipation_init(source_length) result(mySources)
       integer, intent(in) :: source_length
       logical, dimension(:,:), allocatable :: mySources
-    end function dissipation_init
+    end function source_dissipation_init
 
-    module function externalheat_init(source_length) result(mySources)
+    module function source_externalheat_init(source_length) result(mySources)
       integer, intent(in) :: source_length
       logical, dimension(:,:), allocatable :: mySources
-    end function externalheat_init
+    end function source_externalheat_init
 
 
-    module subroutine externalheat_dotState(ph, en)
+    module subroutine source_externalheat_dotState(ph, en)
       integer, intent(in) :: &
         ph, &
         en
-    end subroutine externalheat_dotState
+    end subroutine source_externalheat_dotState
 
-    module function dissipation_f_T(ph,en) result(f_T)
+    module function source_dissipation_f_T(ph,en) result(f_T)
       integer, intent(in) :: &
         ph, &
         en
       real(pREAL) :: f_T
-    end function dissipation_f_T
+    end function source_dissipation_f_T
 
-    module function externalheat_f_T(ph,en)  result(f_T)
+    module function source_externalheat_f_T(ph,en)  result(f_T)
       integer, intent(in) :: &
         ph, &
         en
       real(pREAL) :: f_T
-    end function externalheat_f_T
+    end function source_externalheat_f_T
 
  end interface
 
@@ -132,8 +132,8 @@ module subroutine thermal_init(phases)
   allocate(thermal_source(maxval(thermal_Nsources),phases%length), source = THERMAL_UNDEFINED_ID)
 
   if (maxval(thermal_Nsources) /= 0) then
-    where(dissipation_init (maxval(thermal_Nsources))) thermal_source = THERMAL_DISSIPATION_ID
-    where(externalheat_init(maxval(thermal_Nsources))) thermal_source = THERMAL_EXTERNALHEAT_ID
+    where(source_dissipation_init (maxval(thermal_Nsources))) thermal_source = THERMAL_DISSIPATION_ID
+    where(source_externalheat_init(maxval(thermal_Nsources))) thermal_source = THERMAL_EXTERNALHEAT_ID
   end if
 
   thermal_source_maxSizeDotState = 0
@@ -151,7 +151,7 @@ end subroutine thermal_init
 
 
 !----------------------------------------------------------------------------------------------
-!< @brief Calculate thermal source.
+!< @brief Calculate thermal source (forcing term).
 !----------------------------------------------------------------------------------------------
 module function phase_f_T(ph,en) result(f)
 
@@ -168,10 +168,10 @@ module function phase_f_T(ph,en) result(f)
    select case(thermal_source(so,ph))
 
      case (THERMAL_DISSIPATION_ID)
-       f = f + dissipation_f_T(ph,en)
+       f = f + source_dissipation_f_T(ph,en)
 
      case (THERMAL_EXTERNALHEAT_ID)
-       f = f + externalheat_f_T(ph,en)
+       f = f + source_externalheat_f_T(ph,en)
 
    end select
 
@@ -183,22 +183,22 @@ end function phase_f_T
 !--------------------------------------------------------------------------------------------------
 !> @brief tbd.
 !--------------------------------------------------------------------------------------------------
-function phase_thermal_collectDotState(ph,en) result(broken)
+function phase_thermal_collectDotState(ph,en) result(ok)
 
   integer, intent(in) :: ph, en
-  logical :: broken
+  logical :: ok
 
   integer :: i
 
 
-  broken = .false.
+  ok = .true.
 
   SourceLoop: do i = 1, thermal_Nsources(ph)
 
     if (thermal_source(i,ph) == THERMAL_EXTERNALHEAT_ID) &
-      call externalheat_dotState(ph,en)
+      call source_externalheat_dotState(ph,en)
 
-    broken = broken .or. any(IEEE_is_NaN(thermalState(ph)%p(i)%dotState(:,en)))
+    ok = ok .and. .not. any(IEEE_is_NaN(thermalState(ph)%p(i)%dotState(:,en)))
 
   end do SourceLoop
 
@@ -241,34 +241,35 @@ module function phase_thermal_constitutive(Delta_t,ph,en) result(converged_)
   logical :: converged_
 
 
-  converged_ = .not. integrateThermalState(Delta_t,ph,en)
+  converged_ = integrateThermalState(Delta_t,ph,en)
 
 end function phase_thermal_constitutive
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief integrate state with 1st order explicit Euler method
+!> @brief Integrate state with 1st order explicit Euler method.
 !--------------------------------------------------------------------------------------------------
-function integrateThermalState(Delta_t, ph,en) result(broken)
+function integrateThermalState(Delta_t, ph,en) result(converged)
 
   real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: ph, en
-  logical :: &
-    broken
+  logical :: converged
 
   integer :: &
     so, &
     sizeDotState
 
 
-  broken = phase_thermal_collectDotState(ph,en)
-  if (broken) return
+  converged = phase_thermal_collectDotState(ph,en)
+  if (converged) then
 
-  do so = 1, thermal_Nsources(ph)
-    sizeDotState = thermalState(ph)%p(so)%sizeDotState
-    thermalState(ph)%p(so)%state(1:sizeDotState,en) = thermalState(ph)%p(so)%state0(1:sizeDotState,en) &
-                                                    + thermalState(ph)%p(so)%dotState(1:sizeDotState,en) * Delta_t
-  end do
+    do so = 1, thermal_Nsources(ph)
+      sizeDotState = thermalState(ph)%p(so)%sizeDotState
+      thermalState(ph)%p(so)%state(1:sizeDotState,en) = thermalState(ph)%p(so)%state0(1:sizeDotState,en) &
+                                                      + thermalState(ph)%p(so)%dotState(1:sizeDotState,en) * Delta_t
+    end do
+
+  end if
 
 end function integrateThermalState
 
@@ -318,7 +319,7 @@ end subroutine thermal_forward
 
 
 !----------------------------------------------------------------------------------------------
-!< @brief Get temperature (for use by non-thermal physics)
+!< @brief Get temperature (for use by non-thermal physics).
 !----------------------------------------------------------------------------------------------
 pure module function thermal_T(ph,en) result(T)
 
@@ -332,7 +333,7 @@ end function thermal_T
 
 
 !----------------------------------------------------------------------------------------------
-!< @brief Get rate of temperature (for use by non-thermal physics)
+!< @brief Get rate of temperature (for use by non-thermal physics).
 !----------------------------------------------------------------------------------------------
 module function thermal_dot_T(ph,en) result(dot_T)
 
