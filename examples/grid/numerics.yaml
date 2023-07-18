@@ -1,3 +1,5 @@
-grid:
-  itmin: 4
-  itmax: 40
+solver:
+  grid:
+    mechanical:
+      N_iter_min: 4
+      N_iter_max: 40

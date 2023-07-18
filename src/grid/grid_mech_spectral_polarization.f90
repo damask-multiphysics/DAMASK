@@ -4,7 +4,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Grid solver for mechanics: Spectral Polarisation
 !--------------------------------------------------------------------------------------------------
-module grid_mechanical_spectral_polarisation
+module grid_mechanical_spectral_polarization
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
   use PETScDMDA
@@ -16,6 +16,7 @@ module grid_mechanical_spectral_polarisation
   use prec
   use parallelization
   use CLI
+  use misc
   use IO
   use HDF5
   use HDF5_utilities
@@ -103,18 +104,20 @@ module grid_mechanical_spectral_polarisation
     totalIter = 0                                                                                   !< total iteration in current increment
 
   public :: &
-    grid_mechanical_spectral_polarisation_init, &
-    grid_mechanical_spectral_polarisation_solution, &
-    grid_mechanical_spectral_polarisation_forward, &
-    grid_mechanical_spectral_polarisation_updateCoords, &
-    grid_mechanical_spectral_polarisation_restartWrite
+    grid_mechanical_spectral_polarization_init, &
+    grid_mechanical_spectral_polarization_solution, &
+    grid_mechanical_spectral_polarization_forward, &
+    grid_mechanical_spectral_polarization_updateCoords, &
+    grid_mechanical_spectral_polarization_restartWrite
 
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all necessary fields and fills them with data, potentially from restart info
+!> @brief Allocate all necessary fields and fill them with data, potentially from restart info.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_polarisation_init()
+subroutine grid_mechanical_spectral_polarization_init(num_grid)
+
+  type(tDict), pointer, intent(in) :: num_grid
 
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: P
   PetscErrorCode :: err_PETSc
@@ -127,9 +130,11 @@ subroutine grid_mechanical_spectral_polarisation_init()
   real(pREAL), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
   integer(HID_T) :: fileHandle, groupHandle
   type(tDict), pointer :: &
-    num_grid
-  character(len=pSTRLEN) :: &
-    extmsg = ''
+    num_grid_fft,&
+    num_grid_mech
+  character(len=:), allocatable :: &
+    extmsg, &
+    petsc_options
 
 
   print '(/,1x,a)', '<<<+-  grid_mechanical_spectral_polarization init  -+>>>'; flush(IO_STDOUT)
@@ -137,41 +142,42 @@ subroutine grid_mechanical_spectral_polarisation_init()
   print '(/,1x,a)', 'P. Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
   print '(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2014.02.006'
 
-
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
+  num_grid_fft  => num_grid%get_dict('FFT',defaultVal=emptyDict)
+  num_grid_mech => num_grid%get_dict('mechanical',defaultVal=emptyDict)
 
-  num%update_gamma    = num_grid%get_asBool('update_gamma',   defaultVal=.false.)
-  num%eps_div_atol    = num_grid%get_asReal('eps_div_atol',   defaultVal=1.0e-4_pREAL)
-  num%eps_div_rtol    = num_grid%get_asReal('eps_div_rtol',   defaultVal=5.0e-4_pREAL)
-  num%eps_curl_atol   = num_grid%get_asReal('eps_curl_atol',  defaultVal=1.0e-10_pREAL)
-  num%eps_curl_rtol   = num_grid%get_asReal('eps_curl_rtol',  defaultVal=5.0e-4_pREAL)
-  num%eps_stress_atol = num_grid%get_asReal('eps_stress_atol',defaultVal=1.0e3_pREAL)
-  num%eps_stress_rtol = num_grid%get_asReal('eps_stress_rtol',defaultVal=1.0e-3_pREAL)
-  num%itmin           = num_grid%get_asInt ('itmin',          defaultVal=1)
-  num%itmax           = num_grid%get_asInt ('itmax',          defaultVal=250)
-  num%alpha           = num_grid%get_asReal('alpha',          defaultVal=1.0_pREAL)
-  num%beta            = num_grid%get_asReal('beta',           defaultVal=1.0_pREAL)
+  num%itmin           = num_grid_mech%get_asInt('N_iter_min',defaultVal=1)
+  num%itmax           = num_grid_mech%get_asInt('N_iter_max',defaultVal=100)
+  num%update_gamma    = num_grid_mech%get_asBool('update_gamma',defaultVal=.false.)
+  num%eps_div_atol    = num_grid_mech%get_asReal('eps_abs_div(P)', defaultVal=1.0e-4_pREAL)
+  num%eps_div_rtol    = num_grid_mech%get_asReal('eps_rel_div(P)', defaultVal=5.0e-4_pREAL)
+  num%eps_curl_atol   = num_grid_mech%get_asReal('eps_abs_curl(F)',defaultVal=1.0e-10_pREAL)
+  num%eps_curl_rtol   = num_grid_mech%get_asReal('eps_rel_curl(F)',defaultVal=5.0e-4_pREAL)
+  num%eps_stress_atol = num_grid_mech%get_asReal('eps_abs_P',      defaultVal=1.0e3_pREAL)
+  num%eps_stress_rtol = num_grid_mech%get_asReal('eps_rel_P',      defaultVal=1.0e-3_pREAL)
+  num%alpha           = num_grid_mech%get_asReal('alpha',          defaultVal=1.0_pREAL)
+  num%beta            = num_grid_mech%get_asReal('beta',           defaultVal=1.0_pREAL)
 
-  if (num%eps_div_atol <= 0.0_pREAL)                      extmsg = trim(extmsg)//' eps_div_atol'
-  if (num%eps_div_rtol < 0.0_pREAL)                       extmsg = trim(extmsg)//' eps_div_rtol'
-  if (num%eps_curl_atol <= 0.0_pREAL)                     extmsg = trim(extmsg)//' eps_curl_atol'
-  if (num%eps_curl_rtol < 0.0_pREAL)                      extmsg = trim(extmsg)//' eps_curl_rtol'
-  if (num%eps_stress_atol <= 0.0_pREAL)                   extmsg = trim(extmsg)//' eps_stress_atol'
-  if (num%eps_stress_rtol < 0.0_pREAL)                    extmsg = trim(extmsg)//' eps_stress_rtol'
-  if (num%itmax <= 1)                                     extmsg = trim(extmsg)//' itmax'
-  if (num%itmin > num%itmax .or. num%itmin < 1)           extmsg = trim(extmsg)//' itmin'
+  extmsg = ''
+  if (num%eps_div_atol <= 0.0_pREAL)                      extmsg = trim(extmsg)//' eps_abs_div(P)'
+  if (num%eps_div_rtol <= 0.0_pREAL)                      extmsg = trim(extmsg)//' eps_rel_div(P)'
+  if (num%eps_curl_atol <= 0.0_pREAL)                     extmsg = trim(extmsg)//' eps_abs_curl(F)'
+  if (num%eps_curl_rtol <= 0.0_pREAL)                     extmsg = trim(extmsg)//' eps_rel_curl(F)'
+  if (num%eps_stress_atol <= 0.0_pREAL)                   extmsg = trim(extmsg)//' eps_abs_P'
+  if (num%eps_stress_rtol <= 0.0_pREAL)                   extmsg = trim(extmsg)//' eps_rel_P'
   if (num%alpha <= 0.0_pREAL .or. num%alpha >  2.0_pREAL) extmsg = trim(extmsg)//' alpha'
   if (num%beta < 0.0_pREAL .or. num%beta > 2.0_pREAL)     extmsg = trim(extmsg)//' beta'
+  if (num%itmax < 1)                                      extmsg = trim(extmsg)//' N_iter_max'
+  if (num%itmin > num%itmax .or. num%itmin < 1)           extmsg = trim(extmsg)//' N_iter_min'
 
   if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mechanical_snes_type ngmres',err_PETSc)
-  CHKERRQ(err_PETSc)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asStr('petsc_options',defaultVal=''),err_PETSc)
+  petsc_options = misc_prefixOptions('-snes_type ngmres '//num_grid_mech%get_asStr('PETSc_options',defaultVal=''), &
+                                     'mechanical_')
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -286,13 +292,13 @@ subroutine grid_mechanical_spectral_polarisation_init()
   C_scale = C_minMaxAvg
   S_scale = math_invSym3333(C_minMaxAvg)
 
-end subroutine grid_mechanical_spectral_polarisation_init
+end subroutine grid_mechanical_spectral_polarization_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the Polarisation scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_mechanical_spectral_polarisation_solution(incInfoIn) result(solution)
+function grid_mechanical_spectral_polarization_solution(incInfoIn) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
@@ -327,14 +333,14 @@ function grid_mechanical_spectral_polarisation_solution(incInfoIn) result(soluti
   terminallyIll = .false.
   P_aim = merge(P_av,P_aim,params%stress_mask)
 
-end function grid_mechanical_spectral_polarisation_solution
+end function grid_mechanical_spectral_polarization_solution
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !> @details find new boundary conditions and best F estimate for end of current timestep
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,Delta_t_old,t_remaining,&
+subroutine grid_mechanical_spectral_polarization_forward(cutBack,guess,Delta_t,Delta_t_old,t_remaining,&
                                                    deformation_BC,stress_BC,rotation_BC)
 
   logical,                  intent(in) :: &
@@ -428,13 +434,13 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
   params%rotation_BC = rotation_BC
   params%Delta_t     = Delta_t
 
-end subroutine grid_mechanical_spectral_polarisation_forward
+end subroutine grid_mechanical_spectral_polarization_forward
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Update coordinates.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_polarisation_updateCoords()
+subroutine grid_mechanical_spectral_polarization_updateCoords()
 
   PetscErrorCode :: err_PETSc
   real(pREAL), dimension(:,:,:,:), pointer :: FandF_tau
@@ -445,13 +451,13 @@ subroutine grid_mechanical_spectral_polarisation_updateCoords()
   call DMDAVecRestoreArrayReadF90(da,solution_vec,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
 
-end subroutine grid_mechanical_spectral_polarisation_updateCoords
+end subroutine grid_mechanical_spectral_polarization_updateCoords
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write current solver and constitutive data for restart to file.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_polarisation_restartWrite()
+subroutine grid_mechanical_spectral_polarization_restartWrite()
 
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
@@ -492,7 +498,7 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite()
   call DMDAVecRestoreArrayReadF90(da,solution_vec,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
 
-end subroutine grid_mechanical_spectral_polarisation_restartWrite
+end subroutine grid_mechanical_spectral_polarization_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
@@ -645,4 +651,4 @@ subroutine formResidual(residual_subdomain, FandF_tau, &
 
 end subroutine formResidual
 
-end module grid_mechanical_spectral_polarisation
+end module grid_mechanical_spectral_polarization

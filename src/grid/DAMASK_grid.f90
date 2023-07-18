@@ -24,7 +24,7 @@ program DAMASK_grid
   use material
   use spectral_utilities
   use grid_mechanical_spectral_basic
-  use grid_mechanical_spectral_polarisation
+  use grid_mechanical_spectral_polarization
   use grid_mechanical_FEM
   use grid_damage_spectral
   use grid_thermal_spectral
@@ -107,7 +107,8 @@ program DAMASK_grid
   external :: &
     quit
   type(tDict), pointer :: &
-    config_load, &
+    load, &
+    num_solver, &
     num_grid, &
     load_step, &
     solver, &
@@ -122,6 +123,7 @@ program DAMASK_grid
   character(len=:), allocatable :: &
     fileContent, fname
 
+
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
 
@@ -134,12 +136,16 @@ program DAMASK_grid
 
 !-------------------------------------------------------------------------------------------------
 ! read (and check) field parameters from numerics file
-  num_grid => config_numerics%get_dict('grid', defaultVal=emptyDict)
-  stagItMax  = num_grid%get_asInt('maxStaggeredIter',defaultVal=10)
-  maxCutBack = num_grid%get_asInt('maxCutBack',defaultVal=3)
 
-  if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
-  if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
+  num_solver => config_numerics%get_dict('solver',defaultVal=emptyDict)
+  num_grid => num_solver%get_dict('grid',defaultVal=emptyDict)
+
+  stagItMax  = num_grid%get_asInt('N_staggered_iter_max',defaultVal=10)
+  maxCutBack = num_grid%get_asInt('N_cutback_max',defaultVal=3)
+
+  if (stagItMax < 0)    call IO_error(301,ext_msg='N_staggered_iter_max')
+  if (maxCutBack < 0)   call IO_error(301,ext_msg='N_cutback_max')
+
 
   if (worldrank == 0) then
     fileContent = IO_read(CLI_loadFile)
@@ -151,8 +157,8 @@ program DAMASK_grid
   end if
 
   call parallelization_bcast_str(fileContent)
-  config_load => YAML_parse_str_asDict(fileContent)
-  solver => config_load%get_dict('solver')
+  load => YAML_parse_str_asDict(fileContent)
+  solver => load%get_dict('solver')
 
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
@@ -167,11 +173,11 @@ program DAMASK_grid
       mechanical_restartWrite => grid_mechanical_spectral_basic_restartWrite
 
     case ('spectral_polarization')
-      mechanical_init         => grid_mechanical_spectral_polarisation_init
-      mechanical_forward      => grid_mechanical_spectral_polarisation_forward
-      mechanical_solution     => grid_mechanical_spectral_polarisation_solution
-      mechanical_updateCoords => grid_mechanical_spectral_polarisation_updateCoords
-      mechanical_restartWrite => grid_mechanical_spectral_polarisation_restartWrite
+      mechanical_init         => grid_mechanical_spectral_polarization_init
+      mechanical_forward      => grid_mechanical_spectral_polarization_forward
+      mechanical_solution     => grid_mechanical_spectral_polarization_solution
+      mechanical_updateCoords => grid_mechanical_spectral_polarization_updateCoords
+      mechanical_restartWrite => grid_mechanical_spectral_polarization_restartWrite
 
     case ('FEM')
       mechanical_init         => grid_mechanical_FEM_init
@@ -206,7 +212,7 @@ program DAMASK_grid
 
 
 !--------------------------------------------------------------------------------------------------
-  load_steps => config_load%get_list('loadstep')
+  load_steps => load%get_list('loadstep')
   allocate(loadCases(load_steps%length))                                                            ! array of load cases
 
   do l = 1, load_steps%length
@@ -313,21 +319,21 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
-  call spectral_Utilities_init()
+  call spectral_utilities_init()
 
   do field = 2, nActiveFields
     select case (ID(field))
 
       case (FIELD_THERMAL_ID)
-        call grid_thermal_spectral_init()
+        call grid_thermal_spectral_init(num_grid)
 
       case (FIELD_DAMAGE_ID)
-        call grid_damage_spectral_init()
+        call grid_damage_spectral_init(num_grid)
 
     end select
   end do
 
-  call mechanical_init()
+  call mechanical_init(num_grid)
   call config_numerics_deallocate()
 
 !--------------------------------------------------------------------------------------------------

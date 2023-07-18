@@ -11,6 +11,7 @@ module IO
     IO_STDERR => ERROR_UNIT
 
   use prec
+  use constants
   use misc
 
   implicit none(type,external)
@@ -20,11 +21,8 @@ module IO
     IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13), &                         !< whitespace characters
     IO_QUOTES  = "'"//'"'
   character, parameter, public :: &
-    IO_EOL = new_line('DAMASK'), &                                                                  !< end of line character
+    IO_EOL = LF, &                                                                                  !< end of line character
     IO_COMMENT = '#'
-  character, parameter :: &
-    CR = achar(13), &
-    LF = IO_EOL
 
   public :: &
     IO_init, &
@@ -293,9 +291,6 @@ pure function IO_lc(str)
 
   character(len=*), intent(in) :: str                                                               !< string to convert
   character(len=len(str))   :: IO_lc
-
-  character(len=*),          parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
-  character(len=len(LOWER)), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
   integer :: i,n
 
