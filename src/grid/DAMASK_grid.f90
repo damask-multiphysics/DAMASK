@@ -341,7 +341,7 @@ program DAMASK_grid
   if (worldrank == 0) then
     writeHeader: if (CLI_restartInc < 1) then
       open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
-      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                ! statistics file
+      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded StagIterationsNeeded' ! statistics file
     else writeHeader
       open(newunit=statUnit,file=trim(getSolverJobName())//&
                                   '.sta',form='FORMATTED', position='APPEND', status='OLD')
@@ -415,9 +415,11 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! solve fields
-          stagIter = 0
+          stagIter = 1
           stagIterate = .true.
           do while (stagIterate)
+
+            if (nActiveFields > 1) print'(/,1x,a,i0)', 'Staggered Iteration ',stagIter
             do field = 1, nActiveFields
               select case(ID(field))
                 case(FIELD_MECH_ID)
@@ -432,7 +434,7 @@ program DAMASK_grid
 
             end do
             stagIter = stagIter + 1
-            stagIterate =            stagIter < stagItMax &
+            stagIterate =            stagIter <= stagItMax &
                          .and.       all(solres(:)%converged) &
                          .and. .not. all(solres(:)%stagConverged)                                   ! stationary with respect to staggered iteration
           end do
@@ -448,7 +450,7 @@ program DAMASK_grid
             guess = .true.                                                                          ! start guessing after first converged (sub)inc
             if (worldrank == 0) then
               write(statUnit,*) totalIncsCounter, t, cutBackLevel, &
-                                solres(1)%converged, solres(1)%iterationsNeeded
+                                solres(1)%converged, solres(1)%iterationsNeeded, StagIter
               flush(statUnit)
             end if
           elseif (cutBackLevel < maxCutBack) then                                                   ! further cutbacking tolerated?

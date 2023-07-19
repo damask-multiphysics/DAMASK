@@ -92,7 +92,6 @@ subroutine grid_damage_spectral_init(num_grid)
     petsc_options
 
 
-
   print'(/,1x,a)', '<<<+-  grid_spectral_damage init  -+>>>'
 
   print'(/,1x,a)', 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
@@ -226,8 +225,6 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
   PetscErrorCode :: err_PETSc
   SNESConvergedReason :: reason
 
-
-  solution%converged = .false.
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data

@@ -88,7 +88,6 @@ subroutine grid_thermal_spectral_init(num_grid)
     petsc_options
 
 
-
   print'(/,1x,a)', '<<<+-  grid_thermal_spectral init  -+>>>'
 
   print'(/,1x,a)', 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
@@ -203,8 +202,6 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   PetscErrorCode :: err_PETSc
   SNESConvergedReason :: reason
 
-
-  solution%converged = .false.
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
