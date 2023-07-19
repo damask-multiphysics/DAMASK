@@ -75,7 +75,7 @@ program DAMASK_grid
     cutBack = .false.,&
     sig
   integer :: &
-    i, j, m, field, &
+    i, j, field, &
     errorID = 0, &
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
     stepFraction = 0, &                                                                             !< fraction of current time interval
@@ -110,15 +110,8 @@ program DAMASK_grid
     load, &
     num_solver, &
     num_grid, &
-    load_step, &
-    solver, &
-    step_bc, &
-    step_mech, &
-    step_discretization
+    solver
   type(tList), pointer :: &
-#ifdef __INTEL_LLVM_COMPILER
-    tensor, &
-#endif
     load_steps
   character(len=:), allocatable :: &
     fileContent, fname
@@ -210,113 +203,6 @@ program DAMASK_grid
     ID(field) = FIELD_DAMAGE_ID
   end if damageActive
 
-
-!--------------------------------------------------------------------------------------------------
-  load_steps => load%get_list('loadstep')
-  allocate(loadCases(load_steps%length))                                                            ! array of load cases
-
-  do l = 1, load_steps%length
-
-    load_step => load_steps%get_dict(l)
-    step_bc   => load_step%get_dict('boundary_conditions')
-    step_mech => step_bc%get_dict('mechanical')
-    loadCases(l)%stress%myType=''
-    readMech: do m = 1, step_mech%length
-      select case (step_mech%key(m))
-        case ('L','dot_F','F')                                                                      ! assign values for the deformation BC matrix
-          loadCases(l)%deformation%myType = step_mech%key(m)
-#ifdef __INTEL_LLVM_COMPILER
-          tensor => step_mech%get_list(m)
-          call getMaskedTensor(loadCases(l)%deformation%values,loadCases(l)%deformation%mask,tensor)
-#else
-          call getMaskedTensor(loadCases(l)%deformation%values,loadCases(l)%deformation%mask,step_mech%get_list(m))
-#endif
-        case ('dot_P','P')
-          loadCases(l)%stress%myType = step_mech%key(m)
-#ifdef __INTEL_LLVM_COMPILER
-          tensor => step_mech%get_list(m)
-          call getMaskedTensor(loadCases(l)%stress%values,loadCases(l)%stress%mask,tensor)
-#else
-          call getMaskedTensor(loadCases(l)%stress%values,loadCases(l)%stress%mask,step_mech%get_list(m))
-#endif
-      end select
-      call loadCases(l)%rot%fromAxisAngle(step_mech%get_as1dReal('R',defaultVal = real([0.0,0.0,1.0,0.0],pREAL)),degrees=.true.)
-    end do readMech
-    if (.not. allocated(loadCases(l)%deformation%myType)) call IO_error(error_ID=837,ext_msg = 'L/dot_F/F missing')
-
-    step_discretization => load_step%get_dict('discretization')
-    loadCases(l)%t = step_discretization%get_asReal('t')
-    loadCases(l)%N = step_discretization%get_asInt  ('N')
-    loadCases(l)%r = step_discretization%get_asReal('r',defaultVal= 1.0_pREAL)
-
-    loadCases(l)%f_restart = load_step%get_asInt('f_restart', defaultVal=huge(0))
-    if (load_step%get_asStr('f_out',defaultVal='n/a') == 'none') then
-      loadCases(l)%f_out = huge(0)
-    else
-      loadCases(l)%f_out = load_step%get_asInt('f_out', defaultVal=1)
-    end if
-    loadCases(l)%estimate_rate = (load_step%get_asBool('estimate_rate',defaultVal=.true.) .and. l>1)
-
-    reportAndCheck: if (worldrank == 0) then
-      print'(/,1x,a,1x,i0)', 'load case:', l
-      print'(2x,a,1x,l1)', 'estimate_rate:', loadCases(l)%estimate_rate
-      if (loadCases(l)%deformation%myType == 'F') then
-        print'(2x,a)', 'F:'
-      else
-        print'(2x,a)', loadCases(l)%deformation%myType//' / 1/s:'
-      end if
-      do i = 1, 3; do j = 1, 3
-        if (loadCases(l)%deformation%mask(i,j)) then
-          write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
-        else
-          write(IO_STDOUT,'(2x,f12.7)',advance='no') loadCases(l)%deformation%values(i,j)
-        end if
-        end do; write(IO_STDOUT,'(/)',advance='no')
-      end do
-      if (any(loadCases(l)%stress%mask .eqv. loadCases(l)%deformation%mask)) errorID = 831
-      if (any(.not.(loadCases(l)%stress%mask .or. transpose(loadCases(l)%stress%mask)) .and. (math_I3<1))) &
-        errorID = 838                                                                               ! no rotation is allowed by stress BC
-
-      if (loadCases(l)%stress%myType == 'P')     print'(2x,a)', 'P / MPa:'
-      if (loadCases(l)%stress%myType == 'dot_P') print'(2x,a)', 'dot_P / MPa/s:'
-
-      if (loadCases(l)%stress%myType /= '') then
-        do i = 1, 3; do j = 1, 3
-          if (loadCases(l)%stress%mask(i,j)) then
-            write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
-          else
-            write(IO_STDOUT,'(2x,f12.4)',advance='no') loadCases(l)%stress%values(i,j)*1e-6_pREAL
-          end if
-          end do; write(IO_STDOUT,'(/)',advance='no')
-        end do
-      end if
-      if (any(dNeq(loadCases(l)%rot%asMatrix(), math_I3))) &
-        write(IO_STDOUT,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'R:',&
-                 transpose(loadCases(l)%rot%asMatrix())
-
-      if (loadCases(l)%r <= 0.0_pREAL) errorID = 833
-      if (loadCases(l)%t < 0.0_pREAL)  errorID = 834
-      if (loadCases(l)%N < 1)          errorID = 835
-      if (loadCases(l)%f_out < 1)      errorID = 836
-      if (loadCases(l)%f_restart < 1)  errorID = 839
-
-      if (dEq(loadCases(l)%r,1.0_pREAL,1.e-9_pREAL)) then
-        print'(2x,a)', 'r: 1 (constant step width)'
-      else
-        print'(2x,a,1x,f0.3)', 'r:', loadCases(l)%r
-      end if
-      print'(2x,a,1x,f0.3)',   't:', loadCases(l)%t
-      print'(2x,a,1x,i0)',     'N:', loadCases(l)%N
-      if (loadCases(l)%f_out < huge(0)) &
-        print'(2x,a,1x,i0)',   'f_out:', loadCases(l)%f_out
-      if (loadCases(l)%f_restart < huge(0)) &
-        print'(2x,a,1x,i0)',   'f_restart:', loadCases(l)%f_restart
-
-      if (errorID > 0) call IO_error(errorID,label1='line',ID1=l)
-
-    end if reportAndCheck
-  end do
-
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
   call spectral_utilities_init()
@@ -353,6 +239,8 @@ program DAMASK_grid
     flush(IO_STDOUT)
     call materialpoint_result(0,0.0_pREAL)
   end if writeUndeformed
+
+  loadCases = parseLoadSteps(load%get_list('loadstep'))
 
   loadCaseLooping: do l = 1, size(loadCases)
     t_0 = t                                                                                         ! load case start time
@@ -539,5 +427,126 @@ subroutine getMaskedTensor(values,mask,tensor)
   end do
 
 end subroutine getMaskedTensor
+
+
+function parseLoadsteps(load_steps) result(loadCases)
+
+  type(tList), intent(in), target :: load_steps
+  type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
+
+  integer :: l,m
+  type(tDict), pointer :: &
+    load_step, &
+    step_bc, &
+    step_mech, &
+    step_discretization
+#ifdef __INTEL_LLVM_COMPILER
+  type(tList), pointer :: &
+    tensor
+#endif
+
+
+  allocate(loadCases(load_steps%length))
+  do l = 1, load_steps%length
+    load_step => load_steps%get_dict(l)
+    step_bc   => load_step%get_dict('boundary_conditions')
+    step_mech => step_bc%get_dict('mechanical')
+    loadCases(l)%stress%myType=''
+    readMech: do m = 1, step_mech%length
+      select case (step_mech%key(m))
+        case ('L','dot_F','F')                                                                      ! assign values for the deformation BC matrix
+          loadCases(l)%deformation%myType = step_mech%key(m)
+#ifdef __INTEL_LLVM_COMPILER
+          tensor => step_mech%get_list(m)
+          call getMaskedTensor(loadCases(l)%deformation%values,loadCases(l)%deformation%mask,tensor)
+#else
+          call getMaskedTensor(loadCases(l)%deformation%values,loadCases(l)%deformation%mask,step_mech%get_list(m))
+#endif
+        case ('dot_P','P')
+          loadCases(l)%stress%myType = step_mech%key(m)
+#ifdef __INTEL_LLVM_COMPILER
+          tensor => step_mech%get_list(m)
+          call getMaskedTensor(loadCases(l)%stress%values,loadCases(l)%stress%mask,tensor)
+#else
+          call getMaskedTensor(loadCases(l)%stress%values,loadCases(l)%stress%mask,step_mech%get_list(m))
+#endif
+      end select
+      call loadCases(l)%rot%fromAxisAngle(step_mech%get_as1dReal('R',defaultVal = real([0.0,0.0,1.0,0.0],pREAL)),degrees=.true.)
+    end do readMech
+    if (.not. allocated(loadCases(l)%deformation%myType)) call IO_error(error_ID=837,ext_msg = 'L/dot_F/F missing')
+
+    step_discretization => load_step%get_dict('discretization')
+    loadCases(l)%t = step_discretization%get_asReal('t')
+    loadCases(l)%N = step_discretization%get_asInt  ('N')
+    loadCases(l)%r = step_discretization%get_asReal('r',defaultVal= 1.0_pREAL)
+
+    loadCases(l)%f_restart = load_step%get_asInt('f_restart', defaultVal=huge(0))
+    if (load_step%get_asStr('f_out',defaultVal='n/a') == 'none') then
+      loadCases(l)%f_out = huge(0)
+    else
+      loadCases(l)%f_out = load_step%get_asInt('f_out', defaultVal=1)
+    end if
+    loadCases(l)%estimate_rate = (load_step%get_asBool('estimate_rate',defaultVal=.true.) .and. l>1)
+
+    reportAndCheck: if (worldrank == 0) then
+      print'(/,1x,a,1x,i0)', 'load case:', l
+      print'(2x,a,1x,l1)', 'estimate_rate:', loadCases(l)%estimate_rate
+      if (loadCases(l)%deformation%myType == 'F') then
+        print'(2x,a)', 'F:'
+      else
+        print'(2x,a)', loadCases(l)%deformation%myType//' / 1/s:'
+      end if
+      do i = 1, 3; do j = 1, 3
+        if (loadCases(l)%deformation%mask(i,j)) then
+          write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
+        else
+          write(IO_STDOUT,'(2x,f12.7)',advance='no') loadCases(l)%deformation%values(i,j)
+        end if
+        end do; write(IO_STDOUT,'(/)',advance='no')
+      end do
+      if (any(loadCases(l)%stress%mask .eqv. loadCases(l)%deformation%mask)) errorID = 831
+      if (any(.not.(loadCases(l)%stress%mask .or. transpose(loadCases(l)%stress%mask)) .and. (math_I3<1))) &
+        errorID = 838                                                                               ! no rotation is allowed by stress BC
+
+      if (loadCases(l)%stress%myType == 'P')     print'(2x,a)', 'P / MPa:'
+      if (loadCases(l)%stress%myType == 'dot_P') print'(2x,a)', 'dot_P / MPa/s:'
+
+      if (loadCases(l)%stress%myType /= '') then
+        do i = 1, 3; do j = 1, 3
+          if (loadCases(l)%stress%mask(i,j)) then
+            write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
+          else
+            write(IO_STDOUT,'(2x,f12.4)',advance='no') loadCases(l)%stress%values(i,j)*1e-6_pREAL
+          end if
+          end do; write(IO_STDOUT,'(/)',advance='no')
+        end do
+      end if
+      if (any(dNeq(loadCases(l)%rot%asMatrix(), math_I3))) &
+        write(IO_STDOUT,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'R:',&
+                 transpose(loadCases(l)%rot%asMatrix())
+
+      if (loadCases(l)%r <= 0.0_pREAL) errorID = 833
+      if (loadCases(l)%t < 0.0_pREAL)  errorID = 834
+      if (loadCases(l)%N < 1)          errorID = 835
+      if (loadCases(l)%f_out < 1)      errorID = 836
+      if (loadCases(l)%f_restart < 1)  errorID = 839
+
+      if (dEq(loadCases(l)%r,1.0_pREAL,1.e-9_pREAL)) then
+        print'(2x,a)', 'r: 1 (constant step width)'
+      else
+        print'(2x,a,1x,f0.3)', 'r:', loadCases(l)%r
+      end if
+      print'(2x,a,1x,f0.3)',   't:', loadCases(l)%t
+      print'(2x,a,1x,i0)',     'N:', loadCases(l)%N
+      if (loadCases(l)%f_out < huge(0)) &
+        print'(2x,a,1x,i0)',   'f_out:', loadCases(l)%f_out
+      if (loadCases(l)%f_restart < huge(0)) &
+        print'(2x,a,1x,i0)',   'f_restart:', loadCases(l)%f_restart
+
+      if (errorID > 0) call IO_error(errorID,label1='line',ID1=l)
+
+    end if reportAndCheck
+  end do
+end function parseLoadsteps
 
 end program DAMASK_grid
