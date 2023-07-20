@@ -75,7 +75,6 @@ subroutine grid_damage_spectral_init(num_grid)
   type(tDict), pointer, intent(in) :: num_grid
 
   integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: cells3_global
-  integer :: i, j, k, ce
   DM :: DM_damage
   real(pREAL), dimension(:,:,:), pointer :: phi                                                     ! 0-indexed
   Vec :: uBound, lBound
@@ -139,7 +138,7 @@ subroutine grid_damage_spectral_init(num_grid)
          1_pPETSCINT, 1_pPETSCINT, int(worldsize,pPETSCINT), &
          1_pPETSCINT, 0_pPETSCINT, &                                                                ! #dof (phi, scalar), ghost boundary width (domain overlap)
          [int(cells(1),pPetscInt)],[int(cells(2),pPetscInt)],int(cells3_global,pPETSCINT), &        ! local cells
-         DM_damage,err_PETSc)                                                                     ! handle, error
+         DM_damage,err_PETSc)                                                                       ! handle, error
   CHKERRQ(err_PETSc)
   call DMsetFromOptions(DM_damage,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -193,11 +192,7 @@ subroutine grid_damage_spectral_init(num_grid)
     phi_stagInc = phi_lastInc
   end if restartRead
 
-  ce = 0
-  do k = 0, cells3-1; do j = 0, cells(2)-1; do i = 0, cells(1)-1
-    ce = ce + 1
-    call homogenization_set_phi(phi(i,j,k),ce)
-  end do; end do; end do
+  call homogenization_set_phi(reshape(phi,[product(cells(1:2))*cells3]))
 
   call DMDAVecRestoreArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -215,7 +210,6 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
   real(pREAL), intent(in) :: &
     Delta_t                                                                                         !< increment in time for current solution
 
-  integer :: i, j, k, ce
   type(tSolutionState) :: solution
   PetscInt  :: devNull
   PetscReal :: phi_min, phi_max, stagNorm
@@ -253,13 +247,7 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   phi_stagInc = phi
 
-!--------------------------------------------------------------------------------------------------
-! updating damage state
-  ce = 0
-  do k = 0, cells3-1;  do j = 0, cells(2)-1;  do i = 0,cells(1)-1
-    ce = ce + 1
-    call homogenization_set_phi(phi(i,j,k),ce)
-  end do; end do; end do
+  call homogenization_set_phi(reshape(phi,[product(cells(1:2))*cells3]))
 
   call DMDAVecRestoreArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -280,7 +268,6 @@ subroutine grid_damage_spectral_forward(cutBack)
 
   logical, intent(in) :: cutBack
 
-  integer :: i, j, k, ce
   DM :: DM_damage
   real(pREAL),  dimension(:,:,:), pointer :: phi                                                    ! 0-indexed
   PetscErrorCode :: err_PETSc
@@ -292,11 +279,7 @@ subroutine grid_damage_spectral_forward(cutBack)
     CHKERRQ(err_PETSc)
 
   if (cutBack) then
-    ce = 0
-    do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
-      ce = ce + 1
-      call homogenization_set_phi(phi_lastInc(i,j,k),ce)
-    end do; end do; end do
+    call homogenization_set_phi(reshape(phi_lastInc,[product(cells(1:2))*cells3]))
     phi = phi_lastInc
     phi_stagInc = phi_lastInc
   else
