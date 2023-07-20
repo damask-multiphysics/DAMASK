@@ -25,7 +25,8 @@ module tables
 
   public :: &
     table, &
-    tables_init
+    tables_init, &
+    tables_selfTest
 
 contains
 
@@ -37,7 +38,7 @@ subroutine tables_init()
 
   print'(/,1x,a)', '<<<+-  tables init  -+>>>'; flush(IO_STDOUT)
 
-  call selfTest()
+  call tables_selfTest()
 
 end subroutine tables_init
 
@@ -106,7 +107,7 @@ end function eval
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of table functionality.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest()
+subroutine tables_selfTest()
 
   type(tTable) :: t
   real(pREAL), dimension(*), parameter :: &
@@ -140,6 +141,6 @@ subroutine selfTest()
     if (dNeq(y_true(i),t%at(x_eval(i)))) error stop 'table eval/dict'
   end do
 
-end subroutine selfTest
+end subroutine tables_selfTest
 
 end module tables
