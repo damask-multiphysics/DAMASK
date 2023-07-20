@@ -85,6 +85,37 @@ mypy:
 
 
 ###################################################################################################
+unittest_GNU_DEBUG:
+  stage: compile
+  script:
+    - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
+    - TMPDIR=$(mktemp -d)
+    - cmake -B ${TMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TMPDIR} -DCMAKE_BUILD_TYPE=RELEASE
+    - cmake --build ${TMPDIR} --target install
+    - cd ${TMPDIR}
+    - ./bin/DAMASK_test
+
+unittest_GNU_RELEASE:
+  stage: compile
+  script:
+    - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
+    - TMPDIR=$(mktemp -d)
+    - cmake -B ${TMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TMPDIR} -DCMAKE_BUILD_TYPE=RELEASE
+    - cmake --build ${TMPDIR} --target install
+    - cd ${TMPDIR}
+    - ./bin/DAMASK_test
+
+unittest_GNU_PERFORMANCE:
+  stage: compile
+  script:
+    - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
+    - TMPDIR=$(mktemp -d)
+    - cmake -B ${TMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TMPDIR} -DCMAKE_BUILD_TYPE=PERFORMANCE
+    - cmake --build ${TMPDIR} --target install
+    - cd ${TMPDIR}
+    - ./bin/DAMASK_test
+
+
 grid_GNU:
   stage: compile
   script:
