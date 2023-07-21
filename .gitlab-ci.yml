@@ -90,30 +90,33 @@ unittest_GNU_DEBUG:
   script:
     - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
     - TMPDIR=$(mktemp -d)
-    - cmake -B ${TMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TMPDIR} -DCMAKE_BUILD_TYPE=RELEASE
+    - cmake -B ${TMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
     - cmake --build ${TMPDIR} --target install
     - cd ${TMPDIR}
     - ./bin/DAMASK_test
+    - find -name \*.gcda | xargs gcov
 
 unittest_GNU_RELEASE:
   stage: compile
   script:
     - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
     - TMPDIR=$(mktemp -d)
-    - cmake -B ${TMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TMPDIR} -DCMAKE_BUILD_TYPE=RELEASE
+    - cmake -B ${TMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
     - cmake --build ${TMPDIR} --target install
     - cd ${TMPDIR}
     - ./bin/DAMASK_test
+    - find -name \*.gcda | xargs gcov
 
 unittest_GNU_PERFORMANCE:
   stage: compile
   script:
     - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
     - TMPDIR=$(mktemp -d)
-    - cmake -B ${TMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TMPDIR} -DCMAKE_BUILD_TYPE=PERFORMANCE
+    - cmake -B ${TMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TMPDIR} -DCMAKE_BUILD_TYPE=PERFORMANCE -DBUILDCMD_POST=-coverage
     - cmake --build ${TMPDIR} --target install
     - cd ${TMPDIR}
     - ./bin/DAMASK_test
+    - find -name \*.gcda | xargs gcov
 
 
 grid_GNU:
