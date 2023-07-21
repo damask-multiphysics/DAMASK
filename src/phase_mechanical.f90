@@ -198,10 +198,11 @@ contains
 !> @brief Initialize mechanical field related constitutive models
 !> @details Initialize elasticity, plasticity and stiffness degradation models.
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_init(phases)
+module subroutine mechanical_init(phases, num_mech)
 
   type(tDict), pointer :: &
-    phases
+    phases, &
+    num_mech
 
   integer :: &
     ce, &
@@ -211,9 +212,11 @@ module subroutine mechanical_init(phases)
     en, &
     Nmembers
   type(tDict), pointer :: &
-    num_crystallite, &
     phase, &
-    mech
+    mech, &
+    num_mech_plastic, &
+    num_mech_eigen
+  character(len=:), allocatable :: extmsg
 
 
   print'(/,1x,a)', '<<<+-  phase:mechanical init  -+>>>'
@@ -289,9 +292,42 @@ module subroutine mechanical_init(phases)
     plasticState(ph)%state0 = plasticState(ph)%state
   end do
 
-  num_crystallite => config_numerics%get_dict('crystallite',defaultVal=emptyDict)
+  num_mech_plastic => num_mech%get_dict('plastic', defaultVal=emptyDict)
+  num_mech_eigen   => num_mech%get_dict('eigen',   defaultVal=emptyDict)
 
-  select case(num_crystallite%get_asStr('integrator',defaultVal='FPI'))
+  num%subStepMinCryst        = num_mech%get_asReal         ('sub_step_min',               defaultVal=1.0e-3_pREAL)
+  num%subStepSizeCryst       = num_mech%get_asReal         ('sub_step_size',              defaultVal=0.25_pREAL)
+  num%stepIncreaseCryst      = num_mech%get_asReal         ('step_increase',              defaultVal=1.5_pREAL)
+  num%rtol_crystalliteState  = num_mech%get_asReal         ('eps_rel_state',              defaultVal=1.0e-6_pREAL)
+  num%nState                 = num_mech%get_asInt          ('N_iter_state_max',           defaultVal=20)
+  num%nStress                = num_mech%get_asInt          ('N_iter_stress_max',          defaultVal=40)
+  num%subStepSizeLp          = num_mech_plastic%get_asReal ('sub_step_size_Lp',           defaultVal=0.5_pREAL)
+  num%rtol_Lp                = num_mech_plastic%get_asReal ('eps_rel_Lp',                 defaultVal=1.0e-6_pREAL)
+  num%atol_Lp                = num_mech_plastic%get_asReal ('eps_abs_Lp',                 defaultVal=1.0e-8_pREAL)
+  num%iJacoLpresiduum        = num_mech_plastic%get_asInt  ('f_update_jacobi_Lp',         defaultVal=1)
+  num%subStepSizeLi          = num_mech_eigen%get_asReal   ('sub_step_size_Li',           defaultVal=0.5_pREAL)
+  num%rtol_Li                = num_mech_eigen%get_asReal   ('eps_rel_Li',                 defaultVal=num%rtol_Lp)
+  num%atol_Li                = num_mech_eigen%get_asReal   ('eps_abs_Li',                 defaultVal=num%atol_Lp)
+  num%iJacoLiresiduum        = num_mech_eigen%get_asInt    ('f_update_jacobi_Li',         defaultVal=num%iJacoLpresiduum)
+
+  extmsg = ''
+  if (num%subStepMinCryst   <= 0.0_pREAL)      extmsg = trim(extmsg)//' sub_step_min'
+  if (num%subStepSizeCryst  <= 0.0_pREAL)      extmsg = trim(extmsg)//' sub_step_size'
+  if (num%stepIncreaseCryst <= 0.0_pREAL)      extmsg = trim(extmsg)//' step_increase'
+  if (num%subStepSizeLp <= 0.0_pREAL)          extmsg = trim(extmsg)//' sub_step_size_Lp'
+  if (num%subStepSizeLi <= 0.0_pREAL)          extmsg = trim(extmsg)//' sub_step_size_Li'
+  if (num%rtol_Lp <= 0.0_pREAL)                extmsg = trim(extmsg)//' epl_rel_Lp'
+  if (num%atol_Lp <= 0.0_pREAL)                extmsg = trim(extmsg)//' eps_abs_Lp'
+  if (num%rtol_Li <= 0.0_pREAL)                extmsg = trim(extmsg)//' eps_rel_Li'
+  if (num%atol_Li <= 0.0_pREAL)                extmsg = trim(extmsg)//' eps_abs_Li'
+  if (num%iJacoLpresiduum < 1)                 extmsg = trim(extmsg)//' f_jacobi_residuum_update_Lp'
+  if (num%iJacoLiresiduum < 1)                 extmsg = trim(extmsg)//' f_jacobi_residuum_update_Li'
+  if (num%nState  < 1)                         extmsg = trim(extmsg)//' N_iter_state_max'
+  if (num%nStress < 1)                         extmsg = trim(extmsg)//' N_iter_stress_max'
+
+  if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
+
+  select case(num_mech_plastic%get_asStr('integrator_state',defaultVal='FPI'))
 
     case('FPI')
       integrateState => integrateStateFPI
@@ -458,8 +494,8 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
                                          S, Fi_new, ph,en)
 
       !* update current residuum and check for convergence of loop
-      atol_Lp = max(num%rtol_crystalliteStress * max(norm2(Lpguess),norm2(Lp_constitutive)), &      ! absolute tolerance from largest acceptable relative error
-                    num%atol_crystalliteStress)                                                     ! minimum lower cutoff
+      atol_Lp = max(num%rtol_Lp * max(norm2(Lpguess),norm2(Lp_constitutive)), &                     ! absolute tolerance from largest acceptable relative error
+                    num%atol_Lp)                                                                    ! minimum lower cutoff
       residuumLp = Lpguess - Lp_constitutive
 
       if (any(IEEE_is_NaN(residuumLp))) then
@@ -499,8 +535,8 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
                                 S, Fi_new, ph,en)
 
     !* update current residuum and check for convergence of loop
-    atol_Li = max(num%rtol_crystalliteStress * max(norm2(Liguess),norm2(Li_constitutive)), &        ! absolute tolerance from largest acceptable relative error
-                  num%atol_crystalliteStress)                                                       ! minimum lower cutoff
+    atol_Li = max(num%rtol_Li * max(norm2(Liguess),norm2(Li_constitutive)), &                       ! absolute tolerance from largest acceptable relative error
+                  num%atol_Li)                                                                      ! minimum lower cutoff
     residuumLi = Liguess - Li_constitutive
     if (any(IEEE_is_NaN(residuumLi))) then
       return ! error
@@ -517,7 +553,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
       cycle LiLoop
     end if
 
-    calculateJacobiLi: if (mod(jacoCounterLi, num%iJacoLpresiduum) == 0) then
+    calculateJacobiLi: if (mod(jacoCounterLi, num%iJacoLiresiduum) == 0) then
       jacoCounterLi = jacoCounterLi + 1
 
       temp_33 = matmul(matmul(A,B),invFi_current)
