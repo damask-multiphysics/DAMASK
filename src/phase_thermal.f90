@@ -28,14 +28,14 @@ submodule(phase) thermal
 
   interface
 
-    module function source_dissipation_init(source_length) result(mySources)
-      integer, intent(in) :: source_length
-      logical, dimension(:,:), allocatable :: mySources
+    module function source_dissipation_init(maxNsources) result(isMySource)
+      integer, intent(in) :: maxNsources
+      logical, dimension(:,:), allocatable :: isMySource
     end function source_dissipation_init
 
-    module function source_externalheat_init(source_length) result(mySources)
-      integer, intent(in) :: source_length
-      logical, dimension(:,:), allocatable :: mySources
+    module function source_externalheat_init(maxNsources) result(isMySource)
+      integer, intent(in) :: maxNsources
+      logical, dimension(:,:), allocatable :: isMySource
     end function source_externalheat_init
 
 

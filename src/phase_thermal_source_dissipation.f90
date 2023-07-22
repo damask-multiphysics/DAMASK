@@ -22,10 +22,10 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function source_dissipation_init(source_length) result(mySources)
+module function source_dissipation_init(maxNsources) result(isMySource)
 
-  integer, intent(in)                  :: source_length
-  logical, dimension(:,:), allocatable :: mySources
+  integer, intent(in)                  :: maxNsources
+  logical, dimension(:,:), allocatable :: isMySource
 
   type(tDict), pointer :: &
     phases, &
@@ -35,27 +35,27 @@ module function source_dissipation_init(source_length) result(mySources)
   class(tList), pointer :: &
     sources
   character(len=:), allocatable :: refs
-  integer :: so,Nmembers,ph
+  integer :: ph,Nmembers,so
 
 
-  mySources = thermal_active('dissipation',source_length)
-  if (count(mySources) == 0) return
+  isMySource = thermal_active('dissipation',maxNsources)
+  if (count(isMySource) == 0) return
 
   print'(/,1x,a)', '<<<+-  phase:thermal:source_dissipation init  -+>>>'
-  print'(/,a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
+  print'(/,a,i2)', ' # phases: ',count(isMySource); flush(IO_STDOUT)
 
 
   phases => config_material%get_dict('phase')
   allocate(param(phases%length))
 
   do ph = 1, phases%length
-    if (count(mySources(:,ph)) == 0) cycle !ToDo: error if > 1
+    if (count(isMySource(:,ph)) == 0) cycle !ToDo: error if > 1
     Nmembers = count(material_ID_phase == ph)
     phase => phases%get_dict(ph)
     thermal => phase%get_dict('thermal')
     sources => thermal%get_list('source')
     do so = 1, sources%length
-      if (mySources(so,ph)) then
+      if (isMySource(so,ph)) then
         associate(prm  => param(ph))
           src => sources%get_dict(so)
           print'(1x,a,i0,a,i0)', 'phase ',ph,' source ',so
