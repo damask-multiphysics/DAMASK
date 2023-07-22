@@ -52,8 +52,9 @@ module function source_externalheat_init(source_length) result(mySources)
   allocate(source_ID(phases%length), source=0)
 
   do ph = 1, phases%length
-    phase => phases%get_dict(ph)
     if (count(mySources(:,ph)) == 0) cycle
+    Nmembers = count(material_ID_phase == ph)
+    phase => phases%get_dict(ph)
     thermal => phase%get_dict('thermal')
     sources => thermal%get_list('source')
     do so = 1, sources%length
@@ -66,8 +67,6 @@ module function source_externalheat_init(source_length) result(mySources)
           if (len(refs) > 0) print'(/,1x,a)', refs
 
           prm%f = table(src,'t','f')
-
-          Nmembers = count(material_ID_phase == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,1,1,0)
         end associate
       end if

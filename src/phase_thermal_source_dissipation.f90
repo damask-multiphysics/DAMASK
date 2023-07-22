@@ -49,8 +49,9 @@ module function source_dissipation_init(source_length) result(mySources)
   allocate(param(phases%length))
 
   do ph = 1, phases%length
-    phase => phases%get_dict(ph)
     if (count(mySources(:,ph)) == 0) cycle !ToDo: error if > 1
+    Nmembers = count(material_ID_phase == ph)
+    phase => phases%get_dict(ph)
     thermal => phase%get_dict('thermal')
     sources => thermal%get_list('source')
     do so = 1, sources%length
@@ -62,7 +63,6 @@ module function source_dissipation_init(source_length) result(mySources)
           if (len(refs) > 0) print'(/,1x,a)', refs
 
           prm%kappa = src%get_asReal('kappa')
-          Nmembers = count(material_ID_phase == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,0,0,0)
 
         end associate
