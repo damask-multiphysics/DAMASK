@@ -35,7 +35,7 @@ module function source_dissipation_init(maxNsources) result(isMySource)
   class(tList), pointer :: &
     sources
   character(len=:), allocatable :: refs
-  integer :: ph,Nmembers,so
+  integer :: ph,Nmembers,so,Nsources
 
 
   isMySource = thermal_active('dissipation',maxNsources)
@@ -49,7 +49,9 @@ module function source_dissipation_init(maxNsources) result(isMySource)
   allocate(param(phases%length))
 
   do ph = 1, phases%length
-    if (count(isMySource(:,ph)) == 0) cycle !ToDo: error if > 1
+    Nsources = count(isMySource(:,ph))
+    if (Nsources == 0) cycle
+    if (Nsources > 1) call IO_error(600,ext_msg='dissipation')
     Nmembers = count(material_ID_phase == ph)
     phase => phases%get_dict(ph)
     thermal => phase%get_dict('thermal')
@@ -64,8 +66,8 @@ module function source_dissipation_init(maxNsources) result(isMySource)
 
           prm%kappa = src%get_asReal('kappa')
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,0,0,0)
-
         end associate
+        exit
       end if
     end do
   end do
