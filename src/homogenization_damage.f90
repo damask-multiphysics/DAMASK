@@ -158,7 +158,7 @@ module subroutine homogenization_set_phi(phi)
   integer :: ho, en, ce
 
 
-  do ce=1, ubound(phi,1)
+  do ce=lbound(phi,1), ubound(phi,1)
     ho = material_ID_homogenization(ce)
     en = material_entry_homogenization(ce)
     damagestate_h(ho)%state(1,en) = phi(ce)
