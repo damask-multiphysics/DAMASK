@@ -295,35 +295,35 @@ module subroutine mechanical_init(phases, num_mech)
   num_mech_plastic => num_mech%get_dict('plastic', defaultVal=emptyDict)
   num_mech_eigen   => num_mech%get_dict('eigen',   defaultVal=emptyDict)
 
-  num%subStepMinCryst        = num_mech%get_asReal         ('sub_step_min',               defaultVal=1.0e-3_pREAL)
-  num%subStepSizeCryst       = num_mech%get_asReal         ('sub_step_size',              defaultVal=0.25_pREAL)
-  num%stepIncreaseCryst      = num_mech%get_asReal         ('step_increase',              defaultVal=1.5_pREAL)
-  num%rtol_crystalliteState  = num_mech%get_asReal         ('eps_rel_state',              defaultVal=1.0e-6_pREAL)
-  num%nState                 = num_mech%get_asInt          ('N_iter_state_max',           defaultVal=20)
-  num%nStress                = num_mech%get_asInt          ('N_iter_stress_max',          defaultVal=40)
-  num%subStepSizeLp          = num_mech_plastic%get_asReal ('sub_step_size_Lp',           defaultVal=0.5_pREAL)
-  num%rtol_Lp                = num_mech_plastic%get_asReal ('eps_rel_Lp',                 defaultVal=1.0e-6_pREAL)
-  num%atol_Lp                = num_mech_plastic%get_asReal ('eps_abs_Lp',                 defaultVal=1.0e-8_pREAL)
-  num%iJacoLpresiduum        = num_mech_plastic%get_asInt  ('f_update_jacobi_Lp',         defaultVal=1)
-  num%subStepSizeLi          = num_mech_eigen%get_asReal   ('sub_step_size_Li',           defaultVal=0.5_pREAL)
-  num%rtol_Li                = num_mech_eigen%get_asReal   ('eps_rel_Li',                 defaultVal=num%rtol_Lp)
-  num%atol_Li                = num_mech_eigen%get_asReal   ('eps_abs_Li',                 defaultVal=num%atol_Lp)
-  num%iJacoLiresiduum        = num_mech_eigen%get_asInt    ('f_update_jacobi_Li',         defaultVal=num%iJacoLpresiduum)
+  num%stepMinCryst           = num_mech%get_asReal         ('step_min',           defaultVal=1.0e-3_pREAL)
+  num%stepSizeCryst          = num_mech%get_asReal         ('step_size',          defaultVal=0.25_pREAL)
+  num%stepIncreaseCryst      = num_mech%get_asReal         ('step_increase',      defaultVal=1.5_pREAL)
+  num%rtol_crystalliteState  = num_mech%get_asReal         ('eps_rel_state',      defaultVal=1.0e-6_pREAL)
+  num%nState                 = num_mech%get_asInt          ('N_iter_state_max',   defaultVal=20)
+  num%nStress                = num_mech%get_asInt          ('N_iter_stress_max',  defaultVal=40)
+  num%stepSizeLp             = num_mech_plastic%get_asReal ('step_size_Lp',       defaultVal=0.5_pREAL)
+  num%rtol_Lp                = num_mech_plastic%get_asReal ('eps_rel_Lp',         defaultVal=1.0e-6_pREAL)
+  num%atol_Lp                = num_mech_plastic%get_asReal ('eps_abs_Lp',         defaultVal=1.0e-8_pREAL)
+  num%iJacoLpresiduum        = num_mech_plastic%get_asInt  ('f_update_jacobi_Lp', defaultVal=1)
+  num%stepSizeLi             = num_mech_eigen%get_asReal   ('step_size_Li',       defaultVal=0.5_pREAL)
+  num%rtol_Li                = num_mech_eigen%get_asReal   ('eps_rel_Li',         defaultVal=num%rtol_Lp)
+  num%atol_Li                = num_mech_eigen%get_asReal   ('eps_abs_Li',         defaultVal=num%atol_Lp)
+  num%iJacoLiresiduum        = num_mech_eigen%get_asInt    ('f_update_jacobi_Li', defaultVal=num%iJacoLpresiduum)
 
   extmsg = ''
-  if (num%subStepMinCryst   <= 0.0_pREAL)      extmsg = trim(extmsg)//' sub_step_min'
-  if (num%subStepSizeCryst  <= 0.0_pREAL)      extmsg = trim(extmsg)//' sub_step_size'
-  if (num%stepIncreaseCryst <= 0.0_pREAL)      extmsg = trim(extmsg)//' step_increase'
-  if (num%subStepSizeLp <= 0.0_pREAL)          extmsg = trim(extmsg)//' sub_step_size_Lp'
-  if (num%subStepSizeLi <= 0.0_pREAL)          extmsg = trim(extmsg)//' sub_step_size_Li'
-  if (num%rtol_Lp <= 0.0_pREAL)                extmsg = trim(extmsg)//' epl_rel_Lp'
-  if (num%atol_Lp <= 0.0_pREAL)                extmsg = trim(extmsg)//' eps_abs_Lp'
-  if (num%rtol_Li <= 0.0_pREAL)                extmsg = trim(extmsg)//' eps_rel_Li'
-  if (num%atol_Li <= 0.0_pREAL)                extmsg = trim(extmsg)//' eps_abs_Li'
-  if (num%iJacoLpresiduum < 1)                 extmsg = trim(extmsg)//' f_jacobi_residuum_update_Lp'
-  if (num%iJacoLiresiduum < 1)                 extmsg = trim(extmsg)//' f_jacobi_residuum_update_Li'
-  if (num%nState  < 1)                         extmsg = trim(extmsg)//' N_iter_state_max'
-  if (num%nStress < 1)                         extmsg = trim(extmsg)//' N_iter_stress_max'
+  if (num%stepMinCryst   <= 0.0_pREAL)     extmsg = trim(extmsg)//' sub_step_min'
+  if (num%stepSizeCryst  <= 0.0_pREAL)     extmsg = trim(extmsg)//' sub_step_size'
+  if (num%stepIncreaseCryst <= 0.0_pREAL)  extmsg = trim(extmsg)//' step_increase'
+  if (num%stepSizeLp <= 0.0_pREAL)         extmsg = trim(extmsg)//' sub_step_size_Lp'
+  if (num%stepSizeLi <= 0.0_pREAL)         extmsg = trim(extmsg)//' sub_step_size_Li'
+  if (num%rtol_Lp <= 0.0_pREAL)            extmsg = trim(extmsg)//' epl_rel_Lp'
+  if (num%atol_Lp <= 0.0_pREAL)            extmsg = trim(extmsg)//' eps_abs_Lp'
+  if (num%rtol_Li <= 0.0_pREAL)            extmsg = trim(extmsg)//' eps_rel_Li'
+  if (num%atol_Li <= 0.0_pREAL)            extmsg = trim(extmsg)//' eps_abs_Li'
+  if (num%iJacoLpresiduum < 1)             extmsg = trim(extmsg)//' f_jacobi_residuum_update_Lp'
+  if (num%iJacoLiresiduum < 1)             extmsg = trim(extmsg)//' f_jacobi_residuum_update_Li'
+  if (num%nState  < 1)                     extmsg = trim(extmsg)//' N_iter_state_max'
+  if (num%nStress < 1)                     extmsg = trim(extmsg)//' N_iter_stress_max'
 
   if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 
@@ -507,7 +507,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
         Lpguess_old    = Lpguess
         steplengthLp   = 1.0_pREAL                                                                  ! ...proceed with normal step length (calculate new search direction)
       else                                                                                          ! not converged and residuum not improved...
-        steplengthLp = num%subStepSizeLp * steplengthLp                                             ! ...try with smaller step length in same direction
+        steplengthLp = num%stepSizeLp * steplengthLp                                                ! ...try with smaller step length in same direction
         Lpguess      = Lpguess_old &
                      + deltaLp * stepLengthLp
         cycle LpLoop
@@ -547,7 +547,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
       Liguess_old    = Liguess
       steplengthLi   = 1.0_pREAL                                                                    ! ...proceed with normal step length (calculate new search direction)
     else                                                                                            ! not converged and residuum not improved...
-      steplengthLi = num%subStepSizeLi * steplengthLi                                               ! ...try with smaller step length in same direction
+      steplengthLi = num%stepSizeLi * steplengthLi                                                  ! ...try with smaller step length in same direction
       Liguess      = Liguess_old &
                    + deltaLi * steplengthLi
       cycle LiLoop
@@ -1029,11 +1029,11 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
   logical :: converged_
 
   real(pREAL) :: &
-    formerSubStep
+    formerStep
   integer :: &
     ph, en, sizeDotState
   logical :: todo
-  real(pREAL) :: subFrac,subStep
+  real(pREAL) :: stepFrac,step
   real(pREAL), dimension(3,3) :: &
     subFp0, &
     subFi0, &
@@ -1053,20 +1053,20 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
   subFp0 = phase_mechanical_Fp0(ph)%data(1:3,1:3,en)
   subFi0 = phase_mechanical_Fi0(ph)%data(1:3,1:3,en)
   subF0  = phase_mechanical_F0(ph)%data(1:3,1:3,en)
-  subFrac = 0.0_pREAL
+  stepFrac = 0.0_pREAL
   todo = .true.
-  subStep = 1.0_pREAL/num%subStepSizeCryst
-  converged_ = .false.                                                                              ! pretend failed step of 1/subStepSizeCryst
+  step = 1.0_pREAL/num%stepSizeCryst
+  converged_ = .false.                                                                              ! pretend failed step of 1/stepSizeCryst
 
   todo = .true.
   cutbackLooping: do while (todo)
 
     if (converged_) then
-      formerSubStep = subStep
-      subFrac = subFrac + subStep
-      subStep = min(1.0_pREAL - subFrac, num%stepIncreaseCryst * subStep)
+      formerStep = step
+      stepFrac = stepFrac + step
+      step = min(1.0_pREAL - stepFrac, num%stepIncreaseCryst * step)
 
-      todo = subStep > 0.0_pREAL                        ! still time left to integrate on?
+      todo = step > 0.0_pREAL                        ! still time left to integrate on?
 
       if (todo) then
         subF0  = subF
@@ -1079,16 +1079,16 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
 !--------------------------------------------------------------------------------------------------
 !  cut back (reduced time and restore)
     else
-      subStep       = num%subStepSizeCryst * subStep
+      step = num%stepSizeCryst * step
       phase_mechanical_Fp(ph)%data(1:3,1:3,en) = subFp0
       phase_mechanical_Fi(ph)%data(1:3,1:3,en) = subFi0
       phase_mechanical_S(ph)%data(1:3,1:3,en) = phase_mechanical_S0(ph)%data(1:3,1:3,en)
-      if (subStep < 1.0_pREAL) then                                                                 ! actual (not initial) cutback
+      if (step < 1.0_pREAL) then                                                                    ! actual (not initial) cutback
         phase_mechanical_Lp(ph)%data(1:3,1:3,en) = subLp0
         phase_mechanical_Li(ph)%data(1:3,1:3,en) = subLi0
       end if
       plasticState(ph)%state(:,en) = subState0
-      todo = subStep > num%subStepMinCryst                                                          ! still on track or already done (beyond repair)
+      todo = step > num%stepMinCryst                                                                ! still on track or already done (beyond repair)
     end if
 
 !--------------------------------------------------------------------------------------------------
@@ -1096,8 +1096,8 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
     if (todo) then
       sizeDotState = plasticState(ph)%sizeDotState
       subF = subF0 &
-           + subStep * (phase_mechanical_F(ph)%data(1:3,1:3,en) - phase_mechanical_F0(ph)%data(1:3,1:3,en))
-      converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * Delta_t,ph,en)
+           + step * (phase_mechanical_F(ph)%data(1:3,1:3,en) - phase_mechanical_F0(ph)%data(1:3,1:3,en))
+      converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),step * Delta_t,ph,en)
     end if
 
   end do cutbackLooping

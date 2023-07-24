@@ -65,10 +65,10 @@ module phase
       nState, &                                                                                     !< state loop limit
       nStress                                                                                       !< stress loop limit
     real(pREAL) :: &
-      subStepMinCryst, &                                                                            !< minimum (relative) size of sub-step allowed during cutback
-      subStepSizeCryst, &                                                                           !< size of first substep when cutback
-      subStepSizeLp, &                                                                              !< size of first substep when cutback in Lp calculation
-      subStepSizeLi, &                                                                              !< size of first substep when cutback in Li calculation
+      stepMinCryst, &                                                                               !< minimum (relative) size of sub-step allowed during cutback
+      stepSizeCryst, &                                                                              !< size of first substep when cutback
+      stepSizeLp, &                                                                                 !< size of first substep when cutback in Lp calculation
+      stepSizeLi, &                                                                                 !< size of first substep when cutback in Li calculation
       stepIncreaseCryst, &                                                                          !< increase of next substep size when previous substep converged
       rtol_crystalliteState, &
       rtol_Lp, &                                                                                    !< relative tolerance in stress loop for Lp
