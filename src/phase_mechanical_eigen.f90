@@ -3,9 +3,6 @@ submodule(phase:mechanical) eigen
   integer, dimension(:), allocatable :: &
     Nmodels
 
-  integer(kind(UNDEFINED)),  dimension(:,:), allocatable :: &
-    model
-
   interface
 
     module function thermalexpansion_init(kinematics_length) result(myKinematics)
@@ -55,10 +52,10 @@ module subroutine eigen_init(phases)
     Nmodels(ph) = kinematics%length
   end do
 
-  allocate(model(maxval(Nmodels),phases%length), source = UNDEFINED)
+  allocate(mechanical_eigen_kinematics_type(maxval(Nmodels),phases%length), source = UNDEFINED)
 
   if (maxval(Nmodels) /= 0) then
-    where(thermalexpansion_init(maxval(Nmodels))) model = MECHANICAL_EIGEN_THERMALEXPANSION
+    where(thermalexpansion_init(maxval(Nmodels))) mechanical_eigen_kinematics_type = MECHANICAL_EIGEN_THERMALEXPANSION
   end if
 
 end subroutine eigen_init
@@ -164,7 +161,7 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
 
 
   KinematicsLoop: do k = 1, Nmodels(ph)
-    kinematicsType: select case (model(k,ph))
+    kinematicsType: select case (mechanical_eigen_kinematics_type(k,ph))
       case (MECHANICAL_EIGEN_THERMALEXPANSION) kinematicsType
         call thermalexpansion_LiAndItsTangent(my_Li, my_dLi_dS, ph,en)
         Li = Li + my_Li

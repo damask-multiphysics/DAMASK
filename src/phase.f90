@@ -68,9 +68,10 @@ module phase
 
   integer(kind(UNDEFINED)), dimension(:), allocatable :: &
     mechanical_plasticity_type, &                                                                   !< plasticity of each phase
-    damage_type                                                                                     !< active sources mechanisms of each phase
+    damage_type                                                                                     !< damage type of each phase
   integer(kind(UNDEFINED)),  dimension(:,:), allocatable :: &
-    thermal_source_type
+    thermal_source_type, &
+    mechanical_eigen_kinematics_type
 
   character(len=2), allocatable, dimension(:) :: phase_lattice
   real(pREAL),      allocatable, dimension(:) :: phase_cOverA

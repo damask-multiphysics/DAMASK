@@ -195,13 +195,14 @@ module function phase_f_phi(phi,co,ce) result(f)
     ph, &
     en
 
+
   ph = material_ID_phase(co,ce)
   en = material_entry_phase(co,ce)
 
   select case(damage_type(ph))
     case(DAMAGE_ISOBRITTLE,DAMAGE_ANISOBRITTLE)
       f = 1.0_pREAL &
-        - 2.0_pREAL * phi*damageState(ph)%state(1,en)
+        - 2.0_pREAL * phi*damageState(ph)%state(1,en)                                               ! ToDo: MD: seems to be phi**2
     case default
       f = 0.0_pREAL
   end select
