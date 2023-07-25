@@ -145,9 +145,8 @@ module homogenization
       real(pREAL) :: f
     end function homogenization_f_T
 
-    module subroutine homogenization_thermal_setField(T,dot_T, ce)
-      integer, intent(in) :: ce
-      real(pREAL),   intent(in) :: T, dot_T
+    module subroutine homogenization_thermal_setField(T,dot_T)
+      real(pREAL), dimension(:),  intent(in) :: T, dot_T
     end subroutine homogenization_thermal_setField
 
     module function homogenization_damage_active() result(active)
@@ -170,10 +169,8 @@ module homogenization
       real(pREAL) :: f
     end function homogenization_f_phi
 
-    module subroutine homogenization_set_phi(phi,ce)
-      integer, intent(in) :: ce
-      real(pREAL),   intent(in) :: &
-        phi
+    module subroutine homogenization_set_phi(phi)
+      real(pREAL), dimension(:), intent(in) :: phi
     end subroutine homogenization_set_phi
 
   end interface

@@ -124,7 +124,7 @@ module spectral_utilities
     utilities_maskedCompliance, &
     utilities_constitutiveResponse, &
     utilities_calculateRate, &
-    utilities_forwardField, &
+    utilities_forwardTensorField, &
     utilities_updateCoords
 
 contains
@@ -864,7 +864,7 @@ end function utilities_calculateRate
 !> @brief forwards a field with a pointwise given rate, if aim is given,
 !> ensures that the average matches the aim
 !--------------------------------------------------------------------------------------------------
-function utilities_forwardField(Delta_t,field_lastInc,rate,aim)
+function utilities_forwardTensorField(Delta_t,field_lastInc,rate,aim)
 
   real(pREAL), intent(in) :: &
     Delta_t                                                                                         !< Delta_t of current step
@@ -875,22 +875,22 @@ function utilities_forwardField(Delta_t,field_lastInc,rate,aim)
     aim                                                                                             !< average field value aim
 
   real(pREAL),                       dimension(3,3,cells(1),cells(2),cells3) :: &
-    utilities_forwardField
+    utilities_forwardTensorField
   real(pREAL),                       dimension(3,3) :: fieldDiff                                    !< <a + adot*t> - aim
   integer(MPI_INTEGER_KIND) :: err_MPI
 
 
-  utilities_forwardField = field_lastInc + rate*Delta_t
+  utilities_forwardTensorField = field_lastInc + rate*Delta_t
   if (present(aim)) then                                                                            !< correct to match average
-    fieldDiff = sum(sum(sum(utilities_forwardField,dim=5),dim=4),dim=3)*wgt
+    fieldDiff = sum(sum(sum(utilities_forwardTensorField,dim=5),dim=4),dim=3)*wgt
     call MPI_Allreduce(MPI_IN_PLACE,fieldDiff,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
     fieldDiff = fieldDiff - aim
-    utilities_forwardField = utilities_forwardField &
-                           - spread(spread(spread(fieldDiff,3,cells(1)),4,cells(2)),5,cells3)
+    utilities_forwardTensorField = utilities_forwardTensorField &
+                                 - spread(spread(spread(fieldDiff,3,cells(1)),4,cells(2)),5,cells3)
   end if
 
-end function utilities_forwardField
+end function utilities_forwardTensorField
 
 
 !--------------------------------------------------------------------------------------------------

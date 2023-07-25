@@ -408,11 +408,11 @@ subroutine grid_mechanical_spectral_polarization_forward(cutBack,guess,Delta_t,D
   if (stress_BC%myType=='dot_P') P_aim = P_aim &
                                       + merge(.0_pREAL,stress_BC%values,stress_BC%mask)*Delta_t
 
-  F = reshape(utilities_forwardField(Delta_t,F_lastInc,Fdot, &                                      ! estimate of F at end of time+Delta_t that matches rotated F_aim on average
-                                     rotation_BC%rotate(F_aim,active=.true.)),&
+  F = reshape(utilities_forwardTensorField(Delta_t,F_lastInc,Fdot, &                                ! estimate of F at end of time+Delta_t that matches rotated F_aim on average
+                                           rotation_BC%rotate(F_aim,active=.true.)),&
               [9,cells(1),cells(2),cells3])
   if (guess) then
-     F_tau = reshape(Utilities_forwardField(Delta_t,F_tau_lastInc,F_taudot), &
+     F_tau = reshape(Utilities_forwardTensorField(Delta_t,F_tau_lastInc,F_taudot), &
                      [9,cells(1),cells(2),cells3])                                                  ! does not have any average value as boundary condition
    else
     do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
