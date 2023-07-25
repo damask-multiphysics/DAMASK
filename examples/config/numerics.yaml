@@ -73,23 +73,23 @@ mesh:
 
 phase:
   mechanical:
-    step_min:                  1.0e-3       # minimum (relative) size of step allowed during cutback in phase state calculation
-    r_cutback_step:            0.25         # factor to decrease size of step when cutback introduced in phase state calculation (value between 0 and 1)
-    r_increase_step:           1.5          # factor to increase size of next step when previous step converged in phase state calculation
+    r_cutback_min:             1.0e-3       # minimum (relative) size of step allowed during cutback in phase state calculation
+    r_cutback:                 0.25         # factor to decrease size of step when cutback introduced in phase state calculation (value between 0 and 1)
+    r_increase:                1.5          # factor to increase size of next step when previous step converged in phase state calculation
     eps_rel_state:             1.0e-6       # relative tolerance in phase state loop (abs tol provided by constitutive law)
     N_iter_state_max:          10           # state loop limit
 
     plastic:
-      r_cutback_step_Lp:       0.5          # factor to decrease the step when cutback in Lp calculation
-      eps_rel_Lp:              1.0e-6       # relative tolerance in phase stress loop (Lp residuum)
-      eps_abs_Lp:              1.0e-8       # absolute tolerance in phase stress loop (Lp residuum)
+      r_linesearch_Lp:         0.5          # factor to decrease the step due to non-convergence in Lp calculation
+      eps_rel_Lp:              1.0e-6       # relative tolerance in Lp residuum
+      eps_abs_Lp:              1.0e-8       # absolute tolerance in Lp residuum
       N_iter_Lp_max:           40           # stress loop limit for Lp
       f_update_jacobi_Lp:      1            # frequency of Jacobian update of residuum in Lp
       integrator_state:        FPI          # integration method (FPI = Fixed Point Iteration, Euler = Euler, AdaptiveEuler = Adaptive Euler, RK4 = classical 4th order Runge-Kutta, RKCK45 = 5th order Runge-Kutta Cash-Karp)
     eigen:
-      r_cutback_step_Li:       0.5          # factor to decrease the step when cutback in Li calculation
-      eps_rel_Li:              1.0e-6       # relative tolerance in phase stress loop (Li residuum)
-      eps_abs_Li:              1.0e-8       # absolute tolerance in phase stress loop (Li residuum)
+      r_linesearch_Li:         0.5          # factor to decrease the step due to non-convergence in Li calculation
+      eps_rel_Li:              1.0e-6       # relative tolerance in Li residuum
+      eps_abs_Li:              1.0e-8       # absolute tolerance in Li residuum
       N_iter_Li_max:           40           # stress loop limit for Li
       f_update_jacobi_Li:      1            # frequency of Jacobian update of residuum in Li
 
