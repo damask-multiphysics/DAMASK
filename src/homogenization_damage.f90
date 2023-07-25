@@ -151,20 +151,19 @@ end function homogenization_f_phi
 !--------------------------------------------------------------------------------------------------
 !> @brief Set damage field.
 !--------------------------------------------------------------------------------------------------
-module subroutine homogenization_set_phi(phi,ce)
+module subroutine homogenization_set_phi(phi)
 
-  integer, intent(in) :: ce
-  real(pREAL), intent(in) :: phi
+  real(pREAL), dimension(:), intent(in) :: phi
 
-  integer :: &
-    ho, &
-    en
+  integer :: ho, en, ce
 
 
-  ho = material_ID_homogenization(ce)
-  en = material_entry_homogenization(ce)
-  damagestate_h(ho)%state(1,en) = phi
-  current(ho)%phi(en) = phi
+  do ce=lbound(phi,1), ubound(phi,1)
+    ho = material_ID_homogenization(ce)
+    en = material_entry_homogenization(ce)
+    damagestate_h(ho)%state(1,en) = phi(ce)
+    current(ho)%phi(en) = phi(ce)
+  end do
 
 end subroutine homogenization_set_phi
 

@@ -5,7 +5,7 @@
 !> @brief material subroutine for thermal source due to plastic dissipation
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(phase:thermal) dissipation
+submodule(phase:thermal) source_dissipation
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pREAL) :: &
@@ -22,10 +22,10 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function dissipation_init(source_length) result(mySources)
+module function source_dissipation_init(maxNsources) result(isMySource)
 
-  integer, intent(in)                  :: source_length
-  logical, dimension(:,:), allocatable :: mySources
+  integer, intent(in)                  :: maxNsources
+  logical, dimension(:,:), allocatable :: isMySource
 
   type(tDict), pointer :: &
     phases, &
@@ -35,26 +35,29 @@ module function dissipation_init(source_length) result(mySources)
   class(tList), pointer :: &
     sources
   character(len=:), allocatable :: refs
-  integer :: so,Nmembers,ph
+  integer :: ph,Nmembers,so,Nsources
 
 
-  mySources = thermal_active('dissipation',source_length)
-  if (count(mySources) == 0) return
+  isMySource = thermal_active('dissipation',maxNsources)
+  if (count(isMySource) == 0) return
 
-  print'(/,1x,a)', '<<<+-  phase:thermal:dissipation init  -+>>>'
-  print'(/,a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  phase:thermal:source_dissipation init  -+>>>'
+  print'(/,a,i2)', ' # phases: ',count(isMySource); flush(IO_STDOUT)
 
 
   phases => config_material%get_dict('phase')
   allocate(param(phases%length))
 
   do ph = 1, phases%length
+    Nsources = count(isMySource(:,ph))
+    if (Nsources == 0) cycle
+    if (Nsources > 1) call IO_error(600,ext_msg='dissipation')
+    Nmembers = count(material_ID_phase == ph)
     phase => phases%get_dict(ph)
-    if (count(mySources(:,ph)) == 0) cycle !ToDo: error if > 1
     thermal => phase%get_dict('thermal')
     sources => thermal%get_list('source')
     do so = 1, sources%length
-      if (mySources(so,ph)) then
+      if (isMySource(so,ph)) then
         associate(prm  => param(ph))
           src => sources%get_dict(so)
           print'(1x,a,i0,a,i0)', 'phase ',ph,' source ',so
@@ -62,22 +65,21 @@ module function dissipation_init(source_length) result(mySources)
           if (len(refs) > 0) print'(/,1x,a)', refs
 
           prm%kappa = src%get_asReal('kappa')
-          Nmembers = count(material_ID_phase == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,0,0,0)
-
         end associate
+        exit
       end if
     end do
   end do
 
 
-end function dissipation_init
+end function source_dissipation_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Ninstancess dissipation rate
 !--------------------------------------------------------------------------------------------------
-module function dissipation_f_T(ph,en) result(f_T)
+module function source_dissipation_f_T(ph,en) result(f_T)
 
   integer, intent(in) :: ph, en
   real(pREAL) :: &
@@ -91,6 +93,6 @@ module function dissipation_f_T(ph,en) result(f_T)
     f_T = prm%kappa*sum(abs(Mp*mechanical_L_p(ph,en)))
   end associate
 
-end function dissipation_f_T
+end function source_dissipation_f_T
 
-end submodule dissipation
+end submodule source_dissipation

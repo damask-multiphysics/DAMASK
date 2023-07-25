@@ -199,8 +199,8 @@ module function phase_homogenizedC66(ph,en) result(C)
   integer,      intent(in)    :: ph, en
 
 
-  plasticType: select case (phase_plasticity(ph))
-    case (PLASTIC_DISLOTWIN_ID) plasticType
+  plasticType: select case (mechanical_plasticity_type(ph))
+    case (MECHANICAL_PLASTICITY_DISLOTWIN) plasticType
      C = plastic_dislotwin_homogenizedC(ph,en)
     case default plasticType
      C = elastic_C66(ph,en)

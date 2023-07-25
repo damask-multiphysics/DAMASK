@@ -218,8 +218,10 @@ grid_performance:
           git push
         fi
 
+
+###################################################################################################
 update_plots:
-  stage: statistics
+  stage: finalize
   script:
     - cd $(mktemp -d)
     - git clone -q git@git.damask.mpie.de:damask/statistics.git .
@@ -234,8 +236,6 @@ update_plots:
   only:
     - development
 
-
-###################################################################################################
 update_revision:
   stage: finalize
   before_script:

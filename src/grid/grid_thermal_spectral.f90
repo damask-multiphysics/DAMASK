@@ -74,7 +74,7 @@ subroutine grid_thermal_spectral_init(num_grid)
   type(tDict), pointer, intent(in) :: num_grid
 
   integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: cells3_global
-  integer :: i, j, k, ce
+  integer :: ce
   DM :: DM_thermal
   real(pREAL), dimension(:,:,:), pointer :: T                                                       ! 0-indexed
   integer(MPI_INTEGER_KIND) :: err_MPI
@@ -86,7 +86,6 @@ subroutine grid_thermal_spectral_init(num_grid)
   character(len=:), allocatable :: &
     extmsg, &
     petsc_options
-
 
 
   print'(/,1x,a)', '<<<+-  grid_thermal_spectral init  -+>>>'
@@ -171,11 +170,8 @@ subroutine grid_thermal_spectral_init(num_grid)
     dotT_lastInc = 0.0_pREAL * T_lastInc
   end if restartRead
 
-  ce = 0
-  do k = 0, cells3-1; do j = 0, cells(2)-1; do i = 0, cells(1)-1
-    ce = ce + 1
-    call homogenization_thermal_setField(T(i,j,k),0.0_pREAL,ce)
-  end do; end do; end do
+  call homogenization_thermal_setField(reshape(T,[product(cells(1:2))*cells3]), &
+                                       [(0.0_pReal, ce = 1,product(cells(1:2))*cells3)])
 
   call DMDAVecRestoreArrayF90(DM_thermal,T_PETSc,T,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -204,8 +200,6 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   SNESConvergedReason :: reason
 
 
-  solution%converged = .false.
-
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
   params%Delta_t = Delta_t
@@ -233,13 +227,8 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   T_stagInc = T
 
-!--------------------------------------------------------------------------------------------------
-! updating thermal state
-  ce = 0
-  do k = 0, cells3-1;  do j = 0, cells(2)-1;  do i = 0, cells(1)-1
-    ce = ce + 1
-    call homogenization_thermal_setField(T(i,j,k),(T(i,j,k)-T_lastInc(i+1,j+1,k+1))/params%Delta_t,ce)
-  end do; end do; end do
+  call homogenization_thermal_setField(reshape(T,[product(cells(1:2))*cells3]), &
+                                       reshape(T-T_lastInc,[product(cells(1:2))*cells3])/params%Delta_t)
 
   call DMDAVecRestoreArrayF90(DM_thermal,T_PETSc,T,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -260,7 +249,6 @@ subroutine grid_thermal_spectral_forward(cutBack)
 
   logical, intent(in) :: cutBack
 
-  integer :: i, j, k, ce
   DM :: DM_thermal
   real(pREAL),  dimension(:,:,:), pointer :: T                                                      ! 0-indexed
   PetscErrorCode :: err_PETSc
@@ -272,11 +260,8 @@ subroutine grid_thermal_spectral_forward(cutBack)
   CHKERRQ(err_PETSc)
 
   if (cutBack) then
-    ce = 0
-    do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
-      ce = ce + 1
-      call homogenization_thermal_setField(T_lastInc(i,j,k),dotT_lastInc(i,j,k),ce)
-    end do; end do; end do
+    call homogenization_thermal_setField(reshape(T_lastInc,[product(cells(1:2))*cells3]), &
+                                         reshape(dotT_lastInc,[product(cells(1:2))*cells3]))
     T = T_lastInc
     T_stagInc = T_lastInc
   else

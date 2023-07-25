@@ -173,15 +173,20 @@ end function homogenization_f_T
 !--------------------------------------------------------------------------------------------------
 !> @brief Set thermal field and its rate (T and dot_T).
 !--------------------------------------------------------------------------------------------------
-module subroutine homogenization_thermal_setField(T,dot_T, ce)
+module subroutine homogenization_thermal_setField(T,dot_T)
 
-  integer, intent(in) :: ce
-  real(pREAL), intent(in) :: T, dot_T
+  real(pREAL), dimension(:), intent(in) :: T, dot_T
+
+  integer :: ho, en, ce
 
 
-  current(material_ID_homogenization(ce))%T(material_entry_homogenization(ce)) = T
-  current(material_ID_homogenization(ce))%dot_T(material_entry_homogenization(ce)) = dot_T
-  call thermal_partition(ce)
+  do ce=max(lbound(T,1),lbound(dot_T,1)), min(ubound(T,1),ubound(dot_T,1))
+    ho = material_ID_homogenization(ce)
+    en = material_entry_homogenization(ce)
+    current(ho)%T(en) = T(ce)
+    current(ho)%dot_T(en) = dot_T(ce)
+    call thermal_partition(ce)
+  end do
 
 end subroutine homogenization_thermal_setField
 

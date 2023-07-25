@@ -9,23 +9,14 @@ submodule(phase) damage
       l_c = 0.0_pREAL                                                                               !< characteristic length
   end type tDamageParameters
 
-  enum, bind(c); enumerator :: &
-    DAMAGE_UNDEFINED_ID, &
-    DAMAGE_ISOBRITTLE_ID, &
-    DAMAGE_ANISOBRITTLE_ID
-  end enum
-
   integer :: phase_damage_maxSizeDotState
 
-
-  type :: tDataContainer
+  type :: tFieldQuantities
     real(pREAL), dimension(:), allocatable :: phi
-  end type tDataContainer
+  end type tFieldQuantities
 
-  integer(kind(DAMAGE_UNDEFINED_ID)),     dimension(:), allocatable :: &
-    phase_damage                                                                                    !< active sources mechanisms of each phase
 
-  type(tDataContainer), dimension(:), allocatable :: current
+  type(tFieldQuantities), dimension(:), allocatable :: current
 
   type(tDamageParameters), dimension(:), allocatable :: param
 
@@ -114,11 +105,11 @@ module subroutine damage_init()
 
   end do
 
-  allocate(phase_damage(phases%length), source = DAMAGE_UNDEFINED_ID)
+  allocate(damage_type(phases%length), source = UNDEFINED)
 
   if (damage_active) then
-    where(isobrittle_init()  ) phase_damage = DAMAGE_ISOBRITTLE_ID
-    where(anisobrittle_init()) phase_damage = DAMAGE_ANISOBRITTLE_ID
+    where(isobrittle_init()  ) damage_type = DAMAGE_ISOBRITTLE
+    where(anisobrittle_init()) damage_type = DAMAGE_ANISOBRITTLE
   end if
 
   phase_damage_maxSizeDotState = maxval(damageState%sizeDotState)
@@ -159,8 +150,8 @@ module function phase_damage_C66(C66,ph,en) result(C66_degraded)
   real(pREAL), dimension(6,6) :: C66_degraded
 
 
-  damageType: select case (phase_damage(ph))
-    case (DAMAGE_ISOBRITTLE_ID) damageType
+  damageType: select case (damage_type(ph))
+    case (DAMAGE_ISOBRITTLE) damageType
       C66_degraded = C66 * damage_phi(ph,en)**2
     case default damageType
       C66_degraded = C66
@@ -204,13 +195,14 @@ module function phase_f_phi(phi,co,ce) result(f)
     ph, &
     en
 
+
   ph = material_ID_phase(co,ce)
   en = material_entry_phase(co,ce)
 
-  select case(phase_damage(ph))
-    case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ANISOBRITTLE_ID)
+  select case(damage_type(ph))
+    case(DAMAGE_ISOBRITTLE,DAMAGE_ANISOBRITTLE)
       f = 1.0_pREAL &
-        - 2.0_pREAL * phi*damageState(ph)%state(1,en)
+        - 2.0_pREAL * phi*damageState(ph)%state(1,en)                                               ! ToDo: MD: seems to be phi**2
     case default
       f = 0.0_pREAL
   end select
@@ -318,8 +310,8 @@ module subroutine damage_restartWrite(groupHandle,ph)
   integer, intent(in) :: ph
 
 
-  select case(phase_damage(ph))
-    case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ANISOBRITTLE_ID)
+  select case(damage_type(ph))
+    case(DAMAGE_ISOBRITTLE,DAMAGE_ANISOBRITTLE)
       call HDF5_write(damageState(ph)%state,groupHandle,'omega_damage')
   end select
 
@@ -332,8 +324,8 @@ module subroutine damage_restartRead(groupHandle,ph)
   integer, intent(in) :: ph
 
 
-  select case(phase_damage(ph))
-    case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ANISOBRITTLE_ID)
+  select case(damage_type(ph))
+    case(DAMAGE_ISOBRITTLE,DAMAGE_ANISOBRITTLE)
   call HDF5_read(damageState(ph)%state0,groupHandle,'omega_damage')
   end select
 
@@ -350,15 +342,15 @@ module subroutine damage_result(group,ph)
   integer,          intent(in) :: ph
 
 
-  if (phase_damage(ph) /= DAMAGE_UNDEFINED_ID) &
+  if (damage_type(ph) /= UNDEFINED) &
     call result_closeGroup(result_addGroup(group//'damage'))
 
-  sourceType: select case (phase_damage(ph))
+  sourceType: select case (damage_type(ph))
 
-    case (DAMAGE_ISOBRITTLE_ID) sourceType
+    case (DAMAGE_ISOBRITTLE) sourceType
       call isobrittle_result(ph,group//'damage/')
 
-    case (DAMAGE_ANISOBRITTLE_ID) sourceType
+    case (DAMAGE_ANISOBRITTLE) sourceType
       call anisobrittle_result(ph,group//'damage/')
 
   end select sourceType
@@ -381,9 +373,9 @@ function phase_damage_collectDotState(ph,en) result(broken)
 
   if (damageState(ph)%sizeState > 0) then
 
-    sourceType: select case (phase_damage(ph))
+    sourceType: select case (damage_type(ph))
 
-      case (DAMAGE_ANISOBRITTLE_ID) sourceType
+      case (DAMAGE_ANISOBRITTLE) sourceType
         call anisobrittle_dotState(mechanical_S(ph,en), ph,en) ! ToDo: use M_d
 
     end select sourceType
@@ -446,9 +438,9 @@ function phase_damage_deltaState(Fe, ph, en) result(broken)
 
   if (damageState(ph)%sizeState == 0) return
 
-   sourceType: select case (phase_damage(ph))
+   sourceType: select case (damage_type(ph))
 
-    case (DAMAGE_ISOBRITTLE_ID) sourceType
+    case (DAMAGE_ISOBRITTLE) sourceType
       call isobrittle_deltaState(phase_homogenizedC66(ph,en), Fe, ph,en)
       broken = any(IEEE_is_NaN(damageState(ph)%deltaState(:,en)))
       if (.not. broken) then
