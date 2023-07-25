@@ -71,19 +71,26 @@ mesh:
   eps_struct_atol:             1.0e-10      # absolute tolerance for mechanical equilibrium
   eps_struct_rtol:             1.0e-4       # relative tolerance for mechanical equilibrium
 
-crystallite:
-  subStepMin:                  1.0e-3       # minimum (relative) size of sub-step allowed during cutback in crystallite
-  subStepSize:                 0.25         # size of substep when cutback introduced in crystallite (value between 0 and 1)
-  stepIncrease:                1.5          # increase of next substep size when previous substep converged in crystallite (value higher than 1)
-  subStepSizeLp:               0.5          # size of first substep when cutback in Lp calculation
-  subStepSizeLi:               0.5          # size of first substep when cutback in Li calculation
-  nState:                      10           # state loop limit
-  nStress:                     40           # stress loop limit
-  rtol_State:                  1.0e-6       # relative tolerance in crystallite state loop (abs tol provided by constitutive law)
-  rtol_Stress:                 1.0e-6       # relative tolerance in crystallite stress loop (Lp residuum)
-  atol_Stress:                 1.0e-8       # absolute tolerance in crystallite stress loop (Lp residuum!)
-  integrator:                  FPI          # integration method (FPI = Fixed Point Iteration, Euler = Euler, AdaptiveEuler = Adaptive Euler, RK4 = classical 4th order Runge-Kutta, RKCK45 = 5th order Runge-Kutta Cash-Karp)
-  iJacoLpresiduum:             1            # frequency of Jacobian update of residuum in Lp
+phase:
+  mechanical:
+    step_min:                  1.0e-3       # minimum (relative) size of step allowed during cutback in crystallite
+    step_size:                 0.25         # size of step when cutback introduced in crystallite (value between 0 and 1)
+    step_increase:             1.5          # increase of next step size when previous step converged in crystallite (value higher than 1)
+    eps_rel_state:             1.0e-6       # relative tolerance in crystallite state loop (abs tol provided by constitutive law)
+    N_iter_state_max:          10           # state loop limit
+    N_iter_stress_max:         40           # stress loop limit
+
+    plastic:
+      step_size_Lp:            0.5          # size of first substep when cutback in Lp calculation
+      eps_rel_Lp:              1.0e-6       # relative tolerance in crystallite stress loop (Lp residuum)
+      eps_abs_Lp:              1.0e-8       # absolute tolerance in crystallite stress loop (Lp residuum!)
+      f_update_jacobi_Lp:      1            # frequency of Jacobian update of residuum in Lp
+      integrator_state:        FPI          # integration method (FPI = Fixed Point Iteration, Euler = Euler, AdaptiveEuler = Adaptive Euler, RK4 = classical 4th order Runge-Kutta, RKCK45 = 5th order Runge-Kutta Cash-Karp)
+    eigen:
+      step_size_Li:            0.5          # size of first substep when cutback in Li calculation
+      eps_rel_Li:              1.0e-6       # relative tolerance in crystallite stress loop (Li residuum)
+      eps_abs_Li:              1.0e-8       # absolute tolerance in crystallite stress loop (Li residuum!)
+      f_update_jacobi_Li:      1            # frequency of Jacobian update of residuum in Li
 
 commercialFEM:
   unitlength:                  1            # physical length of one computational length unit
