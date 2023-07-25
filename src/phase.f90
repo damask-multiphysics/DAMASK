@@ -86,7 +86,8 @@ module phase
       iJacoLpresiduum, &                                                                            !< frequency of Jacobian update of residuum in Lp
       iJacoLiresiduum, &                                                                            !< frequency of Jacobian update of residuum in Li
       nState, &                                                                                     !< state loop limit
-      nStress                                                                                       !< stress loop limit
+      nStress_Lp, &                                                                                 !< stress loop limit for Lp
+      nStress_Li                                                                                    !< stress loop limit for Li
     real(pREAL) :: &
       stepMinCryst, &                                                                               !< minimum (relative) size of sub-step allowed during cutback
       stepSizeCryst, &                                                                              !< size of first substep when cutback

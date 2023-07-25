@@ -278,34 +278,36 @@ module subroutine mechanical_init(phases, num_mech)
   num_mech_eigen   => num_mech%get_dict('eigen',   defaultVal=emptyDict)
 
   num%stepMinCryst           = num_mech%get_asReal         ('step_min',           defaultVal=1.0e-3_pREAL)
-  num%stepSizeCryst          = num_mech%get_asReal         ('step_size',          defaultVal=0.25_pREAL)
-  num%stepIncreaseCryst      = num_mech%get_asReal         ('step_increase',      defaultVal=1.5_pREAL)
+  num%stepSizeCryst          = num_mech%get_asReal         ('r_cutback_step',     defaultVal=0.25_pREAL)
+  num%stepIncreaseCryst      = num_mech%get_asReal         ('r_increase_step',    defaultVal=1.5_pREAL)
   num%rtol_crystalliteState  = num_mech%get_asReal         ('eps_rel_state',      defaultVal=1.0e-6_pREAL)
   num%nState                 = num_mech%get_asInt          ('N_iter_state_max',   defaultVal=20)
-  num%nStress                = num_mech%get_asInt          ('N_iter_stress_max',  defaultVal=40)
-  num%stepSizeLp             = num_mech_plastic%get_asReal ('step_size_Lp',       defaultVal=0.5_pREAL)
+  num%nStress_Lp             = num_mech_plastic%get_asInt  ('N_iter_Lp_max',      defaultVal=40)
+  num%stepSizeLp             = num_mech_plastic%get_asReal ('r_cutback_step_Lp',  defaultVal=0.5_pREAL)
   num%rtol_Lp                = num_mech_plastic%get_asReal ('eps_rel_Lp',         defaultVal=1.0e-6_pREAL)
   num%atol_Lp                = num_mech_plastic%get_asReal ('eps_abs_Lp',         defaultVal=1.0e-8_pREAL)
   num%iJacoLpresiduum        = num_mech_plastic%get_asInt  ('f_update_jacobi_Lp', defaultVal=1)
-  num%stepSizeLi             = num_mech_eigen%get_asReal   ('step_size_Li',       defaultVal=0.5_pREAL)
+  num%nStress_Li             = num_mech_eigen%get_asInt    ('N_iter_Li_max',      defaultVal=40)
+  num%stepSizeLi             = num_mech_eigen%get_asReal   ('r_cutback_step_Li',  defaultVal=0.5_pREAL)
   num%rtol_Li                = num_mech_eigen%get_asReal   ('eps_rel_Li',         defaultVal=num%rtol_Lp)
   num%atol_Li                = num_mech_eigen%get_asReal   ('eps_abs_Li',         defaultVal=num%atol_Lp)
   num%iJacoLiresiduum        = num_mech_eigen%get_asInt    ('f_update_jacobi_Li', defaultVal=num%iJacoLpresiduum)
 
   extmsg = ''
   if (num%stepMinCryst   <= 0.0_pREAL)     extmsg = trim(extmsg)//' sub_step_min'
-  if (num%stepSizeCryst  <= 0.0_pREAL)     extmsg = trim(extmsg)//' sub_step_size'
-  if (num%stepIncreaseCryst <= 0.0_pREAL)  extmsg = trim(extmsg)//' step_increase'
-  if (num%stepSizeLp <= 0.0_pREAL)         extmsg = trim(extmsg)//' sub_step_size_Lp'
-  if (num%stepSizeLi <= 0.0_pREAL)         extmsg = trim(extmsg)//' sub_step_size_Li'
+  if (num%stepSizeCryst  <= 0.0_pREAL)     extmsg = trim(extmsg)//' r_cutback_step'
+  if (num%stepIncreaseCryst <= 0.0_pREAL)  extmsg = trim(extmsg)//' r_increase_step'
+  if (num%stepSizeLp <= 0.0_pREAL)         extmsg = trim(extmsg)//' r_cutback_step_Lp'
+  if (num%stepSizeLi <= 0.0_pREAL)         extmsg = trim(extmsg)//' r_cutback_step_Li'
   if (num%rtol_Lp <= 0.0_pREAL)            extmsg = trim(extmsg)//' epl_rel_Lp'
   if (num%atol_Lp <= 0.0_pREAL)            extmsg = trim(extmsg)//' eps_abs_Lp'
   if (num%rtol_Li <= 0.0_pREAL)            extmsg = trim(extmsg)//' eps_rel_Li'
   if (num%atol_Li <= 0.0_pREAL)            extmsg = trim(extmsg)//' eps_abs_Li'
-  if (num%iJacoLpresiduum < 1)             extmsg = trim(extmsg)//' f_jacobi_residuum_update_Lp'
-  if (num%iJacoLiresiduum < 1)             extmsg = trim(extmsg)//' f_jacobi_residuum_update_Li'
+  if (num%iJacoLpresiduum < 1)             extmsg = trim(extmsg)//' f_update_jacobi_Lp'
+  if (num%iJacoLiresiduum < 1)             extmsg = trim(extmsg)//' f_update_jacobi_Li'
   if (num%nState  < 1)                     extmsg = trim(extmsg)//' N_iter_state_max'
-  if (num%nStress < 1)                     extmsg = trim(extmsg)//' N_iter_stress_max'
+  if (num%nStress_Lp < 1)                  extmsg = trim(extmsg)//' N_iter_Lp_max'
+  if (num%nStress_Li < 1)                  extmsg = trim(extmsg)//' N_iter_Li_max'
 
   if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 
@@ -452,7 +454,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
   NiterationStressLi = 0
   LiLoop: do
     NiterationStressLi = NiterationStressLi + 1
-    if (NiterationStressLi>num%nStress) return ! error
+    if (NiterationStressLi>num%nStress_Li) return ! error
 
     invFi_new = matmul(invFi_current,math_I3 - Delta_t*Liguess)
     Fi_new    = math_inv33(invFi_new)
@@ -465,7 +467,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
     NiterationStressLp = 0
     LpLoop: do
       NiterationStressLp = NiterationStressLp + 1
-      if (NiterationStressLp>num%nStress) return ! error
+      if (NiterationStressLp>num%nStress_Lp) return ! error
 
       B  = math_I3 - Delta_t*Lpguess
       Fe = matmul(matmul(A,B), invFi_new)
