@@ -84,17 +84,21 @@ module phase
   type :: tNumerics
     integer :: &
       iJacoLpresiduum, &                                                                            !< frequency of Jacobian update of residuum in Lp
+      iJacoLiresiduum, &                                                                            !< frequency of Jacobian update of residuum in Li
       nState, &                                                                                     !< state loop limit
-      nStress                                                                                       !< stress loop limit
+      nStress_Lp, &                                                                                 !< stress loop limit for Lp
+      nStress_Li                                                                                    !< stress loop limit for Li
     real(pREAL) :: &
-      subStepMinCryst, &                                                                            !< minimum (relative) size of sub-step allowed during cutback
-      subStepSizeCryst, &                                                                           !< size of first substep when cutback
-      subStepSizeLp, &                                                                              !< size of first substep when cutback in Lp calculation
-      subStepSizeLi, &                                                                              !< size of first substep when cutback in Li calculation
+      stepMinCryst, &                                                                               !< minimum (relative) size of sub-step allowed during cutback
+      stepSizeCryst, &                                                                              !< size of first substep when cutback
+      stepSizeLp, &                                                                                 !< size of first substep when cutback in Lp calculation
+      stepSizeLi, &                                                                                 !< size of first substep when cutback in Li calculation
       stepIncreaseCryst, &                                                                          !< increase of next substep size when previous substep converged
-      rtol_crystalliteState, &                                                                      !< relative tolerance in state loop
-      rtol_crystalliteStress, &                                                                     !< relative tolerance in stress loop
-      atol_crystalliteStress                                                                        !< absolute tolerance in stress loop
+      rtol_crystalliteState, &
+      rtol_Lp, &                                                                                    !< relative tolerance in stress loop for Lp
+      atol_Lp, &                                                                                    !< absolute tolerance in stress loop for Lp
+      rtol_Li, &                                                                                    !< relative tolerance in stress loop for Li
+      atol_Li                                                                                       !< absolute tolerance in stress loop for Li
   end type tNumerics
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
@@ -108,8 +112,8 @@ module phase
   interface
 
 ! == cleaned:begin =================================================================================
-    module subroutine mechanical_init(phases)
-      type(tDict), pointer :: phases
+    module subroutine mechanical_init(phases,num_mech)
+      type(tDict), pointer :: phases, num_mech
     end subroutine mechanical_init
 
     module subroutine damage_init
@@ -404,7 +408,9 @@ subroutine phase_init
     ph, ce, co, ma
   type(tDict), pointer :: &
     phases, &
-    phase
+    phase, &
+    num_phase, &
+    num_mech
   character(len=:), allocatable :: refs
 
 
@@ -443,7 +449,10 @@ subroutine phase_init
     phase_O(ph)%data = phase_O_0(ph)%data
   end do
 
-  call mechanical_init(phases)
+  num_phase => config_numerics%get_dict('phase',defaultVal=emptyDict)
+  num_mech  => num_phase%get_dict('mechanical', defaultVal=emptyDict)
+
+  call mechanical_init(phases,num_mech)
   call damage_init()
   call thermal_init(phases)
 
@@ -554,39 +563,8 @@ subroutine crystallite_init()
     el, &                                                                                           !< counter in element loop
     en, ph
   type(tDict), pointer :: &
-    num_crystallite, &
+    num_phase, &
     phases
-  character(len=:), allocatable :: extmsg
-
-
-  num_crystallite => config_numerics%get_dict('crystallite',defaultVal=emptyDict)
-
-  num%subStepMinCryst        = num_crystallite%get_asReal ('subStepMin',       defaultVal=1.0e-3_pREAL)
-  num%subStepSizeCryst       = num_crystallite%get_asReal ('subStepSize',      defaultVal=0.25_pREAL)
-  num%stepIncreaseCryst      = num_crystallite%get_asReal ('stepIncrease',     defaultVal=1.5_pREAL)
-  num%subStepSizeLp          = num_crystallite%get_asReal ('subStepSizeLp',    defaultVal=0.5_pREAL)
-  num%subStepSizeLi          = num_crystallite%get_asReal ('subStepSizeLi',    defaultVal=0.5_pREAL)
-  num%rtol_crystalliteState  = num_crystallite%get_asReal ('rtol_State',       defaultVal=1.0e-6_pREAL)
-  num%rtol_crystalliteStress = num_crystallite%get_asReal ('rtol_Stress',      defaultVal=1.0e-6_pREAL)
-  num%atol_crystalliteStress = num_crystallite%get_asReal ('atol_Stress',      defaultVal=1.0e-8_pREAL)
-  num%iJacoLpresiduum        = num_crystallite%get_asInt  ('iJacoLpresiduum',  defaultVal=1)
-  num%nState                 = num_crystallite%get_asInt  ('nState',           defaultVal=20)
-  num%nStress                = num_crystallite%get_asInt  ('nStress',          defaultVal=40)
-
-  extmsg = ''
-  if (num%subStepMinCryst   <= 0.0_pREAL)      extmsg = trim(extmsg)//' subStepMinCryst'
-  if (num%subStepSizeCryst  <= 0.0_pREAL)      extmsg = trim(extmsg)//' subStepSizeCryst'
-  if (num%stepIncreaseCryst <= 0.0_pREAL)      extmsg = trim(extmsg)//' stepIncreaseCryst'
-  if (num%subStepSizeLp <= 0.0_pREAL)          extmsg = trim(extmsg)//' subStepSizeLp'
-  if (num%subStepSizeLi <= 0.0_pREAL)          extmsg = trim(extmsg)//' subStepSizeLi'
-  if (num%rtol_crystalliteState  <= 0.0_pREAL) extmsg = trim(extmsg)//' rtol_crystalliteState'
-  if (num%rtol_crystalliteStress <= 0.0_pREAL) extmsg = trim(extmsg)//' rtol_crystalliteStress'
-  if (num%atol_crystalliteStress <= 0.0_pREAL) extmsg = trim(extmsg)//' atol_crystalliteStress'
-  if (num%iJacoLpresiduum < 1)                 extmsg = trim(extmsg)//' iJacoLpresiduum'
-  if (num%nState  < 1)                         extmsg = trim(extmsg)//' nState'
-  if (num%nStress < 1)                         extmsg = trim(extmsg)//' nStress'
-
-  if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 
   phases => config_material%get_dict('phase')
 
