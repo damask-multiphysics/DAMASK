@@ -82,12 +82,6 @@ module grid_mechanical_spectral_basic
     err_BC, &                                                                                       !< deviation from stress BC
     err_div                                                                                         !< RMS of div of P
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
-  type(MPI_Status) :: status
-#else
-  integer, dimension(MPI_STATUS_SIZE) :: status
-#endif
-
   integer :: &
     totalIter = 0                                                                                   !< total iteration in current increment
 

@@ -162,7 +162,7 @@ end function parse_flow
 !> @brief Find location of chunk end: ',' '}', or ']'.
 !> @details leaves nested lists ( '[...]' and dicts '{...}') intact
 !--------------------------------------------------------------------------------------------------
-integer function find_end(str,e_char)
+integer(pI64) function find_end(str,e_char)
 
   character(len=*), intent(in) :: str                                                               !< chunk of YAML flow string
   character,        intent(in) :: e_char                                                            !< end of list/dict  ( '}' or ']')
@@ -456,7 +456,7 @@ end subroutine remove_line_break
 !--------------------------------------------------------------------------------------------------
 subroutine list_item_inline(blck,s_blck,inline,offset)
 
-  character(len=*), intent(in)                 :: blck                                                !< YAML in mixed style
+  character(len=*), intent(in)                 :: blck                                              !< YAML in mixed style
   integer,          intent(inout)              :: s_blck
   character(len=:), allocatable, intent(out)   :: inline
   integer,                       intent(inout) :: offset
