@@ -26,6 +26,7 @@ module IO
 
   public :: &
     IO_init, &
+    IO_selfTest, &
     IO_read, &
     IO_readlines, &
     IO_isBlank, &
@@ -55,7 +56,7 @@ subroutine IO_init()
 
   print'(/,1x,a)', '<<<+-  IO init  -+>>>'; flush(IO_STDOUT)
 
-  call selfTest()
+  call IO_selfTest()
 
 end subroutine IO_init
 
@@ -763,7 +764,7 @@ end subroutine panel
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some IO functions.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest()
+subroutine IO_selfTest()
 
   integer, dimension(:), allocatable :: chunkPos
   character(len=:),      allocatable :: str,out
@@ -846,6 +847,6 @@ subroutine selfTest()
   if ('abc,'//IO_EOL//'xxdefg,'//IO_EOL//'xxhij' /= IO_wrapLines('abc,defg, hij',filler='xx',length=4)) &
                                                      error stop 'IO_wrapLines/7'
 
-end subroutine selfTest
+end subroutine IO_selfTest
 
 end module IO

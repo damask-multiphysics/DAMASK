@@ -92,6 +92,7 @@ module rotations
 
   public :: &
     rotations_init, &
+    rotations_selfTest, &
     eu2om
 
 contains
@@ -99,14 +100,14 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Do self test.
 !--------------------------------------------------------------------------------------------------
-subroutine rotations_init
+subroutine rotations_init()
 
   print'(/,1x,a)', '<<<+-  rotations init  -+>>>'; flush(IO_STDOUT)
 
   print'(/,1x,a)', 'D. Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015'
   print'(  1x,a)', 'https://doi.org/10.1088/0965-0393/23/8/083501'
 
-  call selfTest()
+  call rotations_selfTest()
 
 end subroutine rotations_init
 
@@ -757,7 +758,7 @@ end function conjugateQuaternion
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some rotations functions.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest()
+subroutine rotations_selfTest()
 
   type(tRotation)                 :: R
   real(pREAL), dimension(4)       :: qu
@@ -841,7 +842,7 @@ subroutine selfTest()
 
   end function quaternion_equal
 
-end subroutine selfTest
+end subroutine rotations_selfTest
 
 
 end module rotations
