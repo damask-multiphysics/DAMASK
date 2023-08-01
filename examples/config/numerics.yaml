@@ -16,8 +16,8 @@ homogenization:
       dot_a_ref:           1.0e-3       # reference rate of relaxation (about the same magnitude as straining rate, possibly a bit higher)
       dot_a_max:           1.0e+0       # threshold of maximum relaxation vector increment (if exceed this then cutback)
       Delta_V_max:         1.0e-5       # maximum allowable relative volume discrepancy
-      Delta_V_mod:         1.0e+12
-      Delta_V_pow:         5.0
+      Delta_V_modulus:     1.0e+12
+      Delta_V_exponent:    5.0
 
 solver:
   grid:
