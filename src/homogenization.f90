@@ -59,15 +59,6 @@ module homogenization
   real(pREAL),   dimension(:,:,:,:,:), allocatable, public :: & !, protected ::  &
     homogenization_dPdF                                                                             !< tangent of first P--K stress at IP
 
-
-!--------------------------------------------------------------------------------------------------
-  type :: tNumerics
-    integer :: &
-      nMPstate                                                                                      !< materialpoint state loop limit
-  end type tNumerics
-
-  type(tNumerics) :: num
-
 !--------------------------------------------------------------------------------------------------
   interface
 
@@ -214,12 +205,6 @@ subroutine homogenization_init()
   allocate(damageState_h   (size(material_name_homogenization)))
   call parseHomogenization()
 
-  num_homog        => config_numerics%get_dict('homogenization',defaultVal=emptyDict)
-  num_homogGeneric => num_homog%get_dict('generic',defaultVal=emptyDict)
-
-  num%nMPstate = num_homogGeneric%get_asInt('nMPstate',defaultVal=10)
-  if (num%nMPstate < 1) call IO_error(301,ext_msg='nMPstate')
-
   call mechanical_init()
   call thermal_init()
   call damage_init()
@@ -236,7 +221,6 @@ subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
   integer, intent(in) :: &
     cell_start, cell_end
   integer :: &
-    NiterationMPstate, &
     co, ce, ho, en
   logical :: &
     converged
@@ -244,7 +228,7 @@ subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
     doneAndHappy
 
 
-  !$OMP PARALLEL DO PRIVATE(en,ho,co,NiterationMPstate,converged,doneAndHappy)
+  !$OMP PARALLEL DO PRIVATE(en,ho,co,converged,doneAndHappy)
   do ce = cell_start, cell_end
 
     en = material_entry_homogenization(ce)
@@ -258,10 +242,7 @@ subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
 
     doneAndHappy = [.false.,.true.]
 
-    NiterationMPstate = 0
-    convergenceLooping: do while (.not. (terminallyIll .or. doneAndHappy(1)) &
-                                  .and. NiterationMPstate < num%nMPstate)
-      NiterationMPstate = NiterationMPstate + 1
+    convergenceLooping: do while (.not. (terminallyIll .or. doneAndHappy(1)))
 
       call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
       converged = all([(phase_mechanical_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
