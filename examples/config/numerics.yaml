@@ -18,9 +18,6 @@ homogenization:
       Delta_V_max:         1.0e-5       # maximum allowable relative volume discrepancy
       Delta_V_mod:         1.0e+12
       Delta_V_pow:         5.0
-# Don't think generic is required
-  generic:
-    nMPstate:                 10           #  (do we need??) materialpoint state loop limit
 
 solver:
   grid:
