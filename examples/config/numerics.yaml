@@ -40,7 +40,7 @@ solver:
       eps_rel_P: 1.0e-3      # relative tolerance for fulfillment of stress BC
       N_iter_min: 1          # minimum iteration number
       N_iter_max: 100        # maximum iteration number
-      update_gamma: false        # Update Gamma-operator with current dPdF (not possible if memory_efficient=1)
+      update_gamma: false    # Update Gamma-operator with current dPdF (not possible if memory_efficient=1)
 
     FFT:
       memory_efficient: True           # Precalculate Gamma-operator (81 double per point)
@@ -54,16 +54,15 @@ solver:
       eps_abs_curl(F): 1.0e-10 # absolute tolerance for fulfillment of strain compatibility
       eps_rel_curl(F): 5.0e-4  # relative tolerance for fulfillment of strain compatibility
 
-mesh:
-  maxCutBack:                  3            # maximum cut back level (0: 1, 1: 0.5, 2: 0.25, etc)
-  maxStaggeredIter:            10           # max number of field level staggered iterations
-  structorder:                 2            # order of displacement shape functions (when mesh is defined)
-  bbarstabilisation:           false
-  integrationorder:            2            # order of quadrature rule required (when mesh is defined)
-  itmax:                       250          # Maximum iteration number
-  itmin:                       2            # Minimum iteration number
-  eps_struct_atol:             1.0e-10      # absolute tolerance for mechanical equilibrium
-  eps_struct_rtol:             1.0e-4       # relative tolerance for mechanical equilibrium
+  mesh:
+    N_cutback_max:        3            # maximum cut back level (0: 1, 1: 0.5, 2: 0.25, etc)
+    N_staggered_iter_max: 10           # max number of field level staggered iterations
+    p_s:                  2            # order of displacement shape functions (when mesh is defined)
+    bbarstabilisation:    false
+    p_i:                  2            # order of quadrature rule required (when mesh is defined)
+    N_iter_max:           250          # Maximum iteration number
+    eps_abs_div(P):       1.0e-10      # absolute tolerance for mechanical equilibrium
+    eps_rel_div(P):       1.0e-4       # relative tolerance for mechanical equilibrium
 
 phase:
   mechanical:

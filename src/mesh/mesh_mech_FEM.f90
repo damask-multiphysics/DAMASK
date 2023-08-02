@@ -94,9 +94,10 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data
 !--------------------------------------------------------------------------------------------------
-subroutine FEM_mechanical_init(fieldBC)
+subroutine FEM_mechanical_init(fieldBC,num_mesh)
 
-  type(tFieldBC),             intent(in) :: fieldBC
+  type(tFieldBC),       intent(in)       :: fieldBC
+  type(tDict), pointer, intent(in)       :: num_mesh
 
   DM                                     :: mechanical_mesh
   PetscFE                                :: mechFE
@@ -126,23 +127,20 @@ subroutine FEM_mechanical_init(fieldBC)
   character(len=*), parameter            :: prefix = 'mechFE_'
   PetscErrorCode                         :: err_PETSc
   real(pREAL), dimension(3,3) :: devNull
-  type(tDict), pointer :: &
-    num_mesh
 
   print'(/,1x,a)', '<<<+-  FEM_mech init  -+>>>'; flush(IO_STDOUT)
 
 !-----------------------------------------------------------------------------
 ! read numerical parametes and do sanity checks
-  num_mesh => config_numerics%get_dict('mesh',defaultVal=emptyDict)
   num%p_i               = int(num_mesh%get_asInt('p_i',defaultVal = 2),pPETSCINT)
-  num%itmax             = int(num_mesh%get_asInt('itmax',defaultVal=250),pPETSCINT)
+  num%itmax             = int(num_mesh%get_asInt('N_iter_max',defaultVal=250),pPETSCINT)
   num%BBarStabilisation = num_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
-  num%eps_struct_atol   = num_mesh%get_asReal('eps_struct_atol', defaultVal = 1.0e-10_pREAL)
-  num%eps_struct_rtol   = num_mesh%get_asReal('eps_struct_rtol', defaultVal = 1.0e-4_pREAL)
+  num%eps_struct_atol   = num_mesh%get_asReal('eps_abs_div(P)', defaultVal = 1.0e-10_pREAL)
+  num%eps_struct_rtol   = num_mesh%get_asReal('eps_rel_div(P)', defaultVal = 1.0e-4_pREAL)
 
-  if (num%itmax <= 1)                       call IO_error(301,ext_msg='itmax')
-  if (num%eps_struct_rtol <= 0.0_pREAL)     call IO_error(301,ext_msg='eps_struct_rtol')
-  if (num%eps_struct_atol <= 0.0_pREAL)     call IO_error(301,ext_msg='eps_struct_atol')
+  if (num%itmax <= 1)                       call IO_error(301,ext_msg='N_iter_max')
+  if (num%eps_struct_rtol <= 0.0_pREAL)     call IO_error(301,ext_msg='eps_rel_div(P)')
+  if (num%eps_struct_atol <= 0.0_pREAL)     call IO_error(301,ext_msg='eps_abs_div(P)')
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech mesh
