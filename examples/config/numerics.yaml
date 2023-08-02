@@ -1,5 +1,6 @@
 # Available numerical parameters
 # Case sensitive keys
+---
 
 homogenization:
   mechanical:
@@ -21,74 +22,74 @@ homogenization:
 
 solver:
   grid:
-    N_staggered_iter_max: 10           # max number of field level staggered iterations
-    N_cutback_max:        3            # maximum cut back level (0: 1, 1: 0.5, 2: 0.25, etc)
+    N_staggered_iter_max: 10            # max number of field level staggered iterations
+    N_cutback_max:        3             # maximum cut back level (0: 1, 1: 0.5, 2: 0.25, etc)
 
     damage:
-      N_iter_max: 100      # maximum iteration number
-      eps_abs_phi: 1.0e-2  # absolute tolerance for damage evolution
-      eps_rel_phi: 1.0e-6  # relative tolerance for damage evolution
+      N_iter_max: 100                   # maximum iteration number
+      eps_abs_phi: 1.0e-2               # absolute tolerance for damage evolution
+      eps_rel_phi: 1.0e-6               # relative tolerance for damage evolution
+      phi_min:     1.0e-6               # non-zero residual damage
     thermal:
-      N_iter_max: 100      # maximum iteration number
-      eps_abs_T: 1.0e-2    # absolute tolerance for thermal equilibrium
-      eps_rel_T: 1.0e-6    # relative tolerance for thermal equilibrium
+      N_iter_max: 100                   # maximum iteration number
+      eps_abs_T: 1.0e-2                 # absolute tolerance for thermal equilibrium
+      eps_rel_T: 1.0e-6                 # relative tolerance for thermal equilibrium
 
     mechanical:
-      eps_abs_div(P): 1.0e-4 # absolute tolerance for fulfillment of stress equilibrium
-      eps_rel_div(P): 5.0e-4 # relative tolerance for fulfillment of stress equilibrium
-      eps_abs_P: 1.0e3       # absolute tolerance for fulfillment of stress BC
-      eps_rel_P: 1.0e-3      # relative tolerance for fulfillment of stress BC
-      N_iter_min: 1          # minimum iteration number
-      N_iter_max: 100        # maximum iteration number
-      update_gamma: false    # Update Gamma-operator with current dPdF (not possible if memory_efficient=1)
+      eps_abs_div(P): 1.0e-4            # absolute tolerance for fulfillment of stress equilibrium
+      eps_rel_div(P): 5.0e-4            # relative tolerance for fulfillment of stress equilibrium
+      eps_abs_P: 1.0e3                  # absolute tolerance for fulfillment of stress BC
+      eps_rel_P: 1.0e-3                 # relative tolerance for fulfillment of stress BC
+      N_iter_min: 1                     # minimum iteration number
+      N_iter_max: 100                   # maximum iteration number
+      update_gamma: false               # Update Gamma-operator with current dPdF (not possible if memory_efficient=1)
 
     FFT:
-      memory_efficient: True           # Precalculate Gamma-operator (81 double per point)
-      divergence_correction: size+grid # Use size-independent divergence criterion
-      derivative:  continuous          # Approximation used for derivatives in Fourier space
-      FFTW_plan_mode: FFTW_MEASURE # planing-rigor flag, see manual on www.fftw.org
-      FFTW_timelimit: -1.0         # timelimit of plan creation for FFTW, see manual on www.fftw.org. -1.0: disable timelimit
+      memory_efficient: True            # Precalculate Gamma-operator (81 double per point)
+      divergence_correction: size+grid  # Use size-independent divergence criterion
+      derivative:  continuous           # Approximation used for derivatives in Fourier space
+      FFTW_plan_mode: FFTW_MEASURE      # planing-rigor flag, see manual on www.fftw.org
+      FFTW_timelimit: -1.0              # timelimit of plan creation for FFTW, see manual on www.fftw.org. -1.0: disable timelimit
+      alpha: 1.0                        # polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
+      beta: 1.0                         # polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
+      eps_abs_curl(F): 1.0e-10          # absolute tolerance for fulfillment of strain compatibility
+      eps_rel_curl(F): 5.0e-4           # relative tolerance for fulfillment of strain compatibility
       PETSc_options:   -snes_type ngmres -snes_ngmres_anderson # PETSc solver options
-      alpha: 1.0 # polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
-      beta: 1.0 # polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
-      eps_abs_curl(F): 1.0e-10 # absolute tolerance for fulfillment of strain compatibility
-      eps_rel_curl(F): 5.0e-4  # relative tolerance for fulfillment of strain compatibility
 
   mesh:
-    N_cutback_max:        3            # maximum cut back level (0: 1, 1: 0.5, 2: 0.25, etc)
-    N_staggered_iter_max: 10           # max number of field level staggered iterations
-    p_s:                  2            # order of displacement shape functions (when mesh is defined)
+    N_cutback_max:        3             # maximum cut back level (0: 1, 1: 0.5, 2: 0.25, etc)
+    N_staggered_iter_max: 10            # max number of field level staggered iterations
+    p_s:                  2             # order of displacement shape functions (when mesh is defined)
     bbarstabilisation:    false
-    p_i:                  2            # order of quadrature rule required (when mesh is defined)
-    N_iter_max:           250          # Maximum iteration number
-    eps_abs_div(P):       1.0e-10      # absolute tolerance for mechanical equilibrium
-    eps_rel_div(P):       1.0e-4       # relative tolerance for mechanical equilibrium
+    p_i:                  2             # order of quadrature rule required (when mesh is defined)
+    N_iter_max:           250           # Maximum iteration number
+    eps_abs_div(P):       1.0e-10       # absolute tolerance for mechanical equilibrium
+    eps_rel_div(P):       1.0e-4        # relative tolerance for mechanical equilibrium
+
+  Marc:
+    unit_length:          1.0           # physical length of one computational length unit
 
 phase:
   mechanical:
-    r_cutback_min:             1.0e-3       # minimum (relative) size of step allowed during cutback in phase state calculation
-    r_cutback:                 0.25         # factor to decrease size of step when cutback introduced in phase state calculation (value between 0 and 1)
-    r_increase:                1.5          # factor to increase size of next step when previous step converged in phase state calculation
-    eps_rel_state:             1.0e-6       # relative tolerance in phase state loop (abs tol provided by constitutive law)
-    N_iter_state_max:          10           # state loop limit
+    r_cutback_min:             1.0e-3   # minimum (relative) size of step allowed during cutback in phase state calculation
+    r_cutback:                 0.25     # factor to decrease size of step when cutback introduced in phase state calculation (value between 0 and 1)
+    r_increase:                1.5      # factor to increase size of next step when previous step converged in phase state calculation
+    eps_rel_state:             1.0e-6   # relative tolerance in phase state loop (abs tol provided by constitutive law)
+    N_iter_state_max:          10       # state loop limit
 
     plastic:
-      r_linesearch_Lp:         0.5          # factor to decrease the step due to non-convergence in Lp calculation
-      eps_rel_Lp:              1.0e-6       # relative tolerance in Lp residuum
-      eps_abs_Lp:              1.0e-8       # absolute tolerance in Lp residuum
-      N_iter_Lp_max:           40           # stress loop limit for Lp
-      f_update_jacobi_Lp:      1            # frequency of Jacobian update of residuum in Lp
-      integrator_state:        FPI          # integration method (FPI = Fixed Point Iteration, Euler = Euler, AdaptiveEuler = Adaptive Euler, RK4 = classical 4th order Runge-Kutta, RKCK45 = 5th order Runge-Kutta Cash-Karp)
+      r_linesearch_Lp:         0.5      # factor to decrease the step due to non-convergence in Lp calculation
+      eps_rel_Lp:              1.0e-6   # relative tolerance in Lp residuum
+      eps_abs_Lp:              1.0e-8   # absolute tolerance in Lp residuum
+      N_iter_Lp_max:           40       # stress loop limit for Lp
+      f_update_jacobi_Lp:      1        # frequency of Jacobian update of residuum in Lp
+      integrator_state:        FPI      # integration method (FPI = Fixed Point Iteration, Euler = Euler, AdaptiveEuler = Adaptive Euler, RK4 = classical 4th order Runge-Kutta, RKCK45 = 5th order Runge-Kutta Cash-Karp)
     eigen:
-      r_linesearch_Li:         0.5          # factor to decrease the step due to non-convergence in Li calculation
-      eps_rel_Li:              1.0e-6       # relative tolerance in Li residuum
-      eps_abs_Li:              1.0e-8       # absolute tolerance in Li residuum
-      N_iter_Li_max:           40           # stress loop limit for Li
-      f_update_jacobi_Li:      1            # frequency of Jacobian update of residuum in Li
-
-commercialFEM:
-  unitlength:                  1            # physical length of one computational length unit
+      r_linesearch_Li:         0.5      # factor to decrease the step due to non-convergence in Li calculation
+      eps_rel_Li:              1.0e-6   # relative tolerance in Li residuum
+      eps_abs_Li:              1.0e-8   # absolute tolerance in Li residuum
+      N_iter_Li_max:           40       # stress loop limit for Li
+      f_update_jacobi_Li:      1        # frequency of Jacobian update of residuum in Li
 
 generic:
-  random_seed:                 0            # fixed seeding for pseudo-random number generator, Default 0: use random seed.
-  phi_min:                     1.0e-6       # non-zero residual damage.
+  random_seed:                 0        # fixed seeding for pseudo-random number generator, Default 0: use random seed.

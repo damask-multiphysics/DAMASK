@@ -69,13 +69,15 @@ subroutine discretization_Marc_init
     unscaledNormals
 
   type(tDict), pointer :: &
+    num_solver, &
     num_commercialFEM
 
 
   print'(/,a)', ' <<<+-  discretization_Marc init  -+>>>'; flush(6)
 
-  num_commercialFEM => config_numerics%get_dict('commercialFEM',defaultVal = emptyDict)
-  mesh_unitlength = num_commercialFEM%get_asReal('unitlength',defaultVal=1.0_pREAL)                 ! set physical extent of a length unit in mesh
+  num_solver => config_numerics%get_asDict('solver',defaultVal=emptyDict)
+  num_commercialFEM => num_solver%get_asDict('Marc',  defaultVal = emptyDict)
+  mesh_unitlength = num_commercialFEM%get_asReal('unit_length',defaultVal=1.0_pREAL)                 ! set physical extent of a length unit in mesh
   if (mesh_unitlength <= 0.0_pREAL) call IO_error(301,'unitlength')
 
   call inputRead(elem,node0_elem,connectivity_elem,materialAt)

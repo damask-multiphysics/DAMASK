@@ -96,7 +96,6 @@ subroutine FEM_utilities_init(num_mesh)
     num_mesh
   character(len=pSTRLEN) :: petsc_optionsOrder
   character(len=:), allocatable :: &
-    extmsg, &
     petsc_options
   integer :: &
     p_s, &                                                                                          !< order of shape functions

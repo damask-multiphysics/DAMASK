@@ -102,7 +102,7 @@ subroutine grid_damage_spectral_init(num_grid)
 ! read numerical parameters and do sanity checks
   num_grid_damage => num_grid%get_dict('damage',defaultVal=emptyDict)
 
-  num%itmax           = num_grid_damage%get_asInt('N_iter_max', defaultVal=100)
+  num%itmax           = num_grid_damage%get_asInt ('N_iter_max', defaultVal=100)
   num%eps_damage_atol = num_grid_damage%get_asReal('eps_abs_phi',defaultVal=1.0e-2_pREAL)
   num%eps_damage_rtol = num_grid_damage%get_asReal('eps_rel_phi',defaultVal=1.0e-6_pREAL)
   num%phi_min         = num_grid_damage%get_asReal('phi_min',    defaultVal=1.0e-6_pREAL)
@@ -110,7 +110,7 @@ subroutine grid_damage_spectral_init(num_grid)
   extmsg = ''
   if (num%eps_damage_atol <= 0.0_pREAL) extmsg = trim(extmsg)//' eps_abs_phi'
   if (num%eps_damage_rtol <= 0.0_pREAL) extmsg = trim(extmsg)//' eps_rel_phi'
-  if (num%phi_min < 0.0_pREAL)          extmsg = trim(extmsg)//' phi_min'
+  if (num%phi_min <= 0.0_pREAL)         extmsg = trim(extmsg)//' phi_min'
   if (num%itmax < 1)                    extmsg = trim(extmsg)//' N_iter_max'
 
   if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
