@@ -125,7 +125,7 @@ subroutine FEM_utilities_init(num_mesh)
                                 num_mesh%get_asStr('PETSc_options',defaultVal=''), 'mechanical_')
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
-  write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', p_s
+  write(petsc_optionsOrder,'(a,i0)') ' -mechFE_petscspace_degree ', p_s
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsOrder),err_PETSc)
   CHKERRQ(err_PETSc)
 
