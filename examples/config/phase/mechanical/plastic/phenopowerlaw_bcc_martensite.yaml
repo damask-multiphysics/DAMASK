@@ -1,0 +1,14 @@
+# Tasan et.al. 2015 Acta Materalia
+# Tasan et.al. 2015 International Journal of Plasticity
+# Diehl et.al. 2015 Meccanica
+type: phenopowerlaw
+
+N_sl: [12, 12]
+
+dot_gamma_0_sl: [0.001, 0.001]
+n_sl: [20, 20]
+a_sl: [2.0, 2.0]
+xi_0_sl: [405.8e+6, 456.7e+6]
+xi_inf_sl: [872.9e+6, 971.2e+6]
+h_0_sl-sl: [563.0e+9, 563.0e+9]
+h_sl-sl: [1, 1.4, 1, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4]
