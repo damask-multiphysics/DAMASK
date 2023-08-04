@@ -284,6 +284,6 @@ update_revision:
     - >
        git diff-index --quiet HEAD ||
        git commit VERSION -m "[skip ci] updated version information after successful test of $VERSION"
-    - if [ ${CI_COMMIT_SHA} == $(git rev-parse HEAD^) ]; then git push origin HEAD:development HEAD:master; fi
+    - if [ ${CI_COMMIT_SHA} == $(git rev-parse HEAD^) ]; then git push --atomic --no-verify origin HEAD:development HEAD:master; fi
   only:
     - development
