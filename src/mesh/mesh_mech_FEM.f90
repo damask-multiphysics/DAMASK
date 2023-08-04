@@ -72,7 +72,7 @@ module mesh_mechanical_FEM
   real(pREAL), parameter :: eps = 1.0e-18_pREAL
 
   external :: &                                                                                     ! ToDo: write interfaces
-#ifdef PETSC_USE_64BIT_INDICES
+#if defined(PETSC_USE_64BIT_INDICES) || PETSC_VERSION_MINOR < 17
     ISDestroy, &
 #endif
     PetscSectionGetNumFields, &
