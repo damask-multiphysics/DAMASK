@@ -2,6 +2,7 @@ program DAMASK_test
 
   use parallelization
   use HDF5_utilities
+  use IO
 
   use test_prec
   use test_crystal
@@ -13,37 +14,42 @@ program DAMASK_test
 
   external :: quit
 
+  character(len=*), parameter :: &
+    tab = '19', &
+    ok  = achar(27)//'[32mok'//achar(27)//'[0m'
+
   call parallelization_init()
-
-  print('(/,a)'), 'begin test prec'
-  call test_prec_run()
-  print('(a)'), 'begin test prec'
-
-  print('(/,a)'), 'begin test tables'
-  call test_tables_run()
-  print('(a)'), 'end test tables'
-
-  print('(/,a)'), 'begin test crystal'
-  call test_crystal_run()
-  print('(a)'), 'end test crystal'
-
-  print('(/,a)'), 'begin test rotations'
-  call test_rotations_run()
-  print('(a)'), 'end test rotations'
-
-  print('(/,a)'), 'begin test IO'
-  call test_IO_run()
-  print('(a)'), 'end test IO'
-
-  print('(/,a)'), 'begin test misc'
-  call test_misc_run()
-  print('(a)'), 'end test misc'
-
   call HDF5_utilities_init()
 
-  print('(/,a)'), 'begin test HDF5_utilities'
+  write(IO_STDOUT,fmt='(/,1x,a,/)') achar(27)//'[1m'//'testing'//achar(27)//'[0m'
+
+  write(IO_STDOUT,fmt='(3x,a,T'//tab//',a)', advance='no') 'prec','...'
+  call test_prec_run()
+  write(IO_STDOUT,fmt='(1x,a)') ok
+
+  write(IO_STDOUT,fmt='(3x,a,T'//tab//',a)', advance='no') 'tables','...'
+  call test_tables_run()
+  write(IO_STDOUT,fmt='(1x,a)') ok
+
+  write(IO_STDOUT,fmt='(3x,a,T'//tab//',a)', advance='no') 'crystal','...'
+  call test_crystal_run()
+  write(IO_STDOUT,fmt='(1x,a)') ok
+
+  write(IO_STDOUT,fmt='(3x,a,T'//tab//',a)', advance='no') 'rotations','...'
+  call test_rotations_run()
+  write(IO_STDOUT,fmt='(1x,a)') ok
+
+  write(IO_STDOUT,fmt='(3x,a,T'//tab//',a)', advance='no') 'IO','...'
+  call test_IO_run()
+  write(IO_STDOUT,fmt='(1x,a)') ok
+
+  write(IO_STDOUT,fmt='(3x,a,T'//tab//',a)', advance='no') 'misc','...'
+  call test_misc_run()
+  write(IO_STDOUT,fmt='(1x,a)') ok
+
+  write(IO_STDOUT,fmt='(3x,a,T'//tab//',a)', advance='no') 'HDF5_utilities','...'
   call test_HDF5_utilities_run()
-  print('(a)'), 'begin test HDF5_utilities'
+  write(IO_STDOUT,fmt='(1x,a)') ok
 
   call quit(0)
 
