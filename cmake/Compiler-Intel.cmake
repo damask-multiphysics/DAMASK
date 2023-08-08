@@ -35,7 +35,7 @@ set (COMPILE_FLAGS "${COMPILE_FLAGS} -no-ftz")
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -diag-disable")
 # disables warnings ...
 set (COMPILE_FLAGS "${COMPILE_FLAGS} 5268")
-#   ... the text exceeds right hand column allowed on the line (we have only comments there)
+#   ... the text exceeds right hand column allowed on the line (enforced by pre-receive hook)
 set (COMPILE_FLAGS "${COMPILE_FLAGS},7624")
 #   ... about deprecated forall (has nice syntax and most likely a performance advantage)
 

@@ -29,8 +29,8 @@ set (COMPILE_FLAGS "${COMPILE_FLAGS} -cpp")
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -fPIE")
 # position independent code
 
-set (COMPILE_FLAGS "${COMPILE_FLAGS} -ffree-line-length-132")
-# restrict line length to the standard 132 characters (lattice.f90 require more characters)
+set (COMPILE_FLAGS "${COMPILE_FLAGS} -ffree-line-length-none")
+# PETSc macros are long, line length is enforced in pre-receive hook
 
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -fimplicit-none")
 # assume "implicit none" even if not present in source
