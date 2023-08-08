@@ -111,8 +111,6 @@ program DAMASK_grid
     num_solver, &
     num_grid, &
     solver
-  type(tList), pointer :: &
-    load_steps
   character(len=:), allocatable :: &
     fileContent, fname
 
