@@ -178,7 +178,7 @@ subroutine CLI_init()
       case ('-r', '--rs', '--restart')
         if (.not. hasArg) call IO_error(610,ext_msg='--jobname')
         arg = getArg(i+1)
-        read(arg,*,iostat=stat) CLI_restartInc
+        CLI_restartInc = IO_strAsInt(arg)
         if (CLI_restartInc < 0 .or. stat /= 0) call IO_error(611,ext_msg=arg)
     end select
   end do
