@@ -210,6 +210,8 @@ subroutine CLI_init()
   print'(1x,a)',        'Geometry:               '//IO_glueDiffering(CLI_geomFile,geomArg)
   print'(1x,a)',        'Load case:              '//IO_glueDiffering(CLI_loadFile,loadArg)
   print'(1x,a)',        'Material config:        '//IO_glueDiffering(CLI_materialFile,materialArg)
+  if (allocated(numericsArg)) &
+    print'(1x,a)',      'Numerics config:        '//IO_glueDiffering(CLI_numericsFile,numericsArg)
   print'(1x,a)',        'Solver job name:        '//getSolverJobname()
   if (CLI_restartInc > 0) &
     print'(1x,a,i6.6)', 'Restart from increment: ', CLI_restartInc
