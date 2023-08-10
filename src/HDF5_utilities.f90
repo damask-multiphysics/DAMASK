@@ -6,6 +6,7 @@
 !> @author Philip Eisenlohr, Michigan State University
 !--------------------------------------------------------------------------------------------------
 module HDF5_utilities
+  use IO
   use HDF5
 #ifdef PETSC
 #include <petsc/finclude/petscsys.h>
@@ -190,6 +191,7 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
   character      :: m
   integer(HID_T) :: plist_id
   integer :: hdferr
+  logical :: exist
 
 
   m = misc_optional(mode,'r')
@@ -214,6 +216,8 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
     call H5Fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr,access_prp = plist_id)
     call HDF5_chkerr(hdferr)
   elseif (m == 'r') then
+    inquire(file=fileName,exist=exist)
+    if (.not. exist) call IO_error(100,trim(fileName))
     call H5Fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr,access_prp = plist_id)
     call HDF5_chkerr(hdferr)
   else
