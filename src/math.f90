@@ -27,8 +27,10 @@ module math
 #if __INTEL_COMPILER >= 1900
   ! do not make use of associated entities available to other modules
   private :: &
+    misc, &
     IO, &
-    config
+    config, &
+    parallelization
 #endif
 
   real(pREAL), parameter :: &
@@ -38,11 +40,11 @@ module math
     INRAD = TAU/360.0_pREAL                                                                         !< conversion from degree to radian
 
   real(pREAL), dimension(3,3), parameter :: &
-    math_I3 = reshape([&
-      1.0_pREAL,0.0_pREAL,0.0_pREAL, &
-      0.0_pREAL,1.0_pREAL,0.0_pREAL, &
-      0.0_pREAL,0.0_pREAL,1.0_pREAL  &
-      ],shape(math_I3))                                                                             !< 3x3 Identity
+    math_I3 = real(reshape([&
+      1, 0, 0, &
+      0, 1, 0, &
+      0, 0, 1  &
+      ],shape(math_I3)),pREAL)                                                                      !< 3x3 Identity
 
   real(pREAL), dimension(*), parameter, private :: &
     NRMMANDEL = [1.0_pREAL, 1.0_pREAL,1.0_pREAL, sqrt(2.0_pREAL), sqrt(2.0_pREAL), sqrt(2.0_pREAL)] !< forward weighting for Mandel notation
@@ -83,9 +85,6 @@ module math
       3,3  &
       ],shape(MAPPLAIN))                                                                            !< arrangement in Plain notation
 
-!---------------------------------------------------------------------------------------------------
- private :: &
-   selfTest
 
 contains
 
@@ -109,20 +108,21 @@ subroutine math_init()
   allocate(seed(randSize))
 
   if (num_generic%contains('random_seed')) then
-    seed = num_generic%get_as1dInt('random_seed',requiredSize=randSize)
+    seed = num_generic%get_as1dInt('random_seed',requiredSize=randSize) &
+         + worldrank*42_MPI_INTEGER_KIND
   else
     call random_seed()
     call random_seed(get = seed)
   end if
 
-  call random_seed(put = seed + worldrank*42_MPI_INTEGER_KIND)
+  call random_seed(put = seed)
   call random_number(randTest)
 
   print'(/,a,i2)',              ' size  of random seed:     ', randSize
   print*,                       'value of random seed:     ', seed
   print'(  a,4(/,26x,f17.14))', ' start of random sequence: ', randTest
 
-  call selfTest()
+  call math_selfTest()
 
 end subroutine math_init
 
@@ -1275,7 +1275,7 @@ end function math_clip
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some math functions.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest()
+subroutine math_selfTest()
 
   integer, dimension(2,4) :: &
     sort_in_   = reshape([+1,+5,  +5,+6,  -1,-1,  +3,-2],[2,4])
@@ -1447,6 +1447,6 @@ subroutine selfTest()
       error stop 'math_normal(sigma)'
   end block normal_distribution
 
-end subroutine selfTest
+end subroutine math_selfTest
 
 end module math
