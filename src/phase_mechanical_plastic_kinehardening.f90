@@ -8,10 +8,9 @@
 submodule(phase:plastic) kinehardening
 
   type :: tParameters
-    real(pREAL) :: &
-      n           = 1.0_pREAL, &                                                                    !< stress exponent for slip
-      dot_gamma_0 = 1.0_pREAL                                                                       !< reference shear strain rate for slip
     real(pREAL),              allocatable, dimension(:) :: &
+      dot_gamma_0, &                                                                                !< reference shear strain rate for slip
+      n, &                                                                                          !< stress exponent for slip
       h_0_xi, &                                                                                     !< initial hardening rate of forest stress per slip family
                                                                                                     !! θ_0,for
       h_0_chi, &                                                                                    !< initial hardening rate of back stress per slip family
@@ -77,6 +76,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
     ph, o,  &
+    N_fam, &
     Nmembers, &
     sizeState, sizeDeltaState, sizeDotState, &
     startIndex, endIndex
@@ -139,6 +139,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
     N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
+      N_fam = size(N_sl)
       prm%systems_sl = crystal_labels_slip(N_sl,phase_lattice(ph))
       prm%P = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
@@ -152,32 +153,32 @@ module function plastic_kinehardening_init() result(myPlasticity)
         prm%P_nS_neg = prm%P
       end if
 
-      prm%dot_gamma_0 = pl%get_asReal('dot_gamma_0')
-      prm%n           = pl%get_asReal('n')
-
       prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
                                                    phase_lattice(ph))
 
-      xi_0          = math_expand(pl%get_as1dReal('xi_0',      requiredSize=size(N_sl)),N_sl)
-      prm%xi_inf    = math_expand(pl%get_as1dReal('xi_inf',    requiredSize=size(N_sl)),N_sl)
-      prm%chi_inf   = math_expand(pl%get_as1dReal('chi_inf',   requiredSize=size(N_sl)),N_sl)
-      prm%h_0_xi    = math_expand(pl%get_as1dReal('h_0_xi',    requiredSize=size(N_sl)),N_sl)
-      prm%h_0_chi   = math_expand(pl%get_as1dReal('h_0_chi',   requiredSize=size(N_sl)),N_sl)
-      prm%h_inf_xi  = math_expand(pl%get_as1dReal('h_inf_xi',  requiredSize=size(N_sl)),N_sl)
-      prm%h_inf_chi = math_expand(pl%get_as1dReal('h_inf_chi', requiredSize=size(N_sl)),N_sl)
-
+      xi_0            = math_expand(pl%get_as1dReal('xi_0',        requiredSize=N_fam),N_sl)
+      prm%dot_gamma_0 = math_expand(pl%get_as1dReal('dot_gamma_0', requiredSize=N_fam),N_sl)
+      prm%n           = math_expand(pl%get_as1dReal('n',           requiredSize=N_fam),N_sl)
+      prm%xi_inf      = math_expand(pl%get_as1dReal('xi_inf',      requiredSize=N_fam),N_sl)
+      prm%chi_inf     = math_expand(pl%get_as1dReal('chi_inf',     requiredSize=N_fam),N_sl)
+      prm%h_0_xi      = math_expand(pl%get_as1dReal('h_0_xi',      requiredSize=N_fam),N_sl)
+      prm%h_0_chi     = math_expand(pl%get_as1dReal('h_0_chi',     requiredSize=N_fam),N_sl)
+      prm%h_inf_xi    = math_expand(pl%get_as1dReal('h_inf_xi',    requiredSize=N_fam),N_sl)
+      prm%h_inf_chi   = math_expand(pl%get_as1dReal('h_inf_chi',   requiredSize=N_fam),N_sl)
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
-      if (    prm%dot_gamma_0  <= 0.0_pREAL)   extmsg = trim(extmsg)//' dot_gamma_0'
-      if (    prm%n            <= 0.0_pREAL)   extmsg = trim(extmsg)//' n'
+      if (any(prm%dot_gamma_0  <= 0.0_pREAL))  extmsg = trim(extmsg)//' dot_gamma_0'
+      if (any(prm%n            <= 0.0_pREAL))  extmsg = trim(extmsg)//' n'
       if (any(xi_0             <= 0.0_pREAL))  extmsg = trim(extmsg)//' xi_0'
       if (any(prm%xi_inf       <= 0.0_pREAL))  extmsg = trim(extmsg)//' xi_inf'
       if (any(prm%chi_inf      <= 0.0_pREAL))  extmsg = trim(extmsg)//' chi_inf'
 
     else slipActive
       xi_0 = emptyRealArray
-      allocate(prm%xi_inf, &
+      allocate(prm%dot_gamma_0, &
+               prm%n, &
+               prm%xi_inf, &
                prm%chi_inf, &
                prm%h_0_xi, &
                prm%h_0_chi, &
