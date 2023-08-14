@@ -173,8 +173,8 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
       ! sanity checks
       if (any(prm%dot_gamma_0_sl <= 0.0_pREAL))   extmsg = trim(extmsg)//' dot_gamma_0_sl'
-      if (any(prm%a_sl           <= 0.0_pREAL))   extmsg = trim(extmsg)//' a_sl'
       if (any(prm%n_sl           <= 0.0_pREAL))   extmsg = trim(extmsg)//' n_sl'
+      if (any(prm%a_sl           <= 0.0_pREAL))   extmsg = trim(extmsg)//' a_sl'
       if (any(xi_0_sl            <= 0.0_pREAL))   extmsg = trim(extmsg)//' xi_0_sl'
       if (any(prm%xi_inf_sl      <= 0.0_pREAL))   extmsg = trim(extmsg)//' xi_inf_sl'
 
