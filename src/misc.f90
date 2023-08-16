@@ -19,6 +19,7 @@ module misc
 
   public :: &
     misc_init, &
+    misc_selfTest, &
     misc_optional, &
     misc_prefixOptions
 

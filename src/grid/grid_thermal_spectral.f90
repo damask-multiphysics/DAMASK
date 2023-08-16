@@ -189,7 +189,6 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   real(pREAL), intent(in) :: &
     Delta_t                                                                                         !< increment in time for current solution
 
-  integer :: i, j, k, ce
   type(tSolutionState) :: solution
   PetscInt  :: devNull
   PetscReal :: T_min, T_max, stagNorm

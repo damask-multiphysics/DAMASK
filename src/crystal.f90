@@ -377,6 +377,7 @@ module crystal
 
   public :: &
     crystal_init, &
+    crystal_selfTest, &
     crystal_isotropic_nu, &
     crystal_isotropic_mu, &
     crystal_symmetrize_33, &
@@ -412,7 +413,7 @@ subroutine crystal_init()
 
   print'(/,1x,a)', '<<<+-  crystal init  -+>>>'; flush(IO_STDOUT)
 
-  call selfTest()
+  call crystal_selfTest()
 
 end subroutine crystal_init
 
@@ -2226,7 +2227,7 @@ end function crystal_isotropic_mu
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some crystal functions.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest
+subroutine crystal_selfTest
 
   real(pREAL), dimension(:,:,:), allocatable :: CoSy
   real(pREAL), dimension(:,:),   allocatable :: system
@@ -2333,6 +2334,6 @@ subroutine selfTest
   if (dNeq(crystal_isotropic_nu(C,'isostress','cF'), crystal_isotropic_nu(C,'isostress'), 1.0e-12_pREAL)) &
     error stop 'isotropic_nu/isostress/cF-tI'
 
-end subroutine selfTest
+end subroutine crystal_selfTest
 
 end module crystal

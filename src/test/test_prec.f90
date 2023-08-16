@@ -4,16 +4,14 @@ module test_prec
   implicit none(type,external)
 
   private
-  public :: prec_test
+  public :: test_prec_run
 
   contains
 
-subroutine prec_test()
+subroutine test_prec_run()
 
-  print*, 'begin test prec'
   call prec_selfTest()
-  print*, 'end test prec'
 
-end subroutine prec_test
+end subroutine test_prec_run
 
 end module test_prec

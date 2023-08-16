@@ -7,23 +7,21 @@
 submodule(phase:plastic) phenopowerlaw
 
   type :: tParameters
-    real(pREAL) :: &
-      dot_gamma_0_sl = 1.0_pREAL, &                                                                 !< reference shear strain rate for slip
-      dot_gamma_0_tw = 1.0_pREAL, &                                                                 !< reference shear strain rate for twin
-      n_sl           = 1.0_pREAL, &                                                                 !< stress exponent for slip
-      n_tw           = 1.0_pREAL, &                                                                 !< stress exponent for twin
-      f_sat_sl_tw    = 1.0_pREAL, &                                                                 !< push-up factor for slip saturation due to twinning
-      c_1            = 1.0_pREAL, &
-      c_2            = 1.0_pREAL, &
-      c_3            = 1.0_pREAL, &
-      c_4            = 1.0_pREAL, &
-      h_0_sl_sl      = 1.0_pREAL, &                                                                 !< reference hardening slip - slip
-      h_0_tw_sl      = 1.0_pREAL, &                                                                 !< reference hardening twin - slip
-      h_0_tw_tw      = 1.0_pREAL, &                                                                 !< reference hardening twin - twin
-      a_sl           = 1.0_pREAL
     real(pREAL),               allocatable, dimension(:) :: &
+      dot_gamma_0_sl, &                                                                             !< reference shear strain rate for slip
+      dot_gamma_0_tw, &                                                                             !< reference shear strain rate for twin
+      a_sl, &
+      n_sl, &                                                                                       !< stress exponent for slip
+      n_tw, &                                                                                       !< stress exponent for twin
       xi_inf_sl, &                                                                                  !< maximum critical shear stress for slip
-      h_int, &                                                                                      !< per family hardening activity (optional)
+      f_sat_sl_tw, &                                                                                !< push-up factor for slip saturation due to twinning
+      c_1, &
+      c_2, &
+      c_3, &
+      c_4, &
+      h_0_sl_sl, &                                                                                  !< reference hardening slip - slip
+      h_0_tw_sl, &                                                                                  !< reference hardening twin - slip
+      h_0_tw_tw, &                                                                                  !< reference hardening twin - twin
       gamma_char                                                                                    !< characteristic shear for twins
     real(pREAL),               allocatable, dimension(:,:) :: &
       h_sl_sl, &                                                                                    !< slip resistance from slip activity
@@ -40,7 +38,7 @@ submodule(phase:plastic) phenopowerlaw
       sum_N_tw                                                                                      !< total number of active twin systems
     logical :: &
       nonSchmidActive = .false.
-    character(len=pSTRLEN), allocatable, dimension(:) :: &
+    character(len=pSTRLEN),    allocatable, dimension(:) :: &
       output
     character(len=:),          allocatable, dimension(:) :: &
       systems_sl, &
@@ -81,6 +79,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
     ph, i, &
+    N_fam, &
     Nmembers, &
     sizeState, sizeDotState, &
     startIndex, endIndex
@@ -90,7 +89,8 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
   real(pREAL), dimension(:), allocatable :: &
     xi_0_sl, &                                                                                      !< initial critical shear stress for slip
     xi_0_tw, &                                                                                      !< initial critical shear stress for twin
-    a                                                                                               !< non-Schmid coefficients
+    a, &                                                                                            !< non-Schmid coefficients
+    ones
   character(len=:), allocatable :: &
     refs, &
     extmsg
@@ -134,20 +134,26 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     prm%output = pl%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
 
+
+    N_sl = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
+    N_tw = pl%get_as1dInt('N_tw',defaultVal=emptyIntArray)
+    prm%sum_N_sl = sum(abs(N_sl))
+    prm%sum_N_tw = sum(abs(N_tw))
+
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
-    N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
-    prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%dot_gamma_0_sl        = pl%get_asReal('dot_gamma_0_sl')
-      prm%n_sl                  = pl%get_asReal('n_sl')
-      prm%a_sl                  = pl%get_asReal('a_sl')
-      prm%h_0_sl_sl             = pl%get_asReal('h_0_sl-sl')
-
-      xi_0_sl       = math_expand(pl%get_as1dReal('xi_0_sl',   requiredSize=size(N_sl)),N_sl)
-      prm%xi_inf_sl = math_expand(pl%get_as1dReal('xi_inf_sl', requiredSize=size(N_sl)),N_sl)
-      prm%h_int     = math_expand(pl%get_as1dReal('h_int',     requiredSize=size(N_sl), &
-                                                        defaultVal=[(0.0_pREAL,i=1,size(N_sl))]),N_sl)
+      N_fam = size(N_sl)
+      ones = [(1.0_pREAL,i=1,N_fam)]
+      prm%dot_gamma_0_sl = math_expand(pl%get_as1dReal('dot_gamma_0_sl',requiredSize=N_fam,defaultVal=    ones), N_sl)
+      prm%n_sl        = math_expand(pl%get_as1dReal('n_sl',       requiredSize=N_fam,defaultVal=          ones), N_sl)
+      prm%a_sl        = math_expand(pl%get_as1dReal('a_sl',       requiredSize=N_fam,defaultVal=          ones), N_sl)
+      prm%h_0_sl_sl   = math_expand(pl%get_as1dReal('h_0_sl-sl',  requiredSize=N_fam,defaultVal=0.0_pREAL*ones), N_sl)
+      prm%c_1         = math_expand(pl%get_as1dReal('c_1',        requiredSize=N_fam,defaultVal=0.0_pREAL*ones), N_sl)
+      prm%c_2         = math_expand(pl%get_as1dReal('c_2',        requiredSize=N_fam,defaultVal=          ones), N_sl)
+      xi_0_sl         = math_expand(pl%get_as1dReal('xi_0_sl',    requiredSize=N_fam),                           N_sl)
+      prm%xi_inf_sl   = math_expand(pl%get_as1dReal('xi_inf_sl',  requiredSize=N_fam),                           N_sl)
+      prm%f_sat_sl_tw = math_expand(pl%get_as1dReal('f_sat_sl-tw',requiredSize=N_fam,defaultVal=0.0_pREAL*ones), N_sl)
 
       prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
 
@@ -166,35 +172,37 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%systems_sl = crystal_labels_slip(N_sl,phase_lattice(ph))
 
       ! sanity checks
-      if (    prm%dot_gamma_0_sl <= 0.0_pREAL)    extmsg = trim(extmsg)//' dot_gamma_0_sl'
-      if (    prm%a_sl           <= 0.0_pREAL)    extmsg = trim(extmsg)//' a_sl'
-      if (    prm%n_sl           <= 0.0_pREAL)    extmsg = trim(extmsg)//' n_sl'
+      if (any(prm%dot_gamma_0_sl <= 0.0_pREAL))   extmsg = trim(extmsg)//' dot_gamma_0_sl'
+      if (any(prm%n_sl           <= 0.0_pREAL))   extmsg = trim(extmsg)//' n_sl'
+      if (any(prm%a_sl           <= 0.0_pREAL))   extmsg = trim(extmsg)//' a_sl'
       if (any(xi_0_sl            <= 0.0_pREAL))   extmsg = trim(extmsg)//' xi_0_sl'
       if (any(prm%xi_inf_sl      <= 0.0_pREAL))   extmsg = trim(extmsg)//' xi_inf_sl'
 
     else slipActive
       xi_0_sl = emptyRealArray
-      allocate(prm%xi_inf_sl, &
-               prm%h_int, &
+      allocate(prm%dot_gamma_0_sl, &                                                                             !< reference shear strain rate for slip
+               prm%a_sl, &
+               prm%n_sl, &                                                                                       !< stress exponent for slip
+               prm%xi_inf_sl, &                                                                                  !< maximum critical shear stress for slip
+               prm%f_sat_sl_tw, &                                                                                !< push-up factor for slip saturation due to twinning
+               prm%c_1, &
+               prm%c_2, &
+               prm%h_0_sl_sl, &                                                                                  !< reference hardening slip - slip
                source=emptyRealArray)
       allocate(prm%h_sl_sl(0,0))
     end if slipActive
 
 !--------------------------------------------------------------------------------------------------
 ! twin related parameters
-    N_tw         = pl%get_as1dInt('N_tw', defaultVal=emptyIntArray)
-    prm%sum_N_tw = sum(abs(N_tw))
     twinActive: if (prm%sum_N_tw > 0) then
-      prm%c_1             = pl%get_asReal('c_1',defaultVal=0.0_pREAL)
-      prm%c_2             = pl%get_asReal('c_2',defaultVal=1.0_pREAL)
-      prm%c_3             = pl%get_asReal('c_3',defaultVal=0.0_pREAL)
-      prm%c_4             = pl%get_asReal('c_4',defaultVal=0.0_pREAL)
-      prm%dot_gamma_0_tw  = pl%get_asReal('dot_gamma_0_tw')
-      prm%n_tw            = pl%get_asReal('n_tw')
-      prm%f_sat_sl_tw     = pl%get_asReal('f_sat_sl-tw')
-      prm%h_0_tw_tw       = pl%get_asReal('h_0_tw-tw')
-
-      xi_0_tw = math_expand(pl%get_as1dReal('xi_0_tw',requiredSize=size(N_tw)),N_tw)
+      N_fam = size(N_tw)
+      ones = [(1.0_pREAL,i=1,N_fam)]
+      prm%dot_gamma_0_tw = math_expand(pl%get_as1dReal('dot_gamma_0_tw', requiredSize=N_fam,defaultVal=ones), N_tw)
+      prm%n_tw      = math_expand(pl%get_as1dReal('n_tw',      requiredSize=N_fam,defaultVal=          ones), N_tw)
+      prm%c_3       = math_expand(pl%get_as1dReal('c_3',       requiredSize=N_fam,defaultVal=0.0_pREAL*ones), N_tw)
+      prm%c_4       = math_expand(pl%get_as1dReal('c_4',       requiredSize=N_fam,defaultVal=0.0_pREAL*ones), N_tw)
+      prm%h_0_tw_tw = math_expand(pl%get_as1dReal('h_0_tw-tw', requiredSize=N_fam,defaultVal=0.0_pReal*ones), N_tw)
+      xi_0_tw       = math_expand(pl%get_as1dReal('xi_0_tw',   requiredSize=N_fam),                           N_tw)
 
       prm%gamma_char = crystal_characteristicShear_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
       prm%h_tw_tw    = crystal_interaction_TwinByTwin(N_tw,pl%get_as1dReal('h_tw-tw'),phase_lattice(ph))
@@ -203,27 +211,33 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%systems_tw = crystal_labels_twin(N_tw,phase_lattice(ph))
 
       ! sanity checks
-      if (prm%dot_gamma_0_tw <= 0.0_pREAL)  extmsg = trim(extmsg)//' dot_gamma_0_tw'
-      if (prm%n_tw           <= 0.0_pREAL)  extmsg = trim(extmsg)//' n_tw'
+      if (any(prm%dot_gamma_0_tw <= 0.0_pREAL))   extmsg = trim(extmsg)//' dot_gamma_0_tw'
+      if (any(prm%n_tw           <= 0.0_pREAL))   extmsg = trim(extmsg)//' n_tw'
+      if (any(xi_0_tw            <= 0.0_pREAL))   extmsg = trim(extmsg)//' xi_0_tw'
 
     else twinActive
       xi_0_tw = emptyRealArray
-      allocate(prm%gamma_char,source=emptyRealArray)
+      allocate(prm%dot_gamma_0_tw, &                                                                             !< reference shear strain rate for twin
+               prm%n_tw, &                                                                                       !< stress exponent for twin
+               prm%c_3, &
+               prm%c_4, &
+               prm%gamma_char, &                                                                                    !< characteristic shear for twins
+               prm%h_0_tw_sl, &                                                                                  !< reference hardening twin - slip
+               prm%h_0_tw_tw, &                                                                                  !< reference hardening twin - twin
+               source=emptyRealArray)
       allocate(prm%h_tw_tw(0,0))
     end if twinActive
 
 !--------------------------------------------------------------------------------------------------
 ! slip-twin related parameters
     slipAndTwinActive: if (prm%sum_N_sl > 0 .and. prm%sum_N_tw > 0) then
-      prm%h_0_tw_sl  = pl%get_asReal('h_0_tw-sl')
-      prm%h_sl_tw    = crystal_interaction_SlipByTwin(N_sl,N_tw,pl%get_as1dReal('h_sl-tw'), &
-                                                      phase_lattice(ph))
-      prm%h_tw_sl    = crystal_interaction_TwinBySlip(N_tw,N_sl,pl%get_as1dReal('h_tw-sl'), &
-                                                      phase_lattice(ph))
+      prm%h_0_tw_sl = math_expand(pl%get_as1dReal('h_0_tw-sl',requiredSize=N_fam,defaultVal=0.0_pReal*ones), N_tw)
+      prm%h_sl_tw    = crystal_interaction_SlipByTwin(N_sl,N_tw,pl%get_as1dReal('h_sl-tw'),phase_lattice(ph))
+      prm%h_tw_sl    = crystal_interaction_TwinBySlip(N_tw,N_sl,pl%get_as1dReal('h_tw-sl'),phase_lattice(ph))
     else slipAndTwinActive
       allocate(prm%h_sl_tw(prm%sum_N_sl,prm%sum_N_tw))                                              ! at least one dimension is 0
       allocate(prm%h_tw_sl(prm%sum_N_tw,prm%sum_N_sl))                                              ! at least one dimension is 0
-      prm%h_0_tw_sl = 0.0_pREAL
+      prm%h_0_tw_sl = [(0.0_pREAL,i=1,size(N_tw))]
     end if slipAndTwinActive
 
 !--------------------------------------------------------------------------------------------------
@@ -242,7 +256,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     endIndex   = prm%sum_N_sl
     idx_dot%xi_sl = [startIndex,endIndex]
     stt%xi_sl => plasticState(ph)%state(startIndex:endIndex,:)
-    stt%xi_sl =  spread(xi_0_sl, 2, Nmembers)
+    stt%xi_sl = spread(xi_0_sl, 2, Nmembers)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_xi',defaultVal=1.0_pREAL)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pREAL)) extmsg = trim(extmsg)//' atol_xi'
 
@@ -250,7 +264,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     endIndex   = endIndex + prm%sum_N_tw
     idx_dot%xi_tw = [startIndex,endIndex]
     stt%xi_tw => plasticState(ph)%state(startIndex:endIndex,:)
-    stt%xi_tw =  spread(xi_0_tw, 2, Nmembers)
+    stt%xi_tw = spread(xi_0_tw, 2, Nmembers)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_xi',defaultVal=1.0_pREAL)
 
     startIndex = endIndex + 1
@@ -344,10 +358,10 @@ module function phenopowerlaw_dotState(Mp,ph,en) result(dotState)
     dotState
 
   real(pREAL) :: &
-    xi_sl_sat_offset,&
     sumF
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma_sl_pos,dot_gamma_sl_neg, &
+    xi_sl_sat_offset, &
     left_SlipSlip
 
   associate(prm => param(ph), stt => state(ph), &
@@ -362,10 +376,11 @@ module function phenopowerlaw_dotState(Mp,ph,en) result(dotState)
     sumF = sum(stt%gamma_tw(:,en)/prm%gamma_char)
 
     xi_sl_sat_offset = prm%f_sat_sl_tw*sqrt(sumF)
+
     left_SlipSlip = sign(abs(1.0_pREAL-stt%xi_sl(:,en) / (prm%xi_inf_sl+xi_sl_sat_offset))**prm%a_sl, &
                              1.0_pREAL-stt%xi_sl(:,en) / (prm%xi_inf_sl+xi_sl_sat_offset))
 
-    dot_xi_sl = prm%h_0_sl_sl * (1.0_pREAL + prm%c_1 * sumF**prm%c_2) * (1.0_pREAL + prm%h_int) &
+    dot_xi_sl = prm%h_0_sl_sl * (1.0_pREAL + prm%c_1 * sumF**prm%c_2) &
                 * left_SlipSlip * matmul(prm%h_sl_sl,dot_gamma_sl) &
               + matmul(prm%h_sl_tw,dot_gamma_tw)
 

@@ -94,12 +94,6 @@ module grid_mechanical_spectral_polarization
     err_curl, &                                                                                     !< RMS of curl of F
     err_div                                                                                         !< RMS of div of P
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
-  type(MPI_Status) :: status
-#else
-  integer, dimension(MPI_STATUS_SIZE) :: status
-#endif
-
   integer :: &
     totalIter = 0                                                                                   !< total iteration in current increment
 

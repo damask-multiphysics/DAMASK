@@ -16,6 +16,7 @@ module FEM_utilities
   use prec
   use config
   use math
+  use misc
   use IO
   use discretization_mesh
   use homogenization
