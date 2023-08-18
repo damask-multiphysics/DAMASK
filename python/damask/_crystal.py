@@ -2,11 +2,11 @@ from typing import Optional, Union, Dict, List, Tuple
 
 import numpy as np
 
-from ._typehints import FloatSequence, CrystalFamily, CrystalLattice, CrystalKinematics
+from ._typehints import FloatSequence, CrystalFamily, BravaisLattice, CrystalKinematics
 from . import util
 from . import Rotation
 
-lattice_symmetries: Dict[CrystalLattice, CrystalFamily] = {
+lattice_symmetries: Dict[BravaisLattice, CrystalFamily] = {
                 'aP': 'triclinic',
 
                 'mP': 'monoclinic',
@@ -27,7 +27,7 @@ lattice_symmetries: Dict[CrystalLattice, CrystalFamily] = {
                 'cF': 'cubic',
                }
 
-orientation_relationships: Dict[str, Dict[CrystalLattice,np.ndarray]] = {
+orientation_relationships: Dict[str, Dict[BravaisLattice,np.ndarray]] = {
  'KS': {
    'cF': np.array([
        [[-1, 0, 1],[ 1, 1, 1]],
@@ -323,7 +323,7 @@ class Crystal():
 
     def __init__(self, *,
                  family: Optional[CrystalFamily] = None,
-                 lattice: Optional[CrystalLattice] = None,
+                 lattice: Optional[BravaisLattice] = None,
                  a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
                  alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
                  degrees: bool = False):
@@ -772,7 +772,7 @@ class Crystal():
             Directions and planes of deformation mode families.
 
         """
-        _kinematics: Dict[CrystalLattice, Dict[CrystalKinematics, List[np.ndarray]]] = {
+        _kinematics: Dict[BravaisLattice, Dict[CrystalKinematics, List[np.ndarray]]] = {
             'cF': {
                 'slip': [np.array([
                            [+0,+1,-1, +1,+1,+1],
@@ -1015,7 +1015,7 @@ class Crystal():
 
 
     def relation_operations(self,
-                            model: str) -> Tuple[CrystalLattice, Rotation]:
+                            model: str) -> Tuple[BravaisLattice, Rotation]:
         """
         Crystallographic orientation relationships for phase transformations.
 
