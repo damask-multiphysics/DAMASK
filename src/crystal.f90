@@ -1902,7 +1902,7 @@ end function buildInteraction
 !> @brief Build a local coordinate system on slip, twin, trans, cleavage systems
 !> @details Order: Direction, plane (normal), and common perpendicular
 !--------------------------------------------------------------------------------------------------
-function buildCoordinateSystem(active,potential,system,lattice,cOverA)
+function buildCoordinateSystem(active,potential,system,lattice,cOverA) result(coordinateSystem)
 
   integer, dimension(:), intent(in) :: &
     active, &                                                                                       !< # of active systems per family
@@ -1914,7 +1914,7 @@ function buildCoordinateSystem(active,potential,system,lattice,cOverA)
   real(pREAL),                 intent(in) :: &
     cOverA
   real(pREAL), dimension(3,3,sum(active)) :: &
-    buildCoordinateSystem
+    coordinateSystem
 
   real(pREAL), dimension(3) :: &
     direction, normal
@@ -1937,9 +1937,13 @@ function buildCoordinateSystem(active,potential,system,lattice,cOverA)
 
       select case(lattice)
 
-        case ('cF','cI','tI')
+        case ('cF','cI')
           direction = system(1:3,p)
           normal    = system(4:6,p)
+
+        case ('tI')
+          direction = [ system(1,p), system(2,p), system(3,p)*cOverA ]
+          normal    = [ system(4,p), system(5,p), system(6,p)/cOverA ]
 
         case ('hP')
           direction = [ system(1,p)*1.5_pREAL, &
@@ -1954,10 +1958,10 @@ function buildCoordinateSystem(active,potential,system,lattice,cOverA)
 
       end select
 
-      buildCoordinateSystem(1:3,1,a) = direction/norm2(direction)
-      buildCoordinateSystem(1:3,2,a) = normal   /norm2(normal)
-      buildCoordinateSystem(1:3,3,a) = math_cross(direction/norm2(direction),&
-                                                  normal   /norm2(normal))
+      coordinateSystem(1:3,1,a) = direction/norm2(direction)
+      coordinateSystem(1:3,2,a) = normal   /norm2(normal)
+      coordinateSystem(1:3,3,a) = math_cross(direction/norm2(direction),&
+                                             normal   /norm2(normal))
 
     end do activeSystems
   end do activeFamilies
