@@ -548,7 +548,17 @@ class Crystal():
 
     @property
     def symmetry_operations(self) -> Rotation:
-        """Symmetry operations as Rotations."""
+        """
+        Return symmetry operations.
+
+        References
+        ----------
+        U.F. Kocks et al.,
+        Texture and Anisotropy:
+        Preferred Orientations in Polycrystals and their Effect on Materials Properties.
+        Cambridge University Press 1998. Table II
+
+        """
         _symmetry_operations: Dict[CrystalFamily, List]  = {
             'cubic':         [
                               [ 1.0,            0.0,            0.0,            0.0            ],
