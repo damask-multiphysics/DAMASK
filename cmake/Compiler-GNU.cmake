@@ -131,6 +131,9 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS} -fcheck=all")
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -fstack-protector-all")
 # Inserts a guard variable onto the stack frame for all functions
 
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -finit-real=snan -finit-integer=-2147483648")
+# "strange" values to simplify debugging
+
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=undefined")
 # detect undefined behavior
 # Additional options
