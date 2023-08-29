@@ -50,7 +50,7 @@ module function anisobrittle_init() result(mySources)
   if (count(mySources) == 0) return
 
   print'(/,1x,a)', '<<<+-  phase:damage:anisobrittle init  -+>>>'
-  print'(/,a,i0)', ' # phases: ',count(mySources); flush(IO_STDOUT)
+  print'(/,1x,a,1x,i0)', '# phases:',count(mySources); flush(IO_STDOUT)
 
 
   phases => config_material%get_dict('phase')
@@ -64,7 +64,7 @@ module function anisobrittle_init() result(mySources)
 
       associate(prm  => param(ph))
 
-        print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+        print'(/,1x,a,1x,i0,a)', 'phase',ph,': '//phases%key(ph)
         refs = config_listReferences(src,indent=3)
         if (len(refs) > 0) print'(/,1x,a)', refs
 

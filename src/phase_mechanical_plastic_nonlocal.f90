@@ -203,7 +203,6 @@ module function plastic_nonlocal_init() result(myPlasticity)
   end if
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:nonlocal init  -+>>>'
-  print'(/,a,i0)', ' # phases: ',Ninstances; flush(IO_STDOUT)
 
   print'(/,1x,a)', 'C. Reuber et al., Acta Materialia 71:333–348, 2014'
   print'(  1x,a)', 'https://doi.org/10.1016/j.actamat.2014.03.012'
@@ -211,6 +210,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   print'(/,1x,a)', 'C. Kords, Dissertation RWTH Aachen, 2014'
   print'(  1x,a)', 'http://publications.rwth-aachen.de/record/229993'
 
+  print'(/,1x,a,1x,i0)', '# phases:',Ninstances; flush(IO_STDOUT)
 
   phases => config_material%get_dict('phase')
   allocate(geom(phases%length))
