@@ -48,7 +48,7 @@ module function isobrittle_init() result(mySources)
   if (count(mySources) == 0) return
 
   print'(/,1x,a)', '<<<+-  phase:damage:isobrittle init  -+>>>'
-  print'(/,a,i0)', ' # phases: ',count(mySources); flush(IO_STDOUT)
+  print'(/,1x,a,1x,i0)', '# phases:',count(mySources); flush(IO_STDOUT)
 
 
   phases => config_material%get_dict('phase')
@@ -66,7 +66,7 @@ module function isobrittle_init() result(mySources)
 
         prm%W_crit = src%get_asReal('G_crit')/src%get_asReal('l_c')
 
-        print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+        print'(/,1x,a,1x,i0,a)', 'phase',ph,': '//phases%key(ph)
         refs = config_listReferences(src,indent=3)
         if (len(refs) > 0) print'(/,1x,a)', refs
 

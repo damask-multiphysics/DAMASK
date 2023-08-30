@@ -27,7 +27,7 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
   integer, intent(in)                  :: kinematics_length
   logical, dimension(:,:), allocatable :: myKinematics
 
-  integer :: Ninstances, p, k
+  integer :: p, k
   type(tList), pointer :: &
     kinematics
   type(tDict), pointer :: &
@@ -37,15 +37,13 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
 
 
   myKinematics = kinematics_active('thermalexpansion',kinematics_length)
-  Ninstances = count(myKinematics)
-  print'(/,a,i2)', ' # phases: ',Ninstances; flush(IO_STDOUT)
-  if (Ninstances == 0) return
+  if (count(myKinematics) == 0) return
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:eigen:thermalexpansion init  -+>>>'
-
+  print'(/,1x,a,1x,i0)', '# phases:',count(myKinematics); flush(IO_STDOUT)
 
   phases => config_material%get_dict('phase')
-  allocate(param(Ninstances))
+  allocate(param(count(myKinematics)))
   allocate(kinematics_thermal_expansion_instance(phases%length), source=0)
 
   do p = 1, phases%length

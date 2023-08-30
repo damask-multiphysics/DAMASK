@@ -42,7 +42,7 @@ module function source_dissipation_init(maxNsources) result(isMySource)
   if (count(isMySource) == 0) return
 
   print'(/,1x,a)', '<<<+-  phase:thermal:source_dissipation init  -+>>>'
-  print'(/,a,i2)', ' # phases: ',count(isMySource); flush(IO_STDOUT)
+  print'(/,1x,a,1x,i0)', '# phases:',count(isMySource); flush(IO_STDOUT)
 
 
   phases => config_material%get_dict('phase')
@@ -60,7 +60,7 @@ module function source_dissipation_init(maxNsources) result(isMySource)
       if (isMySource(so,ph)) then
         associate(prm  => param(ph))
           src => sources%get_dict(so)
-          print'(1x,a,i0,a,i0)', 'phase ',ph,' source ',so
+          print'(/,1x,a,1x,i0,1x,a,1x,a,1x,i0)', 'phase',ph,'('//phases%key(ph)//')','source',so
           refs = config_listReferences(src,indent=3)
           if (len(refs) > 0) print'(/,1x,a)', refs
 

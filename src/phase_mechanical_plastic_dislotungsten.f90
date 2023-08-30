@@ -108,11 +108,11 @@ module function plastic_dislotungsten_init() result(myPlasticity)
   if (count(myPlasticity) == 0) return
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:dislotungsten init  -+>>>'
-  print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
   print'(/,1x,a)', 'D. Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
   print'(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2015.09.002'
 
+  print'(/,1x,a,1x,i0)', '# phases:',count(myPlasticity); flush(IO_STDOUT)
 
   phases => config_material%get_dict('phase')
   allocate(param(phases%length))

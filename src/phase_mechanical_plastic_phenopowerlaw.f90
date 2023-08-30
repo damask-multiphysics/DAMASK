@@ -105,7 +105,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
   if (count(myPlasticity) == 0) return
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:phenopowerlaw init  -+>>>'
-  print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
+  print'(/,1x,a,1x,i0)', '# phases:',count(myPlasticity); flush(IO_STDOUT)
 
 
   phases => config_material%get_dict('phase')
@@ -124,7 +124,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     mech => phase%get_dict('mechanical')
     pl => mech%get_dict('plastic')
 
-    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+    print'(/,1x,a,1x,i0,a)', 'phase',ph,': '//phases%key(ph)
     refs = config_listReferences(pl,indent=3)
     if (len(refs) > 0) print'(/,1x,a)', refs
 

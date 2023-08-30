@@ -25,7 +25,7 @@ module function plastic_none_init() result(myPlasticity)
   if (count(myPlasticity) == 0) return
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:none init  -+>>>'
-  print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
+  print'(/,1x,a,1x,i0)', '# phases:',count(myPlasticity); flush(IO_STDOUT)
 
 
   phases => config_material%get_dict('phase')
