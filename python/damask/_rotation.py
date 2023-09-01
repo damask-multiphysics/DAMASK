@@ -1324,28 +1324,41 @@ class Rotation:
 
     @staticmethod
     def _qu2eu(qu: np.ndarray) -> np.ndarray:
-        """Quaternion to Bunge Euler angles."""
-        q02   = qu[...,0:1]*qu[...,2:3]
-        q13   = qu[...,1:2]*qu[...,3:4]
-        q01   = qu[...,0:1]*qu[...,1:2]
-        q23   = qu[...,2:3]*qu[...,3:4]
-        q03_s = qu[...,0:1]**2+qu[...,3:4]**2
-        q12_s = qu[...,1:2]**2+qu[...,2:3]**2
-        chi = np.sqrt(q03_s*q12_s)
+        """
+        Quaternion to Bunge Euler angles.
 
-        eu = np.where(np.abs(q12_s) < 1.e-8,
-                np.block([np.arctan2(-_P*2.*qu[...,0:1]*qu[...,3:4],qu[...,0:1]**2-qu[...,3:4]**2),
-                          np.zeros(qu.shape[:-1]+(2,))]),
-                      np.where(np.abs(q03_s) < 1.e-8,
-                          np.block([np.arctan2(   2.*qu[...,1:2]*qu[...,2:3],qu[...,1:2]**2-qu[...,2:3]**2),
-                                    np.broadcast_to(np.pi,qu[...,0:1].shape),
-                                    np.zeros(qu.shape[:-1]+(1,))]),
-                          np.block([np.arctan2((-_P*q02+q13)*chi, (-_P*q01-q23)*chi),
-                                    np.arctan2(           2.*chi,    q03_s-q12_s   ),
-                                    np.arctan2(( _P*q02+q13)*chi, (-_P*q01+q23)*chi)])
-                              )
-                     )
-        eu[np.abs(eu) < 1.e-6] = 0.
+        References
+        ----------
+        E. Bernardes and S. Viollet, PLoS ONE 17(11):e0276302, 2022
+        https://doi.org/10.1371/journal.pone.0276302
+
+        """
+        a =     qu[...,0:1]
+        b = -_P*qu[...,3:4]
+        c = -_P*qu[...,1:2]
+        d = -_P*qu[...,2:3]
+
+        eu = np.block([
+            np.arctan2(b,a),
+            np.arccos(2*(a**2+b**2)/(a**2+b**2+c**2+d**2)-1),
+            np.arctan2(-d,c),
+        ])
+
+        eu_sum  = eu[...,0] + eu[...,2]
+        eu_diff = eu[...,0] - eu[...,2]
+
+        is_zero  = np.isclose(eu[...,1],0.0)
+        is_pi    = np.isclose(eu[...,1],np.pi)
+        is_ok    = ~np.logical_or(is_zero,is_pi)
+
+        eu[...,0][is_zero] =  2*eu[...,0][is_zero]
+        eu[...,0][is_pi]   = -2*eu[...,2][is_pi]
+        eu[...,2][~is_ok]  = 0.0
+        eu[...,0][is_ok]   = eu_diff[is_ok]
+        eu[...,2][is_ok]   = eu_sum [is_ok]
+
+        eu[np.logical_or(np.abs(eu)         < 1.e-6,
+                         np.abs(eu-2*np.pi) < 1.e-6)] = 0.
         return np.where(eu < 0., eu%(np.pi*np.array([2.,1.,2.])),eu)
 
     @staticmethod
