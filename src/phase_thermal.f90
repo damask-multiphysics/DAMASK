@@ -76,7 +76,9 @@ module subroutine thermal_init(phases)
     thermal
   type(tList), pointer :: &
     sources
-  character(len=:), allocatable :: refs
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
   integer :: &
     ph, so, &
     Nmembers
@@ -88,6 +90,7 @@ module subroutine thermal_init(phases)
   allocate(thermalState(phases%length))
   allocate(thermal_Nsources(phases%length),source = 0)
   allocate(param(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     Nmembers = count(material_ID_phase == ph)
@@ -105,6 +108,15 @@ module subroutine thermal_init(phases)
       param(ph)%K(1,1) = thermal%get_asReal('K_11')
       if (any(phase_lattice(ph) == ['hP','tI'])) param(ph)%K(3,3) = thermal%get_asReal('K_33')
       param(ph)%K = crystal_symmetrize_33(param(ph)%K,phase_lattice(ph))
+
+      ! sanity checks
+      if (    param(ph)%C_p <= 0.0_pREAL )  extmsg = trim(extmsg)//' C_p'
+      if (any(param(ph)%K   <  0.0_pREAL))  extmsg = trim(extmsg)//' K'
+      if (    phase_rho(ph) <= 0.0_pREAL )  extmsg = trim(extmsg)//' rho'
+
+!--------------------------------------------------------------------------------------------------
+!  exit if any parameter is out of range
+      if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg))
 
 #if defined(__GFORTRAN__)
       param(ph)%output = output_as1dStr(thermal)
