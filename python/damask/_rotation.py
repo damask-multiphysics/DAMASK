@@ -1329,7 +1329,7 @@ class Rotation:
 
         References
         ----------
-        E. Bernardes and S. Viollet, PLoS ONE 17(11): e0276302
+        E. Bernardes and S. Viollet, PLoS ONE 17(11):e0276302, 2022
         https://doi.org/10.1371/journal.pone.0276302
 
         """
