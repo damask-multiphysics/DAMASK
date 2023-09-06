@@ -95,34 +95,6 @@ function kinematics_active(kinematics_label,kinematics_length)  result(active_ki
 end function kinematics_active
 
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Checks if a damage kinematic mechanism is active.
-!--------------------------------------------------------------------------------------------------
-function kinematics_active2(kinematics_label)  result(active_kinematics)
-
-  character(len=*), intent(in)       :: kinematics_label                                            !< name of kinematic mechanism
-  logical, dimension(:), allocatable :: active_kinematics
-
-  type(tDict), pointer :: &
-    phases, &
-    phase, &
-    kinematics_type
-  integer :: ph
-
-
-  phases => config_material%get_dict('phase')
-  allocate(active_kinematics(phases%length), source = .false.)
-  do ph = 1, phases%length
-    phase => phases%get_dict(ph)
-    kinematics_type => phase%get_dict('damage',defaultVal=emptyDict)
-    active_kinematics(ph) = kinematics_type%get_asStr('type',defaultVal='n/a') == kinematics_label
-  end do
-
-
-end function kinematics_active2
-
-
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 ! ToDo: MD: S is Mi?

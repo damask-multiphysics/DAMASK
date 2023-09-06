@@ -3,7 +3,7 @@ from typing import Optional, Union, TypeVar
 
 import numpy as np
 
-from ._typehints import FloatSequence, IntSequence, CrystalFamily, CrystalLattice
+from ._typehints import FloatSequence, IntSequence, CrystalFamily, BravaisLattice
 from . import Rotation
 from . import Crystal
 from . import util
@@ -73,7 +73,7 @@ class Orientation(Rotation,Crystal):
                  rotation: Union[FloatSequence, Rotation] = np.array([1.,0.,0.,0.]),
                  *,
                  family: Optional[CrystalFamily] = None,
-                 lattice: Optional[CrystalLattice] = None,
+                 lattice: Optional[BravaisLattice] = None,
                  a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
                  alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
                  degrees: bool = False):

@@ -155,7 +155,6 @@ module function plastic_dislotwin_init() result(myPlasticity)
   if (count(myPlasticity) == 0) return
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:dislotwin init  -+>>>'
-  print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
   print'(/,1x,a)', 'A. Ma and F. Roters, Acta Materialia 52(12):3603–3612, 2004'
   print'(  1x,a)', 'https://doi.org/10.1016/j.actamat.2004.04.012'
@@ -166,6 +165,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
   print'(/,1x,a)', 'S.L. Wong et al., Acta Materialia 118:140–151, 2016'
   print'(  1x,a)', 'https://doi.org/10.1016/j.actamat.2016.07.032'
 
+  print'(/,1x,a,1x,i0)', '# phases:',count(myPlasticity); flush(IO_STDOUT)
 
   phases => config_material%get_dict('phase')
   allocate(param(phases%length))
