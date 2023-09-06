@@ -47,7 +47,7 @@ module mesh_mechanical_FEM
       p_i, &                                                                                        !< integration order (quadrature rule)
       itmax
     logical :: &
-      BBarStabilisation
+      BBarStabilization
     real(pREAL) :: &
       eps_struct_atol, &                                                                            !< absolute tolerance for mechanical equilibrium
       eps_struct_rtol                                                                               !< relative tolerance for mechanical equilibrium
@@ -135,12 +135,12 @@ subroutine FEM_mechanical_init(fieldBC,num_mesh)
 ! read numerical parametes and do sanity checks
   num_mech => num_mesh%get_dict('mechanical', defaultVal=emptyDict)
 
-  num%p_i               = int(num_mesh%get_asInt('p_i',defaultVal = 2),pPETSCINT)
-  num%BBarStabilisation = num_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
+  num%p_i               = int(num_mesh%get_asInt('p_i',defaultVal=2),pPETSCINT)
+  num%BBarStabilization = num_mesh%get_asBool('bbarstabilization',defaultVal=.false.)
 
   num%itmax             = int(num_mech%get_asInt('N_iter_max',defaultVal=250),pPETSCINT)
-  num%eps_struct_atol   = num_mech%get_asReal('eps_abs_div(P)', defaultVal = 1.0e-10_pREAL)
-  num%eps_struct_rtol   = num_mech%get_asReal('eps_rel_div(P)', defaultVal = 1.0e-4_pREAL)
+  num%eps_struct_atol   = num_mech%get_asReal('eps_abs_div(P)', defaultVal=1.0e-10_pREAL)
+  num%eps_struct_rtol   = num_mech%get_asReal('eps_rel_div(P)', defaultVal=1.0e-4_pREAL)
 
   if (num%itmax <= 1)                       call IO_error(301,ext_msg='N_iter_max')
   if (num%eps_struct_rtol <= 0.0_pREAL)     call IO_error(301,ext_msg='eps_rel_div(P)')
@@ -439,7 +439,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
       end do
       homogenization_F(1:dimPlex,1:dimPlex,m) = reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex], order=[2,1])
     end do
-    if (num%BBarStabilisation) then
+    if (num%BBarStabilization) then
       detFAvg = math_det33(sum(homogenization_F(1:3,1:3,cell*nQuadrature+1:(cell+1)*nQuadrature),dim=3)/real(nQuadrature,pREAL))
       do qPt = 0, nQuadrature-1
         m = cell*nQuadrature + qPt+1
@@ -590,7 +590,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
       MatA = matmul(reshape(reshape(homogenization_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,m), &
                                     shape=[dimPlex,dimPlex,dimPlex,dimPlex], order=[2,1,4,3]), &
                             shape=[dimPlex*dimPlex,dimPlex*dimPlex]),BMat)*qWeights(qPt+1_pPETSCINT)
-      if (num%BBarStabilisation) then
+      if (num%BBarStabilization) then
         F(1:dimPlex,1:dimPlex) = reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex])
         FInv = math_inv33(F)
         K_eA = K_eA + matmul(transpose(BMat),MatA)*math_det33(FInv)**(1.0_pREAL/real(dimPlex,pREAL))
@@ -606,7 +606,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
         K_eA = K_eA + matmul(transpose(BMat),MatA)
       end if
     end do
-    if (num%BBarStabilisation) then
+    if (num%BBarStabilization) then
       FInv = math_inv33(FAvg)
       K_e = K_eA*math_det33(FAvg/real(nQuadrature,pREAL))**(1.0_pREAL/real(dimPlex,pREAL)) + &
             (matmul(matmul(transpose(BMatAvg), &

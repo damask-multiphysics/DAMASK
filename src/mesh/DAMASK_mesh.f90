@@ -91,8 +91,8 @@ program DAMASK_mesh
 
 !---------------------------------------------------------------------
 ! reading field information from numerics file and do sanity checks
-  num_solver => config_numerics%get_dict('solver', defaultVal=emptyDict)
-  num_mesh   => num_solver%get_dict('mesh', defaultVal=emptyDict)
+  num_solver => config_numerics%get_dict('solver',defaultVal=emptyDict)
+  num_mesh   => num_solver%get_dict('mesh',defaultVal=emptyDict)
   stagItMax  = num_mesh%get_asInt('N_staggered_iter_max',defaultVal=10)
   maxCutBack = num_mesh%get_asInt('N_cutback_max',defaultVal=3)
 

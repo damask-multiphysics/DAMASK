@@ -10,6 +10,7 @@ solver:
       N_iter_max: 100                   # maximum iteration number
       eps_abs_phi: 1.0e-2               # absolute tolerance for damage evolution
       eps_rel_phi: 1.0e-6               # relative tolerance for damage evolution
+      phi_min: 1.0e-6                   # residual integrity
 
     thermal:
       N_iter_max: 100                   # maximum iteration number
@@ -42,7 +43,7 @@ solver:
     N_staggered_iter_max: 10            # max number of field level staggered iterations
     p_s:                  2             # order of displacement shape functions
     p_i:                  2             # order of quadrature rule required
-    bbarstabilisation:    false
+    bbarstabilization:    false
 
     mechanical:
       N_iter_max:         250           # Maximum iteration number
