@@ -101,7 +101,7 @@ subroutine discretization_mesh_init(restart)
 !--------------------------------------------------------------------------------
 ! read numerics parameter
   num_solver => config_numerics%get_dict('solver',defaultVal=emptyDict)
-  num_mesh   => config_numerics%get_dict('mesh',defaultVal=emptyDict)
+  num_mesh   => num_solver%get_dict('mesh',defaultVal=emptyDict)
   p_i = num_mesh%get_asInt('p_i',defaultVal = 2)
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>16)
