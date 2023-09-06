@@ -95,6 +95,9 @@ subroutine FEM_utilities_init(num_mesh)
 
   type(tDict), pointer, intent(in) :: &
     num_mesh
+
+  type(tDict), pointer :: &
+    num_mech
   character(len=pSTRLEN) :: petsc_optionsOrder
   character(len=:), allocatable :: &
     petsc_options
@@ -105,6 +108,8 @@ subroutine FEM_utilities_init(num_mesh)
 
 
   print'(/,1x,a)',   '<<<+-  FEM_utilities init  -+>>>'
+
+  num_mech => num_mesh%get_dict('mechanical', defaultVal=emptyDict)
 
   p_s = num_mesh%get_asInt('p_s',defaultVal = 2)
   p_i = num_mesh%get_asInt('p_i',defaultVal = p_s)
@@ -123,7 +128,7 @@ subroutine FEM_utilities_init(num_mesh)
                                &-snes_linesearch_type cp -snes_ksp_ew &
                                &-snes_ksp_ew_rtol0 0.01 -snes_ksp_ew_rtolmax 0.01 &
                                &-ksp_type fgmres -ksp_max_it 25 ' // &
-                                num_mesh%get_asStr('PETSc_options',defaultVal=''), 'mechanical_')
+                                num_mech%get_asStr('PETSc_options',defaultVal=''), 'mechanical_')
 
   write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', p_s
   petsc_options = petsc_options // ' ' // petsc_optionsOrder
