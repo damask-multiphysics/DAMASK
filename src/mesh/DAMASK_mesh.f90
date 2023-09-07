@@ -66,6 +66,7 @@ program DAMASK_mesh
     stagIter, &
     component
   type(tDict), pointer :: &
+    num_solver, &
     num_mesh
   character(len=pSTRLEN), dimension(:), allocatable :: fileContent
   character(len=pSTRLEN) :: &
@@ -90,12 +91,13 @@ program DAMASK_mesh
 
 !---------------------------------------------------------------------
 ! reading field information from numerics file and do sanity checks
-  num_mesh => config_numerics%get_dict('mesh', defaultVal=emptyDict)
-  stagItMax  = num_mesh%get_asInt('maxStaggeredIter',defaultVal=10)
-  maxCutBack = num_mesh%get_asInt('maxCutBack',defaultVal=3)
+  num_solver => config_numerics%get_dict('solver',defaultVal=emptyDict)
+  num_mesh   => num_solver%get_dict('mesh',defaultVal=emptyDict)
+  stagItMax  = num_mesh%get_asInt('N_staggered_iter_max',defaultVal=10)
+  maxCutBack = num_mesh%get_asInt('N_cutback_max',defaultVal=3)
 
-  if (stagItMax < 0)  call IO_error(301,ext_msg='maxStaggeredIter')
-  if (maxCutBack < 0) call IO_error(301,ext_msg='maxCutBack')
+  if (stagItMax < 0)  call IO_error(301,ext_msg='N_staggered_iter_max')
+  if (maxCutBack < 0) call IO_error(301,ext_msg='N_cutback_max')
 
 ! reading basic information from load case file and allocate data structure containing load cases
   call DMGetDimension(geomMesh,dimPlex,err_PETSc)                                                   !< dimension of mesh (2D or 3D)
@@ -229,8 +231,8 @@ program DAMASK_mesh
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
-  call FEM_Utilities_init()
-  call FEM_mechanical_init(loadCases(1)%fieldBC(1))
+  call FEM_Utilities_init(num_mesh)
+  call FEM_mechanical_init(loadCases(1)%fieldBC(1),num_mesh)
   call config_numerics_deallocate()
 
   if (worldrank == 0) then
