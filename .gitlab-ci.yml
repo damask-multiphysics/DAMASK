@@ -262,11 +262,11 @@ update_plots:
     - ./plot_commithistory.py --color green -n 5 -N 100
     - ./plot_commithistory.py --color green -n 5 -N 1000
     - ./plot_commithistory.py --color green -n 5 -N 10000
-    - scp -r ./commits_*.html damask3.mpie.de:~/
-    - ssh damask3.mpie.de "./update_statistics_commits.sh"
+    - scp -r ./commits_*.html damask.mpie.de:~/
+    - ssh damask.mpie.de "./update_statistics_commits.sh"
     - ./plot_performance.py --template=xgridoff
-    - scp -r ./runtime.html ./memory.html damask3.mpie.de:~/
-    - ssh damask3.mpie.de "./update_statistics_performance.sh"
+    - scp -r ./runtime.html ./memory.html damask.mpie.de:~/
+    - ssh damask.mpie.de "./update_statistics_performance.sh"
   only:
     - development
 
