@@ -1445,10 +1445,10 @@ end function crystal_SchmidMatrix_slip
 !--------------------------------------------------------------------------------------------------
 function crystal_SchmidMatrix_twin(Ntwin,lattice,cOverA) result(SchmidMatrix)
 
-  integer,         dimension(:),            intent(in) :: Ntwin                                     !< number of active twin systems per family
-  character(len=*),                         intent(in) :: lattice                                   !< Bravais lattice (Pearson symbol)
-  real(pREAL),                              intent(in) :: cOverA                                    !< c/a ratio
-  real(pREAL),     dimension(3,3,sum(Ntwin))           :: SchmidMatrix
+  integer,     dimension(:),              intent(in) :: Ntwin                                       !< number of active twin systems per family
+  character(len=*),                       intent(in) :: lattice                                     !< Bravais lattice (Pearson symbol)
+  real(pREAL),                            intent(in) :: cOverA                                      !< c/a ratio
+  real(pREAL), dimension(3,3,sum(Ntwin))             :: SchmidMatrix
 
   real(pREAL), dimension(3,3,sum(Ntwin))             :: coordinateSystem
   real(pREAL), dimension(:,:),           allocatable :: twinSystems
@@ -1521,10 +1521,10 @@ end function crystal_SchmidMatrix_trans
 !--------------------------------------------------------------------------------------------------
 function crystal_SchmidMatrix_cleavage(Ncleavage,lattice,cOverA) result(SchmidMatrix)
 
-  integer,         dimension(:),                  intent(in) :: Ncleavage                           !< number of active cleavage systems per family
-  character(len=*),                               intent(in) :: lattice                             !< Bravais lattice (Pearson symbol)
-  real(pREAL),                                    intent(in) :: cOverA                              !< c/a ratio
-  real(pREAL),     dimension(3,3,3,sum(Ncleavage))           :: SchmidMatrix
+  integer,     dimension(:),                  intent(in) :: Ncleavage                               !< number of active cleavage systems per family
+  character(len=*),                           intent(in) :: lattice                                 !< Bravais lattice (Pearson symbol)
+  real(pREAL),                                intent(in) :: cOverA                                  !< c/a ratio
+  real(pREAL), dimension(3,3,3,sum(Ncleavage))           :: SchmidMatrix
 
   real(pREAL), dimension(3,3,sum(Ncleavage))             :: coordinateSystem
   real(pREAL), dimension(:,:),               allocatable :: cleavageSystems
@@ -1904,7 +1904,7 @@ end function buildInteraction
 !--------------------------------------------------------------------------------------------------
 function buildCoordinateSystem(active,potential,system,lattice,cOverA) result(coordinateSystem)
 
-  integer, dimension(:), intent(in) :: &
+  integer,     dimension(:),   intent(in) :: &
     active, &                                                                                       !< # of active systems per family
     potential                                                                                       !< # of potential systems per family
   real(pREAL), dimension(:,:), intent(in) :: &
