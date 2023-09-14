@@ -123,18 +123,21 @@ module crystal
   real(pREAL), dimension(3+3,CI_NSLIP), parameter :: &
     CI_SYSTEMSLIP = reshape(real([&
     ! <111>{110} systems
+    ! Sign convention follows Table 1 of 10.1016/j.ijplas.2020.102733
+    ! to allow for universal calculation of non-glide plane normal n1 = Rot(-m,60°) @ n
+    ! The choice matters since Rot(-m,60°) @ n ≠ Rot(m,60°) @ -n ..!
        1,-1, 1,     0, 1, 1, &
-      -1,-1, 1,     0, 1, 1, &
-       1, 1, 1,     0,-1, 1, &
+      -1,-1, 1,     0,-1,-1, &
+       1, 1, 1,     0, 1,-1, &
       -1, 1, 1,     0,-1, 1, &
-      -1, 1, 1,     1, 0, 1, &
+      -1, 1, 1,    -1, 0,-1, &
       -1,-1, 1,     1, 0, 1, &
        1, 1, 1,    -1, 0, 1, &
-       1,-1, 1,    -1, 0, 1, &
+       1,-1, 1,     1, 0,-1, &
       -1, 1, 1,     1, 1, 0, &
-      -1, 1,-1,     1, 1, 0, &
-       1, 1, 1,    -1, 1, 0, &
-       1, 1,-1,    -1, 1, 0, &
+       1,-1, 1,    -1,-1, 0, &
+       1, 1, 1,     1,-1, 0, &
+      -1,-1, 1,    -1, 1, 0, &
      ! <111>{112} systems
       -1, 1, 1,     2, 1, 1, &
        1, 1, 1,    -2, 1, 1, &
