@@ -253,7 +253,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
       prm%P_sl = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph), phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
-        a = pl%get_as1dReal('a_nonSchmid',defaultVal = emptyRealArray)
+        a = pl%get_as1dReal('a_nonSchmid_110',defaultVal = emptyRealArray)
         if (size(a) > 0) prm%nonSchmidActive = .true.
         prm%P_nS_pos = crystal_nonSchmidMatrix(ini%N_sl,a,+1)
         prm%P_nS_neg = crystal_nonSchmidMatrix(ini%N_sl,a,-1)

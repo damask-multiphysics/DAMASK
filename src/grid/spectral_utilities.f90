@@ -674,6 +674,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
   logical :: errmatinv
   character(len=pSTRLEN):: formatString
 
+
   mask_stressVector = .not. reshape(transpose(mask_stress), [9])
   size_reduced = count(mask_stressVector)
   if (size_reduced > 0) then
@@ -696,6 +697,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
       write(formatString, '(i2)') size_reduced
       formatString = '(/,1x,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
       print trim(formatString), 'C * S (load) ', transpose(matmul(c_reduced,s_reduced))
+      print trim(formatString), 'C (load) ', transpose(c_reduced)
       print trim(formatString), 'S (load) ', transpose(s_reduced)
       if (errmatinv) error stop 'matrix inversion error'
     end if

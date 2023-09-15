@@ -319,9 +319,7 @@ class TestOrientation:
         eu = o.related(model).as_Euler_angles(degrees=True)
         if update:
             coords = np.array([(1,i+1) for i,x in enumerate(eu)])
-            Table(eu,{'Eulers':(3,)})\
-                .add('pos',coords)\
-                .save(reference)
+            Table({'Eulers':(3,)},eu).set('pos',coords).save(reference)
         assert np.allclose(eu,Table.load(reference).get('Eulers'))
 
     def test_basis_real(self):
@@ -369,8 +367,7 @@ class TestOrientation:
             reference = res_path/f'{lattice}_{mode}.txt'
             P = O.Schmid(N_slip='*') if mode == 'slip' else O.Schmid(N_twin='*')
             if update:
-                table = Table(P.reshape(-1,9),{'Schmid':(3,3,)})
-                table.save(reference)
+                Table({'Schmid':(3,3,)},P.reshape(-1,9)).save(reference)
             assert np.allclose(P,Table.load(reference).get('Schmid'))
 
     def test_Schmid_invalid(self):
