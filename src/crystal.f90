@@ -389,7 +389,6 @@ module crystal
     crystal_SchmidMatrix_twin, &
     crystal_SchmidMatrix_trans, &
     crystal_SchmidMatrix_cleavage, &
-    crystal_nonSchmidMatrix, &
     crystal_interaction_SlipBySlip, &
     crystal_interaction_TwinByTwin, &
     crystal_interaction_TransByTrans, &
@@ -592,54 +591,6 @@ function crystal_C66_trans(Ntrans,C_parent66,crystal_target, &
   end do
 
  end function crystal_C66_trans
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Non-schmid projections for cI with up to 6 coefficients
-! https://doi.org/10.1016/j.actamat.2012.03.053, eq. (17)
-! https://doi.org/10.1016/j.actamat.2008.07.037, table 1
-!--------------------------------------------------------------------------------------------------
-function crystal_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSchmidMatrix)
-
-  integer,     dimension(:),                intent(in) :: Nslip                                     !< number of active slip systems per family
-  real(pREAL), dimension(:),                intent(in) :: nonSchmidCoefficients                     !< non-Schmid coefficients for projections
-  integer,                                  intent(in) :: sense                                     !< sense (-1,+1)
-  real(pREAL), dimension(1:3,1:3,sum(Nslip))           :: nonSchmidMatrix
-
-  real(pREAL), dimension(1:3,1:3,sum(Nslip))           :: coordinateSystem                          !< coordinate system of slip system
-  real(pREAL), dimension(3)                            :: direction, normal, np
-  type(tRotation)                                      :: R
-  integer                                              :: i
-
-
-  if (abs(sense) /= 1) error stop 'Sense in crystal_nonSchmidMatrix'
-
-  coordinateSystem  = buildCoordinateSystem(Nslip,CI_NSLIPSYSTEM,CI_SYSTEMSLIP,'cI',0.0_pREAL)
-  coordinateSystem(1:3,1,1:sum(Nslip)) = coordinateSystem(1:3,1,1:sum(Nslip))*real(sense,pREAL)     ! convert unidirectional coordinate system
-  nonSchmidMatrix = crystal_SchmidMatrix_slip(Nslip,'cI',0.0_pREAL)                                 ! Schmid contribution
-
-  do i = 1,sum(Nslip)
-    direction = coordinateSystem(1:3,1,i)
-    normal    = coordinateSystem(1:3,2,i)
-    call R%fromAxisAngle([direction,60.0_pREAL],degrees=.true.,P=1)
-    np = R%rotate(normal)
-
-    if (size(nonSchmidCoefficients)>0) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
-      + nonSchmidCoefficients(1) * math_outer(direction, np)
-    if (size(nonSchmidCoefficients)>1) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
-      + nonSchmidCoefficients(2) * math_outer(math_cross(normal, direction), normal)
-    if (size(nonSchmidCoefficients)>2) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
-      + nonSchmidCoefficients(3) * math_outer(math_cross(np, direction), np)
-    if (size(nonSchmidCoefficients)>3) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
-      + nonSchmidCoefficients(4) * math_outer(normal, normal)
-    if (size(nonSchmidCoefficients)>4) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
-      + nonSchmidCoefficients(5) * math_outer(math_cross(normal, direction), &
-                                              math_cross(normal, direction))
-    if (size(nonSchmidCoefficients)>5) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
-      + nonSchmidCoefficients(6) * math_outer(direction, direction)
-  end do
-
-end function crystal_nonSchmidMatrix
 
 
 !--------------------------------------------------------------------------------------------------
