@@ -204,6 +204,7 @@ end subroutine math_sort
 !> @brief vector expansion
 !> @details takes a set of numbers (a,b,c,...) and corresponding multiples (x,y,z,...)
 !> to return a vector of x times a, y times b, z times c, ...
+!> If there are more multiples than numbers, the numbers are treated as a ring, i.e. looped modulo their size
 !--------------------------------------------------------------------------------------------------
 pure function math_expand_int(what,how)
 
@@ -227,6 +228,7 @@ end function math_expand_int
 !> @brief vector expansion
 !> @details takes a set of numbers (a,b,c,...) and corresponding multiples (x,y,z,...)
 !> to return a vector of x times a, y times b, z times c, ...
+!> If there are more multiples than numbers, the numbers are treated as a ring, i.e. looped modulo their size
 !--------------------------------------------------------------------------------------------------
 pure function math_expand_real(what,how)
 
