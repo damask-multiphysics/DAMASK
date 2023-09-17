@@ -1364,7 +1364,7 @@ function crystal_SchmidMatrix_slip(Nslip,lattice,cOverA,nonSchmidCoefficients,se
   integer,     dimension(:),             allocatable :: NslipMax
   integer,     dimension(:),             allocatable :: slipFamily
   real(pREAL), dimension(3)                          :: direction, normal, np
-  real(pREAL), dimension(:),             allocatable :: coeff
+  real(pREAL), dimension(6)                          :: coeff                                       !< local nonSchmid coefficient variable
   type(tRotation)                                    :: R
   integer                                            :: i
 
@@ -1409,17 +1409,21 @@ function crystal_SchmidMatrix_slip(Nslip,lattice,cOverA,nonSchmidCoefficients,se
     if (present(nonSchmidCoefficients)) then
       select case(lattice)
         case('cI')
-          coeff = nonSchmidCoefficients(slipFamily(i),:)
-          call R%fromAxisAngle([direction,60.0_pREAL],degrees=.true.,P=1)
-          np = R%rotate(normal)
-          SchmidMatrix(1:3,1:3,i) = SchmidMatrix(1:3,1:3,i) &
-                                  + coeff(1) * math_outer(direction, np) &
-                                  + coeff(2) * math_outer(math_cross(normal, direction), normal) &
-                                  + coeff(3) * math_outer(math_cross(np, direction), np) &
-                                  + coeff(4) * math_outer(normal, normal) &
-                                  + coeff(5) * math_outer(math_cross(normal, direction), &
-                                                          math_cross(normal, direction)) &
-                                  + coeff(6) * math_outer(direction, direction)
+          coeff = 0.0_pREAL
+          coeff(:size(nonSchmidCoefficients(i,:))) = nonSchmidCoefficients(i,:)
+          select case(slipFamily(i))
+            case(1)
+              call R%fromAxisAngle([direction,60.0_pREAL],degrees=.true.,P=1)
+              np = R%rotate(normal)
+              SchmidMatrix(1:3,1:3,i) = SchmidMatrix(1:3,1:3,i) &
+                                      + coeff(1) * math_outer(direction, np) &
+                                      + coeff(2) * math_outer(math_cross(normal, direction), normal) &
+                                      + coeff(3) * math_outer(math_cross(np, direction), np) &
+                                      + coeff(4) * math_outer(normal, normal) &
+                                      + coeff(5) * math_outer(math_cross(normal, direction), &
+                                                              math_cross(normal, direction)) &
+                                      + coeff(6) * math_outer(direction, direction)
+          end select
       end select
     end if
   end do
