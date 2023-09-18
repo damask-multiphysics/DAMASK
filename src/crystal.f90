@@ -1409,10 +1409,10 @@ function crystal_SchmidMatrix_slip(Nslip,lattice,cOverA,nonSchmidCoefficients,se
     if (present(nonSchmidCoefficients)) then
       select case(lattice)
         case('cI')
-          coeff = 0.0_pREAL
-          coeff(:size(nonSchmidCoefficients(i,:))) = nonSchmidCoefficients(i,:)
+          coeff(:) = 0.0_pREAL
           select case(slipFamily(i))
             case(1)
+              coeff(:size(nonSchmidCoefficients(1,:))) = nonSchmidCoefficients(1,:)
               call R%fromAxisAngle([direction,60.0_pREAL],degrees=.true.,P=1)
               np = R%rotate(normal)
               SchmidMatrix(1:3,1:3,i) = SchmidMatrix(1:3,1:3,i) &
