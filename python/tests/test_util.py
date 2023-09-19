@@ -128,18 +128,22 @@ class TestUtil:
         with pytest.raises(ValueError):
             util.shapeshifter(fro,to,mode)
 
-    @pytest.mark.parametrize('a,b,answer',
+    @pytest.mark.parametrize('a,b,ones,answer',
                              [
-                              ((),(1,),(1,)),
-                              ((1,),(),(1,)),
-                              ((1,),(7,),(1,7)),
-                              ((2,),(2,2),(2,2)),
-                              ((1,2),(2,2),(1,2,2)),
-                              ((1,2,3),(2,3,4),(1,2,3,4)),
-                              ((1,2,3),(1,2,3),(1,2,3)),
+                              ((),(1,),True,(1,)),
+                              ((1,),(),False,(1,)),
+                              ((1,1),(7,),False,(1,7)),
+                              ((1,),(7,),False,(7,)),
+                              ((1,),(7,),True,(1,7)),
+                              ((2,),(2,2),False,(2,2)),
+                              ((1,2),(2,2),False,(2,2)),
+                              ((1,1,2),(2,2),False,(1,2,2)),
+                              ((1,1,2),(2,2),True,(1,1,2,2)),
+                              ((1,2,3),(2,3,4),False,(1,2,3,4)),
+                              ((1,2,3),(1,2,3),False,(1,2,3)),
                              ])
-    def test_shapeblender(self,a,b,answer):
-        assert util.shapeblender(a,b) == answer
+    def test_shapeblender(self,a,b,ones,answer):
+        assert util.shapeblender(a,b,ones) == answer
 
     @pytest.mark.parametrize('style',[util.emph,util.deemph,util.warn,util.strikeout])
     def test_decorate(self,style):
