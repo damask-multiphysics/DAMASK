@@ -599,17 +599,6 @@ class Result:
                                                   f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
 
 
-    @staticmethod
-    def _add_absolute(x: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-                'data':  np.abs(x['data']),
-                'label': f'|{x["label"]}|',
-                'meta':  {
-                          'unit':        x['meta']['unit'],
-                          'description': f"absolute value of {x['label']} ({x['meta']['description']})",
-                          'creator':     'add_absolute'
-                          }
-                 }
     def add_absolute(self, x: str):
         """
         Add absolute value.
@@ -620,28 +609,20 @@ class Result:
             Name of scalar, vector, or tensor dataset to take absolute value of.
 
         """
-        self._add_generic_pointwise(self._add_absolute,{'x':x})
+        def absolute(x: Dict[str, Any]) -> Dict[str, Any]:
+            return {
+                    'data':  np.abs(x['data']),
+                    'label': f'|{x["label"]}|',
+                    'meta':  {
+                              'unit':        x['meta']['unit'],
+                              'description': f"absolute value of {x['label']} ({x['meta']['description']})",
+                              'creator':     'add_absolute'
+                              }
+                     }
+
+        self._add_generic_pointwise(absolute,{'x':x})
 
 
-    @staticmethod
-    def _add_calculation(**kwargs) -> Dict[str, Any]:
-        formula = kwargs['formula']
-        for d in re.findall(r'#(.*?)#',formula):
-            formula = formula.replace(f'#{d}#',f"kwargs['{d}']['data']")
-        data = eval(formula)
-
-        if not hasattr(data,'shape') or data.shape[0] != kwargs[d]['data'].shape[0]:
-            raise ValueError('"{}" results in invalid shape'.format(kwargs['formula']))
-
-        return {
-                'data':  data,
-                'label': kwargs['label'],
-                'meta':  {
-                          'unit':        kwargs['unit'],
-                          'description': f"{kwargs['description']} (formula: {kwargs['formula']})",
-                          'creator':     'add_calculation'
-                          }
-                 }
     def add_calculation(self,
                         formula: str,
                         name: str,
@@ -690,24 +671,30 @@ class Result:
         ...                   'Mises equivalent of the Cauchy stress')
 
         """
+        def calculation(**kwargs) -> Dict[str, Any]:
+            formula = kwargs['formula']
+            for d in re.findall(r'#(.*?)#',formula):
+                formula = formula.replace(f'#{d}#',f"kwargs['{d}']['data']")
+            data = eval(formula)
+
+            if not hasattr(data,'shape') or data.shape[0] != kwargs[d]['data'].shape[0]:
+                raise ValueError('"{}" results in invalid shape'.format(kwargs['formula']))
+
+            return {
+                    'data':  data,
+                    'label': kwargs['label'],
+                    'meta':  {
+                              'unit':        kwargs['unit'],
+                              'description': f"{kwargs['description']} (formula: {kwargs['formula']})",
+                              'creator':     'add_calculation'
+                              }
+                     }
+
         dataset_mapping = {d:d for d in set(re.findall(r'#(.*?)#',formula))}                        # datasets used in the formula
         args             = {'formula':formula,'label':name,'unit':unit,'description':description}
-        self._add_generic_pointwise(self._add_calculation,dataset_mapping,args)
+        self._add_generic_pointwise(calculation,dataset_mapping,args)
 
 
-    @staticmethod
-    def _add_stress_Cauchy(P: Dict[str, Any], F: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-                'data':  mechanics.stress_Cauchy(P['data'],F['data']),
-                'label': 'sigma',
-                'meta':  {
-                          'unit':        P['meta']['unit'],
-                          'description': "Cauchy stress calculated "
-                                         f"from {P['label']} ({P['meta']['description']})"
-                                         f" and {F['label']} ({F['meta']['description']})",
-                          'creator':     'add_stress_Cauchy'
-                          }
-                }
     def add_stress_Cauchy(self,
                           P: str = 'P',
                           F: str = 'F'):
@@ -724,20 +711,23 @@ class Result:
             Defaults to 'F'.
 
         """
-        self._add_generic_pointwise(self._add_stress_Cauchy,{'P':P,'F':F})
+
+        def stress_Cauchy(P: Dict[str, Any], F: Dict[str, Any]) -> Dict[str, Any]:
+            return {
+                    'data':  mechanics.stress_Cauchy(P['data'],F['data']),
+                    'label': 'sigma',
+                    'meta':  {
+                              'unit':        P['meta']['unit'],
+                              'description': "Cauchy stress calculated "
+                                             f"from {P['label']} ({P['meta']['description']})"
+                                             f" and {F['label']} ({F['meta']['description']})",
+                              'creator':     'add_stress_Cauchy'
+                              }
+                    }
+
+        self._add_generic_pointwise(stress_Cauchy,{'P':P,'F':F})
 
 
-    @staticmethod
-    def _add_determinant(T: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-                'data':  np.linalg.det(T['data']),
-                'label': f"det({T['label']})",
-                'meta':  {
-                          'unit':        T['meta']['unit'],
-                          'description': f"determinant of tensor {T['label']} ({T['meta']['description']})",
-                          'creator':     'add_determinant'
-                          }
-                }
     def add_determinant(self, T: str):
         """
         Add the determinant of a tensor.
@@ -756,20 +746,21 @@ class Result:
         >>> r.add_determinant('F_p')
 
         """
-        self._add_generic_pointwise(self._add_determinant,{'T':T})
+
+        def determinant(T: Dict[str, Any]) -> Dict[str, Any]:
+            return {
+                    'data':  np.linalg.det(T['data']),
+                    'label': f"det({T['label']})",
+                    'meta':  {
+                              'unit':        T['meta']['unit'],
+                              'description': f"determinant of tensor {T['label']} ({T['meta']['description']})",
+                              'creator':     'add_determinant'
+                              }
+                    }
+
+        self._add_generic_pointwise(determinant,{'T':T})
 
 
-    @staticmethod
-    def _add_deviator(T: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-                'data':  tensor.deviatoric(T['data']),
-                'label': f"s_{T['label']}",
-                'meta':  {
-                          'unit':        T['meta']['unit'],
-                          'description': f"deviator of tensor {T['label']} ({T['meta']['description']})",
-                          'creator':     'add_deviator'
-                          }
-                 }
     def add_deviator(self, T: str):
         """
         Add the deviatoric part of a tensor.
@@ -788,29 +779,21 @@ class Result:
         >>> r.add_deviator('sigma')
 
         """
-        self._add_generic_pointwise(self._add_deviator,{'T':T})
+
+        def deviator(T: Dict[str, Any]) -> Dict[str, Any]:
+            return {
+                    'data':  tensor.deviatoric(T['data']),
+                    'label': f"s_{T['label']}",
+                    'meta':  {
+                              'unit':        T['meta']['unit'],
+                              'description': f"deviator of tensor {T['label']} ({T['meta']['description']})",
+                              'creator':     'add_deviator'
+                              }
+                     }
+
+        self._add_generic_pointwise(deviator,{'T':T})
 
 
-    @staticmethod
-    def _add_eigenvalue(T_sym: Dict[str, Any], eigenvalue: Literal['max, mid, min']) -> Dict[str, Any]:
-        if   eigenvalue == 'max':
-            label,p = 'maximum',2
-        elif eigenvalue == 'mid':
-            label,p = 'intermediate',1
-        elif eigenvalue == 'min':
-            label,p = 'minimum',0
-        else:
-            raise ValueError(f'invalid eigenvalue: {eigenvalue}')
-
-        return {
-                'data': tensor.eigenvalues(T_sym['data'])[:,p],
-                'label': f"lambda_{eigenvalue}({T_sym['label']})",
-                'meta' : {
-                          'unit':        T_sym['meta']['unit'],
-                          'description': f"{label} eigenvalue of {T_sym['label']} ({T_sym['meta']['description']})",
-                          'creator':     'add_eigenvalue'
-                         }
-                }
     def add_eigenvalue(self,
                        T_sym: str,
                        eigenvalue: Literal['max', 'mid', 'min'] = 'max'):
@@ -833,30 +816,30 @@ class Result:
         >>> r.add_eigenvalue('sigma','min')
 
         """
-        self._add_generic_pointwise(self._add_eigenvalue,{'T_sym':T_sym},{'eigenvalue':eigenvalue})
+
+        def eigenval(T_sym: Dict[str, Any], eigenvalue: Literal['max, mid, min']) -> Dict[str, Any]:
+            if   eigenvalue == 'max':
+                label,p = 'maximum',2
+            elif eigenvalue == 'mid':
+                label,p = 'intermediate',1
+            elif eigenvalue == 'min':
+                label,p = 'minimum',0
+            else:
+                raise ValueError(f'invalid eigenvalue: {eigenvalue}')
+
+            return {
+                    'data': tensor.eigenvalues(T_sym['data'])[:,p],
+                    'label': f"lambda_{eigenvalue}({T_sym['label']})",
+                    'meta' : {
+                              'unit':        T_sym['meta']['unit'],
+                              'description': f"{label} eigenvalue of {T_sym['label']} ({T_sym['meta']['description']})",
+                              'creator':     'add_eigenvalue'
+                             }
+                    }
+
+        self._add_generic_pointwise(eigenval,{'T_sym':T_sym},{'eigenvalue':eigenvalue})
 
 
-    @staticmethod
-    def _add_eigenvector(T_sym: Dict[str, Any], eigenvalue: Literal['max', 'mid', 'min']) -> Dict[str, Any]:
-        if   eigenvalue == 'max':
-            label,p = 'maximum',2
-        elif eigenvalue == 'mid':
-            label,p = 'intermediate',1
-        elif eigenvalue == 'min':
-            label,p = 'minimum',0
-        else:
-            raise ValueError(f'invalid eigenvalue: {eigenvalue}')
-
-        return {
-                'data': tensor.eigenvectors(T_sym['data'])[:,p],
-                'label': f"v_{eigenvalue}({T_sym['label']})",
-                'meta' : {
-                          'unit':        '1',
-                          'description': f"eigenvector corresponding to {label} eigenvalue"
-                                         f" of {T_sym['label']} ({T_sym['meta']['description']})",
-                          'creator':     'add_eigenvector'
-                         }
-               }
     def add_eigenvector(self,
                         T_sym: str,
                         eigenvalue: Literal['max', 'mid', 'min'] = 'max'):
@@ -872,25 +855,31 @@ class Result:
             Defaults to 'max'.
 
         """
-        self._add_generic_pointwise(self._add_eigenvector,{'T_sym':T_sym},{'eigenvalue':eigenvalue})
+
+        def eigenvector(T_sym: Dict[str, Any], eigenvalue: Literal['max', 'mid', 'min']) -> Dict[str, Any]:
+            if   eigenvalue == 'max':
+                label,p = 'maximum',2
+            elif eigenvalue == 'mid':
+                label,p = 'intermediate',1
+            elif eigenvalue == 'min':
+                label,p = 'minimum',0
+            else:
+                raise ValueError(f'invalid eigenvalue: {eigenvalue}')
+
+            return {
+                    'data': tensor.eigenvectors(T_sym['data'])[:,p],
+                    'label': f"v_{eigenvalue}({T_sym['label']})",
+                    'meta' : {
+                              'unit':        '1',
+                              'description': f"eigenvector corresponding to {label} eigenvalue"
+                                             f" of {T_sym['label']} ({T_sym['meta']['description']})",
+                              'creator':     'add_eigenvector'
+                             }
+                   }
+
+        self._add_generic_pointwise(eigenvector,{'T_sym':T_sym},{'eigenvalue':eigenvalue})
 
 
-    @staticmethod
-    def _add_IPF_color(l: FloatSequence, q: Dict[str, Any]) -> Dict[str, Any]:
-        m = util.scale_to_coprime(np.array(l))
-        lattice =  q['meta']['lattice']
-        o = Orientation(rotation = q['data'],lattice=lattice)
-
-        return {
-                'data': np.uint8(o.IPF_color(l)*255),
-                'label': 'IPFcolor_({} {} {})'.format(*m),
-                'meta' : {
-                          'unit':        '8-bit RGB',
-                          'lattice':     q['meta']['lattice'],
-                          'description': 'Inverse Pole Figure (IPF) colors along sample direction ({} {} {})'.format(*m),
-                          'creator':     'add_IPF_color'
-                         }
-               }
     def add_IPF_color(self,
                       l: FloatSequence,
                       q: str = 'O'):
@@ -914,20 +903,26 @@ class Result:
         >>> r.add_IPF_color(np.array([0,1,1]))
 
         """
-        self._add_generic_pointwise(self._add_IPF_color,{'q':q},{'l':l})
+
+        def IPF_color(l: FloatSequence, q: Dict[str, Any]) -> Dict[str, Any]:
+            m = util.scale_to_coprime(np.array(l))
+            lattice =  q['meta']['lattice']
+            o = Orientation(rotation = q['data'],lattice=lattice)
+
+            return {
+                    'data': np.uint8(o.IPF_color(l)*255),
+                    'label': 'IPFcolor_({} {} {})'.format(*m),
+                    'meta' : {
+                              'unit':        '8-bit RGB',
+                              'lattice':     q['meta']['lattice'],
+                              'description': 'Inverse Pole Figure (IPF) colors along sample direction ({} {} {})'.format(*m),
+                              'creator':     'add_IPF_color'
+                             }
+                   }
+
+        self._add_generic_pointwise(IPF_color,{'q':q},{'l':l})
 
 
-    @staticmethod
-    def _add_maximum_shear(T_sym: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-                'data':  mechanics.maximum_shear(T_sym['data']),
-                'label': f"max_shear({T_sym['label']})",
-                'meta':  {
-                          'unit':        T_sym['meta']['unit'],
-                          'description': f"maximum shear component of {T_sym['label']} ({T_sym['meta']['description']})",
-                          'creator':     'add_maximum_shear'
-                          }
-                 }
     def add_maximum_shear(self, T_sym: str):
         """
         Add maximum shear components of symmetric tensor.
@@ -938,30 +933,20 @@ class Result:
             Name of symmetric tensor dataset.
 
         """
-        self._add_generic_pointwise(self._add_maximum_shear,{'T_sym':T_sym})
+        def maximum_shear(T_sym: Dict[str, Any]) -> Dict[str, Any]:
+            return {
+                    'data':  mechanics.maximum_shear(T_sym['data']),
+                    'label': f"max_shear({T_sym['label']})",
+                    'meta':  {
+                              'unit':        T_sym['meta']['unit'],
+                              'description': f"maximum shear component of {T_sym['label']} ({T_sym['meta']['description']})",
+                              'creator':     'add_maximum_shear'
+                              }
+                     }
+
+        self._add_generic_pointwise(maximum_shear,{'T_sym':T_sym})
 
 
-    @staticmethod
-    def _add_equivalent_Mises(T_sym: Dict[str, Any], kind: str) -> Dict[str, Any]:
-        k = kind
-        if k is None:
-            if T_sym['meta']['unit'] == '1':
-                k = 'strain'
-            elif T_sym['meta']['unit'] == 'Pa':
-                k = 'stress'
-        if k not in ['stress', 'strain']:
-            raise ValueError(f'invalid von Mises kind "{kind}"')
-
-        return {
-                'data':  (mechanics.equivalent_strain_Mises if k=='strain' else \
-                          mechanics.equivalent_stress_Mises)(T_sym['data']),
-                'label': f"{T_sym['label']}_vM",
-                'meta':  {
-                          'unit':        T_sym['meta']['unit'],
-                          'description': f"Mises equivalent {k} of {T_sym['label']} ({T_sym['meta']['description']})",
-                          'creator':     'add_Mises'
-                          }
-                }
     def add_equivalent_Mises(self,
                              T_sym: str,
                              kind: Optional[str] = None):
@@ -991,32 +976,30 @@ class Result:
         >>> r.add_equivalent_Mises('epsilon_V^0.0(F)')
 
         """
-        self._add_generic_pointwise(self._add_equivalent_Mises,{'T_sym':T_sym},{'kind':kind})
+        def equivalent_Mises(T_sym: Dict[str, Any], kind: str) -> Dict[str, Any]:
+            k = kind
+            if k is None:
+                if T_sym['meta']['unit'] == '1':
+                    k = 'strain'
+                elif T_sym['meta']['unit'] == 'Pa':
+                    k = 'stress'
+            if k not in ['stress', 'strain']:
+                raise ValueError(f'invalid von Mises kind "{kind}"')
+
+            return {
+                    'data':  (mechanics.equivalent_strain_Mises if k=='strain' else \
+                              mechanics.equivalent_stress_Mises)(T_sym['data']),
+                    'label': f"{T_sym['label']}_vM",
+                    'meta':  {
+                              'unit':        T_sym['meta']['unit'],
+                              'description': f"Mises equivalent {k} of {T_sym['label']} ({T_sym['meta']['description']})",
+                              'creator':     'add_Mises'
+                              }
+                    }
+
+        self._add_generic_pointwise(equivalent_Mises,{'T_sym':T_sym},{'kind':kind})
 
 
-    @staticmethod
-    def _add_norm(x: Dict[str, Any], ord: Union[int, float, Literal['fro', 'nuc']]) ->  Dict[str, Any]:
-        o = ord
-        if len(x['data'].shape) == 2:
-            axis: Union[int, Tuple[int, int]] = 1
-            t = 'vector'
-            if o is None: o = 2
-        elif len(x['data'].shape) == 3:
-            axis = (1,2)
-            t = 'tensor'
-            if o is None: o = 'fro'
-        else:
-            raise ValueError(f'invalid shape of {x["label"]}')
-
-        return {
-                'data':  np.linalg.norm(x['data'],ord=o,axis=axis,keepdims=True),
-                'label': f"|{x['label']}|_{o}",
-                'meta':  {
-                          'unit':        x['meta']['unit'],
-                          'description': f"{o}-norm of {t} {x['label']} ({x['meta']['description']})",
-                          'creator':     'add_norm'
-                          }
-                 }
     def add_norm(self,
                  x: str,
                  ord: Union[None, int, float, Literal['fro', 'nuc']] = None):
@@ -1031,22 +1014,32 @@ class Result:
             Order of the norm. inf means NumPy's inf object. For details refer to numpy.linalg.norm.
 
         """
-        self._add_generic_pointwise(self._add_norm,{'x':x},{'ord':ord})
+        def norm(x: Dict[str, Any], ord: Union[int, float, Literal['fro', 'nuc']]) ->  Dict[str, Any]:
+            o = ord
+            if len(x['data'].shape) == 2:
+                axis: Union[int, Tuple[int, int]] = 1
+                t = 'vector'
+                if o is None: o = 2
+            elif len(x['data'].shape) == 3:
+                axis = (1,2)
+                t = 'tensor'
+                if o is None: o = 'fro'
+            else:
+                raise ValueError(f'invalid shape of {x["label"]}')
+
+            return {
+                    'data':  np.linalg.norm(x['data'],ord=o,axis=axis,keepdims=True),
+                    'label': f"|{x['label']}|_{o}",
+                    'meta':  {
+                              'unit':        x['meta']['unit'],
+                              'description': f"{o}-norm of {t} {x['label']} ({x['meta']['description']})",
+                              'creator':     'add_norm'
+                              }
+                     }
+
+        self._add_generic_pointwise(norm,{'x':x},{'ord':ord})
 
 
-    @staticmethod
-    def _add_stress_second_Piola_Kirchhoff(P: Dict[str, Any], F: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-                'data':  mechanics.stress_second_Piola_Kirchhoff(P['data'],F['data']),
-                'label': 'S',
-                'meta':  {
-                          'unit':        P['meta']['unit'],
-                          'description': "second Piola-Kirchhoff stress calculated "
-                                         f"from {P['label']} ({P['meta']['description']})"
-                                         f" and {F['label']} ({F['meta']['description']})",
-                          'creator':     'add_stress_second_Piola_Kirchhoff'
-                          }
-                }
     def add_stress_second_Piola_Kirchhoff(self,
                                           P: str = 'P',
                                           F: str = 'F'):
@@ -1069,34 +1062,23 @@ class Result:
         is taken into account.
 
         """
-        self._add_generic_pointwise(self._add_stress_second_Piola_Kirchhoff,{'P':P,'F':F})
+        def stress_second_Piola_Kirchhoff(P: Dict[str, Any], F: Dict[str, Any]) -> Dict[str, Any]:
+            return {
+                    'data':  mechanics.stress_second_Piola_Kirchhoff(P['data'],F['data']),
+                    'label': 'S',
+                    'meta':  {
+                              'unit':        P['meta']['unit'],
+                              'description': "second Piola-Kirchhoff stress calculated "
+                                             f"from {P['label']} ({P['meta']['description']})"
+                                             f" and {F['label']} ({F['meta']['description']})",
+                              'creator':     'add_stress_second_Piola_Kirchhoff'
+                              }
+                    }
+
+        self._add_generic_pointwise(stress_second_Piola_Kirchhoff,{'P':P,'F':F})
 
 
 
-    @staticmethod
-    def _add_pole(q: Dict[str, Any],
-                  uvw: FloatSequence,
-                  hkl: FloatSequence,
-                  with_symmetry: bool,
-                  normalize: bool) -> Dict[str, Any]:
-        c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1
-        brackets = ['[]','()','⟨⟩','{}'][(uvw is None)*1+with_symmetry*2]
-        label = 'p^' + '{}{} {} {}{}'.format(brackets[0],
-                                              *(uvw if uvw else hkl),
-                                              brackets[-1],)
-        ori = Orientation(q['data'],lattice=q['meta']['lattice'],a=1,c=c)
-
-        return {
-                'data': ori.to_pole(uvw=uvw,hkl=hkl,with_symmetry=with_symmetry,normalize=normalize),
-                'label': label,
-                'meta' : {
-                          'unit':        '1',
-                          'description': f'{"normalized " if normalize else ""}lab frame vector along lattice ' \
-                                         + ('direction' if uvw is not None else 'plane') \
-                                         + ('s' if with_symmetry else ''),
-                          'creator':     'add_pole'
-                          }
-                }
     def add_pole(self,
                  q: str = 'O',
                  *,
@@ -1122,22 +1104,33 @@ class Result:
             Defaults to True.
 
         """
-        self._add_generic_pointwise(self._add_pole,
-                                    {'q':q},
-                                    {'uvw':uvw,'hkl':hkl,'with_symmetry':with_symmetry,'normalize':normalize})
+        def pole(q: Dict[str, Any],
+                      uvw: FloatSequence,
+                      hkl: FloatSequence,
+                      with_symmetry: bool,
+                      normalize: bool) -> Dict[str, Any]:
+            c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1
+            brackets = ['[]','()','⟨⟩','{}'][(uvw is None)*1+with_symmetry*2]
+            label = 'p^' + '{}{} {} {}{}'.format(brackets[0],
+                                                  *(uvw if uvw else hkl),
+                                                  brackets[-1],)
+            ori = Orientation(q['data'],lattice=q['meta']['lattice'],a=1,c=c)
+
+            return {
+                    'data': ori.to_pole(uvw=uvw,hkl=hkl,with_symmetry=with_symmetry,normalize=normalize),
+                    'label': label,
+                    'meta' : {
+                              'unit':        '1',
+                              'description': f'{"normalized " if normalize else ""}lab frame vector along lattice ' \
+                                             + ('direction' if uvw is not None else 'plane') \
+                                             + ('s' if with_symmetry else ''),
+                              'creator':     'add_pole'
+                              }
+                    }
+
+        self._add_generic_pointwise(pole,{'q':q},{'uvw':uvw,'hkl':hkl,'with_symmetry':with_symmetry,'normalize':normalize})
 
 
-    @staticmethod
-    def _add_rotation(F: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-                'data':  mechanics.rotation(F['data']).as_matrix(),
-                'label': f"R({F['label']})",
-                'meta':  {
-                          'unit':        F['meta']['unit'],
-                          'description': f"rotational part of {F['label']} ({F['meta']['description']})",
-                          'creator':     'add_rotation'
-                          }
-                 }
     def add_rotation(self, F: str):
         """
         Add rotational part of a deformation gradient.
@@ -1156,20 +1149,20 @@ class Result:
         >>> r.add_rotation('F')
 
         """
-        self._add_generic_pointwise(self._add_rotation,{'F':F})
+        def rotation(F: Dict[str, Any]) -> Dict[str, Any]:
+            return {
+                    'data':  mechanics.rotation(F['data']).as_matrix(),
+                    'label': f"R({F['label']})",
+                    'meta':  {
+                              'unit':        F['meta']['unit'],
+                              'description': f"rotational part of {F['label']} ({F['meta']['description']})",
+                              'creator':     'add_rotation'
+                              }
+                     }
+
+        self._add_generic_pointwise(rotation,{'F':F})
 
 
-    @staticmethod
-    def _add_spherical(T: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-                'data':  tensor.spherical(T['data'],False),
-                'label': f"p_{T['label']}",
-                'meta':  {
-                          'unit':        T['meta']['unit'],
-                          'description': f"spherical component of tensor {T['label']} ({T['meta']['description']})",
-                          'creator':     'add_spherical'
-                          }
-                 }
     def add_spherical(self, T: str):
         """
         Add the spherical (hydrostatic) part of a tensor.
@@ -1188,22 +1181,20 @@ class Result:
         >>> r.add_spherical('sigma')
 
         """
-        self._add_generic_pointwise(self._add_spherical,{'T':T})
+        def spherical(T: Dict[str, Any]) -> Dict[str, Any]:
+            return {
+                    'data':  tensor.spherical(T['data'],False),
+                    'label': f"p_{T['label']}",
+                    'meta':  {
+                              'unit':        T['meta']['unit'],
+                              'description': f"spherical component of tensor {T['label']} ({T['meta']['description']})",
+                              'creator':     'add_spherical'
+                              }
+                     }
+
+        self._add_generic_pointwise(spherical,{'T':T})
 
 
-    @staticmethod
-    def _add_strain(F: Dict[str, Any], t: Literal['V', 'U'], m: float) -> Dict[str, Any]:
-        side = 'left' if t == 'V' else 'right'
-        return {
-                'data':  mechanics.strain(F['data'],t,m),
-                'label': f"epsilon_{t}^{m}({F['label']})",
-                'meta':  {
-                          'unit':        F['meta']['unit'],
-                          'description': f'Seth-Hill strain tensor of order {m} based on {side} stretch tensor '+\
-                                         f"of {F['label']} ({F['meta']['description']})",
-                          'creator':     'add_strain'
-                          }
-                 }
     def add_strain(self,
                    F: str = 'F',
                    t: Literal['V', 'U'] = 'V',
@@ -1264,21 +1255,22 @@ class Result:
         | https://de.wikipedia.org/wiki/Verzerrungstensor
 
         """
-        self._add_generic_pointwise(self._add_strain,{'F':F},{'t':t,'m':m})
+        def strain(F: Dict[str, Any], t: Literal['V', 'U'], m: float) -> Dict[str, Any]:
+            side = 'left' if t == 'V' else 'right'
+            return {
+                    'data':  mechanics.strain(F['data'],t,m),
+                    'label': f"epsilon_{t}^{m}({F['label']})",
+                    'meta':  {
+                              'unit':        F['meta']['unit'],
+                              'description': f'Seth-Hill strain tensor of order {m} based on {side} stretch tensor '+\
+                                             f"of {F['label']} ({F['meta']['description']})",
+                              'creator':     'add_strain'
+                              }
+                     }
+
+        self._add_generic_pointwise(strain,{'F':F},{'t':t,'m':m})
 
 
-    @staticmethod
-    def _add_stretch_tensor(F: Dict[str, Any], t: str) -> Dict[str, Any]:
-        return {
-                'data':  (mechanics.stretch_left if t.upper() == 'V' else mechanics.stretch_right)(F['data']),
-                'label': f"{t}({F['label']})",
-                'meta':  {
-                          'unit':        F['meta']['unit'],
-                          'description': f"{'left' if t.upper() == 'V' else 'right'} stretch tensor "\
-                                        +f"of {F['label']} ({F['meta']['description']})",           # noqa
-                          'creator':     'add_stretch_tensor'
-                          }
-                 }
     def add_stretch_tensor(self,
                            F: str = 'F',
                            t: Literal['V', 'U'] = 'V'):
@@ -1294,20 +1286,21 @@ class Result:
             Defaults to 'V'.
 
         """
-        self._add_generic_pointwise(self._add_stretch_tensor,{'F':F},{'t':t})
+        def stretch_tensor(F: Dict[str, Any], t: str) -> Dict[str, Any]:
+            return {
+                    'data':  (mechanics.stretch_left if t.upper() == 'V' else mechanics.stretch_right)(F['data']),
+                    'label': f"{t}({F['label']})",
+                    'meta':  {
+                              'unit':        F['meta']['unit'],
+                              'description': f"{'left' if t.upper() == 'V' else 'right'} stretch tensor "\
+                                            +f"of {F['label']} ({F['meta']['description']})",           # noqa
+                              'creator':     'add_stretch_tensor'
+                              }
+                     }
+
+        self._add_generic_pointwise(stretch_tensor,{'F':F},{'t':t})
 
 
-    @staticmethod
-    def _add_curl(f: Dict[str, Any], size: np.ndarray) -> Dict[str, Any]:
-        return {
-                'data':  grid_filters.curl(size,f['data']),
-                'label': f"curl({f['label']})",
-                'meta':  {
-                          'unit':        f['meta']['unit']+'/m',
-                          'description': f"curl of {f['label']} ({f['meta']['description']})",
-                          'creator':     'add_curl'
-                          }
-                 }
     def add_curl(self, f: str):
         """
         Add curl of a field.
@@ -1323,20 +1316,20 @@ class Result:
         i.e. fields resulting from the grid solver.
 
         """
-        self._add_generic_grid(self._add_curl,{'f':f},{'size':self.size})
+        def curl(f: Dict[str, Any], size: np.ndarray) -> Dict[str, Any]:
+            return {
+                    'data':  grid_filters.curl(size,f['data']),
+                    'label': f"curl({f['label']})",
+                    'meta':  {
+                              'unit':        f['meta']['unit']+'/m',
+                              'description': f"curl of {f['label']} ({f['meta']['description']})",
+                              'creator':     'add_curl'
+                              }
+                     }
+
+        self._add_generic_grid(curl,{'f':f},{'size':self.size})
 
 
-    @staticmethod
-    def _add_divergence(f: Dict[str, Any], size: np.ndarray) -> Dict[str, Any]:
-        return {
-                'data':  grid_filters.divergence(size,f['data']),
-                'label': f"divergence({f['label']})",
-                'meta':  {
-                          'unit':        f['meta']['unit']+'/m',
-                          'description': f"divergence of {f['label']} ({f['meta']['description']})",
-                          'creator':     'add_divergence'
-                          }
-                 }
     def add_divergence(self, f: str):
         """
         Add divergence of a field.
@@ -1352,21 +1345,20 @@ class Result:
         i.e. fields resulting from the grid solver.
 
         """
-        self._add_generic_grid(self._add_divergence,{'f':f},{'size':self.size})
+        def divergence(f: Dict[str, Any], size: np.ndarray) -> Dict[str, Any]:
+            return {
+                    'data':  grid_filters.divergence(size,f['data']),
+                    'label': f"divergence({f['label']})",
+                    'meta':  {
+                              'unit':        f['meta']['unit']+'/m',
+                              'description': f"divergence of {f['label']} ({f['meta']['description']})",
+                              'creator':     'add_divergence'
+                              }
+                     }
+
+        self._add_generic_grid(divergence,{'f':f},{'size':self.size})
 
 
-    @staticmethod
-    def _add_gradient(f: Dict[str, Any], size: np.ndarray) -> Dict[str, Any]:
-        return {
-                'data':  grid_filters.gradient(size,f['data'] if len(f['data'].shape) == 4 else \
-                                                    f['data'].reshape(f['data'].shape+(1,))),
-                'label': f"gradient({f['label']})",
-                'meta':  {
-                          'unit':        f['meta']['unit']+'/m',
-                          'description': f"gradient of {f['label']} ({f['meta']['description']})",
-                          'creator':     'add_gradient'
-                          }
-                 }
     def add_gradient(self, f: str):
         """
         Add gradient of a field.
@@ -1382,7 +1374,19 @@ class Result:
         i.e. fields resulting from the grid solver.
 
         """
-        self._add_generic_grid(self._add_gradient,{'f':f},{'size':self.size})
+        def gradient(f: Dict[str, Any], size: np.ndarray) -> Dict[str, Any]:
+            return {
+                    'data':  grid_filters.gradient(size,f['data'] if len(f['data'].shape) == 4 else \
+                                                        f['data'].reshape(f['data'].shape+(1,))),
+                    'label': f"gradient({f['label']})",
+                    'meta':  {
+                              'unit':        f['meta']['unit']+'/m',
+                              'description': f"gradient of {f['label']} ({f['meta']['description']})",
+                              'creator':     'add_gradient'
+                              }
+                     }
+
+        self._add_generic_grid(gradient,{'f':f},{'size':self.size})
 
 
     def _add_generic_grid(self,
@@ -1444,26 +1448,6 @@ class Result:
                                                           f'damask.Result.{creator} v{damask.version}'.encode()
 
 
-    def _job_pointwise(self,
-                       group: str,
-                       callback: Callable,
-                       datasets: Dict[str, str],
-                       args: Dict[str, str]) -> List[Union[None, Any]]:
-        """Execute job for _add_generic_pointwise."""
-        try:
-            datasets_in = {}
-            with h5py.File(self.fname,'r') as f:
-                for arg,label in datasets.items():
-                    loc  = f[group+'/'+label]
-                    datasets_in[arg]={'data' :loc[()],
-                                      'label':label,
-                                      'meta': {k:(v.decode() if not h5py3 and type(v) is bytes else v) \
-                                               for k,v in loc.attrs.items()}}
-            r = callback(**datasets_in,**args)
-            return [group,r]
-        except Exception as err:
-            print(f'Error during calculation: {err}.')
-            return [None,None]
 
 
     def _add_generic_pointwise(self,
@@ -1485,6 +1469,27 @@ class Result:
             Arguments parsed to func.
 
         """
+
+        def job_pointwise(group: str,
+                          callback: Callable,
+                          datasets: Dict[str, str],
+                          args: Dict[str, str]) -> List[Union[None, Any]]:
+            """Execute job for _add_generic_pointwise."""
+            try:
+                datasets_in = {}
+                with h5py.File(self.fname,'r') as f:
+                    for arg,label in datasets.items():
+                        loc  = f[group+'/'+label]
+                        datasets_in[arg]={'data' :loc[()],
+                                          'label':label,
+                                          'meta': {k:(v.decode() if not h5py3 and type(v) is bytes else v) \
+                                                   for k,v in loc.attrs.items()}}
+                r = callback(**datasets_in,**args)
+                return [group,r]
+            except Exception as err:
+                print(f'Error during calculation: {err}.')
+                return [None,None]
+
         groups = []
         with h5py.File(self.fname,'r') as f:
             for inc in self.visible['increments']:
@@ -1498,7 +1503,7 @@ class Result:
             print('No matching dataset found, no data was added.')
             return
 
-        default_arg = partial(self._job_pointwise,callback=func,datasets=datasets,args=args)
+        default_arg = partial(job_pointwise,callback=func,datasets=datasets,args=args)
 
         for grp in util.show_progress(groups):
             group, result = default_arg(grp)                                                        # type: ignore
