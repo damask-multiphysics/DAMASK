@@ -465,11 +465,11 @@ pure subroutine kinetics_sl(Mp,ph,en, &
 
     dot_gamma_sl = merge(+1.0_pREAL,-1.0_pREAL, tau_sl_pos>tau_sl_neg) &
                  * prm%dot_gamma_0_sl  &
-                 * (merge(tau_sl_pos,tau_sl_neg, tau_sl_pos>tau_sl_neg)/stt%xi_sl(:,en))**prm%n_sl
+                 * (max(tau_sl_pos,tau_sl_neg)/stt%xi_sl(:,en))**prm%n_sl
 
     if (present(ddot_gamma_dtau_sl)) then
       where(dNeq0(dot_gamma_sl))
-        ddot_gamma_dtau_sl = dot_gamma_sl*prm%n_sl/merge(tau_sl_pos,tau_sl_neg, tau_sl_pos>tau_sl_neg)
+        ddot_gamma_dtau_sl = dot_gamma_sl*prm%n_sl/max(tau_sl_pos,tau_sl_neg)
       else where
         ddot_gamma_dtau_sl = 0.0_pREAL
       end where

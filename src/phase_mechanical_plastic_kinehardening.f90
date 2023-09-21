@@ -336,7 +336,6 @@ module function plastic_kinehardening_dotState(Mp,ph,en) result(dotState)
                *                      exp(-(stt%gamma(:,en)-stt%gamma_flip(:,en))*prm%h_0_chi/(prm%chi_inf+stt%chi_flip(:,en))) &
               )
 
-
   end associate
 
 end function plastic_kinehardening_dotState
@@ -457,11 +456,11 @@ pure subroutine kinetics(Mp,ph,en, &
 
     dot_gamma = merge(+1.0_pREAL,-1.0_pREAL, tau_pos>tau_neg) &
               * prm%dot_gamma_0  &
-              * (merge(tau_pos,tau_neg, tau_pos>tau_neg)/stt%xi(:,en))**prm%n
+              * (max(tau_pos,tau_neg)/stt%xi(:,en))**prm%n
 
     if (present(ddot_gamma_dtau)) then
       where(dNeq0(dot_gamma))
-        ddot_gamma_dtau = dot_gamma*prm%n/merge(tau_pos,tau_neg, tau_pos>tau_neg)
+        ddot_gamma_dtau = dot_gamma*prm%n/max(tau_pos,tau_neg)
       else where
         ddot_gamma_dtau = 0.0_pREAL
       end where

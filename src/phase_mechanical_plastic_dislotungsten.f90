@@ -486,7 +486,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
 
     tau_pos = [(math_tensordot(Mp,prm%P_nS_pos(1:3,1:3,i)),i=1,prm%sum_N_sl)]
     tau_neg = [(math_tensordot(Mp,prm%P_nS_neg(1:3,1:3,i)),i=1,prm%sum_N_sl)]
-    tau_eff = math_clip(merge(tau_pos,tau_neg, tau_pos>tau_neg) - dst%tau_pass(:,en),left = 0.0_pREAL)
+    tau_eff = math_clip(max(tau_pos,tau_neg) - dst%tau_pass(:,en),left = 0.0_pREAL)
 
     if (present(tau)) tau = tau_eff
 
