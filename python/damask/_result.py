@@ -1,5 +1,3 @@
-import multiprocessing as mp
-from multiprocessing.synchronize import Lock
 import re
 import fnmatch
 import os
@@ -1450,12 +1448,10 @@ class Result:
                        group: str,
                        callback: Callable,
                        datasets: Dict[str, str],
-                       args: Dict[str, str],
-                       lock: Lock) -> List[Union[None, Any]]:
+                       args: Dict[str, str]) -> List[Union[None, Any]]:
         """Execute job for _add_generic_pointwise."""
         try:
             datasets_in = {}
-            lock.acquire()
             with h5py.File(self.fname,'r') as f:
                 for arg,label in datasets.items():
                     loc  = f[group+'/'+label]
@@ -1463,7 +1459,6 @@ class Result:
                                       'label':label,
                                       'meta': {k:(v.decode() if not h5py3 and type(v) is bytes else v) \
                                                for k,v in loc.attrs.items()}}
-            lock.release()
             r = callback(**datasets_in,**args)
             return [group,r]
         except Exception as err:
@@ -1490,9 +1485,6 @@ class Result:
             Arguments parsed to func.
 
         """
-        pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',4)))
-        lock = mp.Manager().Lock()
-
         groups = []
         with h5py.File(self.fname,'r') as f:
             for inc in self.visible['increments']:
@@ -1506,12 +1498,12 @@ class Result:
             print('No matching dataset found, no data was added.')
             return
 
-        default_arg = partial(self._job_pointwise,callback=func,datasets=datasets,args=args,lock=lock)
+        default_arg = partial(self._job_pointwise,callback=func,datasets=datasets,args=args)
 
-        for group,result in util.show_progress(pool.imap_unordered(default_arg,groups),len(groups)):# type: ignore
+        for grp in util.show_progress(groups):
+            group, result = default_arg(grp)                                                        # type: ignore
             if not result:
                 continue
-            lock.acquire()
             with h5py.File(self.fname, 'a') as f:
                 try:
                     if not self._protected and '/'.join([group,result['label']]) in f:
@@ -1543,10 +1535,6 @@ class Result:
 
                 except (OSError,RuntimeError) as err:
                     print(f'Could not add dataset: {err}.')
-            lock.release()
-
-        pool.close()
-        pool.join()
 
 
     def _mappings(self):
