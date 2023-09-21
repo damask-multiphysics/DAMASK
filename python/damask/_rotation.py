@@ -376,7 +376,7 @@ class Rotation:
 
         Rotate vector, second-order tensor, or fourth-order tensor.
         `other` is interpreted as an array of tensor quantities with the highest-possible order
-        considering the shape of `self`.
+        considering the shape of `self`. Compatible innermost dimensions will blend.
         For instance, shapes of (2,) and (3,3) for `self` and `other` prompt interpretation of
         `other` as a second-rank tensor and result in (2,) rotated tensors, whereas
         shapes of (2,1) and (3,3) for `self` and `other` result in (2,3) rotated vectors.
@@ -390,6 +390,47 @@ class Rotation:
         -------
         rotated : numpy.ndarray, shape (...,3), (...,3,3), or (...,3,3,3,3)
             Rotated vector or tensor, i.e. transformed to frame defined by rotation.
+
+        Examples
+        --------
+        All below examples rely on imported modules:
+        >>> import numpy as np
+        >>> import damask
+
+        Application of twelve (random) rotations to a set of five vectors.
+
+        >>> r = damask.Rotation.from_random(shape=(12))
+        >>> o = np.ones((5,3))
+        >>> (r@o).shape                                    # (12) @ (5, 3)
+        (12,5, 3)
+
+        Application of a (random) rotation to all twelve second-rank tensors.
+
+        >>> r = damask.Rotation.from_random()
+        >>> o = np.ones((12,3,3))
+        >>> (r@o).shape                                    # (1) @ (12, 3,3)
+        (12,3,3)
+
+        Application of twelve (random) rotations to the corresponding twelve second-rank tensors.
+
+        >>> r = damask.Rotation.from_random(shape=(12))
+        >>> o = np.ones((12,3,3))
+        >>> (r@o).shape                                    # (12) @ (3,3)
+        (12,3,3)
+
+        Application of each of three (random) rotations to all three vectors.
+
+        >>> r = damask.Rotation.from_random(shape=(3))
+        >>> o = np.ones((3,3))
+        >>> (r[...,np.newaxis]@o[np.newaxis,...]).shape    # (3,1) @ (1,3, 3)
+        (3,3,3)
+
+        Application of twelve (random) rotations to all twelve second-rank tensors.
+
+        >>> r = damask.Rotation.from_random(shape=(12))
+        >>> o = np.ones((12,3,3))
+        >>> (r@o[np.newaxis,...]).shape                    # (12) @ (1,12, 3,3)
+        (12,3,3,3)
 
         """
         if isinstance(other, np.ndarray):
