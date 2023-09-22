@@ -358,10 +358,10 @@ class Grid:
         """
         Load DREAM.3D (HDF5) file.
 
-        Data in DREAM.3D files can be stored per cell ('CellData') and/or
-        per grain ('Grain Data'). Per default, cell-wise data is assumed.
+        Data in DREAM.3D files can be stored per cell ('CellData')
+        and/or per grain ('Grain Data'). Per default, i.e. if
+        'feature_IDs' is None, cell-wise data is assumed.
 
-        damask.ConfigMaterial.load_DREAM3D gives the corresponding material definition.
 
         Parameters
         ----------
@@ -391,6 +391,14 @@ class Grid:
         -------
         loaded : damask.Grid
             Grid-based geometry from file.
+
+        Notes
+        -----
+        damask.ConfigMaterial.load_DREAM3D gives the corresponding
+        material definition.
+
+        For cell-wise data, only unique combinations of
+        orientation and phase are considered.
 
         """
         b = util.DREAM3D_base_group(fname)      if base_group is None else base_group

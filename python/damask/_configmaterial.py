@@ -106,11 +106,8 @@ class ConfigMaterial(Config):
         Load DREAM.3D (HDF5) file.
 
         Data in DREAM.3D files can be stored per cell ('CellData')
-        and/or per grain ('Grain Data'). Per default, cell-wise data
-        is assumed.
-
-        damask.Grid.load_DREAM3D allows to get the corresponding geometry
-        for the grid solver.
+        and/or per grain ('Grain Data'). Per default, i.e. if
+        'grain_data' is None, cell-wise data is assumed.
 
         Parameters
         ----------
@@ -140,14 +137,21 @@ class ConfigMaterial(Config):
             and grain- or cell-wise data. Defaults to None, in which case
             it is set as the path that contains _SIMPL_GEOMETRY/SPACING.
 
-        Notes
-        -----
-        Homogenization and phase entries are emtpy and need to be defined separately.
-
         Returns
         -------
         loaded : damask.ConfigMaterial
             Material configuration from file.
+
+        Notes
+        -----
+        damask.Grid.load_DREAM3D gives the corresponding geometry for
+        the grid solver.
+
+        For cell-wise data, only unique combinations of
+        orientation and phase are considered.
+
+        Homogenization and phase entries are emtpy and need to be
+        defined separately.
 
         """
         b = util.DREAM3D_base_group(fname) if base_group is None else base_group
