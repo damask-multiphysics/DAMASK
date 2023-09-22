@@ -273,20 +273,21 @@ pure module subroutine kinehardening_LpAndItsTangent(Lp,dLp_dMp, Mp,ph,en)
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma, ddot_gamma_dtau
 
+
   Lp = 0.0_pREAL
   dLp_dMp = 0.0_pREAL
 
   associate(prm => param(ph))
 
-  call kinetics(Mp,ph,en, dot_gamma,ddot_gamma_dtau)
-  do i = 1, prm%sum_N_sl
-    Lp = Lp + dot_gamma(i)*prm%P(1:3,1:3,i)
-    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + ddot_gamma_dtau(i) *       prm%P(k,l,i) &
-                                            * merge(prm%P_nS_pos(m,n,i), &
-                                                    prm%P_nS_neg(m,n,i), dot_gamma(i)>0.0_pREAL)
-  end do
+    call kinetics(Mp,ph,en, dot_gamma,ddot_gamma_dtau)
+    do i = 1, prm%sum_N_sl
+      Lp = Lp + dot_gamma(i)*prm%P(1:3,1:3,i)
+      forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+        dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
+                         + ddot_gamma_dtau(i) *       prm%P(k,l,i) &
+                                              * merge(prm%P_nS_pos(m,n,i), &
+                                                      prm%P_nS_neg(m,n,i), dot_gamma(i)>0.0_pREAL)
+    end do
 
   end associate
 
@@ -308,8 +309,6 @@ module function plastic_kinehardening_dotState(Mp,ph,en) result(dotState)
 
   real(pREAL) :: &
     sumGamma
-  real(pREAL), dimension(param(ph)%sum_N_sl) :: &
-    dot_gamma
 
 
   associate(prm => param(ph), stt => state(ph), &
@@ -448,6 +447,7 @@ pure subroutine kinetics(Mp,ph,en, &
     tau_pos, &
     tau_neg
   integer :: i
+
 
   associate(prm => param(ph), stt => state(ph))
 
