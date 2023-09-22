@@ -30,15 +30,6 @@ module math
     module procedure math_expand_real
   end interface math_expand
 
-#if __INTEL_COMPILER >= 1900
-  ! do not make use of associated entities available to other modules
-  private :: &
-    misc, &
-    IO, &
-    config, &
-    parallelization
-#endif
-
   real(pREAL), parameter :: &
     PI = acos(-1.0_pREAL), &                                                                        !< ratio of a circle's circumference to its diameter
     TAU = 2.0_pREAL*PI, &                                                                           !< ratio of a circle's circumference to its radius

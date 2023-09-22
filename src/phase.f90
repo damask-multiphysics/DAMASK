@@ -353,21 +353,6 @@ module phase
 
   end interface
 
-
-#if __INTEL_COMPILER >= 1900
-  public :: &
-    prec, &
-    math, &
-    rotations, &
-    IO, &
-    config, &
-    material, &
-    result, &
-    crystal, &
-    discretization, &
-    HDF5_utilities
-#endif
-
   public :: &
     phase_init, &
     phase_homogenizedC66, &
