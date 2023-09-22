@@ -365,7 +365,7 @@ class Grid:
 
         Parameters
         ----------
-        fname : str or or pathlib.Path
+        fname : str or pathlib.Path
             Filename of the DREAM.3D (HDF5) file.
         feature_IDs : str, optional
             Name of the dataset containing the mapping between cells and
@@ -401,22 +401,22 @@ class Grid:
         orientation and phase are considered.
 
         """
-        b = util.DREAM3D_base_group(fname)      if base_group is None else base_group
-        c = util.DREAM3D_cell_data_group(fname) if cell_data  is None else cell_data
-        f = h5py.File(fname, 'r')
+        with h5py.File(fname, 'r') as f:
+            b = util.DREAM3D_base_group(f) if base_group is None else base_group
+            c = util.DREAM3D_cell_data_group(f) if cell_data is None else cell_data
 
-        cells  = f['/'.join([b,'_SIMPL_GEOMETRY','DIMENSIONS'])][()]
-        size   = f['/'.join([b,'_SIMPL_GEOMETRY','SPACING'])] * cells
-        origin = f['/'.join([b,'_SIMPL_GEOMETRY','ORIGIN'])][()]
+            cells  = f['/'.join([b,'_SIMPL_GEOMETRY','DIMENSIONS'])][()]
+            size   = f['/'.join([b,'_SIMPL_GEOMETRY','SPACING'])] * cells
+            origin = f['/'.join([b,'_SIMPL_GEOMETRY','ORIGIN'])][()]
 
-        if feature_IDs is None:
-            phase = f['/'.join([b,c,phases])][()].reshape(-1,1)
-            O = Rotation.from_Euler_angles(f['/'.join([b,c,Euler_angles])]).as_quaternion().reshape(-1,4) # noqa
-            unique,unique_inverse = np.unique(np.hstack([O,phase]),return_inverse=True,axis=0)
-            ma = np.arange(cells.prod()) if len(unique) == cells.prod() else \
-                 np.arange(unique.size)[np.argsort(pd.unique(unique_inverse))][unique_inverse]
-        else:
-            ma = f['/'.join([b,c,feature_IDs])][()].flatten()
+            if feature_IDs is None:
+                phase = f['/'.join([b,c,phases])][()].reshape(-1,1)
+                O = Rotation.from_Euler_angles(f['/'.join([b,c,Euler_angles])]).as_quaternion().reshape(-1,4) # noqa
+                unique,unique_inverse = np.unique(np.hstack([O,phase]),return_inverse=True,axis=0)
+                ma = np.arange(cells.prod()) if len(unique) == cells.prod() else \
+                     np.arange(unique.size)[np.argsort(pd.unique(unique_inverse))][unique_inverse]
+            else:
+                ma = f['/'.join([b,c,feature_IDs])][()].flatten()
 
         return Grid(material = ma.reshape(cells,order='F'),
                     size     = size,
