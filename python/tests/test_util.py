@@ -146,21 +146,25 @@ class TestUtil:
         assert 'DAMASK' in style('DAMASK')
 
     @pytest.mark.parametrize('complete',[True,False])
-    def test_D3D_base_group(self,tmp_path,complete):
+    @pytest.mark.parametrize('fhandle',[True,False])
+    def test_D3D_base_group(self,tmp_path,complete,fhandle):
         base_group = ''.join(random.choices('DAMASK', k=10))
         with h5py.File(tmp_path/'base_group.dream3d','w') as f:
             f.create_group('/'.join((base_group,'_SIMPL_GEOMETRY')))
             if complete:
                 f['/'.join((base_group,'_SIMPL_GEOMETRY'))].create_dataset('SPACING',data=np.ones(3))
 
+        fname = tmp_path/'base_group.dream3d'
+        if fhandle: fname = h5py.File(fname)
         if complete:
-            assert base_group == util.DREAM3D_base_group(tmp_path/'base_group.dream3d')
+            assert base_group == util.DREAM3D_base_group(fname)
         else:
             with pytest.raises(ValueError):
-                util.DREAM3D_base_group(tmp_path/'base_group.dream3d')
+                util.DREAM3D_base_group(fname)
 
     @pytest.mark.parametrize('complete',[True,False])
-    def test_D3D_cell_data_group(self,tmp_path,complete):
+    @pytest.mark.parametrize('fhandle',[True,False])
+    def test_D3D_cell_data_group(self,tmp_path,complete,fhandle):
         base_group = ''.join(random.choices('DAMASK', k=10))
         cell_data_group = ''.join(random.choices('KULeuven', k=10))
         cells = np.random.randint(1,50,3)
@@ -172,11 +176,13 @@ class TestUtil:
             if complete:
                 f['/'.join((base_group,cell_data_group))].create_dataset('data',shape=np.append(cells,1))
 
+        fname = tmp_path/'cell_data_group.dream3d'
+        if fhandle: fname = h5py.File(fname)
         if complete:
-            assert cell_data_group == util.DREAM3D_cell_data_group(tmp_path/'cell_data_group.dream3d')
+            assert cell_data_group == util.DREAM3D_cell_data_group(fname)
         else:
             with pytest.raises(ValueError):
-                util.DREAM3D_cell_data_group(tmp_path/'cell_data_group.dream3d')
+                util.DREAM3D_cell_data_group(fname)
 
 
     @pytest.mark.parametrize('full,reduced',[({},                           {}),

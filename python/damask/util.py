@@ -698,7 +698,7 @@ def pass_on(keyword: str,
         return wrapper
     return decorator
 
-def DREAM3D_base_group(fname: _Union[str, _Path]) -> str:
+def DREAM3D_base_group(fname: _Union[str, _Path, _h5py.File]) -> str:
     """
     Determine the base group of a DREAM.3D file.
 
@@ -707,7 +707,7 @@ def DREAM3D_base_group(fname: _Union[str, _Path]) -> str:
 
     Parameters
     ----------
-    fname : str or pathlib.Path
+    fname : str, pathlib.Path, or _h5py.File
         Filename of the DREAM.3D (HDF5) file.
 
     Returns
@@ -716,15 +716,19 @@ def DREAM3D_base_group(fname: _Union[str, _Path]) -> str:
         Path to the base group.
 
     """
-    with _h5py.File(_Path(fname).expanduser(),'r') as f:
+    def get_base_group(f: _h5py.File) -> str:
         base_group = f.visit(lambda path: path.rsplit('/',2)[0] if '_SIMPL_GEOMETRY/SPACING' in path else None)
+        if base_group is None:
+            raise ValueError(f'could not determine base group in file "{fname}"')
+        return base_group
 
-    if base_group is None:
-        raise ValueError(f'could not determine base group in file "{fname}"')
+    if isinstance(fname,_h5py.File):
+        return get_base_group(fname)
 
-    return base_group
+    with _h5py.File(_Path(fname).expanduser(),'r') as f:
+        return get_base_group(f)
 
-def DREAM3D_cell_data_group(fname: _Union[str, _Path]) -> str:
+def DREAM3D_cell_data_group(fname: _Union[str, _Path, _h5py.File]) -> str:
     """
     Determine the cell data group of a DREAM.3D file.
 
@@ -734,7 +738,7 @@ def DREAM3D_cell_data_group(fname: _Union[str, _Path]) -> str:
 
     Parameters
     ----------
-    fname : str or pathlib.Path
+    fname : str, pathlib.Path, or h5py.File
         Filename of the DREAM.3D (HDF5) file.
 
     Returns
@@ -743,17 +747,21 @@ def DREAM3D_cell_data_group(fname: _Union[str, _Path]) -> str:
         Path to the cell data group.
 
     """
-    base_group = DREAM3D_base_group(fname)
-    with _h5py.File(_Path(fname).expanduser(),'r') as f:
+    def get_cell_data_group(f: _h5py.File) -> str:
+        base_group = DREAM3D_base_group(f)
         cells = tuple(f['/'.join([base_group,'_SIMPL_GEOMETRY','DIMENSIONS'])][()][::-1])
         cell_data_group = f[base_group].visititems(lambda path,obj: path.split('/')[0] \
                                                    if isinstance(obj,_h5py._hl.dataset.Dataset) and _np.shape(obj)[:-1] == cells \
                                                    else None)
+        if cell_data_group is None:
+            raise ValueError(f'could not determine cell-data group in file "{fname}/{base_group}"')
+        return cell_data_group
 
-    if cell_data_group is None:
-        raise ValueError(f'could not determine cell-data group in file "{fname}/{base_group}"')
+    if isinstance(fname,_h5py.File):
+        return get_cell_data_group(fname)
 
-    return cell_data_group
+    with _h5py.File(_Path(fname).expanduser(),'r') as f:
+        return get_cell_data_group(f)
 
 
 def Bravais_to_Miller(*,
