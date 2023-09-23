@@ -1473,8 +1473,7 @@ class Result:
         def job_pointwise(group: str,
                           callback: Callable,
                           datasets: Dict[str, str],
-                          args: Dict[str, str]) -> List[Union[None, Any]]:
-            """Execute job for _add_generic_pointwise."""
+                          args: Dict[str, str]) -> Union[None, Any]:
             try:
                 datasets_in = {}
                 with h5py.File(self.fname,'r') as f:
@@ -1484,11 +1483,10 @@ class Result:
                                           'label':label,
                                           'meta': {k:(v.decode() if not h5py3 and type(v) is bytes else v) \
                                                    for k,v in loc.attrs.items()}}
-                r = callback(**datasets_in,**args)
-                return [group,r]
+                return callback(**datasets_in,**args)
             except Exception as err:
                 print(f'Error during calculation: {err}.')
-                return [None,None]
+                return None
 
         groups = []
         with h5py.File(self.fname,'r') as f:
@@ -1505,9 +1503,8 @@ class Result:
 
         default_arg = partial(job_pointwise,callback=func,datasets=datasets,args=args)
 
-        for grp in util.show_progress(groups):
-            group, result = default_arg(grp)                                                        # type: ignore
-            if not result:
+        for group in util.show_progress(groups):
+            if not (result := default_arg(group)):                                                  # type: ignore
                 continue
             with h5py.File(self.fname, 'a') as f:
                 try:
