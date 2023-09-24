@@ -107,11 +107,7 @@ pure function eval(self,x) result(y)
 
   y = self%coef(ubound(self%coef,1))
   do o = ubound(self%coef,1)-1, 0, -1
-#ifndef __INTEL_LLVM_COMPILER
     y = y*(x-self%x_ref) +self%coef(o)
-#else
-    y = IEEE_FMA(y,x-self%x_ref,self%coef(o))
-#endif
   end do
 
 end function eval
