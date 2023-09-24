@@ -162,7 +162,7 @@ class TestOrientation:
                                                                ([np.arccos(3**(-.5)),np.pi/4,0],[0,0],[0,0,1],[0,0,1])])
     def test_fiber_IPF(self,crystal,sample,direction,color):
         fiber = Orientation.from_fiber_component(crystal=crystal,sample=sample,family='cubic',shape=200)
-        print(np.allclose(fiber.IPF_color(direction),color))
+        assert np.allclose(fiber.IPF_color(direction),color)
 
 
     @pytest.mark.parametrize('kwargs',[
@@ -455,11 +455,9 @@ class TestOrientation:
         p = Orientation.from_random(family=family,shape=right)
         blend = util.shapeblender(o.shape,p.shape)
         for loc in np.random.randint(0,blend,(10,len(blend))):
-            # print(f'{a}/{b} @ {loc}')
-            # print(o[tuple(loc[:len(o.shape)])].disorientation(p[tuple(loc[-len(p.shape):])]))
-            # print(o.disorientation(p)[tuple(loc)])
-            assert o[tuple(loc[:len(o.shape)])].disorientation(p[tuple(loc[-len(p.shape):])]) \
-                   .isclose(o.disorientation(p)[tuple(loc)])
+            l = () if  left is None else tuple(np.minimum(np.array(left )-1,loc[:len(left)]))
+            r = () if right is None else tuple(np.minimum(np.array(right)-1,loc[-len(right):]))
+            assert o[l].disorientation(p[r]).isclose(o.disorientation(p)[tuple(loc)])
 
     @pytest.mark.parametrize('family',crystal_families)
     @pytest.mark.parametrize('left,right',[
@@ -467,13 +465,16 @@ class TestOrientation:
                                     ((2,2),(4,4)),
                                     ((3,1),(1,3)),
                                     (None,(3,)),
+                                    (None,()),
                                    ])
     def test_IPF_color_blending(self,family,left,right):
         o = Orientation.from_random(family=family,shape=left)
         v = np.random.random(right+(3,))
         blend = util.shapeblender(o.shape,v.shape[:-1])
         for loc in np.random.randint(0,blend,(10,len(blend))):
-            assert np.allclose(o[tuple(loc[:len(o.shape)])].IPF_color(v[tuple(loc[-len(v.shape[:-1]):])]),
+            l = () if  left is None else tuple(np.minimum(np.array(left )-1,loc[:len(left)]))
+            r = () if right is None else tuple(np.minimum(np.array(right)-1,loc[-len(right):]))
+            assert np.allclose(o[l].IPF_color(v[r]),
                                o.IPF_color(v)[tuple(loc)])
 
     @pytest.mark.parametrize('family',crystal_families)
@@ -488,7 +489,9 @@ class TestOrientation:
         v = np.random.random(right+(3,))
         blend = util.shapeblender(o.shape,v.shape[:-1])
         for loc in np.random.randint(0,blend,(10,len(blend))):
-            assert np.allclose(o[tuple(loc[:len(o.shape)])].to_SST(v[tuple(loc[-len(v.shape[:-1]):])]),
+            l = () if  left is None else tuple(np.minimum(np.array(left )-1,loc[:len(left)]))
+            r = () if right is None else tuple(np.minimum(np.array(right)-1,loc[-len(right):]))
+            assert np.allclose(o[l].to_SST(v[r]),
                                o.to_SST(v)[tuple(loc)])
 
     @pytest.mark.parametrize('lattice,a,b,c,alpha,beta,gamma',
@@ -514,8 +517,10 @@ class TestOrientation:
         v = np.random.random(right+(3,))
         blend = util.shapeblender(o.shape,v.shape[:-1])
         for loc in np.random.randint(0,blend,(10,len(blend))):
-            assert np.allclose(o[tuple(loc[:len(o.shape)])].to_pole(uvw=v[tuple(loc[-len(v.shape[:-1]):])]),
-                               o.to_pole(uvw=v)[tuple(loc)])
+            l = () if  left is None else tuple(np.minimum(np.array(left )-1,loc[:len(left)]))
+            r = () if right is None else tuple(np.minimum(np.array(right)-1,loc[-len(right):]))
+        assert np.allclose(o[l].to_pole(uvw=v[r]),
+                           o.to_pole(uvw=v)[tuple(loc)])
 
     def test_mul_invalid(self):
         with pytest.raises(TypeError):
