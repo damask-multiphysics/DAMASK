@@ -5,8 +5,8 @@ import copy
 import datetime
 import xml.etree.ElementTree as ET                                                                  # noqa
 import xml.dom.minidom
+import functools
 from pathlib import Path
-from functools import partial
 from collections import defaultdict
 from collections.abc import Iterable
 from typing import Optional, Union, Callable, Any, Sequence, Literal, Dict, List, Tuple
@@ -1501,10 +1501,9 @@ class Result:
             print('No matching dataset found, no data was added.')
             return
 
-        default_arg = partial(job_pointwise,callback=func,datasets=datasets,args=args)
 
         for group in util.show_progress(groups):
-            if not (result := default_arg(group)):                                                  # type: ignore
+            if not (result := job_pointwise(group, callback=func, datasets=datasets, args=args)):   # type: ignore
                 continue
             with h5py.File(self.fname, 'a') as f:
                 try:
@@ -2054,7 +2053,7 @@ class Result:
 
         cfg_dir = (Path.cwd() if target_dir is None else Path(target_dir))
         with h5py.File(self.fname,'r') as f_in:
-            f_in['setup'].visititems(partial(export,
-                                             output=output,
-                                             cfg_dir=cfg_dir,
-                                             overwrite=overwrite))
+            f_in['setup'].visititems(functools.partial(export,
+                                                       output=output,
+                                                       cfg_dir=cfg_dir,
+                                                       overwrite=overwrite))
