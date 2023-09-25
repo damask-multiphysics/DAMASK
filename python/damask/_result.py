@@ -22,7 +22,7 @@ from . import grid_filters
 from . import mechanics
 from . import tensor
 from . import util
-from ._typehints import FloatSequence, IntSequence
+from ._typehints import FloatSequence, IntSequence, DADF5Dataset
 
 h5py3 = h5py.__version__[0] == '3'
 
@@ -36,7 +36,7 @@ def _read(dataset: h5py._hl.dataset.Dataset) -> np.ndarray:
     return np.array(dataset,dtype=dtype)
 
 def _match(requested,
-           existing: h5py._hl.base.KeysViewHDF5) -> List[Any]:
+           existing: h5py._hl.base.KeysViewHDF5) -> List[str]:
     """Find matches among two sets of labels."""
     def flatten_list(list_of_lists):
         return [e for e_ in list_of_lists for e in e_]
@@ -609,7 +609,7 @@ class Result:
             Name of scalar, vector, or tensor dataset to take absolute value of.
 
         """
-        def absolute(x: Dict[str, Any]) -> Dict[str, Any]:
+        def absolute(x: DADF5Dataset) -> DADF5Dataset:
             return {
                     'data':  np.abs(x['data']),
                     'label': f'|{x["label"]}|',
@@ -671,7 +671,7 @@ class Result:
         ...                   'Mises equivalent of the Cauchy stress')
 
         """
-        def calculation(**kwargs) -> Dict[str, Any]:
+        def calculation(**kwargs) -> DADF5Dataset:
             formula = kwargs['formula']
             for d in re.findall(r'#(.*?)#',formula):
                 formula = formula.replace(f'#{d}#',f"kwargs['{d}']['data']")
@@ -712,7 +712,7 @@ class Result:
 
         """
 
-        def stress_Cauchy(P: Dict[str, Any], F: Dict[str, Any]) -> Dict[str, Any]:
+        def stress_Cauchy(P: DADF5Dataset, F: DADF5Dataset) -> DADF5Dataset:
             return {
                     'data':  mechanics.stress_Cauchy(P['data'],F['data']),
                     'label': 'sigma',
@@ -747,7 +747,7 @@ class Result:
 
         """
 
-        def determinant(T: Dict[str, Any]) -> Dict[str, Any]:
+        def determinant(T: DADF5Dataset) -> DADF5Dataset:
             return {
                     'data':  np.linalg.det(T['data']),
                     'label': f"det({T['label']})",
@@ -780,7 +780,7 @@ class Result:
 
         """
 
-        def deviator(T: Dict[str, Any]) -> Dict[str, Any]:
+        def deviator(T: DADF5Dataset) -> DADF5Dataset:
             return {
                     'data':  tensor.deviatoric(T['data']),
                     'label': f"s_{T['label']}",
@@ -817,7 +817,7 @@ class Result:
 
         """
 
-        def eigenval(T_sym: Dict[str, Any], eigenvalue: Literal['max, mid, min']) -> Dict[str, Any]:
+        def eigenval(T_sym: DADF5Dataset, eigenvalue: Literal['max, mid, min']) -> DADF5Dataset:
             if   eigenvalue == 'max':
                 label,p = 'maximum',2
             elif eigenvalue == 'mid':
@@ -856,7 +856,7 @@ class Result:
 
         """
 
-        def eigenvector(T_sym: Dict[str, Any], eigenvalue: Literal['max', 'mid', 'min']) -> Dict[str, Any]:
+        def eigenvector(T_sym: DADF5Dataset, eigenvalue: Literal['max', 'mid', 'min']) -> DADF5Dataset:
             if   eigenvalue == 'max':
                 label,p = 'maximum',2
             elif eigenvalue == 'mid':
@@ -904,13 +904,13 @@ class Result:
 
         """
 
-        def IPF_color(l: FloatSequence, q: Dict[str, Any]) -> Dict[str, Any]:
+        def IPF_color(l: FloatSequence, q: DADF5Dataset) -> DADF5Dataset:
             m = util.scale_to_coprime(np.array(l))
             lattice =  q['meta']['lattice']
             o = Orientation(rotation = q['data'],lattice=lattice)
 
             return {
-                    'data': np.uint8(o.IPF_color(l)*255),
+                    'data': (o.IPF_color(l)*255).astype(np.uint8),
                     'label': 'IPFcolor_({} {} {})'.format(*m),
                     'meta' : {
                               'unit':        '8-bit RGB',
@@ -933,7 +933,7 @@ class Result:
             Name of symmetric tensor dataset.
 
         """
-        def maximum_shear(T_sym: Dict[str, Any]) -> Dict[str, Any]:
+        def maximum_shear(T_sym: DADF5Dataset) -> DADF5Dataset:
             return {
                     'data':  mechanics.maximum_shear(T_sym['data']),
                     'label': f"max_shear({T_sym['label']})",
@@ -976,7 +976,7 @@ class Result:
         >>> r.add_equivalent_Mises('epsilon_V^0.0(F)')
 
         """
-        def equivalent_Mises(T_sym: Dict[str, Any], kind: str) -> Dict[str, Any]:
+        def equivalent_Mises(T_sym: DADF5Dataset, kind: str) -> DADF5Dataset:
             k = kind
             if k is None:
                 if T_sym['meta']['unit'] == '1':
@@ -1014,7 +1014,7 @@ class Result:
             Order of the norm. inf means NumPy's inf object. For details refer to numpy.linalg.norm.
 
         """
-        def norm(x: Dict[str, Any], ord: Union[int, float, Literal['fro', 'nuc']]) ->  Dict[str, Any]:
+        def norm(x: DADF5Dataset, ord: Union[int, float, Literal['fro', 'nuc']]) -> DADF5Dataset:
             o = ord
             if len(x['data'].shape) == 2:
                 axis: Union[int, Tuple[int, int]] = 1
@@ -1062,7 +1062,7 @@ class Result:
         is taken into account.
 
         """
-        def stress_second_Piola_Kirchhoff(P: Dict[str, Any], F: Dict[str, Any]) -> Dict[str, Any]:
+        def stress_second_Piola_Kirchhoff(P: DADF5Dataset, F: DADF5Dataset) -> DADF5Dataset:
             return {
                     'data':  mechanics.stress_second_Piola_Kirchhoff(P['data'],F['data']),
                     'label': 'S',
@@ -1104,12 +1104,11 @@ class Result:
             Defaults to True.
 
         """
-        def pole(q: Dict[str, Any],
-                      uvw: FloatSequence,
-                      hkl: FloatSequence,
-                      with_symmetry: bool,
-                      normalize: bool) -> Dict[str, Any]:
-            c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1
+        def pole(q: DADF5Dataset,
+                 uvw: FloatSequence, hkl: FloatSequence,
+                 with_symmetry: bool,
+                 normalize: bool) -> DADF5Dataset:
+            c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1.0
             brackets = ['[]','()','⟨⟩','{}'][(uvw is None)*1+with_symmetry*2]
             label = 'p^' + '{}{} {} {}{}'.format(brackets[0],
                                                   *(uvw if uvw else hkl),
@@ -1149,7 +1148,7 @@ class Result:
         >>> r.add_rotation('F')
 
         """
-        def rotation(F: Dict[str, Any]) -> Dict[str, Any]:
+        def rotation(F: DADF5Dataset) -> DADF5Dataset:
             return {
                     'data':  mechanics.rotation(F['data']).as_matrix(),
                     'label': f"R({F['label']})",
@@ -1181,7 +1180,7 @@ class Result:
         >>> r.add_spherical('sigma')
 
         """
-        def spherical(T: Dict[str, Any]) -> Dict[str, Any]:
+        def spherical(T: DADF5Dataset) -> DADF5Dataset:
             return {
                     'data':  tensor.spherical(T['data'],False),
                     'label': f"p_{T['label']}",
@@ -1255,7 +1254,7 @@ class Result:
         | https://de.wikipedia.org/wiki/Verzerrungstensor
 
         """
-        def strain(F: Dict[str, Any], t: Literal['V', 'U'], m: float) -> Dict[str, Any]:
+        def strain(F: DADF5Dataset, t: Literal['V', 'U'], m: float) -> DADF5Dataset:
             side = 'left' if t == 'V' else 'right'
             return {
                     'data':  mechanics.strain(F['data'],t,m),
@@ -1286,7 +1285,7 @@ class Result:
             Defaults to 'V'.
 
         """
-        def stretch_tensor(F: Dict[str, Any], t: str) -> Dict[str, Any]:
+        def stretch_tensor(F: DADF5Dataset, t: str) -> DADF5Dataset:
             return {
                     'data':  (mechanics.stretch_left if t.upper() == 'V' else mechanics.stretch_right)(F['data']),
                     'label': f"{t}({F['label']})",
@@ -1316,7 +1315,7 @@ class Result:
         i.e. fields resulting from the grid solver.
 
         """
-        def curl(f: Dict[str, Any], size: np.ndarray) -> Dict[str, Any]:
+        def curl(f: DADF5Dataset, size: np.ndarray) -> DADF5Dataset:
             return {
                     'data':  grid_filters.curl(size,f['data']),
                     'label': f"curl({f['label']})",
@@ -1345,7 +1344,7 @@ class Result:
         i.e. fields resulting from the grid solver.
 
         """
-        def divergence(f: Dict[str, Any], size: np.ndarray) -> Dict[str, Any]:
+        def divergence(f: DADF5Dataset, size: np.ndarray) -> DADF5Dataset:
             return {
                     'data':  grid_filters.divergence(size,f['data']),
                     'label': f"divergence({f['label']})",
@@ -1374,7 +1373,7 @@ class Result:
         i.e. fields resulting from the grid solver.
 
         """
-        def gradient(f: Dict[str, Any], size: np.ndarray) -> Dict[str, Any]:
+        def gradient(f: DADF5Dataset, size: np.ndarray) -> DADF5Dataset:
             return {
                     'data':  grid_filters.gradient(size,f['data'] if len(f['data'].shape) == 4 else \
                                                         f['data'].reshape(f['data'].shape+(1,))),
@@ -1390,7 +1389,7 @@ class Result:
 
 
     def _add_generic_grid(self,
-                          func: Callable,
+                          func: Callable[..., DADF5Dataset],
                           datasets: Dict[str, str],
                           args: Dict[str, str] = {},
                           constituents = None):
@@ -1441,7 +1440,7 @@ class Result:
                                                           now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
 
                             for l,v in r['meta'].items():
-                                h5_dataset.attrs[l.lower()]=v if h5py3 else v.encode()
+                                h5_dataset.attrs[l.lower()]=v.encode() if not h5py3 and type(v) is str else v
                             creator = h5_dataset.attrs['creator'] if h5py3 else \
                                       h5_dataset.attrs['creator'].decode()
                             h5_dataset.attrs['creator'] = f'damask.Result.{creator} v{damask.version}' if h5py3 else \
@@ -1451,8 +1450,8 @@ class Result:
 
 
     def _add_generic_pointwise(self,
-                               func: Callable,
-                               datasets: Dict[str, Any],
+                               func: Callable[..., DADF5Dataset],
+                               datasets: Dict[str, str],
                                args: Dict[str, Any] = {}):
         """
         General function to add pointwise data.
@@ -1471,9 +1470,9 @@ class Result:
         """
 
         def job_pointwise(group: str,
-                          callback: Callable,
+                          callback: Callable[..., DADF5Dataset],
                           datasets: Dict[str, str],
-                          args: Dict[str, str]) -> Union[None, Any]:
+                          args: Dict[str, str]) -> Union[None, DADF5Dataset]:
             try:
                 datasets_in = {}
                 with h5py.File(self.fname,'r') as f:
@@ -1561,7 +1560,7 @@ class Result:
     def get(self,
             output: Union[str, List[str]] = '*',
             flatten: bool = True,
-            prune: bool = True) -> Optional[Dict[str,Any]]:
+            prune: bool = True) -> Union[None,Dict[str,Any]]:
         """
         Collect data per phase/homogenization reflecting the group/folder structure in the DADF5 file.
 
@@ -1929,6 +1928,7 @@ class Result:
 
                 v.save(vtk_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
                        parallel=parallel)
+
 
     def export_DADF5(self,
                      fname,
