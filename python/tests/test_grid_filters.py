@@ -398,7 +398,7 @@ class TestGridFilters:
                                        np.arange(cells[1]),
                                        np.arange(cells[2]),indexing='ij')).reshape(tuple(cells)+(3,),order='F')
         x,y,z = map(np.random.randint,cells)
-        assert grid_filters.ravel_index(indices)[x,y,z] == np.arange(0,np.product(cells)).reshape(cells,order='F')[x,y,z]
+        assert grid_filters.ravel_index(indices)[x,y,z] == np.arange(0,np.prod(cells)).reshape(cells,order='F')[x,y,z]
 
     def test_unravel_index(self):
         cells = np.random.randint(8,32,(3))
