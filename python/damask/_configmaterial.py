@@ -106,15 +106,12 @@ class ConfigMaterial(Config):
         Load DREAM.3D (HDF5) file.
 
         Data in DREAM.3D files can be stored per cell ('CellData')
-        and/or per grain ('Grain Data'). Per default, cell-wise data
-        is assumed.
-
-        damask.Grid.load_DREAM3D allows to get the corresponding geometry
-        for the grid solver.
+        and/or per grain ('Grain Data'). Per default, i.e. if
+        'grain_data' is None, cell-wise data is assumed.
 
         Parameters
         ----------
-        fname : str
+        fname : str or pathlib.Path
             Filename of the DREAM.3D (HDF5) file.
         grain_data : str
             Name of the group (folder) containing grain-wise data. Defaults
@@ -140,36 +137,43 @@ class ConfigMaterial(Config):
             and grain- or cell-wise data. Defaults to None, in which case
             it is set as the path that contains _SIMPL_GEOMETRY/SPACING.
 
-        Notes
-        -----
-        Homogenization and phase entries are emtpy and need to be defined separately.
-
         Returns
         -------
         loaded : damask.ConfigMaterial
             Material configuration from file.
 
+        Notes
+        -----
+        damask.Grid.load_DREAM3D gives the corresponding geometry for
+        the grid solver.
+
+        For cell-wise data, only unique combinations of
+        orientation and phase are considered.
+
+        Homogenization and phase entries are emtpy and need to be
+        defined separately.
+
         """
-        b = util.DREAM3D_base_group(fname) if base_group is None else base_group
-        c = util.DREAM3D_cell_data_group(fname) if cell_data is None else cell_data
-        f = h5py.File(fname,'r')
+        with h5py.File(fname, 'r') as f:
+            b = util.DREAM3D_base_group(f) if base_group is None else base_group
+            c = util.DREAM3D_cell_data_group(f) if cell_data is None else cell_data
 
-        if grain_data is None:
-            phase = f['/'.join([b,c,phases])][()].flatten()
-            O = Rotation.from_Euler_angles(f['/'.join([b,c,Euler_angles])]).as_quaternion().reshape(-1,4) # noqa
-            _,idx = np.unique(np.hstack([O,phase.reshape(-1,1)]),return_index=True,axis=0)
-            idx = np.sort(idx)
-        else:
-            phase = f['/'.join([b,grain_data,phases])][()]
-            O = Rotation.from_Euler_angles(f['/'.join([b,grain_data,Euler_angles])]).as_quaternion() # noqa
-            idx = np.arange(phase.size)
+            if grain_data is None:
+                phase = f['/'.join([b,c,phases])][()].flatten()
+                O = Rotation.from_Euler_angles(f['/'.join([b,c,Euler_angles])]).as_quaternion().reshape(-1,4) # noqa
+                _,idx = np.unique(np.hstack([O,phase.reshape(-1,1)]),return_index=True,axis=0)
+                idx = np.sort(idx)
+            else:
+                phase = f['/'.join([b,grain_data,phases])][()]
+                O = Rotation.from_Euler_angles(f['/'.join([b,grain_data,Euler_angles])]).as_quaternion() # noqa
+                idx = np.arange(phase.size)
 
-        if cell_ensemble_data is not None and phase_names is not None:
-            try:
-                names = np.array([s.decode() for s in f['/'.join([b,cell_ensemble_data,phase_names])]])
-                phase = names[phase]
-            except KeyError:
-                pass
+            if cell_ensemble_data is not None and phase_names is not None:
+                try:
+                    names = np.array([s.decode() for s in f['/'.join([b,cell_ensemble_data,phase_names])]])
+                    phase = names[phase]
+                except KeyError:
+                    pass
 
 
         base_config = ConfigMaterial({'phase':{k if isinstance(k,int) else str(k): None for k in np.unique(phase)},

@@ -1065,7 +1065,7 @@ class TestRotation:
 
     @pytest.mark.parametrize('data',[np.random.rand(4),
                                      np.random.rand(3,2),
-                                     np.random.rand(3,2,3,3)])
+                                     np.random.rand(3,3,3,1)])
     def test_rotate_invalid_shape(self,data):
         R = Rotation.from_random()
         with pytest.raises(ValueError):

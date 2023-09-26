@@ -375,6 +375,11 @@ class Rotation:
         Return self@other.
 
         Rotate vector, second-order tensor, or fourth-order tensor.
+        `other` is interpreted as an array of tensor quantities with the highest-possible order
+        considering the shape of `self`. Compatible innermost dimensions will blend.
+        For instance, shapes of (2,) and (3,3) for `self` and `other` prompt interpretation of
+        `other` as a second-rank tensor and result in (2,) rotated tensors, whereas
+        shapes of (2,1) and (3,3) for `self` and `other` result in (2,3) rotated vectors.
 
         Parameters
         ----------
@@ -386,29 +391,73 @@ class Rotation:
         rotated : numpy.ndarray, shape (...,3), (...,3,3), or (...,3,3,3,3)
             Rotated vector or tensor, i.e. transformed to frame defined by rotation.
 
+        Examples
+        --------
+        All below examples rely on imported modules:
+        >>> import numpy as np
+        >>> import damask
+
+        Application of twelve (random) rotations to a set of five vectors.
+
+        >>> r = damask.Rotation.from_random(shape=(12))
+        >>> o = np.ones((5,3))
+        >>> (r@o).shape                                    # (12) @ (5, 3)
+        (12,5, 3)
+
+        Application of a (random) rotation to all twelve second-rank tensors.
+
+        >>> r = damask.Rotation.from_random()
+        >>> o = np.ones((12,3,3))
+        >>> (r@o).shape                                    # (1) @ (12, 3,3)
+        (12,3,3)
+
+        Application of twelve (random) rotations to the corresponding twelve second-rank tensors.
+
+        >>> r = damask.Rotation.from_random(shape=(12))
+        >>> o = np.ones((12,3,3))
+        >>> (r@o).shape                                    # (12) @ (3,3)
+        (12,3,3)
+
+        Application of each of three (random) rotations to all three vectors.
+
+        >>> r = damask.Rotation.from_random(shape=(3))
+        >>> o = np.ones((3,3))
+        >>> (r[...,np.newaxis]@o[np.newaxis,...]).shape    # (3,1) @ (1,3, 3)
+        (3,3,3)
+
+        Application of twelve (random) rotations to all twelve second-rank tensors.
+
+        >>> r = damask.Rotation.from_random(shape=(12))
+        >>> o = np.ones((12,3,3))
+        >>> (r@o[np.newaxis,...]).shape                    # (12) @ (1,12, 3,3)
+        (12,3,3,3)
+
         """
         if isinstance(other, np.ndarray):
-            if self.shape + (3,) == other.shape:
-                q_m = self.quaternion[...,0]
-                p_m = self.quaternion[...,1:]
-                A = q_m**2 - np.einsum('...i,...i',p_m,p_m)
-                B = 2. * np.einsum('...i,...i',p_m,other)
-                C = 2. * _P * q_m
-                return np.block([(A * other[...,i]).reshape(self.shape+(1,)) +
-                                 (B * p_m[...,i]).reshape(self.shape+(1,)) +
-                                 (C * (  p_m[...,(i+1)%3]*other[...,(i+2)%3]\
-                                       - p_m[...,(i+2)%3]*other[...,(i+1)%3])).reshape(self.shape+(1,))
-                                 for i in [0,1,2]])
-            if self.shape + (3,3) == other.shape:
-                R = self.as_matrix()
-                return np.einsum('...im,...jn,...mn',R,R,other)
-            if self.shape + (3,3,3,3) == other.shape:
-                R = self.as_matrix()
-                return np.einsum('...im,...jn,...ko,...lp,...mnop',R,R,R,R,other)
-            else:
-                raise ValueError('can only rotate vectors, second-order tensors, and fourth-order tensors')
+            obs = util.shapeblender(self.shape,other.shape,keep_ones=False)[len(self.shape):]
+            for l in [4,2,1]:
+                if obs[-l:] == l*(3,):
+                    bs = util.shapeblender(self.shape,other.shape[:-l],False)
+                    self_ = self.broadcast_to(bs) if self.shape != bs else self
+                    if l==1:
+                        q_m = self_.quaternion[...,0]
+                        p_m = self_.quaternion[...,1:]
+                        A = q_m**2 - np.einsum('...i,...i',p_m,p_m)
+                        B = 2. * np.einsum('...i,...i',p_m,other)
+                        C = 2. * _P * q_m
+                        return np.block([(A * other[...,i]) +
+                                         (B *   p_m[...,i]) +
+                                         (C * ( p_m[...,(i+1)%3]*other[...,(i+2)%3]
+                                              - p_m[...,(i+2)%3]*other[...,(i+1)%3]))
+                                        for i in [0,1,2]]).reshape(bs+(3,),order='F')
+                    else:
+                        return np.einsum({2: '...im,...jn,...mn',
+                                          4: '...im,...jn,...ko,...lp,...mnop'}[l],
+                                         *l*[self_.as_matrix()],
+                                         other)
+            raise ValueError('can only rotate vectors, second-order tensors, and fourth-order tensors')
         elif isinstance(other, Rotation):
-            raise TypeError('use "R1*R2", i.e. multiplication, to compose rotations "R1" and "R2"')
+            raise TypeError('use "R2*R1", i.e. multiplication, to compose rotations "R1" and "R2"')
         else:
             raise TypeError(f'cannot rotate "{type(other)}"')
 

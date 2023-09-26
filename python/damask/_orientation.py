@@ -804,7 +804,7 @@ class Orientation(Rotation,Crystal):
             blend += sym_ops.shape
             v = sym_ops.broadcast_to(shape) \
               @ np.broadcast_to(v.reshape(util.shapeshifter(v.shape,shape+(3,))),shape+(3,))
-        return ~(self.broadcast_to(blend))@ np.broadcast_to(v,blend+(3,))
+        return ~(self.broadcast_to(blend))@np.broadcast_to(v,blend+(3,))
 
 
     def Schmid(self, *,
@@ -833,7 +833,7 @@ class Orientation(Rotation,Crystal):
         >>> import damask
         >>> np.set_printoptions(3,suppress=True,floatmode='fixed')
         >>> O = damask.Orientation.from_Euler_angles(phi=[0,45,0],degrees=True,lattice='cF')
-        >>> O.Schmid(N_slip=[1])
+        >>> O.Schmid(N_slip=[12])[0]
         array([[ 0.000,  0.000,  0.000],
                [ 0.577, -0.000,  0.816],
                [ 0.000,  0.000,  0.000]])
