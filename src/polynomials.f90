@@ -25,7 +25,8 @@ module polynomials
 
   public :: &
     polynomial, &
-    polynomials_init
+    polynomials_init, &
+    polynomials_selfTest
 
 contains
 
@@ -37,7 +38,7 @@ subroutine polynomials_init()
 
   print'(/,1x,a)', '<<<+-  polynomials init  -+>>>'; flush(IO_STDOUT)
 
-  call selfTest()
+  call polynomials_selfTest()
 
 end subroutine polynomials_init
 
@@ -114,7 +115,7 @@ end function eval
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of polynomical functionality.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest()
+subroutine polynomials_selfTest()
 
   type(tPolynomial) :: p1, p2
   real(pREAL), dimension(5) :: coef
@@ -129,9 +130,9 @@ subroutine selfTest()
   call random_number(x_ref)
   call random_number(x)
 
-  coef = coef*10_pREAL -0.5_pREAL
-  x_ref = x_ref*10_pREAL -0.5_pREAL
-  x = x*10_pREAL -0.5_pREAL
+  coef = 10_pREAL*(coef-0.5_pREAL)
+  x_ref = 10_pREAL*(x_ref-0.5_pREAL)
+  x = 10_pREAL*(x-0.5_pREAL)
 
   p1 = polynomial([coef(1)],x_ref)
   if (dNeq(p1%at(x),coef(1)))      error stop 'polynomial: eval(constant)'
@@ -153,7 +154,11 @@ subroutine selfTest()
   dict => YAML_parse_str_asDict(trim(YAML_s))
   p2 = polynomial(dict,'C','T')
   if (dNeq(p1%at(x),p2%at(x),1.0e-6_pREAL))                      error stop 'polynomials: init'
-  y = coef(1)+coef(2)*(x-x_ref)+coef(3)*(x-x_ref)**2+coef(4)*(x-x_ref)**3+coef(5)*(x-x_ref)**4
+  y = coef(1)*(x-x_ref)**0 &
+    + coef(2)*(x-x_ref)**1 &
+    + coef(3)*(x-x_ref)**2 &
+    + coef(4)*(x-x_ref)**3 &
+    + coef(5)*(x-x_ref)**4
   if (dNeq(p1%at(x),y,1.0e-6_pREAL))                             error stop 'polynomials: eval(full)'
 
   YAML_s = 'C: 0.0'//IO_EOL//&
@@ -185,6 +190,6 @@ subroutine selfTest()
   if (dNeq(p1%at(x_ref+x),p1%at(x_ref-x),1.0e-6_pREAL))           error stop 'polynomials: eval(quartic)'
 
 
-end subroutine selfTest
+end subroutine polynomials_selfTest
 
 end module polynomials
