@@ -116,8 +116,7 @@ submodule(phase:plastic) nonlocal
     character(len=pSTRLEN), dimension(:), allocatable :: &
       output
     logical :: &
-      shortRangeStressCorrection, &                                                                 !< use of short range stress correction by excess density gradient term
-      nonSchmidActive = .false.
+      shortRangeStressCorrection                                                                    !< use of short range stress correction by excess density gradient term
     character(len=:),          allocatable, dimension(:) :: &
       systems_sl
   end type tParameters
@@ -125,7 +124,7 @@ submodule(phase:plastic) nonlocal
   type :: tNonlocalDependentState
     real(pREAL), allocatable, dimension(:,:) :: &
       tau_pass, &
-      tau_Back
+      tau_back
     real(pREAL), allocatable, dimension(:,:,:,:,:) :: &
       compatibility
   end type tNonlocalDependentState
@@ -150,10 +149,10 @@ submodule(phase:plastic) nonlocal
         rho_forest, &
       gamma, &
       v, &
-          v_edg_pos, &
-          v_edg_neg, &
-          v_scr_pos, &
-          v_scr_neg
+        v_edg_pos, &
+        v_edg_neg, &
+        v_scr_pos, &
+        v_scr_neg
   end type tNonlocalState
 
  type(tNonlocalState), allocatable, dimension(:) :: &
@@ -176,14 +175,13 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    Ninstances, &
     ph, &
     Nmembers, &
     sizeState, sizeDotState, sizeDependentState, sizeDeltaState, &
     s1, s2, &
     s, t, l
-  real(pREAL), dimension(:), allocatable :: &
-    a
+  real(pREAL), dimension(:,:), allocatable :: &
+    a_nS                                                                                            !< non-Schmid coefficients
   character(len=:), allocatable :: &
     refs, &
     extmsg
@@ -196,8 +194,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     pl
 
   myPlasticity = plastic_active('nonlocal')
-  Ninstances = count(myPlasticity)
-  if (Ninstances == 0) then
+  if (count(myPlasticity) == 0) then
     call geometry_plastic_nonlocal_disable()
     return
   end if
@@ -210,7 +207,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   print'(/,1x,a)', 'C. Kords, Dissertation RWTH Aachen, 2014'
   print'(  1x,a)', 'http://publications.rwth-aachen.de/record/229993'
 
-  print'(/,1x,a,1x,i0)', '# phases:',Ninstances; flush(IO_STDOUT)
+  print'(/,1x,a,1x,i0)', '# phases:',count(myPlasticity); flush(IO_STDOUT)
 
   phases => config_material%get_dict('phase')
   allocate(geom(phases%length))
@@ -253,13 +250,13 @@ module function plastic_nonlocal_init() result(myPlasticity)
       prm%P_sl = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph), phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
-        a = pl%get_as1dReal('a_nonSchmid_110',defaultVal = emptyRealArray)
-        if (size(a) > 0) prm%nonSchmidActive = .true.
-        prm%P_nS_pos = crystal_nonSchmidMatrix(ini%N_sl,a,+1)
-        prm%P_nS_neg = crystal_nonSchmidMatrix(ini%N_sl,a,-1)
+        allocate(a_nS(3,size(pl%get_as1dReal('a_nonSchmid_110',defaultVal=emptyRealArray))),source=0.0_pREAL)          ! anticipating parameters for all three families
+        a_nS(1,:) =          pl%get_as1dReal('a_nonSchmid_110',defaultVal=emptyRealArray)
+        prm%P_nS_pos = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=+1)
+        prm%P_nS_neg = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=-1)
       else
-        prm%P_nS_pos = prm%P_sl
-        prm%P_nS_neg = prm%P_sl
+        prm%P_nS_pos = +prm%P_sl
+        prm%P_nS_neg = -prm%P_sl
       end if
 
       prm%h_sl_sl = crystal_interaction_SlipBySlip(ini%N_sl,pl%get_as1dReal('h_sl-sl'), &
@@ -801,16 +798,10 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
     dv_dtauNS(:,2) = dv_dtauNS(:,1)
 
     !screws
-    if (prm%nonSchmidActive) then
-      do t = 3,4
-        call kinetics(v(:,t), dv_dtau(:,t), dv_dtauNS(:,t), &
-                      tau, tauNS(:,t), dst%tau_pass(:,en),2,Temperature, ph)
-      end do
-    else
-      v(:,3:4)         = spread(v(:,1),2,2)
-      dv_dtau(:,3:4)   = spread(dv_dtau(:,1),2,2)
-      dv_dtauNS(:,3:4) = spread(dv_dtauNS(:,1),2,2)
-    end if
+    do t = 3,4
+      call kinetics(v(:,t), dv_dtau(:,t), dv_dtauNS(:,t), &
+                    tau, tauNS(:,t), dst%tau_pass(:,en),2,Temperature, ph)
+    end do
 
     stt%v(:,en) = pack(v,.true.)
 
@@ -1592,12 +1583,12 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, 
   integer, intent(in) :: &
     c, &                                                                                            !< dislocation character (1:edge, 2:screw)
     ph
-  real(pREAL), intent(in) :: &
-    T                                                                                     !< T
   real(pREAL), dimension(param(ph)%sum_N_sl), intent(in) :: &
     tau, &                                                                                          !< resolved external shear stress (without non Schmid effects)
     tauNS, &                                                                                        !< resolved external shear stress (including non Schmid effects)
     tauThreshold                                                                                    !< threshold shear stress
+  real(pREAL), intent(in) :: &
+    T                                                                                               !< T
   real(pREAL), dimension(param(ph)%sum_N_sl), intent(out) ::  &
     v, &                                                                                            !< velocity
     dv_dtau, &                                                                                      !< velocity derivative with respect to resolved shear stress (without non Schmid contributions)
@@ -1634,7 +1625,7 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, 
         !* Peierls contribution
         tauEff = max(0.0_pREAL, abs(tauNS(s)) - tauThreshold(s))
         lambda_P = prm%b_sl(s)
-        activationVolume_P = prm%w *prm%b_sl(s)**3
+        activationVolume_P = prm%w * prm%b_sl(s)**3
         criticalStress_P = prm%peierlsStress(s,c)
         activationEnergy_P = criticalStress_P * activationVolume_P
         tauRel_P = min(1.0_pREAL, tauEff / criticalStress_P)
