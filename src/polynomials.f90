@@ -68,26 +68,24 @@ function polynomial_from_dict(dict,y,x) result(p)
   type(tPolynomial) :: p
 
   real(pREAL), dimension(:), allocatable :: coef
-  real(pREAL) :: x_ref
   integer :: i, o
-  character(len=1) :: o_s
+  character :: o_s
 
 
   allocate(coef(1),source=dict%get_asReal(y))
 
-  if (dict%contains(y//','//x)) then
-    x_ref = dict%get_asReal(x//'_ref')
-    coef = [coef,dict%get_asReal(y//','//x)]
-  end if
+  if (dict%contains(y//','//x)) coef = [coef,dict%get_asReal(y//','//x)]
   do o = 2,4
     write(o_s,'(I0.0)') o
-    if (dict%contains(y//','//x//'^'//o_s)) then
-      x_ref = dict%get_asReal(x//'_ref')
+    if (dict%contains(y//','//x//'^'//o_s)) &
       coef = [coef,[(0.0_pREAL,i=size(coef),o-1)],dict%get_asReal(y//','//x//'^'//o_s)]
-    end if
   end do
 
-  p = Polynomial(coef,x_ref)
+  if (size(coef) > 1) then
+    p = polynomial(coef,dict%get_asReal(x//'_ref'))
+  else
+    p = polynomial(coef,-huge(1.0_pREAL))
+  end if
 
 end function polynomial_from_dict
 
@@ -105,8 +103,8 @@ pure function eval(self,x) result(y)
   integer :: o
 
 
-  y = 0.0_pREAL
-  do o = ubound(self%coef,1), 0, -1
+  y = self%coef(ubound(self%coef,1))
+  do o = ubound(self%coef,1)-1, 0, -1
     y = y*(x-self%x_ref) + self%coef(o)
   end do
 
