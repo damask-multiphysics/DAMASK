@@ -98,6 +98,9 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS},uninit")
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0 -ftz")
 #   ... capture all floating-point exceptions, need to overwrite -no-ftz
 
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -init=arrays,zero,minus_huge,snan")
+#   ... initialize logical to false, integer to -huge, float+complex to signaling NaN
+
 # disable due to compiler bug https://community.intel.com/t5/Intel-Fortran-Compiler/false-positive-stand-f18-and-IEEE-SELECTED-REAL-KIND/m-p/1227336
 #set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn")
 # enables warnings ...
