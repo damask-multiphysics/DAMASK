@@ -358,7 +358,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! parameters required for several mechanisms and their interactions
-    if (prm%sum_N_sl + prm%sum_N_tw + prm%sum_N_tw > 0) &
+    if (prm%sum_N_sl + prm%sum_N_tw + prm%sum_N_tr > 0) &
       prm%D    = pl%get_asReal('D')
 
     if (prm%sum_N_tw + prm%sum_N_tr > 0) then
