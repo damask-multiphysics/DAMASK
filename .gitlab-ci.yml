@@ -94,7 +94,7 @@ unittest_GNU_DEBUG:
     - cmake --build ${TMPDIR} --target install
     - cd ${TMPDIR}
     - ./bin/DAMASK_test
-    - find -name \*.gcda | xargs gcov
+    - find -name \*.gcda -not -path "**/test/*" | xargs gcov
 
 unittest_GNU_RELEASE:
   stage: compile
@@ -105,7 +105,7 @@ unittest_GNU_RELEASE:
     - cmake --build ${TMPDIR} --target install
     - cd ${TMPDIR}
     - ./bin/DAMASK_test
-    - find -name \*.gcda | xargs gcov
+    - find -name \*.gcda -not -path "**/test/*" | xargs gcov
 
 unittest_GNU_PERFORMANCE:
   stage: compile
@@ -116,7 +116,7 @@ unittest_GNU_PERFORMANCE:
     - cmake --build ${TMPDIR} --target install
     - cd ${TMPDIR}
     - ./bin/DAMASK_test
-    - find -name \*.gcda | xargs gcov
+    - find -name \*.gcda -not -path "**/test/*" | xargs gcov
 
 
 grid_GNU:
