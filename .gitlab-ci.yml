@@ -89,10 +89,10 @@ unittest_GNU_DEBUG:
   stage: compile
   script:
     - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
-    - TMPDIR=$(mktemp -d)
-    - cmake -B ${TMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
-    - cmake --build ${TMPDIR} --target install
-    - cd ${TMPDIR}
+    - TEMPDIR=$(mktemp -d)
+    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
+    - cmake --build ${TEMPDIR} --target install
+    - cd ${TEMPDIR}
     - ./bin/DAMASK_test
     - find -name \*.gcda -not -path "**/test/*" | xargs gcov
 
@@ -100,10 +100,10 @@ unittest_GNU_RELEASE:
   stage: compile
   script:
     - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
-    - TMPDIR=$(mktemp -d)
-    - cmake -B ${TMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
-    - cmake --build ${TMPDIR} --target install
-    - cd ${TMPDIR}
+    - TEMPDIR=$(mktemp -d)
+    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
+    - cmake --build ${TEMPDIR} --target install
+    - cd ${TEMPDIR}
     - ./bin/DAMASK_test
     - find -name \*.gcda -not -path "**/test/*" | xargs gcov
 
@@ -111,10 +111,10 @@ unittest_GNU_PERFORMANCE:
   stage: compile
   script:
     - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
-    - TMPDIR=$(mktemp -d)
-    - cmake -B ${TMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TMPDIR} -DCMAKE_BUILD_TYPE=PERFORMANCE -DBUILDCMD_POST=-coverage
-    - cmake --build ${TMPDIR} --target install
-    - cd ${TMPDIR}
+    - TEMPDIR=$(mktemp -d)
+    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=PERFORMANCE -DBUILDCMD_POST=-coverage
+    - cmake --build ${TEMPDIR} --target install
+    - cd ${TEMPDIR}
     - ./bin/DAMASK_test
     - find -name \*.gcda -not -path "**/test/*" | xargs gcov
 
