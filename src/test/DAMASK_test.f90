@@ -7,6 +7,7 @@ program DAMASK_test
   use test_prec
   use test_misc
   use test_math
+  use test_polynomials
   use test_tables
   use test_crystal
   use test_rotations
@@ -34,6 +35,10 @@ program DAMASK_test
 
   write(IO_STDOUT,fmt=fmt, advance='no') 'math','...'
   call test_math_run()
+  write(IO_STDOUT,fmt='(a)') ok
+
+  write(IO_STDOUT,fmt=fmt, advance='no') 'polynomials','...'
+  call test_polynomials_run()
   write(IO_STDOUT,fmt='(a)') ok
 
   write(IO_STDOUT,fmt=fmt, advance='no') 'tables','...'
