@@ -6,20 +6,18 @@ module test_HDF5_utilities
   implicit none(type,external)
 
   private
-  public :: HDF5_utilities_test
+  public :: test_HDF5_utilities_run
 
   contains
 
-subroutine HDF5_utilities_test()
+subroutine test_HDF5_utilities_run()
 
-  print*, 'begin test HDF5_utilities'
-  call test_read_write()
-  print*, 'end test HDF5_utilities'
+  call read_write()
 
-end subroutine HDF5_utilities_test
+end subroutine test_HDF5_utilities_run
 
 
-subroutine test_read_write()
+subroutine read_write()
 
   integer(HID_T) :: f
   real(pREAL), dimension(3) :: d_in,d_out
@@ -34,6 +32,6 @@ subroutine test_read_write()
 
   if (any(d_in /= d_out)) error stop 'test_read_write'
 
-end subroutine test_read_write
+end subroutine read_write
 
 end module test_HDF5_utilities

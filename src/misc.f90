@@ -5,6 +5,7 @@
 !--------------------------------------------------------------------------------------------------
 module misc
   use prec
+  use constants
 
   implicit none(type,external)
   private
@@ -18,7 +19,9 @@ module misc
 
   public :: &
     misc_init, &
-    misc_optional
+    misc_selfTest, &
+    misc_optional, &
+    misc_prefixOptions
 
 contains
 
@@ -110,6 +113,28 @@ pure function misc_optional_str(given,default) result(var)
 
 end function misc_optional_str
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Add prefix to options in string.
+!> @detail An option starts with a dash followed by at least one letter.
+!--------------------------------------------------------------------------------------------------
+pure function misc_prefixOptions(string,prefix) result(prefixed)
+
+  character(len=*), intent(in)  :: string,prefix
+  character(len=:), allocatable :: prefixed
+
+  integer :: i,N
+
+
+  prefixed = ''
+  N = len(string)
+  do i = 1, N
+    prefixed = prefixed//string(i:i)
+    if (string(i:i) == '-' .and. verify(string(min(i+1,N):min(i+1,N)),LOWER//UPPER) == 0) &
+      prefixed = prefixed//prefix
+  end do
+
+end function misc_prefixOptions
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some misc functions.
@@ -117,6 +142,8 @@ end function misc_optional_str
 subroutine misc_selfTest()
 
   real(pREAL) :: r
+  character(len=:),      allocatable :: str,out
+
 
   call random_number(r)
   if (test_str('DAMASK') /= 'DAMASK')                        error stop 'optional_str, present'
@@ -131,6 +158,10 @@ subroutine misc_selfTest()
   if (test_bool(r<0.5_pREAL) .neqv. r<0.5_pREAL)             error stop 'optional_bool, present'
   if (.not. test_bool())                                     error stop 'optional_bool, not present'
   if (misc_optional(default=r>0.5_pREAL) .neqv. r>0.5_pREAL) error stop 'optional_bool, default only'
+
+  str='-a -1 -more 123 -flag -'
+  out=misc_prefixOptions(str,'p_')
+  if (out /= '-p_a -1 -p_more 123 -p_flag -')                error stop 'misc_prefixOptions'
 
 contains
 

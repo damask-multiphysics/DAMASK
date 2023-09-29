@@ -47,7 +47,7 @@ module mesh_mechanical_FEM
       p_i, &                                                                                        !< integration order (quadrature rule)
       itmax
     logical :: &
-      BBarStabilisation
+      BBarStabilization
     real(pREAL) :: &
       eps_struct_atol, &                                                                            !< absolute tolerance for mechanical equilibrium
       eps_struct_rtol                                                                               !< relative tolerance for mechanical equilibrium
@@ -72,7 +72,7 @@ module mesh_mechanical_FEM
   real(pREAL), parameter :: eps = 1.0e-18_pREAL
 
   external :: &                                                                                     ! ToDo: write interfaces
-#ifdef PETSC_USE_64BIT_INDICES
+#if defined(PETSC_USE_64BIT_INDICES) || PETSC_VERSION_MINOR < 17
     ISDestroy, &
 #endif
     PetscSectionGetNumFields, &
@@ -94,9 +94,10 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data
 !--------------------------------------------------------------------------------------------------
-subroutine FEM_mechanical_init(fieldBC)
+subroutine FEM_mechanical_init(fieldBC,num_mesh)
 
-  type(tFieldBC),             intent(in) :: fieldBC
+  type(tFieldBC),       intent(in)       :: fieldBC
+  type(tDict), pointer, intent(in)       :: num_mesh
 
   DM                                     :: mechanical_mesh
   PetscFE                                :: mechFE
@@ -126,23 +127,24 @@ subroutine FEM_mechanical_init(fieldBC)
   character(len=*), parameter            :: prefix = 'mechFE_'
   PetscErrorCode                         :: err_PETSc
   real(pREAL), dimension(3,3) :: devNull
-  type(tDict), pointer :: &
-    num_mesh
+  type(tDict), pointer                   :: num_mech
 
   print'(/,1x,a)', '<<<+-  FEM_mech init  -+>>>'; flush(IO_STDOUT)
 
 !-----------------------------------------------------------------------------
 ! read numerical parametes and do sanity checks
-  num_mesh => config_numerics%get_dict('mesh',defaultVal=emptyDict)
-  num%p_i               = int(num_mesh%get_asInt('p_i',defaultVal = 2),pPETSCINT)
-  num%itmax             = int(num_mesh%get_asInt('itmax',defaultVal=250),pPETSCINT)
-  num%BBarStabilisation = num_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
-  num%eps_struct_atol   = num_mesh%get_asReal('eps_struct_atol', defaultVal = 1.0e-10_pREAL)
-  num%eps_struct_rtol   = num_mesh%get_asReal('eps_struct_rtol', defaultVal = 1.0e-4_pREAL)
+  num_mech => num_mesh%get_dict('mechanical', defaultVal=emptyDict)
 
-  if (num%itmax <= 1)                       call IO_error(301,ext_msg='itmax')
-  if (num%eps_struct_rtol <= 0.0_pREAL)     call IO_error(301,ext_msg='eps_struct_rtol')
-  if (num%eps_struct_atol <= 0.0_pREAL)     call IO_error(301,ext_msg='eps_struct_atol')
+  num%p_i               = int(num_mesh%get_asInt('p_i',defaultVal=2),pPETSCINT)
+  num%BBarStabilization = num_mesh%get_asBool('bbarstabilization',defaultVal=.false.)
+
+  num%itmax             = int(num_mech%get_asInt('N_iter_max',defaultVal=250),pPETSCINT)
+  num%eps_struct_atol   = num_mech%get_asReal('eps_abs_div(P)', defaultVal=1.0e-10_pREAL)
+  num%eps_struct_rtol   = num_mech%get_asReal('eps_rel_div(P)', defaultVal=1.0e-4_pREAL)
+
+  if (num%itmax <= 1)                       call IO_error(301,ext_msg='N_iter_max')
+  if (num%eps_struct_rtol <= 0.0_pREAL)     call IO_error(301,ext_msg='eps_rel_div(P)')
+  if (num%eps_struct_atol <= 0.0_pREAL)     call IO_error(301,ext_msg='eps_abs_div(P)')
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech mesh
@@ -437,7 +439,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
       end do
       homogenization_F(1:dimPlex,1:dimPlex,m) = reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex], order=[2,1])
     end do
-    if (num%BBarStabilisation) then
+    if (num%BBarStabilization) then
       detFAvg = math_det33(sum(homogenization_F(1:3,1:3,cell*nQuadrature+1:(cell+1)*nQuadrature),dim=3)/real(nQuadrature,pREAL))
       do qPt = 0, nQuadrature-1
         m = cell*nQuadrature + qPt+1
@@ -588,7 +590,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
       MatA = matmul(reshape(reshape(homogenization_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,m), &
                                     shape=[dimPlex,dimPlex,dimPlex,dimPlex], order=[2,1,4,3]), &
                             shape=[dimPlex*dimPlex,dimPlex*dimPlex]),BMat)*qWeights(qPt+1_pPETSCINT)
-      if (num%BBarStabilisation) then
+      if (num%BBarStabilization) then
         F(1:dimPlex,1:dimPlex) = reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex])
         FInv = math_inv33(F)
         K_eA = K_eA + matmul(transpose(BMat),MatA)*math_det33(FInv)**(1.0_pREAL/real(dimPlex,pREAL))
@@ -604,7 +606,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
         K_eA = K_eA + matmul(transpose(BMat),MatA)
       end if
     end do
-    if (num%BBarStabilisation) then
+    if (num%BBarStabilization) then
       FInv = math_inv33(FAvg)
       K_e = K_eA*math_det33(FAvg/real(nQuadrature,pREAL))**(1.0_pREAL/real(dimPlex,pREAL)) + &
             (matmul(matmul(transpose(BMatAvg), &

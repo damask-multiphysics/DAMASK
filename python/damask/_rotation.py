@@ -307,7 +307,8 @@ class Rotation:
             p_m = self.quaternion[...,1:]
             q_o = other.quaternion[...,0:1]
             p_o = other.quaternion[...,1:]
-            q = (q_m*q_o - np.einsum('...i,...i',p_m,p_o).reshape(self.shape+(1,)))
+            qmo = q_m*q_o
+            q = (qmo - np.einsum('...i,...i',p_m,p_o).reshape(qmo.shape))
             p = q_m*p_o + q_o*p_m + _P * np.cross(p_m,p_o)
             return self.copy(Rotation(np.block([q,p]))._standardize())
         else:
@@ -374,6 +375,11 @@ class Rotation:
         Return self@other.
 
         Rotate vector, second-order tensor, or fourth-order tensor.
+        `other` is interpreted as an array of tensor quantities with the highest-possible order
+        considering the shape of `self`. Compatible innermost dimensions will blend.
+        For instance, shapes of (2,) and (3,3) for `self` and `other` prompt interpretation of
+        `other` as a second-rank tensor and result in (2,) rotated tensors, whereas
+        shapes of (2,1) and (3,3) for `self` and `other` result in (2,3) rotated vectors.
 
         Parameters
         ----------
@@ -385,29 +391,73 @@ class Rotation:
         rotated : numpy.ndarray, shape (...,3), (...,3,3), or (...,3,3,3,3)
             Rotated vector or tensor, i.e. transformed to frame defined by rotation.
 
+        Examples
+        --------
+        All below examples rely on imported modules:
+        >>> import numpy as np
+        >>> import damask
+
+        Application of twelve (random) rotations to a set of five vectors.
+
+        >>> r = damask.Rotation.from_random(shape=(12))
+        >>> o = np.ones((5,3))
+        >>> (r@o).shape                                    # (12) @ (5, 3)
+        (12,5, 3)
+
+        Application of a (random) rotation to all twelve second-rank tensors.
+
+        >>> r = damask.Rotation.from_random()
+        >>> o = np.ones((12,3,3))
+        >>> (r@o).shape                                    # (1) @ (12, 3,3)
+        (12,3,3)
+
+        Application of twelve (random) rotations to the corresponding twelve second-rank tensors.
+
+        >>> r = damask.Rotation.from_random(shape=(12))
+        >>> o = np.ones((12,3,3))
+        >>> (r@o).shape                                    # (12) @ (3,3)
+        (12,3,3)
+
+        Application of each of three (random) rotations to all three vectors.
+
+        >>> r = damask.Rotation.from_random(shape=(3))
+        >>> o = np.ones((3,3))
+        >>> (r[...,np.newaxis]@o[np.newaxis,...]).shape    # (3,1) @ (1,3, 3)
+        (3,3,3)
+
+        Application of twelve (random) rotations to all twelve second-rank tensors.
+
+        >>> r = damask.Rotation.from_random(shape=(12))
+        >>> o = np.ones((12,3,3))
+        >>> (r@o[np.newaxis,...]).shape                    # (12) @ (1,12, 3,3)
+        (12,3,3,3)
+
         """
         if isinstance(other, np.ndarray):
-            if self.shape + (3,) == other.shape:
-                q_m = self.quaternion[...,0]
-                p_m = self.quaternion[...,1:]
-                A = q_m**2 - np.einsum('...i,...i',p_m,p_m)
-                B = 2. * np.einsum('...i,...i',p_m,other)
-                C = 2. * _P * q_m
-                return np.block([(A * other[...,i]).reshape(self.shape+(1,)) +
-                                 (B * p_m[...,i]).reshape(self.shape+(1,)) +
-                                 (C * (  p_m[...,(i+1)%3]*other[...,(i+2)%3]\
-                                       - p_m[...,(i+2)%3]*other[...,(i+1)%3])).reshape(self.shape+(1,))
-                                 for i in [0,1,2]])
-            if self.shape + (3,3) == other.shape:
-                R = self.as_matrix()
-                return np.einsum('...im,...jn,...mn',R,R,other)
-            if self.shape + (3,3,3,3) == other.shape:
-                R = self.as_matrix()
-                return np.einsum('...im,...jn,...ko,...lp,...mnop',R,R,R,R,other)
-            else:
-                raise ValueError('can only rotate vectors, second-order tensors, and fourth-order tensors')
+            obs = util.shapeblender(self.shape,other.shape,keep_ones=False)[len(self.shape):]
+            for l in [4,2,1]:
+                if obs[-l:] == l*(3,):
+                    bs = util.shapeblender(self.shape,other.shape[:-l],False)
+                    self_ = self.broadcast_to(bs) if self.shape != bs else self
+                    if l==1:
+                        q_m = self_.quaternion[...,0]
+                        p_m = self_.quaternion[...,1:]
+                        A = q_m**2 - np.einsum('...i,...i',p_m,p_m)
+                        B = 2. * np.einsum('...i,...i',p_m,other)
+                        C = 2. * _P * q_m
+                        return np.block([(A * other[...,i]) +
+                                         (B *   p_m[...,i]) +
+                                         (C * ( p_m[...,(i+1)%3]*other[...,(i+2)%3]
+                                              - p_m[...,(i+2)%3]*other[...,(i+1)%3]))
+                                        for i in [0,1,2]]).reshape(bs+(3,),order='F')
+                    else:
+                        return np.einsum({2: '...im,...jn,...mn',
+                                          4: '...im,...jn,...ko,...lp,...mnop'}[l],
+                                         *l*[self_.as_matrix()],
+                                         other)
+            raise ValueError('can only rotate vectors, second-order tensors, and fourth-order tensors')
         elif isinstance(other, Rotation):
-            raise TypeError('use "R1*R2", i.e. multiplication, to compose rotations "R1" and "R2"')
+            raise TypeError('use "R2*R1", i.e. multiplication, to compose rotations "R1" and "R2"')
         else:
             raise TypeError(f'cannot rotate "{type(other)}"')
 
@@ -1323,28 +1373,41 @@ class Rotation:
 
     @staticmethod
     def _qu2eu(qu: np.ndarray) -> np.ndarray:
-        """Quaternion to Bunge Euler angles."""
-        q02   = qu[...,0:1]*qu[...,2:3]
-        q13   = qu[...,1:2]*qu[...,3:4]
-        q01   = qu[...,0:1]*qu[...,1:2]
-        q23   = qu[...,2:3]*qu[...,3:4]
-        q03_s = qu[...,0:1]**2+qu[...,3:4]**2
-        q12_s = qu[...,1:2]**2+qu[...,2:3]**2
-        chi = np.sqrt(q03_s*q12_s)
+        """
+        Quaternion to Bunge Euler angles.
 
-        eu = np.where(np.abs(q12_s) < 1.e-8,
-                np.block([np.arctan2(-_P*2.*qu[...,0:1]*qu[...,3:4],qu[...,0:1]**2-qu[...,3:4]**2),
-                          np.zeros(qu.shape[:-1]+(2,))]),
-                      np.where(np.abs(q03_s) < 1.e-8,
-                          np.block([np.arctan2(   2.*qu[...,1:2]*qu[...,2:3],qu[...,1:2]**2-qu[...,2:3]**2),
-                                    np.broadcast_to(np.pi,qu[...,0:1].shape),
-                                    np.zeros(qu.shape[:-1]+(1,))]),
-                          np.block([np.arctan2((-_P*q02+q13)*chi, (-_P*q01-q23)*chi),
-                                    np.arctan2(           2.*chi,    q03_s-q12_s   ),
-                                    np.arctan2(( _P*q02+q13)*chi, (-_P*q01+q23)*chi)])
-                              )
-                     )
-        eu[np.abs(eu) < 1.e-6] = 0.
+        References
+        ----------
+        E. Bernardes and S. Viollet, PLoS ONE 17(11):e0276302, 2022
+        https://doi.org/10.1371/journal.pone.0276302
+
+        """
+        a =     qu[...,0:1]
+        b = -_P*qu[...,3:4]
+        c = -_P*qu[...,1:2]
+        d = -_P*qu[...,2:3]
+
+        eu = np.block([
+            np.arctan2(b,a),
+            np.arccos(2*(a**2+b**2)/(a**2+b**2+c**2+d**2)-1),
+            np.arctan2(-d,c),
+        ])
+
+        eu_sum  = eu[...,0] + eu[...,2]
+        eu_diff = eu[...,0] - eu[...,2]
+
+        is_zero  = np.isclose(eu[...,1],0.0)
+        is_pi    = np.isclose(eu[...,1],np.pi)
+        is_ok    = ~np.logical_or(is_zero,is_pi)
+
+        eu[...,0][is_zero] =  2*eu[...,0][is_zero]
+        eu[...,0][is_pi]   = -2*eu[...,2][is_pi]
+        eu[...,2][~is_ok]  = 0.0
+        eu[...,0][is_ok]   = eu_diff[is_ok]
+        eu[...,2][is_ok]   = eu_sum [is_ok]
+
+        eu[np.logical_or(np.abs(eu)         < 1.e-6,
+                         np.abs(eu-2*np.pi) < 1.e-6)] = 0.
         return np.where(eu < 0., eu%(np.pi*np.array([2.,1.,2.])),eu)
 
     @staticmethod

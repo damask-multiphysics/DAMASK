@@ -16,14 +16,23 @@
 #endif
 
 #include "../prec.f90"
+#include "../parallelization.f90"
+#include "../constants.f90"
+#include "../misc.f90"
+#include "../IO.f90"
+#include "../YAML_types.f90"
+#include "../YAML_parse.f90"
+#include "../HDF5_utilities.f90"
 
 module DAMASK_interface
-  use prec
   use, intrinsic :: ISO_fortran_env, only: &
     compiler_version, &
     compiler_options
   use ifport, only: &
     CHDIR
+
+  use prec
+  use IO
 
   implicit none(type,external)
   private
@@ -105,7 +114,7 @@ logical function solverIsSymmetric()
        status='old', position='rewind', action='read',iostat=myStat)
   do
     read (fileUnit,'(A)',END=100) line
-    if (index(trim(lc(line)),'solver') == 1) then
+    if (index(trim(IO_lc(line)),'solver') == 1) then
       read (fileUnit,'(A)',END=100) line                                                            ! next line
         s =     verify(line,      ' ')                                                              ! start of first chunk
         s = s + verify(line(s+1:),' ')                                                              ! start of second chunk
@@ -114,40 +123,11 @@ logical function solverIsSymmetric()
     end if
   end do
 100 close(fileUnit)
-  contains
-
-  !--------------------------------------------------------------------------------------------------
-  !> @brief changes characters in string to lower case
-  !> @details copied from IO_lc
-  !--------------------------------------------------------------------------------------------------
-  function lc(string)
-
-    character(len=*), intent(in) :: string                                                            !< string to convert
-    character(len=len(string))   :: lc
-
-    character(26), parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
-    character(26), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-
-    integer                  :: i,n
-
-    do i=1,len(string)
-      lc(i:i) = string(i:i)
-      n = index(UPPER,lc(i:i))
-      if (n/=0) lc(i:i) = LOWER(n:n)
-    end do
-  end function lc
 
 end function solverIsSymmetric
 
 end module DAMASK_interface
 
-#include "../parallelization.f90"
-#include "../misc.f90"
-#include "../constants.f90"
-#include "../IO.f90"
-#include "../YAML_types.f90"
-#include "../YAML_parse.f90"
-#include "../HDF5_utilities.f90"
 #include "../result.f90"
 #include "../config.f90"
 #include "../LAPACK_interface.f90"
@@ -155,7 +135,7 @@ end module DAMASK_interface
 #include "../rotations.f90"
 #include "../polynomials.f90"
 #include "../tables.f90"
-#include "../lattice.f90"
+#include "../crystal.f90"
 #include "element.f90"
 #include "../geometry_plastic_nonlocal.f90"
 #include "../discretization.f90"
@@ -173,11 +153,10 @@ end module DAMASK_interface
 #include "../phase_mechanical_plastic_dislotungsten.f90"
 #include "../phase_mechanical_plastic_nonlocal.f90"
 #include "../phase_mechanical_eigen.f90"
-#include "../phase_mechanical_eigen_cleavageopening.f90"
 #include "../phase_mechanical_eigen_thermalexpansion.f90"
 #include "../phase_thermal.f90"
-#include "../phase_thermal_dissipation.f90"
-#include "../phase_thermal_externalheat.f90"
+#include "../phase_thermal_source_dissipation.f90"
+#include "../phase_thermal_source_externalheat.f90"
 #include "../phase_damage.f90"
 #include "../phase_damage_isobrittle.f90"
 #include "../phase_damage_anisobrittle.f90"

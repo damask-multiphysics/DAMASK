@@ -16,6 +16,7 @@ module FEM_utilities
   use prec
   use config
   use math
+  use misc
   use IO
   use discretization_mesh
   use homogenization
@@ -90,11 +91,16 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Allocate all neccessary fields.
 !--------------------------------------------------------------------------------------------------
-subroutine FEM_utilities_init
+subroutine FEM_utilities_init(num_mesh)
 
-  character(len=pSTRLEN) :: petsc_optionsOrder
-  type(tDict), pointer :: &
+  type(tDict), pointer, intent(in) :: &
     num_mesh
+
+  type(tDict), pointer :: &
+    num_mech
+  character(len=pSTRLEN) :: petsc_optionsOrder
+  character(len=:), allocatable :: &
+    petsc_options
   integer :: &
     p_s, &                                                                                          !< order of shape functions
     p_i                                                                                             !< integration order (quadrature rule)
@@ -103,7 +109,7 @@ subroutine FEM_utilities_init
 
   print'(/,1x,a)',   '<<<+-  FEM_utilities init  -+>>>'
 
-  num_mesh => config_numerics%get_dict('mesh',defaultVal=emptyDict)
+  num_mech => num_mesh%get_dict('mechanical', defaultVal=emptyDict)
 
   p_s = num_mesh%get_asInt('p_s',defaultVal = 2)
   p_i = num_mesh%get_asInt('p_i',defaultVal = p_s)
@@ -117,19 +123,19 @@ subroutine FEM_utilities_init
   call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
   CHKERRQ(err_PETSc)
   CHKERRQ(err_PETSc)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mechanical_snes_type newtonls &
-                               &-mechanical_snes_linesearch_type cp -mechanical_snes_ksp_ew &
-                               &-mechanical_snes_ksp_ew_rtol0 0.01 -mechanical_snes_ksp_ew_rtolmax 0.01 &
-                               &-mechanical_ksp_type fgmres -mechanical_ksp_max_it 25', err_PETSc)
-  CHKERRQ(err_PETSc)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_mesh%get_asStr('PETSc_options',defaultVal=''),err_PETSc)
-  CHKERRQ(err_PETSc)
+
+  petsc_options = misc_prefixOptions('-snes_type newtonls &
+                               &-snes_linesearch_type cp -snes_ksp_ew &
+                               &-snes_ksp_ew_rtol0 0.01 -snes_ksp_ew_rtolmax 0.01 &
+                               &-ksp_type fgmres -ksp_max_it 25 ' // &
+                                num_mech%get_asStr('PETSc_options',defaultVal=''), 'mechanical_')
+
   write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', p_s
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsOrder),err_PETSc)
+  petsc_options = petsc_options // ' ' // petsc_optionsOrder
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
 
   wgt = real(mesh_maxNips*mesh_NcpElemsGlobal,pREAL)**(-1)
-
 
 end subroutine FEM_utilities_init
 

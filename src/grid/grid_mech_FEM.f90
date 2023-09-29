@@ -15,8 +15,9 @@ module grid_mechanical_FEM
 
   use prec
   use parallelization
-  use CLI
   use IO
+  use misc
+  use CLI
   use HDF5
   use HDF5_utilities
   use math
@@ -52,9 +53,9 @@ module grid_mechanical_FEM
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
-  DM   :: mechanical_grid
-  SNES :: SNES_mechanical
-  Vec  :: solution_current, solution_lastInc, solution_rate
+  DM   :: DM_mech
+  SNES :: SNES_mech
+  Vec  :: u_PETSc, u_lastInc_PETSc, uDot_PETSc
 
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
@@ -94,9 +95,11 @@ module grid_mechanical_FEM
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all necessary fields and fills them with data, potentially from restart info
+!> @brief Allocate all necessary fields and fill them with data, potentially from restart info.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_FEM_init
+subroutine grid_mechanical_FEM_init(num_grid)
+
+  type(tDict), pointer, intent(in) :: num_grid
 
   real(pREAL), parameter :: HGCoeff = 0.0e-2_pREAL
   real(pREAL), parameter, dimension(4,8) :: &
@@ -115,44 +118,44 @@ subroutine grid_mechanical_FEM_init
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscScalar, pointer, dimension(:,:,:,:) :: &
     u,u_lastInc
-  PetscInt, dimension(0:worldsize-1) :: localK
+  integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: cells3_global
   integer(HID_T) :: fileHandle, groupHandle
   type(tDict), pointer :: &
-    num_grid
-  character(len=pSTRLEN) :: &
-    extmsg = ''
+    num_grid_mech
+  character(len=:), allocatable :: &
+    extmsg, &
+    petsc_options
 
 
   print'(/,1x,a)', '<<<+-  grid_mechanical_FEM init  -+>>>'; flush(IO_STDOUT)
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
+  num_grid_mech => num_grid%get_dict('mechanical',defaultVal=emptyDict)
 
-  num%eps_div_atol    = num_grid%get_asReal('eps_div_atol',   defaultVal=1.0e-4_pREAL)
-  num%eps_div_rtol    = num_grid%get_asReal('eps_div_rtol',   defaultVal=5.0e-4_pREAL)
-  num%eps_stress_atol = num_grid%get_asReal('eps_stress_atol',defaultVal=1.0e3_pREAL)
-  num%eps_stress_rtol = num_grid%get_asReal('eps_stress_rtol',defaultVal=1.0e-3_pREAL)
-  num%itmin           = num_grid%get_asInt ('itmin',defaultVal=1)
-  num%itmax           = num_grid%get_asInt ('itmax',defaultVal=250)
+  num%itmin           = num_grid_mech%get_asInt('N_iter_min',defaultVal=1)
+  num%itmax           = num_grid_mech%get_asInt('N_iter_max',defaultVal=100)
+  num%eps_div_atol    = num_grid_mech%get_asReal('eps_abs_div(P)',defaultVal=1.0e-4_pREAL)
+  num%eps_div_rtol    = num_grid_mech%get_asReal('eps_rel_div(P)',defaultVal=5.0e-4_pREAL)
+  num%eps_stress_atol = num_grid_mech%get_asReal('eps_abs_P',     defaultVal=1.0e3_pREAL)
+  num%eps_stress_rtol = num_grid_mech%get_asReal('eps_rel_P',     defaultVal=1.0e-3_pREAL)
 
-  if (num%eps_div_atol <= 0.0_pREAL)             extmsg = trim(extmsg)//' eps_div_atol'
-  if (num%eps_div_rtol < 0.0_pREAL)              extmsg = trim(extmsg)//' eps_div_rtol'
-  if (num%eps_stress_atol <= 0.0_pREAL)          extmsg = trim(extmsg)//' eps_stress_atol'
-  if (num%eps_stress_rtol < 0.0_pREAL)           extmsg = trim(extmsg)//' eps_stress_rtol'
-  if (num%itmax <= 1)                            extmsg = trim(extmsg)//' itmax'
-  if (num%itmin > num%itmax .or. num%itmin < 1)  extmsg = trim(extmsg)//' itmin'
+  extmsg = ''
+  if (num%eps_div_atol <= 0.0_pREAL)             extmsg = trim(extmsg)//' eps_abs_div(P)'
+  if (num%eps_div_rtol <= 0.0_pREAL)             extmsg = trim(extmsg)//' eps_rel_div(P)'
+  if (num%eps_stress_atol <= 0.0_pREAL)          extmsg = trim(extmsg)//' eps_abs_P'
+  if (num%eps_stress_rtol <= 0.0_pREAL)          extmsg = trim(extmsg)//' eps_rel_P'
+  if (num%itmax < 1)                             extmsg = trim(extmsg)//' N_iter_max'
+  if (num%itmin > num%itmax .or. num%itmin < 1)  extmsg = trim(extmsg)//' N_iter_min'
 
   if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS, &
-                                '-mechanical_snes_type newtonls -mechanical_ksp_type fgmres &
-                                &-mechanical_ksp_max_it 25', &
-                                err_PETSc)
-  CHKERRQ(err_PETSc)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asStr('petsc_options',defaultVal=''),err_PETSc)
+
+  petsc_options = misc_prefixOptions('-snes_type newtonls -ksp_type fgmres -ksp_max_it 25 '// &
+                                     num_grid_mech%get_asStr('PETSc_options',defaultVal='') ,'mechanical_')
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -163,59 +166,58 @@ subroutine grid_mechanical_FEM_init
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
-  call SNESCreate(PETSC_COMM_WORLD,SNES_mechanical,err_PETSc)
+  call SNESCreate(PETSC_COMM_WORLD,SNES_mech,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESSetOptionsPrefix(SNES_mechanical,'mechanical_',err_PETSc)
+  call SNESSetOptionsPrefix(SNES_mech,'mechanical_',err_PETSc)
   CHKERRQ(err_PETSc)
-  localK            = 0_pPetscInt
-  localK(worldrank) = int(cells3,pPetscInt)
-  call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  call MPI_Allgather(int(cells3,MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
+                     cells3_global,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, &
          DMDA_STENCIL_BOX, &
-         int(cells(1),pPetscInt),int(cells(2),pPetscInt),int(cells(3),pPetscInt), &                 ! global cells
-         1_pPetscInt, 1_pPetscInt, int(worldsize,pPetscInt), &
-         3_pPetscInt, 1_pPetscInt, &                                                                ! #dof (u, vector), ghost boundary width (domain overlap)
-         [int(cells(1),pPetscInt)],[int(cells(2),pPetscInt)],localK, &                              ! local cells
-         mechanical_grid,err_PETSc)
+         int(cells(1),pPETSCINT),int(cells(2),pPETSCINT),int(cells(3),pPETSCINT), &                 ! global cells
+         1_pPETSCINT, 1_pPETSCINT, int(worldsize,pPETSCINT), &
+         3_pPETSCINT, 1_pPETSCINT, &                                                                ! #dof (u, vector), ghost boundary width (domain overlap)
+         [int(cells(1),pPETSCINT)],[int(cells(2),pPETSCINT)],int(cells3_global,pPETSCINT), &        ! local cells
+         DM_mech,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMsetFromOptions(mechanical_grid,err_PETSc)
+  call DMsetFromOptions(DM_mech,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMsetUp(mechanical_grid,err_PETSc)
+  call DMsetUp(DM_mech,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDASetUniformCoordinates(mechanical_grid,0.0_pREAL,geomSize(1),0.0_pREAL,geomSize(2),0.0_pREAL,geomSize(3),err_PETSc)
+  call DMDASetUniformCoordinates(DM_mech,0.0_pREAL,geomSize(1),0.0_pREAL,geomSize(2),0.0_pREAL,geomSize(3),err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMCreateGlobalVector(mechanical_grid,solution_current,err_PETSc)
+  call DMCreateGlobalVector(DM_mech,u_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMCreateGlobalVector(mechanical_grid,solution_lastInc,err_PETSc)
+  call DMCreateGlobalVector(DM_mech,u_lastInc_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMCreateGlobalVector(mechanical_grid,solution_rate   ,err_PETSc)
+  call DMCreateGlobalVector(DM_mech,uDot_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMSNESSetFunctionLocal(mechanical_grid,formResidual,PETSC_NULL_SNES,err_PETSc)
+  call DMSNESSetFunctionLocal(DM_mech,formResidual,PETSC_NULL_SNES,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMSNESSetJacobianLocal(mechanical_grid,formJacobian,PETSC_NULL_SNES,err_PETSc)
+  call DMSNESSetJacobianLocal(DM_mech,formJacobian,PETSC_NULL_SNES,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESSetConvergenceTest(SNES_mechanical,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc) ! specify custom convergence check function "_converged"
+  call SNESSetConvergenceTest(SNES_mech,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc)    ! specify custom convergence check function "_converged"
   CHKERRQ(err_PETSc)
-  call SNESSetMaxLinearSolveFailures(SNES_mechanical, huge(1_pPetscInt), err_PETSc)                 ! ignore linear solve failures
+  call SNESSetMaxLinearSolveFailures(SNES_mech, huge(1_pPETSCINT), err_PETSc)                       ! ignore linear solve failures
   CHKERRQ(err_PETSc)
-  call SNESSetDM(SNES_mechanical,mechanical_grid,err_PETSc)
+  call SNESSetDM(SNES_mech,DM_mech,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESSetFromOptions(SNES_mechanical,err_PETSc)                                                ! pull it all together with additional cli arguments
+  call SNESSetFromOptions(SNES_mech,err_PETSc)                                                      ! pull it all together with additional cli arguments
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  call VecSet(solution_current,0.0_pREAL,err_PETSc)
+  call VecSet(u_PETSc,0.0_pREAL,err_PETSc)
   CHKERRQ(err_PETSc)
-  call VecSet(solution_lastInc,0.0_pREAL,err_PETSc)
+  call VecSet(u_lastInc_PETSc,0.0_pREAL,err_PETSc)
   CHKERRQ(err_PETSc)
-  call VecSet(solution_rate   ,0.0_pREAL,err_PETSc)
+  call VecSet(uDot_PETSc   ,0.0_pREAL,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u,err_PETSc)
+  call DMDAVecGetArrayF90(DM_mech,u_PETSc,u,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
+  call DMDAVecGetArrayF90(DM_mech,u_lastInc_PETSc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
 
   delta = geomSize/real(cells,pREAL)                                                                ! grid spacing
@@ -272,9 +274,9 @@ subroutine grid_mechanical_FEM_init
   call utilities_constitutiveResponse(P_current,P_av,C_volAvg,devNull, &                            ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       F, &                                                          ! target F
                                       0.0_pREAL)                                                    ! time increment
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u,err_PETSc)
+  call DMDAVecRestoreArrayF90(DM_mech,u_PETSc,u,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
+  call DMDAVecRestoreArrayF90(DM_mech,u_lastInc_PETSc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
 
   restartRead2: if (CLI_restartInc > 0) then
@@ -316,9 +318,9 @@ function grid_mechanical_FEM_solution(incInfoIn) result(solution)
 ! update stiffness (and gamma operator)
   S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
 
-  call SNESsolve(SNES_mechanical,PETSC_NULL_VEC,solution_current,err_PETSc)
+  call SNESsolve(SNES_mech,PETSC_NULL_VEC,u_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESGetConvergedReason(SNES_mechanical,reason,err_PETSc)
+  call SNESGetConvergedReason(SNES_mech,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
   solution%converged = reason > 0
@@ -351,14 +353,7 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
     rotation_BC
 
   PetscErrorCode :: err_PETSc
-  PetscScalar, pointer, dimension(:,:,:,:) :: &
-    u,u_lastInc
 
-
-  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
-  CHKERRQ(err_PETSc)
 
   if (cutBack) then
     C_volAvg = C_volAvgLastInc
@@ -382,15 +377,15 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
     end if
 
     if (guess) then
-      call VecWAXPY(solution_rate,-1.0_pREAL,solution_lastInc,solution_current,err_PETSc)
+      call VecWAXPY(uDot_PETSc,-1.0_pREAL,u_lastInc_PETSc,u_PETSc,err_PETSc)
       CHKERRQ(err_PETSc)
-      call VecScale(solution_rate,1.0_pREAL/Delta_t_old,err_PETSc)
+      call VecScale(uDot_PETSc,1.0_pREAL/Delta_t_old,err_PETSc)
       CHKERRQ(err_PETSc)
     else
-      call VecSet(solution_rate,0.0_pREAL,err_PETSc)
+      call VecSet(uDot_PETSc,0.0_pREAL,err_PETSc)
       CHKERRQ(err_PETSc)
     end if
-    call VecCopy(solution_current,solution_lastInc,err_PETSc)
+    call VecCopy(u_PETSc,u_lastInc_PETSc,err_PETSc)
     CHKERRQ(err_PETSc)
 
     F_lastInc = F
@@ -406,11 +401,7 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
   if (stress_BC%myType=='dot_P') P_aim = P_aim &
                                        + merge(.0_pREAL,stress_BC%values,stress_BC%mask)*Delta_t
 
-  call VecAXPY(solution_current,Delta_t,solution_rate,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
+  call VecAXPY(u_PETSc,Delta_t,uDot_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -425,7 +416,7 @@ end subroutine grid_mechanical_FEM_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief Update coordinates
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_FEM_updateCoords
+subroutine grid_mechanical_FEM_updateCoords()
 
   call utilities_updateCoords(F)
 
@@ -435,16 +426,16 @@ end subroutine grid_mechanical_FEM_updateCoords
 !--------------------------------------------------------------------------------------------------
 !> @brief Write current solver and constitutive data for restart to file
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_FEM_restartWrite
+subroutine grid_mechanical_FEM_restartWrite()
 
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
   PetscScalar, dimension(:,:,:,:), pointer :: u,u_lastInc
 
 
-  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u,err_PETSc)
+  call DMDAVecGetArrayReadF90(DM_mech,u_PETSc,u,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
+  call DMDAVecGetArrayReadF90(DM_mech,u_lastInc_PETSc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
 
   print'(1x,a)', 'saving solver data required for restart'; flush(IO_STDOUT)
@@ -471,9 +462,9 @@ subroutine grid_mechanical_FEM_restartWrite
     call HDF5_closeFile(fileHandle)
   end if
 
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(DM_mech,u_PETSc,u,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(DM_mech,u_lastInc_PETSc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_FEM_restartWrite
@@ -543,9 +534,9 @@ subroutine formResidual(da_local,x_local, &
   integer(MPI_INTEGER_KIND) :: err_MPI
   real(pREAL), dimension(3,3,3,3) :: devNull
 
-  call SNESGetNumberFunctionEvals(SNES_mechanical,nfuncs,err_PETSc)
+  call SNESGetNumberFunctionEvals(SNES_mech,nfuncs,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESGetIterationNumber(SNES_mechanical,PETScIter,err_PETSc)
+  call SNESGetIterationNumber(SNES_mech,PETScIter,err_PETSc)
   CHKERRQ(err_PETSc)
 
 
@@ -566,7 +557,7 @@ subroutine formResidual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! get deformation gradient
-  call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc)
+  call DMDAVecGetArrayReadF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, cells(1)
     ctr = 0
@@ -576,7 +567,7 @@ subroutine formResidual(da_local,x_local, &
     end do; end do; end do
     F(1:3,1:3,i,j,k-cells3Offset) = params%rotation_BC%rotate(F_aim,active=.true.) + transpose(matmul(BMat,x_elem))
   end do; end do; end do
-  call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -596,7 +587,7 @@ subroutine formResidual(da_local,x_local, &
 ! constructing residual
   call DMDAVecGetArrayF90(da_local,f_local,r,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc)
+  call DMDAVecGetArrayReadF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   ele = 0
   r = 0.0_pREAL
@@ -617,7 +608,7 @@ subroutine formResidual(da_local,x_local, &
       r(0:2,i+ii,j+jj,k+kk) = r(0:2,i+ii,j+jj,k+kk) + f_elem(ctr,1:3)
     end do; end do; end do
   end do; end do; end do
-  call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------

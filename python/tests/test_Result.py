@@ -326,7 +326,7 @@ class TestResult:
         if shape == 'pseudo_scalar': default.add_calculation('#F#[:,0,0:1]','x','1','a pseudo scalar')
         if shape == 'scalar': default.add_calculation('#F#[:,0,0]','x','1','just a scalar')
         if shape == 'vector': default.add_calculation('#F#[:,:,1]','x','1','just a vector')
-        x = default.place('x').reshape((np.product(default.cells),-1))
+        x = default.place('x').reshape((np.prod(default.cells),-1))
         default.add_gradient('x')
         in_file   = default.place('gradient(x)')
         in_memory = grid_filters.gradient(default.size,x.reshape(tuple(default.cells)+x.shape[1:])).reshape(in_file.shape)

@@ -34,7 +34,7 @@ module subroutine elastic_init(phases)
   print'(/,1x,a)', '<<<+-  phase:mechanical:elastic init  -+>>>'
   print'(/,1x,a)', '<<<+-  phase:mechanical:elastic:Hooke init  -+>>>'
 
-  print'(/,a,i0)', ' # phases: ',phases%length; flush(IO_STDOUT)
+  print'(/,1x,a,1x,i0)', '# phases:',phases%length; flush(IO_STDOUT)
 
 
   allocate(param(phases%length))
@@ -43,7 +43,7 @@ module subroutine elastic_init(phases)
     phase   => phases%get_dict(ph)
     mech    => phase%get_dict('mechanical')
     elastic => mech%get_dict('elastic')
-    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+    print'(/,1x,a,1x,i0,a)', 'phase',ph,': '//phases%key(ph)
     refs = config_listReferences(elastic,indent=3)
     if (len(refs) > 0) print'(/,1x,a)', refs
     if (elastic%get_asStr('type') /= 'Hooke') call IO_error(200,ext_msg=elastic%get_asStr('type'))
@@ -97,7 +97,7 @@ pure module function elastic_C66(ph,en) result(C66)
 
     if (phase_lattice(ph) == 'tI') C66(6,6) = prm%C_66%at(T)
 
-    C66 = lattice_symmetrize_C66(C66,phase_lattice(ph))
+    C66 = crystal_symmetrize_C66(C66,phase_lattice(ph))
 
   end associate
 
@@ -119,7 +119,7 @@ pure module function elastic_mu(ph,en,isotropic_bound) result(mu)
 
   associate(prm => param(ph))
 
-    mu = lattice_isotropic_mu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
+    mu = crystal_isotropic_mu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
 
   end associate
 
@@ -141,7 +141,7 @@ pure module function elastic_nu(ph,en,isotropic_bound) result(nu)
 
   associate(prm => param(ph))
 
-    nu = lattice_isotropic_nu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
+    nu = crystal_isotropic_nu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
 
   end associate
 
@@ -199,8 +199,8 @@ module function phase_homogenizedC66(ph,en) result(C)
   integer,      intent(in)    :: ph, en
 
 
-  plasticType: select case (phase_plasticity(ph))
-    case (PLASTIC_DISLOTWIN_ID) plasticType
+  plasticType: select case (mechanical_plasticity_type(ph))
+    case (MECHANICAL_PLASTICITY_DISLOTWIN) plasticType
      C = plastic_dislotwin_homogenizedC(ph,en)
     case default plasticType
      C = elastic_C66(ph,en)

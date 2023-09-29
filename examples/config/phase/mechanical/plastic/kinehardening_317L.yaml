@@ -18,6 +18,6 @@ chi_inf:  [0.027e+9] # τ_1,bs
 h_0_chi:     [55e+9] # θ_0,bs
 h_inf_chi:  [1.3e+9] # θ_1,bs
 
-n: 20                # not mentioned in the reference
-dot_gamma_0: 1e-4    # not mentioned in the reference
+n: [20]                # not mentioned in the reference
+dot_gamma_0: [1e-4]    # not mentioned in the reference
 h_sl-sl: [1, 1, 1, 1, 1, 1, 1]

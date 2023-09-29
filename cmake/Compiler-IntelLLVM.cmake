@@ -37,7 +37,7 @@ set (COMPILE_FLAGS "${COMPILE_FLAGS} -no-ftz")
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -diag-disable")
 # disables warnings ...
 set (COMPILE_FLAGS "${COMPILE_FLAGS} 5268")
-#   ... the text exceeds right hand column allowed on the line (we have only comments there)
+#   ... the text exceeds right hand column allowed on the line (enforced by pre-receive hook)
 set (COMPILE_FLAGS "${COMPILE_FLAGS},7624")
 #   ... about deprecated forall (has nice syntax and most likely a performance advantage)
 
@@ -97,6 +97,9 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS},uninit")
 #   ... for uninitialized variables.
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0 -ftz")
 #   ... capture all floating-point exceptions, need to overwrite -no-ftz
+
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -init=arrays,zero,minus_huge,snan")
+#   ... initialize logical to false, integer to -huge, float+complex to signaling NaN
 
 # disable due to compiler bug https://community.intel.com/t5/Intel-Fortran-Compiler/false-positive-stand-f18-and-IEEE-SELECTED-REAL-KIND/m-p/1227336
 #set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn")

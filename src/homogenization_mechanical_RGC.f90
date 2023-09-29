@@ -8,7 +8,7 @@
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization:mechanical) RGC
   use rotations
-  use lattice
+  use crystal
 
   type :: tParameters
     integer, dimension(:), allocatable :: &
@@ -108,33 +108,33 @@ module subroutine RGC_init()
   num_mechanical => num_homogenization%get_dict('mechanical',defaultVal=emptyDict)
   num_RGC => num_mechanical%get_dict('RGC',defaultVal=emptyDict)
 
-  num%atol         =  num_RGC%get_asReal('atol',              defaultVal=1.0e+4_pREAL)
-  num%rtol         =  num_RGC%get_asReal('rtol',              defaultVal=1.0e-3_pREAL)
-  num%absMax       =  num_RGC%get_asReal('amax',              defaultVal=1.0e+10_pREAL)
-  num%relMax       =  num_RGC%get_asReal('rmax',              defaultVal=1.0e+2_pREAL)
-  num%pPert        =  num_RGC%get_asReal('perturbpenalty',    defaultVal=1.0e-7_pREAL)
-  num%xSmoo        =  num_RGC%get_asReal('relvantmismatch',   defaultVal=1.0e-5_pREAL)
-  num%viscPower    =  num_RGC%get_asReal('viscositypower',    defaultVal=1.0e+0_pREAL)
-  num%viscModus    =  num_RGC%get_asReal('viscositymodulus',  defaultVal=0.0e+0_pREAL)
-  num%refRelaxRate =  num_RGC%get_asReal('refrelaxationrate', defaultVal=1.0e-3_pREAL)
-  num%maxdRelax    =  num_RGC%get_asReal('maxrelaxationrate', defaultVal=1.0e+0_pREAL)
-  num%maxVolDiscr  =  num_RGC%get_asReal('maxvoldiscrepancy', defaultVal=1.0e-5_pREAL)
-  num%volDiscrMod  =  num_RGC%get_asReal('voldiscrepancymod', defaultVal=1.0e+12_pREAL)
-  num%volDiscrPow  =  num_RGC%get_asReal('dicrepancypower',   defaultVal=5.0_pREAL)
+  num%atol         =  num_RGC%get_asReal('eps_abs_P',          defaultVal=1.0e+4_pREAL)
+  num%rtol         =  num_RGC%get_asReal('eps_rel_P',          defaultVal=1.0e-3_pREAL)
+  num%absMax       =  num_RGC%get_asReal('eps_abs_max',        defaultVal=1.0e+10_pREAL)
+  num%relMax       =  num_RGC%get_asReal('eps_rel_max',        defaultVal=1.0e+2_pREAL)
+  num%pPert        =  num_RGC%get_asReal('Delta_a',            defaultVal=1.0e-7_pREAL)
+  num%xSmoo        =  num_RGC%get_asReal('relevant_mismatch',  defaultVal=1.0e-5_pREAL)
+  num%viscPower    =  num_RGC%get_asReal('viscosity_exponent', defaultVal=1.0e+0_pREAL)
+  num%viscModus    =  num_RGC%get_asReal('viscosity_modulus',  defaultVal=0.0e+0_pREAL)
+  num%refRelaxRate =  num_RGC%get_asReal('dot_a_ref',          defaultVal=1.0e-3_pREAL)
+  num%maxdRelax    =  num_RGC%get_asReal('dot_a_max',          defaultVal=1.0e+0_pREAL)
+  num%maxVolDiscr  =  num_RGC%get_asReal('Delta_V_max',        defaultVal=1.0e-5_pREAL)
+  num%volDiscrMod  =  num_RGC%get_asReal('Delta_V_modulus',    defaultVal=1.0e+12_pREAL)
+  num%volDiscrPow  =  num_RGC%get_asReal('Delta_V_exponent',   defaultVal=5.0_pREAL)
 
-  if (num%atol <= 0.0_pREAL)         call IO_error(301,ext_msg='absTol_RGC')
-  if (num%rtol <= 0.0_pREAL)         call IO_error(301,ext_msg='relTol_RGC')
-  if (num%absMax <= 0.0_pREAL)       call IO_error(301,ext_msg='absMax_RGC')
-  if (num%relMax <= 0.0_pREAL)       call IO_error(301,ext_msg='relMax_RGC')
-  if (num%pPert <= 0.0_pREAL)        call IO_error(301,ext_msg='pPert_RGC')
-  if (num%xSmoo <= 0.0_pREAL)        call IO_error(301,ext_msg='xSmoo_RGC')
-  if (num%viscPower < 0.0_pREAL)     call IO_error(301,ext_msg='viscPower_RGC')
-  if (num%viscModus < 0.0_pREAL)     call IO_error(301,ext_msg='viscModus_RGC')
-  if (num%refRelaxRate <= 0.0_pREAL) call IO_error(301,ext_msg='refRelaxRate_RGC')
-  if (num%maxdRelax <= 0.0_pREAL)    call IO_error(301,ext_msg='maxdRelax_RGC')
-  if (num%maxVolDiscr <= 0.0_pREAL)  call IO_error(301,ext_msg='maxVolDiscr_RGC')
-  if (num%volDiscrMod < 0.0_pREAL)   call IO_error(301,ext_msg='volDiscrMod_RGC')
-  if (num%volDiscrPow <= 0.0_pREAL)  call IO_error(301,ext_msg='volDiscrPw_RGC')
+  if (num%atol <= 0.0_pREAL)         call IO_error(301,ext_msg='eps_abs_P')
+  if (num%rtol <= 0.0_pREAL)         call IO_error(301,ext_msg='eps_rel_P')
+  if (num%absMax <= 0.0_pREAL)       call IO_error(301,ext_msg='eps_abs_max')
+  if (num%relMax <= 0.0_pREAL)       call IO_error(301,ext_msg='eps_rel_max')
+  if (num%pPert <= 0.0_pREAL)        call IO_error(301,ext_msg='Delta_a')
+  if (num%xSmoo <= 0.0_pREAL)        call IO_error(301,ext_msg='relevant_mismatch')
+  if (num%viscPower < 0.0_pREAL)     call IO_error(301,ext_msg='viscosity_exponent')
+  if (num%viscModus < 0.0_pREAL)     call IO_error(301,ext_msg='viscosity_modulus')
+  if (num%refRelaxRate <= 0.0_pREAL) call IO_error(301,ext_msg='dot_a_ref')
+  if (num%maxdRelax <= 0.0_pREAL)    call IO_error(301,ext_msg='dot_a_max')
+  if (num%maxVolDiscr <= 0.0_pREAL)  call IO_error(301,ext_msg='Delta_V_max')
+  if (num%volDiscrMod < 0.0_pREAL)   call IO_error(301,ext_msg='Delta_V_modulus')
+  if (num%volDiscrPow <= 0.0_pREAL)  call IO_error(301,ext_msg='Delta_V_exponent')
 
 
   do ho = 1, size(mechanical_type)
@@ -654,7 +654,7 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
 
     C = phase_homogenizedC66(material_ID_phase(co,ce),material_entry_phase(co,ce))                  ! damage not included!
 
-    equivalentMu = lattice_isotropic_mu(C,'isostrain')
+    equivalentMu = crystal_isotropic_mu(C,'isostrain')
 
   end function equivalentMu
 

@@ -24,7 +24,7 @@ program DAMASK_grid
   use material
   use spectral_utilities
   use grid_mechanical_spectral_basic
-  use grid_mechanical_spectral_polarisation
+  use grid_mechanical_spectral_polarization
   use grid_mechanical_FEM
   use grid_damage_spectral
   use grid_thermal_spectral
@@ -75,7 +75,7 @@ program DAMASK_grid
     cutBack = .false.,&
     sig
   integer :: &
-    i, j, m, field, &
+    i, j, field, &
     errorID = 0, &
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
     stepFraction = 0, &                                                                             !< fraction of current time interval
@@ -107,20 +107,13 @@ program DAMASK_grid
   external :: &
     quit
   type(tDict), pointer :: &
-    config_load, &
+    load, &
+    num_solver, &
     num_grid, &
-    load_step, &
-    solver, &
-    step_bc, &
-    step_mech, &
-    step_discretization
-  type(tList), pointer :: &
-#ifdef __INTEL_LLVM_COMPILER
-    tensor, &
-#endif
-    load_steps
+    solver
   character(len=:), allocatable :: &
     fileContent, fname
+
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
@@ -134,25 +127,29 @@ program DAMASK_grid
 
 !-------------------------------------------------------------------------------------------------
 ! read (and check) field parameters from numerics file
-  num_grid => config_numerics%get_dict('grid', defaultVal=emptyDict)
-  stagItMax  = num_grid%get_asInt('maxStaggeredIter',defaultVal=10)
-  maxCutBack = num_grid%get_asInt('maxCutBack',defaultVal=3)
 
-  if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
-  if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
+  num_solver => config_numerics%get_dict('solver',defaultVal=emptyDict)
+  num_grid => num_solver%get_dict('grid',defaultVal=emptyDict)
+
+  stagItMax  = num_grid%get_asInt('N_staggered_iter_max',defaultVal=10)
+  maxCutBack = num_grid%get_asInt('N_cutback_max',defaultVal=3)
+
+  if (stagItMax < 0)    call IO_error(301,ext_msg='N_staggered_iter_max')
+  if (maxCutBack < 0)   call IO_error(301,ext_msg='N_cutback_max')
+
 
   if (worldrank == 0) then
     fileContent = IO_read(CLI_loadFile)
     fname = CLI_loadFile
     if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call result_openJobFile(parallel=.false.)
-    call result_writeDataset_str(fileContent,'setup',fname,'load case definition (grid solver)')
+    call result_addSetupFile(fileContent,fname,'load case definition (grid solver)')
     call result_closeJobFile()
   end if
 
   call parallelization_bcast_str(fileContent)
-  config_load => YAML_parse_str_asDict(fileContent)
-  solver => config_load%get_dict('solver')
+  load => YAML_parse_str_asDict(fileContent)
+  solver => load%get_dict('solver')
 
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
@@ -167,11 +164,11 @@ program DAMASK_grid
       mechanical_restartWrite => grid_mechanical_spectral_basic_restartWrite
 
     case ('spectral_polarization')
-      mechanical_init         => grid_mechanical_spectral_polarisation_init
-      mechanical_forward      => grid_mechanical_spectral_polarisation_forward
-      mechanical_solution     => grid_mechanical_spectral_polarisation_solution
-      mechanical_updateCoords => grid_mechanical_spectral_polarisation_updateCoords
-      mechanical_restartWrite => grid_mechanical_spectral_polarisation_restartWrite
+      mechanical_init         => grid_mechanical_spectral_polarization_init
+      mechanical_forward      => grid_mechanical_spectral_polarization_forward
+      mechanical_solution     => grid_mechanical_spectral_polarization_solution
+      mechanical_updateCoords => grid_mechanical_spectral_polarization_updateCoords
+      mechanical_restartWrite => grid_mechanical_spectral_polarization_restartWrite
 
     case ('FEM')
       mechanical_init         => grid_mechanical_FEM_init
@@ -204,13 +201,251 @@ program DAMASK_grid
     ID(field) = FIELD_DAMAGE_ID
   end if damageActive
 
+!--------------------------------------------------------------------------------------------------
+! doing initialization depending on active solvers
+  call spectral_utilities_init()
+
+  do field = 2, nActiveFields
+    select case (ID(field))
+
+      case (FIELD_THERMAL_ID)
+        call grid_thermal_spectral_init(num_grid)
+
+      case (FIELD_DAMAGE_ID)
+        call grid_damage_spectral_init(num_grid)
+
+    end select
+  end do
+
+  call mechanical_init(num_grid)
+  call config_numerics_deallocate()
 
 !--------------------------------------------------------------------------------------------------
-  load_steps => config_load%get_list('loadstep')
-  allocate(loadCases(load_steps%length))                                                            ! array of load cases
+! write header of output file
+  if (worldrank == 0) then
+    writeHeader: if (CLI_restartInc < 1) then
+      open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
+      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded StagIterationsNeeded' ! statistics file
+    else writeHeader
+      open(newunit=statUnit,file=trim(getSolverJobName())//&
+                                  '.sta',form='FORMATTED', position='APPEND', status='OLD')
+    end if writeHeader
+  end if
 
+  writeUndeformed: if (CLI_restartInc < 1) then
+    print'(/,1x,a)', '... saving initial configuration ..........................................'
+    flush(IO_STDOUT)
+    call materialpoint_result(0,0.0_pREAL)
+  end if writeUndeformed
+
+  loadCases = parseLoadSteps(load%get_list('loadstep'))
+
+  loadCaseLooping: do l = 1, size(loadCases)
+    t_0 = t                                                                                         ! load case start time
+    guess = loadCases(l)%estimate_rate                                                              ! change of load case? homogeneous guess for the first inc
+
+    incLooping: do inc = 1, loadCases(l)%N
+      totalIncsCounter = totalIncsCounter + 1
+
+!--------------------------------------------------------------------------------------------------
+! forwarding time
+      Delta_t_prev = Delta_t                                                                        ! last time intervall that brought former inc to an end
+      if (dEq(loadCases(l)%r,1.0_pREAL,1.e-9_pREAL)) then                                           ! linear scale
+        Delta_t = loadCases(l)%t/real(loadCases(l)%N,pREAL)
+      else
+        Delta_t = loadCases(l)%t * (loadCases(l)%r**(inc-1)-loadCases(l)%r**inc) &
+                                 / (1.0_pREAL-loadCases(l)%r**loadCases(l)%N)
+      end if
+      Delta_t = Delta_t * real(subStepFactor,pREAL)**real(-cutBackLevel,pREAL)                      ! depending on cut back level, decrease time step
+
+      skipping: if (totalIncsCounter <= CLI_restartInc) then                                        ! not yet at restart inc?
+        t = t + Delta_t                                                                             ! just advance time, skip already performed calculation
+        guess = .true.                                                                              ! QUESTION:why forced guessing instead of inheriting loadcase preference
+      else skipping
+        stepFraction = 0                                                                            ! fraction scaled by stepFactor**cutLevel
+
+        subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
+          t_remaining = loadCases(l)%t + t_0 - t
+          t = t + Delta_t                                                                           ! forward target time
+          stepFraction = stepFraction + 1                                                           ! count step
+
+!--------------------------------------------------------------------------------------------------
+! report beginning of new step
+          print'(/,1x,a)', '###########################################################################'
+          print'(1x,a,1x,es12.5,6(a,i0))', &
+                  'Time', t, &
+                  's: Increment ', inc,'/',loadCases(l)%N,&
+                  '-', stepFraction,'/',subStepFactor**cutBackLevel,&
+                  ' of load case ', l,'/',size(loadCases)
+          write(incInfo,'(4(a,i0))') &
+                  'Increment ',totalIncsCounter,'/',sum(loadCases%N),&
+                  '-', stepFraction,'/',subStepFactor**cutBackLevel
+          flush(IO_STDOUT)
+
+!--------------------------------------------------------------------------------------------------
+! forward fields
+          do field = 1, nActiveFields
+            select case(ID(field))
+              case(FIELD_MECH_ID)
+                call mechanical_forward (&
+                        cutBack,guess,Delta_t,Delta_t_prev,t_remaining, &
+                        deformation_BC = loadCases(l)%deformation, &
+                        stress_BC      = loadCases(l)%stress, &
+                        rotation_BC    = loadCases(l)%rot)
+
+              case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward(cutBack)
+              case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward(cutBack)
+            end select
+          end do
+          if (.not. cutBack) call materialpoint_forward
+
+!--------------------------------------------------------------------------------------------------
+! solve fields
+          stagIter = 1
+          stagIterate = .true.
+          do while (stagIterate)
+
+            if (nActiveFields > 1) print'(/,1x,a,i0)', 'Staggered Iteration ',stagIter
+            do field = 1, nActiveFields
+              select case(ID(field))
+                case(FIELD_MECH_ID)
+                  solres(field) = mechanical_solution(incInfo)
+                case(FIELD_THERMAL_ID)
+                  solres(field) = grid_thermal_spectral_solution(Delta_t)
+                case(FIELD_DAMAGE_ID)
+                  solres(field) = grid_damage_spectral_solution(Delta_t)
+              end select
+
+              if (.not. solres(field)%converged) exit                                               ! no solution found
+
+            end do
+            stagIter = stagIter + 1
+            stagIterate =            stagIter <= stagItMax &
+                         .and.       all(solres(:)%converged) &
+                         .and. .not. all(solres(:)%stagConverged)                                   ! stationary with respect to staggered iteration
+          end do
+
+!--------------------------------------------------------------------------------------------------
+! check solution and either advance or retry with smaller timestep
+
+          if ( (all(solres(:)%converged .and. solres(:)%stagConverged)) &                           ! converged
+               .and. .not. solres(1)%termIll) then                                                  ! and acceptable solution found
+            call mechanical_updateCoords()
+            Delta_t_prev = Delta_t
+            cutBack = .false.
+            guess = .true.                                                                          ! start guessing after first converged (sub)inc
+            if (worldrank == 0) then
+              write(statUnit,*) totalIncsCounter, t, cutBackLevel, &
+                                solres(1)%converged, solres(1)%iterationsNeeded, StagIter
+              flush(statUnit)
+            end if
+          elseif (cutBackLevel < maxCutBack) then                                                   ! further cutbacking tolerated?
+            cutBack = .true.
+            stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
+            cutBackLevel = cutBackLevel + 1
+            t = t - Delta_t
+            Delta_t = Delta_t/real(subStepFactor,pREAL)                                             ! cut timestep
+            print'(/,1x,a)', 'cutting back '
+          else                                                                                      ! no more options to continue
+            if (worldrank == 0) close(statUnit)
+            call IO_error(950)
+          end if
+
+        end do subStepLooping
+
+        cutBackLevel = max(0, cutBackLevel - 1)                                                     ! try half number of subincs next inc
+
+        if (all(solres(:)%converged)) then
+          print'(/,1x,a,1x,i0,1x,a)', 'increment', totalIncsCounter, 'converged'
+        else
+          print'(/,1x,a,1x,i0,1x,a)', 'increment', totalIncsCounter, 'NOT converged'
+        end if; flush(IO_STDOUT)
+
+        call MPI_Allreduce(signal_SIGUSR1,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+        if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+        if (mod(inc,loadCases(l)%f_out) == 0 .or. sig) then
+          print'(/,1x,a)', '... saving results ........................................................'
+          flush(IO_STDOUT)
+          call materialpoint_result(totalIncsCounter,t)
+        end if
+        if (sig) call signal_setSIGUSR1(.false.)
+        call MPI_Allreduce(signal_SIGUSR2,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+        if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+        if (mod(inc,loadCases(l)%f_restart) == 0 .or. sig) then
+          do field = 1, nActiveFields
+            select case (ID(field))
+              case(FIELD_MECH_ID)
+                call mechanical_restartWrite()
+              case(FIELD_THERMAL_ID)
+                call grid_thermal_spectral_restartWrite()
+              case(FIELD_DAMAGE_ID)
+                call grid_damage_spectral_restartWrite()
+            end select
+          end do
+          call materialpoint_restartWrite()
+        end if
+        if (sig) call signal_setSIGUSR2(.false.)
+        call MPI_Allreduce(signal_SIGINT,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+        if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+        if (sig) exit loadCaseLooping
+      end if skipping
+
+    end do incLooping
+
+  end do loadCaseLooping
+
+
+!--------------------------------------------------------------------------------------------------
+! report summary of whole calculation
+  print'(/,1x,a)', '###########################################################################'
+  if (worldrank == 0) close(statUnit)
+
+  call quit(0)                                                                                      ! no complains ;)
+
+
+contains
+
+subroutine getMaskedTensor(values,mask,tensor)
+
+  real(pREAL), intent(out), dimension(3,3) :: values
+  logical,     intent(out), dimension(3,3) :: mask
+  type(tList), pointer :: tensor
+
+  type(tList), pointer :: row
+  integer :: i,j
+
+
+  values = 0.0_pREAL
+  do i = 1,3
+    row => tensor%get_list(i)
+    do j = 1,3
+      mask(i,j) = row%get_asStr(j) == 'x'
+      if (.not. mask(i,j)) values(i,j) = row%get_asReal(j)
+    end do
+  end do
+
+end subroutine getMaskedTensor
+
+
+function parseLoadsteps(load_steps) result(loadCases)
+
+  type(tList), intent(in), target :: load_steps
+  type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
+
+  integer :: l,m
+  type(tDict), pointer :: &
+    load_step, &
+    step_bc, &
+    step_mech, &
+    step_discretization
+#ifdef __INTEL_LLVM_COMPILER
+  type(tList), pointer :: &
+    tensor
+#endif
+
+
+  allocate(loadCases(load_steps%length))
   do l = 1, load_steps%length
-
     load_step => load_steps%get_dict(l)
     step_bc   => load_step%get_dict('boundary_conditions')
     step_mech => step_bc%get_dict('mechanical')
@@ -310,226 +545,6 @@ program DAMASK_grid
 
     end if reportAndCheck
   end do
-
-!--------------------------------------------------------------------------------------------------
-! doing initialization depending on active solvers
-  call spectral_Utilities_init()
-
-  do field = 2, nActiveFields
-    select case (ID(field))
-
-      case (FIELD_THERMAL_ID)
-        call grid_thermal_spectral_init()
-
-      case (FIELD_DAMAGE_ID)
-        call grid_damage_spectral_init()
-
-    end select
-  end do
-
-  call mechanical_init()
-  call config_numerics_deallocate()
-
-!--------------------------------------------------------------------------------------------------
-! write header of output file
-  if (worldrank == 0) then
-    writeHeader: if (CLI_restartInc < 1) then
-      open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
-      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                ! statistics file
-    else writeHeader
-      open(newunit=statUnit,file=trim(getSolverJobName())//&
-                                  '.sta',form='FORMATTED', position='APPEND', status='OLD')
-    end if writeHeader
-  end if
-
-  writeUndeformed: if (CLI_restartInc < 1) then
-    print'(/,1x,a)', '... saving initial configuration ..........................................'
-    flush(IO_STDOUT)
-    call materialpoint_result(0,0.0_pREAL)
-  end if writeUndeformed
-
-  loadCaseLooping: do l = 1, size(loadCases)
-    t_0 = t                                                                                         ! load case start time
-    guess = loadCases(l)%estimate_rate                                                              ! change of load case? homogeneous guess for the first inc
-
-    incLooping: do inc = 1, loadCases(l)%N
-      totalIncsCounter = totalIncsCounter + 1
-
-!--------------------------------------------------------------------------------------------------
-! forwarding time
-      Delta_t_prev = Delta_t                                                                        ! last time intervall that brought former inc to an end
-      if (dEq(loadCases(l)%r,1.0_pREAL,1.e-9_pREAL)) then                                           ! linear scale
-        Delta_t = loadCases(l)%t/real(loadCases(l)%N,pREAL)
-      else
-        Delta_t = loadCases(l)%t * (loadCases(l)%r**(inc-1)-loadCases(l)%r**inc) &
-                                 / (1.0_pREAL-loadCases(l)%r**loadCases(l)%N)
-      end if
-      Delta_t = Delta_t * real(subStepFactor,pREAL)**real(-cutBackLevel,pREAL)                      ! depending on cut back level, decrease time step
-
-      skipping: if (totalIncsCounter <= CLI_restartInc) then                                  ! not yet at restart inc?
-        t = t + Delta_t                                                                             ! just advance time, skip already performed calculation
-        guess = .true.                                                                              ! QUESTION:why forced guessing instead of inheriting loadcase preference
-      else skipping
-        stepFraction = 0                                                                            ! fraction scaled by stepFactor**cutLevel
-
-        subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
-          t_remaining = loadCases(l)%t + t_0 - t
-          t = t + Delta_t                                                                           ! forward target time
-          stepFraction = stepFraction + 1                                                           ! count step
-
-!--------------------------------------------------------------------------------------------------
-! report beginning of new step
-          print'(/,1x,a)', '###########################################################################'
-          print'(1x,a,1x,es12.5,6(a,i0))', &
-                  'Time', t, &
-                  's: Increment ', inc,'/',loadCases(l)%N,&
-                  '-', stepFraction,'/',subStepFactor**cutBackLevel,&
-                  ' of load case ', l,'/',size(loadCases)
-          write(incInfo,'(4(a,i0))') &
-                  'Increment ',totalIncsCounter,'/',sum(loadCases%N),&
-                  '-', stepFraction,'/',subStepFactor**cutBackLevel
-          flush(IO_STDOUT)
-
-!--------------------------------------------------------------------------------------------------
-! forward fields
-          do field = 1, nActiveFields
-            select case(ID(field))
-              case(FIELD_MECH_ID)
-                call mechanical_forward (&
-                        cutBack,guess,Delta_t,Delta_t_prev,t_remaining, &
-                        deformation_BC = loadCases(l)%deformation, &
-                        stress_BC      = loadCases(l)%stress, &
-                        rotation_BC    = loadCases(l)%rot)
-
-              case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward(cutBack)
-              case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward(cutBack)
-            end select
-          end do
-          if (.not. cutBack) call materialpoint_forward
-
-!--------------------------------------------------------------------------------------------------
-! solve fields
-          stagIter = 0
-          stagIterate = .true.
-          do while (stagIterate)
-            do field = 1, nActiveFields
-              select case(ID(field))
-                case(FIELD_MECH_ID)
-                  solres(field) = mechanical_solution(incInfo)
-                case(FIELD_THERMAL_ID)
-                  solres(field) = grid_thermal_spectral_solution(Delta_t)
-                case(FIELD_DAMAGE_ID)
-                  solres(field) = grid_damage_spectral_solution(Delta_t)
-              end select
-
-              if (.not. solres(field)%converged) exit                                               ! no solution found
-
-            end do
-            stagIter = stagIter + 1
-            stagIterate =            stagIter < stagItMax &
-                         .and.       all(solres(:)%converged) &
-                         .and. .not. all(solres(:)%stagConverged)                                   ! stationary with respect to staggered iteration
-          end do
-
-!--------------------------------------------------------------------------------------------------
-! check solution and either advance or retry with smaller timestep
-
-          if ( (all(solres(:)%converged .and. solres(:)%stagConverged)) &                           ! converged
-               .and. .not. solres(1)%termIll) then                                                  ! and acceptable solution found
-            call mechanical_updateCoords()
-            Delta_t_prev = Delta_t
-            cutBack = .false.
-            guess = .true.                                                                          ! start guessing after first converged (sub)inc
-            if (worldrank == 0) then
-              write(statUnit,*) totalIncsCounter, t, cutBackLevel, &
-                                solres(1)%converged, solres(1)%iterationsNeeded
-              flush(statUnit)
-            end if
-          elseif (cutBackLevel < maxCutBack) then                                                   ! further cutbacking tolerated?
-            cutBack = .true.
-            stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
-            cutBackLevel = cutBackLevel + 1
-            t = t - Delta_t
-            Delta_t = Delta_t/real(subStepFactor,pREAL)                                             ! cut timestep
-            print'(/,1x,a)', 'cutting back '
-          else                                                                                      ! no more options to continue
-            if (worldrank == 0) close(statUnit)
-            call IO_error(950)
-          end if
-
-        end do subStepLooping
-
-        cutBackLevel = max(0, cutBackLevel - 1)                                                     ! try half number of subincs next inc
-
-        if (all(solres(:)%converged)) then
-          print'(/,1x,a,1x,i0,1x,a)', 'increment', totalIncsCounter, 'converged'
-        else
-          print'(/,1x,a,1x,i0,1x,a)', 'increment', totalIncsCounter, 'NOT converged'
-        end if; flush(IO_STDOUT)
-
-        call MPI_Allreduce(signal_SIGUSR1,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
-        if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-        if (mod(inc,loadCases(l)%f_out) == 0 .or. sig) then
-          print'(/,1x,a)', '... saving results ........................................................'
-          flush(IO_STDOUT)
-          call materialpoint_result(totalIncsCounter,t)
-        end if
-        if (sig) call signal_setSIGUSR1(.false.)
-        call MPI_Allreduce(signal_SIGUSR2,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
-        if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-        if (mod(inc,loadCases(l)%f_restart) == 0 .or. sig) then
-          do field = 1, nActiveFields
-            select case (ID(field))
-              case(FIELD_MECH_ID)
-                call mechanical_restartWrite()
-              case(FIELD_THERMAL_ID)
-                call grid_thermal_spectral_restartWrite()
-              case(FIELD_DAMAGE_ID)
-                call grid_damage_spectral_restartWrite()
-            end select
-          end do
-          call materialpoint_restartWrite()
-        end if
-        if (sig) call signal_setSIGUSR2(.false.)
-        call MPI_Allreduce(signal_SIGINT,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
-        if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-        if (sig) exit loadCaseLooping
-      end if skipping
-
-    end do incLooping
-
-  end do loadCaseLooping
-
-
-!--------------------------------------------------------------------------------------------------
-! report summary of whole calculation
-  print'(/,1x,a)', '###########################################################################'
-  if (worldrank == 0) close(statUnit)
-
-  call quit(0)                                                                                      ! no complains ;)
-
-
-contains
-
-subroutine getMaskedTensor(values,mask,tensor)
-
-  real(pREAL), intent(out), dimension(3,3) :: values
-  logical,     intent(out), dimension(3,3) :: mask
-  type(tList), pointer :: tensor
-
-  type(tList), pointer :: row
-  integer :: i,j
-
-
-  values = 0.0_pREAL
-  do i = 1,3
-    row => tensor%get_list(i)
-    do j = 1,3
-      mask(i,j) = row%get_asStr(j) == 'x'
-      if (.not. mask(i,j)) values(i,j) = row%get_asReal(j)
-    end do
-  end do
-
-end subroutine getMaskedTensor
+end function parseLoadsteps
 
 end program DAMASK_grid

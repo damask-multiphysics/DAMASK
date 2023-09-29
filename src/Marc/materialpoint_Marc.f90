@@ -16,7 +16,7 @@ module materialpoint_Marc
   use rotations
   use polynomials
   use tables
-  use lattice
+  use crystal
   use material
   use phase
   use homogenization
@@ -75,7 +75,7 @@ subroutine materialpoint_initAll()
   call rotations_init()
   call polynomials_init()
   call tables_init()
-  call lattice_init()
+  call crystal_init()
   call discretization_Marc_init()
   call material_init(.false.)
   call phase_init()

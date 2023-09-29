@@ -1166,7 +1166,10 @@ function tDict_get_as1dReal(self,k,defaultVal,requiredSize) result(nodeAs1dReal)
   end if
 
   if (present(requiredSize)) then
-    if (requiredSize /= size(nodeAs1dReal)) call IO_error(146,ext_msg=k)
+    if (requiredSize /= size(nodeAs1dReal)) &
+      call IO_error(146,ext_msg=k, &
+                    label1='actual',ID1=size(nodeAs1dReal), &
+                    label2='required',ID2=requiredSize)
   end if
 
 end function tDict_get_as1dReal
@@ -1251,7 +1254,10 @@ function tDict_get_as1dInt(self,k,defaultVal,requiredSize) result(nodeAs1dInt)
   end if
 
   if (present(requiredSize)) then
-    if (requiredSize /= size(nodeAs1dInt)) call IO_error(146,ext_msg=k)
+    if (requiredSize /= size(nodeAs1dInt)) &
+      call IO_error(146,ext_msg=k, &
+                    label1='actual',ID1=size(nodeAs1dInt), &
+                    label2='required',ID2=requiredSize)
   end if
 
 end function tDict_get_as1dInt

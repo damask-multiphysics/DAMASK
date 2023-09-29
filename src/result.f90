@@ -62,6 +62,7 @@ module result
     result_writeDataset, &
     result_writeDataset_str, &
     result_setLink, &
+    result_addSetupFile, &
     result_addAttribute, &
     result_removeLink, &
     result_mapping_phase, &
@@ -166,7 +167,7 @@ end subroutine result_finalizeIncrement
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief open a group from the result file
+!> @brief Open a group from the result file.
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function result_openGroup(groupName)
 
@@ -179,7 +180,7 @@ end function result_openGroup
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a new group to the result file
+!> @brief Add a new group to the result file.
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function result_addGroup(groupName)
 
@@ -192,7 +193,7 @@ end function result_addGroup
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief close a group
+!> @brief Close a group.
 !--------------------------------------------------------------------------------------------------
 subroutine result_closeGroup(group_id)
 
@@ -205,7 +206,7 @@ end subroutine result_closeGroup
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief set link to object in result file
+!> @brief Set link to object in result file.
 !--------------------------------------------------------------------------------------------------
 subroutine result_setLink(path,link)
 
@@ -215,6 +216,33 @@ subroutine result_setLink(path,link)
   call HDF5_setLink(resultFile,path,link)
 
 end subroutine result_setLink
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Add file to setup folder and ensure unique name.
+!--------------------------------------------------------------------------------------------------
+subroutine result_addSetupFile(content,fname,description)
+
+  character(len=*), intent(in) :: content, fname, description
+
+  integer(HID_T) :: groupHandle
+  character(len=:), allocatable :: name,suffix
+  integer :: i
+
+  groupHandle = result_openGroup('setup')
+  name = fname(scan(fname,'/',.true.)+1:)
+  suffix = ''
+  i = 0
+
+  do while (HDF5_objectExists(groupHandle,name//suffix))
+      i = i+1
+      suffix = '.'//IO_intAsStr(i)
+  end do
+  call result_writeDataset_str(content,'setup',name//suffix,description)
+  call result_closeGroup(groupHandle)
+
+end subroutine result_addSetupFile
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Add a string attribute to an object in the result file.
@@ -467,10 +495,9 @@ subroutine result_mapping_phase(ID,entry,label)
   integer,          dimension(:,:), intent(in) :: entry                                             !< phase entry at (co,ce)
   character(len=*), dimension(:),   intent(in) :: label                                             !< label of each phase section
 
-  integer(pI64), dimension(size(entry,1),size(entry,2)) :: &
-    entryGlobal
+  integer(pI64), dimension(size(entry,1),size(entry,2)) :: entryGlobal
   integer(pI64), dimension(size(label),0:worldsize-1) :: entryOffset                                !< offset in entry counting per process
-  integer, dimension(0:worldsize-1) :: writeSize                                                    !< amount of data written per process
+  integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: writeSize                                  !< amount of data written per process
   integer(HSIZE_T), dimension(2) :: &
     myShape, &                                                                                      !< shape of the dataset (this process)
     myOffset, &
@@ -493,21 +520,19 @@ subroutine result_mapping_phase(ID,entry,label)
   integer(MPI_INTEGER_KIND) :: err_MPI
 
 
-  writeSize = 0
-  writeSize(worldrank) = size(entry(1,:))                                                           ! total number of entries of this process
-
   call H5Pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
   call HDF5_chkerr(hdferr)
 
 #ifndef PETSC
-  entryGlobal = int(entry -1,pI64)                                                                  ! 0-based
+  entryGlobal = int(entry-1,pI64)                                                                   ! 0-based
+  writeSize(0) = size(entry,dim=2,kind=MPI_INTEGER_KIND)                                                         ! total number of entries of this process
 #else
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
   call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   call HDF5_chkerr(hdferr)
-
-  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)   ! get output at each process
+  call MPI_Allgather(size(entry,dim=2,kind=MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
+                     writeSize,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
   entryOffset = 0_pI64
@@ -526,9 +551,9 @@ subroutine result_mapping_phase(ID,entry,label)
   end do
 #endif
 
-  myShape = int([size(ID,1),writeSize(worldrank)], HSIZE_T)
-  myOffset = int([0,sum(writeSize(0:worldrank-1))], HSIZE_T)
-  totalShape = int([size(ID,1),sum(writeSize)], HSIZE_T)
+  myShape = int([size(ID,1,MPI_INTEGER_KIND),writeSize(worldrank)], HSIZE_T)
+  myOffset = int([0_MPI_INTEGER_KIND,sum(writeSize(0:worldrank-1))], HSIZE_T)
+  totalShape = int([size(ID,1,MPI_INTEGER_KIND),sum(writeSize)], HSIZE_T)
 
 !---------------------------------------------------------------------------------------------------
 ! compound type: label(ID) + entry
@@ -623,10 +648,9 @@ subroutine result_mapping_homogenization(ID,entry,label)
   integer,          dimension(:), intent(in) :: entry                                               !< homogenization entry at (ce)
   character(len=*), dimension(:), intent(in) :: label                                               !< label of each homogenization section
 
-  integer(pI64), dimension(size(entry,1)) :: &
-    entryGlobal
+  integer(pI64), dimension(size(entry,1)) :: entryGlobal
   integer(pI64), dimension(size(label),0:worldsize-1) :: entryOffset                                !< offset in entry counting per process
-  integer, dimension(0:worldsize-1) :: writeSize                                                    !< amount of data written per process
+  integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: writeSize                                  !< amount of data written per process
   integer(HSIZE_T), dimension(1) :: &
     myShape, &                                                                                      !< shape of the dataset (this process)
     myOffset, &
@@ -649,31 +673,29 @@ subroutine result_mapping_homogenization(ID,entry,label)
   integer(MPI_INTEGER_KIND) :: err_MPI
 
 
-  writeSize = 0
-  writeSize(worldrank) = size(entry)                                                                ! total number of entries of this process
-
   call H5Pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
   call HDF5_chkerr(hdferr)
 
 #ifndef PETSC
-  entryGlobal = int(entry -1,pI64)                                                                  ! 0-based
+  entryGlobal = int(entry-1,pI64)
+  writeSize(0) = size(entry,kind=MPI_INTEGER_KIND)                                                         ! total number of entries of this process                                                            ! 0-based
 #else
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
   call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   call HDF5_chkerr(hdferr)
-
-  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)   ! get output at each process
+  call MPI_Allgather(size(entry,kind=MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
+                     writeSize,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
   entryOffset = 0_pI64
-  do ce = 1, size(ID,1)
+  do ce = 1, size(ID)
     entryOffset(ID(ce),worldrank) = entryOffset(ID(ce),worldrank) +1_pI64
   end do
   call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD,err_MPI)! get offset at each process
   call parallelization_chkerr(err_MPI)
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
-  do ce = 1, size(ID,1)
+  do ce = 1, size(ID)
     entryGlobal(ce) = int(entry(ce),pI64) -1_pI64 + entryOffset(ID(ce),worldrank)
   end do
 #endif

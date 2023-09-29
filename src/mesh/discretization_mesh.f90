@@ -56,7 +56,7 @@ module discretization_mesh
   real(pREAL), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
-#ifdef PETSC_USE_64BIT_INDICES
+#if defined(PETSC_USE_64BIT_INDICES) || PETSC_VERSION_MINOR < 17
   external :: &
     DMDestroy
 #endif
@@ -89,6 +89,7 @@ subroutine discretization_mesh_init(restart)
   PetscInt, dimension(:), allocatable :: &
     materialAt
   type(tDict), pointer :: &
+    num_solver, &
     num_mesh
   integer :: p_i, dim                                                                               !< integration order (quadrature rule)
   type(tvec) :: coords_node0
@@ -99,8 +100,9 @@ subroutine discretization_mesh_init(restart)
 
 !--------------------------------------------------------------------------------
 ! read numerics parameter
-  num_mesh => config_numerics%get_dict('mesh',defaultVal=emptyDict)
-  p_i = num_mesh%get_asInt('p_i',defaultVal = 2)
+  num_solver => config_numerics%get_dict('solver',defaultVal=emptyDict)
+  num_mesh   => num_solver%get_dict('mesh',defaultVal=emptyDict)
+  p_i = num_mesh%get_asInt('p_i',defaultVal=2)
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>16)
   call DMPlexCreateFromFile(PETSC_COMM_WORLD,CLI_geomFile,'n/a',PETSC_TRUE,globalMesh,err_PETSc)

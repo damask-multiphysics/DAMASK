@@ -6,6 +6,7 @@
 !> @author Philip Eisenlohr, Michigan State University
 !--------------------------------------------------------------------------------------------------
 module HDF5_utilities
+  use IO
   use HDF5
 #ifdef PETSC
 #include <petsc/finclude/petscsys.h>
@@ -190,6 +191,7 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
   character      :: m
   integer(HID_T) :: plist_id
   integer :: hdferr
+  logical :: exist
 
 
   m = misc_optional(mode,'r')
@@ -214,6 +216,8 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
     call H5Fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr,access_prp = plist_id)
     call HDF5_chkerr(hdferr)
   elseif (m == 'r') then
+    inquire(file=fileName,exist=exist)
+    if (.not. exist) call IO_error(100,trim(fileName))
     call H5Fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr,access_prp = plist_id)
     call HDF5_chkerr(hdferr)
   else
@@ -1836,15 +1840,13 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
   integer(HID_T),    intent(in) :: loc_id                                                           !< file or group handle
   character(len=*),  intent(in) :: datasetName                                                      !< name of the dataset in the file
   logical,           intent(in) :: parallel
-  integer(HSIZE_T),  intent(in),   dimension(:) :: &
-    localShape
-  integer(HSIZE_T),  intent(out), dimension(size(localShape,1)):: &
+  integer(HSIZE_T),  intent(in),  dimension(:) :: localShape
+  integer(HSIZE_T),  intent(out), dimension(size(localShape)) :: &
     myStart, &
     globalShape                                                                                     !< shape of the dataset (all processes)
   integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
 
-  integer(MPI_INTEGER_KIND), dimension(worldsize) :: &
-    readSize                                                                                        !< contribution of all processes
+  integer(MPI_INTEGER_KIND), dimension(worldsize) :: readSize                                       !< contribution of all processes
   integer :: hdferr
   integer(MPI_INTEGER_KIND) :: err_MPI
 
@@ -1860,7 +1862,8 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
   if (parallel) then
     call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
     call HDF5_chkerr(hdferr)
-    call MPI_Allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI) ! get total output size over each process
+    call MPI_Allgather(int(localShape(ubound(localShape,1)),MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
+                       readSize,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   end if
 #endif
@@ -1930,15 +1933,14 @@ end subroutine finalize_read
 !--------------------------------------------------------------------------------------------------
 subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
                             myStart, totalShape, &
-                            loc_id,myShape,datasetName,datatype,parallel)
+                            loc_id,localShape,datasetName,datatype,parallel)
 
   integer(HID_T),    intent(in) :: loc_id                                                           !< file or group handle
   character(len=*),  intent(in) :: datasetName                                                      !< name of the dataset in the file
   logical,           intent(in) :: parallel
   integer(HID_T),    intent(in) :: datatype
-  integer(HSIZE_T),  intent(in),   dimension(:) :: &
-    myShape
-  integer(HSIZE_T),  intent(out), dimension(size(myShape,1)):: &
+  integer(HSIZE_T),  intent(in),  dimension(:) :: localShape
+  integer(HSIZE_T),  intent(out), dimension(size(localShape)) :: &
     myStart, &
     totalShape                                                                                      !< shape of the dataset (all processes)
   integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id
@@ -1964,16 +1966,17 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 !--------------------------------------------------------------------------------------------------
 ! determine the global data layout among all processes
   writeSize              = 0_MPI_INTEGER_KIND
-  writeSize(worldrank+1) = int(myShape(ubound(myShape,1)),MPI_INTEGER_KIND)
+  writeSize(worldrank+1) = int(localShape(ubound(localShape,1)),MPI_INTEGER_KIND)
 #ifdef PETSC
   if (parallel) then
-    call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI) ! get total output size over each process
+    call MPI_Allgather(int(localShape(ubound(localShape,1)),MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
+                       writeSize,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   end if
 #endif
   myStart                   = int(0,HSIZE_T)
   myStart(ubound(myStart))  = int(sum(writeSize(1:worldrank)),HSIZE_T)
-  totalShape = [myShape(1:ubound(myShape,1)-1),int(sum(writeSize),HSIZE_T)]
+  totalShape = [localShape(1:ubound(localShape,1)-1),int(sum(writeSize),HSIZE_T)]
 
 !--------------------------------------------------------------------------------------------------
 ! chunk dataset, enable compression for larger datasets
@@ -2001,7 +2004,7 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape) and in file (global shape)
-  call H5Screate_simple_f(size(myShape), myShape, memspace_id, hdferr, myShape)
+  call H5Screate_simple_f(size(localShape), localShape, memspace_id, hdferr, localShape)
   call HDF5_chkerr(hdferr)
   call H5Screate_simple_f(size(totalShape), totalShape, filespace_id, hdferr, totalShape)
   call HDF5_chkerr(hdferr)
@@ -2010,7 +2013,7 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 ! create dataset in the file and select a hyperslab from it (the portion of the current process)
   call H5Dcreate_f(loc_id, trim(datasetName), datatype, filespace_id, dset_id, hdferr, dcpl)
   call HDF5_chkerr(hdferr)
-  call H5Sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, myShape, hdferr)
+  call H5Sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, localShape, hdferr)
   call HDF5_chkerr(hdferr)
 
   call H5Pclose_f(dcpl , hdferr)

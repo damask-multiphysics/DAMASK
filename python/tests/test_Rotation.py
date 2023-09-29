@@ -975,6 +975,13 @@ class TestRotation:
             assert np.allclose(rot_broadcast.quaternion[...,i,:], rot.quaternion)
 
 
+    @pytest.mark.parametrize('shape',[(3,2),(4,6)])
+    def test_broadcastcomposition(self,shape):
+        a = Rotation.from_random(shape[0])
+        b = Rotation.from_random(shape[1])
+        assert (a[:,np.newaxis]*b[np.newaxis,:]).allclose(a.broadcast_to(shape)*b.broadcast_to(shape))
+
+
     @pytest.mark.parametrize('function,invalid',[(Rotation.from_quaternion,        np.array([-1,0,0,0])),
                                                  (Rotation.from_quaternion,        np.array([1,1,1,0])),
                                                  (Rotation.from_Euler_angles,      np.array([1,4,0])),
@@ -1058,7 +1065,7 @@ class TestRotation:
 
     @pytest.mark.parametrize('data',[np.random.rand(4),
                                      np.random.rand(3,2),
-                                     np.random.rand(3,2,3,3)])
+                                     np.random.rand(3,3,3,1)])
     def test_rotate_invalid_shape(self,data):
         R = Rotation.from_random()
         with pytest.raises(ValueError):

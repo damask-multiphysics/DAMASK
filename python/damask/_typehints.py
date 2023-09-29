@@ -11,7 +11,7 @@ IntSequence = Union[np.ndarray,Sequence[int]]
 StrSequence = Union[np.ndarray,Sequence[str]]
 FileHandle = Union[TextIO, str, Path]
 CrystalFamily = Union[None,Literal['triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic']]
-CrystalLattice = Union[None,Literal['aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF']]
+BravaisLattice = Union[None,Literal['aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF']]
 CrystalKinematics = Literal['slip', 'twin']
 NumpyRngSeed = Union[int, IntSequence, np.random.SeedSequence, np.random.Generator]
 # BitGenerator does not exists in older numpy versions

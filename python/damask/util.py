@@ -512,7 +512,8 @@ def shapeshifter(fro: _Tuple[int, ...],
     return tuple(final_shape[::-1] if mode == 'left' else final_shape)
 
 def shapeblender(a: _Tuple[int, ...],
-                 b: _Tuple[int, ...]) -> _Tuple[int, ...]:
+                 b: _Tuple[int, ...],
+                 keep_ones: bool = True) -> _Tuple[int, ...]:
     """
     Return a shape that overlaps the rightmost entries of 'a' with the leftmost of 'b'.
 
@@ -522,6 +523,9 @@ def shapeblender(a: _Tuple[int, ...],
         Shape of first array.
     b : tuple
         Shape of second array.
+    keep_ones : bool, optional
+        Treat innermost '1's as literal value instead of dimensional placeholder.
+        Defaults to True.
 
     Examples
     --------
@@ -531,13 +535,30 @@ def shapeblender(a: _Tuple[int, ...],
         (1,2,3)
     >>> shapeblender((1,),(2,2,1))
         (1,2,2,1)
+    >>> shapeblender((1,),(2,2,1),False)
+        (2,2,1)
     >>> shapeblender((3,2),(3,2))
         (3,2)
 
     """
-    i = min(len(a),len(b))
-    while i > 0 and a[-i:] != b[:i]: i -= 1
-    return a + b[i:]
+    def is_broadcastable(a,b):
+        try:
+            _np.broadcast_shapes(a,b)
+            return True
+        except ValueError:
+            return False
+
+    a_,_b = a,b
+    if keep_ones:
+        i = min(len(a_),len(_b))
+        while i > 0 and a_[-i:] != _b[:i]: i -= 1
+        return a_ + _b[i:]
+    else:
+        a_ += max(0,len(_b)-len(a_))*(1,)
+        while not is_broadcastable(a_,_b):
+            a_ = a_ + ((1,) if len(a_)<=len(_b) else ())
+            _b = ((1,) if len(_b)<len(a_) else ()) + _b
+        return _np.broadcast_shapes(a_,_b)
 
 
 def _docstringer(docstring: _Union[str, _Callable],
@@ -698,7 +719,7 @@ def pass_on(keyword: str,
         return wrapper
     return decorator
 
-def DREAM3D_base_group(fname: _Union[str, _Path]) -> str:
+def DREAM3D_base_group(fname: _Union[str, _Path, _h5py.File]) -> str:
     """
     Determine the base group of a DREAM.3D file.
 
@@ -707,7 +728,7 @@ def DREAM3D_base_group(fname: _Union[str, _Path]) -> str:
 
     Parameters
     ----------
-    fname : str or pathlib.Path
+    fname : str, pathlib.Path, or _h5py.File
         Filename of the DREAM.3D (HDF5) file.
 
     Returns
@@ -716,15 +737,19 @@ def DREAM3D_base_group(fname: _Union[str, _Path]) -> str:
         Path to the base group.
 
     """
-    with _h5py.File(_Path(fname).expanduser(),'r') as f:
+    def get_base_group(f: _h5py.File) -> str:
         base_group = f.visit(lambda path: path.rsplit('/',2)[0] if '_SIMPL_GEOMETRY/SPACING' in path else None)
+        if base_group is None:
+            raise ValueError(f'could not determine base group in file "{fname}"')
+        return base_group
 
-    if base_group is None:
-        raise ValueError(f'could not determine base group in file "{fname}"')
+    if isinstance(fname,_h5py.File):
+        return get_base_group(fname)
 
-    return base_group
+    with _h5py.File(_Path(fname).expanduser(),'r') as f:
+        return get_base_group(f)
 
-def DREAM3D_cell_data_group(fname: _Union[str, _Path]) -> str:
+def DREAM3D_cell_data_group(fname: _Union[str, _Path, _h5py.File]) -> str:
     """
     Determine the cell data group of a DREAM.3D file.
 
@@ -734,7 +759,7 @@ def DREAM3D_cell_data_group(fname: _Union[str, _Path]) -> str:
 
     Parameters
     ----------
-    fname : str or pathlib.Path
+    fname : str, pathlib.Path, or h5py.File
         Filename of the DREAM.3D (HDF5) file.
 
     Returns
@@ -743,17 +768,21 @@ def DREAM3D_cell_data_group(fname: _Union[str, _Path]) -> str:
         Path to the cell data group.
 
     """
-    base_group = DREAM3D_base_group(fname)
-    with _h5py.File(_Path(fname).expanduser(),'r') as f:
+    def get_cell_data_group(f: _h5py.File) -> str:
+        base_group = DREAM3D_base_group(f)
         cells = tuple(f['/'.join([base_group,'_SIMPL_GEOMETRY','DIMENSIONS'])][()][::-1])
         cell_data_group = f[base_group].visititems(lambda path,obj: path.split('/')[0] \
                                                    if isinstance(obj,_h5py._hl.dataset.Dataset) and _np.shape(obj)[:-1] == cells \
                                                    else None)
+        if cell_data_group is None:
+            raise ValueError(f'could not determine cell-data group in file "{fname}/{base_group}"')
+        return cell_data_group
 
-    if cell_data_group is None:
-        raise ValueError(f'could not determine cell-data group in file "{fname}/{base_group}"')
+    if isinstance(fname,_h5py.File):
+        return get_cell_data_group(fname)
 
-    return cell_data_group
+    with _h5py.File(_Path(fname).expanduser(),'r') as f:
+        return get_cell_data_group(f)
 
 
 def Bravais_to_Miller(*,

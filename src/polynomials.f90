@@ -25,7 +25,8 @@ module polynomials
 
   public :: &
     polynomial, &
-    polynomials_init
+    polynomials_init, &
+    polynomials_selfTest
 
 contains
 
@@ -37,7 +38,7 @@ subroutine polynomials_init()
 
   print'(/,1x,a)', '<<<+-  polynomials init  -+>>>'; flush(IO_STDOUT)
 
-  call selfTest()
+  call polynomials_selfTest()
 
 end subroutine polynomials_init
 
@@ -68,26 +69,24 @@ function polynomial_from_dict(dict,y,x) result(p)
   type(tPolynomial) :: p
 
   real(pREAL), dimension(:), allocatable :: coef
-  real(pREAL) :: x_ref
   integer :: i, o
-  character(len=1) :: o_s
+  character :: o_s
 
 
   allocate(coef(1),source=dict%get_asReal(y))
 
-  if (dict%contains(y//','//x)) then
-    x_ref = dict%get_asReal(x//'_ref')
-    coef = [coef,dict%get_asReal(y//','//x)]
-  end if
+  if (dict%contains(y//','//x)) coef = [coef,dict%get_asReal(y//','//x)]
   do o = 2,4
     write(o_s,'(I0.0)') o
-    if (dict%contains(y//','//x//'^'//o_s)) then
-      x_ref = dict%get_asReal(x//'_ref')
+    if (dict%contains(y//','//x//'^'//o_s)) &
       coef = [coef,[(0.0_pREAL,i=size(coef),o-1)],dict%get_asReal(y//','//x//'^'//o_s)]
-    end if
   end do
 
-  p = Polynomial(coef,x_ref)
+  if (size(coef) > 1) then
+    p = polynomial(coef,dict%get_asReal(x//'_ref'))
+  else
+    p = polynomial(coef,-huge(1.0_pREAL))
+  end if
 
 end function polynomial_from_dict
 
@@ -107,11 +106,7 @@ pure function eval(self,x) result(y)
 
   y = self%coef(ubound(self%coef,1))
   do o = ubound(self%coef,1)-1, 0, -1
-#ifndef __INTEL_LLVM_COMPILER
-    y = y*(x-self%x_ref) +self%coef(o)
-#else
-    y = IEEE_FMA(y,x-self%x_ref,self%coef(o))
-#endif
+    y = y*(x-self%x_ref) + self%coef(o)
   end do
 
 end function eval
@@ -120,7 +115,7 @@ end function eval
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of polynomical functionality.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest()
+subroutine polynomials_selfTest()
 
   type(tPolynomial) :: p1, p2
   real(pREAL), dimension(5) :: coef
@@ -135,9 +130,9 @@ subroutine selfTest()
   call random_number(x_ref)
   call random_number(x)
 
-  coef = coef*10_pREAL -0.5_pREAL
-  x_ref = x_ref*10_pREAL -0.5_pREAL
-  x = x*10_pREAL -0.5_pREAL
+  coef = 10_pREAL*(coef-0.5_pREAL)
+  x_ref = 10_pREAL*(x_ref-0.5_pREAL)
+  x = 10_pREAL*(x-0.5_pREAL)
 
   p1 = polynomial([coef(1)],x_ref)
   if (dNeq(p1%at(x),coef(1)))      error stop 'polynomial: eval(constant)'
@@ -159,7 +154,11 @@ subroutine selfTest()
   dict => YAML_parse_str_asDict(trim(YAML_s))
   p2 = polynomial(dict,'C','T')
   if (dNeq(p1%at(x),p2%at(x),1.0e-6_pREAL))                      error stop 'polynomials: init'
-  y = coef(1)+coef(2)*(x-x_ref)+coef(3)*(x-x_ref)**2+coef(4)*(x-x_ref)**3+coef(5)*(x-x_ref)**4
+  y = coef(1)*(x-x_ref)**0 &
+    + coef(2)*(x-x_ref)**1 &
+    + coef(3)*(x-x_ref)**2 &
+    + coef(4)*(x-x_ref)**3 &
+    + coef(5)*(x-x_ref)**4
   if (dNeq(p1%at(x),y,1.0e-6_pREAL))                             error stop 'polynomials: eval(full)'
 
   YAML_s = 'C: 0.0'//IO_EOL//&
@@ -191,6 +190,6 @@ subroutine selfTest()
   if (dNeq(p1%at(x_ref+x),p1%at(x_ref-x),1.0e-6_pREAL))           error stop 'polynomials: eval(quartic)'
 
 
-end subroutine selfTest
+end subroutine polynomials_selfTest
 
 end module polynomials

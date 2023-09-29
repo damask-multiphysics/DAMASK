@@ -34,8 +34,23 @@ subroutine config_init()
 
   print'(/,1x,a)', '<<<+-  config init  -+>>>'; flush(IO_STDOUT)
 
-  call parse_material()
-  call parse_numerics()
+#if defined(MESH) || defined(GRID)
+  config_material => parse(CLI_materialFile,'material configuration')
+#else
+  config_material => parse('material.yaml','material configuration')
+#endif
+
+  config_numerics => emptyDict
+#if defined(MESH) || defined(GRID)
+  if (allocated(CLI_numericsFile)) &
+    config_numerics => parse(CLI_numericsFile,'numerics configuration')
+#else
+  MSCMarc: block
+    logical :: exists
+    inquire(file='numerics.yaml',exist=exists)
+    if (exists) config_numerics => parse('numerics.yaml','numerics configuration')
+  end block MSCMarc
+#endif
 
 end subroutine config_init
 
@@ -68,10 +83,9 @@ end subroutine config_numerics_deallocate
 !--------------------------------------------------------------------------------------------------
 function config_listReferences(config,indent) result(references)
 
-  type(tDict) :: config
-  integer, optional :: indent
+  type(tDict), intent(in) :: config
+  integer, intent(in), optional :: indent
   character(len=:), allocatable :: references
-
 
   type(tList), pointer :: ref
   character(len=:), allocatable :: filler
@@ -93,63 +107,27 @@ end function config_listReferences
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Read material.yaml.
+!> @brief Read configuration, spread over all processes, and add to DADF5.
 !--------------------------------------------------------------------------------------------------
-subroutine parse_material()
+function parse(fname,description)
 
-  logical :: fileExists
-  character(len=:), allocatable :: &
-    fileContent, fname
+  character(len=*), intent(in) :: fname, description
+  type(tDict), pointer :: parse
+
+  character(len=:), allocatable :: fileContent
+
 
   if (worldrank == 0) then
-    print'(/,1x,a)', 'reading material configuration'; flush(IO_STDOUT)
-#if   defined(MESH) || defined(GRID)
-    fname = CLI_materialFile
-#else
-    fname = 'material.yaml'
-#endif
+    print'(/,1x,a)', 'reading '//description; flush(IO_STDOUT)
     fileContent = IO_read(fname)
-    if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call result_openJobFile(parallel=.false.)
-    call result_writeDataset_str(fileContent,'setup',fname,'material configuration')
+    call result_addSetupFile(fileContent,fname,description)
     call result_closeJobFile()
   end if
   call parallelization_bcast_str(fileContent)
 
-  config_material => YAML_parse_str_asDict(fileContent)
+  parse => YAML_parse_str_asDict(fileContent)
 
-end subroutine parse_material
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Read numerics.yaml.
-!--------------------------------------------------------------------------------------------------
-subroutine parse_numerics()
-
-  logical :: fileExists
-  character(len=:), allocatable :: fileContent
-
-
-  config_numerics => emptyDict
-
-  inquire(file='numerics.yaml', exist=fileExists)
-  if (fileExists) then
-
-    if (worldrank == 0) then
-      print'(1x,a)', 'reading numerics.yaml'; flush(IO_STDOUT)
-      fileContent = IO_read('numerics.yaml')
-      if (len(fileContent) > 0) then
-        call result_openJobFile(parallel=.false.)
-        call result_writeDataset_str(fileContent,'setup','numerics.yaml','numerics configuration')
-        call result_closeJobFile()
-      end if
-    end if
-    call parallelization_bcast_str(fileContent)
-
-    config_numerics => YAML_parse_str_asDict(fileContent)
-
-  end if
-
-end subroutine parse_numerics
+end function parse
 
 end module config
