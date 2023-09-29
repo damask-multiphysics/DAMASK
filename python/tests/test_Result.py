@@ -438,11 +438,11 @@ class TestResult:
         assert set(os.listdir(export_dir)) == set([f'{single_phase.fname.stem}_inc{i:02}.vtp' for i in range(0,40+1,4)])
 
     @pytest.mark.parametrize('fname',['2phase_irregularGrid_tensionX.hdf5'],ids=range(1))
-    def test_export_DREAM3D(self,tmp_path,ref_path,fname):
-        result = Result(ref_path/fname).view(increments=0)  #comparing the initial data only
+    def test_export_DREAM3D(self,tmp_path,res_path,fname):
+        result = Result(res_path/fname).view(increments=0)  #comparing the initial data only
         result.export_DREAM3D(target_dir=tmp_path)
 
-        ref_file = h5py.File(ref_path/'2phase_irregularGrid.dream3d','r')
+        ref_file = h5py.File(res_path/'2phase_irregularGrid.dream3d','r')
         job_file_no_ext = result.fname.stem
         results_file = h5py.File(tmp_path/f'{job_file_no_ext}_increment_0.dream3d','r')
 
