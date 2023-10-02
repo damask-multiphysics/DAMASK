@@ -84,8 +84,6 @@ class AttributeManagerNullterm(h5py.AttributeManager):
       super().create(name=name,data=data,shape=shape,dtype=dtype)
 
 
-h5py._hl.attrs.AttributeManager = AttributeManagerNullterm # 'Monkey patch'
-
 class Result:
     """
     Add data to and export data from a DADF5 (DAMASK HDF5) file.
@@ -1972,6 +1970,8 @@ class Result:
             Directory to save DREAM3D files. Will be created if non-existent.
 
         """
+        h5py._hl.attrs.AttributeManager = AttributeManagerNullterm # 'Monkey patch'
+
         Phase_types = {'Primary': 0}
         #further additions to these can be done by looking at 'Create Ensemble Info' filter
         # other options could be 'Precipitate' and so on.
