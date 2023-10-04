@@ -529,7 +529,7 @@ class Orientation(Rotation,Crystal):
         s =  self.broadcast_to(s_m).equivalent
         o = other.broadcast_to(s_o).equivalent
 
-        r_ = s[:,np.newaxis,...].misorientation(o[np.newaxis,:,...])
+        r_ = s[:,np.newaxis,...].misorientation(o[np.newaxis,:,...]) # type: ignore[index]
         _r = ~r_
 
         forward = r_.in_disorientation_FZ

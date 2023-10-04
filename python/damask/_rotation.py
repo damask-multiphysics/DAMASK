@@ -112,7 +112,7 @@ class Rotation:
 
 
     def __getitem__(self,
-                    item: Union[Tuple[Union[None, int, slice, ellipsis]], int, bool, np.bool_, np.ndarray]):
+                    item: Union[Tuple[Union[None, int, slice]], int, bool, np.bool_, np.ndarray]):
         """
         Return self[item].
 
