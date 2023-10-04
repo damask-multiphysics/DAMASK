@@ -136,11 +136,13 @@ class TestUtil:
                               ((1,),(7,),False,(7,)),
                               ((1,),(7,),True,(1,7)),
                               ((2,),(2,2),False,(2,2)),
-                              ((1,2),(2,2),False,(2,2)),
+                              ((1,3),(2,3),False,(2,3)),
                               ((1,1,2),(2,2),False,(1,2,2)),
                               ((1,1,2),(2,2),True,(1,1,2,2)),
                               ((1,2,3),(2,3,4),False,(1,2,3,4)),
                               ((1,2,3),(1,2,3),False,(1,2,3)),
+                              ((2,3,1,1),(2,3),False,(2,3,2,3)),
+                              ((2,3,1,1),(2,3),True,(2,3,1,1,2,3)),
                              ])
     def test_shapeblender(self,a,b,ones,answer):
         assert util.shapeblender(a,b,ones) == answer

@@ -358,7 +358,9 @@ class TestOrientation:
                                     a=a,b=b,c=c,
                                     alpha=alpha,beta=beta,gamma=gamma)
         assert o.to_pole(**{kw:vector,'with_symmetry':with_symmetry}).shape \
-            == o.shape + vector.shape[:-1] + (o.symmetry_operations.shape if with_symmetry else ()) + vector.shape[-1:]
+            == util.shapeblender(o.shape,vector.shape[:-1]) \
+             + (o.symmetry_operations.shape if with_symmetry else ()) \
+             + vector.shape[-1:]
 
     @pytest.mark.parametrize('lattice',['hP','cI','cF']) #tI not included yet
     def test_Schmid(self,update,res_path,lattice):

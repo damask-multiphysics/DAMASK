@@ -513,7 +513,7 @@ def shapeshifter(fro: _Tuple[int, ...],
 
 def shapeblender(a: _Tuple[int, ...],
                  b: _Tuple[int, ...],
-                 keep_ones: bool = True) -> _Tuple[int, ...]:
+                 keep_ones: bool = False) -> _Tuple[int, ...]:
     """
     Return a shape that overlaps the rightmost entries of 'a' with the leftmost of 'b'.
 
@@ -525,20 +525,24 @@ def shapeblender(a: _Tuple[int, ...],
         Shape of second array.
     keep_ones : bool, optional
         Treat innermost '1's as literal value instead of dimensional placeholder.
-        Defaults to True.
+        Defaults to False.
 
     Examples
     --------
-    >>> shapeblender((4,4,3),(3,2,1))
-        (4,4,3,2,1)
-    >>> shapeblender((1,2),(1,2,3))
-        (1,2,3)
-    >>> shapeblender((1,),(2,2,1))
-        (1,2,2,1)
-    >>> shapeblender((1,),(2,2,1),False)
-        (2,2,1)
     >>> shapeblender((3,2),(3,2))
         (3,2)
+    >>> shapeblender((4,3),(3,2))
+        (4,3,2)
+    >>> shapeblender((4,4),(3,2))
+        (4,4,3,2)
+    >>> shapeblender((1,2),(1,2,3))
+        (1,2,3)
+    >>> shapeblender((),(2,2,1))
+        (2,2,1)
+    >>> shapeblender((1,),(2,2,1))
+        (2,2,1)
+    >>> shapeblender((1,),(2,2,1),True)
+        (1,2,2,1)
 
     """
     def is_broadcastable(a,b):
