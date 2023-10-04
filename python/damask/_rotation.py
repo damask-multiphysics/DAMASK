@@ -112,7 +112,7 @@ class Rotation:
 
 
     def __getitem__(self,
-                    item: Union[Tuple[int], int, bool, np.bool_, np.ndarray]):
+                    item: Union[Tuple[Union[None, int, slice, ellipsis]], int, bool, np.bool_, np.ndarray]):
         """
         Return self[item].
 
@@ -445,7 +445,6 @@ class Rotation:
             obs = util.shapeblender(self.shape,other.shape)[len(self.shape):]
             for l in [4,2,1]:
                 if obs[-l:] == l*(3,):
-                    print(f'rotate {l}')
                     bs = util.shapeblender(self.shape,other.shape[:-l],False)
                     self_ = self.broadcast_to(bs) if self.shape != bs else self
                     if l==1:
