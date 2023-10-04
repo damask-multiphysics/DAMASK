@@ -817,7 +817,7 @@ class Result:
 
         """
 
-        def eigenval(T_sym: DADF5Dataset, eigenvalue: Literal['max, mid, min']) -> DADF5Dataset:
+        def eigenval(T_sym: DADF5Dataset, eigenvalue: Literal['max', 'mid', 'min']) -> DADF5Dataset:
             if   eigenvalue == 'max':
                 label,p = 'maximum',2
             elif eigenvalue == 'mid':
@@ -1261,7 +1261,7 @@ class Result:
                     'label': f"epsilon_{t}^{m}({F['label']})",
                     'meta':  {
                               'unit':        F['meta']['unit'],
-                              'description': f'Seth-Hill strain tensor of order {m} based on {side} stretch tensor '+\
+                              'description': f'Seth-Hill strain tensor of order {m} based on {side} stretch tensor '
                                              f"of {F['label']} ({F['meta']['description']})",
                               'creator':     'add_strain'
                               }
@@ -1291,8 +1291,8 @@ class Result:
                     'label': f"{t}({F['label']})",
                     'meta':  {
                               'unit':        F['meta']['unit'],
-                              'description': f"{'left' if t.upper() == 'V' else 'right'} stretch tensor "\
-                                            +f"of {F['label']} ({F['meta']['description']})",           # noqa
+                              'description': f"{'left' if t.upper() == 'V' else 'right'} stretch tensor "
+                                             f"of {F['label']} ({F['meta']['description']})",           # noqa
                               'creator':     'add_stretch_tensor'
                               }
                      }
