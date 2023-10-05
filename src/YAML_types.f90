@@ -150,6 +150,7 @@ module YAML_types
 
   public :: &
     YAML_types_init, &
+    YAML_types_selfTest, &
 #ifdef __GFORTRAN__
     output_as1dStr, &                                       !ToDo: Hack for GNU. Remove later
 #endif
@@ -164,7 +165,7 @@ subroutine YAML_types_init
 
   print'(/,1x,a)', '<<<+-  YAML_types init  -+>>>'
 
-  call selfTest()
+  call YAML_types_selfTest()
 
 end subroutine YAML_types_init
 
@@ -172,7 +173,7 @@ end subroutine YAML_types_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some type bound procedures.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest()
+subroutine YAML_types_selfTest()
 
   scalar: block
     type(tScalar), target :: s
@@ -266,7 +267,7 @@ subroutine selfTest()
 
   end block dict
 
-end subroutine selfTest
+end subroutine YAML_types_selfTest
 
 
 !---------------------------------------------------------------------------------------------------

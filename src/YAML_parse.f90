@@ -48,7 +48,7 @@ subroutine YAML_parse_init()
 #ifdef FYAML
   print'(/,1x,a)', 'libfyaml powered'
 #else
-  call selfTest()
+  call YAML_parse_selfTest()
 #endif
 
 end subroutine YAML_parse_init
@@ -870,7 +870,7 @@ end function to_flow
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some YAML functions.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest()
+subroutine YAML_parse_selfTest()
 
   if (indentDepth(' a') /= 1)     error stop 'indentDepth'
   if (indentDepth('a')  /= 0)     error stop 'indentDepth'
@@ -1031,7 +1031,7 @@ subroutine selfTest()
 
   end block parse
 
-end subroutine selfTest
+end subroutine YAML_parse_selfTest
 #endif
 
 end module YAML_parse
