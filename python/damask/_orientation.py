@@ -434,31 +434,20 @@ class Orientation(Rotation,Crystal):
         https://doi.org/10.1107/S0108767391006864
 
         """
-        with np.errstate(invalid='ignore'):
-            rho  = self.as_Rodrigues_vector(compact=True)
-            rho_ = rho + np.linalg.norm(rho,axis=-1,keepdims=True)*1e-9
+        def larger_or_equal(v,c):
+            return ((np.isclose(c[0],v[...,0]) | (v[...,0] > c[0])) &
+                    (np.isclose(c[1],v[...,1]) | (v[...,1] > c[1])) &
+                    (np.isclose(c[2],v[...,2]) | (v[...,2] > c[2]))).astype(bool)
 
-            if   self.family == 'cubic':
-                return ((rho_[...,0] >= rho[...,1]) &
-                        (rho_[...,1] >= rho[...,2]) &
-                        (rho_[...,2] >= 0)).astype(bool)
-            if self.family == 'hexagonal':
-                return ((rho_[...,0] >= rho[...,1]*np.sqrt(3)) &
-                        (rho_[...,1] >= 0) &
-                        (rho_[...,2] >= 0)).astype(bool)
-            if self.family == 'tetragonal':
-                return ((rho_[...,0] >= rho[...,1]) &
-                        (rho_[...,1] >= 0) &
-                        (rho_[...,2] >= 0)).astype(bool)
-            if self.family == 'orthorhombic':
-                return ((rho_[...,0] >= 0) &
-                        (rho_[...,1] >= 0) &
-                        (rho_[...,2] >= 0)).astype(bool)
-            if self.family == 'monoclinic':
-                return ((rho_[...,1] >= 0) &
-                        (rho_[...,2] >= 0)).astype(bool)
+        rho  = self.as_Rodrigues_vector(compact=True)
+        return larger_or_equal(rho,
+                                     [rho[...,1],           rho[...,2],0] if self.family == 'cubic'
+                                else [rho[...,1]*np.sqrt(3),0,         0] if self.family == 'hexagonal'
+                                else [rho[...,1],           0,         0] if self.family == 'tetragonal'
+                                else [0,                    0,         0] if self.family == 'orthorhombic'
+                                else [-np.inf,              0,         0] if self.family == 'monoclinic'
+                                else [-np.inf,        -np.inf,   -np.inf]) & self.in_FZ
 
-            return np.ones_like(rho[...,0],dtype=bool)
 
     def disorientation(self,
                        other: 'Orientation',
@@ -534,7 +523,7 @@ class Orientation(Rotation,Crystal):
 
         forward = r_.in_disorientation_FZ
         reverse = _r.in_disorientation_FZ
-        ok  = (forward | reverse) & r_.in_FZ
+        ok  = forward | reverse
         ok &= (np.cumsum(ok.reshape((-1,)+blend),axis=0) == 1).reshape(ok.shape)
         r = np.where(np.any((ok&forward)[...,np.newaxis],axis=(0,1),keepdims=True),
                      r_.quaternion,
