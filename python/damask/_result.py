@@ -63,25 +63,39 @@ def _empty_like(dataset: np.ma.core.MaskedArray,
                     mask = True)
 
 class AttributeManagerNullterm(h5py.AttributeManager):
-  """
-  Attribute management for DREAM.3D hdf5 files.
+    """
+    Attribute management for DREAM.3D hdf5 files.
 
-  String attribute values are stored as fixed-length string with NULLTERM
+    String attribute values are stored as fixed-length string with NULLTERM
 
-  References
-  ----------
-    https://stackoverflow.com/questions/38267076
-    https://stackoverflow.com/questions/52750232
+    References
+    ----------
+      https://stackoverflow.com/questions/38267076
+      https://stackoverflow.com/questions/52750232
 
-  """
+    """
 
-  def create(self, name, data, shape=None, dtype=None):
-    if isinstance(data,str):
-      tid = h5py.h5t.C_S1.copy()
-      tid.set_size(len(data + ' '))
-      super().create(name=name,data=data+' ',dtype = h5py.Datatype(tid))
-    else:
-      super().create(name=name,data=data,shape=shape,dtype=dtype)
+    def create(self, name, data, shape=None, dtype=None):
+        if isinstance(data,str):
+            tid = h5py.h5t.C_S1.copy()
+            tid.set_size(len(data + ' '))
+            super().create(name=name,data=data+' ',dtype = h5py.Datatype(tid))
+        else:
+            super().create(name=name,data=data,shape=shape,dtype=dtype)
+
+class ResetAttributeManager(h5py.AttributeManager):
+    """
+    Reset the attribute management for DREAM.3D hdf5 files.
+
+    References
+    ----------
+      https://stackoverflow.com/questions/38267076
+      https://stackoverflow.com/questions/52750232
+
+    """
+
+    def create(self, name, data, shape=None, dtype=None):
+        super().create(name=name,data=data,shape=shape,dtype=dtype)
 
 
 class Result:
@@ -2075,6 +2089,9 @@ class Result:
                 o[geom_label].attrs['GeometryType']          = np.array([0],np.uint32)
                 o[geom_label].attrs['SpatialDimensionality'] = np.array([3],np.uint32)
                 o[geom_label].attrs['UnitDimensionality']    = np.array([3],np.uint32)
+
+        h5py._hl.attrs.AttributeManager = ResetAttributeManager # Reset the attribute manager to original
+
 
     def export_DADF5(self,
                      fname,
