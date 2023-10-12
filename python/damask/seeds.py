@@ -134,6 +134,12 @@ def from_grid(grid,
     coords, materials : numpy.ndarray, shape (:,3); numpy.ndarray, shape (:)
         Seed coordinates in 3D space, material IDs.
 
+    Notes
+    -----
+    The origin is not considered in order to obtain coordinates
+    in a coordinate system located at the origin. This is expected
+    by damask.Grid.from_Voronoi_tessellation.
+
     Examples
     --------
     Recreate seeds from Voronoi tessellation.
@@ -166,8 +172,8 @@ def from_grid(grid,
         materials = _np.unique(material[mask])
         coords_ = _np.zeros((materials.size,3),dtype=float)
         for i,mat in enumerate(materials):
-            pc = (2*_np.pi*coords[material[:,0]==mat,:]-grid.origin)/grid.size
-            coords_[i] = grid.origin + grid.size / 2 / _np.pi * (_np.pi +
+            pc = 2*_np.pi*coords[material[:,0]==mat,:]/grid.size
+            coords_[i] = grid.size / 2 / _np.pi * (_np.pi +
                          _np.arctan2(-_np.average(_np.sin(pc),axis=0),
                                      -_np.average(_np.cos(pc),axis=0))) \
                          if periodic else \
