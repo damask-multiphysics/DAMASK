@@ -2223,7 +2223,7 @@ end function crystal_isotropic_mu
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some crystal functions.
 !--------------------------------------------------------------------------------------------------
-subroutine crystal_selfTest
+subroutine crystal_selfTest()
 
   real(pREAL), dimension(:,:,:), allocatable :: CoSy
   real(pREAL), dimension(:,:),   allocatable :: system

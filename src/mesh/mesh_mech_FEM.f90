@@ -75,6 +75,9 @@ module mesh_mechanical_FEM
 #if defined(PETSC_USE_64BIT_INDICES) || PETSC_VERSION_MINOR < 17
     ISDestroy, &
 #endif
+#if PETSC_VERSION_MINOR > 18
+    DMAddField, &
+#endif
     PetscSectionGetNumFields, &
     PetscFESetQuadrature, &
     PetscFEGetDimension, &

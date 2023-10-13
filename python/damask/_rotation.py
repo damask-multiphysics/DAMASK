@@ -112,7 +112,7 @@ class Rotation:
 
 
     def __getitem__(self,
-                    item: Union[Tuple[int], int, bool, np.bool_, np.ndarray]):
+                    item: Union[Tuple[Union[None, int, slice]], int, bool, np.bool_, np.ndarray]):
         """
         Return self[item].
 
@@ -295,6 +295,7 @@ class Rotation:
         ----------
         other : Rotation, shape (self.shape)
             Rotation for composition.
+            Compatible innermost dimensions will blend.
 
         Returns
         -------
@@ -303,10 +304,15 @@ class Rotation:
 
         """
         if isinstance(other,Rotation):
-            q_m = self.quaternion[...,0:1]
-            p_m = self.quaternion[...,1:]
-            q_o = other.quaternion[...,0:1]
-            p_o = other.quaternion[...,1:]
+            blend = util.shapeblender( self.shape,other.shape)
+            s_m   = util.shapeshifter( self.shape,blend,mode='right')
+            s_o   = util.shapeshifter(other.shape,blend,mode='left')
+
+            q_m = self.broadcast_to(s_m).quaternion[...,0:1]
+            p_m = self.broadcast_to(s_m).quaternion[...,1:]
+            q_o = other.broadcast_to(s_o).quaternion[...,0:1]
+            p_o = other.broadcast_to(s_o).quaternion[...,1:]
+
             qmo = q_m*q_o
             q = (qmo - np.einsum('...i,...i',p_m,p_o).reshape(qmo.shape))
             p = q_m*p_o + q_o*p_m + _P * np.cross(p_m,p_o)
@@ -325,6 +331,7 @@ class Rotation:
         ----------
         other : Rotation, shape (self.shape)
             Rotation for composition.
+            Compatible innermost dimensions will blend.
 
         """
         return self*other
@@ -341,6 +348,7 @@ class Rotation:
         ----------
         other : damask.Rotation, shape (self.shape)
             Rotation to invert for composition.
+            Compatible innermost dimensions will blend.
 
         Returns
         -------
@@ -434,7 +442,7 @@ class Rotation:
 
         """
         if isinstance(other, np.ndarray):
-            obs = util.shapeblender(self.shape,other.shape,keep_ones=False)[len(self.shape):]
+            obs = util.shapeblender(self.shape,other.shape)[len(self.shape):]
             for l in [4,2,1]:
                 if obs[-l:] == l*(3,):
                     bs = util.shapeblender(self.shape,other.shape[:-l],False)
