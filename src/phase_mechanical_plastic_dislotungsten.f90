@@ -295,6 +295,8 @@ pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
     T                                                                                               !< temperature
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma, ddot_gamma_dtau
+  real(pREAL), dimension(3,3,param(ph)%sum_N_sl) :: &
+    P_nS
 
 
   T = thermal_T(ph,en)
@@ -304,13 +306,12 @@ pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
   associate(prm => param(ph))
 
     call kinetics(Mp,T,ph,en, dot_gamma,ddot_gamma_dtau)
+    P_nS = merge(prm%P_nS_pos,prm%P_nS_neg, spread(spread(dot_gamma,1,3),2,3)>0.0_pREAL)            ! faster than 'merge' in loop
     do i = 1, prm%sum_N_sl
       Lp = Lp + dot_gamma(i)*prm%P_sl(1:3,1:3,i)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                         + ddot_gamma_dtau(i) *       prm%P_sl(k,l,i) &
-                                              * merge(prm%P_nS_pos(m,n,i), &
-                                                      prm%P_nS_neg(m,n,i), dot_gamma(i)>0.0_pREAL)
+                         + ddot_gamma_dtau(i) * prm%P_sl(k,l,i) * P_nS(m,n,i)
     end do
 
   end associate
