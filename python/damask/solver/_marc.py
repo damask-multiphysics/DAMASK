@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Literal
 
-_marc_version = '2023.2'
+_marc_version = '2023.3'
 _marc_root = '/opt/msc'
 _damask_root = str(Path(__file__).parents[3])
 
