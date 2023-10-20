@@ -487,9 +487,11 @@ class Grid:
         size : sequence of float, len (3)
             Edge lengths of the grid in meter.
         seeds : numpy.ndarray of float, shape (:,3)
-            Position of the seed points in meter. All points need to lay within the box.
+            Position of the seed points in meter. All points need
+            to lay within the box [(0,0,0),size].
         weights : sequence of float, len (seeds.shape[0])
-            Weights of the seeds. Setting all weights to 1.0 gives a standard Voronoi tessellation.
+            Weights of the seeds. Setting all weights to 1.0 gives a
+            standard Voronoi tessellation.
         material : sequence of int, len (seeds.shape[0]), optional
             Material ID of the seeds.
             Defaults to None, in which case materials are consecutively numbered.
@@ -544,7 +546,8 @@ class Grid:
         size : sequence of float, len (3)
             Edge lengths of the grid in meter.
         seeds : numpy.ndarray of float, shape (:,3)
-            Position of the seed points in meter. All points need to lay within the box.
+            Position of the seed points in meter. All points need
+            to lay within the box [(0,0,0),size].
         material : sequence of int, len (seeds.shape[0]), optional
             Material ID of the seeds.
             Defaults to None, in which case materials are consecutively numbered.
