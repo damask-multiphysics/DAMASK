@@ -6,7 +6,7 @@
  ##############################################################################
 +# remove all Mentat paths from LD_LIBRARY_PATH
 +LD_LIBRARY_PATH=:$LD_LIBRARY_PATH:
-+LD_LIBRARY_PATH=${LD_LIBRARY_PATH//+([!(:)])mentat2023.2+([!(:)])/:}
++LD_LIBRARY_PATH=${LD_LIBRARY_PATH//+([!(:)])mentat2023.3+([!(:)])/:}
 +LD_LIBRARY_PATH=${LD_LIBRARY_PATH//+([(:)])/:}
 +LD_LIBRARY_PATH=${LD_LIBRARY_PATH#:}; LD_LIBRARY_PATH=${LD_LIBRARY_PATH%:}
  # set DIR to the directory in which this script is
