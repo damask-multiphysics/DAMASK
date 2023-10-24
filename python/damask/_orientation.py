@@ -122,7 +122,7 @@ class Orientation(Rotation,Crystal):
 
 
     def __eq__(self,
-               other: object) -> bool:
+               other: Union[object,MyType]) -> bool:
         """
         Return self==other.
 
@@ -910,7 +910,7 @@ class Orientation(Rotation,Crystal):
         lattice,o = self.relation_operations(model,target)
         target = Crystal(lattice=lattice) if target is None else target
 
-        return Orientation(rotation=o*Rotation(self.quaternion)[np.newaxis,...],
+        return Orientation(rotation=o*Rotation(self.quaternion)[np.newaxis,...],  # type: ignore
                           lattice=lattice,
                           b = self.b if target.ratio['b'] is None else self.a*target.ratio['b'],
                           c = self.c if target.ratio['c'] is None else self.a*target.ratio['c'],

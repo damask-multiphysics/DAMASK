@@ -6,7 +6,8 @@ from ._typehints import FloatSequence, CrystalFamily, BravaisLattice, CrystalKin
 from . import util
 from . import Rotation
 
-lattice_symmetries: Dict[BravaisLattice, CrystalFamily] = {
+
+lattice_symmetries: Dict[Optional[BravaisLattice], CrystalFamily] = {
                 'aP': 'triclinic',
 
                 'mP': 'monoclinic',
@@ -27,7 +28,7 @@ lattice_symmetries: Dict[BravaisLattice, CrystalFamily] = {
                 'cF': 'cubic',
                }
 
-orientation_relationships: Dict[str, Dict[BravaisLattice,np.ndarray]] = {
+orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
   'KS': { # https://doi.org/10.1016/j.jallcom.2012.02.004
     'cF-->cI' : [
         np.repeat(np.array([
@@ -488,7 +489,7 @@ class Crystal():
         if lattice is not None and family is not None and family != lattice_symmetries[lattice]:
             raise KeyError(f'incompatible family "{family}" for lattice "{lattice}"')
 
-        self.family = lattice_symmetries[lattice] if family is None else family
+        self.family  = lattice_symmetries[lattice] if family is None else family
         self.lattice = lattice
 
         if self.lattice is not None:
@@ -546,7 +547,7 @@ class Crystal():
 
 
     def __eq__(self,
-               other: object) -> bool:
+               other):
         """
         Return self==other.
 
@@ -558,20 +559,20 @@ class Crystal():
             Crystal to check for equality.
 
         """
-        return NotImplemented if not isinstance(other, Crystal) else \
-               self.lattice == other.lattice and \
-               self.parameters == other.parameters and \
-               self.family == other.family
+        return (NotImplemented if not isinstance(other, Crystal) else
+                self.lattice == other.lattice and
+                self.parameters == other.parameters and
+                self.family == other.family)
 
     @property
-    def parameters(self):
+    def parameters(self) -> Tuple:
         """Return lattice parameters a, b, c, alpha, beta, gamma."""
-        if hasattr(self,'a'): return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma)
+        return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma) if hasattr(self,'a') else ()
 
     @property
-    def immutable(self):
+    def immutable(self) -> Dict[str, float]:
         """Return immutable lattice parameters."""
-        _immutable = {
+        _immutable: Dict[CrystalFamily, Dict[str,float]] = {
             'cubic': {
                          'b': 1.0,
                          'c': 1.0,
@@ -606,9 +607,9 @@ class Crystal():
 
 
     @property
-    def orientation_relationships(self):
+    def orientation_relationships(self) -> List[str]:
         """Return labels of orientation relationships."""
-        return [k for k,v in orientation_relationships.items() if np.any([m.startswith(self.lattice) for m in v])]
+        return [k for k,v in orientation_relationships.items() if np.any([m.startswith(str(self.lattice)) for m in v])]
 
 
     @property
@@ -801,9 +802,9 @@ class Crystal():
 
 
     @property
-    def lattice_points(self):
+    def lattice_points(self) -> np.ndarray:
         """Return lattice points."""
-        _lattice_points = {
+        _lattice_points: Dict[str, List] = {
                 'P': [
                      ],
                 'S': [
@@ -824,8 +825,8 @@ class Crystal():
 
         if self.lattice is None: raise KeyError('no lattice type specified')
         return np.array([[0,0,0]]
-                        + _lattice_points.get(self.lattice if self.lattice == 'hP' else \
-                                              self.lattice[-1],None),dtype=float)
+                        + _lattice_points.get(self.lattice if self.lattice == 'hP' else
+                                              self.lattice[-1],[]),dtype=float)
 
     def to_lattice(self, *,
                    direction: Optional[FloatSequence] = None,
@@ -912,7 +913,7 @@ class Crystal():
             Directions and planes of deformation mode families.
 
         """
-        _kinematics: Dict[BravaisLattice, Dict[CrystalKinematics, List[np.ndarray]]] = {
+        _kinematics: Dict[Optional[BravaisLattice], Dict[CrystalKinematics, List[np.ndarray]]] = {
             'cF': {
                 'slip': [np.array([
                            [ 0,+1,-1, +1,+1,+1],
@@ -1192,14 +1193,17 @@ class Crystal():
         https://doi.org/10.1016/j.actamat.2004.11.021
 
         """
+        m_l: BravaisLattice
+        o_l: BravaisLattice
+
         if model not in self.orientation_relationships:
             raise KeyError(f'unknown orientation relationship "{model}"')
 
         sep = '-->'
-        search = self.lattice+sep+('' if target is None else target.lattice)
-
-        m_l,o_l = [transform.split(sep) for transform in orientation_relationships[model].keys()
+        search = self.lattice+sep+('' if target is None else target.lattice)                       # type: ignore
+        m_l,o_l = [transform.split(sep) for transform in orientation_relationships[model].keys()   # type: ignore
                    if transform.startswith(search)][0]
+
         m_p,o_p = orientation_relationships[model][m_l+sep+o_l]
         other = Crystal(lattice=o_l) if target is None else target
         m_p = np.stack((self.to_frame(uvw=m_p[:,0] if len(m_p[0,0])==3 else util.Bravais_to_Miller(uvtw=m_p[:,0])),
