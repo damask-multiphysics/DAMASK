@@ -241,13 +241,6 @@ class Orientation(Rotation,Crystal):
 
 
     @classmethod
-    @util.extend_docstring(Rotation.from_random,
-                           adopted_parameters=Crystal.__init__)
-    @util.pass_on('rotation', Rotation.from_random, wrapped=__init__)
-    def from_random(cls, **kwargs) -> 'Orientation':
-        return cls(**kwargs)
-
-    @classmethod
     @util.extend_docstring(Rotation.from_quaternion,
                            adopted_parameters=Crystal.__init__)
     @util.pass_on('rotation', Rotation.from_quaternion, wrapped=__init__)
@@ -283,6 +276,13 @@ class Orientation(Rotation,Crystal):
         return cls(**kwargs)
 
     @classmethod
+    @util.extend_docstring(Rotation.from_parallel,
+                           adopted_parameters=Crystal.__init__)
+    @util.pass_on('rotation', Rotation.from_parallel, wrapped=__init__)
+    def from_parallel(cls, **kwargs) -> 'Orientation':
+        return cls(**kwargs)
+
+    @classmethod
     @util.extend_docstring(Rotation.from_Rodrigues_vector,
                            adopted_parameters=Crystal.__init__)
     @util.pass_on('rotation', Rotation.from_Rodrigues_vector, wrapped=__init__)
@@ -301,6 +301,20 @@ class Orientation(Rotation,Crystal):
                            adopted_parameters=Crystal.__init__)
     @util.pass_on('rotation', Rotation.from_cubochoric, wrapped=__init__)
     def from_cubochoric(cls, **kwargs) -> 'Orientation':
+        return cls(**kwargs)
+
+    @classmethod
+    @util.extend_docstring(Rotation.from_random,
+                           adopted_parameters=Crystal.__init__)
+    @util.pass_on('rotation', Rotation.from_random, wrapped=__init__)
+    def from_random(cls, **kwargs) -> 'Orientation':
+        return cls(**kwargs)
+
+    @classmethod
+    @util.extend_docstring(Rotation.from_ODF,
+                           adopted_parameters=Crystal.__init__)
+    @util.pass_on('rotation', Rotation.from_ODF, wrapped=__init__)
+    def from_ODF(cls, **kwargs) -> 'Orientation':
         return cls(**kwargs)
 
     @classmethod
@@ -325,7 +339,7 @@ class Orientation(Rotation,Crystal):
                         hkl: FloatSequence,
                         **kwargs) -> 'Orientation':
         """
-        Initialize orientation object from two crystallographic directions.
+        Initialize orientation object from the crystallographic direction and plane parallel to lab x and z, respectively.
 
         Parameters
         ----------
@@ -855,7 +869,8 @@ class Orientation(Rotation,Crystal):
 
 
     def related(self: MyType,
-                model: str) -> MyType:
+                model: str,
+                target = None) -> MyType:
         """
         All orientations related to self by given relationship model.
 
@@ -863,6 +878,8 @@ class Orientation(Rotation,Crystal):
         ----------
         model : str
             Orientation relationship model selected from self.orientation_relationships.
+        target : Crystal
+            Crystal to transform to.
 
         Returns
         -------
@@ -890,11 +907,10 @@ class Orientation(Rotation,Crystal):
          [0.924 0.000 0.000 0.383]]
 
         """
-        lattice,o = self.relation_operations(model)
-        target = Crystal(lattice=lattice)
-        o = o.broadcast_to(o.shape+self.shape,mode='right')
+        lattice,o = self.relation_operations(model,target)
+        target = Crystal(lattice=lattice) if target is None else target
 
-        return Orientation(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'),
+        return Orientation(rotation=o*Rotation(self.quaternion)[np.newaxis,...],
                           lattice=lattice,
                           b = self.b if target.ratio['b'] is None else self.a*target.ratio['b'],
                           c = self.c if target.ratio['c'] is None else self.a*target.ratio['c'],

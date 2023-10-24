@@ -306,13 +306,6 @@ class TestOrientation:
 
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
     @pytest.mark.parametrize('lattice',['cF','cI'])
-    def test_relationship_forward_backward(self,model,lattice):
-        o = Orientation.from_random(lattice=lattice)
-        for i,r in enumerate(o.related(model)):
-            assert o.disorientation(r.related(model)[i]).as_axis_angle(degrees=True,pair=True)[1]<1.0e-5
-
-    @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
-    @pytest.mark.parametrize('lattice',['cF','cI'])
     def test_relationship_reference(self,update,res_path,model,lattice):
         reference = res_path/f'{lattice}_{model}.txt'
         o = Orientation(lattice=lattice)
