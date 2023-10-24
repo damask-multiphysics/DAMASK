@@ -565,9 +565,9 @@ class Crystal():
                 self.family == other.family)
 
     @property
-    def parameters(self) -> Tuple:
+    def parameters(self) -> Optional[Tuple]:
         """Return lattice parameters a, b, c, alpha, beta, gamma."""
-        return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma) if hasattr(self,'a') else ()
+        return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma) if hasattr(self,'a') else None
 
     @property
     def immutable(self) -> Dict[str, float]:
