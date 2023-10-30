@@ -1985,6 +1985,8 @@ class Result:
         """
         h5py._hl.attrs.AttributeManager = AttributeManagerNullterm # 'Monkey patch'
 
+        N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
+        
         Phase_types = {'Primary': 0}
         #further additions to these can be done by looking at 'Create Ensemble Info' filter
         # other options could be 'Precipitate' and so on.
@@ -2015,7 +2017,7 @@ class Result:
                         phase_ID_array[at_cell_ph[c][label]] = count + 1
 
                 job_file_no_ext = self.fname.stem
-                o = h5py.File(f'{dream_dir}/{job_file_no_ext}_{inc}.dream3d','w')
+                o = h5py.File(f'{dream_dir}/{job_file_no_ext}_{inc.split(prefix_inc)[-1].zfill(N_digits)}.dream3d','w')
                 o.attrs['DADF5toDREAM3D'] = '1.0'
                 o.attrs['FileVersion']    = '7.0'
 
