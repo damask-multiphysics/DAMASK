@@ -122,17 +122,18 @@ subroutine FEM_utilities_init(num_mesh)
   flush(IO_STDOUT)
   call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
   CHKERRQ(err_PETSc)
-  CHKERRQ(err_PETSc)
 
   petsc_options = misc_prefixOptions('-snes_type newtonls &
                                &-snes_linesearch_type cp -snes_ksp_ew &
                                &-snes_ksp_ew_rtol0 0.01 -snes_ksp_ew_rtolmax 0.01 &
                                &-ksp_type fgmres -ksp_max_it 25 ' // &
                                 num_mech%get_asStr('PETSc_options',defaultVal=''), 'mechanical_')
-
   write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', p_s
   petsc_options = petsc_options // ' ' // petsc_optionsOrder
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
+  CHKERRQ(err_PETSc)
+
+  call PetscOptionsSetValue(PETSC_NULL_OPTIONS,'-petscds_force_quad','0',err_PETSc)
   CHKERRQ(err_PETSc)
 
   wgt = real(mesh_maxNips*mesh_NcpElemsGlobal,pREAL)**(-1)
