@@ -49,7 +49,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 1, 0, 1],[ 1, 1,-1]],
         ],dtype=float),
         2,axis=0),
-        np.tile(np.array([[[ 1, 1,-1],[ 0, 1, 1]],
+        np.tile(np.array([[[-1,-1, 1],[ 0, 1, 1]],
                           [[-1, 1,-1],[ 0, 1, 1]]],dtype=float),
                 (12,1,1)),
     ],
@@ -338,7 +338,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
             (6,1,1)),
     ],
   },
-  'Pitsch': {
+  'Pitsch': { # https://doi.org/10.1080/14786435908238253
     'cF-->cI' : [
         np.repeat(np.array([
         [[ 0, 1, 1],[ 1, 0, 0]],
@@ -394,7 +394,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
                         (3,2,3)),
     ]
   },
-  'Burgers' : {
+  'Burgers' : { # https://doi.org/10.1016/S0031-8914(34)80244-3
     'cI-->hP' : [
         np.array([
         [[ 1, 1,-1],[ 0, 1, 1]],
