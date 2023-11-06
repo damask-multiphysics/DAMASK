@@ -1200,10 +1200,13 @@ class Crystal():
             raise KeyError(f'unknown orientation relationship "{model}"')
 
         sep = '-->'
-        search = self.lattice+sep+('' if target is None else target.lattice)                       # type: ignore
-        m_l,o_l = [transform.split(sep) for transform in orientation_relationships[model].keys()   # type: ignore
-                   if transform.startswith(search)][0]
+        search = self.lattice+sep+('' if target is None else target.lattice)                        # type: ignore
+        transform = [t for t in orientation_relationships[model].keys() if t.startswith(search)]    # type: ignore
 
+        if len(transform) != 1:
+            raise ValueError(f'invalid target lattice "{search.split(sep)[1]}"')
+
+        m_l,o_l = transform[0].split(sep)                                                           # type: ignore
         m_p,o_p = orientation_relationships[model][m_l+sep+o_l]
         other = Crystal(lattice=o_l) if target is None else target
         m_p = np.stack((self.to_frame(uvw=m_p[:,0] if len(m_p[0,0])==3 else util.Bravais_to_Miller(uvtw=m_p[:,0])),
