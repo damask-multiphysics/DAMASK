@@ -878,8 +878,10 @@ class Orientation(Rotation,Crystal):
         ----------
         model : str
             Orientation relationship model selected from self.orientation_relationships.
-        target : Crystal
+        target : Crystal, optional
             Crystal to transform to.
+            Providing this parameter allows specification of non-standard lattice parameters.
+            Default is inferred from selected model and uses standard lattice parameters.
 
         Returns
         -------

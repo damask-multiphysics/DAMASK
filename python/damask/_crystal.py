@@ -1165,10 +1165,10 @@ class Crystal():
         ----------
         model : str
             Name of orientation relationship.
-        target : Crystal
+        target : Crystal, optional
             Crystal to transform to.
             Providing this parameter allows specification of non-standard lattice parameters.
-            Defaults to standard parameters of target lattice.
+            Default is inferred from selected model and uses standard lattice parameters.
 
         Returns
         -------
