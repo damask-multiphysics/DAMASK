@@ -547,7 +547,7 @@ class Crystal():
 
 
     def __eq__(self,
-               other):
+               other: object) -> bool:
         """
         Return self==other.
 
@@ -562,7 +562,7 @@ class Crystal():
         return (NotImplemented if not isinstance(other, Crystal) else
                 self.lattice == other.lattice and
                 self.parameters == other.parameters and
-                self.family == other.family)
+                self.family == other.family)                                                        # type: ignore
 
     @property
     def parameters(self) -> Optional[Tuple]:

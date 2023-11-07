@@ -122,7 +122,7 @@ class Orientation(Rotation,Crystal):
 
 
     def __eq__(self,
-               other: Union[object,MyType]) -> bool:
+               other: object) -> bool:
         """
         Return self==other.
 
