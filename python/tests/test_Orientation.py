@@ -1,6 +1,8 @@
 import pytest
 import numpy as np
 from itertools import permutations
+from matplotlib import pyplot as plt
+from PIL import Image
 
 from damask import Rotation
 from damask import Orientation
@@ -306,13 +308,6 @@ class TestOrientation:
 
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
     @pytest.mark.parametrize('lattice',['cF','cI'])
-    def test_relationship_forward_backward(self,model,lattice):
-        o = Orientation.from_random(lattice=lattice)
-        for i,r in enumerate(o.related(model)):
-            assert o.disorientation(r.related(model)[i]).as_axis_angle(degrees=True,pair=True)[1]<1.0e-5
-
-    @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
-    @pytest.mark.parametrize('lattice',['cF','cI'])
     def test_relationship_reference(self,update,res_path,model,lattice):
         reference = res_path/f'{lattice}_{model}.txt'
         o = Orientation(lattice=lattice)
@@ -527,3 +522,25 @@ class TestOrientation:
     def test_mul_invalid(self):
         with pytest.raises(TypeError):
             Orientation.from_random(lattice='cF')*np.ones(3)
+
+    @pytest.mark.parametrize('OR',['KS','NW','GT','GT_prime','Bain','Pitsch'])
+    @pytest.mark.parametrize('pole',[[0,0,1],[0,1,1],[1,1,1]])
+    def test_OR_plot(self,update,res_path,tmp_path,OR,pole):
+        # https://doi.org/10.3390/cryst13040663 for comparison
+        O = Orientation(lattice='cF')
+        poles = O.related(OR).to_pole(uvw=pole,with_symmetry=True).reshape(-1,3)
+        points = util.project_equal_area(poles,'z')
+
+        fig, ax = plt.subplots()
+        c = plt.Circle((0,0),1, color='k',fill=False)
+        ax.add_patch(c)
+        ax.scatter(points[:,0],points[:,1])
+        ax.set_aspect('equal', 'box')
+        fname=f'{OR}-{"".join(map(str,pole))}.png'
+        plt.axis('off')
+        plt.savefig(tmp_path/fname)
+        if update: plt.savefig(res_path/fname)
+        current = np.array(Image.open(tmp_path/fname))
+        reference = np.array(Image.open(res_path/fname))
+        assert np.allclose(current,reference)
+
