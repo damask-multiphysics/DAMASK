@@ -155,6 +155,8 @@ subroutine FEM_mechanical_init(fieldBC,num_mesh)
   CHKERRQ(err_PETSc)
   call DMGetDimension(mechanical_mesh,dimPlex,err_PETSc)
   CHKERRQ(err_PETSc)
+  call DMSetFromOptions(mechanical_mesh,err_PETSc)
+  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech discretization
