@@ -440,11 +440,16 @@ class TestResult:
     @pytest.mark.parametrize('fname',['2phase_irregularGrid_tensionX.hdf5'],ids=range(1))
     def test_export_DREAM3D(self,tmp_path,res_path,fname):
         result = Result(res_path/fname).view(increments=0)  #comparing the initial data only
+
+        prefix_inc = 'increment_'
+        N_digits = int(np.floor(np.log10(max(1,result.incs[-1]))))+1
+        inc = result.increments[0]
+
         result.export_DREAM3D(target_dir=tmp_path)
 
         ref_file = h5py.File(res_path/'2phase_irregularGrid.dream3d','r')
         job_file_no_ext = result.fname.stem
-        results_file = h5py.File(tmp_path/f'{job_file_no_ext}_increment_0.dream3d','r')
+        results_file = h5py.File(tmp_path/f'{job_file_no_ext}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}.dream3d','r')
 
         error_messages = []
 
@@ -472,7 +477,7 @@ class TestResult:
             if not np.array_equal(ref_val,actual_val):
                 error_messages.append("Cell Data attributes do not match")
 
-        # Common Attributes for groups in CellData
+        # Common Attributes for datasets in CellData
         for dataset in ['/Phases','/EulerAngles']:
             for attrs in ['DataArrayVersion','Tuple Axis Dimensions','ComponentDimensions','ObjectType','TupleDimensions']:
                 ref_val = ref_file[cell_data_label + '/' + dataset].attrs[attrs]

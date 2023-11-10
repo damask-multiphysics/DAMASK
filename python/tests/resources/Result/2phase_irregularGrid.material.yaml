@@ -24,99 +24,99 @@ phase:
         xi_inf_sl: [63.e+6]
   Precipitate:
     lattice: hP
-    c/a: 1.629 
+    c/a: 1.629
     mechanical:
       output: [F, P, F_e, F_p, L_p, O]
       elastic: {type: Hooke, C_11: 162.4e9, C_12: 92.0e9, C_13: 69.0e9, C_33: 180.7e9, C_44: 49.7e9}
 
 material:
-- constituents:
-  - phase: Aluminum
-    O: [0.1312565298463503, -0.6783546785504293, -0.5822736006738253, 0.4284438206110302]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Aluminum
-    O: [0.3891991356899201, 0.024147743013653567, 0.3536664846442759, -0.8502122893283336]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Aluminum
-    O: [0.35508306685640884, -0.3893349018602677, -0.8446679875041884, 0.09418248622184058]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Aluminum
-    O: [0.40195601820142496, -0.1636779350134876, -0.4207744499665131, 0.7966114205035945]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Aluminum
-    O: [0.044972436776441485, 0.7143848123638518, -0.24549539260737738, -0.6537307029678221]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Precipitate
-    O: [0.30372565221929093, -0.24301975423298977, -0.8125481043098195, -0.43411715632882125]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Precipitate
-    O: [0.4596497204333957, -0.39026498957046113, 0.7976125696376123, 0.015151276419962625]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Aluminum
-    O: [0.0827510723946788, 0.6317627669782209, 0.4175514636120652, -0.6478262433036925]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Aluminum
-    O: [0.2996310655335684, 0.10384972751072818, 0.8974007140905373, 0.3067709520358135]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Aluminum
-    O: [0.6358670871419496, 0.4180753134572028, -0.5146965710042285, -0.3949348295146467]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Aluminum
-    O: [0.6972058990579978, 0.2748121746094387, -0.4615030442772494, 0.4747600900749678]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Aluminum
-    O: [0.023323490584044985, -0.4124930466803271, 0.5037800801437966, 0.7586245000510248]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Aluminum
-    O: [0.5327908616905777, 0.17796155315964704, 0.602711877421405, -0.5667468359957407]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Aluminum
-    O: [0.5031041456929413, -0.4763268942553399, 0.6700266228868177, 0.2665768801275235]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Precipitate
-    O: [0.5641709021797874, 0.6941319122105223, -0.0813139963653807, -0.4396363446983193]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Aluminum
-    O: [0.40014270416551667, 0.38360239122229783, -0.040760057321212455, 0.8313083901169376]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Precipitate
-    O: [0.25941430307519847, -0.7938792882664125, -0.20362736335049575, -0.510877472508378]
-    v: 1.0
-  homogenization: SX
-- constituents:
-  - phase: Precipitate
-    O: [0.3297509101153507, 0.7826199404802652, 0.20188018251173903, -0.4878675618954298]
-    v: 1.0
-  homogenization: SX
+  - constituents:
+      - phase: Aluminum
+        O: [0.1312565298463503, -0.6783546785504293, -0.5822736006738253, 0.4284438206110302]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Aluminum
+        O: [0.3891991356899201, 0.024147743013653567, 0.3536664846442759, -0.8502122893283336]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Aluminum
+        O: [0.35508306685640884, -0.3893349018602677, -0.8446679875041884, 0.09418248622184058]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Aluminum
+        O: [0.40195601820142496, -0.1636779350134876, -0.4207744499665131, 0.7966114205035945]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Aluminum
+        O: [0.044972436776441485, 0.7143848123638518, -0.24549539260737738, -0.6537307029678221]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Precipitate
+        O: [0.30372565221929093, -0.24301975423298977, -0.8125481043098195, -0.43411715632882125]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Precipitate
+        O: [0.4596497204333957, -0.39026498957046113, 0.7976125696376123, 0.015151276419962625]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Aluminum
+        O: [0.0827510723946788, 0.6317627669782209, 0.4175514636120652, -0.6478262433036925]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Aluminum
+        O: [0.2996310655335684, 0.10384972751072818, 0.8974007140905373, 0.3067709520358135]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Aluminum
+        O: [0.6358670871419496, 0.4180753134572028, -0.5146965710042285, -0.3949348295146467]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Aluminum
+        O: [0.6972058990579978, 0.2748121746094387, -0.4615030442772494, 0.4747600900749678]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Aluminum
+        O: [0.023323490584044985, -0.4124930466803271, 0.5037800801437966, 0.7586245000510248]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Aluminum
+        O: [0.5327908616905777, 0.17796155315964704, 0.602711877421405, -0.5667468359957407]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Aluminum
+        O: [0.5031041456929413, -0.4763268942553399, 0.6700266228868177, 0.2665768801275235]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Precipitate
+        O: [0.5641709021797874, 0.6941319122105223, -0.0813139963653807, -0.4396363446983193]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Aluminum
+        O: [0.40014270416551667, 0.38360239122229783, -0.040760057321212455, 0.8313083901169376]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Precipitate
+        O: [0.25941430307519847, -0.7938792882664125, -0.20362736335049575, -0.510877472508378]
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - phase: Precipitate
+        O: [0.3297509101153507, 0.7826199404802652, 0.20188018251173903, -0.4878675618954298]
+        v: 1.0
+    homogenization: SX

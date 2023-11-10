@@ -1986,7 +1986,7 @@ class Result:
         h5py._hl.attrs.AttributeManager = AttributeManagerNullterm # 'Monkey patch'
 
         N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
-        
+
         Crystal_structure_types = {'Hexagonal': 0, 'Cubic': 1, 'Triclinic': 4, 'Monoclinic': 5, 'Orthorhombic': 6, 'Tetrogonal': 8}
         Phase_types = {'Primary': 0}
         lattice_dict = {}
@@ -2020,7 +2020,7 @@ class Result:
                         phase_ID_array[at_cell_ph[c][label]] = count + 1
 
                 job_file_no_ext = self.fname.stem
-                o = h5py.File(f'{dream_dir}/{job_file_no_ext}_{inc.split(prefix_inc)[-1].zfill(N_digits)}.dream3d','w')
+                o = h5py.File(f'{dream_dir}/{job_file_no_ext}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}.dream3d','w')
                 o.attrs['DADF5toDREAM3D'] = '1.0'
                 o.attrs['FileVersion']    = '7.0'
 
@@ -2063,15 +2063,21 @@ class Result:
                 # Data CrystalStructures
                 crystal_structure_list = [999]
                 for label in self.visible['phases']:
+
                     if lattice_dict[label] in ['hP']:
-                        crystal_structure = 'Hexogonal'
+                        crystal_structure = 'Hexagonal'
                     elif lattice_dict[label] in ['cP','cI','cF']:
                         crystal_structure = 'Cubic'
-                    elif lattice_dict[label] in ['']:
+                    elif lattice_dict[label] in ['aP']:
+                        crystal_structure = 'triclinic'
+                    elif lattice_dict[label] in ['mP','mS']:
+                        crystal_structure = 'monoclinic'
                     elif lattice_dict[label] in ['oP','oS','oI','oF']:
                         crystal_structure = 'Orthorhombic'
+                    elif lattice_dict[label] in ['tP','tI']:
+                        crystal_structure = 'tetragonal'
                     crystal_structure_list.append(Crystal_structure_types[crystal_structure])
-                o[ensemble_label + '/CrystalStructures'] = np.uint32(crystal_struture_list)
+                o[ensemble_label + '/CrystalStructures'] = np.uint32(crystal_structure_list)
                 # but need to look into dream3d which crystal structure corresponds to which number
                 o[ensemble_label + '/PhaseTypes']        = np.uint32(np.array([999] + [Phase_types['Primary']]*len(self.phases)))\
                                                                                         .reshape((len(self.phases)+1,1))
