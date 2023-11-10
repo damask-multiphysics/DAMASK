@@ -23,12 +23,11 @@ phase:
         xi_0_sl: [31.e+6]
         xi_inf_sl: [63.e+6]
   Precipitate:
-    lattice: cI
+    lattice: hP
+    c/a: 1.629 
     mechanical:
       output: [F, P, F_e, F_p, L_p, O]
-      elastic: {C_11: 233.3e9, C_12: 135.5e9, C_44: 118.0e9, type: Hooke}
-
-
+      elastic: {type: Hooke, C_11: 162.4e9, C_12: 92.0e9, C_13: 69.0e9, C_33: 180.7e9, C_44: 49.7e9}
 
 material:
 - constituents:
