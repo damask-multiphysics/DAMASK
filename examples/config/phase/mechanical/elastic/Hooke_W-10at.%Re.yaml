@@ -1,0 +1,21 @@
+type: Hooke
+
+references:
+  - R.A. Ayres et al.,
+    Journal of Applied Physics 46:1526-1530, 1975,
+    https://doi.org/10.1063/1.321804,
+    fit to Table IV (T_min=100K, T_max=300K)
+
+C_11: 524.6e+9
+C_11,T: -5.783e+07
+C_11,T^2: -1.355e+05
+
+C_12: 219.0e+9
+C_12,T: 1.940e+07
+C_12,T^2: 7.634e+04
+
+C_44: 168.7e+9
+C_44,T: -2.048e+07
+C_44,T^2: -5.478e+04
+
+T_ref: 293.15
