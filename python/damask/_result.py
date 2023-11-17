@@ -1,6 +1,8 @@
 import re
 import fnmatch
 import os
+import sys
+import importlib.util
 import copy
 import datetime
 import xml.etree.ElementTree as ET                                                                  # noqa
@@ -11,7 +13,6 @@ from collections import defaultdict
 from collections.abc import Iterable
 from typing import Optional, Union, Callable, Any, Sequence, Literal, Dict, List, Tuple
 
-import h5py
 import numpy as np
 from numpy import ma
 
@@ -24,6 +25,11 @@ from . import mechanics
 from . import tensor
 from . import util
 from ._typehints import FloatSequence, IntSequence, DADF5Dataset
+
+SPEC_H5PY = importlib.util.find_spec('h5py')
+h5py_modified = importlib.util.module_from_spec(SPEC_H5PY)
+SPEC_H5PY.loader.exec_module(h5py_modified)
+sys.modules['h5py_modified'] = h5py_modified
 
 h5py3 = h5py.__version__[0] == '3'
 
@@ -62,7 +68,7 @@ def _empty_like(dataset: np.ma.core.MaskedArray,
                     fill_value = fill_float if dataset.dtype in np.sctypes['float'] else fill_int,
                     mask = True)
 
-class AttributeManagerNullterm(h5py.AttributeManager):
+class AttributeManagerNullterm(h5py_modified.AttributeManager):
     """
     Attribute management for DREAM.3D hdf5 files.
 
@@ -77,9 +83,9 @@ class AttributeManagerNullterm(h5py.AttributeManager):
 
     def create(self, name, data, shape=None, dtype=None):
         if isinstance(data,str):
-            tid = h5py.h5t.C_S1.copy()
+            tid = h5py_modified.h5t.C_S1.copy()
             tid.set_size(len(data + ' '))
-            super().create(name=name,data=data+' ',dtype = h5py.Datatype(tid))
+            super().create(name=name,data=data+' ',dtype = h5py_modified.Datatype(tid))
         else:
             super().create(name=name,data=data,shape=shape,dtype=dtype)
 
@@ -1983,7 +1989,7 @@ class Result:
             Directory to save DREAM3D files. Will be created if non-existent.
 
         """
-        h5py._hl.attrs.AttributeManager = AttributeManagerNullterm # 'Monkey patch'
+        #h5py._hl.attrs.AttributeManager = AttributeManagerNullterm # 'Monkey patch'
 
         N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
 
@@ -2002,7 +2008,7 @@ class Result:
         dream_dir = Path.cwd() if target_dir is None else Path(target_dir)
         dream_dir.mkdir(parents=True,exist_ok=True)
 
-        with h5py.File(self.fname,'r') as f:
+        with h5py_modified.File(self.fname,'r') as f:
             for inc in util.show_progress(self.visible['increments']):
                 cell_orientation_array = np.zeros((np.prod(self.cells),3))
                 phase_ID_array = np.zeros((np.prod(self.cells)),dtype=np.int32) #need to reshape it later
@@ -2021,7 +2027,7 @@ class Result:
                         phase_ID_array[at_cell_ph[c][label]] = count + 1
 
                 job_file_no_ext = self.fname.stem
-                o = h5py.File(f'{dream_dir}/{job_file_no_ext}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}.dream3d','w')
+                o = h5py_modified.File(f'{dream_dir}/{job_file_no_ext}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}.dream3d','w')
                 o.attrs['DADF5toDREAM3D'] = '1.0'
                 o.attrs['FileVersion']    = '7.0'
 
@@ -2083,10 +2089,10 @@ class Result:
                                                                                         .reshape((len(self.phases)+1,1))
                 phase_name_list = ['Unknown Phase Type']
                 phase_name_list.extend(i for i in self.visible['phases'])
-                tid = h5py.h5t.C_S1.copy()
-                tid.set_size(h5py.h5t.VARIABLE)
-                tid.set_cset(h5py.h5t.CSET_ASCII)
-                o[ensemble_label].create_dataset(name='PhaseName',data = phase_name_list, dtype=h5py.Datatype(tid))
+                tid = h5py_modified.h5t.C_S1.copy()
+                tid.set_size(h5py_modified.h5t.VARIABLE)
+                tid.set_cset(h5py_modified.h5t.CSET_ASCII)
+                o[ensemble_label].create_dataset(name='PhaseName',data = phase_name_list, dtype=h5py_modified.Datatype(tid))
 
                 # also assuming Primary phases
                 # there can be precipitates etc as well
@@ -2121,7 +2127,7 @@ class Result:
                 o[geom_label].attrs['SpatialDimensionality'] = np.array([3],np.uint32)
                 o[geom_label].attrs['UnitDimensionality']    = np.array([3],np.uint32)
 
-        h5py._hl.attrs.AttributeManager = ResetAttributeManager # Reset the attribute manager to original
+        #h5py._hl.attrs.AttributeManager = ResetAttributeManager # Reset the attribute manager to original
 
 
     def export_DADF5(self,
