@@ -485,8 +485,21 @@ class TestResult:
                 if not np.array_equal(ref_val,actual_val):
                     error_messages.append("Common attributes in datasets of CellData do not match")
 
-        # TODO: check for the array of CrystalStructures too. However, currently crystal structure is set to cubic by default.
         # TODO: check for the array of PhaseTypes too. However, currently phase is assumed Primary by default.
+
+        # check crystal structure array
+        results_crystal_structure = np.array(results_file[ensemble_label + '/CrystalStructures'])
+        ref_crystal_structure = np.array(ref_file[ensemble_label + '/CrystalStructures'])
+        if not np.allclose(results_crystal_structure, ref_crystal_structure):
+            error_messages.append('Crystal structure does not match')
+
+        # check PhaseName array 
+        results_phase_name = np.array(results_file[ensemble_label + '/PhaseNames'])
+        ref_phase_name = ['Unknown Phase Type']
+        ref_phase_name.extend(i for i in result.visible['phases'])
+        if not results_phase_name == np.array(ref_phase_name,dtype=bytes):
+            error_messages.append('Phase names are different')
+
         # check attributes ensemble matrix
         for attrs in ['AttributeMatrixType','TupleDimensions']:
             ref_val = ref_file[ensemble_label].attrs[attrs]
@@ -497,6 +510,13 @@ class TestResult:
         # check attributes of the data in ensemble matrix
         # in the reference file the dataset PhaseTypes is in another group, so the path is different
         for dataset in ['CrystalStructures','PhaseTypes']:
+            for attrs in ['DataArrayVersion','Tuple Axis Dimensions','ComponentDimensions','ObjectType','TupleDimensions']:
+                ref_value = ref_file['DataContainers/StatsGeneratorDataContainer/CellEnsembleData/' + dataset].attrs[attrs]
+                actual_val = results_file[ensemble_label + '/' + dataset].attrs[attrs]
+                if not np.array_equal(ref_value,actual_val):
+                    error_messages.append(f'Attributes of {dataset}s within CellEnsembleData do not match for this {attrs}')
+
+        for dataset in ['PhaseName']:
             for attrs in ['DataArrayVersion','Tuple Axis Dimensions','ComponentDimensions','ObjectType','TupleDimensions']:
                 ref_value = ref_file['DataContainers/StatsGeneratorDataContainer/CellEnsembleData/' + dataset].attrs[attrs]
                 actual_val = results_file[ensemble_label + '/' + dataset].attrs[attrs]
