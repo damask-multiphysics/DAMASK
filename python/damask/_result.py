@@ -2083,7 +2083,11 @@ class Result:
                                                                                         .reshape((len(self.phases)+1,1))
                 phase_name_list = ['Unknown Phase Type']
                 phase_name_list.extend(i for i in self.visible['phases'])
-                o[ensemble_label + '/PhaseName']         = np.array(phase_name_list,dtype=str)
+                tid = h5py.h5t.C_S1.copy()
+                tid.set_size(h5py.h5t.VARIABLE)
+                tid.set_cset(h5py.h5t.CSET_ASCII)
+                o[ensemble_label].create_dataset(name='PhaseName',data = phase_name_list, dtype=h5py.Datatype(tid))
+
                 # also assuming Primary phases
                 # there can be precipitates etc as well
                 # Attributes Ensemble Matrix
