@@ -296,7 +296,7 @@ class Colormap(mpl.colors.ListedColormap):
             RGBA image of shaded data.
 
         """
-        mask = np.logical_not(np.isnan(field) if gap is None else \
+        mask = np.logical_not(np.isnan(field) if gap is None else
                np.logical_or (np.isnan(field), field == gap))                                       # mask NaN (and gap if present)
 
         l,r = (field[mask].min(),field[mask].max()) if bounds is None else \
@@ -305,9 +305,11 @@ class Colormap(mpl.colors.ListedColormap):
         if abs(delta := r-l) * 1e8 <= (avg := 0.5*abs(r+l)):                                        # delta is similar to numerical noise
             l,r = (l-0.5*avg*np.sign(delta),r+0.5*avg*np.sign(delta))                               # extend range to have actual data centered within
 
+        field[np.isnan(field)] = (l+r)/2
+
         return Image.fromarray(
             (np.dstack((
-                        self.colors[(np.round(np.clip((field-l)/delta,0.0,1.0)*(self.N-1))).astype(np.uint16),:3],
+                        self.colors[np.round(np.clip((field-l)/(r-l),0.0,1.0)*(self.N-1)).astype(np.uint16),:3],
                         mask.astype(float)
                        )
                       )*255
