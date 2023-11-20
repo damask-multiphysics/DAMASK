@@ -297,7 +297,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         """
         mask = np.logical_not(np.isnan(field) if gap is None else
-               np.logical_or (np.isnan(field), field == gap))                                       # mask NaN (and gap if present)
+                              np.logical_or(np.isnan(field), field == gap))                         # mask NaN (and gap if present)
 
         l,r = (field[mask].min(),field[mask].max()) if bounds is None else \
               (bounds[0],bounds[1])
