@@ -512,13 +512,13 @@ function crystal_C66_twin(Ntwin,C66,lattice,CoverA)
 
   select case(lattice)
     case('cF')
-      coordinateSystem = buildCoordinateSystem(Ntwin,CF_NSLIPSYSTEM,CF_SYSTEMTWIN,&
+      coordinateSystem = buildCoordinateSystem(Ntwin,CF_NTWINSYSTEM,CF_SYSTEMTWIN,&
                                                lattice,0.0_pREAL)
     case('cI')
-      coordinateSystem = buildCoordinateSystem(Ntwin,CI_NSLIPSYSTEM,CI_SYSTEMTWIN,&
+      coordinateSystem = buildCoordinateSystem(Ntwin,CI_NTWINSYSTEM,CI_SYSTEMTWIN,&
                                                lattice,0.0_pREAL)
     case('hP')
-      coordinateSystem = buildCoordinateSystem(Ntwin,HP_NSLIPSYSTEM,HP_SYSTEMTWIN,&
+      coordinateSystem = buildCoordinateSystem(Ntwin,HP_NTWINSYSTEM,HP_SYSTEMTWIN,&
                                                lattice,cOverA)
     case default
       call IO_error(137,ext_msg='crystal_C66_twin: '//trim(lattice))
