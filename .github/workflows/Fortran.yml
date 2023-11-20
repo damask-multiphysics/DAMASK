@@ -91,12 +91,7 @@ jobs:
     runs-on: [ubuntu-22.04]
 
     strategy:
-      matrix:
-        intel_v: [classic, llvm]      # Variant of Intel compilers
       fail-fast: false
-
-    env:
-      INTEL_V: ${{ matrix.intel_v }}
 
     steps:
       - uses: actions/checkout@v3
@@ -133,7 +128,7 @@ jobs:
           sed -i "1719s/if not os.path.isfile(os.path.join(self.packageDir,'configure')):/if True:/g" \
           ./petsc-${PETSC_VERSION}/config/BuildSystem/config/package.py
           export PETSC_DIR=${PWD}/petsc-${PETSC_VERSION}
-          export PETSC_ARCH=intel-${INTEL_V}
+          export PETSC_ARCH=intel
           printenv >> $GITHUB_ENV
 
       - name: PETSc - Cache installation
@@ -141,21 +136,9 @@ jobs:
         uses: actions/cache@v3
         with:
           path: petsc-${{ env.PETSC_VERSION }}
-          key: petsc-${{ env.PETSC_VERSION }}-intel-${{ matrix.intel_v }}-${{ hashFiles('**/petscversion.h') }}
+          key: petsc-${{ env.PETSC_VERSION }}-intel-${{ hashFiles('**/petscversion.h') }}
 
-      - name: PETSc - Install (classic)
-        if: contains( matrix.intel_v, 'classic')
-        run: |
-          cd petsc-${PETSC_VERSION}
-          ./configure \
-          --with-fc='mpiifort -fc=ifort -diag-disable=10441' \
-          --with-cc='mpiicc -cc=icc -diag-disable=10441' \
-          --with-cxx='mpiicpc -cxx=icpc -diag-disable=10441' \
-          --download-fftw --download-hdf5 --download-hdf5-fortran-bindings=1 --download-zlib
-          make all
-
-      - name: PETSc - Install (LLVM)
-        if: contains( matrix.intel_v, 'llvm')
+      - name: PETSc - Install
         run: |
           cd petsc-${PETSC_VERSION}
           ./configure \
@@ -165,20 +148,9 @@ jobs:
           --download-fftw --download-hdf5 --download-hdf5-fortran-bindings=1 --download-zlib
           make all
 
-      - name: DAMASK - Compile
-        if: contains( matrix.intel_v, 'classic')
-        run: |
-          cmake -B build/grid -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=${PWD}
-          cmake --build build/grid --parallel
-          cmake --install build/grid
-          cmake -B build/mesh -DDAMASK_SOLVER=mesh -DCMAKE_INSTALL_PREFIX=${PWD}
-          cmake --build build/mesh --parallel
-          cmake --install build/mesh
-
       # ifx has issue with openMP
       # https://community.intel.com/t5/Intel-Fortran-Compiler/ifx-ICE-and-SEGFAULT/m-p/1459877
       - name: DAMASK - Compile
-        if: contains( matrix.intel_v, 'llvm')
         run: |
           cmake -B build/grid -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=${PWD} -DOPENMP=OFF
           cmake --build build/grid --parallel
