@@ -525,7 +525,7 @@ function crystal_C66_twin(Ntwin,C66,lattice,CoverA)
   end select
 
   do i = 1, sum(Ntwin)
-    call R%fromAxisAngle([coordinateSystem(1:3,2,i),PI],P=1)                                        ! ToDo: Why always 180 deg?
+    call R%fromAxisAngle([coordinateSystem(1:3,2,i),PI])                                            ! mirror on habit (twin shear) plane
     crystal_C66_twin(1:6,1:6,i) = R%rotStiffness(C66)
   end do
 
