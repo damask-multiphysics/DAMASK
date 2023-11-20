@@ -88,7 +88,9 @@ jobs:
 
   intel:
 
-    runs-on: [ubuntu-22.04]
+    runs-on: ubuntu-22.04
+    container:
+      image: intel/oneapi-hpckit:latest
 
     strategy:
       fail-fast: false
@@ -98,16 +100,10 @@ jobs:
 
       - name: Intel - Install
         run: |
-          wget -q https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
-          sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
-          rm GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
-          echo "deb https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
-          sudo apt-get update
-          sudo apt-get install \
-          intel-basekit \
-          intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic intel-oneapi-compiler-fortran \
-          intel-oneapi-openmp intel-oneapi-mkl-devel
-          source /opt/intel/oneapi/setvars.sh
+          apt-get update --allow-insecure-repositories
+          apt-get install --allow-unauthenticated -y \
+          cmake build-essential autoconf libtool \
+          zlib1g-dev
           printenv >> $GITHUB_ENV
 
       - name: PETSc - Cache download
