@@ -126,7 +126,9 @@ subroutine CLI_init()
         print'(1x,a)',  '   --numerics     (-n, --numericsconfig)'
         print'(1x,a)',  '   --jobname      (-j, --job)'
         print'(1x,a)',  '   --workingdir   (-w, --wd, --workingdirectory)'
+#if defined(GRID)
         print'(1x,a)',  '   --restart      (-r, --rs)'
+#endif
         print'(1x,a)',  '   --help         (-h)'
         print'(/,1x,a)','-----------------------------------------------------------------------'
         print'(1x,a)',  'Mandatory arguments:'
@@ -146,12 +148,14 @@ subroutine CLI_init()
         print'(/,1x,a)','  --workingdirectory WORKINGDIRECTORY'
         print'(1x,a)',  '       specify the base directory of relative paths.'
         print'(1x,a)',  '       Defaults to the current working directory'
+#if defined(GRID)
         print'(/,1x,a)','  --restart N'
         print'(1x,a)',  '       read in increment N and continues with calculating'
         print'(1x,a)',  '           increment N+1, N+2, ... based on this'
         print'(1x,a)',  '       works only if the restart information for increment N'
         print'(1x,a)',  '           is available in JOBNAME_restart.hdf5'
         print'(1x,a)',  '       append to existing results file JOBNAME.hdf5'
+#endif
         print'(/,1x,a)','-----------------------------------------------------------------------'
         print'(1x,a)',  'Help:'
         print'(/,1x,a)','  --help'
@@ -175,11 +179,13 @@ subroutine CLI_init()
       case ('-w', '--wd', '--workingdir', '--workingdirectory')
         if (.not. hasArg) call IO_error(610,ext_msg='--workingdirectory')
         workingDirArg = getArg(i+1)
+#if defined(GRID)
       case ('-r', '--rs', '--restart')
         if (.not. hasArg) call IO_error(610,ext_msg='--jobname')
         arg = getArg(i+1)
         CLI_restartInc = IO_strAsInt(arg)
         if (CLI_restartInc < 0 .or. stat /= 0) call IO_error(611,ext_msg=arg)
+#endif
     end select
   end do
 
