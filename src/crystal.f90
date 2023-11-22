@@ -432,37 +432,17 @@ function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
 
   integer :: &
     a, &                                                                                            !< index of active system
-    p, &                                                                                            !< index in potential system list
     f, &                                                                                            !< index of my family
     s                                                                                               !< index of my system in current family
 
-  integer, dimension(HP_NTWIN), parameter :: &
-    HP_SHEARTWIN = reshape( [&
+  integer, dimension(size(HP_NTWINSYSTEM)), parameter :: &
+    HP_SHEARTWIN = [&
       1, &  ! <-10.1>{10.2}
-      1, &
-      1, &
-      1, &
-      1, &
-      1, &
       2, &  ! <11.6>{-1-1.1}
-      2, &
-      2, &
-      2, &
-      2, &
-      2, &
       3, &  ! <10.-2>{10.1}
-      3, &
-      3, &
-      3, &
-      3, &
-      3, &
-      4, &  ! <11.-3>{11.2}
-      4, &
-      4, &
-      4, &
-      4, &
-      4  &
-      ],[HP_NTWIN])                                                                                 !< indicator to formulas below
+      4  &  ! <11.-3>{11.2}
+      ]                                                                                             !< indicator to formulas below
+
 
   a = 0
   myFamilies: do f = 1,size(Ntwin,1)
@@ -474,8 +454,7 @@ function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
         case('hP')
           if (cOverA < 1.0_pREAL .or. cOverA > 2.0_pREAL) &
             call IO_error(131,ext_msg='crystal_characteristicShear_Twin')
-          p = sum(HP_NTWINSYSTEM(1:f-1))+s
-          select case(HP_SHEARTWIN(p))                                                              ! from Christian & Mahajan 1995 p.29
+          select case(HP_SHEARTWIN(f))                                                              ! from Christian & Mahajan 1995 p.29
             case (1)                                                                                ! <-10.1>{10.2}
               characteristicShear(a) = (3.0_pREAL-cOverA**2)/sqrt(3.0_pREAL)/CoverA
             case (2)                                                                                ! <11.6>{-1-1.1}
