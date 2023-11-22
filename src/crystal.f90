@@ -444,16 +444,16 @@ function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
       ]                                                                                             !< indicator to formulas below
 
 
-  a = 0
-  myFamilies: do f = 1,size(Ntwin,1)
-    mySystems: do s = 1,Ntwin(f)
-      a = a + 1
-      select case(lattice)
-        case('cF','cI')
-          characteristicShear(a) = 0.5_pREAL*sqrt(2.0_pREAL)
-        case('hP')
-          if (cOverA < 1.0_pREAL .or. cOverA > 2.0_pREAL) &
-            call IO_error(131,ext_msg='crystal_characteristicShear_Twin')
+  select case(lattice)
+    case('cF','cI')
+      characteristicShear = 0.5_pREAL*sqrt(2.0_pREAL)
+    case('hP')
+      if (cOverA < 1.0_pREAL .or. cOverA > 2.0_pREAL) &
+        call IO_error(131,ext_msg='crystal_characteristicShear_Twin')
+      a = 0
+      myFamilies: do f = 1,size(Ntwin,1)
+        mySystems: do s = 1,Ntwin(f)
+          a = a + 1
           select case(HP_SHEARTWIN(f))                                                              ! from Christian & Mahajan 1995 p.29
             case (1)                                                                                ! <-10.1>{10.2}
               characteristicShear(a) = (3.0_pREAL-cOverA**2)/sqrt(3.0_pREAL)/CoverA
@@ -464,11 +464,11 @@ function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
             case (4)                                                                                ! <11.-3>{11.2}
               characteristicShear(a) = 2.0_pREAL*(cOverA**2-2.0_pREAL)/3.0_pREAL/cOverA
           end select
-        case default
-          call IO_error(137,ext_msg='crystal_characteristicShear_Twin: '//trim(lattice))
-      end select
-    end do mySystems
-  end do myFamilies
+        end do mySystems
+      end do myFamilies
+    case default
+      call IO_error(137,ext_msg='crystal_characteristicShear_Twin: '//trim(lattice))
+  end select
 
 end function crystal_characteristicShear_Twin
 
