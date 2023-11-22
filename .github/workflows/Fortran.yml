@@ -17,7 +17,7 @@ jobs:
 
     strategy:
       matrix:
-        gcc_v: [9, 10, 11, 12]
+        gcc_v: [9, 10, 11, 12, 13]
       fail-fast: false
 
     env:
@@ -144,14 +144,12 @@ jobs:
           --download-fftw --download-hdf5 --download-hdf5-fortran-bindings=1 --download-zlib
           make all
 
-      # ifx has issue with openMP
-      # https://community.intel.com/t5/Intel-Fortran-Compiler/ifx-ICE-and-SEGFAULT/m-p/1459877
       - name: DAMASK - Compile
         run: |
-          cmake -B build/grid -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=${PWD} -DOPENMP=OFF
+          cmake -B build/grid -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=${PWD}
           cmake --build build/grid --parallel
           cmake --install build/grid
-          cmake -B build/mesh -DDAMASK_SOLVER=mesh -DCMAKE_INSTALL_PREFIX=${PWD} -DOPENMP=OFF
+          cmake -B build/mesh -DDAMASK_SOLVER=mesh -DCMAKE_INSTALL_PREFIX=${PWD}
           cmake --build build/mesh --parallel
           cmake --install build/mesh
 
