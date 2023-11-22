@@ -17,7 +17,7 @@ jobs:
 
     strategy:
       matrix:
-        gcc_v: [9, 10, 11, 12]
+        gcc_v: [9, 10, 11, 12, 13]
       fail-fast: false
 
     env:
