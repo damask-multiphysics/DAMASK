@@ -434,14 +434,6 @@ function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
     f, &                                                                                            !< index of my family
     s, e
 
-  integer, dimension(size(HP_NTWINSYSTEM)), parameter :: &
-    HP_SHEARTWIN = [&
-      1, &  ! <-10.1>{10.2}
-      2, &  ! <11.6>{-1-1.1}
-      3, &  ! <10.-2>{10.1}
-      4  &  ! <11.-3>{11.2}
-      ]                                                                                             !< indicator to formulas below
-
 
   select case(lattice)
     case('cF','cI')
@@ -453,14 +445,14 @@ function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
       myFamilies: do f = 1,size(Ntwin,1)
         s = sum(Ntwin(:f-1)) + 1
         e = sum(Ntwin(:f))
-        select case(HP_SHEARTWIN(f))                                                              ! from Christian & Mahajan 1995 p.29
-          case (1)                                                                                ! <-10.1>{10.2}
+        select case(f)                                                                              ! from Christian & Mahajan 1995 p.29
+          case (1)                                                                                  ! <-10.1>{10.2}
             characteristicShear(s:e) = (3.0_pREAL-cOverA**2)/sqrt(3.0_pREAL)/CoverA
-          case (2)                                                                                ! <11.6>{-1-1.1}
+          case (2)                                                                                  ! <11.6>{-1-1.1}
             characteristicShear(s:e) = 1.0_pREAL/cOverA
-          case (3)                                                                                ! <10.-2>{10.1}
+          case (3)                                                                                  ! <10.-2>{10.1}
             characteristicShear(s:e) = (4.0_pREAL*cOverA**2-9.0_pREAL)/sqrt(48.0_pREAL)/cOverA
-          case (4)                                                                                ! <11.-3>{11.2}
+          case (4)                                                                                  ! <11.-3>{11.2}
             characteristicShear(s:e) = 2.0_pREAL*(cOverA**2-2.0_pREAL)/3.0_pREAL/cOverA
         end select
       end do myFamilies
