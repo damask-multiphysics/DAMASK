@@ -436,16 +436,16 @@ function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
 
 
   select case(lattice)
-    case('cF','cI')
+    case('cF','cI')                                                                                 ! 10.1016/0079-6425(94)00007-7, Table 1
       characteristicShear = 0.5_pREAL*sqrt(2.0_pREAL)
-    case('hP')
+    case('hP')                                                                                      ! 10.1016/0079-6425(94)00007-7, Table 3
       if (cOverA < 1.0_pREAL .or. cOverA > 2.0_pREAL) &
         call IO_error(131,ext_msg='crystal_characteristicShear_Twin')
 
       myFamilies: do f = 1,size(Ntwin,1)
         s = sum(Ntwin(:f-1)) + 1
         e = sum(Ntwin(:f))
-        select case(f)                                                                              ! from Christian & Mahajan 1995 p.29
+        select case(f)
           case (1)                                                                                  ! <-10.1>{10.2}
             characteristicShear(s:e) = (3.0_pREAL-cOverA**2)/sqrt(3.0_pREAL)/CoverA
           case (2)                                                                                  ! <11.6>{-1-1.1}
