@@ -13,6 +13,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from typing import Optional, Union, Callable, Any, Sequence, Literal, Dict, List, Tuple
 
+import h5py
 import numpy as np
 from numpy import ma
 
@@ -1975,6 +1976,9 @@ class Result:
             Directory to save DREAM3D files. Will be created if non-existent.
 
         """
+        if self.N_constituents != 1 or not self.structured:
+            raise TypeError('DREAM3D output requires structured grid with single constituent.')
+
         N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
 
         Crystal_structure_types = {'Hexagonal': 0, 'Cubic': 1, 'Triclinic': 4, 'Monoclinic': 5, 'Orthorhombic': 6, 'Tetrogonal': 8}
@@ -2007,7 +2011,7 @@ class Result:
                             # Dream3D handles euler angles better
                         except ValueError:
                             print("Orientation data is not present")
-                            exit()  # need to check if such a statement would really work.
+                            exit()
 
                         phase_ID_array[at_cell_ph[c][label]] = count + 1
 
@@ -2084,7 +2088,7 @@ class Result:
                 o[ensemble_label].attrs['TupleDimensions']     = np.array([len(self.phases) + 1], np.uint64)
 
                 # Attributes for data in Ensemble matrix
-                for group in ['CrystalStructures','PhaseTypes']: 
+                for group in ['CrystalStructures','PhaseTypes']:
                   o[ensemble_label+'/'+group].attrs['ComponentDimensions']   = np.array([1],np.uint64)
                   o[ensemble_label+'/'+group].attrs['Tuple Axis Dimensions'] = f'x={len(self.phases)+1}'
                   o[ensemble_label+'/'+group].attrs['DataArrayVersion']      = np.array([2],np.int32)

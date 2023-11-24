@@ -493,7 +493,7 @@ class TestResult:
         if not np.allclose(results_crystal_structure, ref_crystal_structure):
             error_messages.append('Crystal structure does not match')
 
-        # check PhaseName array 
+        # check PhaseName array
         results_phase_name = np.array(results_file[ensemble_label + '/PhaseNames'])
         ref_phase_name = ['Unknown Phase Type']
         ref_phase_name.extend(i for i in result.visible['phases'])
