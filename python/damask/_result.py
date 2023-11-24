@@ -1988,11 +1988,12 @@ class Result:
         N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
 
         Crystal_structure_types = {'Hexagonal': 0, 'Cubic': 1, 'Triclinic': 4, 'Monoclinic': 5, 'Orthorhombic': 6, 'Tetrogonal': 8}
+        # crystal structure map according to Dream3D
+
         Phase_types = {'Primary': 0}
         lattice_dict = {}
         #further additions to these can be done by looking at 'Create Ensemble Info' filter
         # other options could be 'Precipitate' and so on.
-        # also crystal structures be added in a similar way
 
         dx = self.size/self.cells
 
@@ -2078,9 +2079,11 @@ class Result:
                         crystal_structure = 'tetragonal'
                     crystal_structure_list.append(Crystal_structure_types[crystal_structure])
                 o[ensemble_label + '/CrystalStructures'] = np.uint32(crystal_structure_list)
-                # but need to look into dream3d which crystal structure corresponds to which number
                 o[ensemble_label + '/PhaseTypes']        = np.uint32(np.array([999] + [Phase_types['Primary']]*len(self.phases)))\
                                                                                         .reshape((len(self.phases)+1,1))
+                phase_name_list = ['Unknown Phase Type']
+                phase_name_list.extend(i for i in self.visible['phases'])
+                o[ensemble_label + '/PhaseName']         = np.array(phase_name_list,dtype=str)
                 # also assuming Primary phases
                 # there can be precipitates etc as well
                 # Attributes Ensemble Matrix
@@ -2094,6 +2097,12 @@ class Result:
                   o[ensemble_label+'/'+group].attrs['DataArrayVersion']      = np.array([2],np.int32)
                   o[ensemble_label+'/'+group].attrs['ObjectType']            = 'DataArray<uint32_t>'
                   o[ensemble_label+'/'+group].attrs['TupleDimensions']       = np.array([len(self.phases) + 1],np.uint64)
+
+                o[ensemble_label+'/PhaseName'].attrs['ComponentDimensions']   = np.array([1],np.uint64)
+                o[ensemble_label+'/PhaseName'].attrs['Tuple Axis Dimensions'] = f'x={len(self.phases)+1}'
+                o[ensemble_label+'/PhaseName'].attrs['DataArrayVersion']      = np.array([2],np.int32)
+                o[ensemble_label+'/PhaseName'].attrs['ObjectType']            = 'StringDataArray'
+                o[ensemble_label+'/PhaseName'].attrs['TupleDimensions']       = np.array([len(self.phases) + 1],np.uint64)
 
                 # Create geometry info
                 geom_label = data_container_label + '/_SIMPL_GEOMETRY'
