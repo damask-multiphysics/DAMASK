@@ -89,20 +89,6 @@ class AttributeManagerNullterm(h5py_modified.AttributeManager):
         else:
             super().create(name=name,data=data,shape=shape,dtype=dtype)
 
-class ResetAttributeManager(h5py.AttributeManager):
-    """
-    Reset the attribute management for DREAM.3D hdf5 files.
-
-    References
-    ----------
-      https://stackoverflow.com/questions/38267076
-      https://stackoverflow.com/questions/52750232
-
-    """
-
-    def create(self, name, data, shape=None, dtype=None):
-        super().create(name=name,data=data,shape=shape,dtype=dtype)
-
 
 class Result:
     """
@@ -1989,17 +1975,16 @@ class Result:
             Directory to save DREAM3D files. Will be created if non-existent.
 
         """
-        #h5py._hl.attrs.AttributeManager = AttributeManagerNullterm # 'Monkey patch'
-
         N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
 
         Crystal_structure_types = {'Hexagonal': 0, 'Cubic': 1, 'Triclinic': 4, 'Monoclinic': 5, 'Orthorhombic': 6, 'Tetrogonal': 8}
         # crystal structure map according to Dream3D
 
         Phase_types = {'Primary': 0}
-        lattice_dict = {}
         #further additions to these can be done by looking at 'Create Ensemble Info' filter
         # other options could be 'Precipitate' and so on.
+
+        lattice_dict = {}
 
         dx = self.size/self.cells
 
@@ -2008,7 +1993,7 @@ class Result:
         dream_dir = Path.cwd() if target_dir is None else Path(target_dir)
         dream_dir.mkdir(parents=True,exist_ok=True)
 
-        with h5py_modified.File(self.fname,'r') as f:
+        with h5py.File(self.fname,'r') as f:
             for inc in util.show_progress(self.visible['increments']):
                 cell_orientation_array = np.zeros((np.prod(self.cells),3))
                 phase_ID_array = np.zeros((np.prod(self.cells)),dtype=np.int32) #need to reshape it later
@@ -2094,14 +2079,12 @@ class Result:
                 tid.set_cset(h5py_modified.h5t.CSET_ASCII)
                 o[ensemble_label].create_dataset(name='PhaseName',data = phase_name_list, dtype=h5py_modified.Datatype(tid))
 
-                # also assuming Primary phases
-                # there can be precipitates etc as well
                 # Attributes Ensemble Matrix
                 o[ensemble_label].attrs['AttributeMatrixType'] = np.array([11],np.uint32)
                 o[ensemble_label].attrs['TupleDimensions']     = np.array([len(self.phases) + 1], np.uint64)
 
                 # Attributes for data in Ensemble matrix
-                for group in ['CrystalStructures','PhaseTypes']: # 'PhaseName' not required MD: But would be nice to take the phase name mapping
+                for group in ['CrystalStructures','PhaseTypes']: 
                   o[ensemble_label+'/'+group].attrs['ComponentDimensions']   = np.array([1],np.uint64)
                   o[ensemble_label+'/'+group].attrs['Tuple Axis Dimensions'] = f'x={len(self.phases)+1}'
                   o[ensemble_label+'/'+group].attrs['DataArrayVersion']      = np.array([2],np.int32)
@@ -2126,8 +2109,6 @@ class Result:
                 o[geom_label].attrs['GeometryType']          = np.array([0],np.uint32)
                 o[geom_label].attrs['SpatialDimensionality'] = np.array([3],np.uint32)
                 o[geom_label].attrs['UnitDimensionality']    = np.array([3],np.uint32)
-
-        #h5py._hl.attrs.AttributeManager = ResetAttributeManager # Reset the attribute manager to original
 
 
     def export_DADF5(self,
