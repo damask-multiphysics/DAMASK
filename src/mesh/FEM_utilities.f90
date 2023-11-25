@@ -120,8 +120,6 @@ subroutine FEM_utilities_init(num_mesh)
     call IO_error(821,ext_msg='integration order (p_i) out of bounds')
 
   flush(IO_STDOUT)
-  call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
-  CHKERRQ(err_PETSc)
 
   petsc_options = misc_prefixOptions('-snes_type newtonls &
                                &-snes_linesearch_type cp -snes_ksp_ew &

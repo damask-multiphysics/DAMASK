@@ -88,6 +88,9 @@ subroutine parallelization_init()
 #endif
   CHKERRQ(err_PETSc)
 
+  call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
+  CHKERRQ(err_PETSc)
+
   call MPI_Comm_rank(MPI_COMM_WORLD,worldrank,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) &
     error stop 'Could not determine worldrank'
