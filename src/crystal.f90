@@ -2128,9 +2128,9 @@ pure function crystal_isotropic_nu(C,assumption,lattice) result(nu)
   real(pREAL), dimension(6,6)   :: S
 
 
-  if     (IO_lc(assumption) == 'isostrain') then
+  if     (assumption == 'isostrain') then
     K = sum(C(1:3,1:3)) / 9.0_pREAL
-  elseif (IO_lc(assumption) == 'isostress') then
+  elseif (assumption == 'isostress') then
     call math_invert(S,error,C)
     if (error) error stop 'matrix inversion failed'
     K = 1.0_pREAL / sum(S(1:3,1:3))
@@ -2160,7 +2160,7 @@ pure function crystal_isotropic_mu(C,assumption,lattice) result(mu)
   real(pREAL), dimension(6,6)   :: S
 
 
-  if     (IO_lc(assumption) == 'isostrain') then
+  if     (assumption == 'isostrain') then
       select case(misc_optional(lattice,''))
         case('cF','cI')
           mu = ( C(1,1) - C(1,2) + C(4,4)*3.0_pREAL) / 5.0_pREAL
@@ -2171,7 +2171,7 @@ pure function crystal_isotropic_mu(C,assumption,lattice) result(mu)
                ) / 15.0_pREAL
       end select
 
-  elseif (IO_lc(assumption) == 'isostress') then
+  elseif (assumption == 'isostress') then
       select case(misc_optional(lattice,''))
         case('cF','cI')
           mu = 5.0_pREAL &
