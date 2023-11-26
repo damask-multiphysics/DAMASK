@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 #==================================================================================================
-# Execute this script (type './DAMASK_prerequisites.sh') 
+# Execute this script (type './DAMASK_prerequisites.sh')
 # and send system_report.txt to damask@mpie.de for support
 #==================================================================================================
 
 OUTFILE="system_report.txt"
 echo ===========================================
-echo +  Generating $OUTFILE                    
+echo +  Generating $OUTFILE
 echo +  Send to damask@mpie.de for support
 echo +  view with \'cat $OUTFILE\'
 echo ===========================================
@@ -47,7 +47,7 @@ echo
 # redirect STDOUT and STDERR to logfile
 # https://stackoverflow.com/questions/11229385/redirect-all-output-in-a-bash-script-when-using-set-x^
 exec > $OUTFILE 2>&1
- 
+
 # directory, file is not a symlink by definition
 # https://stackoverflow.com/questions/59895/getting-the-source-directory-of-a-bash-script-from-within
 DAMASK_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -88,7 +88,7 @@ done
 secondLevel "Details on $DEFAULT_PYTHON:"
 echo $(ls -la $(which $DEFAULT_PYTHON))
 for MODULE in numpy scipy pandas matplotlib yaml h5py;do
-  thirdLevel $module
+  thirdLevel $MODULE
   $DEFAULT_PYTHON -c "import $MODULE; \
                       print('Version: {}'.format($MODULE.__version__)); \
                       print('Location: {}'.format($MODULE.__file__))"
