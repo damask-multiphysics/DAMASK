@@ -38,16 +38,12 @@ module HDF5_utilities
     module procedure HDF5_read_real3
     module procedure HDF5_read_real4
     module procedure HDF5_read_real5
-    module procedure HDF5_read_real6
-    module procedure HDF5_read_real7
 
     module procedure HDF5_read_int1
     module procedure HDF5_read_int2
     module procedure HDF5_read_int3
     module procedure HDF5_read_int4
     module procedure HDF5_read_int5
-    module procedure HDF5_read_int6
-    module procedure HDF5_read_int7
   end interface HDF5_read
 
 !--------------------------------------------------------------------------------------------------
@@ -56,20 +52,19 @@ module HDF5_utilities
 !--------------------------------------------------------------------------------------------------
   interface HDF5_write
 #if defined(__GFORTRAN__)
+    ! https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105674
+    ! https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105687
     module procedure HDF5_write_real1
     module procedure HDF5_write_real2
     module procedure HDF5_write_real3
     module procedure HDF5_write_real4
     module procedure HDF5_write_real5
-    module procedure HDF5_write_real6
-    module procedure HDF5_write_real7
+
     module procedure HDF5_write_int1
     module procedure HDF5_write_int2
     module procedure HDF5_write_int3
     module procedure HDF5_write_int4
     module procedure HDF5_write_int5
-    module procedure HDF5_write_int6
-    module procedure HDF5_write_int7
 #else
     module procedure HDF5_write_real
     module procedure HDF5_write_int
@@ -811,76 +806,6 @@ subroutine HDF5_read_real5(dataset,loc_id,datasetName,parallel)
 
 end subroutine HDF5_read_real5
 
-!--------------------------------------------------------------------------------------------------
-!> @brief read dataset of type real with 6 dimensions
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_real6(dataset,loc_id,datasetName,parallel)
-
-  real(pREAL),      intent(out), dimension(:,:,:,:,:,:) :: dataset                                  !< data read from file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
-
-  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
-  integer(HSIZE_T), dimension(rank(dataset)) :: &
-    myStart, &
-    myShape, &                                                                                      !< shape of the dataset (this process)
-    totalShape                                                                                      !< shape of the dataset (all processes)
-  integer :: hdferr
-
-
-  myShape = int(shape(dataset),HSIZE_T)
-  if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
-
-  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
-                       myStart,totalShape,loc_id,myShape,datasetName, &
-                       misc_optional(parallel,parallel_default))
-
-if (any(totalShape == 0)) return
-
-  call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
-                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  call HDF5_chkerr(hdferr)
-
-  call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
-
-end subroutine HDF5_read_real6
-
-!--------------------------------------------------------------------------------------------------
-!> @brief read dataset of type real with 7 dimensions
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_real7(dataset,loc_id,datasetName,parallel)
-
-  real(pREAL),      intent(out), dimension(:,:,:,:,:,:,:) :: dataset                                !< data read from file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
-
-  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
-  integer(HSIZE_T), dimension(rank(dataset)) :: &
-    myStart, &
-    myShape, &                                                                                      !< shape of the dataset (this process)
-    totalShape                                                                                      !< shape of the dataset (all processes)
-  integer :: hdferr
-
-
-  myShape = int(shape(dataset),HSIZE_T)
-  if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
-
-  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
-                       myStart,totalShape,loc_id,myShape,datasetName, &
-                       misc_optional(parallel,parallel_default))
-
-  if (any(totalShape == 0)) return
-
-  call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
-                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  call HDF5_chkerr(hdferr)
-
-  call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
-
-end subroutine HDF5_read_real7
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief read dataset of type integer with 1 dimension
@@ -1053,78 +978,8 @@ subroutine HDF5_read_int5(dataset,loc_id,datasetName,parallel)
 
 end subroutine HDF5_read_int5
 
-!--------------------------------------------------------------------------------------------------
-!> @brief read dataset of type integer with 6 dimensions
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_int6(dataset,loc_id,datasetName,parallel)
-
-  integer,          intent(out), dimension(:,:,:,:,:,:) :: dataset                                  !< data read from file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
-
-  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
-  integer(HSIZE_T), dimension(rank(dataset)) :: &
-    myStart, &
-    myShape, &                                                                                      !< shape of the dataset (this process)
-    totalShape                                                                                      !< shape of the dataset (all processes)
-  integer :: hdferr
-
-
-  myShape = int(shape(dataset),HSIZE_T)
-  if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
-
-  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
-                       myStart,totalShape,loc_id,myShape,datasetName, &
-                       misc_optional(parallel,parallel_default))
-
-  if (any(totalShape == 0)) return
-
-  call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
-                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  call HDF5_chkerr(hdferr)
-
-  call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
-
-end subroutine HDF5_read_int6
-
-!--------------------------------------------------------------------------------------------------
-!> @brief read dataset of type integer with 7 dimensions
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_int7(dataset,loc_id,datasetName,parallel)
-
-  integer,          intent(out), dimension(:,:,:,:,:,:,:) :: dataset                                !< data read from file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
-
-  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
-  integer(HSIZE_T), dimension(rank(dataset)) :: &
-    myStart, &
-    myShape, &                                                                                      !< shape of the dataset (this process)
-    totalShape                                                                                      !< shape of the dataset (all processes)
-  integer :: hdferr
-
-
-  myShape = int(shape(dataset),HSIZE_T)
-  if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
-
-  call initialize_read(dset_id,filespace_id,memspace_id,plist_id,aplist_id, &
-                       myStart,totalShape,loc_id,myShape,datasetName, &
-                       misc_optional(parallel,parallel_default))
-
-  if (any(totalShape == 0)) return
-
-  call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
-                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  call HDF5_chkerr(hdferr)
-
-  call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
-
-end subroutine HDF5_read_int7
 
 #if defined(__GFORTRAN__)
-
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type real with 1 dimension
 !--------------------------------------------------------------------------------------------------
@@ -1311,84 +1166,10 @@ subroutine HDF5_write_real5(dataset,loc_id,datasetName,parallel)
 
 end subroutine HDF5_write_real5
 
-!--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type real with 6 dimensions
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_real6(dataset,loc_id,datasetName,parallel)
-
-  real(pREAL),      intent(in), dimension(:,:,:,:,:,:) :: dataset                                   !< data written to file
-  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
-  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
-  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
-
-
-  integer :: hdferr
-  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
-  integer(HSIZE_T), dimension(rank(dataset)) :: &
-    myStart, &
-    myShape, &                                                                                      !< shape of the dataset (this process)
-    totalShape                                                                                      !< shape of the dataset (all processes)
-
-!---------------------------------------------------------------------------------------------------
-! determine shape of dataset
-  myShape = int(shape(dataset),HSIZE_T)
-  if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
-
-  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
-                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE, &
-                        misc_optional(parallel,parallel_default))
-
-  if (product(totalShape) /= 0) then
-    call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
-                   file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    call HDF5_chkerr(hdferr)
-  end if
-
-  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
-
-end subroutine HDF5_write_real6
-
-!--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type real with 7 dimensions
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_real7(dataset,loc_id,datasetName,parallel)
-
-  real(pREAL),      intent(in), dimension(:,:,:,:,:,:,:) :: dataset                                 !< data written to file
-  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
-  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
-  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
-
-
-  integer :: hdferr
-  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
-  integer(HSIZE_T), dimension(rank(dataset)) :: &
-    myStart, &
-    myShape, &                                                                                      !< shape of the dataset (this process)
-    totalShape                                                                                      !< shape of the dataset (all processes)
-
-!---------------------------------------------------------------------------------------------------
-! determine shape of dataset
-  myShape = int(shape(dataset),HSIZE_T)
-  if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
-
-  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
-                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE, &
-                        misc_optional(parallel,parallel_default))
-
-  if (product(totalShape) /= 0) then
-    call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
-                   file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    call HDF5_chkerr(hdferr)
-  end if
-
-  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
-
-end subroutine HDF5_write_real7
-
 #else
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type real with 1-7 dimension
+!> @brief write dataset of type real with 1-5 dimension
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real(dataset,loc_id,datasetName,parallel)
 
@@ -1429,12 +1210,6 @@ subroutine HDF5_write_real(dataset,loc_id,datasetName,parallel)
         call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                         file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
       rank (5)
-        call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
-                        file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-      rank (6)
-        call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
-                        file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-      rank (7)
         call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                         file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
     end select
@@ -1508,8 +1283,8 @@ subroutine HDF5_write_str(dataset,loc_id,datasetName)
 
 end subroutine HDF5_write_str
 
-#if defined(__GFORTRAN__)
 
+#if defined(__GFORTRAN__)
 !--------------------------------------------------------------------------------------------------
 !> @brief Write dataset of type integer with 1 dimensions.
 !--------------------------------------------------------------------------------------------------
@@ -1695,84 +1470,10 @@ subroutine HDF5_write_int5(dataset,loc_id,datasetName,parallel)
 
 end subroutine HDF5_write_int5
 
-!--------------------------------------------------------------------------------------------------
-!> @brief Write dataset of type integer with 6 dimensions.
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_int6(dataset,loc_id,datasetName,parallel)
-
-  integer,          intent(in), dimension(:,:,:,:,:,:) :: dataset                                   !< data written to file
-  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
-  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
-  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
-
-
-  integer :: hdferr
-  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
-  integer(HSIZE_T), dimension(rank(dataset)) :: &
-    myStart, &
-    myShape, &                                                                                      !< shape of the dataset (this process)
-    totalShape                                                                                      !< shape of the dataset (all processes)
-
-!---------------------------------------------------------------------------------------------------
-! determine shape of dataset
-  myShape = int(shape(dataset),HSIZE_T)
-  if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
-
-  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
-                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_INTEGER, &
-                        misc_optional(parallel,parallel_default))
-
-  if (product(totalShape) /= 0) then
-    call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
-                   file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    call HDF5_chkerr(hdferr)
-  end if
-
-  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
-
-end subroutine HDF5_write_int6
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Write dataset of type integer with 7 dimensions.
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_int7(dataset,loc_id,datasetName,parallel)
-
-  integer,          intent(in), dimension(:,:,:,:,:,:,:) :: dataset                                 !< data written to file
-  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
-  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
-  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
-
-
-  integer :: hdferr
-  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
-  integer(HSIZE_T), dimension(rank(dataset)) :: &
-    myStart, &
-    myShape, &                                                                                      !< shape of the dataset (this process)
-    totalShape                                                                                      !< shape of the dataset (all processes)
-
-!---------------------------------------------------------------------------------------------------
-! determine shape of dataset
-  myShape = int(shape(dataset),HSIZE_T)
-  if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
-
-  call initialize_write(dset_id,filespace_id,memspace_id,plist_id, &
-                        myStart,totalShape,loc_id,myShape,datasetName,H5T_NATIVE_INTEGER, &
-                        misc_optional(parallel,parallel_default))
-
-  if (product(totalShape) /= 0) then
-    call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
-                   file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    call HDF5_chkerr(hdferr)
-  end if
-
-  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
-
-end subroutine HDF5_write_int7
-
 #else
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Write dataset of type integer with 1-7 dimensions.
+!> @brief Write dataset of type integer with 1-5 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int(dataset,loc_id,datasetName,parallel)
 
@@ -1815,12 +1516,6 @@ subroutine HDF5_write_int(dataset,loc_id,datasetName,parallel)
       rank(5)
         call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                        file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-      rank(6)
-        call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
-                       file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-      rank(7)
-        call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
-                       file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
     end select
     call HDF5_chkerr(hdferr)
   end if
@@ -1829,6 +1524,7 @@ subroutine HDF5_write_int(dataset,loc_id,datasetName,parallel)
 
 end subroutine HDF5_write_int
 #endif
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Initialize read handles and determine global shape in case of parallel IO.
