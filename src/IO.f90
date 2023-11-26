@@ -247,6 +247,7 @@ function IO_strValue(str,chunkPos,myChunk)
   integer,                      intent(in) :: myChunk                                               !< position number of desired chunk
   character(len=:), allocatable            :: IO_strValue
 
+
   validChunk: if (myChunk > chunkPos(1) .or. myChunk < 1) then
     IO_strValue = ''
     call IO_error(110,'IO_strValue: "'//trim(str)//'"',label1='chunk',ID1=myChunk)
@@ -266,6 +267,7 @@ integer function IO_intValue(str,chunkPos,myChunk)
   integer, dimension(:), intent(in) :: chunkPos                                                     !< positions of start and end of each tag/chunk in given string
   integer,               intent(in) :: myChunk                                                      !< position number of desired chunk
 
+
   IO_intValue = IO_strAsInt(IO_strValue(str,chunkPos,myChunk))
 
 end function IO_intValue
@@ -279,6 +281,7 @@ real(pREAL) function IO_realValue(str,chunkPos,myChunk)
   character(len=*),        intent(in) :: str                                                        !< raw input with known start and end of each chunk
   integer,   dimension(:), intent(in) :: chunkPos                                                   !< positions of start and end of each tag/chunk in given string
   integer,                 intent(in) :: myChunk                                                    !< position number of desired chunk
+
 
   IO_realValue = IO_strAsReal(IO_strValue(str,chunkPos,myChunk))
 
@@ -442,6 +445,7 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
 
   external                      :: quit
   character(len=:), allocatable :: msg
+
 
   select case (error_ID)
 
