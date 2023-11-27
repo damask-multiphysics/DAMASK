@@ -485,8 +485,6 @@ class TestResult:
                 if not np.array_equal(ref_val,actual_val):
                     error_messages.append("Common attributes in datasets of CellData do not match")
 
-        # TODO: check for the array of PhaseTypes too. However, currently phase is assumed Primary by default.
-
         # check crystal structure array
         results_crystal_structure = np.array(results_file[ensemble_label + '/CrystalStructures'])
         ref_crystal_structure = np.array(ref_file[ensemble_label + '/CrystalStructures'])
@@ -497,7 +495,8 @@ class TestResult:
         results_phase_name = np.array(results_file[ensemble_label + '/PhaseName'])
         ref_phase_name = ['Unknown Phase Type']
         ref_phase_name.extend(i for i in result.visible['phases'])
-        if not results_phase_name == np.array(ref_phase_name,dtype=bytes):
+        ref_phase_name = [bytes(i,encoding='utf-8') for i in ref_phase_name]
+        if not np.all(results_phase_name == np.array(ref_phase_name,dtype=object)):
             error_messages.append('Phase names are different')
 
         # check attributes ensemble matrix
