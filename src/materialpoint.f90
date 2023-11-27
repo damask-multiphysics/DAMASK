@@ -5,8 +5,9 @@
 !--------------------------------------------------------------------------------------------------
 module materialpoint
   use parallelization
-  use signal
   use CLI
+  use system_routines
+  use signal
   use prec
   use misc
   use IO
@@ -46,6 +47,7 @@ subroutine materialpoint_initAll()
 
   call parallelization_init()
   call CLI_init()                                                                                   ! grid and mesh commandline interface
+  call system_routines_init()
   call signal_init()
   call prec_init()
   call misc_init()

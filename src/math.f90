@@ -1380,6 +1380,12 @@ subroutine math_selfTest()
   if (any(dNeq0(math_eye(3),math_inv33(math_I3)))) &
     error stop 'math_inv33(math_I3)'
 
+  if (any(dNeq(t33,math_symmetric33(t33)+math_skew33(t33),1.0e-10_pReal))) &
+    error stop 'math_symmetric/skew'
+
+  if (any(dNeq(t33,math_spherical33(t33)+math_deviatoric33(t33),1.0e-10_pReal))) &
+    error stop 'math_spherical/deviatoric'
+
   do while(abs(math_det33(t33))<1.0e-9_pREAL)
     call random_number(t33)
   end do

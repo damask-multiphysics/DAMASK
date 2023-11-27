@@ -6,11 +6,14 @@ module system_routines
   use, intrinsic :: ISO_C_Binding
 
   use prec
+  use IO
 
   implicit none(type,external)
   private
 
   public :: &
+    system_routines_init, &
+    system_routines_selfTest, &
     setCWD, &
     getCWD, &
     getHostName, &
@@ -94,6 +97,18 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Do self test.
+!--------------------------------------------------------------------------------------------------
+subroutine system_routines_init()
+
+  print'(/,1x,a)', '<<<+-  system_routines init  -+>>>'; flush(IO_STDOUT)
+
+  call system_routines_selfTest()
+
+end subroutine system_routines_init
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Set the current working directory.
 !--------------------------------------------------------------------------------------------------
 logical function setCWD(path)
@@ -102,6 +117,8 @@ logical function setCWD(path)
 
 
   setCWD = setCWD_C(f_c_string(path)) /= 0_C_INT
+
+  call system_routines_selfTest()
 
 end function setCWD
 
@@ -210,6 +227,31 @@ pure function f_c_string(f_string) result(c_string)
   c_string = transfer(trim(f_string)//C_NULL_CHAR,c_string,size=size(c_string,kind=pI64))
 
 end function f_c_string
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check correctness of some system_routine functions.
+!--------------------------------------------------------------------------------------------------
+subroutine system_routines_selfTest()
+
+  real :: r
+  real, dimension(:), allocatable :: rnd_real
+  character(len=:), allocatable :: rnd_str
+  integer :: i
+
+
+  call random_number(r)
+  allocate(rnd_real(30+int(r*50.)))
+  call random_number(rnd_real)
+  allocate(character(size(rnd_real))::rnd_str)
+
+  do i = 1, size(rnd_real)
+    rnd_str(i:i) = char(32 + int(rnd_real(i)*(127.-32.)))
+  end do
+
+  if (c_f_string(f_c_string(rnd_str)) /= rnd_str) error stop 'c_f_string/f_c_string'
+
+end subroutine system_routines_selfTest
 
 
 end module system_routines
