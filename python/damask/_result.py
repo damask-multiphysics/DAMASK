@@ -1976,6 +1976,7 @@ class Result:
             Directory to save DREAM3D files. Will be created if non-existent.
 
         """
+        h5py_modified._hl.attrs.AttributeManager = AttributeManagerNullterm # 'Monkey patch'
         if self.N_constituents != 1 or not self.structured:
             raise TypeError('DREAM3D output requires structured grid with single constituent.')
 
