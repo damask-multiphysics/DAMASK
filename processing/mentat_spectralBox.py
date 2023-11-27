@@ -193,7 +193,7 @@ if filenames == []: filenames = [None]
 for name in filenames:
     print(script_name+': '+name)
 
-    geom = damask.Grid.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    geom = damask.GeomGrid.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
     material = geom.material.flatten(order='F')
 
     cmds = [\
