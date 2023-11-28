@@ -197,9 +197,40 @@ class GeomGrid:
 
 
     @staticmethod
-    def load(fname: Union[str, Path]) -> 'GeomGrid':
+    def _load(fname: Union[str, Path],label) -> 'GeomGrid':
         """
         Load from VTK ImageData file.
+
+        Parameters
+        ----------
+        fname : str or pathlib.Path
+            VTK ImageData file to read.
+            Valid extension is .vti, which will be appended if not given.
+        label : str
+            Label of the dataset containing the material IDs.
+
+        Returns
+        -------
+        loaded : damask.GeomGrid
+            GeomGrid-based geometry from file.
+
+        """
+        v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
+        cells = np.array(v.vtk_data.GetDimensions())-1
+        bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
+        ic = {label:v.get(l).reshape(cells,order='F') for l in set(v.labels['Cell Data']) - {label}}
+
+        return GeomGrid(material = v.get(label).reshape(cells,order='F'),
+                        size     = bbox[1] - bbox[0],
+                        origin   = bbox[0],
+                        initial_conditions = ic,
+                        comments = v.comments,
+                       )
+
+    @staticmethod
+    def load(fname: Union[str, Path]) -> 'GeomGrid':
+        """
+        Load from VTK ImageData file with material IDs stored as 'material'.
 
         Parameters
         ----------
@@ -213,17 +244,32 @@ class GeomGrid:
             GeomGrid-based geometry from file.
 
         """
-        v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
-        cells = np.array(v.vtk_data.GetDimensions())-1
-        bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
-        ic = {label:v.get(label).reshape(cells,order='F') for label in set(v.labels['Cell Data']) - {'material'}}
+        return GeomGrid._load(fname,'material')
 
-        return GeomGrid(material = v.get('material').reshape(cells,order='F'),
-                        size     = bbox[1] - bbox[0],
-                        origin   = bbox[0],
-                        initial_conditions = ic,
-                        comments = v.comments,
-                       )
+
+    @staticmethod
+    def load_SPPARKS(fname: Union[str, Path]) -> 'GeomGrid':
+        """
+        Load from SPPARKs VTK dump.
+
+        Parameters
+        ----------
+        fname : str or pathlib.Path
+            SPPARKS VTK dump file to read.
+            Valid extension is .vti, which will be appended if not given.
+
+        Returns
+        -------
+        loaded : damask.GeomGrid
+            GeomGrid-based geometry from file.
+
+        Notes
+        -----
+        A SPPARKs VTI dump is equivalent to a DAMASK VTI file
+        where 'material' is renamed to 'spins'.
+
+        """
+        return GeomGrid._load(fname,'spins')
 
 
     @typing.no_type_check
