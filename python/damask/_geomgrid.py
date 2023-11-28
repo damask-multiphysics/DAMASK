@@ -266,10 +266,10 @@ class GeomGrid:
         Notes
         -----
         A SPPARKS VTI dump is equivalent to a DAMASK VTI file,
-        but stores the materialID information as 'spins' rather than 'material'.
+        but stores the materialID information as 'Spin' rather than 'material'.
 
         """
-        return GeomGrid._load(fname,'spins')
+        return GeomGrid._load(fname,'Spin')
 
 
     @typing.no_type_check
