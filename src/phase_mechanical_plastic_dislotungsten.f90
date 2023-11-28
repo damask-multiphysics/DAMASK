@@ -360,9 +360,10 @@ module function dislotungsten_dotState(Mp,ph,en) result(dotState)
       d_hat = dst%Lambda_sl(:,en)                                                                   ! upper limit
       dot_rho_dip_formation = 0.0_pREAL
     else where
-      d_hat = math_clip(mu*prm%b_sl/(8.0_pREAL*PI*(1.0_pREAL-nu)*tau_eff), &
-                        left = prm%d_caron, &                                                       ! lower limit
-                        right = dst%Lambda_sl(:,en))                                                ! upper limit
+      d_hat = mu*prm%b_sl/(8.0_pREAL*PI*(1.0_pREAL-nu)*tau_eff)
+      d_hat = math_clip(d_hat, right = dst%Lambda_sl(:,en))                                         ! upper limit
+      d_hat = math_clip(d_hat, left  = prm%d_caron)                                                 ! lower limit
+
       dot_rho_dip_formation = merge(dot_gamma * 2.0_pREAL*(d_hat-prm%d_caron)/prm%b_sl * stt%rho_mob(:,en), &
                                     0.0_pREAL, &
                                     prm%dipoleformation)

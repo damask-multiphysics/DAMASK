@@ -674,9 +674,10 @@ module function dislotwin_dotState(Mp,ph,en) result(dotState)
         d_hat = dst%Lambda_sl(i,en)
         dot_rho_dip_formation(i) = 0.0_pREAL
       else significantSlipStress
-        d_hat = math_clip(3.0_pREAL*mu*prm%b_sl(i)/(16.0_pREAL*PI*abs(tau)), &
-                          left  = prm%d_caron(i), &
-                          right = dst%Lambda_sl(i,en))
+        d_hat = 3.0_pREAL*mu*prm%b_sl(i)/(16.0_pREAL*PI*abs(tau))
+        d_hat = math_clip(d_hat, right = dst%Lambda_sl(i,en))
+        d_hat = math_clip(d_hat, left  = prm%d_caron(i))
+
         dot_rho_dip_formation(i) = 2.0_pREAL*(d_hat-prm%d_caron(i))/prm%b_sl(i) &
                                  * stt%rho_mob(i,en)*abs_dot_gamma_sl(i)
       end if significantSlipStress
