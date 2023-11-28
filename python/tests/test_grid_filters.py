@@ -3,8 +3,8 @@ import numpy as np
 
 from damask import grid_filters
 from damask import mechanics
-from damask import Grid
 from damask import seeds
+from damask import GeomGrid
 
 class TestGridFilters:
 
@@ -205,7 +205,7 @@ class TestGridFilters:
     def test_regrid_double_cells(self):
          size = np.random.random(3)                                                                 # noqa
          cells = np.random.randint(8,32,(3))
-         g = Grid.from_Voronoi_tessellation(cells,size,seeds.from_random(size,10))
+         g = GeomGrid.from_Voronoi_tessellation(cells,size,seeds.from_random(size,10))
          F = np.broadcast_to(np.eye(3), (*cells,3,3))
          assert g.scale(cells*2) == g.assemble(grid_filters.regrid(size,F,cells*2))
 

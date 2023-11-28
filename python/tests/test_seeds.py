@@ -4,7 +4,7 @@ from scipy.spatial import cKDTree
 
 from damask import seeds
 from damask import grid_filters
-from damask import Grid
+from damask import GeomGrid
 
 class TestSeeds:
 
@@ -40,9 +40,9 @@ class TestSeeds:
         N_seeds = np.random.randint(30,300)
         size = np.ones(3) + np.random.random(3)
         coords = seeds.from_random(size,N_seeds,cells)
-        grid_1 = Grid.from_Voronoi_tessellation(cells,size,coords)
+        grid_1 = GeomGrid.from_Voronoi_tessellation(cells,size,coords)
         coords,material = seeds.from_grid(grid_1)
-        grid_2 = Grid.from_Voronoi_tessellation(cells,size,coords,material)
+        grid_2 = GeomGrid.from_Voronoi_tessellation(cells,size,coords,material)
         assert (grid_2.material==grid_1.material).all()
 
     @pytest.mark.parametrize('periodic',[True,False])
@@ -52,9 +52,9 @@ class TestSeeds:
         size  = np.ones(3) + np.random.random(3)
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
         np.random.shuffle(coords)
-        grid_1 = Grid.from_Voronoi_tessellation(cells,size,coords)
+        grid_1 = GeomGrid.from_Voronoi_tessellation(cells,size,coords)
         coords,material = seeds.from_grid(grid_1,average=average,periodic=periodic)
-        grid_2 = Grid.from_Voronoi_tessellation(cells,size,coords,material)
+        grid_2 = GeomGrid.from_Voronoi_tessellation(cells,size,coords,material)
         assert (grid_2.material==grid_1.material).all()
 
     @pytest.mark.parametrize('periodic',[True,False])
@@ -65,7 +65,7 @@ class TestSeeds:
         N_seeds = np.random.randint(30,300)
         size = np.ones(3) + np.random.random(3)
         coords = seeds.from_random(size,N_seeds,cells)
-        grid = Grid.from_Voronoi_tessellation(cells,size,coords)
+        grid = GeomGrid.from_Voronoi_tessellation(cells,size,coords)
         selection=np.random.randint(N_seeds)+1
         coords,material = seeds.from_grid(grid,average=average,periodic=periodic,invert_selection=invert,selection=[selection])
         assert selection not in material if invert else (selection==material).all()

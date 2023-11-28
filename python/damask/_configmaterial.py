@@ -144,7 +144,7 @@ class ConfigMaterial(Config):
 
         Notes
         -----
-        damask.Grid.load_DREAM3D gives the corresponding geometry for
+        damask.GeomGrid.load_DREAM3D gives the corresponding geometry for
         the grid solver.
 
         For cell-wise data, only unique combinations of
