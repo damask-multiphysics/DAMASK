@@ -601,17 +601,16 @@ class VTK:
 
         """
         dup = self.copy()
+
         cell_data = dup.vtk_data.GetCellData()
-        for a in range(cell_data.GetNumberOfArrays()):
-            if cell_data.GetArrayName(a) == label:
-                dup.vtk_data.GetCellData().RemoveArray(label)
-                return dup
+        if label in [cell_data.GetArrayName(a) for a in range(cell_data.GetNumberOfArrays())]:
+            dup.vtk_data.GetCellData().RemoveArray(label)
+            return dup
 
         point_data = self.vtk_data.GetPointData()
-        for a in range(point_data.GetNumberOfArrays()):
-            if point_data.GetArrayName(a) == label:
-                dup.vtk_data.GetPointData().RemoveArray(label)
-                return dup
+        if label in [point_data.GetArrayName(a) for a in range(point_data.GetNumberOfArrays())]:
+            dup.vtk_data.GetPointData().RemoveArray(label)
+            return dup
 
         raise KeyError(f'array "{label}" not found')
 

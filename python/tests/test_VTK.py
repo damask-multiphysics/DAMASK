@@ -203,9 +203,8 @@ class TestVTK:
     def test_delete(self,default,mode):
         data = np.random.rand(default.N_cells if mode == 'cells' else default.N_points).astype(np.float32)
         v = default.set('D',data)
-        assert np.all(data == v.get('D'))
-        v = v.delete('D')
-        assert v == default
+        assert (v.get('D') == data).all()
+        assert v.delete('D') == default
 
     @pytest.mark.parametrize('data_type,shape',[(float,(3,)),
                                                 (float,(3,3)),
