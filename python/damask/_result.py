@@ -28,12 +28,26 @@ from . import tensor
 from . import util
 from ._typehints import FloatSequence, IntSequence, DADF5Dataset
 
+h5py_module_list = ['h5py','h5py._hl','h5py._hl.attrs']
+module_dict = {}
+
 SPEC_H5PY = importlib.util.find_spec('h5py')
 h5py_modified = importlib.util.module_from_spec(SPEC_H5PY)
 SPEC_H5PY.loader.exec_module(h5py_modified)
 sys.modules['h5py_modified'] = h5py_modified
 
-h5py_modified.__dict__['_hl'] = h5py.__dict__['_hl']
+SPEC_H5PY_HL = importlib.util.find_spec('h5py._hl')
+h5py_hl_modified = importlib.util.module_from_spec(SPEC_H5PY_HL)
+SPEC_H5PY_HL.loader.exec_module(h5py_hl_modified)
+sys.modules['h5py_hl_modified'] = h5py_hl_modified
+
+SPEC_H5PY_HL_attrs = importlib.util.find_spec('h5py._hl.attrs')
+h5py_hl_attrs_modified = importlib.util.module_from_spec(SPEC_H5PY_HL_attrs)
+SPEC_H5PY_HL_attrs.loader.exec_module(h5py_hl_attrs_modified)
+sys.modules['h5py_hl_attrs_modified'] = h5py_hl_attrs_modified
+
+h5py_hl_modified.__dict__['attrs'] = h5py_hl_attrs_modified
+h5py_modified.__dict__['_hl'] = h5py_hl_modified
 
 h5py3 = h5py.__version__[0] == '3'
 
