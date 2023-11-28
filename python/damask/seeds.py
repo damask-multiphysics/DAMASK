@@ -116,7 +116,7 @@ def from_grid(grid,
 
     Parameters
     ----------
-    grid : damask.Grid
+    grid : damask.GeomGrid
         Grid from which the material IDs are used as seeds.
     selection : (sequence of) int, optional
         Material IDs to consider.
@@ -138,7 +138,7 @@ def from_grid(grid,
     -----
     The origin is not considered in order to obtain coordinates
     in a coordinate system located at the origin. This is expected
-    by damask.Grid.from_Voronoi_tessellation.
+    by damask.GeomGrid.from_Voronoi_tessellation.
 
     Examples
     --------
@@ -148,7 +148,7 @@ def from_grid(grid,
     >>> import scipy.spatial
     >>> import damask
     >>> seeds = damask.seeds.from_random(np.ones(3),29,[128]*3)
-    >>> (g := damask.Grid.from_Voronoi_tessellation([128]*3,np.ones(3),seeds))
+    >>> (g := damask.GeomGrid.from_Voronoi_tessellation([128]*3,np.ones(3),seeds))
     cells:  128 × 128 × 128
     size:   1.0 × 1.0 × 1.0 m³
     origin: 0.0   0.0   0.0 m
