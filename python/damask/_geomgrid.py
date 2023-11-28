@@ -197,7 +197,7 @@ class GeomGrid:
 
 
     @staticmethod
-    def _load(fname: Union[str, Path],label) -> 'GeomGrid':
+    def _load(fname: Union[str, Path], label: str) -> 'GeomGrid':
         """
         Load from VTK ImageData file.
 
@@ -218,7 +218,7 @@ class GeomGrid:
         v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
-        ic = {label:v.get(l).reshape(cells,order='F') for l in set(v.labels['Cell Data']) - {label}}
+        ic = {l:v.get(l).reshape(cells,order='F') for l in set(v.labels['Cell Data']) - {label}}
 
         return GeomGrid(material = v.get(label).reshape(cells,order='F'),
                         size     = bbox[1] - bbox[0],
