@@ -558,20 +558,18 @@ class VTK:
 
         """
         cell_data = self.vtk_data.GetCellData()
-        for a in range(cell_data.GetNumberOfArrays()):
-            if cell_data.GetArrayName(a) == label:
-                try:
-                    return vtk_to_numpy(cell_data.GetArray(a))
-                except AttributeError:
-                    vtk_array = cell_data.GetAbstractArray(a)                                       # string array
+        if label in [cell_data.GetArrayName(a) for a in range(cell_data.GetNumberOfArrays())]:
+            try:
+                return vtk_to_numpy(cell_data.GetArray(label))
+            except AttributeError:
+                vtk_array = cell_data.GetAbstractArray(label)                                       # string array
 
         point_data = self.vtk_data.GetPointData()
-        for a in range(point_data.GetNumberOfArrays()):
-            if point_data.GetArrayName(a) == label:
-                try:
-                    return vtk_to_numpy(point_data.GetArray(a))
-                except AttributeError:
-                    vtk_array = point_data.GetAbstractArray(a)                                      # string array
+        if label in [point_data.GetArrayName(a) for a in range(point_data.GetNumberOfArrays())]:
+            try:
+                return vtk_to_numpy(point_data.GetArray(label))
+            except AttributeError:
+                vtk_array = point_data.GetAbstractArray(label)                                      # string array
 
         try:
             # string array
