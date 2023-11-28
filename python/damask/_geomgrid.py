@@ -250,7 +250,7 @@ class GeomGrid:
     @staticmethod
     def load_SPPARKS(fname: Union[str, Path]) -> 'GeomGrid':
         """
-        Load from SPPARKs VTK dump.
+        Load from SPPARKS VTK dump.
 
         Parameters
         ----------
@@ -265,8 +265,8 @@ class GeomGrid:
 
         Notes
         -----
-        A SPPARKs VTI dump is equivalent to a DAMASK VTI file
-        where 'material' is renamed to 'spins'.
+        A SPPARKS VTI dump is equivalent to a DAMASK VTI file,
+        but stores the materialID information as 'spins' rather than 'material'.
 
         """
         return GeomGrid._load(fname,'spins')
