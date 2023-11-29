@@ -671,8 +671,8 @@ module function dislotwin_dotState(Mp,ph,en) result(dotState)
       tau = math_tensordot(Mp,prm%P_sl(1:3,1:3,i))
 
       significantSlipStress: if (dEq0(tau) .or. prm%omitDipoles) then
+        d_hat = dst%Lambda_sl(i,en)
         dot_rho_dip_formation(i) = 0.0_pREAL
-        dot_rho_dip_climb(i) = 0.0_pREAL
       else significantSlipStress
         d_hat = 3.0_pREAL*mu*prm%b_sl(i)/(16.0_pREAL*PI*abs(tau))
         d_hat = math_clip(d_hat, right = dst%Lambda_sl(i,en))
@@ -680,24 +680,23 @@ module function dislotwin_dotState(Mp,ph,en) result(dotState)
 
         dot_rho_dip_formation(i) = 2.0_pREAL*(d_hat-prm%d_caron(i))/prm%b_sl(i) &
                                  * stt%rho_mob(i,en)*abs_dot_gamma_sl(i)
-
-        if (dEq(d_hat,prm%d_caron(i))) then
-          dot_rho_dip_climb(i) = 0.0_pREAL
-        else
-          ! Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
-          sigma_cl = dot_product(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
-          if (prm%extendedDislocations) then
-            b_d = 24.0_pREAL*PI*(1.0_pREAL - nu)/(2.0_pREAL + nu) * prm%Gamma_sf%at(T) / (mu*prm%b_sl(i))
-          else
-            b_d = 1.0_pREAL
-          end if
-          v_cl = 2.0_pREAL*prm%omega*b_d**2*exp(-prm%Q_cl/(K_B*T)) &
-               * (exp(abs(sigma_cl)*prm%b_sl(i)**3/(K_B*T)) - 1.0_pREAL)
-
-          dot_rho_dip_climb(i) = 4.0_pREAL*v_cl*stt%rho_dip(i,en) &
-                               / (d_hat-prm%d_caron(i))
-        end if
       end if significantSlipStress
+
+      if (dEq(d_hat,prm%d_caron(i))) then
+        dot_rho_dip_climb(i) = 0.0_pREAL
+      else
+        ! Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
+        sigma_cl = dot_product(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
+        if (prm%extendedDislocations) then
+          b_d = 24.0_pREAL*PI*(1.0_pREAL - nu)/(2.0_pREAL + nu) * prm%Gamma_sf%at(T) / (mu*prm%b_sl(i))
+        else
+          b_d = 1.0_pREAL
+        end if
+        v_cl = 2.0_pREAL*prm%omega*b_d**2*exp(-prm%Q_cl/(K_B*T)) &
+             * (exp(abs(sigma_cl)*prm%b_sl(i)**3/(K_B*T)) - 1.0_pREAL)
+        dot_rho_dip_climb(i) = 4.0_pREAL*v_cl*stt%rho_dip(i,en) &
+                             / (d_hat-prm%d_caron(i))
+      end if
     end do slipState
 
     dot_rho_mob = abs_dot_gamma_sl/(prm%b_sl*dst%Lambda_sl(:,en)) &
