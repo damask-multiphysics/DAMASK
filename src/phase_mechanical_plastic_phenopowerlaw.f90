@@ -176,14 +176,14 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
     else slipActive
       xi_0_sl = emptyRealArray
-      allocate(prm%dot_gamma_0_sl, &                                                                             !< reference shear strain rate for slip
+      allocate(prm%dot_gamma_0_sl, &
                prm%a_sl, &
-               prm%n_sl, &                                                                                       !< stress exponent for slip
-               prm%xi_inf_sl, &                                                                                  !< maximum critical shear stress for slip
-               prm%f_sat_sl_tw, &                                                                                !< push-up factor for slip saturation due to twinning
+               prm%n_sl, &
+               prm%xi_inf_sl, &
+               prm%f_sat_sl_tw, &
                prm%c_1, &
                prm%c_2, &
-               prm%h_0_sl_sl, &                                                                                  !< reference hardening slip - slip
+               prm%h_0_sl_sl, &
                source=emptyRealArray)
       allocate(prm%h_sl_sl(0,0))
     end if slipActive
@@ -212,13 +212,13 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
     else twinActive
       xi_0_tw = emptyRealArray
-      allocate(prm%dot_gamma_0_tw, &                                                                             !< reference shear strain rate for twin
-               prm%n_tw, &                                                                                       !< stress exponent for twin
+      allocate(prm%dot_gamma_0_tw, &
+               prm%n_tw, &
                prm%c_3, &
                prm%c_4, &
-               prm%gamma_char, &                                                                                    !< characteristic shear for twins
-               prm%h_0_tw_sl, &                                                                                  !< reference hardening twin - slip
-               prm%h_0_tw_tw, &                                                                                  !< reference hardening twin - twin
+               prm%gamma_char, &
+               prm%h_0_tw_sl, &
+               prm%h_0_tw_tw, &
                source=emptyRealArray)
       allocate(prm%h_tw_tw(0,0))
     end if twinActive
