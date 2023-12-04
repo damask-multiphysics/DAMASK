@@ -1971,11 +1971,13 @@ class Result:
 
         with h5py.File(self.fname,'r') as f:
             for inc in util.show_progress(self.visible['increments']):
-                crystal_structure = [999]
-                cell_orientation = np.zeros((np.prod(self.cells),3))
-                phase_ID_array = np.zeros((np.prod(self.cells)),dtype=np.int32) #need to reshape it later
                 for c in range(self.N_constituents):
-                    for count,label in enumerate(self.visible['phases']):
+                    crystal_structure = [999]
+                    phase_name = ['Unknown Phase Type']
+                    cell_orientation = np.zeros((np.prod(self.cells),3))
+                    phase_ID = np.zeros((np.prod(self.cells)),dtype=np.int32)
+                    count = 1
+                    for label in self.visible['phases']:
                         try:
                             data = _read(f['/'.join([inc,'phase',label,'mechanical/O'])])
                             lattice = data.dtype.metadata['lattice']
@@ -1989,10 +1991,12 @@ class Result:
 
                             cell_orientation[at_cell_ph[c][label],:] = \
                                 Rotation(data[in_data_ph[c][label],:]).as_Euler_angles().astype(np.float32)
+                            phase_ID[at_cell_ph[c][label]] = count
+                            phase_name.append(label)
+                            count +=1
                         except KeyError:
-                            crystal_structure.append(999)
+                            pass
 
-                        phase_ID_array[at_cell_ph[c][label]] = count + 1
 
                 with h5py.File(f'{out_dir}/{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}.dream3d','w') as f_out:
                     add_attribute(f_out,'FileVersion','7.0')
@@ -2006,7 +2010,7 @@ class Result:
                     add_attribute(cell,'AttributeMatrixType',np.array([3],np.uint32))
                     add_attribute(cell,'TupleDimensions', np.array(self.cells,np.uint64))
 
-                    cell['Phases'] = np.reshape(phase_ID_array,tuple(np.flip(self.cells))+(1,))
+                    cell['Phases'] = np.reshape(phase_ID,tuple(np.flip(self.cells))+(1,))
                     cell['EulerAngles'] = cell_orientation.reshape(tuple(np.flip(self.cells))+(3,))
                     for dataset in ['Phases','EulerAngles']:
                         add_attribute(cell[dataset],'DataArrayVersion',np.array([2],np.int32))
@@ -2020,12 +2024,11 @@ class Result:
                     cell_ensemble =  create_and_open(data_container,'CellEnsembleData')
 
                     cell_ensemble['CrystalStructures'] = np.array(crystal_structure,np.uint32).reshape(-1,1)
-                    cell_ensemble['PhaseTypes']        = np.array([999] + [0]*len(self.phases),np.uint32).reshape(-1,1)
-                    phase_name_list = ['Unknown Phase Type'] + [p for p in self.visible['phases']]
+                    cell_ensemble['PhaseTypes'] = np.array([999] + [0]*(len(crystal_structure)-1),np.uint32).reshape(-1,1)
                     tid = h5py.h5t.C_S1.copy()
                     tid.set_size(h5py.h5t.VARIABLE)
                     tid.set_cset(h5py.h5t.CSET_ASCII)
-                    cell_ensemble.create_dataset(name='PhaseName',data = phase_name_list, dtype=h5py.Datatype(tid))
+                    cell_ensemble.create_dataset(name='PhaseName',data = phase_name, dtype=h5py.Datatype(tid))
 
                     cell_ensemble.attrs['AttributeMatrixType'] = np.array([11],np.uint32)
                     cell_ensemble.attrs['TupleDimensions']     = np.array([len(self.phases) + 1], np.uint64)
