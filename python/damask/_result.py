@@ -1957,6 +1957,10 @@ class Result:
             else:
                 obj.attrs.create(name,data)
 
+        def create_and_open(obj,name):
+            obj.create_group(name)
+            return obj[name]
+
         if self.N_constituents != 1 or not self.structured:
             raise TypeError('DREAM3D output requires structured grid with single constituent.')
 
@@ -1994,32 +1998,30 @@ class Result:
                 for g in ['DataContainerBundles','Pipeline']:                                       # empty groups (needed)
                     o.create_group(g)
 
-                data_container_label = 'DataContainers/SyntheticVolumeDataContainer'
-                cell_data_label      = data_container_label + '/CellData'
+                data_container = create_and_open(o,'DataContainers/SyntheticVolumeDataContainer')
+                cell = create_and_open(data_container,'CellData')
 
-                o[cell_data_label + '/Phases'] = np.reshape(phase_ID_array,tuple(np.flip(self.cells))+(1,))
-                o[cell_data_label + '/EulerAngles'] = cell_orientation.reshape(tuple(np.flip(self.cells))+(3,))
+                cell['Phases'] = np.reshape(phase_ID_array,tuple(np.flip(self.cells))+(1,))
+                cell['EulerAngles'] = cell_orientation.reshape(tuple(np.flip(self.cells))+(3,))
 
-                o[cell_data_label].attrs['AttributeMatrixType'] = np.array([3],np.uint32)
-                o[cell_data_label].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
+                add_attribute(cell,'AttributeMatrixType',np.array([3],np.uint32))
+                add_attribute(cell,'TupleDimensions', np.array(self.cells,np.uint64))
 
                 # Common Attributes for groups in CellData
-                for dataset in ['/Phases','/EulerAngles']:
-                    add_attribute(o[cell_data_label + dataset],'DataArrayVersion',np.array([2],np.int32))
-                    add_attribute(o[cell_data_label + dataset],'Tuple Axis Dimensions','x={},y={},z={}'.format(*np.array(self.cells)))
+                for dataset in ['Phases','EulerAngles']:
+                    add_attribute(cell[dataset],'DataArrayVersion',np.array([2],np.int32))
+                    add_attribute(cell[dataset],'Tuple Axis Dimensions','x={},y={},z={}'.format(*np.array(self.cells)))
+                    add_attribute(cell[dataset],'TupleDimensions', np.array(self.cells,np.uint64))
 
                 # phase attributes
-                add_attribute(o[cell_data_label + '/Phases'], 'ComponentDimensions', np.array([1],np.uint64))
-                add_attribute(o[cell_data_label + '/Phases'], 'ObjectType', 'DataArray<int32_t>')
-                add_attribute(o[cell_data_label + '/Phases'], 'TupleDimensions', np.array(self.cells,np.uint64))
+                add_attribute(cell['Phases'], 'ComponentDimensions', np.array([1],np.uint64))
+                add_attribute(cell['Phases'], 'ObjectType', 'DataArray<int32_t>')
 
                 # Eulers attributes
-                add_attribute(o[cell_data_label + '/EulerAngles'], 'ComponentDimensions', np.array([3],np.uint64))
-                add_attribute(o[cell_data_label + '/EulerAngles'], 'ObjectType', 'DataArray<float>')
-                add_attribute(o[cell_data_label + '/EulerAngles'], 'TupleDimensions', np.array(self.cells,np.uint64))
+                add_attribute(cell['EulerAngles'], 'ComponentDimensions', np.array([3],np.uint64))
+                add_attribute(cell['EulerAngles'], 'ObjectType', 'DataArray<float>')
 
-                # Create EnsembleAttributeMatrix
-                ensemble_label = data_container_label + '/CellEnsembleData'
+                cell_ensemble =  create_and_open(data_container,'CellEnsembleData')
 
                 # Map to DREAM.3D IDs
                 crystal_structure = [999]
@@ -2031,45 +2033,44 @@ class Result:
                     elif lattice_dict[label] in ['tI']:
                         crystal_structure.append(8)
 
-                o[ensemble_label + '/CrystalStructures'] = np.array(crystal_structure,np.uint32).reshape(-1,1)
-                o[ensemble_label + '/PhaseTypes']        = np.array([999] + [0]*len(self.phases),np.uint32).reshape(-1,1)
-                phase_name_list = ['Unknown Phase Type']
-                phase_name_list.extend(i for i in self.visible['phases'])
+                cell_ensemble['CrystalStructures'] = np.array(crystal_structure,np.uint32).reshape(-1,1)
+                cell_ensemble['PhaseTypes']        = np.array([999] + [0]*len(self.phases),np.uint32).reshape(-1,1)
+                phase_name_list = ['Unknown Phase Type'] + [p for p in self.visible['phases']]
                 tid = h5py.h5t.C_S1.copy()
                 tid.set_size(h5py.h5t.VARIABLE)
                 tid.set_cset(h5py.h5t.CSET_ASCII)
-                o[ensemble_label].create_dataset(name='PhaseName',data = phase_name_list, dtype=h5py.Datatype(tid))
+                cell_ensemble.create_dataset(name='PhaseName',data = phase_name_list, dtype=h5py.Datatype(tid))
 
                 # Attributes Ensemble Matrix
-                o[ensemble_label].attrs['AttributeMatrixType'] = np.array([11],np.uint32)
-                o[ensemble_label].attrs['TupleDimensions']     = np.array([len(self.phases) + 1], np.uint64)
+                cell_ensemble.attrs['AttributeMatrixType'] = np.array([11],np.uint32)
+                cell_ensemble.attrs['TupleDimensions']     = np.array([len(self.phases) + 1], np.uint64)
 
                 # Attributes for data in Ensemble matrix
                 for group in ['CrystalStructures','PhaseTypes']:
-                    add_attribute(o[ensemble_label+'/'+group], 'ComponentDimensions',   np.array([1],np.uint64))
-                    add_attribute(o[ensemble_label+'/'+group], 'Tuple Axis Dimensions', f'x={len(self.phases)+1}')
-                    add_attribute(o[ensemble_label+'/'+group], 'DataArrayVersion',      np.array([2],np.int32))
-                    add_attribute(o[ensemble_label+'/'+group], 'ObjectType',            'DataArray<uint32_t>')
-                    add_attribute(o[ensemble_label+'/'+group], 'TupleDimensions',       np.array([len(self.phases) + 1],np.uint64))
+                    add_attribute(cell_ensemble[group], 'ComponentDimensions',   np.array([1],np.uint64))
+                    add_attribute(cell_ensemble[group], 'Tuple Axis Dimensions', f'x={len(self.phases)+1}')
+                    add_attribute(cell_ensemble[group], 'DataArrayVersion',      np.array([2],np.int32))
+                    add_attribute(cell_ensemble[group], 'ObjectType',            'DataArray<uint32_t>')
+                    add_attribute(cell_ensemble[group], 'TupleDimensions',       np.array([len(self.phases) + 1],np.uint64))
 
-                add_attribute(o[ensemble_label+'/PhaseName'], 'ComponentDimensions',   np.array([1],np.uint64))
-                add_attribute(o[ensemble_label+'/PhaseName'], 'Tuple Axis Dimensions', f'x={len(self.phases)+1}')
-                add_attribute(o[ensemble_label+'/PhaseName'], 'DataArrayVersion',      np.array([2],np.int32))
-                add_attribute(o[ensemble_label+'/PhaseName'], 'ObjectType',            'StringDataArray')
-                add_attribute(o[ensemble_label+'/PhaseName'], 'TupleDimensions',       np.array([len(self.phases) + 1],np.uint64))
+                add_attribute(cell_ensemble['PhaseName'], 'ComponentDimensions',   np.array([1],np.uint64))
+                add_attribute(cell_ensemble['PhaseName'], 'Tuple Axis Dimensions', f'x={len(self.phases)+1}')
+                add_attribute(cell_ensemble['PhaseName'], 'DataArrayVersion',      np.array([2],np.int32))
+                add_attribute(cell_ensemble['PhaseName'], 'ObjectType',            'StringDataArray')
+                add_attribute(cell_ensemble['PhaseName'], 'TupleDimensions',       np.array([len(self.phases) + 1],np.uint64))
 
                 # Create geometry info
-                geom_label = data_container_label + '/_SIMPL_GEOMETRY'
+                geom = create_and_open(data_container,'_SIMPL_GEOMETRY')
 
-                o[geom_label + '/DIMENSIONS'] = np.int64(np.array(self.cells))
-                o[geom_label + '/ORIGIN']     = np.float32(np.zeros(3))
-                o[geom_label + '/SPACING']    = np.float32(dx)
+                geom['DIMENSIONS'] = np.int64(np.array(self.cells))
+                geom['ORIGIN']     = np.float32(np.zeros(3))
+                geom['SPACING']    = np.float32(dx)
 
-                add_attribute(o[geom_label], 'GeometryName',          'ImageGeometry')
-                add_attribute(o[geom_label], 'GeometryTypeName',      'ImageGeometry')
-                add_attribute(o[geom_label], 'GeometryType',          np.array([0],np.uint32))
-                add_attribute(o[geom_label], 'SpatialDimensionality', np.array([3],np.uint32))
-                add_attribute(o[geom_label], 'UnitDimensionality',    np.array([3],np.uint32))
+                add_attribute(geom, 'GeometryName',          'ImageGeometry')
+                add_attribute(geom, 'GeometryTypeName',      'ImageGeometry')
+                add_attribute(geom, 'GeometryType',          np.array([0],np.uint32))
+                add_attribute(geom, 'SpatialDimensionality', np.array([3],np.uint32))
+                add_attribute(geom, 'UnitDimensionality',    np.array([3],np.uint32))
 
 
     def export_DADF5(self,
