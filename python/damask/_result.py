@@ -1989,14 +1989,6 @@ class Result:
 
         N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
 
-        Crystal_structure_types = {'Hexagonal': 0, 'Cubic': 1, 'Triclinic': 4, 'Monoclinic': 5, \
-                                                            'Orthorhombic': 6, 'Tetrogonal': 8}
-        # crystal structure map according to Dream3D
-
-        Phase_types = {'Primary': 0}
-        #further additions to these can be done by looking at 'Create Ensemble Info' filter
-        # other options could be 'Precipitate' and so on.
-
         lattice_dict = {}
 
         dx = self.size/self.cells
@@ -2065,20 +2057,18 @@ class Result:
                 # Create EnsembleAttributeMatrix
                 ensemble_label = data_container_label + '/CellEnsembleData'
 
-                # Data CrystalStructures
-                crystal_structure_list = [999]
+                # Map to DREAM.3D IDs
+                crystal_structure = [999]
                 for label in self.visible['phases']:
                     if lattice_dict[label] in ['hP']:
-                        crystal_structure = 'Hexagonal'
-                    elif lattice_dict[label] in ['cP','cI','cF']:
-                        crystal_structure = 'Cubic'
-                    elif lattice_dict[label] in ['tP','tI']:
-                        crystal_structure = 'tetragonal'
-                    crystal_structure_list.append(Crystal_structure_types[crystal_structure])
-                o[ensemble_label + '/CrystalStructures'] = np.uint32(np.array(crystal_structure_list)).reshape((len(self.phases)\
-                                                                     +1,1))
-                o[ensemble_label + '/PhaseTypes']        = np.uint32(np.array([999] + [Phase_types['Primary']]*len(self.phases)))\
-                                                                                        .reshape((len(self.phases)+1,1))
+                        crystal_structure.append(0)
+                    elif lattice_dict[label] in ['cI','cF']:
+                        crystal_structure.append(1)
+                    elif lattice_dict[label] in ['tI']:
+                        crystal_structure.append(8)
+
+                o[ensemble_label + '/CrystalStructures'] = np.array(crystal_structure,np.uint32).reshape(-1,1)
+                o[ensemble_label + '/PhaseTypes']        = np.array([999] + [0]*len(self.phases),np.uint32).reshape(-1,1)
                 phase_name_list = ['Unknown Phase Type']
                 phase_name_list.extend(i for i in self.visible['phases'])
                 tid = h5py.h5t.C_S1.copy()
