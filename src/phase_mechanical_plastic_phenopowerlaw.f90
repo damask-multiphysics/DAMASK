@@ -312,6 +312,8 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
     i,k,l,m,n
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma_sl,ddot_gamma_dtau_sl
+  real(pREAL), dimension(3,3,param(ph)%sum_N_sl) :: &
+    P_nS
   real(pREAL), dimension(param(ph)%sum_N_tw) :: &
     dot_gamma_tw,ddot_gamma_dtau_tw
 
@@ -322,13 +324,12 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
   associate(prm => param(ph))
 
     call kinetics_sl(Mp,ph,en,dot_gamma_sl,ddot_gamma_dtau_sl)
+    P_nS = merge(prm%P_nS_pos,prm%P_nS_neg, spread(spread(dot_gamma_sl,1,3),2,3)>0.0_pREAL)         ! faster than 'merge' in loop
     slipSystems: do i = 1, prm%sum_N_sl
       Lp = Lp + dot_gamma_sl(i)*prm%P_sl(1:3,1:3,i)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                         + ddot_gamma_dtau_sl(i) *       prm%P_sl(k,l,i) &
-                                                 * merge(prm%P_nS_pos(m,n,i), &
-                                                         prm%P_nS_neg(m,n,i), dot_gamma_sl(i)>0.0_pREAL)
+                         + ddot_gamma_dtau_sl(i) * prm%P_sl(k,l,i) * P_nS(m,n,i)
     end do slipSystems
 
     call kinetics_tw(Mp,ph,en,dot_gamma_tw,ddot_gamma_dtau_tw)

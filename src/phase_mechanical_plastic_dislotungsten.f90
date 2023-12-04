@@ -295,6 +295,8 @@ pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
     T                                                                                               !< temperature
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma, ddot_gamma_dtau
+  real(pREAL), dimension(3,3,param(ph)%sum_N_sl) :: &
+    P_nS
 
 
   T = thermal_T(ph,en)
@@ -304,13 +306,12 @@ pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
   associate(prm => param(ph))
 
     call kinetics(Mp,T,ph,en, dot_gamma,ddot_gamma_dtau)
+    P_nS = merge(prm%P_nS_pos,prm%P_nS_neg, spread(spread(dot_gamma,1,3),2,3)>0.0_pREAL)            ! faster than 'merge' in loop
     do i = 1, prm%sum_N_sl
       Lp = Lp + dot_gamma(i)*prm%P_sl(1:3,1:3,i)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                         + ddot_gamma_dtau(i) *       prm%P_sl(k,l,i) &
-                                              * merge(prm%P_nS_pos(m,n,i), &
-                                                      prm%P_nS_neg(m,n,i), dot_gamma(i)>0.0_pREAL)
+                         + ddot_gamma_dtau(i) * prm%P_sl(k,l,i) * P_nS(m,n,i)
     end do
 
   end associate
@@ -356,18 +357,24 @@ module function dislotungsten_dotState(Mp,ph,en) result(dotState)
     dot_gamma = abs(dot_gamma)
 
     where(dEq0(dot_gamma))
+      d_hat = dst%Lambda_sl(:,en)                                                                   ! upper limit
       dot_rho_dip_formation = 0.0_pREAL
-      dot_rho_dip_climb     = 0.0_pREAL
     else where
-      d_hat = math_clip(mu*prm%b_sl/(8.0_pREAL*PI*(1.0_pREAL-nu)*tau_eff), &
-                        left = prm%d_caron, &                                                       ! lower limit
-                        right = dst%Lambda_sl(:,en))                                                ! upper limit
+      d_hat = mu*prm%b_sl/(8.0_pREAL*PI*(1.0_pREAL-nu)*tau_eff)
+      d_hat = math_clip(d_hat, right = dst%Lambda_sl(:,en))                                         ! upper limit
+      d_hat = math_clip(d_hat, left  = prm%d_caron)                                                 ! lower limit
+
       dot_rho_dip_formation = merge(dot_gamma * 2.0_pREAL*(d_hat-prm%d_caron)/prm%b_sl * stt%rho_mob(:,en), &
                                     0.0_pREAL, &
                                     prm%dipoleformation)
+    end where
+
+    where(dEq0(d_hat-prm%d_caron))
+      dot_rho_dip_climb = 0.0_pREAL
+    else where
       v_cl = (3.0_pREAL*mu*prm%D_0*exp(-prm%Q_cl/(K_B*T))*prm%f_at/(2.0_pREAL*PI*K_B*T)) &
            * (1.0_pREAL/(d_hat+prm%d_caron))
-      dot_rho_dip_climb = (4.0_pREAL*v_cl*stt%rho_dip(:,en))/(d_hat-prm%d_caron)                    ! ToDo: Discuss with Franz: Stress dependency?
+      dot_rho_dip_climb = (4.0_pREAL*v_cl*stt%rho_dip(:,en))/(d_hat-prm%d_caron)                      ! ToDo: Discuss with Franz: Stress dependency?
     end where
 
     dot_rho_mob = dot_gamma / (prm%b_sl*dst%Lambda_sl(:,en)) &                                      ! multiplication

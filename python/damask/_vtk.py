@@ -457,7 +457,7 @@ class VTK:
             data: Union[None, np.ndarray, np.ma.MaskedArray] = None,
             info: Optional[str] = None,
             *,
-            table: Optional['Table'] = None):
+            table: Optional['Table'] = None) -> 'VTK':
         """
         Add new or replace existing point or cell data.
 
@@ -534,7 +534,6 @@ class VTK:
         else:
             raise TypeError
 
-
         return dup
 
 
@@ -559,26 +558,59 @@ class VTK:
 
         """
         cell_data = self.vtk_data.GetCellData()
-        for a in range(cell_data.GetNumberOfArrays()):
-            if cell_data.GetArrayName(a) == label:
-                try:
-                    return vtk_to_numpy(cell_data.GetArray(a))
-                except AttributeError:
-                    vtk_array = cell_data.GetAbstractArray(a)                                       # string array
+        if label in [cell_data.GetArrayName(a) for a in range(cell_data.GetNumberOfArrays())]:
+            try:
+                return vtk_to_numpy(cell_data.GetArray(label))
+            except AttributeError:
+                vtk_array = cell_data.GetAbstractArray(label)                                       # string array
 
         point_data = self.vtk_data.GetPointData()
-        for a in range(point_data.GetNumberOfArrays()):
-            if point_data.GetArrayName(a) == label:
-                try:
-                    return vtk_to_numpy(point_data.GetArray(a))
-                except AttributeError:
-                    vtk_array = point_data.GetAbstractArray(a)                                      # string array
+        if label in [point_data.GetArrayName(a) for a in range(point_data.GetNumberOfArrays())]:
+            try:
+                return vtk_to_numpy(point_data.GetArray(label))
+            except AttributeError:
+                vtk_array = point_data.GetAbstractArray(label)                                      # string array
 
         try:
             # string array
             return np.array([vtk_array.GetValue(i) for i in range(vtk_array.GetNumberOfValues())]).astype(str)
         except UnboundLocalError:
             raise KeyError(f'array "{label}" not found')
+
+
+    def delete(self,
+               label: str) -> 'VTK':
+        """
+        Delete either cell or point data.
+
+        Cell data takes precedence over point data, i.e. this
+        function assumes that labels are unique among cell and
+        point data.
+
+        Parameters
+        ----------
+        label : str
+            Data label.
+
+        Returns
+        -------
+        updated : damask.VTK
+            Updated VTK-based geometry.
+
+        """
+        dup = self.copy()
+
+        cell_data = dup.vtk_data.GetCellData()
+        if label in [cell_data.GetArrayName(a) for a in range(cell_data.GetNumberOfArrays())]:
+            dup.vtk_data.GetCellData().RemoveArray(label)
+            return dup
+
+        point_data = self.vtk_data.GetPointData()
+        if label in [point_data.GetArrayName(a) for a in range(point_data.GetNumberOfArrays())]:
+            dup.vtk_data.GetPointData().RemoveArray(label)
+            return dup
+
+        raise KeyError(f'array "{label}" not found')
 
 
     def show(self,

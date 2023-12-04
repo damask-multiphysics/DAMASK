@@ -30,15 +30,6 @@ module math
     module procedure math_expand_real
   end interface math_expand
 
-#if __INTEL_COMPILER >= 1900
-  ! do not make use of associated entities available to other modules
-  private :: &
-    misc, &
-    IO, &
-    config, &
-    parallelization
-#endif
-
   real(pREAL), parameter :: &
     PI = acos(-1.0_pREAL), &                                                                        !< ratio of a circle's circumference to its diameter
     TAU = 2.0_pREAL*PI, &                                                                           !< ratio of a circle's circumference to its radius
@@ -1388,6 +1379,12 @@ subroutine math_selfTest()
 
   if (any(dNeq0(math_eye(3),math_inv33(math_I3)))) &
     error stop 'math_inv33(math_I3)'
+
+  if (any(dNeq(t33,math_symmetric33(t33)+math_skew33(t33),1.0e-10_pReal))) &
+    error stop 'math_symmetric/skew'
+
+  if (any(dNeq(t33,math_spherical33(t33)+math_deviatoric33(t33),1.0e-10_pReal))) &
+    error stop 'math_spherical/deviatoric'
 
   do while(abs(math_det33(t33))<1.0e-9_pREAL)
     call random_number(t33)

@@ -110,3 +110,11 @@ class TestCrystal:
         for r in crystal.orientation_relationships:
             crystal.relation_operations(r)
 
+    @pytest.mark.parametrize('crystal', [Crystal(lattice='cF'),
+                                         Crystal(lattice='cI'),
+                                         Crystal(lattice='hP')])
+    def test_related_invalid_target(self,crystal):
+        relationship = np.random.choice(crystal.orientation_relationships)
+        with pytest.raises(ValueError):
+            crystal.relation_operations(relationship,crystal)
+

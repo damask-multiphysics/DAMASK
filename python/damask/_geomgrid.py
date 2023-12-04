@@ -28,7 +28,7 @@ def numba_njit_wrapper(**kwargs):
     return (lambda function: nb.njit(function) if nb else function)
 
 
-class Grid:
+class GeomGrid:
     """
     Geometry definition for grid solvers.
 
@@ -89,7 +89,7 @@ class Grid:
                ]+(['initial_conditions:']+[f'  - {f}' for f in self.initial_conditions] if self.initial_conditions else []))
 
 
-    def __copy__(self) -> 'Grid':
+    def __copy__(self) -> 'GeomGrid':
         """
         Return deepcopy(self).
 
@@ -110,11 +110,11 @@ class Grid:
 
         Parameters
         ----------
-        other : damask.Grid
-            Grid to compare self against.
+        other : damask.GeomGrid
+            GeomGrid to compare self against.
 
         """
-        if not isinstance(other, Grid):
+        if not isinstance(other, GeomGrid):
             return NotImplemented
         return bool(    np.allclose(other.size,self.size)
                     and np.allclose(other.origin,self.origin)
@@ -197,38 +197,84 @@ class Grid:
 
 
     @staticmethod
-    def load(fname: Union[str, Path]) -> 'Grid':
+    def _load(fname: Union[str, Path], label: str) -> 'GeomGrid':
         """
         Load from VTK ImageData file.
 
         Parameters
         ----------
         fname : str or pathlib.Path
-            Grid file to read.
+            VTK ImageData file to read.
             Valid extension is .vti, which will be appended if not given.
+        label : str
+            Label of the dataset containing the material IDs.
 
         Returns
         -------
-        loaded : damask.Grid
-            Grid-based geometry from file.
+        loaded : damask.GeomGrid
+            GeomGrid-based geometry from file.
 
         """
         v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
-        ic = {label:v.get(label).reshape(cells,order='F') for label in set(v.labels['Cell Data']) - {'material'}}
+        ic = {l:v.get(l).reshape(cells,order='F') for l in set(v.labels['Cell Data']) - {label}}
 
-        return Grid(material = v.get('material').reshape(cells,order='F'),
-                    size     = bbox[1] - bbox[0],
-                    origin   = bbox[0],
-                    initial_conditions = ic,
-                    comments = v.comments,
-                   )
+        return GeomGrid(material = v.get(label).reshape(cells,order='F'),
+                        size     = bbox[1] - bbox[0],
+                        origin   = bbox[0],
+                        initial_conditions = ic,
+                        comments = v.comments,
+                       )
+
+    @staticmethod
+    def load(fname: Union[str, Path]) -> 'GeomGrid':
+        """
+        Load from VTK ImageData file with material IDs stored as 'material'.
+
+        Parameters
+        ----------
+        fname : str or pathlib.Path
+            GeomGrid file to read.
+            Valid extension is .vti, which will be appended if not given.
+
+        Returns
+        -------
+        loaded : damask.GeomGrid
+            GeomGrid-based geometry from file.
+
+        """
+        return GeomGrid._load(fname,'material')
+
+
+    @staticmethod
+    def load_SPPARKS(fname: Union[str, Path]) -> 'GeomGrid':
+        """
+        Load from SPPARKS VTK dump.
+
+        Parameters
+        ----------
+        fname : str or pathlib.Path
+            SPPARKS VTK dump file to read.
+            Valid extension is .vti, which will be appended if not given.
+
+        Returns
+        -------
+        loaded : damask.GeomGrid
+            GeomGrid-based geometry from file.
+
+        Notes
+        -----
+        A SPPARKS VTI dump is equivalent to a DAMASK VTI file,
+        but stores the materialID information as 'Spin' rather than 'material'.
+
+        """
+        return GeomGrid._load(fname,'Spin')
 
 
     @typing.no_type_check
     @staticmethod
-    def load_ASCII(fname)-> 'Grid':
+    def load_ASCII(fname)-> 'GeomGrid':
         """
         Load from geom file.
 
@@ -242,8 +288,8 @@ class Grid:
 
         Returns
         -------
-        loaded : damask.Grid
-            Grid-based geometry from file.
+        loaded : damask.GeomGrid
+            GeomGrid-based geometry from file.
 
         """
         warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.0.0', DeprecationWarning,2)
@@ -296,14 +342,15 @@ class Grid:
         if not np.any(np.mod(material,1) != 0.0):                                                   # no float present
             material = material.astype(np.int64) - (1 if material.min() > 0 else 0)
 
-        return Grid(material = material.reshape(cells,order='F'),
-                    size     = size,
-                    origin   = origin,
-                    comments = comments)
+        return GeomGrid(material = material.reshape(cells,order='F'),
+                        size     = size,
+                        origin   = origin,
+                        comments = comments,
+                       )
 
 
     @staticmethod
-    def load_Neper(fname: Union[str, Path]) -> 'Grid':
+    def load_Neper(fname: Union[str, Path]) -> 'GeomGrid':
         """
         Load from Neper VTK file.
 
@@ -314,8 +361,8 @@ class Grid:
 
         Returns
         -------
-        loaded : damask.Grid
-            Grid-based geometry from file.
+        loaded : damask.GeomGrid
+            GeomGrid-based geometry from file.
 
         Notes
         -----
@@ -330,7 +377,7 @@ class Grid:
         >>> N_grains = 20
         >>> cells = (32,32,32)
         >>> damask.util.run(f'neper -T -n {N_grains} -tesrsize {cells[0]}:{cells[1]}:{cells[2]} -periodicity all -format vtk')
-        >>> damask.Grid.load_Neper(f'n{N_grains}-id1.vtk').renumber()
+        >>> damask.GeomGrid.load_Neper(f'n{N_grains}-id1.vtk').renumber()
         cells:  32 × 32 × 32
         size:   1.0 × 1.0 × 1.0 m³
         origin: 0.0   0.0   0.0 m
@@ -341,11 +388,11 @@ class Grid:
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
 
-        return Grid(material = v.get('MaterialId').reshape(cells,order='F').astype('int32',casting='unsafe'),
-                    size     = bbox[1] - bbox[0],
-                    origin   = bbox[0],
-                    comments = util.execution_stamp('Grid','load_Neper'),
-                   )
+        return GeomGrid(material = v.get('MaterialId').reshape(cells,order='F').astype('int32',casting='unsafe'),
+                        size     = bbox[1] - bbox[0],
+                        origin   = bbox[0],
+                        comments = util.execution_stamp('GeomGrid','load_Neper'),
+                       )
 
 
     @staticmethod
@@ -354,7 +401,7 @@ class Grid:
                      cell_data: Optional[str] = None,
                      phases: str = 'Phases',
                      Euler_angles: str = 'EulerAngles',
-                     base_group: Optional[str] = None) -> 'Grid':
+                     base_group: Optional[str] = None) -> 'GeomGrid':
         """
         Load DREAM.3D (HDF5) file.
 
@@ -389,8 +436,8 @@ class Grid:
 
         Returns
         -------
-        loaded : damask.Grid
-            Grid-based geometry from file.
+        loaded : damask.GeomGrid
+            GeomGrid-based geometry from file.
 
         Notes
         -----
@@ -418,17 +465,17 @@ class Grid:
             else:
                 ma = f['/'.join([b,c,feature_IDs])][()].flatten()
 
-        return Grid(material = ma.reshape(cells,order='F'),
-                    size     = size,
-                    origin   = origin,
-                    comments = util.execution_stamp('Grid','load_DREAM3D'),
-                   )
+        return GeomGrid(material = ma.reshape(cells,order='F'),
+                        size     = size,
+                        origin   = origin,
+                        comments = util.execution_stamp('GeomGrid','load_DREAM3D'),
+                       )
 
 
     @staticmethod
     def from_table(table: Table,
                    coordinates: str,
-                   labels: Union[str, Sequence[str]]) -> 'Grid':
+                   labels: Union[str, Sequence[str]]) -> 'GeomGrid':
         """
         Create grid from ASCII table.
 
@@ -445,8 +492,8 @@ class Grid:
 
         Returns
         -------
-        new : damask.Grid
-            Grid-based geometry from values in table.
+        new : damask.GeomGrid
+            GeomGrid-based geometry from values in table.
 
         """
         cells,size,origin = grid_filters.cellsSizeOrigin_coordinates0_point(table.get(coordinates))
@@ -457,11 +504,11 @@ class Grid:
         ma = np.arange(cells.prod()) if len(unique) == cells.prod() else \
              np.arange(unique.size)[np.argsort(pd.unique(unique_inverse))][unique_inverse]
 
-        return Grid(material = ma.reshape(cells,order='F'),
-                    size     = size,
-                    origin   = origin,
-                    comments = util.execution_stamp('Grid','from_table'),
-                   )
+        return GeomGrid(material = ma.reshape(cells,order='F'),
+                        size     = size,
+                        origin   = origin,
+                        comments = util.execution_stamp('GeomGrid','from_table'),
+                       )
 
 
     @staticmethod
@@ -487,9 +534,11 @@ class Grid:
         size : sequence of float, len (3)
             Edge lengths of the grid in meter.
         seeds : numpy.ndarray of float, shape (:,3)
-            Position of the seed points in meter. All points need to lay within the box.
+            Position of the seed points in meter. All points need
+            to lay within the box [(0,0,0),size].
         weights : sequence of float, len (seeds.shape[0])
-            Weights of the seeds. Setting all weights to 1.0 gives a standard Voronoi tessellation.
+            Weights of the seeds. Setting all weights to 1.0 gives a
+            standard Voronoi tessellation.
         material : sequence of int, len (seeds.shape[0]), optional
             Material ID of the seeds.
             Defaults to None, in which case materials are consecutively numbered.
@@ -498,8 +547,8 @@ class Grid:
 
         Returns
         -------
-        new : damask.Grid
-            Grid-based geometry from tessellation.
+        new : damask.GeomGrid
+            GeomGrid-based geometry from tessellation.
 
         """
         weights_p: FloatSequence
@@ -515,17 +564,17 @@ class Grid:
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
 
         pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',4)))
-        result = pool.map_async(partial(Grid._find_closest_seed,seeds_p,weights_p), coords)
+        result = pool.map_async(partial(GeomGrid._find_closest_seed,seeds_p,weights_p), coords)
         pool.close()
         pool.join()
         material_ = np.array(result.get()).reshape(cells)
 
         if periodic: material_ %= len(weights)
 
-        return Grid(material = material_ if material is None else np.array(material)[material_],
-                    size     = size,
-                    comments = util.execution_stamp('Grid','from_Laguerre_tessellation'),
-                   )
+        return GeomGrid(material = material_ if material is None else np.array(material)[material_],
+                        size     = size,
+                        comments = util.execution_stamp('GeomGrid','from_Laguerre_tessellation'),
+                       )
 
 
     @staticmethod
@@ -533,7 +582,7 @@ class Grid:
                                   size: FloatSequence,
                                   seeds: np.ndarray,
                                   material: Optional[IntSequence] = None,
-                                  periodic: bool = True) -> 'Grid':
+                                  periodic: bool = True) -> 'GeomGrid':
         """
         Create grid from Voronoi tessellation.
 
@@ -544,7 +593,8 @@ class Grid:
         size : sequence of float, len (3)
             Edge lengths of the grid in meter.
         seeds : numpy.ndarray of float, shape (:,3)
-            Position of the seed points in meter. All points need to lay within the box.
+            Position of the seed points in meter. All points need
+            to lay within the box [(0,0,0),size].
         material : sequence of int, len (seeds.shape[0]), optional
             Material ID of the seeds.
             Defaults to None, in which case materials are consecutively numbered.
@@ -553,8 +603,8 @@ class Grid:
 
         Returns
         -------
-        new : damask.Grid
-            Grid-based geometry from tessellation.
+        new : damask.GeomGrid
+            GeomGrid-based geometry from tessellation.
 
         """
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
@@ -565,10 +615,10 @@ class Grid:
         except TypeError:
             material_ = tree.query(coords, n_jobs = int(os.environ.get('OMP_NUM_THREADS',4)))[1]    # scipy <1.6
 
-        return Grid(material = (material_ if material is None else np.array(material)[material_]).reshape(cells),
-                    size     = size,
-                    comments = util.execution_stamp('Grid','from_Voronoi_tessellation'),
-                   )
+        return GeomGrid(material = (material_ if material is None else np.array(material)[material_]).reshape(cells),
+                        size     = size,
+                        comments = util.execution_stamp('GeomGrid','from_Voronoi_tessellation'),
+                       )
 
 
     _minimal_surface = \
@@ -619,7 +669,7 @@ class Grid:
                              surface: str,
                              threshold: float = 0.0,
                              periods: int = 1,
-                             materials: IntSequence = (0,1)) -> 'Grid':
+                             materials: IntSequence = (0,1)) -> 'GeomGrid':
         """
         Create grid from definition of triply-periodic minimal surface.
 
@@ -640,8 +690,8 @@ class Grid:
 
         Returns
         -------
-        new : damask.Grid
-            Grid-based geometry from definition of minimal surface.
+        new : damask.GeomGrid
+            GeomGrid-based geometry from definition of minimal surface.
 
         Notes
         -----
@@ -676,7 +726,7 @@ class Grid:
 
         >>> import numpy as np
         >>> import damask
-        >>> damask.Grid.from_minimal_surface([64]*3,np.ones(3)*1.e-4,'Gyroid')
+        >>> damask.GeomGrid.from_minimal_surface([64]*3,np.ones(3)*1.e-4,'Gyroid')
         cells : 64 × 64 × 64
         size  : 0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
@@ -686,7 +736,7 @@ class Grid:
 
         >>> import numpy as np
         >>> import damask
-        >>> damask.Grid.from_minimal_surface([80]*3,np.ones(3)*5.e-4,
+        >>> damask.GeomGrid.from_minimal_surface([80]*3,np.ones(3)*5.e-4,
         ...                                  'Neovius',materials=(1,5))
         cells : 80 × 80 × 80
         size  : 0.0005 × 0.0005 × 0.0005 m³
@@ -698,10 +748,10 @@ class Grid:
                             periods*2.0*np.pi*(np.arange(cells[1])+0.5)/cells[1],
                             periods*2.0*np.pi*(np.arange(cells[2])+0.5)/cells[2],
                             indexing='ij',sparse=True)
-        return Grid(material = np.where(threshold < Grid._minimal_surface[surface](x,y,z),materials[1],materials[0]),
-                    size     = size,
-                    comments = util.execution_stamp('Grid','from_minimal_surface'),
-                   )
+        return GeomGrid(material = np.where(threshold < GeomGrid._minimal_surface[surface](x,y,z),materials[1],materials[0]),
+                        size     = size,
+                        comments = util.execution_stamp('GeomGrid','from_minimal_surface'),
+                       )
 
 
     def save(self,
@@ -778,7 +828,7 @@ class Grid:
     def canvas(self,
                cells: Optional[IntSequence] = None,
                offset: Optional[IntSequence] = None,
-               fill: Optional[int] = None) -> 'Grid':
+               fill: Optional[int] = None) -> 'GeomGrid':
         """
         Crop or enlarge/pad grid.
 
@@ -795,7 +845,7 @@ class Grid:
 
         Returns
         -------
-        updated : damask.Grid
+        updated : damask.GeomGrid
             Updated grid-based geometry.
 
         Examples
@@ -804,7 +854,7 @@ class Grid:
 
         >>> import numpy as np
         >>> import damask
-        >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-3)
+        >>> g = damask.GeomGrid(np.zeros([32]*3,int),np.ones(3)*1e-3)
         >>> g.canvas([32,32,16],[0,0,16])
         cells:  32 × 32 × 16
         size:   0.001 × 0.001 × 0.0005 m³
@@ -824,16 +874,16 @@ class Grid:
 
         canvas[ll[0]:ur[0],ll[1]:ur[1],ll[2]:ur[2]] = self.material[LL[0]:UR[0],LL[1]:UR[1],LL[2]:UR[2]]
 
-        return Grid(material = canvas,
-                    size     = self.size/self.cells*np.asarray(canvas.shape),
-                    origin   = self.origin+offset_*self.size/self.cells,
-                    comments = self.comments+[util.execution_stamp('Grid','canvas')],
-                   )
+        return GeomGrid(material = canvas,
+                        size     = self.size/self.cells*np.asarray(canvas.shape),
+                        origin   = self.origin+offset_*self.size/self.cells,
+                        comments = self.comments+[util.execution_stamp('GeomGrid','canvas')],
+                       )
 
 
     def mirror(self,
                directions: Sequence[str],
-               reflect: bool = False) -> 'Grid':
+               reflect: bool = False) -> 'GeomGrid':
         """
         Mirror grid along given directions.
 
@@ -846,7 +896,7 @@ class Grid:
 
         Returns
         -------
-        updated : damask.Grid
+        updated : damask.GeomGrid
             Updated grid-based geometry.
 
         Examples
@@ -855,7 +905,7 @@ class Grid:
 
         >>> import numpy as np
         >>> import damask
-        >>> (g := damask.Grid(np.arange(4*5*6).reshape([4,5,6]),np.ones(3)))
+        >>> (g := damask.GeomGrid(np.arange(4*5*6).reshape([4,5,6]),np.ones(3)))
         cells:  4 × 5 × 6
         size:   1.0 × 1.0 × 1.0 m³
         origin: 0.0   0.0   0.0 m
@@ -893,15 +943,15 @@ class Grid:
         if 'z' in directions:
             mat = np.concatenate([mat,mat[:,:,limits[0]:limits[1]:-1]],2)
 
-        return Grid(material = mat,
-                    size     = self.size/self.cells*np.asarray(mat.shape),
-                    origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Grid','mirror')],
-                   )
+        return GeomGrid(material = mat,
+                        size     = self.size/self.cells*np.asarray(mat.shape),
+                        origin   = self.origin,
+                        comments = self.comments+[util.execution_stamp('GeomGrid','mirror')],
+                       )
 
 
     def flip(self,
-             directions: Sequence[str]) -> 'Grid':
+             directions: Sequence[str]) -> 'GeomGrid':
         """
         Flip grid along given directions.
 
@@ -912,7 +962,7 @@ class Grid:
 
         Returns
         -------
-        updated : damask.Grid
+        updated : damask.GeomGrid
             Updated grid-based geometry.
 
         Examples
@@ -921,7 +971,7 @@ class Grid:
 
         >>> import numpy as np
         >>> import damask
-        >>> (g := damask.Grid(np.arange(4*5*6).reshape([4,5,6]),np.ones(3)))
+        >>> (g := damask.GeomGrid(np.arange(4*5*6).reshape([4,5,6]),np.ones(3)))
         cells:  4 × 5 × 6
         size:   1.0 × 1.0 × 1.0 m³
         origin: 0.0   0.0   0.0 m
@@ -940,16 +990,16 @@ class Grid:
 
         mat = np.flip(self.material, [valid.index(d) for d in directions if d in valid])
 
-        return Grid(material = mat,
-                    size     = self.size,
-                    origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Grid','flip')],
-                   )
+        return GeomGrid(material = mat,
+                        size     = self.size,
+                        origin   = self.origin,
+                        comments = self.comments+[util.execution_stamp('GeomGrid','flip')],
+                       )
 
 
     def rotate(self,
                R: Rotation,
-               fill: Optional[int] = None) -> 'Grid':
+               fill: Optional[int] = None) -> 'GeomGrid':
         """
         Rotate grid (possibly extending its bounding box).
 
@@ -963,7 +1013,7 @@ class Grid:
 
         Returns
         -------
-        updated : damask.Grid
+        updated : damask.GeomGrid
             Updated grid-based geometry.
 
         Examples
@@ -972,7 +1022,7 @@ class Grid:
 
         >>> import numpy as np
         >>> import damask
-        >>> (g := damask.Grid(np.arange(4*5*6).reshape([4,5,6]),np.ones(3)))
+        >>> (g := damask.GeomGrid(np.arange(4*5*6).reshape([4,5,6]),np.ones(3)))
         cells:  4 × 5 × 6
         size:   1.0 × 1.0 × 1.0 m³
         origin: 0.0   0.0   0.0 m
@@ -994,15 +1044,15 @@ class Grid:
 
         origin = self.origin-(np.asarray(material.shape)-self.cells)*.5 * self.size/self.cells
 
-        return Grid(material = material,
-                    size     = self.size/self.cells*np.asarray(material.shape),
-                    origin   = origin,
-                    comments = self.comments+[util.execution_stamp('Grid','rotate')],
-                   )
+        return GeomGrid(material = material,
+                        size     = self.size/self.cells*np.asarray(material.shape),
+                        origin   = origin,
+                        comments = self.comments+[util.execution_stamp('GeomGrid','rotate')],
+                       )
 
 
     def scale(self,
-              cells: IntSequence) -> 'Grid':
+              cells: IntSequence) -> 'GeomGrid':
         """
         Scale grid to new cell counts.
 
@@ -1013,7 +1063,7 @@ class Grid:
 
         Returns
         -------
-        updated : damask.Grid
+        updated : damask.GeomGrid
             Updated grid-based geometry.
 
         Examples
@@ -1022,7 +1072,7 @@ class Grid:
 
         >>> import numpy as np
         >>> import damask
-        >>> (g := damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4))
+        >>> (g := damask.GeomGrid(np.zeros([32]*3,int),np.ones(3)*1e-4))
         cells:  32 × 32 × 32
         size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
@@ -1040,28 +1090,28 @@ class Grid:
                                points=orig,method='nearest',bounds_error=False,fill_value=None)
         new = grid_filters.coordinates0_point(cells,self.size,self.origin)
 
-        return Grid(material = interpolator(values=self.material)(new).astype(int),
-                    size     = self.size,
-                    origin   = self.origin,
-                    initial_conditions = {k: interpolator(values=v)(new)
-                                          for k,v in self.initial_conditions.items()},
-                    comments = self.comments+[util.execution_stamp('Grid','scale')],
-                   )
+        return GeomGrid(material = interpolator(values=self.material)(new).astype(int),
+                        size     = self.size,
+                        origin   = self.origin,
+                        initial_conditions = {k: interpolator(values=v)(new)
+                                              for k,v in self.initial_conditions.items()},
+                        comments = self.comments+[util.execution_stamp('GeomGrid','scale')],
+                       )
 
 
     def assemble(self,
-                 idx: np.ndarray) -> 'Grid':
+                 idx: np.ndarray) -> 'GeomGrid':
         """
         Assemble new grid from index map.
 
         Parameters
         ----------
         idx : numpy.ndarray of int, shape (:,:,:) or (:,:,:,3)
-            Grid of flat indices or coordinate indices.
+            GeomGrid of flat indices or coordinate indices.
 
         Returns
         -------
-        updated : damask.Grid
+        updated : damask.GeomGrid
             Updated grid-based geometry.
             Cell count of resulting grid matches shape of index map.
 
@@ -1070,37 +1120,37 @@ class Grid:
         flat = (idx if len(idx.shape)==3 else grid_filters.ravel_index(idx)).flatten(order='F')
         ic = {k: v.flatten(order='F')[flat].reshape(cells,order='F') for k,v in self.initial_conditions.items()}
 
-        return Grid(material = self.material.flatten(order='F')[flat].reshape(cells,order='F'),
-                    size     = self.size,
-                    origin   = self.origin,
-                    initial_conditions = ic,
-                    comments = self.comments+[util.execution_stamp('Grid','assemble')],
-                   )
+        return GeomGrid(material = self.material.flatten(order='F')[flat].reshape(cells,order='F'),
+                        size     = self.size,
+                        origin   = self.origin,
+                        initial_conditions = ic,
+                        comments = self.comments+[util.execution_stamp('GeomGrid','assemble')],
+                       )
 
 
-    def renumber(self) -> 'Grid':
+    def renumber(self) -> 'GeomGrid':
         """
         Renumber sorted material indices as 0,...,N-1.
 
         Returns
         -------
-        updated : damask.Grid
+        updated : damask.GeomGrid
             Updated grid-based geometry.
 
         """
         _,renumbered = np.unique(self.material,return_inverse=True)
 
-        return Grid(material = renumbered.reshape(self.cells),
-                    size     = self.size,
-                    origin   = self.origin,
-                    initial_conditions = self.initial_conditions,
-                    comments = self.comments+[util.execution_stamp('Grid','renumber')],
-                   )
+        return GeomGrid(material = renumbered.reshape(self.cells),
+                        size     = self.size,
+                        origin   = self.origin,
+                        initial_conditions = self.initial_conditions,
+                        comments = self.comments+[util.execution_stamp('GeomGrid','renumber')],
+                       )
 
 
     def substitute(self,
                    from_material: Union[int,IntSequence],
-                   to_material: Union[int,IntSequence]) -> 'Grid':
+                   to_material: Union[int,IntSequence]) -> 'GeomGrid':
         """
         Substitute material indices.
 
@@ -1113,7 +1163,7 @@ class Grid:
 
         Returns
         -------
-        updated : damask.Grid
+        updated : damask.GeomGrid
             Updated grid-based geometry.
 
         """
@@ -1122,21 +1172,21 @@ class Grid:
                        to_material if isinstance(to_material,(Sequence,np.ndarray)) else [to_material]): # ToDo Python 3.10 has strict mode for zip
             material[self.material==f] = t
 
-        return Grid(material = material,
-                    size     = self.size,
-                    origin   = self.origin,
-                    initial_conditions = self.initial_conditions,
-                    comments = self.comments+[util.execution_stamp('Grid','substitute')],
-                   )
+        return GeomGrid(material = material,
+                        size     = self.size,
+                        origin   = self.origin,
+                        initial_conditions = self.initial_conditions,
+                        comments = self.comments+[util.execution_stamp('GeomGrid','substitute')],
+                       )
 
 
-    def sort(self) -> 'Grid':
+    def sort(self) -> 'GeomGrid':
         """
         Sort material indices such that min(material ID) is located at (0,0,0).
 
         Returns
         -------
-        updated : damask.Grid
+        updated : damask.GeomGrid
             Updated grid-based geometry.
 
         """
@@ -1145,12 +1195,12 @@ class Grid:
         sort_idx = np.argsort(from_ma)
         ma = np.unique(a)[sort_idx][np.searchsorted(from_ma,a,sorter = sort_idx)]
 
-        return Grid(material = ma.reshape(self.cells,order='F'),
-                    size     = self.size,
-                    origin   = self.origin,
-                    initial_conditions = self.initial_conditions,
-                    comments = self.comments+[util.execution_stamp('Grid','sort')],
-                   )
+        return GeomGrid(material = ma.reshape(self.cells,order='F'),
+                        size     = self.size,
+                        origin   = self.origin,
+                        initial_conditions = self.initial_conditions,
+                        comments = self.comments+[util.execution_stamp('GeomGrid','sort')],
+                       )
 
 
     def clean(self,
@@ -1158,7 +1208,7 @@ class Grid:
               selection: Optional[IntSequence] = None,
               invert_selection: bool = False,
               periodic: bool = True,
-              rng_seed: Optional[NumpyRngSeed] = None) -> 'Grid':
+              rng_seed: Optional[NumpyRngSeed] = None) -> 'GeomGrid':
         """
         Smooth grid by selecting most frequent material ID within given stencil at each location.
 
@@ -1179,7 +1229,7 @@ class Grid:
 
         Returns
         -------
-        updated : damask.Grid
+        updated : damask.GeomGrid
             Updated grid-based geometry.
 
         Notes
@@ -1213,12 +1263,12 @@ class Grid:
                                           mode='wrap' if periodic else 'nearest',
                                           extra_keywords=dict(selection=selection_,rng=rng),
                                          ).astype(self.material.dtype)
-        return Grid(material = material,
-                    size     = self.size,
-                    origin   = self.origin,
-                    initial_conditions = self.initial_conditions,
-                    comments = self.comments+[util.execution_stamp('Grid','clean')],
-                   )
+        return GeomGrid(material = material,
+                        size     = self.size,
+                        origin   = self.origin,
+                        initial_conditions = self.initial_conditions,
+                        comments = self.comments+[util.execution_stamp('GeomGrid','clean')],
+                       )
 
 
     def add_primitive(self,
@@ -1228,7 +1278,7 @@ class Grid:
                       fill: Optional[int] = None,
                       R: Rotation = Rotation(),
                       inverse: bool = False,
-                      periodic: bool = True) -> 'Grid':
+                      periodic: bool = True) -> 'GeomGrid':
         """
         Insert a primitive geometric object at a given position.
 
@@ -1258,7 +1308,7 @@ class Grid:
 
         Returns
         -------
-        updated : damask.Grid
+        updated : damask.GeomGrid
             Updated grid-based geometry.
 
         Examples
@@ -1267,7 +1317,7 @@ class Grid:
 
         >>> import numpy as np
         >>> import damask
-        >>> g = damask.Grid(np.zeros([64]*3,int), np.ones(3)*1e-4)
+        >>> g = damask.GeomGrid(np.zeros([64]*3,int), np.ones(3)*1e-4)
         >>> g.add_primitive(np.ones(3)*5e-5,np.ones(3)*5e-5,1)
         cells : 64 × 64 × 64
         size  : 0.0001 × 0.0001 × 0.0001 m³
@@ -1278,7 +1328,7 @@ class Grid:
 
         >>> import numpy as np
         >>> import damask
-        >>> g = damask.Grid(np.zeros([64]*3,int), np.ones(3)*1e-4)
+        >>> g = damask.GeomGrid(np.zeros([64]*3,int), np.ones(3)*1e-4)
         >>> g.add_primitive(np.ones(3,int)*32,np.zeros(3),np.inf)
         cells : 64 × 64 × 64
         size  : 0.0001 × 0.0001 × 0.0001 m³
@@ -1304,14 +1354,14 @@ class Grid:
         if periodic:                                                                                # translate back to center
             mask = np.roll(mask,((c/self.size-0.5)*self.cells).round().astype(np.int64),(0,1,2))
 
-        return Grid(material = np.where(np.logical_not(mask) if inverse else mask,
+        return GeomGrid(material = np.where(np.logical_not(mask) if inverse else mask,
                                         self.material,
                                         np.nanmax(self.material)+1 if fill is None else fill),
-                    size     = self.size,
-                    origin   = self.origin,
-                    initial_conditions = self.initial_conditions,
-                    comments = self.comments+[util.execution_stamp('Grid','add_primitive')],
-                   )
+                        size     = self.size,
+                        origin   = self.origin,
+                        initial_conditions = self.initial_conditions,
+                        comments = self.comments+[util.execution_stamp('GeomGrid','add_primitive')],
+                       )
 
 
     def vicinity_offset(self,
@@ -1319,7 +1369,7 @@ class Grid:
                         offset: Optional[int] = None,
                         selection: Optional[IntSequence] = None,
                         invert_selection: bool = False,
-                        periodic: bool = True) -> 'Grid':
+                        periodic: bool = True) -> 'GeomGrid':
         """
         Offset material ID of points in the vicinity of selected (or just other) material IDs.
 
@@ -1345,7 +1395,7 @@ class Grid:
 
         Returns
         -------
-        updated : damask.Grid
+        updated : damask.GeomGrid
             Updated grid-based geometry.
 
         """
@@ -1377,12 +1427,12 @@ class Grid:
                                       extra_keywords=dict(selection=selection_),
                                      )
 
-        return Grid(material = np.where(mask, self.material + offset_,self.material),
-                    size     = self.size,
-                    origin   = self.origin,
-                    initial_conditions = self.initial_conditions,
-                    comments = self.comments+[util.execution_stamp('Grid','vicinity_offset')],
-                   )
+        return GeomGrid(material = np.where(mask, self.material + offset_,self.material),
+                        size     = self.size,
+                        origin   = self.origin,
+                        initial_conditions = self.initial_conditions,
+                        comments = self.comments+[util.execution_stamp('GeomGrid','vicinity_offset')],
+                       )
 
 
     def get_grain_boundaries(self,

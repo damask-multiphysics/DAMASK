@@ -5,7 +5,7 @@ import numpy as np
 from vtkmodules.vtkCommonCore import vtkVersion
 
 from damask import VTK
-from damask import Grid
+from damask import GeomGrid
 from damask import Table
 from damask import Rotation
 from damask import Colormap
@@ -19,7 +19,7 @@ def default():
     """Simple geometry."""
     g = np.array([8,5,4])
     l = np.prod(g[:2])
-    return Grid(np.concatenate((np.ones  (l,dtype=int),
+    return GeomGrid(np.concatenate((np.ones  (l,dtype=int),
                                 np.arange(l,dtype=int)+2,
                                 np.ones  (l,dtype=int)*2,
                                 np.arange(l,dtype=int)+1)).reshape(g,order='F'),
@@ -31,15 +31,15 @@ def random():
     size = (1+np.random.rand(3))*1e-5
     cells = np.random.randint(10,20,3)
     s = seeds.from_random(size,np.random.randint(5,25),cells)
-    return Grid.from_Voronoi_tessellation(cells,size,s)
+    return GeomGrid.from_Voronoi_tessellation(cells,size,s)
 
 @pytest.fixture
 def res_path(res_path_base):
     """Directory containing testing resources."""
-    return res_path_base/'Grid'
+    return res_path_base/'GeomGrid'
 
 
-class TestGrid:
+class TestGeomGrid:
 
     @pytest.fixture(autouse=True)
     def _patch_execution_stamp(self, patch_execution_stamp):
@@ -65,49 +65,55 @@ class TestGrid:
 
     def test_read_write_vti(self,default,tmp_path):
         default.save(tmp_path/'default')
-        new = Grid.load(tmp_path/'default.vti')
+        new = GeomGrid.load(tmp_path/'default.vti')
         assert new == default
 
     def test_invalid_no_material(self,tmp_path):
         v = VTK.from_image_data(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
         v.save(tmp_path/'no_materialpoint.vti',parallel=False)
         with pytest.raises(KeyError):
-            Grid.load(tmp_path/'no_materialpoint.vti')
+            GeomGrid.load(tmp_path/'no_materialpoint.vti')
 
     def test_invalid_material_type(self):
         with pytest.raises(TypeError):
-            Grid(np.zeros((3,3,3),dtype='complex'),np.ones(3))
+            GeomGrid(np.zeros((3,3,3),dtype='complex'),np.ones(3))
 
     def test_cast_to_int(self):
-        g = Grid(np.zeros((3,3,3)),np.ones(3))
+        g = GeomGrid(np.zeros((3,3,3)),np.ones(3))
         assert g.material.dtype in np.sctypes['int']
 
     def test_invalid_size(self,default):
         with pytest.raises(ValueError):
-            Grid(default.material[1:,1:,1:],
+            GeomGrid(default.material[1:,1:,1:],
                  size=np.ones(2))
 
     def test_save_load_ASCII(self,default,tmp_path):
         default.save_ASCII(tmp_path/'ASCII')
         default.material -= 1
-        assert Grid.load_ASCII(tmp_path/'ASCII') == default
+        assert GeomGrid.load_ASCII(tmp_path/'ASCII') == default
+
+    def test_save_load_SPPARKS(self,res_path,tmp_path):
+        v = VTK.load(res_path/'SPPARKS_dump.vti')
+        v.set('material',v.get('Spin')).delete('Spin').save(tmp_path/'SPPARKS_dump.vti',parallel=False)
+        assert GeomGrid.load_SPPARKS(res_path/'SPPARKS_dump.vti') == \
+               GeomGrid.load(tmp_path/'SPPARKS_dump.vti')
 
     def test_invalid_origin(self,default):
         with pytest.raises(ValueError):
-            Grid(default.material[1:,1:,1:],
+            GeomGrid(default.material[1:,1:,1:],
                  size=np.ones(3),
                  origin=np.ones(4))
 
     def test_invalid_materials_shape(self,default):
         material = np.ones((3,3))
         with pytest.raises(ValueError):
-            Grid(material,
+            GeomGrid(material,
                  size=np.ones(3))
 
     def test_invalid_materials_type(self,default):
         material = np.random.randint(1,300,(3,4,5))==1
         with pytest.raises(TypeError):
-            Grid(material)
+            GeomGrid(material)
 
     @pytest.mark.parametrize('directions,reflect',[
                                                    (['x'],        False),
@@ -121,7 +127,7 @@ class TestGrid:
         tag = f'directions_{"-".join(directions)}+reflect_{reflect}'
         reference = res_path/f'mirror_{tag}.vti'
         if update: modified.save(reference)
-        assert Grid.load(reference) == modified
+        assert GeomGrid.load(reference) == modified
 
     @pytest.mark.parametrize('directions',[(1,2,'y'),('a','b','x'),[1]])
     def test_mirror_invalid(self,default,directions):
@@ -146,7 +152,7 @@ class TestGrid:
         tag = f'directions_{"-".join(directions)}'
         reference = res_path/f'flip_{tag}.vti'
         if update: modified.save(reference)
-        assert Grid.load(reference) == modified
+        assert GeomGrid.load(reference) == modified
 
     def test_flip_order_invariant(self,default):
         direction = np.array(['x','y','z'])
@@ -180,7 +186,7 @@ class TestGrid:
         reference = res_path/f'clean_{distance}_{util.srepr(selection,"+")}_{periodic}.vti'
         if update:
             current.save(reference)
-        assert Grid.load(reference) == current
+        assert GeomGrid.load(reference) == current
 
     @pytest.mark.parametrize('selection',[list(np.random.randint(1,20,6)),np.random.randint(1,20,6)])
     @pytest.mark.parametrize('invert',[True,False])
@@ -207,14 +213,14 @@ class TestGrid:
         tag = f'grid_{util.srepr(cells,"-")}'
         reference = res_path/f'scale_{tag}.vti'
         if update: modified.save(reference)
-        assert Grid.load(reference) == modified
+        assert GeomGrid.load(reference) == modified
 
     def test_renumber(self,default):
         material = default.material.copy()
         for m in np.unique(material):
             material[material==m] = material.max() + np.random.randint(1,30)
         default.material -= 1
-        modified = Grid(material,
+        modified = GeomGrid(material,
                         default.size,
                         default.origin)
         assert not default == modified
@@ -223,13 +229,13 @@ class TestGrid:
     def test_assemble(self):
         cells = np.random.randint(8,16,3)
         N = cells.prod()
-        g = Grid(np.arange(N).reshape(cells),np.ones(3))
+        g = GeomGrid(np.arange(N).reshape(cells),np.ones(3))
         idx = np.random.randint(0,N,N).reshape(cells)
         assert (idx == g.assemble(idx).material).all
 
     def test_substitute(self,default):
         offset = np.random.randint(1,500)
-        modified = Grid(default.material + offset,
+        modified = GeomGrid(default.material + offset,
                         default.size,
                         default.origin)
         assert not default == modified
@@ -250,7 +256,7 @@ class TestGrid:
 
     def test_sort(self):
         cells = np.random.randint(5,20,3)
-        m = Grid(np.random.randint(1,20,cells)*3,np.ones(3)).sort().material.flatten(order='F')
+        m = GeomGrid(np.random.randint(1,20,cells)*3,np.ones(3)).sort().material.flatten(order='F')
         for i,v in enumerate(m):
             assert i==0 or v > m[:i].max() or v in m[:i]
 
@@ -269,7 +275,7 @@ class TestGrid:
         tag = f'Eulers_{util.srepr(Eulers,"-")}'
         reference = res_path/f'rotate_{tag}.vti'
         if update: modified.save(reference)
-        assert Grid.load(reference) == modified
+        assert GeomGrid.load(reference) == modified
 
     def test_canvas_extend(self,default):
         cells = default.cells
@@ -280,7 +286,7 @@ class TestGrid:
     @pytest.mark.parametrize('sign',[+1,-1])
     @pytest.mark.parametrize('extra_offset',[0,-1])
     def test_canvas_move_out(self,sign,extra_offset):
-        g = Grid(np.zeros(np.random.randint(3,30,(3)),int),np.ones(3))
+        g = GeomGrid(np.zeros(np.random.randint(3,30,(3)),int),np.ones(3))
         o = sign*np.ones(3)*g.cells.min() +extra_offset*sign
         if extra_offset == 0:
             assert np.all(g.canvas(offset=o).material == 1)
@@ -288,7 +294,7 @@ class TestGrid:
             assert np.all(np.unique(g.canvas(offset=o).material) == (0,1))
 
     def test_canvas_cells(self,default):
-        g = Grid(np.zeros(np.random.randint(3,30,(3)),int),np.ones(3))
+        g = GeomGrid(np.zeros(np.random.randint(3,30,(3)),int),np.ones(3))
         cells = np.random.randint(1,30,(3))
         offset = np.random.randint(-30,30,(3))
         assert np.all(g.canvas(cells,offset).cells == cells)
@@ -308,8 +314,8 @@ class TestGrid:
         o = np.random.random(3)-.5
         g = np.random.randint(8,32,(3))
         s = np.random.random(3)+.5
-        G_1 = Grid(np.ones(g,'i'),s,o).add_primitive(diameter,center1,exponent)
-        G_2 = Grid(np.ones(g,'i'),s,o).add_primitive(diameter,center2,exponent)
+        G_1 = GeomGrid(np.ones(g,'i'),s,o).add_primitive(diameter,center1,exponent)
+        G_2 = GeomGrid(np.ones(g,'i'),s,o).add_primitive(diameter,center2,exponent)
         assert np.count_nonzero(G_1.material!=2) == np.count_nonzero(G_2.material!=2)
 
     @pytest.mark.parametrize('center',[np.random.randint(4,10,(3)),
@@ -323,8 +329,8 @@ class TestGrid:
         g = np.random.randint(8,32,(3))
         s = np.random.random(3)+.5
         fill = np.random.randint(10)+2
-        G_1 = Grid(np.ones(g,'i'),s).add_primitive(.3,center,1,fill,inverse=inverse,periodic=periodic)
-        G_2 = Grid(np.ones(g,'i'),s).add_primitive(.3,center,1,fill,Rotation.from_random(),inverse,periodic=periodic)
+        G_1 = GeomGrid(np.ones(g,'i'),s).add_primitive(.3,center,1,fill,inverse=inverse,periodic=periodic)
+        G_2 = GeomGrid(np.ones(g,'i'),s).add_primitive(.3,center,1,fill,Rotation.from_random(),inverse,periodic=periodic)
         assert G_1 == G_2
 
     @pytest.mark.parametrize('exponent',[1,np.inf,np.random.random(3)*2.])
@@ -332,7 +338,7 @@ class TestGrid:
         """Shapes defined in the center should always produce a grid with reflection symmetry along the coordinate axis."""
         o = np.random.random(3)-.5
         s = np.random.random(3)*5.
-        grid = Grid(np.zeros(np.random.randint(8,32,3),'i'),s,o).add_primitive(np.random.random(3)*3.,o+s/2.,exponent)
+        grid = GeomGrid(np.zeros(np.random.randint(8,32,3),'i'),s,o).add_primitive(np.random.random(3)*3.,o+s/2.,exponent)
         for axis in [0,1,2]:
             assert np.all(grid.material==np.flip(grid.material,axis=axis))
 
@@ -352,7 +358,7 @@ class TestGrid:
         if selection == 1:
             m2[m==1] = 1
 
-        grid = Grid(m,np.random.rand(3)).vicinity_offset(distance,offset,selection=selection)
+        grid = GeomGrid(m,np.random.rand(3)).vicinity_offset(distance,offset,selection=selection)
 
         assert np.all(m2==grid.material)
 
@@ -379,8 +385,8 @@ class TestGrid:
         size   = np.random.random(3) + 1.0
         N_seeds= np.random.randint(10,30)
         seeds  = np.random.rand(N_seeds,3) * np.broadcast_to(size,(N_seeds,3))
-        Voronoi  = Grid.from_Voronoi_tessellation( cells,size,seeds,                 np.arange(N_seeds)+5,periodic)
-        Laguerre = Grid.from_Laguerre_tessellation(cells,size,seeds,np.ones(N_seeds),np.arange(N_seeds)+5,periodic)
+        Voronoi  = GeomGrid.from_Voronoi_tessellation( cells,size,seeds,                 np.arange(N_seeds)+5,periodic)
+        Laguerre = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,np.ones(N_seeds),np.arange(N_seeds)+5,periodic)
         assert Laguerre == Voronoi
 
     def test_Laguerre_weights(self):
@@ -391,7 +397,7 @@ class TestGrid:
         weights= np.full((N_seeds),-np.inf)
         ms     = np.random.randint(N_seeds)
         weights[ms] = np.random.random()
-        Laguerre = Grid.from_Laguerre_tessellation(cells,size,seeds,weights,periodic=np.random.random()>0.5)
+        Laguerre = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,weights,periodic=np.random.random()>0.5)
         assert np.all(Laguerre.material == ms)
 
     @pytest.mark.parametrize('approach',['Laguerre','Voronoi'])
@@ -402,9 +408,9 @@ class TestGrid:
         material = np.zeros(cells)
         material[:,cells[1]//2:,:] = 1
         if   approach == 'Laguerre':
-            grid = Grid.from_Laguerre_tessellation(cells,size,seeds,np.ones(2),periodic=np.random.random()>0.5)
+            grid = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,np.ones(2),periodic=np.random.random()>0.5)
         elif approach == 'Voronoi':
-            grid = Grid.from_Voronoi_tessellation(cells,size,seeds,            periodic=np.random.random()>0.5)
+            grid = GeomGrid.from_Voronoi_tessellation(cells,size,seeds,            periodic=np.random.random()>0.5)
         assert np.all(grid.material == material)
 
     @pytest.mark.parametrize('surface',['Schwarz P',
@@ -426,7 +432,7 @@ class TestGrid:
         threshold = 2*np.random.rand()-1.
         periods = np.random.randint(2)+1
         materials = np.random.randint(0,40,2)
-        grid = Grid.from_minimal_surface(cells,size,surface,threshold,periods,materials)
+        grid = GeomGrid.from_minimal_surface(cells,size,surface,threshold,periods,materials)
         assert set(grid.material.flatten()) | set(materials) == set(materials) \
                and (grid.size == size).all() and (grid.cells == cells).all()
 
@@ -445,7 +451,7 @@ class TestGrid:
                                         ])
     def test_minimal_surface_volume(self,surface,threshold):
         cells = np.ones(3,dtype=int)*64
-        grid = Grid.from_minimal_surface(cells,np.ones(3),surface,threshold)
+        grid = GeomGrid.from_minimal_surface(cells,np.ones(3),surface,threshold)
         assert np.isclose(np.count_nonzero(grid.material==1)/np.prod(grid.cells),.5,rtol=1e-3)
 
     def test_from_table(self):
@@ -456,23 +462,23 @@ class TestGrid:
         z[cells[:2].prod()*int(cells[2]/2):] = 0
         t = Table({'coords':3,'z':1},np.column_stack((coords,z)))
         t = t.set('indicator',t.get('coords')[:,0])
-        g = Grid.from_table(t,'coords',['indicator','z'])
+        g = GeomGrid.from_table(t,'coords',['indicator','z'])
         assert g.N_materials == g.cells[0]*2 and (g.material[:,:,-1]-g.material[:,:,0] == cells[0]).all()
 
     def test_from_table_recover(self,tmp_path):
         cells = np.random.randint(60,100,3)
         size = np.ones(3)+np.random.rand(3)
         s = seeds.from_random(size,np.random.randint(60,100))
-        grid = Grid.from_Voronoi_tessellation(cells,size,s)
+        grid = GeomGrid.from_Voronoi_tessellation(cells,size,s)
         coords = grid_filters.coordinates0_point(cells,size)
         t = Table({'c':3,'m':1},np.column_stack((coords.reshape(-1,3,order='F'),grid.material.flatten(order='F'))))
-        assert grid.sort().renumber() == Grid.from_table(t,'c',['m'])
+        assert grid.sort().renumber() == GeomGrid.from_table(t,'c',['m'])
 
     @pytest.mark.parametrize('periodic',[True,False])
     @pytest.mark.parametrize('direction',['x','y','z',['x','y'],'zy','xz',['x','y','z']])
     @pytest.mark.xfail(vtkVersion.GetVTKMajorVersion()<8, reason='missing METADATA')
     def test_get_grain_boundaries(self,update,res_path,periodic,direction):
-        grid = Grid.load(res_path/'get_grain_boundaries_8g12x15x20.vti')
+        grid = GeomGrid.load(res_path/'get_grain_boundaries_8g12x15x20.vti')
         current = grid.get_grain_boundaries(periodic,direction)
         if update:
             current.save(res_path/f'get_grain_boundaries_8g12x15x20_{direction}_{periodic}.vtu',parallel=False)
@@ -485,24 +491,24 @@ class TestGrid:
             default.get_grain_boundaries(directions=directions)
 
     def test_load_DREAM3D(self,res_path):
-        grain = Grid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d','FeatureIds')
-        point = Grid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d')
+        grain = GeomGrid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d','FeatureIds')
+        point = GeomGrid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d')
 
         assert np.allclose(grain.origin,point.origin) and \
                np.allclose(grain.size,point.size) and \
                (grain.sort().material == point.material+1).all()
 
     def test_load_DREAM3D_reference(self,res_path,update):
-        current   = Grid.load_DREAM3D(res_path/'measured.dream3d')
-        reference = Grid.load(res_path/'measured.vti')
+        current   = GeomGrid.load_DREAM3D(res_path/'measured.dream3d')
+        reference = GeomGrid.load(res_path/'measured.vti')
         if update:
             current.save(res_path/'measured.vti')
 
         assert current == reference
 
     def test_load_Neper_reference(self,res_path,update):
-        current   = Grid.load_Neper(res_path/'n10-id1_scaled.vtk').renumber()
-        reference = Grid.load(res_path/'n10-id1_scaled.vti')
+        current   = GeomGrid.load_Neper(res_path/'n10-id1_scaled.vtk').renumber()
+        reference = GeomGrid.load(res_path/'n10-id1_scaled.vti')
         if update:
             current.save(res_path/'n10-id1_scaled.vti')
 

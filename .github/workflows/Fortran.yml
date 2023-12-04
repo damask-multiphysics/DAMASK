@@ -2,7 +2,7 @@ name: Grid and Mesh Solver
 on: [push]
 
 env:
-  PETSC_VERSION: '3.18.4'
+  PETSC_VERSION: '3.20.1'
   HOMEBREW_NO_ANALYTICS: 'ON'     # Make Homebrew installation a little quicker
   HOMEBREW_NO_AUTO_UPDATE: 'ON'
   HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK: 'ON'
@@ -17,7 +17,7 @@ jobs:
 
     strategy:
       matrix:
-        gcc_v: [9, 10, 11, 12]
+        gcc_v: [9, 10, 11, 12, 13]
       fail-fast: false
 
     env:
@@ -47,7 +47,7 @@ jobs:
       - name: PETSc - Download
         if: steps.petsc-download.outputs.cache-hit != 'true'
         run: |
-          wget -q https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-${PETSC_VERSION}.tar.gz -P download
+          wget -q https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc-${PETSC_VERSION}.tar.gz -P download
 
       - name: PETSc - Prepare
         run: |
@@ -88,31 +88,22 @@ jobs:
 
   intel:
 
-    runs-on: [ubuntu-22.04]
+    runs-on: ubuntu-22.04
+    container:
+      image: intel/oneapi-hpckit:latest
 
     strategy:
-      matrix:
-        intel_v: [classic, llvm]      # Variant of Intel compilers
       fail-fast: false
-
-    env:
-      INTEL_V: ${{ matrix.intel_v }}
 
     steps:
       - uses: actions/checkout@v3
 
       - name: Intel - Install
         run: |
-          wget -q https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
-          sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
-          rm GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
-          echo "deb https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
-          sudo apt-get update
-          sudo apt-get install \
-          intel-basekit \
-          intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic intel-oneapi-compiler-fortran \
-          intel-oneapi-openmp intel-oneapi-mkl-devel
-          source /opt/intel/oneapi/setvars.sh
+          apt-get update --allow-insecure-repositories
+          apt-get install --allow-unauthenticated -y \
+          cmake build-essential autoconf libtool \
+          zlib1g-dev
           printenv >> $GITHUB_ENV
 
       - name: PETSc - Cache download
@@ -125,15 +116,15 @@ jobs:
       - name: PETSc - Download
         if: steps.petsc-download.outputs.cache-hit != 'true'
         run: |
-          wget -q https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-${PETSC_VERSION}.tar.gz -P download
+          wget -q https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc-${PETSC_VERSION}.tar.gz -P download
 
       - name: PETSc - Prepare
         run: |
           tar -xf download/petsc-${PETSC_VERSION}.tar.gz -C .
-          sed -i "1719s/if not os.path.isfile(os.path.join(self.packageDir,'configure')):/if True:/g" \
+          sed -i "1805s/if not os.path.isfile(os.path.join(self.packageDir,self.configureName)):/if True:/g" \
           ./petsc-${PETSC_VERSION}/config/BuildSystem/config/package.py
           export PETSC_DIR=${PWD}/petsc-${PETSC_VERSION}
-          export PETSC_ARCH=intel-${INTEL_V}
+          export PETSC_ARCH=intel
           printenv >> $GITHUB_ENV
 
       - name: PETSc - Cache installation
@@ -141,21 +132,9 @@ jobs:
         uses: actions/cache@v3
         with:
           path: petsc-${{ env.PETSC_VERSION }}
-          key: petsc-${{ env.PETSC_VERSION }}-intel-${{ matrix.intel_v }}-${{ hashFiles('**/petscversion.h') }}
+          key: petsc-${{ env.PETSC_VERSION }}-intel-${{ hashFiles('**/petscversion.h') }}
 
-      - name: PETSc - Install (classic)
-        if: contains( matrix.intel_v, 'classic')
-        run: |
-          cd petsc-${PETSC_VERSION}
-          ./configure \
-          --with-fc='mpiifort -fc=ifort -diag-disable=10441' \
-          --with-cc='mpiicc -cc=icc -diag-disable=10441' \
-          --with-cxx='mpiicpc -cxx=icpc -diag-disable=10441' \
-          --download-fftw --download-hdf5 --download-hdf5-fortran-bindings=1 --download-zlib
-          make all
-
-      - name: PETSc - Install (LLVM)
-        if: contains( matrix.intel_v, 'llvm')
+      - name: PETSc - Install
         run: |
           cd petsc-${PETSC_VERSION}
           ./configure \
@@ -166,24 +145,11 @@ jobs:
           make all
 
       - name: DAMASK - Compile
-        if: contains( matrix.intel_v, 'classic')
         run: |
           cmake -B build/grid -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=${PWD}
           cmake --build build/grid --parallel
           cmake --install build/grid
           cmake -B build/mesh -DDAMASK_SOLVER=mesh -DCMAKE_INSTALL_PREFIX=${PWD}
-          cmake --build build/mesh --parallel
-          cmake --install build/mesh
-
-      # ifx has issue with openMP
-      # https://community.intel.com/t5/Intel-Fortran-Compiler/ifx-ICE-and-SEGFAULT/m-p/1459877
-      - name: DAMASK - Compile
-        if: contains( matrix.intel_v, 'llvm')
-        run: |
-          cmake -B build/grid -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=${PWD} -DOPENMP=OFF
-          cmake --build build/grid --parallel
-          cmake --install build/grid
-          cmake -B build/mesh -DDAMASK_SOLVER=mesh -DCMAKE_INSTALL_PREFIX=${PWD} -DOPENMP=OFF
           cmake --build build/mesh --parallel
           cmake --install build/mesh
 

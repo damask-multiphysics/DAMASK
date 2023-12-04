@@ -431,65 +431,34 @@ function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
   real(pREAL), dimension(sum(Ntwin))               :: characteristicShear
 
   integer :: &
-    a, &                                                                                            !< index of active system
-    p, &                                                                                            !< index in potential system list
     f, &                                                                                            !< index of my family
-    s                                                                                               !< index of my system in current family
+    s, e
 
-  integer, dimension(HP_NTWIN), parameter :: &
-    HP_SHEARTWIN = reshape( [&
-      1, &  ! <-10.1>{10.2}
-      1, &
-      1, &
-      1, &
-      1, &
-      1, &
-      2, &  ! <11.6>{-1-1.1}
-      2, &
-      2, &
-      2, &
-      2, &
-      2, &
-      3, &  ! <10.-2>{10.1}
-      3, &
-      3, &
-      3, &
-      3, &
-      3, &
-      4, &  ! <11.-3>{11.2}
-      4, &
-      4, &
-      4, &
-      4, &
-      4  &
-      ],[HP_NTWIN])                                                                                 !< indicator to formulas below
 
-  a = 0
-  myFamilies: do f = 1,size(Ntwin,1)
-    mySystems: do s = 1,Ntwin(f)
-      a = a + 1
-      select case(lattice)
-        case('cF','cI')
-          characteristicShear(a) = 0.5_pREAL*sqrt(2.0_pREAL)
-        case('hP')
-          if (cOverA < 1.0_pREAL .or. cOverA > 2.0_pREAL) &
-            call IO_error(131,ext_msg='crystal_characteristicShear_Twin')
-          p = sum(HP_NTWINSYSTEM(1:f-1))+s
-          select case(HP_SHEARTWIN(p))                                                              ! from Christian & Mahajan 1995 p.29
-            case (1)                                                                                ! <-10.1>{10.2}
-              characteristicShear(a) = (3.0_pREAL-cOverA**2)/sqrt(3.0_pREAL)/CoverA
-            case (2)                                                                                ! <11.6>{-1-1.1}
-              characteristicShear(a) = 1.0_pREAL/cOverA
-            case (3)                                                                                ! <10.-2>{10.1}
-              characteristicShear(a) = (4.0_pREAL*cOverA**2-9.0_pREAL)/sqrt(48.0_pREAL)/cOverA
-            case (4)                                                                                ! <11.-3>{11.2}
-              characteristicShear(a) = 2.0_pREAL*(cOverA**2-2.0_pREAL)/3.0_pREAL/cOverA
-          end select
-        case default
-          call IO_error(137,ext_msg='crystal_characteristicShear_Twin: '//trim(lattice))
-      end select
-    end do mySystems
-  end do myFamilies
+  select case(lattice)
+    case('cF','cI')                                                                                 ! 10.1016/0079-6425(94)00007-7, Table 1
+      characteristicShear = 0.5_pREAL*sqrt(2.0_pREAL)
+    case('hP')                                                                                      ! 10.1016/0079-6425(94)00007-7, Table 3
+      if (cOverA < 1.0_pREAL .or. cOverA > 2.0_pREAL) &
+        call IO_error(131,ext_msg='crystal_characteristicShear_Twin')
+
+      myFamilies: do f = 1,size(Ntwin,1)
+        s = sum(Ntwin(:f-1)) + 1
+        e = sum(Ntwin(:f))
+        select case(f)
+          case (1)                                                                                  ! <-10.1>{10.2}
+            characteristicShear(s:e) = (3.0_pREAL-cOverA**2)/sqrt(3.0_pREAL)/CoverA
+          case (2)                                                                                  ! <11.6>{-1-1.1}
+            characteristicShear(s:e) = 1.0_pREAL/cOverA
+          case (3)                                                                                  ! <10.-2>{10.1}
+            characteristicShear(s:e) = (4.0_pREAL*cOverA**2-9.0_pREAL)/sqrt(48.0_pREAL)/cOverA
+          case (4)                                                                                  ! <11.-3>{11.2}
+            characteristicShear(s:e) = 2.0_pREAL*(cOverA**2-2.0_pREAL)/3.0_pREAL/cOverA
+        end select
+      end do myFamilies
+    case default
+      call IO_error(137,ext_msg='crystal_characteristicShear_Twin: '//trim(lattice))
+  end select
 
 end function crystal_characteristicShear_Twin
 
@@ -512,20 +481,20 @@ function crystal_C66_twin(Ntwin,C66,lattice,CoverA)
 
   select case(lattice)
     case('cF')
-      coordinateSystem = buildCoordinateSystem(Ntwin,CF_NSLIPSYSTEM,CF_SYSTEMTWIN,&
+      coordinateSystem = buildCoordinateSystem(Ntwin,CF_NTWINSYSTEM,CF_SYSTEMTWIN,&
                                                lattice,0.0_pREAL)
     case('cI')
-      coordinateSystem = buildCoordinateSystem(Ntwin,CI_NSLIPSYSTEM,CI_SYSTEMTWIN,&
+      coordinateSystem = buildCoordinateSystem(Ntwin,CI_NTWINSYSTEM,CI_SYSTEMTWIN,&
                                                lattice,0.0_pREAL)
     case('hP')
-      coordinateSystem = buildCoordinateSystem(Ntwin,HP_NSLIPSYSTEM,HP_SYSTEMTWIN,&
+      coordinateSystem = buildCoordinateSystem(Ntwin,HP_NTWINSYSTEM,HP_SYSTEMTWIN,&
                                                lattice,cOverA)
     case default
       call IO_error(137,ext_msg='crystal_C66_twin: '//trim(lattice))
   end select
 
   do i = 1, sum(Ntwin)
-    call R%fromAxisAngle([coordinateSystem(1:3,2,i),PI],P=1)                                        ! ToDo: Why always 180 deg?
+    call R%fromAxisAngle([coordinateSystem(1:3,2,i),PI])                                            ! mirror on habit (twin shear) plane
     crystal_C66_twin(1:6,1:6,i) = R%rotStiffness(C66)
   end do
 
@@ -2159,9 +2128,9 @@ pure function crystal_isotropic_nu(C,assumption,lattice) result(nu)
   real(pREAL), dimension(6,6)   :: S
 
 
-  if     (IO_lc(assumption) == 'isostrain') then
+  if     (assumption == 'isostrain') then
     K = sum(C(1:3,1:3)) / 9.0_pREAL
-  elseif (IO_lc(assumption) == 'isostress') then
+  elseif (assumption == 'isostress') then
     call math_invert(S,error,C)
     if (error) error stop 'matrix inversion failed'
     K = 1.0_pREAL / sum(S(1:3,1:3))
@@ -2191,7 +2160,7 @@ pure function crystal_isotropic_mu(C,assumption,lattice) result(mu)
   real(pREAL), dimension(6,6)   :: S
 
 
-  if     (IO_lc(assumption) == 'isostrain') then
+  if     (assumption == 'isostrain') then
       select case(misc_optional(lattice,''))
         case('cF','cI')
           mu = ( C(1,1) - C(1,2) + C(4,4)*3.0_pREAL) / 5.0_pREAL
@@ -2202,7 +2171,7 @@ pure function crystal_isotropic_mu(C,assumption,lattice) result(mu)
                ) / 15.0_pREAL
       end select
 
-  elseif (IO_lc(assumption) == 'isostress') then
+  elseif (assumption == 'isostress') then
       select case(misc_optional(lattice,''))
         case('cF','cI')
           mu = 5.0_pREAL &

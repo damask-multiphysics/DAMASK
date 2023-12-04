@@ -6,7 +6,7 @@ import numpy as np
 from damask import ConfigMaterial
 from damask import Table
 from damask import Rotation
-from damask import Grid
+from damask import GeomGrid
 
 @pytest.fixture
 def res_path(res_path_base):
@@ -182,8 +182,8 @@ class TestConfigMaterial:
         assert point_c.is_valid and grain_c.is_valid and \
                len(point_c['material'])+1 == len(grain_c['material'])
 
-        grain_m = Grid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d','FeatureIds').material.flatten()
-        point_m = Grid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d').material.flatten()
+        grain_m = GeomGrid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d','FeatureIds').material.flatten()
+        point_m = GeomGrid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d').material.flatten()
 
         for i in np.unique(point_m):
             j = int(grain_m[(point_m==i).nonzero()[0][0]])

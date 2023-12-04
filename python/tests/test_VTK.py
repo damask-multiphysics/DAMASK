@@ -199,6 +199,12 @@ class TestVTK:
         mask_manual = default.set('D',np.where(masked.mask,masked.fill_value,masked))
         assert mask_manual == mask_auto
 
+    @pytest.mark.parametrize('mode',['cells','points'])
+    def test_delete(self,default,mode):
+        data = np.random.rand(default.N_cells if mode == 'cells' else default.N_points).astype(np.float32)
+        v = default.set('D',data)
+        assert (v.get('D') == data).all()
+        assert v.delete('D') == default
 
     @pytest.mark.parametrize('data_type,shape',[(float,(3,)),
                                                 (float,(3,3)),
