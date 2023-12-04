@@ -2068,17 +2068,10 @@ class Result:
                 # Data CrystalStructures
                 crystal_structure_list = [999]
                 for label in self.visible['phases']:
-
                     if lattice_dict[label] in ['hP']:
                         crystal_structure = 'Hexagonal'
                     elif lattice_dict[label] in ['cP','cI','cF']:
                         crystal_structure = 'Cubic'
-                    elif lattice_dict[label] in ['aP']:
-                        crystal_structure = 'triclinic'
-                    elif lattice_dict[label] in ['mP','mS']:
-                        crystal_structure = 'monoclinic'
-                    elif lattice_dict[label] in ['oP','oS','oI','oF']:
-                        crystal_structure = 'Orthorhombic'
                     elif lattice_dict[label] in ['tP','tI']:
                         crystal_structure = 'tetragonal'
                     crystal_structure_list.append(Crystal_structure_types[crystal_structure])
