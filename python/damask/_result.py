@@ -1989,63 +1989,63 @@ class Result:
 
                             cell_orientation[at_cell_ph[c][label],:] = \
                                 Rotation(data[in_data_ph[c][label],:]).as_Euler_angles().astype(np.float32)
-                        except ValueError:
+                        except KeyError:
                             crystal_structure.append(999)
 
                         phase_ID_array[at_cell_ph[c][label]] = count + 1
 
-                o = h5py.File(f'{out_dir}/{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}.dream3d','w')
-                add_attribute(o,'FileVersion','7.0')
+                with h5py.File(f'{out_dir}/{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}.dream3d','w') as f_out:
+                    add_attribute(f_out,'FileVersion','7.0')
 
-                for g in ['DataContainerBundles','Pipeline']:                                       # empty groups (needed)
-                    o.create_group(g)
+                    for g in ['DataContainerBundles','Pipeline']:                                       # empty groups (needed)
+                        f_out.create_group(g)
 
-                data_container = create_and_open(o,'DataContainers/SyntheticVolumeDataContainer')
+                    data_container = create_and_open(f_out,'DataContainers/SyntheticVolumeDataContainer')
 
-                cell = create_and_open(data_container,'CellData')
-                add_attribute(cell,'AttributeMatrixType',np.array([3],np.uint32))
-                add_attribute(cell,'TupleDimensions', np.array(self.cells,np.uint64))
+                    cell = create_and_open(data_container,'CellData')
+                    add_attribute(cell,'AttributeMatrixType',np.array([3],np.uint32))
+                    add_attribute(cell,'TupleDimensions', np.array(self.cells,np.uint64))
 
-                cell['Phases'] = np.reshape(phase_ID_array,tuple(np.flip(self.cells))+(1,))
-                cell['EulerAngles'] = cell_orientation.reshape(tuple(np.flip(self.cells))+(3,))
-                for dataset in ['Phases','EulerAngles']:
-                    add_attribute(cell[dataset],'DataArrayVersion',np.array([2],np.int32))
-                    add_attribute(cell[dataset],'Tuple Axis Dimensions','x={},y={},z={}'.format(*np.array(self.cells)))
-                    add_attribute(cell[dataset],'TupleDimensions', np.array(self.cells,np.uint64))
-                add_attribute(cell['Phases'], 'ComponentDimensions', np.array([1],np.uint64))
-                add_attribute(cell['Phases'], 'ObjectType', 'DataArray<int32_t>')
-                add_attribute(cell['EulerAngles'], 'ComponentDimensions', np.array([3],np.uint64))
-                add_attribute(cell['EulerAngles'], 'ObjectType', 'DataArray<float>')
+                    cell['Phases'] = np.reshape(phase_ID_array,tuple(np.flip(self.cells))+(1,))
+                    cell['EulerAngles'] = cell_orientation.reshape(tuple(np.flip(self.cells))+(3,))
+                    for dataset in ['Phases','EulerAngles']:
+                        add_attribute(cell[dataset],'DataArrayVersion',np.array([2],np.int32))
+                        add_attribute(cell[dataset],'Tuple Axis Dimensions','x={},y={},z={}'.format(*np.array(self.cells)))
+                        add_attribute(cell[dataset],'TupleDimensions', np.array(self.cells,np.uint64))
+                    add_attribute(cell['Phases'], 'ComponentDimensions', np.array([1],np.uint64))
+                    add_attribute(cell['Phases'], 'ObjectType', 'DataArray<int32_t>')
+                    add_attribute(cell['EulerAngles'], 'ComponentDimensions', np.array([3],np.uint64))
+                    add_attribute(cell['EulerAngles'], 'ObjectType', 'DataArray<float>')
 
-                cell_ensemble =  create_and_open(data_container,'CellEnsembleData')
+                    cell_ensemble =  create_and_open(data_container,'CellEnsembleData')
 
-                cell_ensemble['CrystalStructures'] = np.array(crystal_structure,np.uint32).reshape(-1,1)
-                cell_ensemble['PhaseTypes']        = np.array([999] + [0]*len(self.phases),np.uint32).reshape(-1,1)
-                phase_name_list = ['Unknown Phase Type'] + [p for p in self.visible['phases']]
-                tid = h5py.h5t.C_S1.copy()
-                tid.set_size(h5py.h5t.VARIABLE)
-                tid.set_cset(h5py.h5t.CSET_ASCII)
-                cell_ensemble.create_dataset(name='PhaseName',data = phase_name_list, dtype=h5py.Datatype(tid))
+                    cell_ensemble['CrystalStructures'] = np.array(crystal_structure,np.uint32).reshape(-1,1)
+                    cell_ensemble['PhaseTypes']        = np.array([999] + [0]*len(self.phases),np.uint32).reshape(-1,1)
+                    phase_name_list = ['Unknown Phase Type'] + [p for p in self.visible['phases']]
+                    tid = h5py.h5t.C_S1.copy()
+                    tid.set_size(h5py.h5t.VARIABLE)
+                    tid.set_cset(h5py.h5t.CSET_ASCII)
+                    cell_ensemble.create_dataset(name='PhaseName',data = phase_name_list, dtype=h5py.Datatype(tid))
 
-                cell_ensemble.attrs['AttributeMatrixType'] = np.array([11],np.uint32)
-                cell_ensemble.attrs['TupleDimensions']     = np.array([len(self.phases) + 1], np.uint64)
-                for group in ['CrystalStructures','PhaseTypes','PhaseName']:
-                    add_attribute(cell_ensemble[group], 'ComponentDimensions', np.array([1],np.uint64))
-                    add_attribute(cell_ensemble[group], 'Tuple Axis Dimensions', f'x={len(self.phases)+1}')
-                    add_attribute(cell_ensemble[group], 'DataArrayVersion', np.array([2],np.int32))
-                    add_attribute(cell_ensemble[group], 'TupleDimensions', np.array([len(self.phases) + 1],np.uint64))
-                for group in ['CrystalStructures','PhaseTypes']:
-                    add_attribute(cell_ensemble[group], 'ObjectType', 'DataArray<uint32_t>')
-                add_attribute(cell_ensemble['PhaseName'], 'ObjectType', 'StringDataArray')
+                    cell_ensemble.attrs['AttributeMatrixType'] = np.array([11],np.uint32)
+                    cell_ensemble.attrs['TupleDimensions']     = np.array([len(self.phases) + 1], np.uint64)
+                    for group in ['CrystalStructures','PhaseTypes','PhaseName']:
+                        add_attribute(cell_ensemble[group], 'ComponentDimensions', np.array([1],np.uint64))
+                        add_attribute(cell_ensemble[group], 'Tuple Axis Dimensions', f'x={len(self.phases)+1}')
+                        add_attribute(cell_ensemble[group], 'DataArrayVersion', np.array([2],np.int32))
+                        add_attribute(cell_ensemble[group], 'TupleDimensions', np.array([len(self.phases) + 1],np.uint64))
+                    for group in ['CrystalStructures','PhaseTypes']:
+                        add_attribute(cell_ensemble[group], 'ObjectType', 'DataArray<uint32_t>')
+                    add_attribute(cell_ensemble['PhaseName'], 'ObjectType', 'StringDataArray')
 
-                geom = create_and_open(data_container,'_SIMPL_GEOMETRY')
-                geom['DIMENSIONS'] = np.array(self.cells,np.int64)
-                geom['ORIGIN']     = np.array(self.origin,np.float32)
-                geom['SPACING']    = np.float32(self.size/self.cells)
-                names = ['GeometryName',  'GeometryTypeName','GeometryType','SpatialDimensionality','UnitDimensionality']
-                values = ['ImageGeometry','ImageGeometry',np.array([0],np.uint32),np.array([3],np.uint32),np.array([3],np.uint32)]
-                for name,value in zip(names,values):
-                    add_attribute(geom,name,value)
+                    geom = create_and_open(data_container,'_SIMPL_GEOMETRY')
+                    geom['DIMENSIONS'] = np.array(self.cells,np.int64)
+                    geom['ORIGIN']     = np.array(self.origin,np.float32)
+                    geom['SPACING']    = np.float32(self.size/self.cells)
+                    names = ['GeometryName',  'GeometryTypeName','GeometryType','SpatialDimensionality','UnitDimensionality']
+                    values = ['ImageGeometry','ImageGeometry', np.array([0],np.uint32)] + [np.array([3],np.uint32)]*2
+                    for name,value in zip(names,values):
+                        add_attribute(geom,name,value)
 
 
     def export_DADF5(self,
