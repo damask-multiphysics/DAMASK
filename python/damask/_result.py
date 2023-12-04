@@ -1795,8 +1795,8 @@ class Result:
 
         hdf5_name = self.fname.name
         hdf5_dir  = self.fname.parent
-        xdmf_dir  = Path.cwd() if target_dir is None else Path(target_dir)
-        hdf5_link = (hdf5_dir if absolute_path else Path(os.path.relpath(hdf5_dir,xdmf_dir.resolve())))/hdf5_name
+        out_dir   = Path.cwd() if target_dir is None else Path(target_dir)
+        hdf5_link = (hdf5_dir if absolute_path else Path(os.path.relpath(hdf5_dir,out_dir.resolve())))/hdf5_name
 
         with h5py.File(self.fname,'r') as f:
             for inc in self.visible['increments']:
@@ -1856,8 +1856,8 @@ class Result:
                                                                                                         np.prod(shape))}
                                 data_items[-1].text = f'{hdf5_link}:{name}'
 
-        xdmf_dir.mkdir(parents=True,exist_ok=True)
-        with util.open_text((xdmf_dir/hdf5_name).with_suffix('.xdmf'),'w') as f:
+        out_dir.mkdir(parents=True,exist_ok=True)
+        with util.open_text((out_dir/hdf5_name).with_suffix('.xdmf'),'w') as f:
             f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
 
 
@@ -1921,8 +1921,8 @@ class Result:
 
         at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
 
-        vtk_dir = Path.cwd() if target_dir is None else Path(target_dir)
-        vtk_dir.mkdir(parents=True,exist_ok=True)
+        out_dir = Path.cwd() if target_dir is None else Path(target_dir)
+        out_dir.mkdir(parents=True,exist_ok=True)
 
         with h5py.File(self.fname,'r') as f:
             if self.version_minor >= 13:
@@ -1963,7 +1963,7 @@ class Result:
                             v = v.set(' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]),dataset)
 
 
-                v.save(vtk_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
+                v.save(out_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
                        parallel=parallel)
 
     def export_DREAM3D(self,
@@ -1995,8 +1995,8 @@ class Result:
 
         at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
 
-        dream_dir = Path.cwd() if target_dir is None else Path(target_dir)
-        dream_dir.mkdir(parents=True,exist_ok=True)
+        out_dir = Path.cwd() if target_dir is None else Path(target_dir)
+        out_dir.mkdir(parents=True,exist_ok=True)
 
         with h5py.File(self.fname,'r') as f:
             for inc in util.show_progress(self.visible['increments']):
@@ -2016,8 +2016,7 @@ class Result:
 
                         phase_ID_array[at_cell_ph[c][label]] = count + 1
 
-                job_file_no_ext = self.fname.stem
-                o = h5py.File(f'{dream_dir}/{job_file_no_ext}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}.dream3d','w')
+                o = h5py.File(f'{out_dir}/{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}.dream3d','w')
                 o.attrs['DADF5toDREAM3D'] = '1.0'
                 o.attrs['FileVersion']    = '7.0'
 
