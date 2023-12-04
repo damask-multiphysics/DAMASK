@@ -62,41 +62,6 @@ def _empty_like(dataset: np.ma.core.MaskedArray,
                     fill_value = fill_float if dataset.dtype in np.sctypes['float'] else fill_int,
                     mask = True)
 
-class AttributeManagerNullterm(h5py.AttributeManager):
-    """
-    Attribute management for DREAM.3D hdf5 files.
-
-    String attribute values are stored as fixed-length string with NULLTERM
-
-    References
-    ----------
-      https://stackoverflow.com/questions/38267076
-      https://stackoverflow.com/questions/52750232
-
-    """
-
-    def create(self, name, data, shape=None, dtype=None):
-        if isinstance(data,str):
-            tid = h5py.h5t.C_S1.copy()
-            tid.set_size(len(data + ' '))
-            super().create(name=name,data=data+' ',dtype = h5py.Datatype(tid))
-        else:
-            super().create(name=name,data=data,shape=shape,dtype=dtype)
-
-class ResetAttributeManager(h5py.AttributeManager):
-    """
-    Reset the attribute management for DREAM.3D hdf5 files.
-
-    References
-    ----------
-      https://stackoverflow.com/questions/38267076
-      https://stackoverflow.com/questions/52750232
-
-    """
-
-    def create(self, name, data, shape=None, dtype=None):
-        super().create(name=name,data=data,shape=shape,dtype=dtype)
-
 
 class Result:
     """
@@ -1983,7 +1948,15 @@ class Result:
             Directory to save DREAM3D files. Will be created if non-existent.
 
         """
-        h5py._hl.attrs.AttributeManager = AttributeManagerNullterm # 'Monkey patch'
+        def add_attribute(obj,name,data):
+            """DREAM.3D requires fixed length string."""
+            if isinstance(data,str):
+                tid = h5py.h5t.C_S1.copy()
+                tid.set_size(len(data)+1)
+                obj.attrs.create(name,data,dtype=h5py.Datatype(tid))
+            else:
+                obj.attrs.create(name,data)
+
         if self.N_constituents != 1 or not self.structured:
             raise TypeError('DREAM3D output requires structured grid with single constituent.')
 
@@ -2000,16 +1973,15 @@ class Result:
 
         with h5py.File(self.fname,'r') as f:
             for inc in util.show_progress(self.visible['increments']):
-                cell_orientation_array = np.zeros((np.prod(self.cells),3))
+                cell_orientation = np.zeros((np.prod(self.cells),3))
                 phase_ID_array = np.zeros((np.prod(self.cells)),dtype=np.int32) #need to reshape it later
                 for c in range(self.N_constituents):
                     for count,label in enumerate(self.visible['phases']):
                         try:
-                            data = ma.array(_read(f['/'.join([inc,'phase',label,'mechanical/O'])]))
-                            lattice_dict[label] = f['/'.join([inc,'phase',label,'mechanical/O'])].attrs['lattice']
-                            cell_orientation_array[at_cell_ph[c][label],:] = \
-                                Rotation(data[in_data_ph[c][label],:]).as_Euler_angles()
-                            # Dream3D handles euler angles better
+                            data = _read(f['/'.join([inc,'phase',label,'mechanical/O'])])
+                            lattice_dict[label] = data.dtype.metadata['lattice']
+                            cell_orientation[at_cell_ph[c][label],:] = \
+                                Rotation(data[in_data_ph[c][label],:]).as_Euler_angles().astype(np.float32)
                         except ValueError:
                             print("Orientation data is not present")
                             exit()
@@ -2017,41 +1989,34 @@ class Result:
                         phase_ID_array[at_cell_ph[c][label]] = count + 1
 
                 o = h5py.File(f'{out_dir}/{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}.dream3d','w')
-                o.attrs['DADF5toDREAM3D'] = '1.0'
-                o.attrs['FileVersion']    = '7.0'
+                add_attribute(o,'FileVersion','7.0')
 
-                for g in ['DataContainerBundles','Pipeline']: # empty groups (needed)
-                  o.create_group(g)
+                for g in ['DataContainerBundles','Pipeline']:                                       # empty groups (needed)
+                    o.create_group(g)
 
                 data_container_label = 'DataContainers/SyntheticVolumeDataContainer'
                 cell_data_label      = data_container_label + '/CellData'
 
-                # Data phases
-                o[cell_data_label + '/Phases'] = np.reshape(phase_ID_array, \
-                                                            tuple(np.flip(self.cells))+(1,))
+                o[cell_data_label + '/Phases'] = np.reshape(phase_ID_array,tuple(np.flip(self.cells))+(1,))
+                o[cell_data_label + '/EulerAngles'] = cell_orientation.reshape(tuple(np.flip(self.cells))+(3,))
 
-                # Data eulers
-                orientation_data = cell_orientation_array.astype(np.float32)
-                o[cell_data_label + '/EulerAngles'] = orientation_data.reshape(tuple(np.flip(self.cells))+(3,))
-
-                # Attributes to CellData group
                 o[cell_data_label].attrs['AttributeMatrixType'] = np.array([3],np.uint32)
                 o[cell_data_label].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
 
                 # Common Attributes for groups in CellData
                 for dataset in ['/Phases','/EulerAngles']:
-                  o[cell_data_label + dataset].attrs['DataArrayVersion']      = np.array([2],np.int32)
-                  o[cell_data_label + dataset].attrs['Tuple Axis Dimensions'] = 'x={},y={},z={}'.format(*np.array(self.cells))
+                    add_attribute(o[cell_data_label + dataset],'DataArrayVersion',np.array([2],np.int32))
+                    add_attribute(o[cell_data_label + dataset],'Tuple Axis Dimensions','x={},y={},z={}'.format(*np.array(self.cells)))
 
                 # phase attributes
-                o[cell_data_label + '/Phases'].attrs['ComponentDimensions'] = np.array([1],np.uint64)
-                o[cell_data_label + '/Phases'].attrs['ObjectType']          = 'DataArray<int32_t>'
-                o[cell_data_label + '/Phases'].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
+                add_attribute(o[cell_data_label + '/Phases'], 'ComponentDimensions', np.array([1],np.uint64))
+                add_attribute(o[cell_data_label + '/Phases'], 'ObjectType', 'DataArray<int32_t>')
+                add_attribute(o[cell_data_label + '/Phases'], 'TupleDimensions', np.array(self.cells,np.uint64))
 
                 # Eulers attributes
-                o[cell_data_label + '/EulerAngles'].attrs['ComponentDimensions'] = np.array([3],np.uint64)
-                o[cell_data_label + '/EulerAngles'].attrs['ObjectType']          = 'DataArray<float>'
-                o[cell_data_label + '/EulerAngles'].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
+                add_attribute(o[cell_data_label + '/EulerAngles'], 'ComponentDimensions', np.array([3],np.uint64))
+                add_attribute(o[cell_data_label + '/EulerAngles'], 'ObjectType', 'DataArray<float>')
+                add_attribute(o[cell_data_label + '/EulerAngles'], 'TupleDimensions', np.array(self.cells,np.uint64))
 
                 # Create EnsembleAttributeMatrix
                 ensemble_label = data_container_label + '/CellEnsembleData'
@@ -2081,17 +2046,17 @@ class Result:
 
                 # Attributes for data in Ensemble matrix
                 for group in ['CrystalStructures','PhaseTypes']:
-                  o[ensemble_label+'/'+group].attrs['ComponentDimensions']   = np.array([1],np.uint64)
-                  o[ensemble_label+'/'+group].attrs['Tuple Axis Dimensions'] = f'x={len(self.phases)+1}'
-                  o[ensemble_label+'/'+group].attrs['DataArrayVersion']      = np.array([2],np.int32)
-                  o[ensemble_label+'/'+group].attrs['ObjectType']            = 'DataArray<uint32_t>'
-                  o[ensemble_label+'/'+group].attrs['TupleDimensions']       = np.array([len(self.phases) + 1],np.uint64)
+                    add_attribute(o[ensemble_label+'/'+group], 'ComponentDimensions',   np.array([1],np.uint64))
+                    add_attribute(o[ensemble_label+'/'+group], 'Tuple Axis Dimensions', f'x={len(self.phases)+1}')
+                    add_attribute(o[ensemble_label+'/'+group], 'DataArrayVersion',      np.array([2],np.int32))
+                    add_attribute(o[ensemble_label+'/'+group], 'ObjectType',            'DataArray<uint32_t>')
+                    add_attribute(o[ensemble_label+'/'+group], 'TupleDimensions',       np.array([len(self.phases) + 1],np.uint64))
 
-                o[ensemble_label+'/PhaseName'].attrs['ComponentDimensions']   = np.array([1],np.uint64)
-                o[ensemble_label+'/PhaseName'].attrs['Tuple Axis Dimensions'] = f'x={len(self.phases)+1}'
-                o[ensemble_label+'/PhaseName'].attrs['DataArrayVersion']      = np.array([2],np.int32)
-                o[ensemble_label+'/PhaseName'].attrs['ObjectType']            = 'StringDataArray'
-                o[ensemble_label+'/PhaseName'].attrs['TupleDimensions']       = np.array([len(self.phases) + 1],np.uint64)
+                add_attribute(o[ensemble_label+'/PhaseName'], 'ComponentDimensions',   np.array([1],np.uint64))
+                add_attribute(o[ensemble_label+'/PhaseName'], 'Tuple Axis Dimensions', f'x={len(self.phases)+1}')
+                add_attribute(o[ensemble_label+'/PhaseName'], 'DataArrayVersion',      np.array([2],np.int32))
+                add_attribute(o[ensemble_label+'/PhaseName'], 'ObjectType',            'StringDataArray')
+                add_attribute(o[ensemble_label+'/PhaseName'], 'TupleDimensions',       np.array([len(self.phases) + 1],np.uint64))
 
                 # Create geometry info
                 geom_label = data_container_label + '/_SIMPL_GEOMETRY'
@@ -2100,12 +2065,11 @@ class Result:
                 o[geom_label + '/ORIGIN']     = np.float32(np.zeros(3))
                 o[geom_label + '/SPACING']    = np.float32(dx)
 
-                o[geom_label].attrs['GeometryName']     = 'ImageGeometry'
-                o[geom_label].attrs['GeometryTypeName'] = 'ImageGeometry'
-                o[geom_label].attrs['GeometryType']          = np.array([0],np.uint32)
-                o[geom_label].attrs['SpatialDimensionality'] = np.array([3],np.uint32)
-                o[geom_label].attrs['UnitDimensionality']    = np.array([3],np.uint32)
-        h5py._hl.attrs.AttributeManager = ResetAttributeManager # Reset the attribute manager to original:
+                add_attribute(o[geom_label], 'GeometryName',          'ImageGeometry')
+                add_attribute(o[geom_label], 'GeometryTypeName',      'ImageGeometry')
+                add_attribute(o[geom_label], 'GeometryType',          np.array([0],np.uint32))
+                add_attribute(o[geom_label], 'SpatialDimensionality', np.array([3],np.uint32))
+                add_attribute(o[geom_label], 'UnitDimensionality',    np.array([3],np.uint32))
 
 
     def export_DADF5(self,
