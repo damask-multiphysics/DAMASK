@@ -1938,9 +1938,6 @@ class Result:
 
         One DREAM3D file per visible increment is created.
         The DREAM3D file is based on HDF5 file format.
-        Without any regridding.
-        Considers the original grid from DAMASK.
-        Needs orientation data, 'O', present in the file.
 
         Parameters
         ----------
@@ -1966,29 +1963,34 @@ class Result:
 
         N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
 
-        lattice_dict = {}
 
-        dx = self.size/self.cells
-
-        at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
+        at_cell_ph,in_data_ph,_,_ = self._mappings()
 
         out_dir = Path.cwd() if target_dir is None else Path(target_dir)
         out_dir.mkdir(parents=True,exist_ok=True)
 
         with h5py.File(self.fname,'r') as f:
             for inc in util.show_progress(self.visible['increments']):
+                crystal_structure = [999]
                 cell_orientation = np.zeros((np.prod(self.cells),3))
                 phase_ID_array = np.zeros((np.prod(self.cells)),dtype=np.int32) #need to reshape it later
                 for c in range(self.N_constituents):
                     for count,label in enumerate(self.visible['phases']):
                         try:
                             data = _read(f['/'.join([inc,'phase',label,'mechanical/O'])])
-                            lattice_dict[label] = data.dtype.metadata['lattice']
+                            lattice = data.dtype.metadata['lattice']
+                            # Map to DREAM.3D IDs
+                            if lattice == 'hP':
+                                crystal_structure.append(0)
+                            elif lattice in ['cI','cF']:
+                                crystal_structure.append(1)
+                            elif lattice == 'tI':
+                                crystal_structure.append(8)
+
                             cell_orientation[at_cell_ph[c][label],:] = \
                                 Rotation(data[in_data_ph[c][label],:]).as_Euler_angles().astype(np.float32)
                         except ValueError:
-                            print("Orientation data is not present")
-                            exit()
+                            crystal_structure.append(999)
 
                         phase_ID_array[at_cell_ph[c][label]] = count + 1
 
@@ -2017,16 +2019,6 @@ class Result:
 
                 cell_ensemble =  create_and_open(data_container,'CellEnsembleData')
 
-                # Map to DREAM.3D IDs
-                crystal_structure = [999]
-                for label in self.visible['phases']:
-                    if lattice_dict[label] in ['hP']:
-                        crystal_structure.append(0)
-                    elif lattice_dict[label] in ['cI','cF']:
-                        crystal_structure.append(1)
-                    elif lattice_dict[label] in ['tI']:
-                        crystal_structure.append(8)
-
                 cell_ensemble['CrystalStructures'] = np.array(crystal_structure,np.uint32).reshape(-1,1)
                 cell_ensemble['PhaseTypes']        = np.array([999] + [0]*len(self.phases),np.uint32).reshape(-1,1)
                 phase_name_list = ['Unknown Phase Type'] + [p for p in self.visible['phases']]
@@ -2035,28 +2027,21 @@ class Result:
                 tid.set_cset(h5py.h5t.CSET_ASCII)
                 cell_ensemble.create_dataset(name='PhaseName',data = phase_name_list, dtype=h5py.Datatype(tid))
 
-                # Attributes Ensemble Matrix
                 cell_ensemble.attrs['AttributeMatrixType'] = np.array([11],np.uint32)
                 cell_ensemble.attrs['TupleDimensions']     = np.array([len(self.phases) + 1], np.uint64)
-
-                # Attributes for data in Ensemble matrix
                 for group in ['CrystalStructures','PhaseTypes','PhaseName']:
                     add_attribute(cell_ensemble[group], 'ComponentDimensions', np.array([1],np.uint64))
                     add_attribute(cell_ensemble[group], 'Tuple Axis Dimensions', f'x={len(self.phases)+1}')
                     add_attribute(cell_ensemble[group], 'DataArrayVersion', np.array([2],np.int32))
                     add_attribute(cell_ensemble[group], 'TupleDimensions', np.array([len(self.phases) + 1],np.uint64))
-
                 for group in ['CrystalStructures','PhaseTypes']:
                     add_attribute(cell_ensemble[group], 'ObjectType', 'DataArray<uint32_t>')
                 add_attribute(cell_ensemble['PhaseName'], 'ObjectType', 'StringDataArray')
 
-                # Create geometry info
                 geom = create_and_open(data_container,'_SIMPL_GEOMETRY')
-
-                geom['DIMENSIONS'] = np.int64(np.array(self.cells))
-                geom['ORIGIN']     = np.float32(np.zeros(3))
-                geom['SPACING']    = np.float32(dx)
-
+                geom['DIMENSIONS'] = np.array(self.cells,np.int64)
+                geom['ORIGIN']     = np.array(self.origin,np.float32)
+                geom['SPACING']    = np.float32(self.size/self.cells)
                 names = ['GeometryName',  'GeometryTypeName','GeometryType','SpatialDimensionality','UnitDimensionality']
                 values = ['ImageGeometry','ImageGeometry',np.array([0],np.uint32),np.array([3],np.uint32),np.array([3],np.uint32)]
                 for name,value in zip(names,values):
