@@ -77,7 +77,6 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
     ph, i, &
-    N_fam, &
     Nmembers, &
     sizeState, sizeDotState, &
     startIndex, endIndex
@@ -142,17 +141,16 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
     slipActive: if (prm%sum_N_sl > 0) then
-      N_fam = size(N_sl)
-      ones = [(1.0_pREAL,i=1,N_fam)]
-      prm%dot_gamma_0_sl = math_expand(pl%get_as1dReal('dot_gamma_0_sl',requiredSize=N_fam,defaultVal=    ones), N_sl)
-      prm%n_sl        = math_expand(pl%get_as1dReal('n_sl',       requiredSize=N_fam,defaultVal=          ones), N_sl)
-      prm%a_sl        = math_expand(pl%get_as1dReal('a_sl',       requiredSize=N_fam,defaultVal=          ones), N_sl)
-      prm%h_0_sl_sl   = math_expand(pl%get_as1dReal('h_0_sl-sl',  requiredSize=N_fam,defaultVal=0.0_pREAL*ones), N_sl)
-      prm%c_1         = math_expand(pl%get_as1dReal('c_1',        requiredSize=N_fam,defaultVal=0.0_pREAL*ones), N_sl)
-      prm%c_2         = math_expand(pl%get_as1dReal('c_2',        requiredSize=N_fam,defaultVal=          ones), N_sl)
-      xi_0_sl         = math_expand(pl%get_as1dReal('xi_0_sl',    requiredSize=N_fam),                           N_sl)
-      prm%xi_inf_sl   = math_expand(pl%get_as1dReal('xi_inf_sl',  requiredSize=N_fam),                           N_sl)
-      prm%f_sat_sl_tw = math_expand(pl%get_as1dReal('f_sat_sl-tw',requiredSize=N_fam,defaultVal=0.0_pREAL*ones), N_sl)
+      ones = [(1.0_pREAL,i=1,size(N_sl))]
+      prm%dot_gamma_0_sl = math_expand(pl%get_as1dReal('dot_gamma_0_sl',requiredSize=size(N_sl),defaultVal=    ones), N_sl)
+      prm%n_sl        = math_expand(pl%get_as1dReal('n_sl',       requiredSize=size(N_sl),defaultVal=          ones), N_sl)
+      prm%a_sl        = math_expand(pl%get_as1dReal('a_sl',       requiredSize=size(N_sl),defaultVal=          ones), N_sl)
+      prm%h_0_sl_sl   = math_expand(pl%get_as1dReal('h_0_sl-sl',  requiredSize=size(N_sl),defaultVal=0.0_pREAL*ones), N_sl)
+      prm%c_1         = math_expand(pl%get_as1dReal('c_1',        requiredSize=size(N_sl),defaultVal=0.0_pREAL*ones), N_sl)
+      prm%c_2         = math_expand(pl%get_as1dReal('c_2',        requiredSize=size(N_sl),defaultVal=          ones), N_sl)
+      xi_0_sl         = math_expand(pl%get_as1dReal('xi_0_sl',    requiredSize=size(N_sl)),                           N_sl)
+      prm%xi_inf_sl   = math_expand(pl%get_as1dReal('xi_inf_sl',  requiredSize=size(N_sl)),                           N_sl)
+      prm%f_sat_sl_tw = math_expand(pl%get_as1dReal('f_sat_sl-tw',requiredSize=size(N_sl),defaultVal=0.0_pREAL*ones), N_sl)
 
       prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
 
@@ -194,14 +192,13 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 !--------------------------------------------------------------------------------------------------
 ! twin related parameters
     twinActive: if (prm%sum_N_tw > 0) then
-      N_fam = size(N_tw)
-      ones = [(1.0_pREAL,i=1,N_fam)]
-      prm%dot_gamma_0_tw = math_expand(pl%get_as1dReal('dot_gamma_0_tw', requiredSize=N_fam,defaultVal=ones), N_tw)
-      prm%n_tw      = math_expand(pl%get_as1dReal('n_tw',      requiredSize=N_fam,defaultVal=          ones), N_tw)
-      prm%c_3       = math_expand(pl%get_as1dReal('c_3',       requiredSize=N_fam,defaultVal=0.0_pREAL*ones), N_tw)
-      prm%c_4       = math_expand(pl%get_as1dReal('c_4',       requiredSize=N_fam,defaultVal=0.0_pREAL*ones), N_tw)
-      prm%h_0_tw_tw = math_expand(pl%get_as1dReal('h_0_tw-tw', requiredSize=N_fam,defaultVal=0.0_pReal*ones), N_tw)
-      xi_0_tw       = math_expand(pl%get_as1dReal('xi_0_tw',   requiredSize=N_fam),                           N_tw)
+      ones = [(1.0_pREAL,i=1,size(N_tw))]
+      prm%dot_gamma_0_tw = math_expand(pl%get_as1dReal('dot_gamma_0_tw', requiredSize=size(N_tw),defaultVal=ones), N_tw)
+      prm%n_tw      = math_expand(pl%get_as1dReal('n_tw',      requiredSize=size(N_tw),defaultVal=          ones), N_tw)
+      prm%c_3       = math_expand(pl%get_as1dReal('c_3',       requiredSize=size(N_tw),defaultVal=0.0_pREAL*ones), N_tw)
+      prm%c_4       = math_expand(pl%get_as1dReal('c_4',       requiredSize=size(N_tw),defaultVal=0.0_pREAL*ones), N_tw)
+      prm%h_0_tw_tw = math_expand(pl%get_as1dReal('h_0_tw-tw', requiredSize=size(N_tw),defaultVal=0.0_pReal*ones), N_tw)
+      xi_0_tw       = math_expand(pl%get_as1dReal('xi_0_tw',   requiredSize=size(N_tw)),                           N_tw)
 
       prm%gamma_char = crystal_characteristicShear_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
       prm%h_tw_tw    = crystal_interaction_TwinByTwin(N_tw,pl%get_as1dReal('h_tw-tw'),phase_lattice(ph))
@@ -230,7 +227,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 !--------------------------------------------------------------------------------------------------
 ! slip-twin related parameters
     slipAndTwinActive: if (prm%sum_N_sl > 0 .and. prm%sum_N_tw > 0) then
-      prm%h_0_tw_sl = math_expand(pl%get_as1dReal('h_0_tw-sl',requiredSize=N_fam,defaultVal=0.0_pReal*ones), N_tw)
+      prm%h_0_tw_sl = math_expand(pl%get_as1dReal('h_0_tw-sl',requiredSize=size(N_tw),defaultVal=0.0_pReal*ones), N_tw)
       prm%h_sl_tw    = crystal_interaction_SlipByTwin(N_sl,N_tw,pl%get_as1dReal('h_sl-tw'),phase_lattice(ph))
       prm%h_tw_sl    = crystal_interaction_TwinBySlip(N_tw,N_sl,pl%get_as1dReal('h_tw-sl'),phase_lattice(ph))
     else slipAndTwinActive

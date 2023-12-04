@@ -74,7 +74,6 @@ module function plastic_kinehardening_init() result(myPlasticity)
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
     ph, o,  &
-    N_fam, &
     Nmembers, &
     sizeState, sizeDeltaState, sizeDotState, &
     startIndex, endIndex
@@ -138,7 +137,6 @@ module function plastic_kinehardening_init() result(myPlasticity)
     N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
-      N_fam = size(N_sl)
       prm%systems_sl = crystal_labels_slip(N_sl,phase_lattice(ph))
       prm%P = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
@@ -155,15 +153,15 @@ module function plastic_kinehardening_init() result(myPlasticity)
       prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
                                                    phase_lattice(ph))
 
-      xi_0            = math_expand(pl%get_as1dReal('xi_0',        requiredSize=N_fam),N_sl)
-      prm%dot_gamma_0 = math_expand(pl%get_as1dReal('dot_gamma_0', requiredSize=N_fam),N_sl)
-      prm%n           = math_expand(pl%get_as1dReal('n',           requiredSize=N_fam),N_sl)
-      prm%xi_inf      = math_expand(pl%get_as1dReal('xi_inf',      requiredSize=N_fam),N_sl)
-      prm%chi_inf     = math_expand(pl%get_as1dReal('chi_inf',     requiredSize=N_fam),N_sl)
-      prm%h_0_xi      = math_expand(pl%get_as1dReal('h_0_xi',      requiredSize=N_fam),N_sl)
-      prm%h_0_chi     = math_expand(pl%get_as1dReal('h_0_chi',     requiredSize=N_fam),N_sl)
-      prm%h_inf_xi    = math_expand(pl%get_as1dReal('h_inf_xi',    requiredSize=N_fam),N_sl)
-      prm%h_inf_chi   = math_expand(pl%get_as1dReal('h_inf_chi',   requiredSize=N_fam),N_sl)
+      xi_0            = math_expand(pl%get_as1dReal('xi_0',        requiredSize=size(N_sl)),N_sl)
+      prm%dot_gamma_0 = math_expand(pl%get_as1dReal('dot_gamma_0', requiredSize=size(N_sl)),N_sl)
+      prm%n           = math_expand(pl%get_as1dReal('n',           requiredSize=size(N_sl)),N_sl)
+      prm%xi_inf      = math_expand(pl%get_as1dReal('xi_inf',      requiredSize=size(N_sl)),N_sl)
+      prm%chi_inf     = math_expand(pl%get_as1dReal('chi_inf',     requiredSize=size(N_sl)),N_sl)
+      prm%h_0_xi      = math_expand(pl%get_as1dReal('h_0_xi',      requiredSize=size(N_sl)),N_sl)
+      prm%h_0_chi     = math_expand(pl%get_as1dReal('h_0_chi',     requiredSize=size(N_sl)),N_sl)
+      prm%h_inf_xi    = math_expand(pl%get_as1dReal('h_inf_xi',    requiredSize=size(N_sl)),N_sl)
+      prm%h_inf_chi   = math_expand(pl%get_as1dReal('h_inf_chi',   requiredSize=size(N_sl)),N_sl)
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
