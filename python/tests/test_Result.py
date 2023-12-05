@@ -58,6 +58,19 @@ def dict_equal(d1, d2):
                     return False
     return True
 
+@pytest.fixture
+def h5py_dataset_iterator():
+    """Iterate over all datasets in an HDF5 file."""
+    def _h5py_dataset_iterator(g, prefix=''):
+        for key,item in g.items():
+            path = os.path.join(prefix, key)
+            if isinstance(item, h5py.Dataset): # test for dataset
+                yield (path, item)
+            elif isinstance(item, h5py.Group): # test for group (go down)
+                yield from _h5py_dataset_iterator(item, path)
+    return _h5py_dataset_iterator
+
+
 class TestResult:
 
     def test_self_report(self,default):
@@ -437,19 +450,12 @@ class TestResult:
         single_phase.export_VTK(mode='point',target_dir=export_dir,parallel=False)
         assert set(os.listdir(export_dir)) == set([f'{single_phase.fname.stem}_inc{i:02}.vtp' for i in range(0,40+1,4)])
 
-    @pytest.mark.parametrize('fname',['2phase_irregularGrid_tensionX.hdf5'],ids=range(1))
-    def test_export_DREAM3D(self,tmp_path,res_path,fname):
-        result = Result(res_path/fname).view(increments=0)  #comparing the initial data only
-
-        prefix_inc = 'increment_'
-        N_digits = int(np.floor(np.log10(max(1,result.incs[-1]))))+1
-        inc = result.increments[0]
-
+    def test_export_DREAM3D(self,tmp_path,res_path):
+        result = Result(res_path/'2phase_irregularGrid_tensionX.hdf5').view(increments=0)  #comparing the initial data only
         result.export_DREAM3D(target_dir=tmp_path)
 
-        ref_file = h5py.File(res_path/'2phase_irregularGrid.dream3d','r')
-        job_file_no_ext = result.fname.stem
-        results_file = h5py.File(tmp_path/f'{job_file_no_ext}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}.dream3d','r')
+        ref = h5py.File(res_path/'2phase_irregularGrid.dream3d','r')
+        cur = h5py.File(tmp_path/f'2phase_irregularGrid_tensionX_inc000.dream3d','r')
 
         error_messages = []
 
@@ -459,40 +465,40 @@ class TestResult:
         geom_label = data_container_label + '/_SIMPL_GEOMETRY'
 
         # check phase array
-        results_phase = np.array(results_file[cell_data_label + '/Phases'])
-        ref_phase = np.array(ref_file[cell_data_label + '/Phases'])
+        results_phase = np.array(cur[cell_data_label + '/Phases'])
+        ref_phase = np.array(ref[cell_data_label + '/Phases'])
         if not np.array_equal(results_phase,ref_phase):
             error_messages.append('Phase array does not match')
 
         # check euler angles
-        results_eulers = np.array(results_file[cell_data_label + '/EulerAngles'])
-        ref_eulers = np.array(ref_file[cell_data_label + '/EulerAngles'])
+        results_eulers = np.array(cur[cell_data_label + '/EulerAngles'])
+        ref_eulers = np.array(ref[cell_data_label + '/EulerAngles'])
         if not np.allclose(results_eulers,ref_eulers,atol=1E-06):
             error_messages.append('Euler angles array does not match')
 
         # check CellData group attributes
         for attrs in ['AttributeMatrixType','TupleDimensions']:
-            ref_val = ref_file[cell_data_label].attrs[attrs]
-            actual_val = results_file[cell_data_label].attrs[attrs]
+            ref_val = ref[cell_data_label].attrs[attrs]
+            actual_val = cur[cell_data_label].attrs[attrs]
             if not np.array_equal(ref_val,actual_val):
                 error_messages.append("Cell Data attributes do not match")
 
         # Common Attributes for datasets in CellData
         for dataset in ['/Phases','/EulerAngles']:
             for attrs in ['DataArrayVersion','Tuple Axis Dimensions','ComponentDimensions','ObjectType','TupleDimensions']:
-                ref_val = ref_file[cell_data_label + '/' + dataset].attrs[attrs]
-                actual_val = results_file[cell_data_label + '/' + dataset].attrs[attrs]
+                ref_val = ref[cell_data_label + '/' + dataset].attrs[attrs]
+                actual_val = cur[cell_data_label + '/' + dataset].attrs[attrs]
                 if not np.array_equal(ref_val,actual_val):
                     error_messages.append("Common attributes in datasets of CellData do not match")
 
         # check crystal structure array
-        results_crystal_structure = np.array(results_file[ensemble_label + '/CrystalStructures'])
-        ref_crystal_structure = np.array(ref_file[ensemble_label + '/CrystalStructures'])
+        results_crystal_structure = np.array(cur[ensemble_label + '/CrystalStructures'])
+        ref_crystal_structure = np.array(ref[ensemble_label + '/CrystalStructures'])
         if not np.allclose(results_crystal_structure, ref_crystal_structure):
             error_messages.append('Crystal structure does not match')
 
         # check PhaseName array
-        results_phase_name = np.array(results_file[ensemble_label + '/PhaseName'])
+        results_phase_name = np.array(cur[ensemble_label + '/PhaseName'])
         ref_phase_name = ['Unknown Phase Type']
         ref_phase_name.extend(i for i in result.visible['phases'])
         ref_phase_name = [bytes(i,encoding='utf-8') for i in ref_phase_name]
@@ -501,8 +507,8 @@ class TestResult:
 
         # check attributes ensemble matrix
         for attrs in ['AttributeMatrixType','TupleDimensions']:
-            ref_val = ref_file[ensemble_label].attrs[attrs]
-            actual_val = results_file[ensemble_label].attrs[attrs]
+            ref_val = ref[ensemble_label].attrs[attrs]
+            actual_val = cur[ensemble_label].attrs[attrs]
             if not np.array_equal(ref_val,actual_val):
                 error_messages.append("Attributes of CellEnsembleData do not match")
 
@@ -510,28 +516,28 @@ class TestResult:
         # in the reference file the dataset PhaseTypes is in another group, so the path is different
         for dataset in ['CrystalStructures','PhaseTypes']:
             for attrs in ['DataArrayVersion','Tuple Axis Dimensions','ComponentDimensions','ObjectType','TupleDimensions']:
-                ref_value = ref_file['DataContainers/StatsGeneratorDataContainer/CellEnsembleData/' + dataset].attrs[attrs]
-                actual_val = results_file[ensemble_label + '/' + dataset].attrs[attrs]
+                ref_value = ref['DataContainers/StatsGeneratorDataContainer/CellEnsembleData/' + dataset].attrs[attrs]
+                actual_val = cur[ensemble_label + '/' + dataset].attrs[attrs]
                 if not np.array_equal(ref_value,actual_val):
                     error_messages.append(f'Attributes of {dataset}s within CellEnsembleData do not match for this {attrs}')
 
         for dataset in ['PhaseName']:
             for attrs in ['DataArrayVersion','Tuple Axis Dimensions','ComponentDimensions','ObjectType','TupleDimensions']:
-                ref_value = ref_file['DataContainers/StatsGeneratorDataContainer/CellEnsembleData/' + dataset].attrs[attrs]
-                actual_val = results_file[ensemble_label + '/' + dataset].attrs[attrs]
+                ref_value = ref['DataContainers/StatsGeneratorDataContainer/CellEnsembleData/' + dataset].attrs[attrs]
+                actual_val = cur[ensemble_label + '/' + dataset].attrs[attrs]
                 if not np.array_equal(ref_value,actual_val):
                     error_messages.append(f'Attributes of {dataset}s within CellEnsembleData do not match for this {attrs}')
 
         # check geometry data
         for dataset in ['DIMENSIONS','ORIGIN','SPACING']:
-            results_val = np.array(results_file[geom_label + '/' + dataset])
-            ref_val = np.array(ref_file[geom_label + '/' + dataset])
+            results_val = np.array(cur[geom_label + '/' + dataset])
+            ref_val = np.array(ref[geom_label + '/' + dataset])
             if not np.array_equal(ref_val,results_val):
                 error_messages.append(f'The {dataset} values are incorrect')
 
         for attrs in ['GeometryName','GeometryTypeName','GeometryType','SpatialDimensionality','UnitDimensionality']:
-            ref_value = ref_file[geom_label].attrs[attrs]
-            actual_val = results_file[geom_label].attrs[attrs]
+            ref_value = ref[geom_label].attrs[attrs]
+            actual_val = cur[geom_label].attrs[attrs]
             if not np.array_equal(ref_value,actual_val):
                 error_messages.append("Geometry attributes do not match")
 
