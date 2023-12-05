@@ -143,7 +143,7 @@ end function misc_prefixOptions
 !--------------------------------------------------------------------------------------------------
 pure function misc_zeros(N)
 
-  integer, intent(in) :: N                                                                          !< number of ones
+  integer, intent(in) :: N                                                                          !< number of zeros
   real(pREAL), dimension(N) :: misc_zeros
 
 

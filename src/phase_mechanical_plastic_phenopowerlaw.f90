@@ -147,7 +147,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       xi_0_sl            = math_expand(pl%get_as1dReal('xi_0_sl',       requiredSize=size(N_sl)), N_sl)
       prm%xi_inf_sl      = math_expand(pl%get_as1dReal('xi_inf_sl',     requiredSize=size(N_sl)), N_sl)
       prm%c_1            = math_expand(pl%get_as1dReal('c_1',           requiredSize=size(N_sl), &
-                                                                        defaultVal=misc_ones(size(N_sl))), N_sl)
+                                                                        defaultVal=misc_zeros(size(N_sl))), N_sl)
       prm%c_2            = math_expand(pl%get_as1dReal('c_2',           requiredSize=size(N_sl), &
                                                                         defaultVal=misc_ones(size(N_sl))), N_sl)
       prm%f_sat_sl_tw    = math_expand(pl%get_as1dReal('f_sat_sl-tw',   requiredSize=size(N_sl), &
