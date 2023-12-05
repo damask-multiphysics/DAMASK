@@ -23,7 +23,7 @@ from ._orientation     import Orientation      # noqa
 from ._table           import Table            # noqa
 from ._colormap        import Colormap         # noqa
 from ._vtk             import VTK              # noqa
-from ._config          import Config           # noqa
+from ._yaml            import YAML             # noqa
 from ._configmaterial  import ConfigMaterial   # noqa
 from ._loadcasegrid    import LoadcaseGrid     # noqa
 from ._geomgrid        import GeomGrid         # noqa
