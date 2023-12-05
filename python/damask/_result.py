@@ -1974,7 +1974,7 @@ class Result:
                 for c in range(self.N_constituents):
                     crystal_structure = [999]
                     phase_name = ['Unknown Phase Type']
-                    cell_orientation = np.zeros((np.prod(self.cells),3))
+                    cell_orientation = np.zeros((np.prod(self.cells),3),np.float32)
                     phase_ID = np.zeros((np.prod(self.cells)),dtype=np.int32)
                     count = 1
                     for label in self.visible['phases']:
@@ -2001,7 +2001,7 @@ class Result:
                 with h5py.File(f'{out_dir}/{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}.dream3d','w') as f_out:
                     add_attribute(f_out,'FileVersion','7.0')
 
-                    for g in ['DataContainerBundles','Pipeline']:                                       # empty groups (needed)
+                    for g in ['DataContainerBundles','Pipeline']:                                   # empty groups (needed)
                         f_out.create_group(g)
 
                     data_container = create_and_open(f_out,'DataContainers/SyntheticVolumeDataContainer')
