@@ -4,7 +4,7 @@ import numpy as np
 import h5py
 
 from ._typehints import FileHandle, FloatSequence, StrSequence
-from . import Config
+from . import YAML
 from . import Rotation
 from . import Orientation
 from . import util
@@ -12,7 +12,7 @@ from . import tensor
 from . import Table
 
 
-class ConfigMaterial(Config):
+class ConfigMaterial(YAML):
     """
     Material configuration.
 

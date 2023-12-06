@@ -4,9 +4,9 @@ from numpy import ma
 import yaml
 
 from ._typehints import FileHandle
-from ._config import NiceDumper
+from ._yaml import NiceDumper
 from . import util
-from . import Config
+from . import YAML
 
 
 class MaskedMatrixDumper(NiceDumper):
@@ -16,7 +16,7 @@ class MaskedMatrixDumper(NiceDumper):
         return super().represent_data(data.astype(object).filled('x') if isinstance(data, ma.core.MaskedArray) else data) # type: ignore[attr-defined]
 
 
-class LoadcaseGrid(Config):
+class LoadcaseGrid(YAML):
     """Load case for grid solver."""
 
     def __init__(self,
