@@ -438,6 +438,7 @@ class VTK:
             writer.SetCompressorTypeToZLib()
         else:
             writer.SetCompressorTypeToNone()
+        writer.SetByteOrderToLittleEndian()
         writer.SetDataModeToBinary()
         writer.SetInputData(self.vtk_data)
 
