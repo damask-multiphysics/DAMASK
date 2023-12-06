@@ -537,9 +537,12 @@ class TestRotation:
             u = np.array([np.pi*2,np.pi,np.pi*2])
             ok = np.allclose(m,o,atol=atol)
             ok |= np.allclose(np.where(np.isclose(m,u),m-u,m),np.where(np.isclose(o,u),o-u,o),atol=atol)
-            if np.isclose(m[1],0.0,atol=atol) or np.isclose(m[1],np.pi,atol=atol):
+            if np.isclose(m[1],0.0,atol=atol):
                 sum_phi = np.unwrap([m[0]+m[2],o[0]+o[2]])
-                ok |= np.isclose(sum_phi[0],sum_phi[1],atol=atol)
+                ok |= np.isclose(sum_phi[0],sum_phi[1],atol=atol) and np.isclose(o[1],0.0,atol=atol)
+            if np.isclose(m[1],np.pi,atol=atol):
+                delta_phi = np.unwrap([m[0]-m[2],o[0]-o[2]])
+                ok |= np.isclose(delta_phi[0],delta_phi[1],atol=atol) and np.isclose(o[1],np.pi,atol=atol)
             assert ok and (np.zeros(3)-1.e-9 <= o).all() \
                       and (o <= np.array([np.pi*2.,np.pi,np.pi*2.])+1.e-9).all(), f'{m},{o},{rot.as_quaternion()}'
 
