@@ -21,7 +21,9 @@ module misc
     misc_init, &
     misc_selfTest, &
     misc_optional, &
-    misc_prefixOptions
+    misc_prefixOptions, &
+    misc_ones, &
+    misc_zeros
 
 contains
 
@@ -137,13 +139,41 @@ end function misc_prefixOptions
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief 1D array of zeros.
+!--------------------------------------------------------------------------------------------------
+pure function misc_zeros(N)
+
+  integer, intent(in) :: N                                                                          !< number of zeros
+  real(pREAL), dimension(N) :: misc_zeros
+
+
+  misc_zeros = 0._pREAL
+
+end function misc_zeros
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief 1D array of ones.
+!--------------------------------------------------------------------------------------------------
+pure function misc_ones(N)
+
+  integer, intent(in) :: N                                                                          !< number of ones
+  real(pREAL), dimension(N) :: misc_ones
+
+
+  misc_ones = 1._pREAL
+
+end function misc_ones
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some misc functions.
 !--------------------------------------------------------------------------------------------------
 subroutine misc_selfTest()
 
   real(pREAL) :: r
   character(len=:),      allocatable :: str,out
-
+  integer :: N
 
   call random_number(r)
   if (test_str('DAMASK') /= 'DAMASK')                        error stop 'optional_str, present'
@@ -162,6 +192,12 @@ subroutine misc_selfTest()
   str='-a -1 -more 123 -flag -'
   out=misc_prefixOptions(str,'p_')
   if (out /= '-p_a -1 -p_more 123 -p_flag -')                error stop 'misc_prefixOptions'
+
+  N = int(r*99._pReal)
+  if (size(misc_zeros(N)) /= N)           error stop 'shape zeros'
+  if (size(misc_ones(N)) /= N)            error stop 'shape ones'
+  if (any(dNeq(misc_zeros(N),0.0_pReal))) error stop 'value zeros'
+  if (any(dNeq(misc_ones(N),1.0_pReal)))  error stop 'value ones'
 
 contains
 
