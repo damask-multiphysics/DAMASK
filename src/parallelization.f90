@@ -62,8 +62,9 @@ subroutine parallelization_init()
 !$ integer :: got_env, threadLevel
 !$ integer(pI32) :: OMP_NUM_THREADS
 !$ character(len=6) NumThreadsString
-
   PetscErrorCode :: err_PETSc
+
+
 #ifdef _OPENMP
   ! If openMP is enabled, check if the MPI libary supports it and initialize accordingly.
   call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,err_MPI)
@@ -74,11 +75,7 @@ subroutine parallelization_init()
   if (err_MPI /= 0_MPI_INTEGER_KIND)   error stop 'MPI init failed'
 #endif
 
-#if defined(DEBUG)
-  call PetscInitialize(PETSC_NULL_CHARACTER,err_PETSc)
-#else
   call PetscInitializeNoArguments(err_PETSc)
-#endif
   CHKERRQ(err_PETSc)
 
 #if defined(DEBUG) && defined(__INTEL_COMPILER)
@@ -86,6 +83,9 @@ subroutine parallelization_init()
 #else
   call PetscSetFPTrap(PETSC_FP_TRAP_OFF,err_PETSc)
 #endif
+  CHKERRQ(err_PETSc)
+
+  call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
   CHKERRQ(err_PETSc)
 
   call MPI_Comm_rank(MPI_COMM_WORLD,worldrank,err_MPI)

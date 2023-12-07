@@ -174,8 +174,6 @@ subroutine spectral_utilities_init()
   num_grid        => num_solver%get_dict('grid',defaultVal=emptyDict)
   num_grid_fft    => num_grid%get_dict('FFT',defaultVal=emptyDict)
 
-  call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
-  CHKERRQ(err_PETSc)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,&
                                 num_grid%get_asStr('PETSc_options',defaultVal=''),err_PETSc)
   CHKERRQ(err_PETSc)
