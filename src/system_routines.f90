@@ -4,9 +4,9 @@
 !--------------------------------------------------------------------------------------------------
 module system_routines
   use, intrinsic :: ISO_C_Binding
+  use, intrinsic :: ISO_fortran_env
 
   use prec
-  use IO
 
   implicit none(type,external)
   private
@@ -21,6 +21,8 @@ module system_routines
     signalint_C, &
     signalusr1_C, &
     signalusr2_C, &
+    STDOUT_isatty, &
+    STDERR_isatty, &
     f_c_string, &
     free_C
 
@@ -91,6 +93,20 @@ module system_routines
       type(C_PTR), value :: ptr
     end subroutine free_C
 
+    function stdout_isatty_C() bind(C)
+      use, intrinsic :: ISO_C_Binding, only: C_INT
+      implicit none(type,external)
+
+      integer(C_INT) :: stdout_isatty_C
+    end function stdout_isatty_C
+
+    function stderr_isatty_C() bind(C)
+      use, intrinsic :: ISO_C_Binding, only: C_INT
+      implicit none(type,external)
+
+      integer(C_INT) :: stderr_isatty_C
+    end function stderr_isatty_C
+
   end interface
 
 contains
@@ -101,7 +117,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine system_routines_init()
 
-  print'(/,1x,a)', '<<<+-  system_routines init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  system_routines init  -+>>>'; flush(OUTPUT_UNIT)
 
   call system_routines_selfTest()
 
@@ -227,6 +243,26 @@ pure function f_c_string(f_string) result(c_string)
   c_string = transfer(trim(f_string)//C_NULL_CHAR,c_string,size=size(c_string,kind=pI64))
 
 end function f_c_string
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief
+!--------------------------------------------------------------------------------------------------
+logical function STDOUT_isatty()
+
+  STDOUT_isatty = merge(.true.,.false.,stdout_isatty_C()==1)
+
+end function STDOUT_isatty
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief
+!--------------------------------------------------------------------------------------------------
+logical function STDERR_isatty()
+
+  STDERR_isatty = merge(.true.,.false.,stderr_isatty_C()==1)
+
+end function STDERR_isatty
 
 
 !--------------------------------------------------------------------------------------------------
