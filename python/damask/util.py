@@ -930,8 +930,8 @@ class ProgressBar:
         self.time_start = self.time_last_update = _datetime.datetime.now()
         self.fraction_last = 0.0
 
-        _sys.stderr.write(f"{self.prefix} {'░'*self.bar_length}   0% ETA n/a")
-        _sys.stderr.flush()
+        if _sys.stdout.isatty():
+            _sys.stdout.write(f"{self.prefix} {'░'*self.bar_length}   0% ETA n/a")
 
     def update(self,
                iteration: int) -> None:
@@ -944,12 +944,11 @@ class ProgressBar:
             bar = '█' * filled_length + '░' * (self.bar_length - filled_length)
             remaining_time = (_datetime.datetime.now() - self.time_start) \
                            * (self.total - (iteration+1)) / (iteration+1)
-            remaining_time -= _datetime.timedelta(microseconds=remaining_time.microseconds)          # remove μs
-            _sys.stderr.write(f'\r{self.prefix} {bar} {fraction:>4.0%} ETA {remaining_time}')
-            _sys.stderr.flush()
+            remaining_time -= _datetime.timedelta(microseconds=remaining_time.microseconds)         # remove μs
+            if _sys.stdout.isatty():
+               _sys.stdout.write(f'\r{self.prefix} {bar} {fraction:>4.0%} ETA {remaining_time}')
 
         self.fraction_last = fraction
 
-        if iteration == self.total - 1:
-            _sys.stderr.write('\n')
-            _sys.stderr.flush()
+        if iteration == self.total - 1 and _sys.stdout.isatty():
+            _sys.stdout.write('\n')
