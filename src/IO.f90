@@ -13,8 +13,11 @@ module IO
   use prec
   use constants
   use misc
+#ifndef MARC4DAMASK
+  use system_routines
+#endif
 
-  implicit none(type,external)
+implicit none(type,external)
   private
 
   character(len=*), parameter, public :: &
@@ -42,6 +45,7 @@ module IO
     IO_strAsInt, &
     IO_strAsReal, &
     IO_strAsBool, &
+    IO_color, &
     IO_error, &
     IO_warning, &
     IO_STDOUT
@@ -433,6 +437,41 @@ logical function IO_strAsBool(str)
 end function IO_strAsBool
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Set foreground and/or background color.
+!> @details Only active if unit is a TTY. Does nothing for MSC.Marc or when writing to log file.
+!> @details https://stackoverflow.com/questions/4842424
+!--------------------------------------------------------------------------------------------------
+function IO_color(fg,bg,unit)
+
+  character(len=:), allocatable :: IO_color
+  integer, intent(in), dimension(3), optional :: fg, bg
+  integer, intent(in), optional :: unit                                                             !< output unit (default STDOUT)
+
+  integer :: unit_
+
+
+  IO_color = ''
+
+#if !(defined(MARC4DAMASK) || defined(LOGFILE))
+  unit_ = misc_optional(unit,IO_STDOUT)
+  if (unit_ == IO_STDOUT .and. .not. STDOUT_isatty()) return
+  if (unit_ == IO_STDERR .and. .not. STDERR_isatty()) return
+
+  if (present(fg)) &
+    IO_color = IO_color//achar(27)//'[38;2;'//IO_intAsStr(fg(1))//';' &
+                                            //IO_intAsStr(fg(2))//';' &
+                                            //IO_intAsStr(fg(3))//'m'
+  if (present(bg)) &
+    IO_color = IO_color//achar(27)//'[48;2;'//IO_intAsStr(bg(1))//';' &
+                                            //IO_intAsStr(bg(2))//';' &
+                                            //IO_intAsStr(bg(3))//'m'
+
+  if (.not. present(fg) .and. .not. present(bg)) IO_color = achar(27)//'[0m'
+#endif
+
+end function IO_color
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write error statements and terminate the run with exit #9xxx.
@@ -722,8 +761,8 @@ subroutine panel(paneltype,ID,msg,ext_msg,label1,ID1,label2,ID2)
   character(len=*), parameter            :: DIVIDER = repeat('─',panelwidth)
 
 
-  if (.not. present(label1) .and.       present(ID1)) error stop 'missing label for value 1'
-  if (.not. present(label2) .and.       present(ID2)) error stop 'missing label for value 2'
+  if (.not. present(label1) .and. present(ID1)) error stop 'missing label for value 1'
+  if (.not. present(label2) .and. present(ID2)) error stop 'missing label for value 2'
 
   ID_ = IO_intAsStr(ID)
   if (present(label1)) msg1 = label1
@@ -731,8 +770,8 @@ subroutine panel(paneltype,ID,msg,ext_msg,label1,ID1,label2,ID2)
   if (present(ID1)) msg1 = msg1//' '//IO_intAsStr(ID1)
   if (present(ID2)) msg2 = msg2//' '//IO_intAsStr(ID2)
 
-  if (paneltype == 'error')   msg_ = achar(27)//'[31m'//trim(msg)//achar(27)//'[0m'
-  if (paneltype == 'warning') msg_ = achar(27)//'[33m'//trim(msg)//achar(27)//'[0m'
+  if (paneltype == 'error')   msg_ = IO_color([255,0,0],  unit=IO_STDERR)//trim(msg)//IO_color(unit=IO_STDERR)
+  if (paneltype == 'warning') msg_ = IO_color([255,255,0],unit=IO_STDERR)//trim(msg)//IO_color(unit=IO_STDERR)
   !$OMP CRITICAL (write2out)
   write(IO_STDERR,'(/,a)')                ' ┌'//DIVIDER//'┐'
   write(formatString,'(a,i2,a)') '(a,24x,a,1x,i0,',max(1,panelwidth-24-len_trim(paneltype)-1-len_trim(ID_)),'x,a)'

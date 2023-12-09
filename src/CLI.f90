@@ -71,10 +71,10 @@ subroutine CLI_init()
 
  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
 #ifdef DEBUG
-  print'(a)', achar(27)//'[31m'
+  print'(a)', IO_color([255,0,0])
   print'(1x,a,/)', 'debug version - debug version - debug version - debug version - debug version'
 #else
-  print'(a)', achar(27)//'[1;94m'
+  print'(a)', IO_color([67,128,208])
 #endif
   print'(1x,a)', '    _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/    _/_/_/'
   print'(1x,a)', '   _/    _/  _/    _/  _/_/  _/_/  _/    _/  _/        _/  _/            _/'
@@ -89,7 +89,7 @@ subroutine CLI_init()
 #ifdef DEBUG
   print'(/,1x,a)', 'debug version - debug version - debug version - debug version - debug version'
 #endif
-  print'(a)', achar(27)//'[0m'
+  print'(a)', IO_color()
 
   print'(1x,a)', 'F. Roters et al., Computational Materials Science 158:420–478, 2019'
   print'(1x,a)', 'https://doi.org/10.1016/j.commatsci.2018.04.030'
