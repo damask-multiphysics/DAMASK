@@ -94,6 +94,10 @@ int stderr_isatty_c(){
   return isatty(STDERR_FILENO);
 }
 
+int stdin_isatty_c(){
+  return isatty(STDIN_FILENO);
+}
+
 
 #ifdef FYAML
 void to_flow_c(char **flow, long* length_flow, const char *mixed){

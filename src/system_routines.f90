@@ -21,8 +21,7 @@ module system_routines
     signalint_C, &
     signalusr1_C, &
     signalusr2_C, &
-    STDOUT_isatty, &
-    STDERR_isatty, &
+    isatty, &
     f_c_string, &
     free_C
 
@@ -106,6 +105,14 @@ module system_routines
       implicit none(type,external)
       integer(C_INT) :: stderr_isatty_C
     end function stderr_isatty_C
+
+    function stdin_isatty_C() bind(C)
+      use, intrinsic :: ISO_C_Binding, only: C_INT
+
+      implicit none(type,external)
+      integer(C_INT) :: stdin_isatty_C
+    end function stdin_isatty_C
+
 
   end interface
 
@@ -246,23 +253,28 @@ end function f_c_string
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief
+!> @brief Test whether a file descriptor refers to a terminal.
+!> @detail A terminal is neither a file nor a redirected STDOUT/STDERR/STDIN.
 !--------------------------------------------------------------------------------------------------
-logical function STDOUT_isatty()
+logical function isatty(unit)
 
-  STDOUT_isatty = merge(.true.,.false.,stdout_isatty_C()==1)
-
-end function STDOUT_isatty
+  integer, intent(in) :: unit
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief
-!--------------------------------------------------------------------------------------------------
-logical function STDERR_isatty()
+  select case(unit)
+#ifndef LOGFILE
+    case (OUTPUT_UNIT)
+      isatty = stdout_isatty_C()==1
+    case (ERROR_UNIT)
+      isatty = stderr_isatty_C()==1
+#endif
+    case (INPUT_UNIT)
+      isatty = stdin_isatty_C()==1
+    case default
+      isatty = .false.
+  end select
 
-  STDERR_isatty = merge(.true.,.false.,stderr_isatty_C()==1)
-
-end function STDERR_isatty
+end function isatty
 
 
 !--------------------------------------------------------------------------------------------------

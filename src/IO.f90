@@ -438,25 +438,23 @@ end function IO_strAsBool
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Set foreground and/or background color.
-!> @details Only active if unit is a TTY. Does nothing for MSC.Marc or when writing to log file.
+!> @brief Return string to set foreground and/or background color.
+!> @details Only active if unit is a TTY. Does nothing for MSC.Marc. No color disables formatting.
 !> @details https://stackoverflow.com/questions/4842424
 !--------------------------------------------------------------------------------------------------
 function IO_color(fg,bg,unit)
 
   character(len=:), allocatable :: IO_color
-  integer, intent(in), dimension(3), optional :: fg, bg
+  integer, intent(in), dimension(3), optional :: &
+    fg, &                                                                                           !< foreground color (8 bit RGB)
+    bg                                                                                              !< background color (8 bit RGB)
   integer, intent(in), optional :: unit                                                             !< output unit (default STDOUT)
-
-  integer :: unit_
 
 
   IO_color = ''
 
-#if !(defined(MARC4DAMASK) || defined(LOGFILE))
-  unit_ = misc_optional(unit,IO_STDOUT)
-  if (unit_ == IO_STDOUT .and. .not. STDOUT_isatty()) return
-  if (unit_ == IO_STDERR .and. .not. STDERR_isatty()) return
+#ifndef MARC4DAMASK
+  if (.not. isatty(misc_optional(unit,IO_STDOUT))) return
 
   if (present(fg)) &
     IO_color = IO_color//achar(27)//'[38;2;'//IO_intAsStr(fg(1))//';' &
