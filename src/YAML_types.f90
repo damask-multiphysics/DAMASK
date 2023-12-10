@@ -10,6 +10,7 @@
 module YAML_types
   use IO
   use prec
+  use misc
 
   implicit none(type,external)
   private
@@ -93,7 +94,8 @@ module YAML_types
       tDict_get_list, &
       tDict_get_dict, &
       tDict_get_asReal, &
-      tDict_get_as1dReal, &
+      tDict_get_as1dReal_shape, &
+      tDict_get_as1dReal_size, &
       tDict_get_as2dReal, &
       tDict_get_asInt, &
       tDict_get_as1dInt, &
@@ -106,7 +108,8 @@ module YAML_types
     generic :: get_list     => tDict_get_list
     generic :: get_dict     => tDict_get_dict
     generic :: get_asReal   => tDict_get_asReal
-    generic :: get_as1dReal => tDict_get_as1dReal
+    generic :: get_as1dReal => tDict_get_as1dReal_size
+    generic :: get_as1dReal => tDict_get_as1dReal_shape
     generic :: get_as2dReal => tDict_get_as2dReal
     generic :: get_asInt    => tDict_get_asInt
     generic :: get_as1dInt  => tDict_get_as1dInt
@@ -265,7 +268,46 @@ subroutine YAML_types_selfTest()
       .or. .not. d%contains('four') &
       )                                               error stop 'tDict_contains'
 
+
   end block dict
+
+  dict_get_as1dReal_shape: block
+    type(tDict),   pointer :: d
+    type(tList),   pointer :: l_outer, l_inner
+    type(tScalar), pointer :: s1,s2,s3
+    real(pREAL), dimension(5) :: a
+
+
+    allocate(s1)
+    allocate(s2)
+    allocate(s3)
+    s1 = '1.'
+    s2 = '2'
+    s3 = '3.0'
+
+    allocate(l_inner)
+    call l_inner%append(s1)
+    call l_inner%append(s2)
+
+    allocate(l_outer)
+    call l_outer%append(l_inner)
+    call l_outer%append(s3)
+
+    allocate(d)
+    call d%set('list',l_outer)
+    call d%set('scalar',s1)
+
+    a = d%get_as1dReal('list',requiredShape=[2,3])
+    if (any(dNeq(a,real([1.0,2.0,3.0,3.0,3.0],pReal)))) &
+      error stop 'dict_get_as1dReal_shape list'
+
+    if (any(dNeq(d%get_as1dReal('non-existing',a,[2,3]),a))) &
+      error stop 'dict_get_as1dReal_shape default'
+
+    if (any(dNeq(d%get_as1dReal('scalar',requiredShape=[3,5,2]),misc_ones(10)))) &
+      error stop 'dict_get_as1dReal_shape scalar'
+
+  end block dict_get_as1dReal_shape
 
 end subroutine YAML_types_selfTest
 
@@ -1146,7 +1188,7 @@ end function tDict_get_asReal
 !--------------------------------------------------------------------------------------------------
 !> @brief Get list by key and convert to real array (1D).
 !--------------------------------------------------------------------------------------------------
-function tDict_get_as1dReal(self,k,defaultVal,requiredSize) result(nodeAs1dReal)
+function tDict_get_as1dReal_size(self,k,defaultVal,requiredSize) result(nodeAs1dReal)
 
   class(tDict),     intent(in) :: self
   character(len=*), intent(in) :: k
@@ -1173,7 +1215,59 @@ function tDict_get_as1dReal(self,k,defaultVal,requiredSize) result(nodeAs1dReal)
                     label2='required',ID2=requiredSize)
   end if
 
-end function tDict_get_as1dReal
+end function tDict_get_as1dReal_size
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Get entry by key and convert to real array (1D).
+!> @details Values will be broadcasted. A List content can be composed from mixture of scalar
+!> or list entries. [2., [1., 3.]] with required shape [3, 2] gives [2., 2., 2., 1., 3.].
+!--------------------------------------------------------------------------------------------------
+function tDict_get_as1dReal_shape(self,k,defaultVal,requiredShape) result(nodeAs1dReal)
+
+  class(tDict),     intent(in) :: self
+  character(len=*), intent(in) :: k
+  real(pREAL),      intent(in), dimension(:), optional :: defaultVal
+  integer,          intent(in), dimension(:)           :: requiredShape
+  real(pREAL),                  dimension(sum(requiredShape)) :: nodeAs1dReal
+
+  type(tList), pointer :: list_outer, list_inner
+  class(tNode), pointer :: node_outer, node_inner
+  integer :: i
+
+
+  if (self%contains(k)) then
+    node_outer => self%get(k)
+    select type(node_outer)
+      class is(tScalar)
+        nodeAs1dReal = node_outer%asReal()
+      class is(tList)
+        list_outer => self%get_list(k)
+        do i = 1, size(requiredShape)
+          node_inner => list_outer%get(i)
+          select type(node_inner)
+            class is(tScalar)
+              nodeAs1dReal(sum(requiredShape(:i-1))+1:sum(requiredShape(:i))) = node_inner%asReal()
+            class is(tList)
+              list_inner => node_inner%asList()
+              if (size(list_inner%as1dReal()) /= requiredShape(i)) &
+                  call IO_error(709,'entry "'//k//'" is not of length '//IO_intAsStr(requiredShape(i)),&
+                                'position',i)
+              nodeAs1dReal(sum(requiredShape(:i-1))+1:sum(requiredShape(:i))) = list_inner%as1dReal()
+            class default
+              call IO_error(706,'entry "'//k//'" is neither scalar nor list','position',i)
+          end select
+        end do
+    end select
+  elseif (present(defaultVal)) then
+    if (size(defaultVal) /= size(nodeAs1dReal)) &
+      call IO_error(709,'default values not of required shape')
+    nodeAs1dReal = defaultVal
+  else
+    call IO_error(143,ext_msg=k)
+  end if
+
+end function tDict_get_as1dReal_shape
 
 
 !--------------------------------------------------------------------------------------------------
