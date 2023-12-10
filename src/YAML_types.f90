@@ -303,7 +303,11 @@ subroutine YAML_types_selfTest()
       error stop 'dict_get_as1dReal_shape list'
 
     if (any(dNeq(d%get_as1dReal('non-existing',a,[2,3]),a))) &
-      error stop 'dict_get_as1dReal_shape default'
+      error stop 'dict_get_as1dReal_shape default individual'
+
+    a = real([42.0, 42.0, 5.0, 5.0, 5.0],pREAL)
+    if (any(dNeq(d%get_as1dReal('non-existing',[42._pREAL, 5._pREAL],[2,3]),a))) &
+      error stop 'dict_get_as1dReal_shape default group'
 
     if (any(dNeq(d%get_as1dReal('scalar',requiredShape=[3,5,2]),misc_ones(10)))) &
       error stop 'dict_get_as1dReal_shape scalar'
@@ -1262,9 +1266,15 @@ function tDict_get_as1dReal_shape(self,k,defaultVal,requiredShape) result(nodeAs
         end do
     end select
   elseif (present(defaultVal)) then
-    if (size(defaultVal) /= size(nodeAs1dReal)) &
+    if (size(defaultVal) == size(nodeAs1dReal)) then
+      nodeAs1dReal = defaultVal
+    elseif (size(defaultVal) == size(requiredShape)) then
+      do i = 1, size(requiredShape)
+        nodeAs1dReal(sum(requiredShape(:i-1))+1:sum(requiredShape(:i))) = defaultVal(i)
+      end do
+    else
       call IO_error(709,'default values not of required shape')
-    nodeAs1dReal = defaultVal
+    end if
   else
     call IO_error(143,ext_msg=k)
   end if
