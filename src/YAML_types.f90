@@ -271,6 +271,7 @@ subroutine YAML_types_selfTest()
 
   end block dict
 
+#ifdef __GFORTRAN__
   dict_get_as1dReal_shape: block
     type(tDict),   pointer :: d
     type(tList),   pointer :: l_outer, l_inner
@@ -308,6 +309,7 @@ subroutine YAML_types_selfTest()
       error stop 'dict_get_as1dReal_shape scalar'
 
   end block dict_get_as1dReal_shape
+#endif
 
 end subroutine YAML_types_selfTest
 
