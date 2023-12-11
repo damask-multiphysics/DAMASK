@@ -85,6 +85,20 @@ void inflate_c(const uLong *s_deflated, const uLong *s_inflated, const Byte defl
   }
 }
 
+
+int stdout_isatty_c(){
+  return isatty(STDOUT_FILENO);
+}
+
+int stderr_isatty_c(){
+  return isatty(STDERR_FILENO);
+}
+
+int stdin_isatty_c(){
+  return isatty(STDIN_FILENO);
+}
+
+
 #ifdef FYAML
 void to_flow_c(char **flow, long* length_flow, const char *mixed){
   struct fy_document *fyd = NULL;

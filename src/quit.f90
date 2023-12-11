@@ -27,10 +27,10 @@ subroutine quit(stop_id)
   PetscErrorCode :: err_PETSc
 
 
-  call h5open_f(err_HDF5)                                                                           ! prevents error if not opened yet
-  if (err_HDF5 < 0) write(ERROR_UNIT,'(a,i5)') ' Error in h5open_f ',err_HDF5
-  call h5close_f(err_HDF5)
-  if (err_HDF5 < 0) write(ERROR_UNIT,'(a,i5)') ' Error in h5close_f ',err_HDF5
+  call H5Open_f(err_HDF5)                                                                           ! prevents error if not opened yet
+  if (err_HDF5 < 0) write(ERROR_UNIT,'(a,i5)') ' Error in H5Open_f ',err_HDF5
+  call H5Close_f(err_HDF5)
+  if (err_HDF5 < 0) write(ERROR_UNIT,'(a,i5)') ' Error in H5Close_f ',err_HDF5
 
   call PetscFinalize(err_PETSc)
 

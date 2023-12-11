@@ -4,9 +4,9 @@
 !--------------------------------------------------------------------------------------------------
 module system_routines
   use, intrinsic :: ISO_C_Binding
+  use, intrinsic :: ISO_fortran_env
 
   use prec
-  use IO
 
   implicit none(type,external)
   private
@@ -21,6 +21,7 @@ module system_routines
     signalint_C, &
     signalusr1_C, &
     signalusr2_C, &
+    isatty, &
     f_c_string, &
     free_C
 
@@ -30,8 +31,8 @@ module system_routines
 
     function setCWD_C(cwd) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
-      implicit none(type,external)
 
+      implicit none(type,external)
       integer(C_INT) :: setCWD_C
       character(kind=C_CHAR), dimension(*), intent(in) :: cwd
     end function setCWD_C
@@ -39,8 +40,8 @@ module system_routines
     subroutine getCWD_C(cwd, stat) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
       use prec
-      implicit none(type,external)
 
+      implicit none(type,external)
       character(kind=C_CHAR), dimension(pPathLen+1), intent(out) :: cwd                             ! NULL-terminated array
       integer(C_INT),                                intent(out) :: stat
     end subroutine getCWD_C
@@ -48,8 +49,8 @@ module system_routines
     subroutine getHostName_C(hostname, stat) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
       use prec
-      implicit none(type,external)
 
+      implicit none(type,external)
       character(kind=C_CHAR), dimension(pSTRLEN+1), intent(out) :: hostname                         ! NULL-terminated array
       integer(C_INT),                               intent(out) :: stat
     end subroutine getHostName_C
@@ -57,39 +58,61 @@ module system_routines
     subroutine getUserName_C(username, stat) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
       use prec
-      implicit none(type,external)
 
+      implicit none(type,external)
       character(kind=C_CHAR), dimension(pSTRLEN+1), intent(out) :: username                         ! NULL-terminated array
       integer(C_INT),                               intent(out) :: stat
     end subroutine getUserName_C
 
     subroutine signalint_C(handler) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
-      implicit none(type,external)
 
+      implicit none(type,external)
       type(C_FUNPTR), intent(in), value :: handler
     end subroutine signalint_C
 
     subroutine signalusr1_C(handler) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
-      implicit none(type,external)
 
+      implicit none(type,external)
       type(C_FUNPTR), intent(in), value :: handler
     end subroutine signalusr1_C
 
     subroutine signalusr2_C(handler) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
-      implicit none(type,external)
 
+      implicit none(type,external)
       type(C_FUNPTR), intent(in), value :: handler
     end subroutine signalusr2_C
 
     subroutine free_C(ptr) bind(C,name='free')
       use, intrinsic :: ISO_C_Binding, only: C_PTR
-      implicit none(type,external)
 
+      implicit none(type,external)
       type(C_PTR), value :: ptr
     end subroutine free_C
+
+    function stdout_isatty_C() bind(C)
+      use, intrinsic :: ISO_C_Binding, only: C_INT
+
+      implicit none(type,external)
+      integer(C_INT) :: stdout_isatty_C
+    end function stdout_isatty_C
+
+    function stderr_isatty_C() bind(C)
+      use, intrinsic :: ISO_C_Binding, only: C_INT
+
+      implicit none(type,external)
+      integer(C_INT) :: stderr_isatty_C
+    end function stderr_isatty_C
+
+    function stdin_isatty_C() bind(C)
+      use, intrinsic :: ISO_C_Binding, only: C_INT
+
+      implicit none(type,external)
+      integer(C_INT) :: stdin_isatty_C
+    end function stdin_isatty_C
+
 
   end interface
 
@@ -101,7 +124,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine system_routines_init()
 
-  print'(/,1x,a)', '<<<+-  system_routines init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  system_routines init  -+>>>'; flush(OUTPUT_UNIT)
 
   call system_routines_selfTest()
 
@@ -227,6 +250,31 @@ pure function f_c_string(f_string) result(c_string)
   c_string = transfer(trim(f_string)//C_NULL_CHAR,c_string,size=size(c_string,kind=pI64))
 
 end function f_c_string
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Test whether a file descriptor refers to a terminal.
+!> @detail A terminal is neither a file nor a redirected STDOUT/STDERR/STDIN.
+!--------------------------------------------------------------------------------------------------
+logical function isatty(unit)
+
+  integer, intent(in) :: unit
+
+
+  select case(unit)
+#ifndef LOGFILE
+    case (OUTPUT_UNIT)
+      isatty = stdout_isatty_C()==1
+    case (ERROR_UNIT)
+      isatty = stderr_isatty_C()==1
+#endif
+    case (INPUT_UNIT)
+      isatty = stdin_isatty_C()==1
+    case default
+      isatty = .false.
+  end select
+
+end function isatty
 
 
 !--------------------------------------------------------------------------------------------------
