@@ -1932,15 +1932,20 @@ class Result:
                        parallel=parallel)
 
     def export_DREAM3D(self,
+                       q: str = 'O',
                        target_dir: Union[None, str, Path] = None):
         """
         Export the visible components to DREAM3D compatible files.
 
         One DREAM3D file per visible increment is created.
-        The DREAM3D file is based on HDF5 file format.
+        The geometry is based on the undeformed configuration.
 
         Parameters
         ----------
+        q : str, optional
+            Name of the dataset containing the crystallographic orientation as quaternions.
+            Defaults to 'O'.
+
         target_dir : str or pathlib.Path, optional
             Directory to save DREAM3D files. Will be created if non-existent.
 
@@ -1979,7 +1984,7 @@ class Result:
                     count = 1
                     for label in self.visible['phases']:
                         try:
-                            data = _read(f['/'.join([inc,'phase',label,'mechanical/O'])])
+                            data = _read(f['/'.join([inc,'phase',label,'mechanical',q])])
                             lattice = data.dtype.metadata['lattice']
                             # Map to DREAM.3D IDs
                             if lattice == 'hP':
