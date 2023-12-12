@@ -1,0 +1,14 @@
+# initial elastic step
+$Loadcase 1 t 0.0005 N 1 f_out 1
+ Face 1 Z 0.01
+ Face 2 X 0.0
+ Face 2 Y 0.0
+ Face 2 Z 0.0
+$EndLoadcase
+# plastic step
+$Loadcase 2 t 1.0 N 10 f_out 2
+ Face 1 Z 0.01
+ Face 2 X 0.0
+ Face 2 Y 0.0
+ Face 2 Z 0.0
+$EndLoadcase
