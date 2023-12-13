@@ -58,6 +58,19 @@ def dict_equal(d1, d2):
                     return False
     return True
 
+@pytest.fixture
+def h5py_dataset_iterator():
+    """Iterate over all datasets in an HDF5 file."""
+    def _h5py_dataset_iterator(g, prefix=''):
+        for key,item in g.items():
+            path = os.path.join(prefix, key)
+            if isinstance(item, h5py.Dataset): # test for dataset
+                yield (path, item)
+            elif isinstance(item, h5py.Group): # test for group (go down)
+                yield from _h5py_dataset_iterator(item, path)
+    return _h5py_dataset_iterator
+
+
 class TestResult:
 
     def test_self_report(self,default):
@@ -436,6 +449,35 @@ class TestResult:
         export_dir = tmp_path/'export_dir'
         single_phase.export_VTK(mode='point',target_dir=export_dir,parallel=False)
         assert set(os.listdir(export_dir)) == set([f'{single_phase.fname.stem}_inc{i:02}.vtp' for i in range(0,40+1,4)])
+
+    def test_export_DREAM3D(self,tmp_path,res_path,h5py_dataset_iterator):
+        result = Result(res_path/'2phase_irregularGrid_tensionX_material.hdf5').view(increments=0)  # compare the initial data only
+        result.export_DREAM3D(target_dir=tmp_path)
+
+        def ignore(path):
+            # features present in reference but not in exported file
+            for i in ['Pipeline','StatsGeneratorDataContainer','Grain Data',
+                      'BoundaryCells','FeatureIds','IPFColor','NumFeatures']:
+                if path.find(i) >= 0: return True
+            return False
+
+        with h5py.File(res_path/'2phase_irregularGrid.dream3d','r') as ref, \
+             h5py.File(tmp_path/'2phase_irregularGrid_tensionX_material_inc0.dream3d','r') as cur:
+
+            for (path,dset) in h5py_dataset_iterator(ref):
+                if ignore(path): continue
+                if path.find('PhaseName') < 0:
+                    assert np.array_equal(dset,cur[path])
+                else:
+                    c = [_.decode() for _ in cur[path]]
+                    r = ['Unknown Phase Type'] + result.phases
+                    assert c == r
+                grp = os.path.split(path)[0]
+                for attr in ref[grp].attrs:
+                    assert np.array_equal(ref[grp].attrs[attr],cur[grp].attrs[attr])
+                for attr in dset.attrs:
+                    assert np.array_equal(dset.attrs[attr],cur[path].attrs[attr])
+
 
     def test_XDMF_datatypes(self,tmp_path,single_phase,update,res_path):
         for what,shape in {'scalar':(),'vector':(3,),'tensor':(3,3),'matrix':(12,)}.items():
