@@ -6,7 +6,7 @@
 module tables
   use prec
   use IO
-  use YAML_parse
+  use YAML
   use types
 
   implicit none(type,external)
@@ -131,8 +131,8 @@ subroutine tables_selfTest()
     if (dNeq(y_true(i),t%at(x_eval(i)+r),1.0e-9_pREAL)) error stop 'table eval/values'
   end do
 
-  l_x => YAML_parse_str_asList('[1, 2, 3, 4]'//IO_EOL)
-  l_y => YAML_parse_str_asList('[1, 3, 2,-2]'//IO_EOL)
+  l_x => YAML_str_asList('[1, 2, 3, 4]'//IO_EOL)
+  l_y => YAML_str_asList('[1, 3, 2,-2]'//IO_EOL)
   allocate(dict)
   call dict%set('t',l_x)
   call dict%set('T',l_y)

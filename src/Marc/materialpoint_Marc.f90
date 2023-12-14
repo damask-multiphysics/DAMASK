@@ -8,7 +8,7 @@ module materialpoint_Marc
   use prec
   use IO
   use types
-  use YAML_parse
+  use YAML
   use HDF5_utilities
   use result
   use config
@@ -71,7 +71,7 @@ subroutine materialpoint_initAll()
   call prec_init()
   call IO_init()
   call types_init()
-  call YAML_parse_init()
+  call YAML_init()
   call HDF5_utilities_init()
   call result_init(.false.)
   call config_init()

@@ -5,7 +5,7 @@
 module polynomials
   use prec
   use IO
-  use YAML_parse
+  use YAML
   use types
 
   implicit none(type,external)
@@ -151,7 +151,7 @@ subroutine polynomials_selfTest()
            'C,T^3: '//trim(adjustl(coef_s(4)))//IO_EOL//&
            'C,T^4: '//trim(adjustl(coef_s(5)))//IO_EOL//&
            'T_ref: '//trim(adjustl(x_ref_s))//IO_EOL
-  dict => YAML_parse_str_asDict(trim(YAML_s))
+  dict => YAML_str_asDict(trim(YAML_s))
   p2 = polynomial(dict,'C','T')
   if (dNeq(p1%at(x),p2%at(x),1.0e-6_pREAL))                      error stop 'polynomials: init'
   y = coef(1)*(x-x_ref)**0 &
@@ -164,28 +164,28 @@ subroutine polynomials_selfTest()
   YAML_s = 'C: 0.0'//IO_EOL//&
            'C,T: '//trim(adjustl(coef_s(2)))//IO_EOL//&
            'T_ref: '//trim(adjustl(x_ref_s))//IO_EOL
-  dict => YAML_parse_str_asDict(trim(YAML_s))
+  dict => YAML_str_asDict(trim(YAML_s))
   p1 = polynomial(dict,'C','T')
   if (dNeq(p1%at(x_ref+x),-p1%at(x_ref-x),1.0e-10_pREAL))         error stop 'polynomials: eval(linear)'
 
   YAML_s = 'C: 0.0'//IO_EOL//&
            'C,T^2: '//trim(adjustl(coef_s(3)))//IO_EOL//&
            'T_ref: '//trim(adjustl(x_ref_s))//IO_EOL
-  dict => YAML_parse_str_asDict(trim(YAML_s))
+  dict => YAML_str_asDict(trim(YAML_s))
   p1 = polynomial(dict,'C','T')
   if (dNeq(p1%at(x_ref+x),p1%at(x_ref-x),1e-10_pREAL))            error stop 'polynomials: eval(quadratic)'
 
   YAML_s = 'Y: '//trim(adjustl(coef_s(1)))//IO_EOL//&
            'Y,X^3: '//trim(adjustl(coef_s(2)))//IO_EOL//&
            'X_ref: '//trim(adjustl(x_ref_s))//IO_EOL
-  dict => YAML_parse_str_asDict(trim(YAML_s))
+  dict => YAML_str_asDict(trim(YAML_s))
   p1 = polynomial(dict,'Y','X')
   if (dNeq(p1%at(x_ref+x)-coef(1),-(p1%at(x_ref-x)-coef(1)),1.0e-8_pREAL)) error stop 'polynomials: eval(cubic)'
 
   YAML_s = 'Y: '//trim(adjustl(coef_s(1)))//IO_EOL//&
            'Y,X^4: '//trim(adjustl(coef_s(2)))//IO_EOL//&
            'X_ref: '//trim(adjustl(x_ref_s))//IO_EOL
-  dict => YAML_parse_str_asDict(trim(YAML_s))
+  dict => YAML_str_asDict(trim(YAML_s))
   p1 = polynomial(dict,'Y','X')
   if (dNeq(p1%at(x_ref+x),p1%at(x_ref-x),1.0e-6_pREAL))           error stop 'polynomials: eval(quartic)'
 

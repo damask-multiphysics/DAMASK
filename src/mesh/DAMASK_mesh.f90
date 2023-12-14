@@ -113,7 +113,7 @@ program DAMASK_mesh
   end if
 
   call parallelization_bcast_str(fileContent)
-  load => YAML_parse_str_asDict(fileContent)
+  load => YAML_str_asDict(fileContent)
   load_steps => load%get_list('loadstep')
 
   allocate(loadCases(load_steps%length))

@@ -4,7 +4,7 @@
 !> @brief Parser for YAML files.
 !> @details Module converts a YAML input file to an equivalent YAML flow style which is then parsed.
 !----------------------------------------------------------------------------------------------------
-module YAML_parse
+module YAML
   use prec
   use misc
   use IO
@@ -17,9 +17,9 @@ module YAML_parse
   private
 
   public :: &
-    YAML_parse_init, &
-    YAML_parse_str_asList, &
-    YAML_parse_str_asDict
+    YAML_init, &
+    YAML_str_asList, &
+    YAML_str_asDict
 
 #ifdef FYAML
   interface
@@ -42,23 +42,23 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Do sanity checks.
 !--------------------------------------------------------------------------------------------------
-subroutine YAML_parse_init()
+subroutine YAML_init()
 
-  print'(/,1x,a)', '<<<+-  YAML_parse init  -+>>>'
+  print'(/,1x,a)', '<<<+-  YAML init  -+>>>'
 #ifdef FYAML
   print'(/,1x,a)', 'libfyaml powered'
 #else
-  call YAML_parse_selfTest()
+  call YAML_selfTest()
 #endif
 
-end subroutine YAML_parse_init
+end subroutine YAML_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Parse a YAML string with list at root into a structure of nodes.
 !> @details The string needs to end with a newline (unless using libfyaml).
 !--------------------------------------------------------------------------------------------------
-function YAML_parse_str_asList(str) result(list)
+function YAML_str_asList(str) result(list)
 
   character(len=*), intent(in) :: str
   type(tList), pointer :: list
@@ -69,14 +69,14 @@ function YAML_parse_str_asList(str) result(list)
   node => parse_flow(to_flow(str))
   list => node%asList()
 
-end function YAML_parse_str_asList
+end function YAML_str_asList
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Parse a YAML string with dict at root into a structure of nodes.
 !> @details The string needs to end with a newline (unless using libfyaml).
 !--------------------------------------------------------------------------------------------------
-function YAML_parse_str_asDict(str) result(dict)
+function YAML_str_asDict(str) result(dict)
 
   character(len=*), intent(in) :: str
   type(tDict), pointer :: dict
@@ -87,7 +87,7 @@ function YAML_parse_str_asDict(str) result(dict)
   node => parse_flow(to_flow(str))
   dict => node%asDict()
 
-end function YAML_parse_str_asDict
+end function YAML_str_asDict
 
 
 !--------------------------------------------------------------------------------------------------
@@ -870,7 +870,7 @@ end function to_flow
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some YAML functions.
 !--------------------------------------------------------------------------------------------------
-subroutine YAML_parse_selfTest()
+subroutine YAML_selfTest()
 
   if (indentDepth(' a') /= 1)     error stop 'indentDepth'
   if (indentDepth('a')  /= 0)     error stop 'indentDepth'
@@ -1024,14 +1024,14 @@ subroutine YAML_parse_selfTest()
       lst = '[1, 2, 3, 4]', &
       dct = '{a: 1, b: 2}'
 
-    list => YAML_parse_str_asList(lst//IO_EOL)
+    list => YAML_str_asList(lst//IO_EOL)
     if (list%asFormattedStr() /= lst) error stop 'str_asList'
-    dict => YAML_parse_str_asDict(dct//IO_EOL)
+    dict => YAML_str_asDict(dct//IO_EOL)
     if (dict%asFormattedStr() /= dct) error stop 'str_asDict'
 
   end block parse
 
-end subroutine YAML_parse_selfTest
+end subroutine YAML_selfTest
 #endif
 
-end module YAML_parse
+end module YAML

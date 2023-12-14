@@ -12,7 +12,7 @@ module materialpoint
   use misc
   use IO
   use types
-  use YAML_parse
+  use YAML
   use HDF5
   use HDF5_utilities
   use result
@@ -58,7 +58,7 @@ subroutine materialpoint_initAll()
    call base64_init()
 #endif
   call types_init()
-  call YAML_parse_init()
+  call YAML_init()
   call HDF5_utilities_init()
   call result_init(restart=CLI_restartInc>0)
   call config_init()

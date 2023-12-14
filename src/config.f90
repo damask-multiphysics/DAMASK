@@ -5,7 +5,7 @@
 module config
   use IO
   use misc
-  use YAML_parse
+  use YAML
   use types
   use result
   use parallelization
@@ -126,7 +126,7 @@ function parse(fname,description)
   end if
   call parallelization_bcast_str(fileContent)
 
-  parse => YAML_parse_str_asDict(fileContent)
+  parse => YAML_str_asDict(fileContent)
 
 end function parse
 

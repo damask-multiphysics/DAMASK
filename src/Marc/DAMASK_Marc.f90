@@ -21,7 +21,7 @@
 #include "../misc.f90"
 #include "../IO.f90"
 #include "../types.f90"
-#include "../YAML_parse.f90"
+#include "../YAML.f90"
 #include "../HDF5_utilities.f90"
 
 module DAMASK_interface
