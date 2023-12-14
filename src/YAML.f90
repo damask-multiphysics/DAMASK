@@ -310,8 +310,8 @@ logical function isKeyValue(line)
   isKeyValue = .false.
 
 
-  if ( .not. isKey(line) .and. index(IO_rmComment(line),':') > 0 .and. .not. isFlow(line)) then
-    if (index(IO_rmComment(line),': ') > 0) isKeyValue = .true.
+  if ( .not. isKey(line) .and. index(rmComment(line),':') > 0 .and. .not. isFlow(line)) then
+    if (index(rmComment(line),': ') > 0) isKeyValue = .true.
   end if
 
 end function isKeyValue
@@ -326,11 +326,11 @@ logical function isKey(line)
   character(len=*), intent(in) :: line
 
 
-  if (len(IO_rmComment(line)) == 0) then
+  if (len(rmComment(line)) == 0) then
     isKey = .false.
   else
-    isKey = index(IO_rmComment(line),':',back=.false.) == len(IO_rmComment(line)) .and. &
-            index(IO_rmComment(line),':',back=.true.)  == len(IO_rmComment(line)) .and. &
+    isKey = index(rmComment(line),':',back=.false.) == len(rmComment(line)) .and. &
+            index(rmComment(line),':',back=.true.)  == len(rmComment(line)) .and. &
             .not. isFlow(line)
   end if
 
@@ -364,7 +364,7 @@ subroutine skip_empty_lines(blck,s_blck)
 
   empty = .true.
   do while (empty .and. len_trim(blck(s_blck:)) /= 0)
-    empty = len_trim(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == 0
+    empty = len_trim(rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == 0
     if (empty) s_blck = s_blck + index(blck(s_blck:),IO_EOL)
   end do
 
@@ -383,11 +383,11 @@ subroutine skip_file_header(blck,s_blck)
   character(len=:), allocatable    :: line
 
 
-  line = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
+  line = rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
   if (index(adjustl(line),'%YAML') == 1) then
     s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     call skip_empty_lines(blck,s_blck)
-    if (trim(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == '---') then
+    if (trim(rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == '---') then
       s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     else
       call IO_error(708,ext_msg = line)
@@ -443,7 +443,7 @@ subroutine remove_line_break(blck,s_blck,e_char,flow_line)
   flow_line = ''
 
   do while (.not. line_end)
-    flow_line = flow_line//IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))//' '
+    flow_line = flow_line//rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))//' '
     line_end  = flow_is_closed(flow_line,e_char)
     s_blck    = s_blck + index(blck(s_blck:),IO_EOL)
   end do
@@ -466,14 +466,14 @@ subroutine list_item_inline(blck,s_blck,inline,offset)
 
 
   indent = indentDepth(blck(s_blck:),offset)
-  line   = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
+  line   = rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
   inline = line(indent-offset+3:)
   s_blck = s_blck + index(blck(s_blck:),IO_EOL)
 
   indent_next = indentDepth(blck(s_blck:))
 
   do while (indent_next > indent)
-    inline = inline//' '//trim(adjustl(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))))
+    inline = inline//' '//trim(adjustl(rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))))
     s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     indent_next = indentDepth(blck(s_blck:))
   end do
@@ -621,7 +621,7 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
   indent = indentDepth(blck(s_blck:),offset)
   do while (s_blck <= len_trim(blck))
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
-    line = IO_rmComment(blck(s_blck:e_blck))
+    line = rmComment(blck(s_blck:e_blck))
     if (trim(line) == '---' .or. trim(line) == '...') then
       exit
     elseif (len_trim(line) == 0) then
@@ -640,7 +640,7 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
         s_blck = e_blck + 2
         call skip_empty_lines(blck,s_blck)
         e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
-        line = IO_rmComment(blck(s_blck:e_blck))
+        line = rmComment(blck(s_blck:e_blck))
         if (trim(line) == '---') call IO_error(707,ext_msg=line)
         if (indentDepth(line) < indent .or. indentDepth(line) == indent) &
           call IO_error(701,ext_msg=line)
@@ -718,7 +718,7 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
 
   do while (s_blck <= len_trim(blck))
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
-    line = IO_rmComment(blck(s_blck:e_blck))
+    line = rmComment(blck(s_blck:e_blck))
     if (trim(line) == '---' .or. trim(line) == '...') then
       exit
     elseif (len_trim(line) == 0) then
@@ -796,7 +796,7 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
   if (s_blck <= len(blck)) then
     call skip_empty_lines(blck,s_blck)
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
-    line = IO_rmComment(blck(s_blck:e_blck))
+    line = rmComment(blck(s_blck:e_blck))
     if (trim(line) == '---' .or. trim(line) == '...') then
       continue                                                                                      ! end parsing at this point but not stop the simulation
     elseif (len_trim(line) == 0) then
@@ -854,17 +854,41 @@ function to_flow(blck)
   if (len_trim(blck) /= 0) then
     call skip_empty_lines(blck,s_blck)
     call skip_file_header(blck,s_blck)
-    line = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
+    line = rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
     if (trim(line) == '---') s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     call decide(blck,to_flow,s_blck,s_flow,offset)
   end if
-  line = IO_rmComment(blck(s_blck:s_blck+index(blck(s_blck:),IO_EOL)-2))
+  line = rmComment(blck(s_blck:s_blck+index(blck(s_blck:),IO_EOL)-2))
   if (trim(line)== '---') call IO_warning(709,ext_msg=line)
   to_flow = trim(to_flow(:s_flow-1))
   end_line = index(to_flow,IO_EOL)
   if (end_line > 0) to_flow = to_flow(:end_line-1)
 
 end function to_flow
+
+
+!--------------------------------------------------------------------------------------------------
+! @brief Remove comments (characters beyond '#') and trailing space.
+! ToDo: Discuss name (the trim aspect is not clear)
+!--------------------------------------------------------------------------------------------------
+function rmComment(line)
+
+  character(len=*), intent(in)  :: line
+  character(len=:), allocatable :: rmComment
+
+  integer :: split
+  character, parameter :: COMMENT_SIGN = '#'
+
+
+  split = index(line,COMMENT_SIGN)
+
+  if (split == 0) then
+    rmComment = trim(line)
+  else
+    rmComment = trim(line(:split-1))
+  end if
+
+end function rmComment
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1030,6 +1054,23 @@ subroutine YAML_selfTest()
     if (dict%asFormattedStr() /= dct) error stop 'str_asDict'
 
   end block parse
+
+  comment: block
+    character(len=:),      allocatable :: str,out
+
+    str='#';out=rmComment(str)
+    if (out /= ''   .or. len(out) /= 0)  error stop 'rmComment/1'
+    str=' #';out=rmComment(str)
+    if (out /= ''   .or. len(out) /= 0)  error stop 'rmComment/2'
+    str=' # ';out=rmComment(str)
+    if (out /= ''   .or. len(out) /= 0)  error stop 'rmComment/3'
+    str=' # a';out=rmComment(str)
+    if (out /= ''   .or. len(out) /= 0)  error stop 'rmComment/4'
+    str=' a#';out=rmComment(str)
+    if (out /= ' a' .or. len(out) /= 2)  error stop 'rmComment/5'
+    str=' ab #';out=rmComment(str)
+    if (out /= ' ab'.or. len(out) /= 3)  error stop 'rmComment/6'
+  end block comment
 
 end subroutine YAML_selfTest
 #endif

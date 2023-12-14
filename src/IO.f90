@@ -24,7 +24,8 @@ implicit none(type,external)
     IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13), &                         !< whitespace characters
     IO_QUOTES  = "'"//'"'
   character, parameter, public :: &
-    IO_EOL = LF, &                                                                                  !< end of line character
+    IO_EOL = LF                                                                                     !< end of line character
+  character, parameter :: &
     IO_COMMENT = '#'
 
   public :: &
@@ -39,7 +40,6 @@ implicit none(type,external)
     IO_intValue, &
     IO_realValue, &
     IO_lc, &
-    IO_rmComment, &
     IO_glueDiffering, &
     IO_intAsStr, &
     IO_strAsInt, &
@@ -221,7 +221,7 @@ pure function IO_strPos(str)
   character(len=*),                  intent(in) :: str                                              !< string in which chunk positions are searched for
   integer, dimension(:), allocatable            :: IO_strPos
 
-  integer                      :: left, right
+  integer :: left, right
 
 
   allocate(IO_strPos(1), source=0)
@@ -230,7 +230,7 @@ pure function IO_strPos(str)
   do while (verify(str(right+1:),IO_WHITESPACE)>0)
     left  = right + verify(str(right+1:),IO_WHITESPACE)
     right = left + scan(str(left:),IO_WHITESPACE) - 2
-    if ( str(left:left) == IO_COMMENT) exit
+    if (str(left:left) == IO_COMMENT) exit                                                          ! ToDo: unexpected and undocumented
     IO_strPos = [IO_strPos,left,right]
     IO_strPos(1) = IO_strPos(1)+1
     endOfStr: if (right < left) then
@@ -316,27 +316,6 @@ pure function IO_lc(str)
 end function IO_lc
 
 
-!--------------------------------------------------------------------------------------------------
-! @brief Remove comments (characters beyond '#') and trailing space.
-! ToDo: Discuss name (the trim aspect is not clear)
-!--------------------------------------------------------------------------------------------------
-function IO_rmComment(line)
-
-  character(len=*), intent(in)  :: line
-  character(len=:), allocatable :: IO_rmComment
-
-  integer :: split
-
-
-  split = index(line,IO_COMMENT)
-
-  if (split == 0) then
-    IO_rmComment = trim(line)
-  else
-    IO_rmComment = trim(line(:split-1))
-  end if
-
-end function IO_rmComment
 
 
 !--------------------------------------------------------------------------------------------------
@@ -872,19 +851,6 @@ subroutine IO_selfTest()
   str='  i#s';     if (      IO_isBlank(str))        error stop 'IO_isBlank/3'
 
   str='*(HiU!)3';if ('*(hiu!)3' /= IO_lc(str))       error stop 'IO_lc'
-
-  str='#';out=IO_rmComment(str)
-  if (out /= ''   .or. len(out) /= 0)                error stop 'IO_rmComment/1'
-  str=' #';out=IO_rmComment(str)
-  if (out /= ''   .or. len(out) /= 0)                error stop 'IO_rmComment/2'
-  str=' # ';out=IO_rmComment(str)
-  if (out /= ''   .or. len(out) /= 0)                error stop 'IO_rmComment/3'
-  str=' # a';out=IO_rmComment(str)
-  if (out /= ''   .or. len(out) /= 0)                error stop 'IO_rmComment/4'
-  str=' a#';out=IO_rmComment(str)
-  if (out /= ' a' .or. len(out) /= 2)                error stop 'IO_rmComment/5'
-  str=' ab #';out=IO_rmComment(str)
-  if (out /= ' ab'.or. len(out) /= 3)                error stop 'IO_rmComment/6'
 
   if ('abc, def' /= IO_wrapLines('abc, def')) &
                                                      error stop 'IO_wrapLines/1'
