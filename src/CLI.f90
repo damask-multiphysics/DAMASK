@@ -36,7 +36,7 @@ module CLI
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief initializes the solver by interpreting the command line arguments. Also writes
+!> @brief Initialize the solver by interpreting the command line arguments. Write
 !! information on computation to screen
 !--------------------------------------------------------------------------------------------------
 subroutine CLI_init()
@@ -45,24 +45,26 @@ subroutine CLI_init()
 #if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR<PETSC_MINOR_MIN || PETSC_VERSION_MINOR>PETSC_MINOR_MAX
 --  UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION ---
 #endif
-
+#if    PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==18
+  character(len=*), parameter :: PETSc_DOI = '10.2172/1893326'
+#elif  PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==19
+  character(len=*), parameter :: PETSc_DOI = '10.2172/1968587'
+#elif  PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==20
+  character(len=*), parameter :: PETSc_DOI = '10.2172/2205494'
+#endif
   character(len=:), allocatable :: &
     commandLine, &                                                                                  !< command line call as string
-    arg, &                                                                                          !< individual argument
+    flag, &                                                                                         !< individual flag
+    val, &
     geomArg, &                                                                                      !< -g CLI argument
     loadArg, &                                                                                      !< -l CLI argument
     materialArg, &                                                                                  !< -m CLI argument
     numericsArg, &                                                                                  !< -n CLI argument
     workingDirArg                                                                                   !< -w CLI argument
   integer :: &
-    stat, &
-    i
+    i, s
   integer, dimension(8) :: &
     dateAndTime
-  logical :: &
-    hasArg
-  external :: &
-    quit
 
 
   workingDirArg = getCWD()
@@ -92,8 +94,11 @@ subroutine CLI_init()
   print'(a)', IO_color()
 
   print'(1x,a)', 'F. Roters et al., Computational Materials Science 158:420–478, 2019'
-  print'(1x,a)', 'https://doi.org/10.1016/j.commatsci.2018.04.030'
-
+  print'(1x,a)', 'https://doi.org/10.1016/j.commatsci.2018.04.030'//IO_EOL
+#if PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18
+  print'(1x,a,i0,a,i0)', 'S. Balay et al., PETSc/TAO User Manual Revision ',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR
+  print'(1x,a)', 'https://doi.org/'//PETSc_DOI
+#endif
   print'(/,1x,a)', 'Version: '//DAMASKVERSION
 
   print'(/,1x,a)', 'Compiled with: '//compiler_version()
@@ -110,82 +115,47 @@ subroutine CLI_init()
   print'(/,1x,a,1x,2(i2.2,a),i4.4)', 'Date:',dateAndTime(3),'/',dateAndTime(2),'/',dateAndTime(1)
   print'(1x,a,1x,2(i2.2,a),i2.2)',   'Time:',dateAndTime(5),':',dateAndTime(6),':',dateAndTime(7)
 
+
+  if (command_argument_count() == 0) call help()
   do i = 1, command_argument_count()
-    hasArg = i < command_argument_count()
-    arg = getArg(i)
-    select case(trim(arg))                                                                          ! extract key
-      case ('-h','--help')
-        print'(/,1x,a)','#######################################################################'
-        print'(1x,a)',  'DAMASK Command Line Interface:'
-        print'(1x,a)',  'Düsseldorf Advanced Material Simulation Kit with PETSc-based solvers'
-        print'(1x,a,/)','#######################################################################'
-        print'(1x,a,/)','Valid command line switches:'
-        print'(1x,a)',  '   --geom         (-g, --geometry)'
-        print'(1x,a)',  '   --load         (-l, --loadcase)'
-        print'(1x,a)',  '   --material     (-m, --materialconfig)'
-        print'(1x,a)',  '   --numerics     (-n, --numericsconfig)'
-        print'(1x,a)',  '   --jobname      (-j, --job)'
-        print'(1x,a)',  '   --workingdir   (-w, --wd, --workingdirectory)'
-#if defined(GRID)
-        print'(1x,a)',  '   --restart      (-r, --rs)'
-#endif
-        print'(1x,a)',  '   --help         (-h)'
-        print'(/,1x,a)','-----------------------------------------------------------------------'
-        print'(1x,a)',  'Mandatory arguments:'
-        print'(/,1x,a)','  --geom GEOMFILE'
-        print'(1x,a)',  '       specify the file path of the geometry definition'
-        print'(/,1x,a)','  --load LOADFILE'
-        print'(1x,a)',  '       specify the file path of the load case definition'
-        print'(/,1x,a)','  --material MATERIALFILE'
-        print'(1x,a)',  '       specify the file path of the material configuration'
-        print'(/,1x,a)','-----------------------------------------------------------------------'
-        print'(1x,a)',  'Optional arguments:'
-        print'(/,1x,a)','  --numerics NUMERICSFILE'
-        print'(1x,a)',  '       Specify the file path of the numerics configuration'
-        print'(/,1x,a)','  --jobname JOBNAME'
-        print'(1x,a)',  '       specify the job name.'
-        print'(1x,a)',  '       Defaults to GEOM_LOAD_MATERIAL[_NUMERICS].'
-        print'(/,1x,a)','  --workingdirectory WORKINGDIRECTORY'
-        print'(1x,a)',  '       specify the base directory of relative paths.'
-        print'(1x,a)',  '       Defaults to the current working directory'
-#if defined(GRID)
-        print'(/,1x,a)','  --restart N'
-        print'(1x,a)',  '       read in increment N and continues with calculating'
-        print'(1x,a)',  '           increment N+1, N+2, ... based on this'
-        print'(1x,a)',  '       works only if the restart information for increment N'
-        print'(1x,a)',  '           is available in JOBNAME_restart.hdf5'
-        print'(1x,a)',  '       append to existing results file JOBNAME.hdf5'
-#endif
-        print'(/,1x,a)','-----------------------------------------------------------------------'
-        print'(1x,a)',  'Help:'
-        print'(/,1x,a)','  --help'
-        print'(1x,a,/)','       Prints this message and exits'
-        call quit(0)                                                                                ! normal Termination
+    flag = getArg(i)
+    if (flag == '-h' .or. flag == '--help') call help()
+  end do
+
+  i = 1
+  do while (i <= command_argument_count())
+    flag = getArg(i)
+    i = i + 1
+    s = scan(flag,'=')
+    if (s /= 0) then
+      val = flag(s+1:)
+      flag = flag(:s-1)
+    else
+      if (i > command_argument_count()) call IO_error(610,ext_msg=flag)
+      val = getArg(i)
+      i = i + 1
+    end if
+
+    select case(flag)
       case ('-g', '--geom', '--geometry')
-        if (.not. hasArg) call IO_error(610,ext_msg='--geom')
-        geomArg = getArg(i+1)
+        geomArg = val
       case ('-l', '--load', '--loadcase')
-        if (.not. hasArg) call IO_error(610,ext_msg='--load')
-        loadArg = getArg(i+1)
+        loadArg = val
       case ('-m', '--material', '--materialconfig')
-        if (.not. hasArg) call IO_error(610,ext_msg='--material')
-        materialArg = getArg(i+1)
+        materialArg = val
       case ('-n', '--numerics', '--numericsconfig')
-        if (.not. hasArg) call IO_error(610,ext_msg='--numerics')
-        numericsArg = getArg(i+1)
+        numericsArg = val
       case ('-j', '--job', '--jobname')
-        if (.not. hasArg) call IO_error(610,ext_msg='--jobname')
-        solverJobname = getArg(i+1)
+        solverJobname = val
       case ('-w', '--wd', '--workingdir', '--workingdirectory')
-        if (.not. hasArg) call IO_error(610,ext_msg='--workingdirectory')
-        workingDirArg = getArg(i+1)
+        workingDirArg = val
 #if defined(GRID)
       case ('-r', '--rs', '--restart')
-        if (.not. hasArg) call IO_error(610,ext_msg='--jobname')
-        arg = getArg(i+1)
-        CLI_restartInc = IO_strAsInt(arg)
-        if (CLI_restartInc < 0 .or. stat /= 0) call IO_error(611,ext_msg=arg)
+        CLI_restartInc = IO_strAsInt(val)
+        if (CLI_restartInc < 0) call IO_error(611,ext_msg=val,label1='--restart')
 #endif
+      case default
+        call IO_error(613,ext_msg=flag)
     end select
   end do
 
@@ -203,7 +173,7 @@ subroutine CLI_init()
   if (.not. allocated(solverJobname)) then
     solverJobname = jobname(CLI_geomFile,CLI_loadFile,CLI_materialFile,CLI_numericsFile)
   elseif (scan(solverJobname,'/') > 0) then
-    call IO_error(630)
+    call IO_error(612,ext_msg=solverJobname,label1='--jobname')
   endif
 
   commandLine = getArg(-1)
@@ -235,7 +205,6 @@ function getArg(n)
   character(len=:), allocatable :: getArg
 
   integer :: l,err
-  external :: quit
 
 
   allocate(character(len=0)::getArg)
@@ -251,14 +220,14 @@ function getArg(n)
   else
     call get_command_argument(n,getArg,status=err)
   endif
-  if (err /= 0) call quit(1)
+  if (err /= 0) error stop 'getting command arguments failed'
 
 end function getArg
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief extract working directory from given argument or from location of geometry file,
-!!        possibly converting relative arguments to absolut path
+!> @brief Extract working directory from given argument or from location of geometry file,
+!!        possibly converting relative arguments to absolut path.
 !--------------------------------------------------------------------------------------------------
 subroutine setWorkingDirectory(workingDirectoryArg)
 
@@ -420,5 +389,63 @@ function relpath(path,start)
 
 end function relpath
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Print usage instructions to STDOUT and terminate program.
+!--------------------------------------------------------------------------------------------------
+subroutine help()
+
+  external :: quit
+
+
+  print'(/,1x,a)','#######################################################################'
+  print'(1x,a)',  'DAMASK Command Line Interface:'
+  print'(1x,a)',  'Düsseldorf Advanced Material Simulation Kit with PETSc-based solvers'
+  print'(1x,a,/)','#######################################################################'
+  print'(1x,a,/)','Valid command line flags:'
+  print'(1x,a)',  '   --geom         (-g, --geometry)'
+  print'(1x,a)',  '   --load         (-l, --loadcase)'
+  print'(1x,a)',  '   --material     (-m, --materialconfig)'
+  print'(1x,a)',  '   --numerics     (-n, --numericsconfig)'
+  print'(1x,a)',  '   --jobname      (-j, --job)'
+  print'(1x,a)',  '   --workingdir   (-w, --wd, --workingdirectory)'
+#if defined(GRID)
+  print'(1x,a)',  '   --restart      (-r, --rs)'
+#endif
+  print'(1x,a)',  '   --help         (-h)'
+  print'(/,1x,a)','-----------------------------------------------------------------------'
+  print'(1x,a)',  'Mandatory flags:'
+  print'(/,1x,a)','  --geom GEOMFILE'
+  print'(1x,a)',  '       specify the file path of the geometry definition'
+  print'(/,1x,a)','  --load LOADFILE'
+  print'(1x,a)',  '       specify the file path of the load case definition'
+  print'(/,1x,a)','  --material MATERIALFILE'
+  print'(1x,a)',  '       specify the file path of the material configuration'
+  print'(/,1x,a)','-----------------------------------------------------------------------'
+  print'(1x,a)',  'Optional flags:'
+  print'(/,1x,a)','  --numerics NUMERICSFILE'
+  print'(1x,a)',  '       Specify the file path of the numerics configuration'
+  print'(/,1x,a)','  --jobname JOBNAME'
+  print'(1x,a)',  '       specify the job name.'
+  print'(1x,a)',  '       Defaults to GEOM_LOAD_MATERIAL[_NUMERICS].'
+  print'(/,1x,a)','  --workingdirectory WORKINGDIRECTORY'
+  print'(1x,a)',  '       specify the base directory of relative paths.'
+  print'(1x,a)',  '       Defaults to the current working directory'
+#if defined(GRID)
+  print'(/,1x,a)','  --restart N'
+  print'(1x,a)',  '       read in increment N and continues with calculating'
+  print'(1x,a)',  '           increment N+1, N+2, ... based on this'
+  print'(1x,a)',  '       works only if the restart information for increment N'
+  print'(1x,a)',  '           is available in JOBNAME_restart.hdf5'
+  print'(1x,a)',  '       append to existing results file JOBNAME.hdf5'
+#endif
+  print'(/,1x,a)','-----------------------------------------------------------------------'
+  print'(1x,a)',  'Help:'
+  print'(/,1x,a)','  --help'
+  print'(1x,a,/)','       Prints this message and exits'
+
+  call quit(0)
+
+end subroutine help
 
 end module CLI

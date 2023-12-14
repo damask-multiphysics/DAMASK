@@ -595,16 +595,15 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
     case (603)
       msg = 'invalid data for table'
     case (610)
-      msg = 'missing argument for option'
+      msg = 'missing value for command line flag'
     case (611)
-      msg = 'could not parse restart increment'
+      msg = 'invalid value for command line flag'
     case (612)
-      msg = 'missing option'
-    case (630)
-      msg = 'JOBNAME must not contain any slashes'
+      msg = 'missing command line flag'
+    case (613)
+      msg = 'invalid command line flag'
     case (640)
       msg = 'invalid working directory'
-
 
 
 !------------------------------------------------------------------------------------------------
