@@ -22,7 +22,7 @@ module discretization_mesh
   use discretization
   use result
   use FEM_quadrature
-  use YAML_types
+  use types
   use prec
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)

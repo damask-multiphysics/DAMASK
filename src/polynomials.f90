@@ -6,7 +6,7 @@ module polynomials
   use prec
   use IO
   use YAML_parse
-  use YAML_types
+  use types
 
   implicit none(type,external)
   private

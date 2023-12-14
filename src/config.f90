@@ -6,7 +6,7 @@ module config
   use IO
   use misc
   use YAML_parse
-  use YAML_types
+  use types
   use result
   use parallelization
 #if   defined(MESH) || defined(GRID)

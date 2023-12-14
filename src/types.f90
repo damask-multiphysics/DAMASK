@@ -7,7 +7,7 @@
 !! to a node.
 !--------------------------------------------------------------------------------------------------
 
-module YAML_types
+module types
   use IO
   use prec
   use misc
@@ -152,8 +152,8 @@ module YAML_types
   end interface assignment (=)
 
   public :: &
-    YAML_types_init, &
-    YAML_types_selfTest, &
+    types_init, &
+    types_selfTest, &
 #ifdef __GFORTRAN__
     output_as1dStr, &                                       !ToDo: Hack for GNU. Remove later
 #endif
@@ -164,19 +164,19 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Do sanity checks.
 !--------------------------------------------------------------------------------------------------
-subroutine YAML_types_init
+subroutine types_init
 
-  print'(/,1x,a)', '<<<+-  YAML_types init  -+>>>'
+  print'(/,1x,a)', '<<<+-  types init  -+>>>'
 
-  call YAML_types_selfTest()
+  call types_selfTest()
 
-end subroutine YAML_types_init
+end subroutine types_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some type bound procedures.
 !--------------------------------------------------------------------------------------------------
-subroutine YAML_types_selfTest()
+subroutine types_selfTest()
 
   scalar: block
     type(tScalar), target :: s
@@ -315,7 +315,7 @@ subroutine YAML_types_selfTest()
   end block dict_get_as1dReal_shape
 #endif
 
-end subroutine YAML_types_selfTest
+end subroutine types_selfTest
 
 
 !---------------------------------------------------------------------------------------------------
@@ -1504,4 +1504,4 @@ recursive subroutine tItem_finalize(self)
 
 end subroutine tItem_finalize
 
-end module YAML_types
+end module types

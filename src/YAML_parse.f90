@@ -8,7 +8,7 @@ module YAML_parse
   use prec
   use misc
   use IO
-  use YAML_types
+  use types
 #ifdef FYAML
   use system_routines
 #endif

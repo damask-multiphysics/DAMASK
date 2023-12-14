@@ -7,7 +7,7 @@ module materialpoint_Marc
   use DAMASK_interface
   use prec
   use IO
-  use YAML_types
+  use types
   use YAML_parse
   use HDF5_utilities
   use result
@@ -70,7 +70,7 @@ subroutine materialpoint_initAll()
   call DAMASK_interface_init()
   call prec_init()
   call IO_init()
-  call YAML_types_init()
+  call types_init()
   call YAML_parse_init()
   call HDF5_utilities_init()
   call result_init(.false.)
