@@ -39,10 +39,6 @@ module FEM_utilities
     FIELD_MECH_label = 'mechanical'
 
   enum, bind(c); enumerator :: &
-    FIELD_UNDEFINED_ID, &
-    FIELD_MECH_ID
-  end enum
-  enum, bind(c); enumerator :: &
     COMPONENT_UNDEFINED_ID, &
     COMPONENT_MECH_X_ID, &
     COMPONENT_MECH_Y_ID, &
@@ -64,11 +60,10 @@ module FEM_utilities
     logical,     allocatable, dimension(:) :: Mask
   end type tComponentBC
 
-  type, public :: tFieldBC
-    integer(kind(FIELD_UNDEFINED_ID))  :: ID
+  type, public :: tMechBC
     integer                            :: nComponents = 0
     type(tComponentBC), allocatable, dimension(:) :: componentBC
-  end type tFieldBC
+  end type tMechBC
 
   external :: &                                                                                     ! ToDo: write interfaces
     PetscSectionGetFieldComponents, &
@@ -79,7 +74,6 @@ module FEM_utilities
     FEM_utilities_init, &
     utilities_constitutiveResponse, &
     utilities_projectBCValues, &
-    FIELD_MECH_ID, &
     COMPONENT_UNDEFINED_ID, &
     COMPONENT_MECH_X_ID, &
     COMPONENT_MECH_Y_ID, &
