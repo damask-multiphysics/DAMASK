@@ -23,32 +23,25 @@ program DAMASK_mesh
   implicit none(type,external)
 
   type :: tLoadCase
-    real(pREAL)   :: t                   = 0.0_pREAL                                               !< length of increment
-    integer       :: N                   = 0, &                                                    !< number of increments
-                    f_out                = 1                                                       !< frequency of result writes
-    logical       :: estimate_rate       = .true.                                                  !< follow trajectory of former loadcase
+    real(pREAL)   :: t                   = 0.0_pREAL                                                !< length of increment
+    integer       :: N                   = 0, &                                                     !< number of increments
+                    f_out                = 1                                                        !< frequency of result writes
+    logical       :: estimate_rate       = .true.                                                   !< follow trajectory of former loadcase
     integer,        allocatable, dimension(:) :: tag
     type(tMechBC) :: mechBC
   end type tLoadCase
 
-!--------------------------------------------------------------------------------------------------
-! variables related to information from load case and geom file
-  integer, allocatable, dimension(:) :: chunkPos                                                    ! this is longer than needed for geometry parsing
-  integer :: &
-    N_def = 0                                                                                       !< # of rate of deformation specifiers found in load case file
-  character(len=:), allocatable :: &
-    line
 
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
   integer, parameter :: &
     subStepFactor = 2                                                                               !< for each substep, divide the last time increment by 2.0
   real(pREAL) :: &
-    time = 0.0_pREAL, &                                                                             !< elapsed time
-    time0 = 0.0_pREAL, &                                                                            !< begin of interval
-    timeinc = 0.0_pREAL, &                                                                          !< current time interval
-    timeIncOld = 0.0_pREAL, &                                                                       !< previous time interval
-    remainingLoadCaseTime = 0.0_pREAL                                                               !< remaining time of current load case
+    t   = 0.0_pREAL, &                                                                              !< elapsed time
+    t_0 = 0.0_pREAL, &                                                                              !< begin of interval
+    Delta_t = 0.0_pREAL, &                                                                          !< current time interval
+    Delta_t_prev = 0.0_pREAL, &                                                                     !< previous time interval
+    t_remaining  = 0.0_pREAL                                                                        !< remaining time of current load case
   logical :: &
     guess, &                                                                                        !< guess along former trajectory
     stagIterate
@@ -160,7 +153,7 @@ program DAMASK_mesh
       end do
       if (currentFaceSet < 0) call IO_error(error_ID = 837, ext_msg = 'invalid BC')
       do component = 1, dimPlex
-        mech_u => mech_BC%get_list('u')
+        mech_u => mech_BC%get_list('dot_u')
         if (mech_u%get_asStr(component) /= 'x') then
           loadCases(l)%mechBC%componentBC(component)%Mask(currentFaceSet)  = .true.
           loadCases(l)%mechBC%componentBC(component)%Value(currentFaceSet) = mech_u%get_asReal(component)
@@ -223,7 +216,7 @@ program DAMASK_mesh
   call materialpoint_result(0,0.0_pREAL)
 
   loadCaseLooping: do l = 1, load_steps%length
-    time0 = time                                                                                   ! load case start time
+    t_0 = t                                                                                        ! load case start time
     guess = loadCases(l)%estimate_rate                                                             ! change of load case? homogeneous guess for the first inc
 
     incLooping: do inc = 1, loadCases(l)%N
@@ -231,21 +224,21 @@ program DAMASK_mesh
 
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
-      timeIncOld = timeinc                                                                          ! last timeinc that brought former inc to an end
-      timeinc = loadCases(l)%t/real(loadCases(l)%N,pREAL)
-      timeinc = timeinc * real(subStepFactor,pREAL)**real(-cutBackLevel,pREAL)                      ! depending on cut back level, decrease time step
+      Delta_t_prev = Delta_t                                                                        ! last timeinc that brought former inc to an end
+      Delta_t = loadCases(l)%t/real(loadCases(l)%N,pREAL)
+      Delta_t = Delta_t * real(subStepFactor,pREAL)**real(-cutBackLevel,pREAL)                      ! depending on cut back level, decrease time step
       stepFraction = 0                                                                              ! fraction scaled by stepFactor**cutLevel
 
       subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
-        remainingLoadCaseTime = loadCases(l)%t + time0 - time
-        time = time + timeinc                                                                       ! forward target time
+        t_remaining = loadCases(l)%t + t_0 - t
+        t = t + Delta_t                                                                             ! forward target time
         stepFraction = stepFraction + 1                                                             ! count step
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new step
         print'(/,1x,a)', '###########################################################################'
         print'(1x,a,es12.5,6(a,i0))',&
-                'Time', time, &
+                'Time', t, &
                 's: Increment ', inc, '/', loadCases(l)%N,&
                 '-', stepFraction, '/', subStepFactor**cutBackLevel,&
                 ' of load case ', l,'/',load_steps%length
@@ -254,14 +247,14 @@ program DAMASK_mesh
                '-',stepFraction, '/', subStepFactor**cutBackLevel
         flush(IO_STDOUT)
 
-        call FEM_mechanical_forward(guess,timeinc,timeIncOld,loadCases(l)%mechBC)
+        call FEM_mechanical_forward(guess,Delta_t,Delta_t_prev,loadCases(l)%mechBC)
 
 !--------------------------------------------------------------------------------------------------
 ! solve fields
         stagIter = 0
         stagIterate = .true.
         do while (stagIterate)
-          solres(1) = FEM_mechanical_solution(incInfo,timeinc,timeIncOld,loadCases(l)%mechBC)
+          solres(1) = FEM_mechanical_solution(incInfo,Delta_t,Delta_t_prev,loadCases(l)%mechBC)
           if (.not. solres(1)%converged) exit
 
           stagIter = stagIter + 1
@@ -272,13 +265,13 @@ program DAMASK_mesh
 
 ! check solution
         cutBack = .False.
-        if (.not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                       ! no solution found
+        if (.not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                      ! no solution found
           if (cutBackLevel < maxCutBack) then                                                       ! do cut back
             cutBack = .True.
             stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
             cutBackLevel = cutBackLevel + 1
-            time    = time - timeinc                                                                ! rewind time
-            timeinc = timeinc/2.0_pREAL
+            t    = t - Delta_t                                                                      ! rewind time
+            Delta_t = Delta_t/2.0_pREAL
             print'(/,1x,a)', 'cutting back'
           else                                                                                      ! default behavior, exit if spectral solver does not converge
             if (worldrank == 0) close(statUnit)
@@ -286,10 +279,10 @@ program DAMASK_mesh
           end if
         else
           guess = .true.                                                                            ! start guessing after first converged (sub)inc
-          timeIncOld = timeinc
+          Delta_t_prev = Delta_t
         end if
         if (.not. cutBack .and. worldrank == 0) then
-          write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
+          write(statUnit,*) totalIncsCounter, t, cutBackLevel, &
                             solres%converged, solres%iterationsNeeded                               ! write statistics about accepted solution
           flush(statUnit)
         end if
@@ -306,7 +299,7 @@ program DAMASK_mesh
       if (mod(inc,loadCases(l)%f_out) == 0) then                            ! at output frequency
         print'(/,1x,a)', '... saving results ........................................................'
         call FEM_mechanical_updateCoords()
-        call materialpoint_result(totalIncsCounter,time)
+        call materialpoint_result(totalIncsCounter,t)
       end if
 
 

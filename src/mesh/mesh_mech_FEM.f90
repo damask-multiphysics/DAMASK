@@ -37,7 +37,7 @@ module mesh_mechanical_FEM
 ! derived types
   type tSolutionParams
     type(tMechBC)  :: mechBC
-    real(pREAL)     :: timeinc
+    real(pREAL)    :: Delta_t
   end type tSolutionParams
 
   type(tSolutionParams)  :: params
@@ -320,13 +320,13 @@ end subroutine FEM_mechanical_init
 !> @brief solution for the FEM load step
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function FEM_mechanical_solution( &
-             incInfoIn,timeinc,timeinc_old,mechBC)
+             incInfoIn,Delta_t,Delta_t_prev,mechBC)
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
   real(pREAL), intent(in) :: &
-    timeinc, &                                                                                      !< increment in time for current solution
-    timeinc_old                                                                                     !< increment in time of last increment
+    Delta_t, &                                                                                      !< increment in time for current solution
+    Delta_t_prev                                                                                    !< increment in time of last increment
   type(tMechBC),      intent(in) :: &
     mechBC
   character(len=*), intent(in) :: &
@@ -339,7 +339,7 @@ type(tSolutionState) function FEM_mechanical_solution( &
   FEM_mechanical_solution%converged = .false.
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
-  params%timeinc = timeinc
+  params%Delta_t = Delta_t
   params%mechBC = mechBC
 
   call SNESSolve(mechanical_snes,PETSC_NULL_VEC,solution,err_PETSc)                                 ! solve mechanical_snes based on solution guess (result in solution)
@@ -413,7 +413,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
         call DMGetStratumIS(dm_local,'Face Sets',mesh_boundaries(face),bcPoints,err_PETSc)
         CHKERRQ(err_PETSc)
         call utilities_projectBCValues(x_local,section,0_pPETSCINT,field-1,bcPoints, &
-                                       0.0_pREAL,params%mechBC%componentBC(field)%Value(face),params%timeinc)
+                                       0.0_pREAL,params%mechBC%componentBC(field)%Value(face),params%Delta_t)
         call ISDestroy(bcPoints,err_PETSc)
         CHKERRQ(err_PETSc)
       end if
@@ -459,7 +459,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call utilities_constitutiveResponse(params%timeinc,P_av,ForwardData)
+  call utilities_constitutiveResponse(params%Delta_t,P_av,ForwardData)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   ForwardData = .false.
@@ -563,7 +563,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
         call DMGetStratumIS(dm_local,'Face Sets',mesh_boundaries(face),bcPoints,err_PETSc)
         CHKERRQ(err_PETSc)
         call utilities_projectBCValues(x_local,section,0_pPETSCINT,field-1,bcPoints, &
-                                       0.0_pREAL,params%mechBC%componentBC(field)%Value(face),params%timeinc)
+                                       0.0_pREAL,params%mechBC%componentBC(field)%Value(face),params%Delta_t)
         call ISDestroy(bcPoints,err_PETSc)
         CHKERRQ(err_PETSc)
       end if
@@ -665,13 +665,13 @@ end subroutine FEM_mechanical_formJacobian
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !--------------------------------------------------------------------------------------------------
-subroutine FEM_mechanical_forward(guess,timeinc,timeinc_old,mechBC)
+subroutine FEM_mechanical_forward(guess,Delta_t,Delta_t_prev,mechBC)
 
   type(tMechBC),  intent(in) :: &
     mechBC
   real(pREAL),    intent(in) :: &
-    timeinc_old, &
-    timeinc
+    Delta_t_prev, &
+    Delta_t
   logical,        intent(in) :: &
     guess
 
@@ -708,7 +708,7 @@ subroutine FEM_mechanical_forward(guess,timeinc,timeinc_old,mechBC)
           call DMGetStratumIS(dm_local,'Face Sets',mesh_boundaries(face),bcPoints,err_PETSc)
           CHKERRQ(err_PETSc)
           call utilities_projectBCValues(solution_local,section,0_pPETSCINT,field-1,bcPoints, &
-                                         0.0_pREAL,mechBC%componentBC(field)%Value(face),timeinc_old)
+                                         0.0_pREAL,mechBC%componentBC(field)%Value(face),Delta_t_prev)
           call ISDestroy(bcPoints,err_PETSc)
           CHKERRQ(err_PETSc)
         end if
@@ -721,12 +721,12 @@ subroutine FEM_mechanical_forward(guess,timeinc,timeinc_old,mechBC)
 ! update rate and forward last inc
     call VecCopy(solution,solution_rate,err_PETSc)
     CHKERRQ(err_PETSc)
-    call VecScale(solution_rate,timeinc_old**(-1),err_PETSc)
+    call VecScale(solution_rate,Delta_t_prev**(-1),err_PETSc)
     CHKERRQ(err_PETSc)
   end if
   call VecCopy(solution_rate,solution,err_PETSc)
   CHKERRQ(err_PETSc)
-  call VecScale(solution,timeinc,err_PETSc)
+  call VecScale(solution,Delta_t,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine FEM_mechanical_forward

@@ -136,9 +136,9 @@ end subroutine FEM_utilities_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates constitutive response
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
+subroutine utilities_constitutiveResponse(Delta_t,P_av,forwardData)
 
-  real(pREAL), intent(in)                 :: timeinc                                                !< loading time
+  real(pREAL), intent(in)                 :: Delta_t                                                !< loading time
   logical,     intent(in)                 :: forwardData                                            !< age results
   real(pREAL),intent(out), dimension(3,3) :: P_av                                                   !< average PK stress
 
@@ -146,9 +146,9 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
 
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
 
-  call homogenization_mechanical_response(timeinc,1,mesh_maxNips*mesh_NcpElems)                     ! calculate P field
+  call homogenization_mechanical_response(Delta_t,1,mesh_maxNips*mesh_NcpElems)                     ! calculate P field
   if (.not. terminallyIll) &
-    call homogenization_mechanical_response2(timeinc,[1,mesh_maxNips],[1,mesh_NcpElems])
+    call homogenization_mechanical_response2(Delta_t,[1,mesh_maxNips],[1,mesh_NcpElems])
   cutBack = .false.
 
   P_av = sum(homogenization_P,dim=3) * wgt
@@ -162,7 +162,7 @@ end subroutine utilities_constitutiveResponse
 !--------------------------------------------------------------------------------------------------
 !> @brief Project BC values to local vector
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCValue,BCDotValue,timeinc)
+subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCValue,BCDotValue,Delta_t)
 
   Vec                  :: localVec
   PetscInt             :: field, comp, nBcPoints, point, dof, numDof, numComp, offset
@@ -170,7 +170,7 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
   IS                   :: bcPointsIS
   PetscInt,    pointer :: bcPoints(:)
   real(pREAL), pointer :: localArray(:)
-  real(pREAL)          :: BCValue,BCDotValue,timeinc
+  real(pREAL)          :: BCValue,BCDotValue,Delta_t
   PetscErrorCode       :: err_PETSc
 
 
@@ -187,7 +187,7 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
     call PetscSectionGetFieldOffset(section,bcPoints(point),field,offset,err_PETSc)
     CHKERRQ(err_PETSc)
     do dof = offset+comp+1, offset+numDof, numComp
-      localArray(dof) = localArray(dof) + BCValue + BCDotValue*timeinc
+      localArray(dof) = localArray(dof) + BCValue + BCDotValue*Delta_t
     end do
   end do
   call VecRestoreArrayF90(localVec,localArray,err_PETSc)
