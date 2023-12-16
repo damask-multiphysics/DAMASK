@@ -27,8 +27,7 @@ program DAMASK_mesh
     integer       :: N                   = 0, &                                                     !< number of increments
                     f_out                = 1                                                        !< frequency of result writes
     logical       :: estimate_rate       = .true.                                                   !< follow trajectory of former loadcase
-    integer,        allocatable, dimension(:) :: tag
-    type(tMechBC) :: mechBC
+    type(tMechBC),  allocatable, dimension(:) :: mechBC
   end type tLoadCase
 
 
@@ -82,7 +81,6 @@ program DAMASK_mesh
   type(tSolutionState), allocatable, dimension(:) :: solres
   PetscInt :: faceSet, currentFaceSet, dimPlex
   PetscErrorCode :: err_PETSc
-  integer(kind(COMPONENT_UNDEFINED_ID)) :: ID
   external :: &
     quit
   character(len=:), allocatable :: &
@@ -124,25 +122,16 @@ program DAMASK_mesh
 
   allocate(loadCases(load_steps%length))
 
+
   do l = 1, load_steps%length
     load_step => load_steps%get_dict(l)
     step_bc   => load_step%get_dict('boundary_conditions')
     step_mech => step_bc%get_list('mechanical')
-    loadCases(l)%mechBC%nComponents = dimPlex                                                   !< X, Y (, Z) displacements
-    allocate(loadCases(l)%mechBC%componentBC(dimPlex))
-    do component = 1, dimPlex
-      select case (component)
-        case (1)
-          loadCases(l)%mechBC%componentBC(component)%ID = COMPONENT_MECH_X_ID
-        case (2)
-          loadCases(l)%mechBC%componentBC(component)%ID = COMPONENT_MECH_Y_ID
-        case (3)
-          loadCases(l)%mechBC%componentBC(component)%ID = COMPONENT_MECH_Z_ID
-      end select
-    end do
-    do component = 1, dimPlex
-      allocate(loadCases(l)%mechBC%componentBC(component)%Value(mesh_Nboundaries), source = 0.0_pREAL)
-      allocate(loadCases(l)%mechBC%componentBC(component)%Mask (mesh_Nboundaries), source = .false.)
+    allocate(loadCases(l)%mechBC(mesh_Nboundaries))
+    loadCases(l)%mechBC(:)%nComponents = dimPlex                                                   !< X, Y (, Z) displacements
+    do faceSet = 1, mesh_Nboundaries
+      allocate(loadCases(l)%mechBC(faceSet)%Value(dimPlex), source = 0.0_pREAL)
+      allocate(loadCases(l)%mechBC(faceSet)%Mask(dimPlex),  source = .false.)
     end do
 
     do m = 1, step_mech%length
@@ -152,11 +141,11 @@ program DAMASK_mesh
         if (mesh_boundaries(faceSet) == mech_BC%get_asInt('tag')) currentFaceSet = faceSet
       end do
       if (currentFaceSet < 0) call IO_error(error_ID = 837, ext_msg = 'invalid BC')
+      mech_u => mech_BC%get_list('dot_u')
       do component = 1, dimPlex
-        mech_u => mech_BC%get_list('dot_u')
         if (mech_u%get_asStr(component) /= 'x') then
-          loadCases(l)%mechBC%componentBC(component)%Mask(currentFaceSet)  = .true.
-          loadCases(l)%mechBC%componentBC(component)%Value(currentFaceSet) = mech_u%get_asReal(component)
+          loadCases(l)%mechBC(currentFaceSet)%Mask(component)  = .true.
+          loadCases(l)%mechBC(currentFaceSet)%Value(component) = mech_u%get_asReal(component)
         end if
       end do
     end do
@@ -183,12 +172,12 @@ program DAMASK_mesh
     print'(2x,a)', 'Field '//trim(FIELD_MECH_label)
 
     do faceSet = 1, mesh_Nboundaries
-       do component = 1, loadCases(l)%mechBC%nComponents
-         if (loadCases(l)%mechBC%componentBC(component)%Mask(faceSet)) &
+       do component = 1, dimPlex
+         if (loadCases(l)%mechBC(faceSet)%Mask(component)) &
            print'(a,i2,a,i2,a,f12.7)', &
            '    Face ', mesh_boundaries(faceSet), &
            ' Component ', component, &
-           ' Value ', loadCases(l)%mechBC%componentBC(component)%Value(faceSet)
+           ' Value ', loadCases(l)%mechBC(faceSet)%Value(component)
       end do
     end do
     print'(2x,a,f12.6)', 'time:       ', loadCases(l)%t
@@ -203,7 +192,7 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
   call FEM_Utilities_init(num_mesh)
-  call FEM_mechanical_init(loadCases(1)%mechBC,num_mesh)
+  call FEM_mechanical_init(loadCases(1)%mechBC(:),num_mesh)
   call config_numerics_deallocate()
 
   if (worldrank == 0) then
@@ -247,14 +236,14 @@ program DAMASK_mesh
                '-',stepFraction, '/', subStepFactor**cutBackLevel
         flush(IO_STDOUT)
 
-        call FEM_mechanical_forward(guess,Delta_t,Delta_t_prev,loadCases(l)%mechBC)
+        call FEM_mechanical_forward(guess,Delta_t,Delta_t_prev,loadCases(l)%mechBC(:))
 
 !--------------------------------------------------------------------------------------------------
 ! solve fields
         stagIter = 0
         stagIterate = .true.
         do while (stagIterate)
-          solres(1) = FEM_mechanical_solution(incInfo,Delta_t,Delta_t_prev,loadCases(l)%mechBC)
+          solres(1) = FEM_mechanical_solution(incInfo,Delta_t,Delta_t_prev,loadCases(l)%mechBC(:))
           if (.not. solres(1)%converged) exit
 
           stagIter = stagIter + 1
@@ -314,5 +303,6 @@ program DAMASK_mesh
   if (worldrank == 0) close(statUnit)
 
   call quit(0)                                                                                      ! no complains ;)
+
 
 end program DAMASK_mesh
