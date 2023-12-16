@@ -126,7 +126,7 @@ class TestResult:
     @pytest.mark.parametrize('sign',[+1,-1])
     def test_view_approxtimes(self,default,inc,sign):
         eps = sign*1e-3
-        assert [default.increments[inc]] == default.view(times=default.times[inc]+eps).visible['increments']
+        assert [default._increments[inc]] == default.view(times=default._times[inc]+eps).visible['increments']
 
     def test_add_invalid(self,default):
         default.add_absolute('xxxx')
@@ -470,7 +470,7 @@ class TestResult:
                     assert np.array_equal(dset,cur[path])
                 else:
                     c = [_.decode() for _ in cur[path]]
-                    r = ['Unknown Phase Type'] + result.phases
+                    r = ['Unknown Phase Type'] + result._phases
                     assert c == r
                 grp = os.path.split(path)[0]
                 for attr in ref[grp].attrs:
@@ -650,8 +650,8 @@ class TestResult:
                                       'check_compile_job1.hdf5',])
     def test_export_DADF5(self,res_path,tmp_path,fname):
         r = Result(res_path/fname)
-        r = r.view(phases = random.sample(r.phases,1))
-        r = r.view(increments = random.sample(r.increments,np.random.randint(1,len(r.increments))))
+        r = r.view(phases = random.sample(r._phases,1))
+        r = r.view(increments = random.sample(r._increments,np.random.randint(1,len(r._increments))))
         r.export_DADF5(tmp_path/fname)
         r_exp = Result(tmp_path/fname)
         assert str(r.get()) == str(r_exp.get())

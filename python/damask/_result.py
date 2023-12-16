@@ -119,29 +119,29 @@ class Result:
                 self.add_curl = self.add_divergence = self.add_gradient = None                      # type: ignore
 
             r = re.compile(rf'{prefix_inc}([0-9]+)')
-            self.increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
-            self.times = np.around([f[i].attrs['t/s'] for i in self.increments],12)
-            if len(self.increments) == 0:
+            self._increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
+            self._times = np.around([f[i].attrs['t/s'] for i in self._increments],12)
+            if len(self._increments) == 0:
                 raise ValueError('incomplete DADF5 file')
 
             self.N_materialpoints, self.N_constituents = np.shape(f['cell_to/phase'])
 
-            self.homogenization  = f['cell_to/homogenization']['label'].astype('str')
-            self.homogenizations = sorted(np.unique(self.homogenization),key=util.natural_sort)
-            self.phase           = f['cell_to/phase']['label'].astype('str')
-            self.phases          = sorted(np.unique(self.phase),key=util.natural_sort)
+            self.homogenization   = f['cell_to/homogenization']['label'].astype('str')
+            self._homogenizations = sorted(np.unique(self.homogenization),key=util.natural_sort)
+            self.phase            = f['cell_to/phase']['label'].astype('str')
+            self._phases          = sorted(np.unique(self.phase),key=util.natural_sort)
 
-            self.fields: List[str] = []
-            for c in self.phases:
-                self.fields += f['/'.join([self.increments[0],'phase',c])].keys()
-            for m in self.homogenizations:
-                self.fields += f['/'.join([self.increments[0],'homogenization',m])].keys()
-            self.fields = sorted(set(self.fields),key=util.natural_sort)                            # make unique
+            fields: List[str] = []
+            for c in self._phases:
+                fields += f['/'.join([self._increments[0],'phase',c])].keys()
+            for m in self._homogenizations:
+                fields += f['/'.join([self._increments[0],'homogenization',m])].keys()
+            self._fields = sorted(set(fields),key=util.natural_sort)                                # make unique
 
-        self.visible = {'increments':      self.increments,
-                        'phases':          self.phases,
-                        'homogenizations': self.homogenizations,
-                        'fields':          self.fields,
+        self.visible = {'increments':      self._increments,
+                        'phases':          self._phases,
+                        'homogenizations': self._homogenizations,
+                        'fields':          self._fields,
                        }
 
         self.fname = Path(fname).expanduser().absolute()
@@ -223,24 +223,24 @@ class Result:
 
             if   what == 'increments':
                 choice = [c if isinstance(c,str) and c.startswith(prefix_inc) else
-                          self.increments[c] if isinstance(c,int) and c<0 else
+                          self._increments[c] if isinstance(c,int) and c<0 else
                           f'{prefix_inc}{c}' for c in choice]
             elif what == 'times':
-                atol = 1e-2 * np.min(np.diff(self.times))
+                atol = 1e-2 * np.min(np.diff(self._times))
                 what = 'increments'
                 if choice == ['*']:
-                    choice = self.increments
+                    choice = self._increments
                 else:
                     iterator = np.array(choice).astype(float)
                     choice = []
                     for c in iterator:
-                        idx = np.searchsorted(self.times,c,side='left')
-                        if  idx<len(self.times) and np.isclose(c,self.times[idx],rtol=0,atol=atol):
-                            choice.append(self.increments[idx])
-                        elif idx>0 and np.isclose(c,self.times[idx-1],rtol=0,atol=atol):
-                            choice.append(self.increments[idx-1])
+                        idx = np.searchsorted(self._times,c,side='left')
+                        if  idx<len(self._times) and np.isclose(c,self._times[idx],rtol=0,atol=atol):
+                            choice.append(self._increments[idx])
+                        elif idx>0 and np.isclose(c,self._times[idx-1],rtol=0,atol=atol):
+                            choice.append(self._increments[idx-1])
 
-            valid = _match(choice,getattr(self,what))
+            valid = _match(choice,getattr(self,'_'+what))
             existing = set(self.visible[what])
 
             if   action == 'set':
@@ -273,9 +273,9 @@ class Result:
 
         """
         s,e = map(lambda x: int(x.split(prefix_inc)[-1] if isinstance(x,str) and x.startswith(prefix_inc) else x),
-                  (self.incs[ 0] if start is None else start,
-                   self.incs[-1] if  end  is None else  end))
-        return [i for i in self.incs if s <= i <= e]
+                  (self._incs[ 0] if start is None else start,
+                   self._incs[-1] if  end  is None else  end))
+        return [i for i in self._incs if s <= i <= e]
 
     def times_in_range(self,
                        start: Optional[float] = None,
@@ -296,9 +296,9 @@ class Result:
             Time of each increment within the given bounds.
 
         """
-        s,e = (self.times[ 0] if start is None else start,
-               self.times[-1] if  end  is None else  end)
-        return [t for t in self.times if s <= t <= e]
+        s,e = (self._times[ 0] if start is None else start,
+               self._times[-1] if  end  is None else  end)
+        return [t for t in self._times if s <= t <= e]
 
 
     def view(self,*,
@@ -533,7 +533,7 @@ class Result:
         msg = []
         with h5py.File(self.fname,'r') as f:
             for inc in self.visible['increments']:
-                msg += [f'\n{inc} ({self.times[self.increments.index(inc)]} s)']
+                msg += [f'\n{inc} ({self._times[self._increments.index(inc)]} s)']
                 for ty in ['phase','homogenization']:
                     msg += [f'  {ty}']
                     for label in self.visible[ty+'s']:
@@ -566,8 +566,28 @@ class Result:
         return files
 
     @property
-    def incs(self):
-        return [int(i.split(prefix_inc)[-1]) for i in self.increments]
+    def _incs(self):
+        return [int(i.split(prefix_inc)[-1]) for i in self._increments]
+
+    @property
+    def increments(self):
+        return [int(i.split(prefix_inc)[-1]) for i in self.visible['increments']]
+
+    @property
+    def times(self):
+        return NotImplementedError
+
+    @property
+    def phases(self):
+        return [copy.deepcopy(self.visible['phases'])]
+
+    @property
+    def homogenizations(self):
+        return [copy.deepcopy(self.visible['homogenizations'])]
+
+    @property
+    def fields(self):
+        return [copy.deepcopy(self.visible['fields'])]
 
 
     @property
@@ -1723,7 +1743,7 @@ class Result:
             DADF5 file at a stable relative path.
 
         """
-        if self.N_constituents != 1 or len(self.phases) != 1 or not self.structured:
+        if self.N_constituents != 1 or len(self._phases) != 1 or not self.structured:
             raise TypeError('XDMF output requires structured grid with single phase and single constituent.')
 
         attribute_type_map = defaultdict(lambda:'Matrix', ( ((),'Scalar'), ((3,),'Vector'), ((3,3),'Tensor')) )
@@ -1749,7 +1769,7 @@ class Result:
         time.attrib = {'TimeType': 'List'}
 
         time_data = ET.SubElement(time, 'DataItem')
-        times = [self.times[self.increments.index(i)] for i in self.visible['increments']]
+        times = [self._times[self._increments.index(i)] for i in self.visible['increments']]
         time_data.attrib = {'Format':     'XML',
                             'NumberType': 'Float',
                             'Dimensions': f'{len(times)}'}
@@ -1876,7 +1896,7 @@ class Result:
 
         v.comments = [util.execution_stamp('Result','export_VTK')]
 
-        N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
+        N_digits = int(np.floor(np.log10(max(1,self._incs[-1]))))+1
 
         constituents_ = constituents if isinstance(constituents,Iterable) else \
                         (range(self.N_constituents) if constituents is None else [constituents])    # type: ignore
@@ -1966,7 +1986,7 @@ class Result:
         if self.N_constituents != 1 or not self.structured:
             raise TypeError('DREAM3D output requires structured grid with single constituent.')
 
-        N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
+        N_digits = int(np.floor(np.log10(max(1,self._incs[-1]))))+1
 
 
         at_cell_ph,in_data_ph,_,_ = self._mappings()
@@ -2036,12 +2056,12 @@ class Result:
                     cell_ensemble.create_dataset(name='PhaseName',data = phase_name, dtype=h5py.Datatype(tid))
 
                     cell_ensemble.attrs['AttributeMatrixType'] = np.array([11],np.uint32)
-                    cell_ensemble.attrs['TupleDimensions']     = np.array([len(self.phases) + 1], np.uint64)
+                    cell_ensemble.attrs['TupleDimensions']     = np.array([len(self._phases) + 1], np.uint64)
                     for group in ['CrystalStructures','PhaseTypes','PhaseName']:
                         add_attribute(cell_ensemble[group], 'ComponentDimensions', np.array([1],np.uint64))
-                        add_attribute(cell_ensemble[group], 'Tuple Axis Dimensions', f'x={len(self.phases)+1}')
+                        add_attribute(cell_ensemble[group], 'Tuple Axis Dimensions', f'x={len(self._phases)+1}')
                         add_attribute(cell_ensemble[group], 'DataArrayVersion', np.array([2],np.int32))
-                        add_attribute(cell_ensemble[group], 'TupleDimensions', np.array([len(self.phases) + 1],np.uint64))
+                        add_attribute(cell_ensemble[group], 'TupleDimensions', np.array([len(self._phases) + 1],np.uint64))
                     for group in ['CrystalStructures','PhaseTypes']:
                         add_attribute(cell_ensemble[group], 'ObjectType', 'DataArray<uint32_t>')
                     add_attribute(cell_ensemble['PhaseName'], 'ObjectType', 'StringDataArray')
@@ -2129,9 +2149,9 @@ class Result:
                     f_out[inc]['geometry'].create_dataset('u_n',data=u_n)
 
 
-                for label in self.homogenizations:
+                for label in self._homogenizations:
                     f_in[inc]['homogenization'].copy(label,f_out[inc]['homogenization'],shallow=True)
-                for label in self.phases:
+                for label in self._phases:
                     f_in[inc]['phase'].copy(label,f_out[inc]['phase'],shallow=True)
 
                 for ty in ['phase','homogenization']:
