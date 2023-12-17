@@ -443,9 +443,9 @@ class Result:
         return self._manage_view('del',increments,times,phases,homogenizations,fields)
 
 
-    def view_reset(self):
+    def view_all(self):
         """
-        Reset to initial view.
+        Make all attributes visible.
 
         Returns
         -------
@@ -453,7 +453,7 @@ class Result:
             View with all attributes visible.
 
         """
-        return self.view(increments='*',phases='*',homogenizations='*',fieds='*',protected=True)
+        return self.view(increments='*',phases='*',homogenizations='*',fieds='*')
 
 
     def rename(self,
