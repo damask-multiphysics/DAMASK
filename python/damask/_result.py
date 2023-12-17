@@ -138,11 +138,11 @@ class Result:
                 fields += f['/'.join([self._increments[0],'homogenization',m])].keys()
             self._fields = sorted(set(fields),key=util.natural_sort)                                # make unique
 
-        self.visible = {'increments':      self._increments,
-                        'phases':          self._phases,
-                        'homogenizations': self._homogenizations,
-                        'fields':          self._fields,
-                       }
+        self._visible = {'increments':      self._increments,
+                         'phases':          self._phases,
+                         'homogenizations': self._homogenizations,
+                         'fields':          self._fields,
+                        }
 
         self.fname = Path(fname).expanduser().absolute()
 
@@ -172,7 +172,7 @@ class Result:
             header = [f'Created by {f.attrs["creator"]}',
                       f'        on {f.attrs["created"]}',
                       f' executing "{f.attrs["call"]}"']
-        visible_increments = self.visible['increments']
+        visible_increments = self._visible['increments']
 
         first = self.view(increments=visible_increments[0:1]).list_data()
 
@@ -242,14 +242,14 @@ class Result:
                             choice.append(self._increments[idx-1])
 
             valid = _match(choice,getattr(self,'_'+what))
-            existing = set(self.visible[what])
+            existing = set(self._visible[what])
 
             if   action == 'set':
-                dup.visible[what] = sorted(set(valid), key=util.natural_sort)
+                dup._visible[what] = sorted(set(valid), key=util.natural_sort)
             elif action == 'add':
-                dup.visible[what] = sorted(existing.union(valid), key=util.natural_sort)
+                dup._visible[what] = sorted(existing.union(valid), key=util.natural_sort)
             elif action == 'del':
-                dup.visible[what] = sorted(existing.difference(valid), key=util.natural_sort)
+                dup._visible[what] = sorted(existing.difference(valid), key=util.natural_sort)
 
         return dup
 
@@ -474,10 +474,10 @@ class Result:
             raise PermissionError('rename datasets')
 
         with h5py.File(self.fname,'a') as f:
-            for inc in self.visible['increments']:
+            for inc in self._visible['increments']:
                 for ty in ['phase','homogenization']:
-                    for label in self.visible[ty+'s']:
-                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
+                    for label in self._visible[ty+'s']:
+                        for field in _match(self._visible['fields'],f['/'.join([inc,ty,label])].keys()):
                             path_src = '/'.join([inc,ty,label,field,name_src])
                             path_dst = '/'.join([inc,ty,label,field,name_dst])
                             if path_src in f.keys():
@@ -513,10 +513,10 @@ class Result:
             raise PermissionError('delete datasets')
 
         with h5py.File(self.fname,'a') as f:
-            for inc in self.visible['increments']:
+            for inc in self._visible['increments']:
                 for ty in ['phase','homogenization']:
-                    for label in self.visible[ty+'s']:
-                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
+                    for label in self._visible[ty+'s']:
+                        for field in _match(self._visible['fields'],f['/'.join([inc,ty,label])].keys()):
                             path = '/'.join([inc,ty,label,field,name])
                             if path in f.keys(): del f[path]
 
@@ -533,13 +533,13 @@ class Result:
         """
         msg = []
         with h5py.File(self.fname,'r') as f:
-            for inc in self.visible['increments']:
+            for inc in self._visible['increments']:
                 msg += [f'\n{inc} ({self._times[int(inc.split("_")[1])]} s)']
                 for ty in ['phase','homogenization']:
                     msg += [f'  {ty}']
-                    for label in self.visible[ty+'s']:
+                    for label in self._visible[ty+'s']:
                         msg += [f'    {label}']
-                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
+                        for field in _match(self._visible['fields'],f['/'.join([inc,ty,label])].keys()):
                             msg += [f'      {field}']
                             for d in f['/'.join([inc,ty,label,field])].keys():
                                 dataset = f['/'.join([inc,ty,label,field,d])]
@@ -572,7 +572,7 @@ class Result:
 
     @property
     def increments(self):
-        return [int(i.split(prefix_inc)[-1]) for i in self.visible['increments']]
+        return [int(i.split(prefix_inc)[-1]) for i in self._visible['increments']]
 
     @property
     def times(self):
@@ -580,15 +580,15 @@ class Result:
 
     @property
     def phases(self):
-        return self.visible['phases']
+        return self._visible['phases']
 
     @property
     def homogenizations(self):
-        return self.visible['homogenizations']
+        return self._visible['homogenizations']
 
     @property
     def fields(self):
-        return self.visible['fields']
+        return self._visible['fields']
 
 
     @property
@@ -1449,7 +1449,7 @@ class Result:
                                         'meta':d.data.dtype.metadata}}
                         r = func(**dataset,**args)
                         result = r['data'].reshape((-1,)+r['data'].shape[3:])
-                        for x in self.visible[ty[0]+'s']:
+                        for x in self._visible[ty[0]+'s']:
                             if ty[0] == 'phase':
                                 result1 = result[at_cell_ph[0][x]]
                             if ty[0] == 'homogenization':
@@ -1512,10 +1512,10 @@ class Result:
 
         groups = []
         with h5py.File(self.fname,'r') as f:
-            for inc in self.visible['increments']:
+            for inc in self._visible['increments']:
                 for ty in ['phase','homogenization']:
-                    for label in self.visible[ty+'s']:
-                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
+                    for label in self._visible[ty+'s']:
+                        for field in _match(self._visible['fields'],f['/'.join([inc,ty,label])].keys()):
                             group = '/'.join([inc,ty,label,field])
                             if set(datasets.values()).issubset(f[group].keys()): groups.append(group)
 
@@ -1568,14 +1568,14 @@ class Result:
             in_data_ph = []
             for c in range(self.N_constituents):
                 at_cell_ph.append({label: np.where(self.phase[:,c] == label)[0] \
-                                          for label in self.visible['phases']})
+                                          for label in self._visible['phases']})
                 in_data_ph.append({label: f['/'.join(['cell_to','phase'])]['entry'][at_cell_ph[c][label]][:,c] \
-                                          for label in self.visible['phases']})
+                                          for label in self._visible['phases']})
 
             at_cell_ho = {label: np.where(self.homogenization[:] == label)[0] \
-                                 for label in self.visible['homogenizations']}
+                                 for label in self._visible['homogenizations']}
             in_data_ho = {label: f['/'.join(['cell_to','homogenization'])]['entry'][at_cell_ho[label]] \
-                                 for label in self.visible['homogenizations']}
+                                 for label in self._visible['homogenizations']}
 
         return at_cell_ph,in_data_ph,at_cell_ho,in_data_ho
 
@@ -1608,16 +1608,16 @@ class Result:
         r: Dict[str,Any] = {}
 
         with h5py.File(self.fname,'r') as f:
-            for inc in util.show_progress(self.visible['increments']):
+            for inc in util.show_progress(self._visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
 
                 for out in _match(output,f['/'.join([inc,'geometry'])].keys()):
                     r[inc]['geometry'][out] = _read(f['/'.join([inc,'geometry',out])])
 
                 for ty in ['phase','homogenization']:
-                    for label in self.visible[ty+'s']:
+                    for label in self._visible[ty+'s']:
                         r[inc][ty][label] = {}
-                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
+                        for field in _match(self._visible['fields'],f['/'.join([inc,ty,label])].keys()):
                             r[inc][ty][label][field] = {}
                             for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
                                 r[inc][ty][label][field][out] = _read(f['/'.join([inc,ty,label,field,out])])
@@ -1683,15 +1683,15 @@ class Result:
 
         with h5py.File(self.fname,'r') as f:
 
-            for inc in util.show_progress(self.visible['increments']):
+            for inc in util.show_progress(self._visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
 
                 for out in _match(output,f['/'.join([inc,'geometry'])].keys()):
                     r[inc]['geometry'][out] = ma.array(_read(f['/'.join([inc,'geometry',out])]),fill_value = fill_float)
 
                 for ty in ['phase','homogenization']:
-                    for label in self.visible[ty+'s']:
-                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
+                    for label in self._visible[ty+'s']:
+                        for field in _match(self._visible['fields'],f['/'.join([inc,ty,label])].keys()):
                             if field not in r[inc][ty].keys():
                                 r[inc][ty][field] = {}
 
@@ -1784,7 +1784,7 @@ class Result:
         hdf5_link = (hdf5_dir if absolute_path else Path(os.path.relpath(hdf5_dir,out_dir.resolve())))/hdf5_name
 
         with h5py.File(self.fname,'r') as f:
-            for inc in self.visible['increments']:
+            for inc in self._visible['increments']:
 
                 grid = ET.SubElement(collection,'Grid')
                 grid.attrib = {'GridType': 'Uniform',
@@ -1819,8 +1819,8 @@ class Result:
                                          'Dimensions': '{} {} {} 3'.format(*(self.cells[::-1]+1))}
                 data_items[-1].text = f'{hdf5_link}:/{inc}/geometry/u_n'
                 for ty in ['phase','homogenization']:
-                    for label in self.visible[ty+'s']:
-                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
+                    for label in self._visible[ty+'s']:
+                        for field in _match(self._visible['fields'],f['/'.join([inc,ty,label])].keys()):
                             for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
                                 name = '/'.join([inc,ty,label,field,out])
                                 shape = f[name].shape[1:]
@@ -1915,15 +1915,15 @@ class Result:
                 created = f.attrs['created'] if h5py3 else f.attrs['created'].decode()
                 v.comments += [f'{creator} ({created})']
 
-            for inc in util.show_progress(self.visible['increments']):
+            for inc in util.show_progress(self._visible['increments']):
 
                 u = _read(f['/'.join([inc,'geometry','u_n' if mode.lower() == 'cell' else 'u_p'])])
                 v = v.set('u',u)
 
                 for ty in ['phase','homogenization']:
-                    for field in self.visible['fields']:
+                    for field in self._visible['fields']:
                         outs: Dict[str, np.ma.core.MaskedArray] = {}
-                        for label in self.visible[ty+'s']:
+                        for label in self._visible[ty+'s']:
                             if field not in f['/'.join([inc,ty,label])].keys(): continue
 
                             for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
@@ -1995,14 +1995,14 @@ class Result:
         out_dir.mkdir(parents=True,exist_ok=True)
 
         with h5py.File(self.fname,'r') as f:
-            for inc in util.show_progress(self.visible['increments']):
+            for inc in util.show_progress(self._visible['increments']):
                 for c in range(self.N_constituents):
                     crystal_structure = [999]
                     phase_name = ['Unknown Phase Type']
                     cell_orientation = np.zeros((np.prod(self.cells),3),np.float32)
                     phase_ID = np.zeros((np.prod(self.cells)),dtype=np.int32)
                     count = 1
-                    for label in self.visible['phases']:
+                    for label in self._visible['phases']:
                         try:
                             data = _read(f['/'.join([inc,'phase',label,'mechanical',q])])
                             lattice = data.dtype.metadata['lattice']
@@ -2137,7 +2137,7 @@ class Result:
                 f_out['cell_to'].create_dataset('homogenization',data=mapping_homog.flatten())
 
 
-            for inc in util.show_progress(self.visible['increments']):
+            for inc in util.show_progress(self._visible['increments']):
                 f_in.copy(inc,f_out,shallow=True)
                 if mapping is None:
                     for label in ['u_p','u_n']:
@@ -2155,8 +2155,8 @@ class Result:
                     f_in[inc]['phase'].copy(label,f_out[inc]['phase'],shallow=True)
 
                 for ty in ['phase','homogenization']:
-                    for label in self.visible[ty+'s']:
-                        for field in _match(self.visible['fields'],f_in['/'.join([inc,ty,label])].keys()):
+                    for label in self._visible[ty+'s']:
+                        for field in _match(self._visible['fields'],f_in['/'.join([inc,ty,label])].keys()):
                             p = '/'.join([inc,ty,label,field])
                             for out in _match(output,f_in[p].keys()):
                                 cp(f_in[p],f_out[p],out,None if mapping is None else mappings[ty][label.encode()])

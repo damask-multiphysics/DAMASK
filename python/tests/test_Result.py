@@ -78,6 +78,7 @@ class TestResult:
 
 
     def test_view_all(self,default):
+        default = Result(default.fname)
         a = default.view(increments=True).get('F')
 
         assert dict_equal(a,default.view(increments='*').get('F'))
@@ -95,7 +96,7 @@ class TestResult:
         label = 'increments' if what == 'times' else what
 
         assert n0.get('F') is n1.get('F') is None and \
-               len(n0.visible[label]) == len(n1.visible[label]) == 0
+               len(n0._visible[label]) == len(n1._visible[label]) == 0
 
     @pytest.mark.parametrize('what',['increments','times','phases','fields'])                       # ToDo: discuss homogenizations
     def test_view_more(self,default,what):
@@ -116,7 +117,7 @@ class TestResult:
         label = 'increments' if what == 'times' else what
 
         assert n0.get('F') is n1.get('F') is None and \
-               len(n0.visible[label]) == len(n1.visible[label]) == 0
+               len(n0._visible[label]) == len(n1._visible[label]) == 0
 
     def test_view_invalid_incstimes(self,default):
         with pytest.raises(ValueError):
@@ -127,7 +128,7 @@ class TestResult:
     def test_view_approxtimes(self,default,inc,sign):
         eps = sign*1e-3
         times = list(default._times.values())
-        assert [default._increments[inc]] == default.view(times=times[inc]+eps).visible['increments']
+        assert [default._increments[inc]] == default.view(times=times[inc]+eps)._visible['increments']
 
     def test_add_invalid(self,default):
         default.add_absolute('xxxx')
