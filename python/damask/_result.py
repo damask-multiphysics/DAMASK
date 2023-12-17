@@ -444,6 +444,19 @@ class Result:
         return self._manage_view('del',increments,times,phases,homogenizations,fields)
 
 
+    def view_reset(self):
+        """
+        Reset to initial view.
+
+        Returns
+        -------
+        modified_view : damask.Result
+            View with all attributes visible.
+
+        """
+        return self.view(increments='*',phases='*',homogenizations='*',fieds='*',protected=True)
+
+
     def rename(self,
                name_src: str,
                name_dst: str):
