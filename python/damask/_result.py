@@ -120,7 +120,7 @@ class Result:
 
             r = re.compile(rf'{prefix_inc}([0-9]+)')
             self._increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
-            self._times = np.around([f[i].attrs['t/s'] for i in self._increments],12)
+            self._times = {int(i.split('_')[1]):np.around(f[i].attrs['t/s'],12) for i in self._increments}
             if len(self._increments) == 0:
                 raise ValueError('incomplete DADF5 file')
 
@@ -226,7 +226,8 @@ class Result:
                           self._increments[c] if isinstance(c,int) and c<0 else
                           f'{prefix_inc}{c}' for c in choice]
             elif what == 'times':
-                atol = 1e-2 * np.min(np.diff(self._times))
+                times = list(self._times.values())
+                atol = 1e-2 * np.min(np.diff(times))
                 what = 'increments'
                 if choice == ['*']:
                     choice = self._increments
@@ -234,10 +235,10 @@ class Result:
                     iterator = np.array(choice).astype(float)
                     choice = []
                     for c in iterator:
-                        idx = np.searchsorted(self._times,c,side='left')
-                        if  idx<len(self._times) and np.isclose(c,self._times[idx],rtol=0,atol=atol):
+                        idx = np.searchsorted(times,c,side='left')
+                        if  idx<len(self._times) and np.isclose(c,times[idx],rtol=0,atol=atol):
                             choice.append(self._increments[idx])
-                        elif idx>0 and np.isclose(c,self._times[idx-1],rtol=0,atol=atol):
+                        elif idx>0 and np.isclose(c,times[idx-1],rtol=0,atol=atol):
                             choice.append(self._increments[idx-1])
 
             valid = _match(choice,getattr(self,'_'+what))
@@ -296,9 +297,9 @@ class Result:
             Time of each increment within the given bounds.
 
         """
-        s,e = (self._times[ 0] if start is None else start,
-               self._times[-1] if  end  is None else  end)
-        return [t for t in self._times if s <= t <= e]
+        s,e = (self.times[ 0] if start is None else start,
+               self.times[-1] if end   is None else end)
+        return [t for t in self.times if s <= t <= e]
 
 
     def view(self,*,
@@ -533,7 +534,7 @@ class Result:
         msg = []
         with h5py.File(self.fname,'r') as f:
             for inc in self.visible['increments']:
-                msg += [f'\n{inc} ({self._times[self._increments.index(inc)]} s)']
+                msg += [f'\n{inc} ({self._times[int(inc.split("_")[1])]} s)']
                 for ty in ['phase','homogenization']:
                     msg += [f'  {ty}']
                     for label in self.visible[ty+'s']:
@@ -575,19 +576,19 @@ class Result:
 
     @property
     def times(self):
-        return NotImplementedError
+        return [self._times[i] for i in self.increments]
 
     @property
     def phases(self):
-        return [copy.deepcopy(self.visible['phases'])]
+        return self.visible['phases']
 
     @property
     def homogenizations(self):
-        return [copy.deepcopy(self.visible['homogenizations'])]
+        return self.visible['homogenizations']
 
     @property
     def fields(self):
-        return [copy.deepcopy(self.visible['fields'])]
+        return self.visible['fields']
 
 
     @property
@@ -1769,11 +1770,10 @@ class Result:
         time.attrib = {'TimeType': 'List'}
 
         time_data = ET.SubElement(time, 'DataItem')
-        times = [self._times[self._increments.index(i)] for i in self.visible['increments']]
         time_data.attrib = {'Format':     'XML',
                             'NumberType': 'Float',
-                            'Dimensions': f'{len(times)}'}
-        time_data.text = ' '.join(map(str,times))
+                            'Dimensions': f'{len(self.times)}'}
+        time_data.text = ' '.join(map(str,self.times))
 
         attributes = []
         data_items = []

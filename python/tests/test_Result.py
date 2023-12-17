@@ -126,7 +126,8 @@ class TestResult:
     @pytest.mark.parametrize('sign',[+1,-1])
     def test_view_approxtimes(self,default,inc,sign):
         eps = sign*1e-3
-        assert [default._increments[inc]] == default.view(times=default._times[inc]+eps).visible['increments']
+        times = list(default._times.values())
+        assert [default._increments[inc]] == default.view(times=times[inc]+eps).visible['increments']
 
     def test_add_invalid(self,default):
         default.add_absolute('xxxx')
