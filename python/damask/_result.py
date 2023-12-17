@@ -2,7 +2,6 @@ import re
 import fnmatch
 import os
 import copy
-import datetime
 import xml.etree.ElementTree as ET                                                                  # noqa
 import xml.dom.minidom
 import functools
@@ -1471,9 +1470,8 @@ class Result:
                             path = '/'.join(['/',increment[0],ty[0],x,field[0]])
                             h5_dataset = f[path].create_dataset(r['label'],data=result1)
 
-                            now = datetime.datetime.now().astimezone()
-                            h5_dataset.attrs['created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
-                                                          now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
+                            h5_dataset.attrs['created'] = util.time_stamp() if h5py3 else \
+                                                          util.time_stamp().encode()
 
                             for l,v in r['meta'].items():
                                 h5_dataset.attrs[l.lower()]=v.encode() if not h5py3 and type(v) is str else v
@@ -1558,9 +1556,8 @@ class Result:
                                                           compression_opts = 6 if compress else None,
                                                           shuffle=True,fletcher32=True)
 
-                    now = datetime.datetime.now().astimezone()
-                    dataset.attrs['created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
-                                               now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
+                    dataset.attrs['created'] = util.time_stamp() if h5py3 else \
+                                               util.time_stamp().encode()
 
                     for l,v in result['meta'].items():
                         dataset.attrs[l.lower()]=v.encode() if not h5py3 and type(v) is str else v

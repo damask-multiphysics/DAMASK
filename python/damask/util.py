@@ -214,13 +214,15 @@ def open_text(fname: _FileHandle,
     return fname if not isinstance(fname, (str,_Path)) else \
            open(_Path(fname).expanduser(),mode,newline=('\n' if mode == 'w' else None))
 
+def time_stamp() -> str:
+    """Timestamp the execution of a (function within a) class."""
+    return _datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
 
 def execution_stamp(class_name: str,
                     function_name: _Optional[str] = None) -> str:
     """Timestamp the execution of a (function within a) class."""
-    now = _datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
     _function_name = '' if function_name is None else f'.{function_name}'
-    return f'damask.{class_name}{_function_name} v{_version} ({now})'
+    return f'damask.{class_name}{_function_name} v{_version} ({time_stamp()})'
 
 
 def natural_sort(key: str) -> _List[_Union[int, str]]:
