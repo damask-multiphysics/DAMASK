@@ -1,0 +1,22 @@
+---
+loadstep:
+  - boundary_conditions:
+      mechanical:
+        - dot_u: ['x', 'x', 0.01]
+          tag: 1
+        - dot_u: [0.0, 0.0, 0.0]
+          tag: 2
+    discretization:
+      t: 0.0005
+      N: 1
+    f_out: 1
+  - boundary_conditions:
+      mechanical:
+        - dot_u: ['x', 'x', 0.01]
+          tag: 1
+        - dot_u: [0.0, 0.0, 0.0]
+          tag: 2
+    discretization:
+      t: 1.0
+      N: 10
+    f_out: 2
