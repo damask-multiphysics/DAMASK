@@ -215,7 +215,7 @@ def open_text(fname: _FileHandle,
            open(_Path(fname).expanduser(),mode,newline=('\n' if mode == 'w' else None))
 
 def time_stamp() -> str:
-    """Timestamp the execution of a (function within a) class."""
+    """Provide current time as formatted string."""
     return _datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
 
 def execution_stamp(class_name: str,
