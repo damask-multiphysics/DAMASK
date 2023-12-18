@@ -618,7 +618,7 @@ def _docstringer(docstring: _Union[str, _Callable],
                                           adopted_,
                                           flags=_re.MULTILINE|_re.DOTALL).group('content')
             except AttributeError:
-                raise RuntimeError(f"Function docstring passed for docstring section '{key}' is invalid:\n{docstring}")
+                raise RuntimeError(f"function docstring passed for docstring section '{key}' is invalid:\n{docstring}")
 
             docstring_indent, adopted_indent = (min([len(line)-len(line.lstrip()) for line in section.split('\n') if line.strip()])
                                                 for section in [docstring_, adopted_])
