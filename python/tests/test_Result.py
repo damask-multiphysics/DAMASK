@@ -79,7 +79,7 @@ class TestResult:
 
     def test_view_all(self,default):
         default = Result(default.fname)
-        a = default.view(increments=True).get('F')
+        a = default.view_all().get('F')
 
         assert dict_equal(a,default.view(increments='*').get('F'))
         assert dict_equal(a,default.view(increments=default.increments_in_range(0,np.iinfo(int).max)).get('F'))
@@ -129,6 +129,21 @@ class TestResult:
         eps = sign*1e-3
         times = list(default._times.values())
         assert [default._increments[inc]] == default.view(times=times[inc]+eps)._visible['increments']
+
+    def test_getters(self,default):
+        file_layout = default.get('non-existing',prune=False,flatten=False)
+        for i in default.increments:
+            increment = file_layout[f'increment_{i}']
+            fields = []
+            for p in default.phases:
+                phase = increment['phase'][p]
+                for f in default.fields:
+                    fields.append(phase[f])
+            for h in default.homogenizations:
+                homogenization = increment['homogenization'][h]
+                for f in default.fields:
+                    fields.append(homogenization[f])
+            assert len(fields) > 0
 
     def test_add_invalid(self,default):
         default.add_absolute('xxxx')

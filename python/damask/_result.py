@@ -453,7 +453,7 @@ class Result:
             View with all attributes visible.
 
         """
-        return self.view(increments='*',phases='*',homogenizations='*',fieds='*')
+        return self.view(increments='*',phases='*',homogenizations='*',fields='*')
 
 
     def rename(self,
@@ -1920,7 +1920,7 @@ class Result:
         out_dir.mkdir(parents=True,exist_ok=True)
 
         with h5py.File(self.fname,'r') as f:
-            if self.version_minor >= 13:
+            if self.version_major == 1 or self.version_minor >= 13:
                 creator = f.attrs['creator'] if h5py3 else f.attrs['creator'].decode()
                 created = f.attrs['created'] if h5py3 else f.attrs['created'].decode()
                 v.comments += [f'{creator} ({created})']
