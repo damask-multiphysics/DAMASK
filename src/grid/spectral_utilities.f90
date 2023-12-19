@@ -488,6 +488,79 @@ function utilities_GammaConvolution(field, fieldAim) result(gammaField)
 
 end function utilities_GammaConvolution
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculate G * field_real (convolution).
+!> @details ref from GammaConv, G*field_real = Fourier_inv( G_hat : Fourier(field_real) ) 
+!--------------------------------------------------------------------------------------------------
+function utilities_G_Convolution(field, fieldAim) result(G_Field)
+
+  real(pREAL), intent(in), dimension(3,3,cells(1),cells(2),cells3) :: field
+  real(pREAL), intent(in), dimension(3,3) :: fieldAim                                               !< desired average value of the field after convolution
+  real(pREAL),             dimension(3,3,cells(1),cells(2),cells3) :: G_Field
+
+  complex(pREAL), dimension(3,3) :: temp33_cmplx, xiDyad_cmplx
+  real(pREAL),    dimension(6,6) :: A, A_inv
+  integer :: &
+    i, j, k, &
+    l, m, n, o
+  logical :: err
+
+
+  print'(/,1x,a)', '... doing G convolution ...............................................'
+  flush(IO_STDOUT)
+
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL
+  tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = field
+  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
+
+  !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,xiDyad_cmplx,A,A_inv,err,gamma_hat)
+  do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
+    if (any([i,j+cells2Offset,k] /= 1)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+#ifndef __INTEL_COMPILER
+      do concurrent(l = 1:3, m = 1:3)
+        xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,k,j))*xi1st(m,i,k,j)
+      end do
+      do concurrent(l = 1:3, m = 1:3)
+        temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pREAL,pREAL)*xiDyad_cmplx)
+      end do
+#else
+      forall(l = 1:3, m = 1:3) &
+        xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,k,j))*xi1st(m,i,k,j)
+      forall(l = 1:3, m = 1:3) &
+        temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pREAL,pREAL)*xiDyad_cmplx)
+#endif
+      A(1:3,1:3) = temp33_cmplx%re; A(4:6,4:6) =  temp33_cmplx%re
+      A(1:3,4:6) = temp33_cmplx%im; A(4:6,1:3) = -temp33_cmplx%im
+      if (abs(math_det33(A(1:3,1:3))) > 1.e-16_pREAL) then
+        call math_invert(A_inv, err, A)
+        temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pREAL)
+#ifndef __INTEL_COMPILER
+        do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
+          gamma_hat(l,m,n,o,1,1,1) = temp33_cmplx(l,n)*xiDyad_cmplx(o,m)
+        end do
+        do concurrent(l = 1:3, m = 1:3)
+          temp33_cmplx(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,k,j))
+        end do
+#else
+        forall(l=1:3, m=1:3, n=1:3, o=1:3) &
+          gamma_hat(l,m,n,o,1,1,1) = temp33_cmplx(l,n)*xiDyad_cmplx(o,m)
+        forall(l = 1:3, m = 1:3) &
+          temp33_cmplx(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,k,j))
+#endif
+        tensorField_fourier(1:3,1:3,i,k,j) = temp33_cmplx
+      else
+        tensorField_fourier(1:3,1:3,i,k,j) = cmplx(0.0_pREAL,0.0_pREAL,pREAL)
+      end if
+    end if
+  end do; end do; end do
+  !$OMP END PARALLEL DO
+
+  if (cells3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim,0.0_pREAL,pREAL)
+
+  call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
+  G_Field = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)
+
+end function utilities_G_Convolution
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Convolution of Greens' operator for damage/thermal.
