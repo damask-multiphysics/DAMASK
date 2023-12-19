@@ -919,7 +919,7 @@ subroutine IO_selfTest()
   call tokenize('','$',tokens)
   if (size(tokens) /= 0 .or. len(tokens) /=0) error stop 'tokenize empty'
   call tokenize('abcd','dcba',tokens)
-  if (size(tokens) /= 0 .or. len(tokens) /=0) error stop 'tokenize empty'
+  if (size(tokens) /= 0 .or. len(tokens) /=0) error stop 'tokenize only separators'
 
   tokens=['a']
   call test_tokenize('a','#',tokens)
@@ -958,7 +958,8 @@ subroutine IO_selfTest()
 
     call tokenize(input,delimiter,tok)
     do i = 1,size(tok)
-      if (solution(i) /= tok(i)) error stop 'tokenize "'//solution(i)//'" vs. "'//tok(i)//'"'
+      !if (solution(i) /= tok(i)) error stop 'tokenize "'//solution(i)//'" vs. "'//tok(i)//'"'      ! requires 2018 standard
+      if (solution(i) /= tok(i)) error stop 'tokenize'
     end do
 
   end subroutine test_tokenize
