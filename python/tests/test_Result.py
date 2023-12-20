@@ -495,6 +495,10 @@ class TestResult:
                 for attr in dset.attrs:
                     assert np.array_equal(dset.attrs[attr],cur[path].attrs[attr])
 
+    def test_export_DREAM3D_invalid(self,res_path):
+        with pytest.raises(NotImplementedError):
+            Result(res_path/'4grains2x4x3_compressionY.hdf5').export_DREAM3D()
+
 
     def test_XDMF_datatypes(self,tmp_path,single_phase,update,res_path):
         for what,shape in {'scalar':(),'vector':(3,),'tensor':(3,3),'matrix':(12,)}.items():
@@ -526,7 +530,7 @@ class TestResult:
         assert dim_vti == dim_xdmf and bounds_vti == bounds_xdmf
 
     def test_XDMF_invalid(self,default):
-        with pytest.raises(TypeError):
+        with pytest.raises(NotImplementedError):
             default.export_XDMF()
 
     def test_XDMF_custom_path(self,single_phase,tmp_path):
