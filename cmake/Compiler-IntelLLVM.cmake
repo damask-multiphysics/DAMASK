@@ -1,10 +1,6 @@
 ###################################################################################################
-# Intel Compiler
+# IntelLLVM Compiler
 ###################################################################################################
-if (CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 18.0)
-  message (FATAL_ERROR "Intel Compiler version: ${CMAKE_Fortran_COMPILER_VERSION} not supported")
-endif ()
-
 if (OPENMP)
   set (OPENMP_FLAGS "-fiopenmp")
 endif ()
