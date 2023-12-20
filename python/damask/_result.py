@@ -115,8 +115,6 @@ class Result:
                 self.cells  = f['geometry'].attrs['cells']
                 self.size   = f['geometry'].attrs['size']
                 self.origin = f['geometry'].attrs['origin']
-            else:
-                self.add_curl = self.add_divergence = self.add_gradient = None                      # type: ignore
 
             r = re.compile(rf'{prefix_inc}([0-9]+)')
             self.increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
@@ -1313,8 +1311,8 @@ class Result:
 
         Notes
         -----
-        This function is only available for structured grids,
-        i.e. fields resulting from the grid solver.
+        This function is implemented only for structured grids
+        with one constituent and a single phase.
 
         """
         def curl(f: DADF5Dataset, size: np.ndarray) -> DADF5Dataset:
@@ -1342,8 +1340,8 @@ class Result:
 
         Notes
         -----
-        This function is only available for structured grids,
-        i.e. fields resulting from the grid solver.
+        This function is implemented only for structured grids
+        with one constituent and a single phase.
 
         """
         def divergence(f: DADF5Dataset, size: np.ndarray) -> DADF5Dataset:
@@ -1371,8 +1369,8 @@ class Result:
 
         Notes
         -----
-        This function is only available for structured grids,
-        i.e. fields resulting from the grid solver.
+        This function is implemented only for structured grids
+        with one constituent and a single phase.
 
         """
         def gradient(f: DADF5Dataset, size: np.ndarray) -> DADF5Dataset:
@@ -1410,13 +1408,13 @@ class Result:
             Arguments parsed to func.
 
         """
-        if len(datasets) != 1 or self.N_constituents != 1:
-            raise NotImplementedError
+        if self.N_constituents != 1 or len(datasets) != 1 or not self.structured:
+            raise NotImplementedError('not a structured grid with one constituent and a single phase')
 
         at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
 
         increments = self.place(list(datasets.values()),False)
-        if not increments: raise RuntimeError("received invalid dataset")
+        if not increments: raise RuntimeError('received invalid dataset')
         with h5py.File(self.fname, 'a') as f:
             for increment in increments.items():
                 for ty in increment[1].items():
@@ -1722,9 +1720,14 @@ class Result:
             Defaults to False, i.e. the XDMF file expects the
             DADF5 file at a stable relative path.
 
+        Notes
+        -----
+        This function is implemented only for structured grids with
+        one constituent and a single phase.
+
         """
         if self.N_constituents != 1 or len(self.phases) != 1 or not self.structured:
-            raise TypeError('XDMF output requires structured grid with single phase and single constituent.')
+            raise NotImplementedError('not a structured grid with one constituent and a single phase')
 
         attribute_type_map = defaultdict(lambda:'Matrix', ( ((),'Scalar'), ((3,),'Vector'), ((3,3),'Tensor')) )
 
@@ -1949,6 +1952,11 @@ class Result:
         target_dir : str or pathlib.Path, optional
             Directory to save DREAM3D files. Will be created if non-existent.
 
+        Notes
+        -----
+        This function is implemented only for structured grids with
+        one constituent.
+
         """
         def add_attribute(obj,name,data):
             """DREAM.3D requires fixed length string."""
@@ -1964,10 +1972,9 @@ class Result:
             return obj[name]
 
         if self.N_constituents != 1 or not self.structured:
-            raise TypeError('DREAM3D output requires structured grid with single constituent.')
+            raise NotImplementedError('not a structured grid with one constituent')
 
         N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
-
 
         at_cell_ph,in_data_ph,_,_ = self._mappings()
 
