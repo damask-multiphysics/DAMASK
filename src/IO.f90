@@ -380,17 +380,11 @@ integer function IO_strAsInt(str)
 
   character(len=*), intent(in) :: str                                                               !< string for conversion to int value
 
-  integer                      :: readStatus
-  character(len=*), parameter  :: VALIDCHARS = '0123456789+- '
+  integer :: readStatus
 
 
-  valid: if (verify(str,VALIDCHARS) == 0) then
-    read(str,*,iostat=readStatus) IO_strAsInt
-    if (readStatus /= 0) call IO_error(111,str)
-  else valid
-    IO_strAsInt = 0
-    call IO_error(111,str)
-  end if valid
+  read(str,*,iostat=readStatus) IO_strAsInt
+  if (readStatus /= 0) call IO_error(111,'cannot represent "'//str//'" as integer')
 
 end function IO_strAsInt
 
@@ -402,27 +396,23 @@ real(pREAL) function IO_strAsReal(str)
 
   character(len=*), intent(in) :: str                                                               !< string for conversion to real value
 
-  integer                      :: readStatus
-  character(len=*), parameter  :: VALIDCHARS = '0123456789eE.+- '
+  integer :: readStatus
 
 
-  valid: if (verify(str,VALIDCHARS) == 0) then
-    read(str,*,iostat=readStatus) IO_strAsReal
-    if (readStatus /= 0) call IO_error(112,str)
-  else valid
-    IO_strAsReal = 0.0_pREAL
-    call IO_error(112,str)
-  end if valid
+  read(str,*,iostat=readStatus) IO_strAsReal
+  if (readStatus /= 0) call IO_error(111,'cannot represent "'//str//'" as real')
 
 end function IO_strAsReal
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Return logical value from given string.
+!> @details: 'True' and 'true' are converted to .true.
+!> @details: 'False' and 'false' are converted to .false.
 !--------------------------------------------------------------------------------------------------
 logical function IO_strAsBool(str)
 
-  character(len=*), intent(in) :: str                                                               !< string for conversion to int value
+  character(len=*), intent(in) :: str                                                               !< string for conversion to boolean
 
 
   if     (trim(adjustl(str)) == 'True' .or.  trim(adjustl(str)) == 'true') then
@@ -430,8 +420,7 @@ logical function IO_strAsBool(str)
   elseif (trim(adjustl(str)) == 'False' .or. trim(adjustl(str)) == 'false') then
     IO_strAsBool = .false.
   else
-    IO_strAsBool = .false.
-    call IO_error(113,str)
+    call IO_error(111,'cannot represent "'//str//'" as boolean')
   end if
 
 end function IO_strAsBool
@@ -498,11 +487,7 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
     case (110)
       msg = 'invalid chunk selected'
     case (111)
-      msg = 'invalid character for int:'
-    case (112)
-      msg = 'invalid character for real:'
-    case (113)
-      msg = 'invalid character for logical:'
+      msg = 'invalid string for conversion'
     case (114)
       msg = 'cannot decode base64 string:'
 
