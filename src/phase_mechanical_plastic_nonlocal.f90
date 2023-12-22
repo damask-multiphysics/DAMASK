@@ -44,8 +44,7 @@ submodule(phase:plastic) nonlocal
   ! BEGIN DEPRECATED
   integer, dimension(:,:,:), allocatable :: &
     iRhoU, &                                                                                        !< state indices for unblocked density
-    iV, &                                                                                           !< state indices for dislocation velocities
-    iD                                                                                              !< state indices for stable dipole height
+    iV                                                                                              !< state indices for dislocation velocities
   !END DEPRECATED
 
   real(pREAL), dimension(:,:,:,:,:,:), allocatable :: &
@@ -125,7 +124,8 @@ submodule(phase:plastic) nonlocal
     real(pREAL), allocatable, dimension(:,:) :: &
       tau_pass, &
       tau_back, &
-      rho_forest
+      rho_forest, &
+      max_dipole_height
     real(pREAL), allocatable, dimension(:,:,:,:,:) :: &
       compatibility
   end type tNonlocalDependentState
@@ -391,8 +391,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
                             'gamma                 ' ]) * prm%sum_N_sl                              !< "basic" microstructural state variables that are independent from other state variables
     sizeState          = sizeDotState &
                        + size([ 'velocityEdgePos     ','velocityEdgeNeg     ', &
-                                'velocityScrewPos    ','velocityScrewNeg    ', &
-                                'maxDipoleHeightEdge ','maxDipoleHeightScrew' ]) * prm%sum_N_sl     !< other dependent state variables that are not updated by microstructure
+                                'velocityScrewPos    ','velocityScrewNeg    ']) * prm%sum_N_sl      !< other dependent state variables that are not updated by microstructure
     sizeDeltaState            = sizeDotState
 
     call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,sizeDeltaState,0)     ! ToDo: state structure does not follow convention
@@ -486,6 +485,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     allocate(dst%tau_pass(prm%sum_N_sl,Nmembers),source=0.0_pREAL)
     allocate(dst%tau_back(prm%sum_N_sl,Nmembers),source=0.0_pREAL)
     allocate(dst%rho_forest(prm%sum_N_sl,Nmembers),source=0.0_pREAL)
+    allocate(dst%max_dipole_height(2*prm%sum_N_sl,Nmembers),source=0.0_pREAL)                       ! edge and screw
     allocate(dst%compatibility(2,maxval(param%sum_N_sl),maxval(param%sum_N_sl),nIPneighbors,Nmembers),source=0.0_pREAL)
     end associate
 
@@ -503,7 +503,6 @@ module function plastic_nonlocal_init() result(myPlasticity)
 ! BEGIN DEPRECATED----------------------------------------------------------------------------------
   allocate(iRhoU(maxval(param%sum_N_sl),4,phases%length), source=0)
   allocate(iV(maxval(param%sum_N_sl),4,phases%length),    source=0)
-  allocate(iD(maxval(param%sum_N_sl),2,phases%length),    source=0)
 
   do ph = 1, phases%length
 
@@ -525,13 +524,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
         iV(s,t,ph) = l
       end do
     end do
-    do t = 1,2
-      do s = 1,param(ph)%sum_N_sl
-        l = l + 1
-        iD(s,t,ph) = l
-      end do
-    end do
-    if (iD(param(ph)%sum_N_sl,2,ph) /= plasticState(ph)%sizeState) &
+    if (iV(param(ph)%sum_N_sl,4,ph) /= plasticState(ph)%sizeState) &
       error stop 'state indices not properly set (nonlocal)'
   end do
 
@@ -868,7 +861,7 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
 
   !*** shortcut to state variables
   v = reshape(stt%v(:,en),[prm%sum_N_sl,4])
-  forall (s = 1:prm%sum_N_sl, c = 1:2) dUpperOld(s,c) = plasticState(ph)%state(iD(s,c,ph),en)
+  dUpperOld = reshape(dst%max_dipole_height(:,en),[prm%sum_N_sl,2])
 
   rho =  getRho(ph,en)
   rhoDip = rho(:,dip)
@@ -915,7 +908,7 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
                                        / (dUpperOld(s,c) - prm%minDipoleHeight(s,c))
 
   forall (t=1:4) deltaRhoDipole2SingleStress(:,t) = -0.5_pREAL * deltaRhoDipole2SingleStress(:,(t-1)/2+9)
-  forall (s = 1:prm%sum_N_sl, c = 1:2) plasticState(ph)%state(iD(s,c,ph),en) = dUpper(s,c)
+  dst%max_dipole_height(:,en) = pack(dUpper,.true.)
 
   plasticState(ph)%deltaState(:,en) = 0.0_pREAL
   del%rho(:,en) = reshape(deltaRhoRemobilization + deltaRhoDipole2SingleStress, [10*prm%sum_N_sl])
