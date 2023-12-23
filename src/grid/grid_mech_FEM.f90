@@ -269,7 +269,6 @@ subroutine grid_mechanical_FEM_init(num_grid)
     F         = spread(spread(spread(math_I3,3,cells(1)),4,cells(2)),5,cells3)
   end if restartRead
 
-  homogenization_F0 = reshape(F_lastInc, [3,3,product(cells(1:2))*cells3])                          ! set starting condition for homogenization_mechanical_response
   call utilities_updateCoords(F)
   call utilities_constitutiveResponse(P_current,P_av,C_volAvg,devNull, &                            ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       F, &                                                          ! target F
@@ -390,7 +389,6 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
 
     F_lastInc = F
 
-    homogenization_F0 = reshape(F, [3,3,product(cells(1:2))*cells3])
   end if
 
 !--------------------------------------------------------------------------------------------------
