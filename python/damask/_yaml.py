@@ -197,7 +197,9 @@ class YAML(dict):
             YAML from file.
 
         """
-        return cls(yaml.load(util.open_text(fname), Loader=SafeLoader))
+        with util.open_text(fname) as fhandle:
+            return cls(yaml.load(fhandle, Loader=SafeLoader))
+
 
     def save(self,
              fname: FileHandle,
@@ -220,12 +222,12 @@ class YAML(dict):
         if 'sort_keys' not in kwargs:
             kwargs['sort_keys'] = False
 
-        fhandle = util.open_text(fname,'w')
-        try:
-            fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
-        except TypeError:                                                                           # compatibility with old pyyaml
-            del kwargs['sort_keys']
-            fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
+        with util.open_text(fname,'w') as fhandle:
+            try:
+                fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
+            except TypeError:                                                                       # compatibility with old pyyaml
+                del kwargs['sort_keys']
+                fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
 
 
     @property

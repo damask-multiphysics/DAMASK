@@ -277,28 +277,28 @@ class Table:
             Table data from file.
 
         """
-        f = util.open_text(fname)
-        f.seek(0)
+        with util.open_text(fname) as f:
+            f.seek(0)
 
-        comments = []
-        while (line := f.readline().strip()).startswith('#'):
-            comments.append(line.lstrip('#').strip())
-        labels = line.split()
+            comments = []
+            while (line := f.readline().strip()).startswith('#'):
+                comments.append(line.lstrip('#').strip())
+            labels = line.split()
 
-        shapes = {}
-        for label in labels:
-            tensor_column = re.search(r'[0-9,x]*?:[0-9]*?_',label)
-            if tensor_column:
-                my_shape = tensor_column.group().split(':',1)[0].split('x')
-                shapes[label.split('_',1)[1]] = tuple([int(d) for d in my_shape])
-            else:
-                vector_column = re.match(r'[0-9]*?_',label)
-                if vector_column:
-                    shapes[label.split('_',1)[1]] = (int(label.split('_',1)[0]),)
+            shapes = {}
+            for label in labels:
+                tensor_column = re.search(r'[0-9,x]*?:[0-9]*?_',label)
+                if tensor_column:
+                    my_shape = tensor_column.group().split(':',1)[0].split('x')
+                    shapes[label.split('_',1)[1]] = tuple([int(d) for d in my_shape])
                 else:
-                    shapes[label] = (1,)
+                    vector_column = re.match(r'[0-9]*?_',label)
+                    if vector_column:
+                        shapes[label.split('_',1)[1]] = (int(label.split('_',1)[0]),)
+                    else:
+                        shapes[label] = (1,)
 
-        data = pd.read_csv(f,names=list(range(len(labels))),sep=r'\s+')
+            data = pd.read_csv(f,names=list(range(len(labels))),sep=r'\s+')
 
         return Table(shapes,data,comments)
 
@@ -339,10 +339,9 @@ class Table:
             Table data from file.
 
         """
-        f = util.open_text(fname)
-        f.seek(0)
-
-        content = f.readlines()
+        with util.open_text(fname) as f:
+            f.seek(0)
+            content = f.readlines()
 
         comments = [util.execution_stamp('Table','from_ang')]
         for line in content:
@@ -605,10 +604,9 @@ class Table:
                     labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
                               for i in range(np.prod(self.shapes[l]))]
 
-        f = util.open_text(fname,'w')
-
-        f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+('\n' if labels else ''))
-        try:                                                                                        # backward compatibility
-            self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,lineterminator='\n')
-        except TypeError:
-            self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,line_terminator='\n')
+        with util.open_text(fname,'w') as f:
+            f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+('\n' if labels else ''))
+            try:                                                                                    # backward compatibility
+                self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,lineterminator='\n')
+            except TypeError:
+                self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,line_terminator='\n')
