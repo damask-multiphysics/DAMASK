@@ -201,26 +201,26 @@ subroutine cellsSizeOrigin(c,s,o,header)
   real(pREAL), dimension(3), intent(out) :: s,o
   character(len=*),          intent(in) :: header
 
-  character(len=:), allocatable :: temp
+  character(len=:), allocatable, dimension(:) :: temp
   real(pREAL), dimension(3) :: delta
   integer :: i
 
 
-  temp = getXMLValue(header,'Direction')
-  if (temp /= '1 0 0 0 1 0 0 0 1' .and. temp /= '') &                                               ! https://discourse.vtk.org/t/vti-specification/6526
+  temp = [getXMLValue(header,'Direction')]
+  if (temp(1) /= '1 0 0 0 1 0 0 0 1' .and. temp(1) /= '') &                                         ! https://discourse.vtk.org/t/vti-specification/6526
     call IO_error(error_ID = 844, ext_msg = 'coordinate order')
 
-  temp = getXMLValue(header,'WholeExtent')
-  if (any([(IO_intValue(temp,IO_strPos(temp),i),i=1,5,2)] /= 0)) &
+  call tokenize(getXMLValue(header,'WholeExtent'),' ',temp)
+  if (any([(IO_strAsInt(temp(i)),i=1,5,2)] /= 0)) &
     call IO_error(error_ID = 844, ext_msg = 'coordinate start')
-  c = [(IO_intValue(temp,IO_strPos(temp),i),i=2,6,2)]
+  c = [(IO_strAsInt(temp(i)),i=2,6,2)]
 
-  temp = getXMLValue(header,'Spacing')
-  delta = [(IO_realValue(temp,IO_strPos(temp),i),i=1,3)]
+  call tokenize(getXMLValue(header,'Spacing'),' ',temp)
+  delta = [(IO_strAsReal(temp(i)),i=1,3)]
   s = delta * real(c,pREAL)
 
-  temp = getXMLValue(header,'Origin')
-  o = [(IO_realValue(temp,IO_strPos(temp),i),i=1,3)]
+  call tokenize(getXMLValue(header,'Origin'),' ',temp)
+  o = [(IO_strAsReal(temp(i)),i=1,3)]
 
 end subroutine cellsSizeOrigin
 
