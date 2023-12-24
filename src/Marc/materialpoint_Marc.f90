@@ -142,7 +142,6 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
 
   if (iand(mode, materialpoint_AGERESULTS) /= 0) call materialpoint_forward
 
-    homogenization_F0(1:3,1:3,ce) = ffn
     homogenization_F(1:3,1:3,ce) = ffn1
 
   if (iand(mode, materialpoint_CALCRESULTS) /= 0) then

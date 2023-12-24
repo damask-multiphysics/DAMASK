@@ -756,7 +756,7 @@ end function utilities_vectorDivergence
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate constitutive response from homogenization_F0 to F during Delta_t
+!> @brief Calculate constitutive response.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
                                           F,Delta_t,rotation_BC)

@@ -52,7 +52,6 @@ module homogenization
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
   real(pREAL),   dimension(:,:,:),     allocatable, public :: &
-    homogenization_F0, &                                                                            !< def grad of IP at start of FE increment
     homogenization_F                                                                                !< def grad of IP to be reached at end of FE increment
   real(pREAL),   dimension(:,:,:),     allocatable, public :: & !, protected :: &                   Issue with ifort
     homogenization_P                                                                                !< first P--K stress of IP
