@@ -7,6 +7,4 @@ endif ()
 
 #------------------------------------------------------------------------------------------------
 # Fine tuning compilation options
-set (COMPILE_FLAGS "${COMPILE_FLAGS} -cpp")
-# preprocessor
 

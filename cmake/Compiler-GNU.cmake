@@ -19,9 +19,6 @@ set (STANDARD_CHECK "-std=f2018 -pedantic-errors" )
 
 #------------------------------------------------------------------------------------------------
 # Fine tuning compilation options
-set (COMPILE_FLAGS "${COMPILE_FLAGS} -cpp")
-# preprocessor
-
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -fPIE")
 # position independent code
 

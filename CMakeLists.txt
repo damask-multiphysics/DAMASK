@@ -29,6 +29,8 @@ else()
 endif()
 add_definitions("-D${DAMASK_SOLVER}")
 
+set(CMAKE_Fortran_PREPROCESS "ON")
+
 # EXPERIMENTAL: This might help to detect HDF5 and FFTW3 in the future if PETSc is not aware of them
 set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/externalpackages:$ENV{PKG_CONFIG_PATH}")
 pkg_check_modules(HDF5 hdf5)
