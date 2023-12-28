@@ -384,7 +384,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Initialize constitutive models for individual physics
 !--------------------------------------------------------------------------------------------------
-subroutine phase_init
+subroutine phase_init()
 
   integer :: &
     ph, ce, co, ma
@@ -544,11 +544,7 @@ subroutine crystallite_init()
     ip, &                                                                                           !< counter in integration point loop
     el, &                                                                                           !< counter in element loop
     en, ph
-  type(tDict), pointer :: &
-    num_phase, &
-    phases
 
-  phases => config_material%get_dict('phase')
 
   !$OMP PARALLEL DO PRIVATE(ce,ph,en)
   do el = 1, discretization_Nelems
