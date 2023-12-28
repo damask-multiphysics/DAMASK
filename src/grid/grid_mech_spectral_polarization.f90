@@ -23,6 +23,7 @@ module grid_mechanical_spectral_polarization
   use math
   use rotations
   use spectral_utilities
+  use grid_mech_utilities
   use config
   use homogenization
   use discretization_grid

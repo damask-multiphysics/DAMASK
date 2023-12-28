@@ -43,7 +43,6 @@ module grid_thermal_spectral
 
   type(tNumerics) :: num
 
-  type(tSolutionParams) :: params
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   SNES :: SNES_thermal
@@ -56,7 +55,7 @@ module grid_thermal_spectral
 ! reference diffusion tensor, mobility etc.
   integer                     :: totalIter = 0                                                      !< total iteration in current increment
   real(pREAL), dimension(3,3) :: K_ref
-  real(pREAL)                 :: mu_ref
+  real(pREAL)                 :: mu_ref, Delta_t_
 
   public :: &
     grid_thermal_spectral_init, &
@@ -186,8 +185,7 @@ end subroutine grid_thermal_spectral_init
 !--------------------------------------------------------------------------------------------------
 function grid_thermal_spectral_solution(Delta_t) result(solution)
 
-  real(pREAL), intent(in) :: &
-    Delta_t                                                                                         !< increment in time for current solution
+  real(pREAL), intent(in) ::  Delta_t                                                               !< increment in time for current solution
 
   type(tSolutionState) :: solution
   PetscInt  :: devNull
@@ -201,7 +199,7 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
-  params%Delta_t = Delta_t
+  Delta_t_ = Delta_t
 
   call SNESSolve(SNES_thermal,PETSC_NULL_VEC,T_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -227,7 +225,7 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   T_stagInc = T
 
   call homogenization_thermal_setField(reshape(T,[product(cells(1:2))*cells3]), &
-                                       reshape(T-T_lastInc,[product(cells(1:2))*cells3])/params%Delta_t)
+                                       reshape(T-T_lastInc,[product(cells(1:2))*cells3])/Delta_t_)
 
   call DMDAVecRestoreArrayF90(DM_thermal,T_PETSc,T,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -264,7 +262,7 @@ subroutine grid_thermal_spectral_forward(cutBack)
     T = T_lastInc
     T_stagInc = T_lastInc
   else
-    dotT_lastInc = (T - T_lastInc)/params%Delta_t
+    dotT_lastInc = (T - T_lastInc)/Delta_t_
     T_lastInc = T
     call updateReference()
   end if
@@ -336,13 +334,13 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
     ce = 0
     do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
       ce = ce + 1
-      r(i,j,k) = params%Delta_t*(r(i,j,k) + homogenization_f_T(ce)) &
+      r(i,j,k) = Delta_t_*(r(i,j,k) + homogenization_f_T(ce)) &
                + homogenization_mu_T(ce) * (T_lastInc(i,j,k) - T(i,j,k)) &
                + mu_ref*T(i,j,k)
     end do; end do; end do
 
     r = T &
-      - utilities_GreenConvolution(r, K_ref, mu_ref, params%Delta_t)
+      - utilities_GreenConvolution(r, K_ref, mu_ref, Delta_t_)
   end associate
   err_PETSc = 0
 

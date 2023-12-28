@@ -44,7 +44,6 @@ module grid_damage_spectral
 
   type(tNumerics) :: num
 
-  type(tSolutionParams) :: params
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   SNES :: SNES_damage
@@ -57,7 +56,7 @@ module grid_damage_spectral
 ! reference diffusion tensor, mobility etc.
   integer                     :: totalIter = 0                                                      !< total iteration in current increment
   real(pREAL), dimension(3,3) :: K_ref
-  real(pREAL)                 :: mu_ref
+  real(pREAL)                 :: mu_ref, Delta_t_
 
   public :: &
     grid_damage_spectral_init, &
@@ -207,8 +206,7 @@ end subroutine grid_damage_spectral_init
 !--------------------------------------------------------------------------------------------------
 function grid_damage_spectral_solution(Delta_t) result(solution)
 
-  real(pREAL), intent(in) :: &
-    Delta_t                                                                                         !< increment in time for current solution
+  real(pREAL), intent(in) :: Delta_t                                                                !< increment in time for current solution
 
   type(tSolutionState) :: solution
   PetscInt  :: devNull
@@ -222,7 +220,7 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
-  params%Delta_t = Delta_t
+  Delta_t_ = Delta_t
 
   call SNESSolve(SNES_damage,PETSC_NULL_VEC,phi_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -350,12 +348,12 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
     ce = 0
     do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
       ce = ce + 1
-      r(i,j,k) = params%Delta_t*(r(i,j,k) + homogenization_f_phi(phi(i,j,k),ce)) &
+      r(i,j,k) = Delta_t_*(r(i,j,k) + homogenization_f_phi(phi(i,j,k),ce)) &
                + homogenization_mu_phi(ce)*(phi_lastInc(i,j,k) - phi(i,j,k)) &
                + mu_ref*phi(i,j,k)
     end do; end do; end do
 
-    r = max(min(utilities_GreenConvolution(r, K_ref, mu_ref, params%Delta_t),phi_lastInc),num%phi_min) &
+    r = max(min(utilities_GreenConvolution(r, K_ref, mu_ref, Delta_t_),phi_lastInc),num%phi_min) &
       - phi
   end associate
   err_PETSc = 0
