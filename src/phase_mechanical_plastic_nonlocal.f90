@@ -44,8 +44,7 @@ submodule(phase:plastic) nonlocal
   ! BEGIN DEPRECATED
   integer, dimension(:,:,:), allocatable :: &
     iRhoU, &                                                                                        !< state indices for unblocked density
-    iV, &                                                                                           !< state indices for dislocation velocities
-    iD                                                                                              !< state indices for stable dipole height
+    iV                                                                                              !< state indices for dislocation velocities
   !END DEPRECATED
 
   real(pREAL), dimension(:,:,:,:,:,:), allocatable :: &
@@ -124,7 +123,9 @@ submodule(phase:plastic) nonlocal
   type :: tNonlocalDependentState
     real(pREAL), allocatable, dimension(:,:) :: &
       tau_pass, &
-      tau_back
+      tau_back, &
+      rho_forest, &
+      max_dipole_height
     real(pREAL), allocatable, dimension(:,:,:,:,:) :: &
       compatibility
   end type tNonlocalDependentState
@@ -146,7 +147,6 @@ submodule(phase:plastic) nonlocal
         rhoDip, &
           rho_dip_edg, &
           rho_dip_scr, &
-        rho_forest, &
       gamma, &
       v, &
         v_edg_pos, &
@@ -177,7 +177,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   integer :: &
     ph, &
     Nmembers, &
-    sizeState, sizeDotState, sizeDependentState, sizeDeltaState, &
+    sizeState, sizeDotState, sizeDeltaState, &
     s1, s2, &
     s, t, l
   real(pREAL), dimension(:,:), allocatable :: &
@@ -389,11 +389,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
                             'rhoSglScrewPosImmobile','rhoSglScrewNegImmobile', &
                             'rhoDipEdge            ','rhoDipScrew           ', &
                             'gamma                 ' ]) * prm%sum_N_sl                              !< "basic" microstructural state variables that are independent from other state variables
-    sizeDependentState = size([ 'rhoForest   ']) * prm%sum_N_sl                                     !< microstructural state variables that depend on other state variables
-    sizeState          = sizeDotState + sizeDependentState &
+    sizeState          = sizeDotState &
                        + size([ 'velocityEdgePos     ','velocityEdgeNeg     ', &
-                                'velocityScrewPos    ','velocityScrewNeg    ', &
-                                'maxDipoleHeightEdge ','maxDipoleHeightScrew' ]) * prm%sum_N_sl     !< other dependent state variables that are not updated by microstructure
+                                'velocityScrewPos    ','velocityScrewNeg    ']) * prm%sum_N_sl      !< other dependent state variables that are not updated by microstructure
     sizeDeltaState            = sizeDotState
 
     call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,sizeDeltaState,0)     ! ToDo: state structure does not follow convention
@@ -477,15 +475,17 @@ module function plastic_nonlocal_init() result(myPlasticity)
     if (any(plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl) < 0.0_pREAL)) &
       extmsg = trim(extmsg)//' atol_gamma'
 
-    stt%rho_forest => plasticState(ph)%state                 (11*prm%sum_N_sl + 1:12*prm%sum_N_sl,1:Nmembers)
-    stt%v          => plasticState(ph)%state                 (12*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:Nmembers)
-        stt%v_edg_pos  => plasticState(ph)%state             (12*prm%sum_N_sl + 1:13*prm%sum_N_sl,1:Nmembers)
-        stt%v_edg_neg  => plasticState(ph)%state             (13*prm%sum_N_sl + 1:14*prm%sum_N_sl,1:Nmembers)
-        stt%v_scr_pos  => plasticState(ph)%state             (14*prm%sum_N_sl + 1:15*prm%sum_N_sl,1:Nmembers)
-        stt%v_scr_neg  => plasticState(ph)%state             (15*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:Nmembers)
+    stt%v          => plasticState(ph)%state                 (11*prm%sum_N_sl + 1:15*prm%sum_N_sl,1:Nmembers)
+    st0%v          => plasticState(ph)%state0                (11*prm%sum_N_sl + 1:15*prm%sum_N_sl,1:Nmembers)
+        stt%v_edg_pos  => plasticState(ph)%state             (11*prm%sum_N_sl + 1:12*prm%sum_N_sl,1:Nmembers)
+        stt%v_edg_neg  => plasticState(ph)%state             (12*prm%sum_N_sl + 1:13*prm%sum_N_sl,1:Nmembers)
+        stt%v_scr_pos  => plasticState(ph)%state             (13*prm%sum_N_sl + 1:14*prm%sum_N_sl,1:Nmembers)
+        stt%v_scr_neg  => plasticState(ph)%state             (14*prm%sum_N_sl + 1:15*prm%sum_N_sl,1:Nmembers)
 
     allocate(dst%tau_pass(prm%sum_N_sl,Nmembers),source=0.0_pREAL)
     allocate(dst%tau_back(prm%sum_N_sl,Nmembers),source=0.0_pREAL)
+    allocate(dst%rho_forest(prm%sum_N_sl,Nmembers),source=0.0_pREAL)
+    allocate(dst%max_dipole_height(2*prm%sum_N_sl,Nmembers),source=0.0_pREAL)                       ! edge and screw
     allocate(dst%compatibility(2,maxval(param%sum_N_sl),maxval(param%sum_N_sl),nIPneighbors,Nmembers),source=0.0_pREAL)
     end associate
 
@@ -503,7 +503,6 @@ module function plastic_nonlocal_init() result(myPlasticity)
 ! BEGIN DEPRECATED----------------------------------------------------------------------------------
   allocate(iRhoU(maxval(param%sum_N_sl),4,phases%length), source=0)
   allocate(iV(maxval(param%sum_N_sl),4,phases%length),    source=0)
-  allocate(iD(maxval(param%sum_N_sl),2,phases%length),    source=0)
 
   do ph = 1, phases%length
 
@@ -518,20 +517,14 @@ module function plastic_nonlocal_init() result(myPlasticity)
         iRhoU(s,t,ph) = l
       end do
     end do
-    l = l + (4+2+1+1)*param(ph)%sum_N_sl ! immobile(4), dipole(2), shear, forest
+    l = l + (4+2+1)*param(ph)%sum_N_sl ! immobile(4), dipole(2), shear
     do t = 1,4
       do s = 1,param(ph)%sum_N_sl
         l = l + 1
         iV(s,t,ph) = l
       end do
     end do
-    do t = 1,2
-      do s = 1,param(ph)%sum_N_sl
-        l = l + 1
-        iD(s,t,ph) = l
-      end do
-    end do
-    if (iD(param(ph)%sum_N_sl,2,ph) /= plasticState(ph)%sizeState) &
+    if (iV(param(ph)%sum_N_sl,4,ph) /= plasticState(ph)%sizeState) &
       error stop 'state indices not properly set (nonlocal)'
   end do
 
@@ -602,7 +595,7 @@ module subroutine nonlocal_dependentState(ph, en)
   nu = elastic_nu(ph,en,prm%isotropic_bound)
   rho = getRho(ph,en)
 
-  stt%rho_forest(:,en) = matmul(prm%forestProjection_Edge, sum(abs(rho(:,edg)),2)) &
+  dst%rho_forest(:,en) = matmul(prm%forestProjection_Edge, sum(abs(rho(:,edg)),2)) &
                        + matmul(prm%forestProjection_Screw,sum(abs(rho(:,scr)),2))
 
 
@@ -612,7 +605,7 @@ module subroutine nonlocal_dependentState(ph, en)
     myInteractionMatrix = prm%h_sl_sl &
                         * spread((  1.0_pREAL - prm%f_F &
                                    + prm%f_F &
-                                   * log(0.35_pREAL * prm%b_sl * sqrt(max(stt%rho_forest(:,en),prm%rho_significant))) &
+                                   * log(0.35_pREAL * prm%b_sl * sqrt(max(dst%rho_forest(:,en),prm%rho_significant))) &
                                    / log(0.35_pREAL * prm%b_sl * 1e6_pREAL))**2,2,prm%sum_N_sl)
   else
     myInteractionMatrix = prm%h_sl_sl
@@ -861,14 +854,14 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
     deltaDUpper                                                                                     ! change in maximum stable dipole distance for edges and screws
 
 
-  associate(prm => param(ph),dst => dependentState(ph),del => deltaState(ph))
+  associate(prm => param(ph),dst => dependentState(ph),del => deltaState(ph), stt=>state(ph))
 
   mu = elastic_mu(ph,en,prm%isotropic_bound)
   nu = elastic_nu(ph,en,prm%isotropic_bound)
 
   !*** shortcut to state variables
-  forall (s = 1:prm%sum_N_sl, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)
-  forall (s = 1:prm%sum_N_sl, c = 1:2) dUpperOld(s,c) = plasticState(ph)%state(iD(s,c,ph),en)
+  v = reshape(stt%v(:,en),[prm%sum_N_sl,4])
+  dUpperOld = reshape(dst%max_dipole_height(:,en),[prm%sum_N_sl,2])
 
   rho =  getRho(ph,en)
   rhoDip = rho(:,dip)
@@ -915,7 +908,7 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
                                        / (dUpperOld(s,c) - prm%minDipoleHeight(s,c))
 
   forall (t=1:4) deltaRhoDipole2SingleStress(:,t) = -0.5_pREAL * deltaRhoDipole2SingleStress(:,(t-1)/2+9)
-  forall (s = 1:prm%sum_N_sl, c = 1:2) plasticState(ph)%state(iD(s,c,ph),en) = dUpper(s,c)
+  dst%max_dipole_height(:,en) = pack(dUpper,.true.)
 
   plasticState(ph)%deltaState(:,en) = 0.0_pREAL
   del%rho(:,en) = reshape(deltaRhoRemobilization + deltaRhoDipole2SingleStress, [10*prm%sum_N_sl])
@@ -975,7 +968,8 @@ module subroutine nonlocal_dotState(Mp,timestep, &
     return
   end if
 
-  associate(prm => param(ph), dst => dependentState(ph), dot => dotState(ph), stt => state(ph))
+  associate(prm => param(ph), dst => dependentState(ph), dot => dotState(ph), &
+            stt => state(ph), st0 => state0(ph))
 
   mu = elastic_mu(ph,en,prm%isotropic_bound)
   nu = elastic_nu(ph,en,prm%isotropic_bound)
@@ -990,9 +984,8 @@ module subroutine nonlocal_dotState(Mp,timestep, &
   rho0 = getRho0(ph,en)
   my_rhoSgl0 = rho0(:,sgl)
 
-  forall (s = 1:prm%sum_N_sl, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)
+  v = reshape(stt%v(:,en),[prm%sum_N_sl,4])
   dot_gamma = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
-
 
 
   ! limits for stable dipole height
@@ -1018,20 +1011,20 @@ module subroutine nonlocal_dotState(Mp,timestep, &
   isBCC: if (phase_lattice(ph) == 'cI') then
     forall (s = 1:prm%sum_N_sl, sum(abs(v(s,1:4))) > 0.0_pREAL)
       rhoDotMultiplication(s,1:2) = sum(abs(dot_gamma(s,3:4))) / prm%b_sl(s) &                      ! assuming double-cross-slip of screws to be decisive for multiplication
-                                  * sqrt(stt%rho_forest(s,en)) / prm%i_sl(s) ! &                    ! mean free path
+                                  * sqrt(dst%rho_forest(s,en)) / prm%i_sl(s) ! &                    ! mean free path
                                   ! * 2.0_pREAL * sum(abs(v(s,3:4))) / sum(abs(v(s,1:4)))           ! ratio of screw to overall velocity determines edge generation
       rhoDotMultiplication(s,3:4) = sum(abs(dot_gamma(s,3:4))) /prm%b_sl(s) &                       ! assuming double-cross-slip of screws to be decisive for multiplication
-                                  * sqrt(stt%rho_forest(s,en)) / prm%i_sl(s) ! &                    ! mean free path
+                                  * sqrt(dst%rho_forest(s,en)) / prm%i_sl(s) ! &                    ! mean free path
                                   ! * 2.0_pREAL * sum(abs(v(s,1:2))) / sum(abs(v(s,1:4)))           ! ratio of edge to overall velocity determines screw generation
     endforall
 
   else isBCC
     rhoDotMultiplication(:,1:4) = spread( &
           (sum(abs(dot_gamma(:,1:2)),2) * prm%f_ed_mult + sum(abs(dot_gamma(:,3:4)),2)) &
-        * sqrt(stt%rho_forest(:,en)) / prm%i_sl / prm%b_sl, 2, 4)                                   ! eq. 3.26
+        * sqrt(dst%rho_forest(:,en)) / prm%i_sl / prm%b_sl, 2, 4)                                   ! eq. 3.26
   end if isBCC
 
-  forall (s = 1:prm%sum_N_sl, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,ph),en)
+  v0 = reshape(st0%v(:,en),[prm%sum_N_sl,4])
 
 
   !****************************************************************************
@@ -1074,7 +1067,7 @@ module subroutine nonlocal_dotState(Mp,timestep, &
   if (phase_lattice(ph) == 'cF') &
     forall (s = 1:prm%sum_N_sl, prm%colinearSystem(s) > 0) &
       rhoDotAthermalAnnihilation(prm%colinearSystem(s),1:2) = - rhoDotAthermalAnnihilation(s,10) &
-        * 0.25_pREAL * sqrt(stt%rho_forest(s,en)) * (dUpper(s,2) + dLower(s,2)) * prm%f_ed
+        * 0.25_pREAL * sqrt(dst%rho_forest(s,en)) * (dUpper(s,2) + dLower(s,2)) * prm%f_ed
 
 
   ! thermally activated annihilation of edge dipoles by climb
@@ -1171,7 +1164,8 @@ function rhoDotFlux(timestep,ph,en)
 
   associate(prm => param(ph), &
             dst => dependentState(ph), &
-            stt => state(ph))
+            stt => state(ph), &
+            st0 => state0(ph))
   ns = prm%sum_N_sl
 
   dot_gamma = 0.0_pREAL
@@ -1181,10 +1175,10 @@ function rhoDotFlux(timestep,ph,en)
   rho0 = getRho0(ph,en)
   my_rhoSgl0 = rho0(:,sgl)
 
-  forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)                         !ToDo: MD: I think we should use state0 here
+  v = reshape(stt%v(:,en),[prm%sum_N_sl,4])                                                         !ToDo: MD: I think we should use state0 here
   dot_gamma = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
 
-  forall (s = 1:ns, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,ph),en)
+  v0 = reshape(st0%v(:,en),[prm%sum_N_sl,4])
 
   !****************************************************************************
   !*** calculate dislocation fluxes (only for nonlocal plasticity)
@@ -1486,7 +1480,7 @@ module subroutine plastic_nonlocal_result(ph,group)
           call result_writeDataset(stt%rho_dip_scr,group,trim(prm%output(ou)), &
                                    'screw dipole density','1/m²', prm%systems_sl)
         case('rho_f')
-          call result_writeDataset(stt%rho_forest,group,trim(prm%output(ou)), &
+          call result_writeDataset(dst%rho_forest,group,trim(prm%output(ou)), &
                                    'forest density','1/m²', prm%systems_sl)
         case('v_ed_pos')
           call result_writeDataset(stt%v_edg_pos,group,trim(prm%output(ou)), &
