@@ -607,7 +607,7 @@ end function crystallite_push33ToRef
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief determines whether a point is converged
+!> @brief Determine whether a point is converged.
 !--------------------------------------------------------------------------------------------------
 logical pure function converged(residuum,state,atol)
 
