@@ -312,7 +312,7 @@ subroutine homogenization_mechanical_response2(Delta_t,FEsolving_execIP,FEsolvin
       ce = (el-1)*discretization_nIPs + ip
       ho = material_ID_homogenization(ce)
       do co = 1, homogenization_Nconstituents(ho)
-        call crystallite_orientations(co,ip,el)
+        call crystallite_orientations(co,ce)
       end do
       call mechanical_homogenize(Delta_t,ce)
     end do IpLooping3

@@ -541,21 +541,16 @@ subroutine crystallite_init()
   integer :: &
     ce, &
     co, &                                                                                           !< counter in integration point component loop
-    ip, &                                                                                           !< counter in integration point loop
-    el, &                                                                                           !< counter in element loop
     en, ph
 
 
-  !$OMP PARALLEL DO PRIVATE(ce,ph,en)
-  do el = 1, discretization_Nelems
-    do ip = 1, discretization_nIPs
-      ce = (el-1)*discretization_nIPs + ip
-      do co = 1,homogenization_Nconstituents(material_ID_homogenization(ce))
-        en = material_entry_phase(co,ce)
-        ph = material_ID_phase(co,ce)
-        call crystallite_orientations(co,ip,el)
-        call plastic_dependentState(ph,en)                                                          ! update dependent state variables to be consistent with basic states
-     end do
+  !$OMP PARALLEL DO PRIVATE(ph,en)
+  do ce = 1, size(material_ID_homogenization)
+    do co = 1,homogenization_Nconstituents(material_ID_homogenization(ce))
+      ph = material_ID_phase(co,ce)
+      en = material_entry_phase(co,ce)
+      call crystallite_orientations(co,ce)
+      call plastic_dependentState(ph,en)                                                          ! update dependent state variables to be consistent with basic states
     end do
   end do
   !$OMP END PARALLEL DO
@@ -565,32 +560,30 @@ end subroutine crystallite_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates orientations
+!> @brief Update orientations and, if needed, compatibility.
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_orientations(co,ip,el)
+subroutine crystallite_orientations(co,ce)
 
   integer, intent(in) :: &
-    co, &                                                                                           !< counter in integration point component loop
-    ip, &                                                                                           !< counter in integration point loop
-    el                                                                                              !< counter in element loop
+    co, &
+    ce
 
   integer :: ph, en
 
 
-  ph = material_ID_phase(co,(el-1)*discretization_nIPs + ip)
-  en = material_entry_phase(co,(el-1)*discretization_nIPs + ip)
+  ph = material_ID_phase(co,ce)
+  en = material_entry_phase(co,ce)
 
   call phase_O(ph)%data(en)%fromMatrix(transpose(math_rotationalPart(mechanical_F_e(ph,en))))
 
-  if (plasticState(material_ID_phase(1,(el-1)*discretization_nIPs + ip))%nonlocal) &
-    call plastic_nonlocal_updateCompatibility(phase_O,(el-1)*discretization_nIPs + ip)
+  if (plasticState(material_ID_phase(1,ce))%nonlocal) call plastic_nonlocal_updateCompatibility(phase_O,ce)
 
 
 end subroutine crystallite_orientations
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Map 2nd order tensor to reference config
+!> @brief Map 2nd order tensor to reference configuration.
 !--------------------------------------------------------------------------------------------------
 function crystallite_push33ToRef(co,ce, tensor33)
 
@@ -618,10 +611,12 @@ end function crystallite_push33ToRef
 !--------------------------------------------------------------------------------------------------
 logical pure function converged(residuum,state,atol)
 
-  real(pREAL), intent(in), dimension(:) ::&
+  real(pREAL), intent(in), dimension(:) :: &
     residuum, state, atol
+
   real(pREAL) :: &
     rTol
+
 
   rTol = num%rTol_crystalliteState
 
