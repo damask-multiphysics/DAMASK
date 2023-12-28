@@ -1331,18 +1331,19 @@ end function rhoDotFlux
 ! plane normals and signed cosine of the angle between the slip directions. Only the largest values
 ! that sum up to a total of 1 are considered, all others are set to zero.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,ip,el)
+module subroutine plastic_nonlocal_updateCompatibility(orientation,ce)
 
   type(tRotationContainer), dimension(:), intent(in) :: &
     orientation                                                                                     ! crystal orientation
   integer, intent(in) :: &
-    ph, &
-    ip, &
-    el
+    ce
 
   integer :: &
     n, &                                                                                            ! neighbor index
+    ph, &
     en, &
+    ip, &
+    el, &
     neighbor_e, &                                                                                   ! element index of my neighbor
     neighbor_i, &                                                                                   ! integration point index of my neighbor
     neighbor_me, &
@@ -1350,16 +1351,20 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,ip,el)
     ns, &                                                                                           ! number of active slip systems
     s1, &                                                                                           ! slip system index (en)
     s2                                                                                              ! slip system index (my neighbor)
-  real(pREAL), dimension(2,param(ph)%sum_N_sl,param(ph)%sum_N_sl,nIPneighbors) :: &
+  real(pREAL), dimension(2,param(material_ID_phase(1,ce))%sum_N_sl,param(material_ID_phase(1,ce))%sum_N_sl,nIPneighbors) :: &
     my_compatibility                                                                                ! my_compatibility for current element and ip
   real(pREAL) :: &
     my_compatibilitySum, &
     thresholdValue, &
     nThresholdValues
-  logical, dimension(param(ph)%sum_N_sl) :: &
+  logical, dimension(param(material_ID_phase(1,ce))%sum_N_sl) :: &
     belowThreshold
   type(tRotation) :: mis
 
+
+  ph = material_ID_phase(1,ce)
+  el = (ce-1)/discretization_nIPs + 1
+  ip = modulo(ce-1,discretization_nIPs) + 1
 
   associate(prm => param(ph))
     ns = prm%sum_N_sl
