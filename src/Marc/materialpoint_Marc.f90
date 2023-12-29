@@ -156,9 +156,11 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
       materialpoint_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_eye(6)
 
     else validCalculation
-      call homogenization_mechanical_response(dt,(elCP-1)*discretization_nIPs + ip,(elCP-1)*discretization_nIPs + ip)
+      call homogenization_mechanical_response(dt,(elCP-1)*discretization_nIPs + ip, &
+                                                 (elCP-1)*discretization_nIPs + ip)
       if (.not. terminallyIll) &
-        call homogenization_mechanical_response2(dt,[ip,ip],[elCP,elCP])
+        call homogenization_mechanical_response2(dt,(elCP-1)*discretization_nIPs + ip, &
+                                                    (elCP-1)*discretization_nIPs + ip)
 
       terminalIllness: if (terminallyIll) then
 

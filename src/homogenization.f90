@@ -273,6 +273,7 @@ subroutine homogenization_thermal_response(Delta_t,cell_start,cell_end)
   real(pREAL), intent(in) :: Delta_t                                                                !< time increment
   integer, intent(in) :: &
     cell_start, cell_end
+
   integer :: &
     co, ce, ho
 
@@ -296,29 +297,25 @@ end subroutine homogenization_thermal_response
 !--------------------------------------------------------------------------------------------------
 !> @brief
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_mechanical_response2(Delta_t,FEsolving_execIP,FEsolving_execElem)
+subroutine homogenization_mechanical_response2(Delta_t,cell_start,cell_end)
 
   real(pREAL), intent(in) :: Delta_t                                                                !< time increment
-  integer, dimension(2), intent(in) :: FEsolving_execElem, FEsolving_execIP
+  integer, intent(in) :: &
+    cell_start, cell_end
+
   integer :: &
-    ip, &                                                                                           !< integration point number
-    el, &                                                                                           !< element number
     co, ce, ho
 
 
-  !$OMP PARALLEL DO PRIVATE(ho,ce)
-  elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
-    IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
-      ce = (el-1)*discretization_nIPs + ip
+  !$OMP PARALLEL DO PRIVATE(ho)
+  do ce = cell_start, cell_end
       ho = material_ID_homogenization(ce)
       do co = 1, homogenization_Nconstituents(ho)
-        call crystallite_orientations(co,ip,el)
+        call crystallite_orientations(co,ce)
       end do
       call mechanical_homogenize(Delta_t,ce)
-    end do IpLooping3
-  end do elementLooping3
+  end do
   !$OMP END PARALLEL DO
-
 
 end subroutine homogenization_mechanical_response2
 
@@ -326,7 +323,7 @@ end subroutine homogenization_mechanical_response2
 !--------------------------------------------------------------------------------------------------
 !> @brief writes homogenization results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_result
+subroutine homogenization_result()
 
   integer :: ho
   character(len=:), allocatable :: group_base,group
@@ -361,7 +358,7 @@ end subroutine homogenization_result
 !> @brief Forward data after successful increment.
 ! ToDo: Any guessing for the current states possible?
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_forward
+subroutine homogenization_forward()
 
   integer :: ho
 
