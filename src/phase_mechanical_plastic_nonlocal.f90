@@ -6,18 +6,18 @@
 !--------------------------------------------------------------------------------------------------
 submodule(phase:plastic) nonlocal
   use geometry_plastic_nonlocal, only: &
-    nIPneighbors    => geometry_plastic_nonlocal_nIPneighbors, &
+    nCellNeighbors  => geometry_plastic_nonlocal_nIPneighbors, &
     IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood, &
-    IPvolume        => geometry_plastic_nonlocal_IPvolume0, &
-    IParea          => geometry_plastic_nonlocal_IParea0, &
-    IPareaNormal    => geometry_plastic_nonlocal_IPareaNormal0, &
+    IPvolume0       => geometry_plastic_nonlocal_IPvolume0, &
+    IParea0         => geometry_plastic_nonlocal_IParea0, &
+    IPareaNormal0   => geometry_plastic_nonlocal_IPareaNormal0, &
     geometry_plastic_nonlocal_disable
 
   type :: tGeometry
-    real(pREAL), dimension(:), allocatable :: V_0
+    real(pREAL), dimension(:), allocatable :: v_0
+    real(pREAL), dimension(:,:), allocatable :: a_0, x_0
+    real(pREAL), dimension(:,:,:), allocatable :: n_0
     integer, dimension(:,:,:), allocatable :: IPneighborhood
-    real(pREAL), dimension(:,:), allocatable :: IParea, IPcoordinates
-    real(pREAL), dimension(:,:,:), allocatable :: IPareaNormal
   end type tGeometry
 
   type(tGeometry), dimension(:), allocatable :: geom
@@ -133,18 +133,18 @@ submodule(phase:plastic) nonlocal
   type :: tNonlocalState
     real(pREAL), pointer, dimension(:,:) :: &
       rho, &                                                                                        ! < all dislocations
-        rhoSgl, &
-          rhoSglMobile, &                       ! iRhoU
+        rho_sgl, &
+          rho_sgl_mob, &                       ! iRhoU
             rho_sgl_mob_edg_pos, &
             rho_sgl_mob_edg_neg, &
             rho_sgl_mob_scr_pos, &
             rho_sgl_mob_scr_neg, &
-          rhoSglImmobile, &
+          rho_sgl_imm, &
             rho_sgl_imm_edg_pos, &
             rho_sgl_imm_edg_neg, &
             rho_sgl_imm_scr_pos, &
             rho_sgl_imm_scr_neg, &
-        rhoDip, &
+        rho_dip, &
           rho_dip_edg, &
           rho_dip_scr, &
       gamma, &
@@ -383,12 +383,12 @@ module function plastic_nonlocal_init() result(myPlasticity)
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
     Nmembers  = count(material_ID_phase == ph)
-    sizeDotState = size([   'rhoSglEdgePosMobile   ','rhoSglEdgeNegMobile   ', &
-                            'rhoSglScrewPosMobile  ','rhoSglScrewNegMobile  ', &
-                            'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &
-                            'rhoSglScrewPosImmobile','rhoSglScrewNegImmobile', &
-                            'rhoDipEdge            ','rhoDipScrew           ', &
-                            'gamma                 ' ]) * prm%sum_N_sl                              !< "basic" microstructural state variables that are independent from other state variables
+    sizeDotState = size(['rho_sgl_mob_edg_pos', 'rho_sgl_mob_edg_neg', &
+                         'rho_sgl_mob_scr_pos', 'rho_sgl_mob_scr_neg', &
+                         'rho_sgl_imm_edg_pos', 'rho_sgl_imm_edg_neg', &
+                         'rho_sgl_imm_scr_pos', 'rho_sgl_imm_scr_neg', &
+                         'rho_dip_edg        ', 'rho_dip_scr        ', &
+                         'gamma              ' ]) * prm%sum_N_sl                                    !< "basic" microstructural state variables that are independent from other state variables
     sizeState          = sizeDotState &
                        + size([ 'velocityEdgePos     ','velocityEdgeNeg     ', &
                                 'velocityScrewPos    ','velocityScrewNeg    ']) * prm%sum_N_sl      !< other dependent state variables that are not updated by microstructure
@@ -396,11 +396,11 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
     call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,sizeDeltaState,0)     ! ToDo: state structure does not follow convention
 
-    allocate(geom(ph)%V_0(Nmembers))
-    allocate(geom(ph)%IPneighborhood(3,nIPneighbors,Nmembers))
-    allocate(geom(ph)%IPareaNormal(3,nIPneighbors,Nmembers))
-    allocate(geom(ph)%IParea(nIPneighbors,Nmembers))
-    allocate(geom(ph)%IPcoordinates(3,Nmembers))
+    allocate(geom(ph)%v_0(Nmembers))
+    allocate(geom(ph)%a_0(nCellNeighbors,Nmembers))
+    allocate(geom(ph)%x_0(3,Nmembers))
+    allocate(geom(ph)%n_0(3,nCellNeighbors,Nmembers))
+    allocate(geom(ph)%IPneighborhood(3,nCellNeighbors,Nmembers))
     call storeGeometry(ph)
 
     if (plasticState(ph)%nonlocal .and. .not. allocated(IPneighborhood)) &
@@ -412,13 +412,13 @@ module function plastic_nonlocal_init() result(myPlasticity)
     del%rho => plasticState(ph)%deltaState                         (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
     plasticState(ph)%atol(1:10*prm%sum_N_sl) = prm%atol_rho
 
-      stt%rhoSgl => plasticState(ph)%state                         (0*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
-      dot%rhoSgl => plasticState(ph)%dotState                      (0*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
-      del%rhoSgl => plasticState(ph)%deltaState                    (0*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
+      stt%rho_sgl => plasticState(ph)%state                        (0*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
+      dot%rho_sgl => plasticState(ph)%dotState                     (0*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
+      del%rho_sgl => plasticState(ph)%deltaState                   (0*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
 
-        stt%rhoSglMobile => plasticState(ph)%state                 (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
-        dot%rhoSglMobile => plasticState(ph)%dotState              (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
-        del%rhoSglMobile => plasticState(ph)%deltaState            (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
+        stt%rho_sgl_mob => plasticState(ph)%state                  (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
+        dot%rho_sgl_mob => plasticState(ph)%dotState               (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
+        del%rho_sgl_mob => plasticState(ph)%deltaState             (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
 
             stt%rho_sgl_mob_edg_pos => plasticState(ph)%state      (0*prm%sum_N_sl+1: 1*prm%sum_N_sl,:)
             dot%rho_sgl_mob_edg_pos => plasticState(ph)%dotState   (0*prm%sum_N_sl+1: 1*prm%sum_N_sl,:)
@@ -436,9 +436,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
             dot%rho_sgl_mob_scr_neg => plasticState(ph)%dotState   (3*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
             del%rho_sgl_mob_scr_neg => plasticState(ph)%deltaState (3*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
 
-        stt%rhoSglImmobile => plasticState(ph)%state               (4*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
-        dot%rhoSglImmobile => plasticState(ph)%dotState            (4*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
-        del%rhoSglImmobile => plasticState(ph)%deltaState          (4*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
+        stt%rho_sgl_imm => plasticState(ph)%state                  (4*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
+        dot%rho_sgl_imm => plasticState(ph)%dotState               (4*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
+        del%rho_sgl_imm => plasticState(ph)%deltaState             (4*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
 
             stt%rho_sgl_imm_edg_pos => plasticState(ph)%state      (4*prm%sum_N_sl+1: 5*prm%sum_N_sl,:)
             dot%rho_sgl_imm_edg_pos => plasticState(ph)%dotState   (4*prm%sum_N_sl+1: 5*prm%sum_N_sl,:)
@@ -456,9 +456,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
             dot%rho_sgl_imm_scr_neg => plasticState(ph)%dotState   (7*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
             del%rho_sgl_imm_scr_neg => plasticState(ph)%deltaState (7*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
 
-      stt%rhoDip => plasticState(ph)%state                         (8*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
-      dot%rhoDip => plasticState(ph)%dotState                      (8*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
-      del%rhoDip => plasticState(ph)%deltaState                    (8*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
+      stt%rho_dip => plasticState(ph)%state                        (8*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
+      dot%rho_dip => plasticState(ph)%dotState                     (8*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
+      del%rho_dip => plasticState(ph)%deltaState                   (8*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
 
         stt%rho_dip_edg => plasticState(ph)%state                  (8*prm%sum_N_sl+1: 9*prm%sum_N_sl,:)
         dot%rho_dip_edg => plasticState(ph)%dotState               (8*prm%sum_N_sl+1: 9*prm%sum_N_sl,:)
@@ -486,7 +486,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     allocate(dst%tau_back(prm%sum_N_sl,Nmembers),source=0.0_pREAL)
     allocate(dst%rho_forest(prm%sum_N_sl,Nmembers),source=0.0_pREAL)
     allocate(dst%max_dipole_height(2*prm%sum_N_sl,Nmembers),source=0.0_pREAL)                       ! edge and screw
-    allocate(dst%compatibility(2,maxval(param%sum_N_sl),maxval(param%sum_N_sl),nIPneighbors,Nmembers),source=0.0_pREAL)
+    allocate(dst%compatibility(2,maxval(param%sum_N_sl),maxval(param%sum_N_sl),nCellNeighbors,Nmembers),source=0.0_pREAL)
     end associate
 
     if (Nmembers > 0) call stateInit(ini,ph,Nmembers)
@@ -497,7 +497,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
   end do
 
-  allocate(compatibility(2,maxval(param%sum_N_sl),maxval(param%sum_N_sl),nIPneighbors,&
+  allocate(compatibility(2,maxval(param%sum_N_sl),maxval(param%sum_N_sl),nCellNeighbors,&
                          discretization_nIPs,discretization_Nelems), source=0.0_pREAL)
 
 ! BEGIN DEPRECATED----------------------------------------------------------------------------------
@@ -541,9 +541,9 @@ module subroutine nonlocal_dependentState(ph, en)
     en
 
   integer :: &
-    no, &                                                                                           !< neighbor offset
-    neighbor_el, &                                                                                  ! element number of neighboring material point
-    neighbor_ip, &                                                                                  ! integration point of neighboring material point
+    en_nbr, &                                                                                       ! neighbor phase entry
+    el_nbr, &                                                                                       ! element number of neighboring material point
+    ip_nbr, &                                                                                       ! integration point of neighboring material point
     c, &                                                                                            ! index of dilsocation character (edge, screw)
     s, &                                                                                            ! slip system index
     dir, &
@@ -558,7 +558,7 @@ module subroutine nonlocal_dependentState(ph, en)
   real(pREAL), dimension(2) :: &
     rhoExcessGradient, &
     rhoExcessGradient_over_rho, &
-    rhoTotal
+    rho_sum
   real(pREAL), dimension(3) :: &
     rhoExcessDifferences, &
     normal_latticeConf
@@ -567,25 +567,23 @@ module subroutine nonlocal_dependentState(ph, en)
     invFp, &                                                                                        !< inverse of plastic deformation gradient
     connections, &
     invConnections
-  real(pREAL), dimension(3,nIPneighbors) :: &
+  real(pREAL), dimension(3,nCellNeighbors) :: &
     connection_latticeConf
-  real(pREAL), dimension(2,param(ph)%sum_N_sl) :: &
-    rhoExcess
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     rho_edg_delta, &
     rho_scr_delta
   real(pREAL), dimension(param(ph)%sum_N_sl,10) :: &
     rho, &
-    rho0, &
-    rho_neighbor0
+    rho_0, &
+    rho_0_nbr
   real(pREAL), dimension(param(ph)%sum_N_sl,param(ph)%sum_N_sl) :: &
     myInteractionMatrix                                                                             ! corrected slip interaction matrix
-  real(pREAL), dimension(param(ph)%sum_N_sl,nIPneighbors) :: &
-    rho_edg_delta_neighbor, &
-    rho_scr_delta_neighbor
-  real(pREAL), dimension(2,maxval(param%sum_N_sl),nIPneighbors) :: &
-    neighbor_rhoExcess, &                                                                           ! excess density at neighboring material point
-    neighbor_rhoTotal                                                                               ! total density at neighboring material point
+  real(pREAL), dimension(param(ph)%sum_N_sl,nCellNeighbors) :: &
+    rho_edg_delta_nbr, &
+    rho_scr_delta_nbr
+  real(pREAL), dimension(2,maxval(param%sum_N_sl),nCellNeighbors) :: &
+    rho_delta_nbr, &                                                                                ! excess density at neighboring material point
+    rho_sum_nbr                                                                                     ! total density at neighboring material point
   real(pREAL), dimension(3,param(ph)%sum_N_sl,2) :: &
     m                                                                                               ! direction of dislocation motion
 
@@ -621,60 +619,57 @@ module subroutine nonlocal_dependentState(ph, en)
   ! ToDo: MD: this is most likely only correct for F_i = I
   !#################################################################################################
 
-  rho0 = getRho0(ph,en)
+  rho_0 = getRho0(ph,en)
   if (plasticState(ph)%nonlocal .and. prm%shortRangeStressCorrection) then
     invFp = math_inv33(phase_mechanical_Fp(ph)%data(1:3,1:3,en))
     invFe = math_inv33(phase_mechanical_Fe(ph)%data(1:3,1:3,en))
 
-    rho_edg_delta = rho0(:,mob_edg_pos) - rho0(:,mob_edg_neg)
-    rho_scr_delta = rho0(:,mob_scr_pos) - rho0(:,mob_scr_neg)
+    rho_edg_delta = rho_0(:,mob_edg_pos) - rho_0(:,mob_edg_neg)
+    rho_scr_delta = rho_0(:,mob_scr_pos) - rho_0(:,mob_scr_neg)
 
-    rhoExcess(1,:) = rho_edg_delta
-    rhoExcess(2,:) = rho_scr_delta
-
-    FVsize = geom(ph)%V_0(en)**(1.0_pREAL/3.0_pREAL)
+    FVsize = geom(ph)%v_0(en)**(1.0_pREAL/3.0_pREAL)
 
     !* loop through my neighborhood and get the connection vectors (in lattice frame) and the excess densities
 
     nRealNeighbors = 0.0_pREAL
-    neighbor_rhoTotal = 0.0_pREAL
-    do n = 1,nIPneighbors
-      neighbor_el = geom(ph)%IPneighborhood(1,n,en)
-      neighbor_ip = geom(ph)%IPneighborhood(2,n,en)
+    rho_sum_nbr = 0.0_pREAL
+    do n = 1,nCellNeighbors
+      el_nbr = geom(ph)%IPneighborhood(1,n,en)
+      ip_nbr = geom(ph)%IPneighborhood(2,n,en)
 
-      if (neighbor_el > 0 .and. neighbor_ip > 0) then
-        if (material_ID_phase(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip) == ph) then
-            no = material_entry_phase(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
+      if (el_nbr > 0 .and. ip_nbr > 0) then
+        if (material_ID_phase(1,(el_nbr-1)*discretization_nIPs + ip_nbr) == ph) then
+            en_nbr = material_entry_phase(1,(el_nbr-1)*discretization_nIPs + ip_nbr)
             nRealNeighbors = nRealNeighbors + 1.0_pREAL
-            rho_neighbor0 = getRho0(ph,no)
+            rho_0_nbr = getRho0(ph,en_nbr)
 
-            rho_edg_delta_neighbor(:,n) = rho_neighbor0(:,mob_edg_pos) - rho_neighbor0(:,mob_edg_neg)
-            rho_scr_delta_neighbor(:,n) = rho_neighbor0(:,mob_scr_pos) - rho_neighbor0(:,mob_scr_neg)
+            rho_edg_delta_nbr(:,n) = rho_0_nbr(:,mob_edg_pos) - rho_0_nbr(:,mob_edg_neg)
+            rho_scr_delta_nbr(:,n) = rho_0_nbr(:,mob_scr_pos) - rho_0_nbr(:,mob_scr_neg)
 
-            neighbor_rhoTotal(1,:,n) = sum(abs(rho_neighbor0(:,edg)),2)
-            neighbor_rhoTotal(2,:,n) = sum(abs(rho_neighbor0(:,scr)),2)
+            rho_sum_nbr(1,:,n) = sum(abs(rho_0_nbr(:,edg)),2)
+            rho_sum_nbr(2,:,n) = sum(abs(rho_0_nbr(:,scr)),2)
 
-            connection_latticeConf(1:3,n) = matmul(invFe, geom(ph)%IPcoordinates(1:3,no) &
-                                          - geom(ph)%IPcoordinates(1:3,en))
-            normal_latticeConf = matmul(transpose(invFp), geom(ph)%IPareaNormal(1:3,n,en))
+            connection_latticeConf(1:3,n) = matmul(invFe, geom(ph)%x_0(1:3,en_nbr) &
+                                          - geom(ph)%x_0(1:3,en))
+            normal_latticeConf = matmul(transpose(invFp), geom(ph)%n_0(1:3,n,en))
             if (math_inner(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pREAL) &         ! neighboring connection points in opposite direction to face normal: must be periodic image
-              connection_latticeConf(1:3,n) = normal_latticeConf * geom(ph)%V_0(en)/geom(ph)%IParea(n,en)  ! instead take the surface normal scaled with the diameter of the cell
+              connection_latticeConf(1:3,n) = normal_latticeConf * geom(ph)%v_0(en)/geom(ph)%a_0(n,en)  ! instead take the surface normal scaled with the diameter of the cell
         else
           ! local neighbor or different lattice structure or different constitution instance -> use central values instead
           connection_latticeConf(1:3,n) = 0.0_pREAL
-          rho_edg_delta_neighbor(:,n) = rho_edg_delta
-          rho_scr_delta_neighbor(:,n) = rho_scr_delta
+          rho_edg_delta_nbr(:,n) = rho_edg_delta
+          rho_scr_delta_nbr(:,n) = rho_scr_delta
         end if
       else
         ! free surface -> use central values instead
         connection_latticeConf(1:3,n) = 0.0_pREAL
-        rho_edg_delta_neighbor(:,n) = rho_edg_delta
-        rho_scr_delta_neighbor(:,n) = rho_scr_delta
+        rho_edg_delta_nbr(:,n) = rho_edg_delta
+        rho_scr_delta_nbr(:,n) = rho_scr_delta
       end if
     end do
 
-    neighbor_rhoExcess(1,:,:) = rho_edg_delta_neighbor
-    neighbor_rhoExcess(2,:,:) = rho_scr_delta_neighbor
+    rho_delta_nbr(1,:,:) = rho_edg_delta_nbr
+    rho_delta_nbr(2,:,:) = rho_scr_delta_nbr
 
     !* loop through the slip systems and calculate the dislocation gradient by
     !* 1. interpolation of the excess density in the neighorhood
@@ -691,8 +686,8 @@ module subroutine nonlocal_dependentState(ph, en)
           neighbors(2) = 2 * dir
           connections(dir,1:3) = connection_latticeConf(1:3,neighbors(1)) &
                                - connection_latticeConf(1:3,neighbors(2))
-          rhoExcessDifferences(dir) = neighbor_rhoExcess(c,s,neighbors(1)) &
-                                    - neighbor_rhoExcess(c,s,neighbors(2))
+          rhoExcessDifferences(dir) = rho_delta_nbr(c,s,neighbors(1)) &
+                                    - rho_delta_nbr(c,s,neighbors(2))
         end do
         invConnections = math_inv33(connections)
         if (all(dEq0(invConnections))) call IO_error(-1,ext_msg='back stress calculation: inversion error')
@@ -705,11 +700,11 @@ module subroutine nonlocal_dependentState(ph, en)
       rhoExcessGradient(2) = rhoExcessGradient(2) + sum(rho(s,imm_scr)) / FVsize
 
         ! ... normalized with the total density ...
-      rhoTotal(1) = (sum(abs(rho(s,edg))) + sum(neighbor_rhoTotal(1,s,:))) / (1.0_pREAL + nRealNeighbors)
-      rhoTotal(2) = (sum(abs(rho(s,scr))) + sum(neighbor_rhoTotal(2,s,:))) / (1.0_pREAL + nRealNeighbors)
+      rho_sum(1) = (sum(abs(rho(s,edg))) + sum(rho_sum_nbr(1,s,:))) / (1.0_pREAL + nRealNeighbors)
+      rho_sum(2) = (sum(abs(rho(s,scr))) + sum(rho_sum_nbr(2,s,:))) / (1.0_pREAL + nRealNeighbors)
 
       rhoExcessGradient_over_rho = 0.0_pREAL
-      where(rhoTotal > 0.0_pREAL) rhoExcessGradient_over_rho = rhoExcessGradient / rhoTotal
+      where(rho_sum > 0.0_pREAL) rhoExcessGradient_over_rho = rhoExcessGradient / rho_sum
 
         ! ... gives the local stress correction when multiplied with a factor
       dst%tau_back(s,en) = - mu * prm%b_sl(s) / (2.0_pREAL * PI) &
@@ -743,7 +738,7 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
     t, &                                                                                            !< dislocation type
     s                                                                                               !< index of my current slip system
   real(pREAL), dimension(param(ph)%sum_N_sl,8) :: &
-    rhoSgl                                                                                          !< single dislocation densities (including blocked)
+    rho_sgl                                                                                          !< single dislocation densities (including blocked)
   real(pREAL), dimension(param(ph)%sum_N_sl,10) :: &
     rho
   real(pREAL), dimension(param(ph)%sum_N_sl,4) :: &
@@ -766,7 +761,7 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
 
     !*** shortcut to state variables
     rho = getRho(ph,en)
-    rhoSgl = rho(:,sgl)
+    rho_sgl = rho(:,sgl)
 
     do s = 1,prm%sum_N_sl
       tau(s) = math_tensordot(Mp, prm%P_sl(1:3,1:3,s))
@@ -799,20 +794,20 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
     stt%v(:,en) = pack(v,.true.)
 
     !*** Bauschinger effect
-    forall (s = 1:prm%sum_N_sl, t = 5:8, rhoSgl(s,t) * v(s,t-4) < 0.0_pREAL) &
-      rhoSgl(s,t-4) = rhoSgl(s,t-4) + abs(rhoSgl(s,t))
+    forall (s = 1:prm%sum_N_sl, t = 5:8, rho_sgl(s,t) * v(s,t-4) < 0.0_pREAL) &
+      rho_sgl(s,t-4) = rho_sgl(s,t-4) + abs(rho_sgl(s,t))
 
-    dot_gamma = sum(rhoSgl(:,1:4) * v, 2) * prm%b_sl
+    dot_gamma = sum(rho_sgl(:,1:4) * v, 2) * prm%b_sl
 
     do s = 1,prm%sum_N_sl
       Lp = Lp + dot_gamma(s) * prm%P_sl(1:3,1:3,s)
       forall (i=1:3,j=1:3,k=1:3,l=1:3) &
         dLp_dMp(i,j,k,l) = dLp_dMp(i,j,k,l) &
             + prm%P_sl(i,j,s) * prm%P_sl(k,l,s) &
-            * sum(rhoSgl(s,1:4) * dv_dtau(s,1:4)) * prm%b_sl(s) &
+            * sum(rho_sgl(s,1:4) * dv_dtau(s,1:4)) * prm%b_sl(s) &
             + prm%P_sl(i,j,s) &
-            * (+ prm%P_nS_pos(k,l,s) * rhoSgl(s,3) * dv_dtauNS(s,3) &
-               - prm%P_nS_neg(k,l,s) * rhoSgl(s,4) * dv_dtauNS(s,4))  * prm%b_sl(s)
+            * (+ prm%P_nS_pos(k,l,s) * rho_sgl(s,3) * dv_dtauNS(s,3) &
+               - prm%P_nS_neg(k,l,s) * rho_sgl(s,4) * dv_dtauNS(s,4))  * prm%b_sl(s)
     end do
 
   end associate
@@ -848,7 +843,7 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     tau                                                                                             ! current resolved shear stress
   real(pREAL), dimension(param(ph)%sum_N_sl,2) :: &
-    rhoDip, &                                                                                       ! current dipole dislocation densities (screw and edge dipoles)
+    rho_dip, &                                                                                      ! current dipole dislocation densities (screw and edge dipoles)
     dUpper, &                                                                                       ! current maximum stable dipole distance for edges and screws
     dUpperOld, &                                                                                    ! old maximum stable dipole distance for edges and screws
     deltaDUpper                                                                                     ! change in maximum stable dipole distance for edges and screws
@@ -864,7 +859,7 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
   dUpperOld = reshape(dst%max_dipole_height(:,en),[prm%sum_N_sl,2])
 
   rho =  getRho(ph,en)
-  rhoDip = rho(:,dip)
+  rho_dip = rho(:,dip)
 
   !****************************************************************************
   !*** dislocation remobilization (bauschinger effect)
@@ -904,7 +899,7 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
   deltaRhoDipole2SingleStress = 0.0_pREAL
   forall (c=1:2, s=1:prm%sum_N_sl, deltaDUpper(s,c) < 0.0_pREAL .and. &
                                           dNeq0(dUpperOld(s,c) - prm%minDipoleHeight(s,c))) &
-    deltaRhoDipole2SingleStress(s,8+c) = rhoDip(s,c) * deltaDUpper(s,c) &
+    deltaRhoDipole2SingleStress(s,8+c) = rho_dip(s,c) * deltaDUpper(s,c) &
                                        / (dUpperOld(s,c) - prm%minDipoleHeight(s,c))
 
   forall (t=1:4) deltaRhoDipole2SingleStress(:,t) = -0.5_pREAL * deltaRhoDipole2SingleStress(:,(t-1)/2+9)
@@ -938,24 +933,21 @@ module subroutine nonlocal_dotState(Mp,timestep, &
     s                                                                                               !< index of my current slip system
   real(pREAL), dimension(param(ph)%sum_N_sl,10) :: &
     rho, &
-    rho0, &                                                                                         !< dislocation density at beginning of time step
     rhoDot, &                                                                                       !< density evolution
     rhoDotMultiplication, &                                                                         !< density evolution by multiplication
     rhoDotSingle2DipoleGlide, &                                                                     !< density evolution by dipole formation (by glide)
     rhoDotAthermalAnnihilation, &                                                                   !< density evolution by athermal annihilation
     rhoDotThermalAnnihilation                                                                       !< density evolution by thermal annihilation
   real(pREAL), dimension(param(ph)%sum_N_sl,8) :: &
-    rhoSgl, &                                                                                       !< current single dislocation densities (positive/negative screw and edge without dipoles)
-    my_rhoSgl0                                                                                      !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
+    rho_sgl                                                                                         !< current single dislocation densities (positive/negative screw and edge without dipoles)
   real(pREAL), dimension(param(ph)%sum_N_sl,4) :: &
     v, &                                                                                            !< current dislocation glide velocity
-    v0, &
     dot_gamma                                                                                       !< shear rates
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     tau, &                                                                                          !< current resolved shear stress
     v_climb                                                                                         !< climb velocity of edge dipoles
   real(pREAL), dimension(param(ph)%sum_N_sl,2) :: &
-    rhoDip, &                                                                                       !< current dipole dislocation densities (screw and edge dipoles)
+    rho_dip, &                                                                                      !< current dipole dislocation densities (screw and edge dipoles)
     dLower, &                                                                                       !< minimum stable dipole distance for edges and screws
     dUpper                                                                                          !< current maximum stable dipole distance for edges and screws
   real(pREAL) :: &
@@ -978,14 +970,12 @@ module subroutine nonlocal_dotState(Mp,timestep, &
   tau = 0.0_pREAL
   dot_gamma = 0.0_pREAL
 
-  rho  = getRho(ph,en)
-  rhoSgl = rho(:,sgl)
-  rhoDip = rho(:,dip)
-  rho0 = getRho0(ph,en)
-  my_rhoSgl0 = rho0(:,sgl)
+  rho = getRho(ph,en)
+  rho_sgl = rho(:,sgl)
+  rho_dip = rho(:,dip)
 
   v = reshape(stt%v(:,en),[prm%sum_N_sl,4])
-  dot_gamma = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
+  dot_gamma = rho_sgl(:,1:4) * v * spread(prm%b_sl,2,4)
 
 
   ! limits for stable dipole height
@@ -1024,8 +1014,6 @@ module subroutine nonlocal_dotState(Mp,timestep, &
         * sqrt(dst%rho_forest(:,en)) / prm%i_sl / prm%b_sl, 2, 4)                                   ! eq. 3.26
   end if isBCC
 
-  v0 = reshape(st0%v(:,en),[prm%sum_N_sl,4])
-
 
   !****************************************************************************
   ! dipole formation and annihilation
@@ -1033,20 +1021,20 @@ module subroutine nonlocal_dotState(Mp,timestep, &
   ! formation by glide
   do c = 1,2
     rhoDotSingle2DipoleGlide(:,2*c-1) = -2.0_pREAL * dUpper(:,c) / prm%b_sl &
-                                                   * (      rhoSgl(:,2*c-1)  * abs(dot_gamma(:,2*c)) &   ! negative mobile --> positive mobile
-                                                      +     rhoSgl(:,2*c)    * abs(dot_gamma(:,2*c-1)) & ! positive mobile --> negative mobile
-                                                      + abs(rhoSgl(:,2*c+4)) * abs(dot_gamma(:,2*c-1)))  ! positive mobile --> negative immobile
+                                                   * (      rho_sgl(:,2*c-1)  * abs(dot_gamma(:,2*c)) &   ! negative mobile --> positive mobile
+                                                      +     rho_sgl(:,2*c)    * abs(dot_gamma(:,2*c-1)) & ! positive mobile --> negative mobile
+                                                      + abs(rho_sgl(:,2*c+4)) * abs(dot_gamma(:,2*c-1)))  ! positive mobile --> negative immobile
 
     rhoDotSingle2DipoleGlide(:,2*c) = -2.0_pREAL * dUpper(:,c) / prm%b_sl &
-                                                 * (      rhoSgl(:,2*c-1)  * abs(dot_gamma(:,2*c)) &     ! negative mobile --> positive mobile
-                                                    +     rhoSgl(:,2*c)    * abs(dot_gamma(:,2*c-1)) &   ! positive mobile --> negative mobile
-                                                    + abs(rhoSgl(:,2*c+3)) * abs(dot_gamma(:,2*c)))      ! negative mobile --> positive immobile
+                                                 * (      rho_sgl(:,2*c-1)  * abs(dot_gamma(:,2*c)) &     ! negative mobile --> positive mobile
+                                                    +     rho_sgl(:,2*c)    * abs(dot_gamma(:,2*c-1)) &   ! positive mobile --> negative mobile
+                                                    + abs(rho_sgl(:,2*c+3)) * abs(dot_gamma(:,2*c)))      ! negative mobile --> positive immobile
 
     rhoDotSingle2DipoleGlide(:,2*c+3) = -2.0_pREAL * dUpper(:,c) / prm%b_sl &
-                                                   * rhoSgl(:,2*c+3) * abs(dot_gamma(:,2*c))             ! negative mobile --> positive immobile
+                                                   * rho_sgl(:,2*c+3) * abs(dot_gamma(:,2*c))             ! negative mobile --> positive immobile
 
     rhoDotSingle2DipoleGlide(:,2*c+4) = -2.0_pREAL * dUpper(:,c) / prm%b_sl &
-                                                   * rhoSgl(:,2*c+4) * abs(dot_gamma(:,2*c-1))           ! positive mobile --> negative immobile
+                                                   * rho_sgl(:,2*c+4) * abs(dot_gamma(:,2*c-1))           ! positive mobile --> negative immobile
 
     rhoDotSingle2DipoleGlide(:,c+8) = abs(rhoDotSingle2DipoleGlide(:,2*c+3)) &
                                     + abs(rhoDotSingle2DipoleGlide(:,2*c+4)) &
@@ -1059,9 +1047,9 @@ module subroutine nonlocal_dotState(Mp,timestep, &
   rhoDotAthermalAnnihilation = 0.0_pREAL
   forall (c=1:2) &
     rhoDotAthermalAnnihilation(:,c+8) = -2.0_pREAL * dLower(:,c) / prm%b_sl &
-       * (  2.0_pREAL * (rhoSgl(:,2*c-1) * abs(dot_gamma(:,2*c)) + rhoSgl(:,2*c) * abs(dot_gamma(:,2*c-1))) & ! was single hitting single
-          + 2.0_pREAL * (abs(rhoSgl(:,2*c+3)) * abs(dot_gamma(:,2*c)) + abs(rhoSgl(:,2*c+4)) * abs(dot_gamma(:,2*c-1))) & ! was single hitting immobile single or was immobile single hit by single
-          + rhoDip(:,c) * (abs(dot_gamma(:,2*c-1)) + abs(dot_gamma(:,2*c))))                                  ! single knocks dipole constituent
+       * (  2.0_pREAL * (rho_sgl(:,2*c-1) * abs(dot_gamma(:,2*c)) + rho_sgl(:,2*c) * abs(dot_gamma(:,2*c-1))) & ! was single hitting single
+          + 2.0_pREAL * (abs(rho_sgl(:,2*c+3)) * abs(dot_gamma(:,2*c)) + abs(rho_sgl(:,2*c+4)) * abs(dot_gamma(:,2*c-1))) & ! was single hitting immobile single or was immobile single hit by single
+          + rho_dip(:,c) * (abs(dot_gamma(:,2*c-1)) + abs(dot_gamma(:,2*c))))                                  ! single knocks dipole constituent
 
   ! annihilated screw dipoles leave edge jogs behind on the colinear system
   if (phase_lattice(ph) == 'cF') &
@@ -1076,8 +1064,8 @@ module subroutine nonlocal_dotState(Mp,timestep, &
   v_climb = D_SD * mu * prm%V_at &
           / (PI * (1.0_pREAL-nu) * (dUpper(:,1) + dLower(:,1)) * K_B * Temperature)              ! eq. 3.54
   forall (s = 1:prm%sum_N_sl, dUpper(s,1) > dLower(s,1)) &
-    rhoDotThermalAnnihilation(s,9) = max(- 4.0_pREAL * rhoDip(s,1) * v_climb(s) / (dUpper(s,1) - dLower(s,1)), &
-                                         - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
+    rhoDotThermalAnnihilation(s,9) = max(- 4.0_pREAL * rho_dip(s,1) * v_climb(s) / (dUpper(s,1) - dLower(s,1)), &
+                                         - rho_dip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
                                                                   - rhoDotSingle2DipoleGlide(s,9))  ! make sure that we do not annihilate more dipoles than we have
 
   rhoDot = rhoDotFlux(timestep, ph,en) &
@@ -1118,38 +1106,37 @@ function rhoDotFlux(timestep,ph,en)
     ns, &                                                                                           !< short notation for the total number of active slip systems
     c, &                                                                                            !< character of dislocation
     n, &                                                                                            !< index of my current neighbor
-    neighbor_el, &                                                                                  !< element number of my neighbor
-    neighbor_ip, &                                                                                  !< integration point of my neighbor
-    neighbor_n, &                                                                                   !< neighbor index pointing to en when looking from my neighbor
+    el_nbr, &                                                                                       !< element number of my neighbor
+    ip_nbr, &                                                                                       !< integration point of my neighbor
+    n_nbr, &                                                                                        !< neighbor index pointing to en when looking from my neighbor
     opposite_neighbor, &                                                                            !< index of my opposite neighbor
     opposite_ip, &                                                                                  !< ip of my opposite neighbor
     opposite_el, &                                                                                  !< element index of my opposite neighbor
     opposite_n, &                                                                                   !< neighbor index pointing to en when looking from my opposite neighbor
     t, &                                                                                            !< type of dislocation
-    no,&                                                                                            !< neighbor offset shortcut
-    np,&                                                                                            !< neighbor phase shortcut
+    en_nbr,&                                                                                        !< neighbor phase entry
+    ph_nbr,&                                                                                        !< neighbor phase ID
     topp, &                                                                                         !< type of dislocation with opposite sign to t
     s                                                                                               !< index of my current slip system
   real(pREAL), dimension(param(ph)%sum_N_sl,10) :: &
     rho, &
-    rho0, &                                                                                         !< dislocation density at beginning of time step
+    rho_0, &                                                                                        !< dislocation density at beginning of time step
     rhoDotFlux                                                                                      !< density evolution by flux
   real(pREAL), dimension(param(ph)%sum_N_sl,8) :: &
-    rhoSgl, &                                                                                       !< current single dislocation densities (positive/negative screw and edge without dipoles)
-    neighbor_rhoSgl0, &                                                                             !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
-    my_rhoSgl0                                                                                      !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
+    rho_0_sgl_nbr, &                                                                                !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
+    rho_0_sgl                                                                                       !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
   real(pREAL), dimension(param(ph)%sum_N_sl,4) :: &
     v, &                                                                                            !< current dislocation glide velocity
-    v0, &
-    neighbor_v0, &                                                                                  !< dislocation glide velocity of enighboring ip
-    dot_gamma                                                                                            !< shear rates
+    v_0, &
+    v_0_nbr, &                                                                                      !< dislocation glide velocity of enighboring ip
+    dot_gamma                                                                                       !< shear rates
   real(pREAL), dimension(3,param(ph)%sum_N_sl,4) :: &
     m                                                                                               !< direction of dislocation motion
   real(pREAL), dimension(3,3) :: &
     my_F, &                                                                                         !< my total deformation gradient
-    neighbor_F, &                                                                                   !< total deformation gradient of my neighbor
+    F_nbr, &                                                                                        !< total deformation gradient of my neighbor
     my_Fe, &                                                                                        !< my elastic deformation gradient
-    neighbor_Fe, &                                                                                  !< elastic deformation gradient of my neighbor
+    F_e_nbr, &                                                                                      !< elastic deformation gradient of my neighbor
     Favg                                                                                            !< average total deformation gradient of en and my neighbor
   real(pREAL), dimension(3) :: &
     normal_neighbor2me, &                                                                           !< interface normal pointing from my neighbor to en in neighbor's lattice configuration
@@ -1157,7 +1144,7 @@ function rhoDotFlux(timestep,ph,en)
     normal_me2neighbor, &                                                                           !< interface normal pointing from en to my neighbor in my lattice configuration
     normal_me2neighbor_defConf                                                                      !< interface normal pointing from en to my neighbor in shared deformed configuration
   real(pREAL) :: &
-    area, &                                                                                         !< area of the current interface
+    a, &                                                                                            !< area of the current interface
     transmissivity, &                                                                               !< overall transmissivity of dislocation flux to neighboring material point
     lineLength                                                                                      !< dislocation line length leaving the current interface
 
@@ -1166,19 +1153,19 @@ function rhoDotFlux(timestep,ph,en)
             dst => dependentState(ph), &
             stt => state(ph), &
             st0 => state0(ph))
+
   ns = prm%sum_N_sl
 
   dot_gamma = 0.0_pREAL
 
-  rho  = getRho(ph,en)
-  rhoSgl = rho(:,sgl)
-  rho0 = getRho0(ph,en)
-  my_rhoSgl0 = rho0(:,sgl)
+  rho = getRho(ph,en)
+  rho_0 = getRho0(ph,en)
+  rho_0_sgl = rho_0(:,sgl)
 
   v = reshape(stt%v(:,en),[prm%sum_N_sl,4])                                                         !ToDo: MD: I think we should use state0 here
-  dot_gamma = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
+  dot_gamma = rho(:,mob) * v * spread(prm%b_sl,2,4)
 
-  v0 = reshape(st0%v(:,en),[prm%sum_N_sl,4])
+  v_0 = reshape(st0%v(:,en),[prm%sum_N_sl,4])
 
   !****************************************************************************
   !*** calculate dislocation fluxes (only for nonlocal plasticity)
@@ -1187,8 +1174,8 @@ function rhoDotFlux(timestep,ph,en)
 
     !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
     if (any( abs(dot_gamma) > 0.0_pREAL &                                                           ! any active slip system ...
-            .and. prm%C_CFL * abs(v0) * timestep &
-                > geom(ph)%V_0(en)/ maxval(geom(ph)%IParea(:,en)))) then                            ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
+            .and. prm%C_CFL * abs(v_0) * timestep &
+                > geom(ph)%v_0(en)/ maxval(geom(ph)%a_0(:,en)))) then                               ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
       rhoDotFlux = IEEE_value(1.0_pREAL,IEEE_quiet_NaN)                                             ! enforce cutback
       return
     end if
@@ -1205,28 +1192,28 @@ function rhoDotFlux(timestep,ph,en)
     my_F = phase_mechanical_F(ph)%data(1:3,1:3,en)
     my_Fe = matmul(my_F, math_inv33(phase_mechanical_Fp(ph)%data(1:3,1:3,en)))
 
-    neighbors: do n = 1,nIPneighbors
+    neighbors: do n = 1,nCellNeighbors
 
-      neighbor_el = geom(ph)%IPneighborhood(1,n,en)
-      neighbor_ip = geom(ph)%IPneighborhood(2,n,en)
-      neighbor_n  = geom(ph)%IPneighborhood(3,n,en)
-      np = material_ID_phase(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
-      no = material_entry_phase(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
+      el_nbr = geom(ph)%IPneighborhood(1,n,en)
+      ip_nbr = geom(ph)%IPneighborhood(2,n,en)
+      n_nbr  = geom(ph)%IPneighborhood(3,n,en)
+      ph_nbr = material_ID_phase(1,(el_nbr-1)*discretization_nIPs + ip_nbr)
+      en_nbr = material_entry_phase(1,(el_nbr-1)*discretization_nIPs + ip_nbr)
 
       opposite_neighbor = n + mod(n,2) - mod(n+1,2)
       opposite_el = geom(ph)%IPneighborhood(1,opposite_neighbor,en)
       opposite_ip = geom(ph)%IPneighborhood(2,opposite_neighbor,en)
       opposite_n  = geom(ph)%IPneighborhood(3,opposite_neighbor,en)
 
-      if (neighbor_n > 0) then                                                                      ! if neighbor exists, average deformation gradient
-        neighbor_F = phase_mechanical_F(np)%data(1:3,1:3,no)
-        neighbor_Fe = matmul(neighbor_F, math_inv33(phase_mechanical_Fp(np)%data(1:3,1:3,no)))
-        Favg = 0.5_pREAL * (my_F + neighbor_F)
+      if (n_nbr > 0) then                                                                           ! if neighbor exists, average deformation gradient
+        F_nbr = phase_mechanical_F(ph_nbr)%data(1:3,1:3,en_nbr)
+        F_e_nbr = matmul(F_nbr, math_inv33(phase_mechanical_Fp(ph_nbr)%data(1:3,1:3,en_nbr)))
+        Favg = 0.5_pREAL * (my_F + F_nbr)
       else                                                                                          ! if no neighbor, take my value as average
         Favg = my_F
       end if
 
-      neighbor_v0 = 0.0_pREAL        ! needed for check of sign change in flux density below
+      v_0_nbr = 0.0_pREAL        ! needed for check of sign change in flux density below
 
       !* FLUX FROM MY NEIGHBOR TO ME
       !* This is only considered, if I have a neighbor of nonlocal plasticity
@@ -1236,38 +1223,38 @@ function rhoDotFlux(timestep,ph,en)
       !* my neighbor's interface.
       !* The entering flux from my neighbor will be distributed on my slip systems according to the
       !* compatibility
-      if (neighbor_n > 0) then
-      if (mechanical_plasticity_type(np) == MECHANICAL_PLASTICITY_NONLOCAL .and. &
+      if (n_nbr > 0) then
+      if (mechanical_plasticity_type(ph_nbr) == MECHANICAL_PLASTICITY_NONLOCAL .and. &
           any(dependentState(ph)%compatibility(:,:,:,n,en) > 0.0_pREAL)) then
 
         forall (s = 1:ns, t = 1:4)
-          neighbor_v0(s,t) =          plasticState(np)%state0(iV   (s,t,np),no)
-          neighbor_rhoSgl0(s,t) = max(plasticState(np)%state0(iRhoU(s,t,np),no),0.0_pREAL)
+          v_0_nbr(s,t) =          plasticState(ph_nbr)%state0(iV   (s,t,ph_nbr),en_nbr)
+          rho_0_sgl_nbr(s,t) = max(plasticState(ph_nbr)%state0(iRhoU(s,t,ph_nbr),en_nbr),0.0_pREAL)
         endforall
 
-        where (neighbor_rhoSgl0 * IPvolume(neighbor_ip,neighbor_el) ** 0.667_pREAL < prm%rho_min &
-          .or. neighbor_rhoSgl0 < prm%rho_significant) &
-          neighbor_rhoSgl0 = 0.0_pREAL
+        where (rho_0_sgl_nbr * IPvolume0(ip_nbr,el_nbr) ** 0.667_pREAL < prm%rho_min &
+          .or. rho_0_sgl_nbr < prm%rho_significant) &
+          rho_0_sgl_nbr = 0.0_pREAL
         normal_neighbor2me_defConf = math_det33(Favg) * matmul(math_inv33(transpose(Favg)), &
-                                     IPareaNormal(1:3,neighbor_n,neighbor_ip,neighbor_el))          ! normal of the interface in (average) deformed configuration (pointing neighbor => en)
-        normal_neighbor2me = matmul(transpose(neighbor_Fe), normal_neighbor2me_defConf) &
-                           / math_det33(neighbor_Fe)                                                ! interface normal in the lattice configuration of my neighbor
-        area = IParea(neighbor_n,neighbor_ip,neighbor_el) * norm2(normal_neighbor2me)
+                                     IPareaNormal0(1:3,n_nbr,ip_nbr,el_nbr))                        ! normal of the interface in (average) deformed configuration (pointing neighbor => en)
+        normal_neighbor2me = matmul(transpose(F_e_nbr), normal_neighbor2me_defConf) &
+                           / math_det33(F_e_nbr)                                                    ! interface normal in the lattice configuration of my neighbor
+        a = IParea0(n_nbr,ip_nbr,el_nbr) * norm2(normal_neighbor2me)
         normal_neighbor2me = normal_neighbor2me / norm2(normal_neighbor2me)                         ! normalize the surface normal to unit length
         do s = 1,ns
           do t = 1,4
             c = (t + 1) / 2
             topp = t + mod(t,2) - mod(t+1,2)
-            if (neighbor_v0(s,t) * math_inner(m(1:3,s,t), normal_neighbor2me) > 0.0_pREAL &         ! flux from my neighbor to en == entering flux for en
-                .and. v0(s,t) * neighbor_v0(s,t) >= 0.0_pREAL ) then                                ! ... only if no sign change in flux density
-              lineLength = neighbor_rhoSgl0(s,t) * neighbor_v0(s,t) &
-                         * math_inner(m(1:3,s,t), normal_neighbor2me) * area                        ! positive line length that wants to enter through this interface
+            if (v_0_nbr(s,t) * math_inner(m(1:3,s,t), normal_neighbor2me) > 0.0_pREAL &             ! flux from my neighbor to en == entering flux for en
+                .and. v_0(s,t) * v_0_nbr(s,t) >= 0.0_pREAL ) then                                   ! ... only if no sign change in flux density
+              lineLength = rho_0_sgl_nbr(s,t) * v_0_nbr(s,t) &
+                         * math_inner(m(1:3,s,t), normal_neighbor2me) * a                           ! positive line length that wants to enter through this interface
               where (dependentState(ph)%compatibility(c,:,s,n,en) > 0.0_pREAL) &
                 rhoDotFlux(:,t) = rhoDotFlux(1:ns,t) &
-                                + lineLength/geom(ph)%V_0(en)*dependentState(ph)%compatibility(c,:,s,n,en)**2        ! transferring to equally signed mobile dislocation type
+                                + lineLength/geom(ph)%v_0(en)*dependentState(ph)%compatibility(c,:,s,n,en)**2        ! transferring to equally signed mobile dislocation type
               where (dependentState(ph)%compatibility(c,:,s,n,en) < 0.0_pREAL) &
                 rhoDotFlux(:,topp) = rhoDotFlux(:,topp) &
-                                   + lineLength/geom(ph)%V_0(en)*dependentState(ph)%compatibility(c,:,s,n,en)**2     ! transferring to opposite signed mobile dislocation type
+                                   + lineLength/geom(ph)%v_0(en)*dependentState(ph)%compatibility(c,:,s,n,en)**2     ! transferring to opposite signed mobile dislocation type
 
             end if
           end do
@@ -1283,29 +1270,29 @@ function rhoDotFlux(timestep,ph,en)
       !* In case of reduced transmissivity, part of the leaving flux is stored as dead dislocation density.
       !* That means for an interface of zero transmissivity the leaving flux is fully converted to dead dislocations.
       if (opposite_n > 0) then
-      if (mechanical_plasticity_type(np) == MECHANICAL_PLASTICITY_NONLOCAL) then
+      if (mechanical_plasticity_type(ph_nbr) == MECHANICAL_PLASTICITY_NONLOCAL) then
 
         normal_me2neighbor_defConf = math_det33(Favg) &
-                                   * matmul(math_inv33(transpose(Favg)),geom(ph)%IPareaNormal(1:3,n,en))  ! normal of the interface in (average) deformed configuration (pointing en => neighbor)
+                                   * matmul(math_inv33(transpose(Favg)),geom(ph)%n_0(1:3,n,en))  ! normal of the interface in (average) deformed configuration (pointing en => neighbor)
         normal_me2neighbor = matmul(transpose(my_Fe), normal_me2neighbor_defConf) &
                            / math_det33(my_Fe)                                                      ! interface normal in my lattice configuration
-        area = geom(ph)%IParea(n,en) * norm2(normal_me2neighbor)
+        a = geom(ph)%a_0(n,en) * norm2(normal_me2neighbor)
         normal_me2neighbor = normal_me2neighbor / norm2(normal_me2neighbor)                         ! normalize the surface normal to unit length
         do s = 1,ns
           do t = 1,4
             c = (t + 1) / 2
-            if (v0(s,t) * math_inner(m(1:3,s,t), normal_me2neighbor) > 0.0_pREAL ) then             ! flux from en to my neighbor == leaving flux for en (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
-              if (v0(s,t) * neighbor_v0(s,t) >= 0.0_pREAL) then                                     ! no sign change in flux density
+            if (v_0(s,t) * math_inner(m(1:3,s,t), normal_me2neighbor) > 0.0_pREAL ) then             ! flux from en to my neighbor == leaving flux for en (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
+              if (v_0(s,t) * v_0_nbr(s,t) >= 0.0_pREAL) then                                         ! no sign change in flux density
                 transmissivity = sum(dependentState(ph)%compatibility(c,:,s,n,en)**2)               ! overall transmissivity from this slip system to my neighbor
               else                                                                                  ! sign change in flux density means sign change in stress which does not allow for dislocations to arive at the neighbor
                 transmissivity = 0.0_pREAL
               end if
-              lineLength = my_rhoSgl0(s,t) * v0(s,t) &
-                         * math_inner(m(1:3,s,t), normal_me2neighbor) * area                        ! positive line length of mobiles that wants to leave through this interface
-              rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / geom(ph)%V_0(en)                     ! subtract dislocation flux from current type
+              lineLength = rho_0_sgl(s,t) * v_0(s,t) &
+                         * math_inner(m(1:3,s,t), normal_me2neighbor) * a                           ! positive line length of mobiles that wants to leave through this interface
+              rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / geom(ph)%v_0(en)                     ! subtract dislocation flux from current type
               rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) &
-                                + lineLength / geom(ph)%V_0(en) * (1.0_pREAL - transmissivity) &
-                                * sign(1.0_pREAL, v0(s,t))                                          ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
+                                + lineLength / geom(ph)%v_0(en) * (1.0_pREAL - transmissivity) &
+                                * sign(1.0_pREAL, v_0(s,t))                                          ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
             end if
           end do
         end do
@@ -1338,14 +1325,14 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ce)
     en, &
     ip, &
     el, &
-    neighbor_e, &                                                                                   ! element index of my neighbor
-    neighbor_i, &                                                                                   ! integration point index of my neighbor
-    neighbor_me, &
-    neighbor_phase, &
+    el_nbr, &                                                                                   ! element index of my neighbor
+    ip_nbr, &                                                                                   ! integration point index of my neighbor
+    en_nbr, &
+    ph_nbr, &
     ns, &                                                                                           ! number of active slip systems
     s1, &                                                                                           ! slip system index (en)
     s2                                                                                              ! slip system index (my neighbor)
-  real(pREAL), dimension(2,param(material_ID_phase(1,ce))%sum_N_sl,param(material_ID_phase(1,ce))%sum_N_sl,nIPneighbors) :: &
+  real(pREAL), dimension(2,param(material_ID_phase(1,ce))%sum_N_sl,param(material_ID_phase(1,ce))%sum_N_sl,nCellNeighbors) :: &
     my_compatibility                                                                                ! my_compatibility for current element and ip
   real(pREAL) :: &
     my_compatibilitySum, &
@@ -1368,24 +1355,24 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ce)
     my_compatibility = 0.0_pREAL
     forall(s1 = 1:ns) my_compatibility(:,s1,s1,:) = 1.0_pREAL
 
-    neighbors: do n = 1,nIPneighbors
-      neighbor_e = IPneighborhood(1,n,ip,el)
-      neighbor_i = IPneighborhood(2,n,ip,el)
-      neighbor_me = material_entry_phase(1,(neighbor_e-1)*discretization_nIPs + neighbor_i)
-      neighbor_phase = material_ID_phase(1,(neighbor_e-1)*discretization_nIPs + neighbor_i)
+    neighbors: do n = 1,nCellNeighbors
+      el_nbr = IPneighborhood(1,n,ip,el)
+      ip_nbr = IPneighborhood(2,n,ip,el)
+      en_nbr = material_entry_phase(1,(el_nbr-1)*discretization_nIPs + ip_nbr)
+      ph_nbr = material_ID_phase(1,(el_nbr-1)*discretization_nIPs + ip_nbr)
 
-      if (neighbor_e <= 0 .or. neighbor_i <= 0) then
+      if (el_nbr <= 0 .or. ip_nbr <= 0) then
         !* FREE SURFACE
         forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_surface)
-      elseif (neighbor_phase /= ph) then
+      elseif (ph_nbr /= ph) then
         !* PHASE BOUNDARY
-        if (plasticState(neighbor_phase)%nonlocal .and. plasticState(ph)%nonlocal) &
+        if (plasticState(ph_nbr)%nonlocal .and. plasticState(ph)%nonlocal) &
           forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = 0.0_pREAL
       elseif (prm%chi_GB >= 0.0_pREAL) then
         !* GRAIN BOUNDARY
         if (any(dNeq(phase_O_0(ph)%data(en)%asQuaternion(), &
-                     phase_O_0(neighbor_phase)%data(neighbor_me)%asQuaternion())) .and. &
-            plasticState(neighbor_phase)%nonlocal) &
+                     phase_O_0(ph_nbr)%data(en_nbr)%asQuaternion())) .and. &
+            plasticState(ph_nbr)%nonlocal) &
           forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_GB)
       else
         !* GRAIN BOUNDARY ?
@@ -1397,7 +1384,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ce)
         !* the number of compatible slip systems is minimized with the sum of the original compatibility values exceeding one.
         !* Finally the smallest compatibility value is decreased until the sum is exactly equal to one.
         !* All values below the threshold are set to zero.
-        mis = orientation(ph)%data(en)%misorientation(orientation(neighbor_phase)%data(neighbor_me))
+        mis = orientation(ph)%data(en)%misorientation(orientation(ph_nbr)%data(en_nbr))
         mySlipSystems: do s1 = 1,ns
           neighborSlipSystems: do s2 = 1,ns
             my_compatibility(1,s2,s1,n) =     math_inner(prm%slip_normal(1:3,s1), &
@@ -1543,8 +1530,8 @@ subroutine stateInit(ini,phase,Nentries)
   associate(stt => state(phase))
 
     if (ini%random_rho_u > 0.0_pREAL) then ! randomly distribute dislocation segments on random slip system and of random type in the volume
-      totalVolume     = sum(geom(phase)%V_0)
-      minimumIPVolume = minval(geom(phase)%V_0)
+      totalVolume     = sum(geom(phase)%v_0)
+      minimumIPVolume = minval(geom(phase)%v_0)
       densityBinning  = ini%random_rho_u_binning / minimumIpVolume ** (2.0_pREAL / 3.0_pREAL)
 
       ! fill random material points with dislocation segments until the desired overall density is reached
@@ -1553,8 +1540,8 @@ subroutine stateInit(ini,phase,Nentries)
         call random_number(rnd)
         e = nint(rnd(1)*real(Nentries,pREAL) + 0.5_pREAL)
         s = nint(rnd(2)*real(sum(ini%N_sl),pREAL)*4.0_pREAL + 0.5_pREAL)
-        meanDensity = meanDensity + densityBinning * geom(phase)%V_0(e) / totalVolume
-        stt%rhoSglMobile(s,e) = densityBinning
+        meanDensity = meanDensity + densityBinning * geom(phase)%v_0(e) / totalVolume
+        stt%rho_sgl_mob(s,e) = densityBinning
       end do
     else                                ! homogeneous distribution with noise
       do f = 1,size(ini%N_sl,1)
@@ -1684,7 +1671,7 @@ pure function getRho(ph,en) result(rho)
     rho(:,mob) = max(rho(:,mob),0.0_pREAL)
     rho(:,dip) = max(rho(:,dip),0.0_pREAL)
 
-    where(abs(rho) < max(prm%rho_min/geom(ph)%V_0(en)**(2.0_pREAL/3.0_pREAL),prm%rho_significant)) &
+    where(abs(rho) < max(prm%rho_min/geom(ph)%v_0(en)**(2.0_pREAL/3.0_pREAL),prm%rho_significant)) &
       rho = 0.0_pREAL
 
   end associate
@@ -1696,54 +1683,57 @@ end function getRho
 !> @brief returns copy of current dislocation densities from state
 !> @details raw values is rectified
 !--------------------------------------------------------------------------------------------------
-pure function getRho0(ph,en) result(rho0)
+pure function getRho0(ph,en) result(rho_0)
 
   integer, intent(in) :: ph, en
-  real(pREAL), dimension(param(ph)%sum_N_sl,10) :: rho0
+  real(pREAL), dimension(param(ph)%sum_N_sl,10) :: rho_0
 
 
   associate(prm => param(ph))
 
-    rho0 = reshape(state0(ph)%rho(:,en),[prm%sum_N_sl,10])
+    rho_0 = reshape(state0(ph)%rho(:,en),[prm%sum_N_sl,10])
 
     ! ensure positive densities (not for imm, they have a sign)
-    rho0(:,mob) = max(rho0(:,mob),0.0_pREAL)
-    rho0(:,dip) = max(rho0(:,dip),0.0_pREAL)
+    rho_0(:,mob) = max(rho_0(:,mob),0.0_pREAL)
+    rho_0(:,dip) = max(rho_0(:,dip),0.0_pREAL)
 
-    where (abs(rho0) < max(prm%rho_min/geom(ph)%V_0(en)**(2.0_pREAL/3.0_pREAL),prm%rho_significant)) &
-      rho0 = 0.0_pREAL
+    where (abs(rho_0) < max(prm%rho_min/geom(ph)%v_0(en)**(2.0_pREAL/3.0_pREAL),prm%rho_significant)) &
+      rho_0 = 0.0_pREAL
 
   end associate
 
 end function getRho0
 
 
+!--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 subroutine storeGeometry(ph)
 
   integer, intent(in) :: ph
 
   integer :: ce, co, nCell
-  real(pREAL), dimension(:), allocatable :: V
+  real(pREAL), dimension(:), allocatable :: v_0
+  real(pREAL), dimension(:,:), allocatable :: a_0, x_0
+  real(pREAL), dimension(:,:,:), allocatable :: n_0
   integer, dimension(:,:,:), allocatable :: neighborhood
-  real(pREAL), dimension(:,:), allocatable :: area, coords
-  real(pREAL), dimension(:,:,:), allocatable :: areaNormal
 
-  nCell = product(shape(IPvolume))
 
-  V = reshape(IPvolume,[nCell])
-  neighborhood = reshape(IPneighborhood,[3,nIPneighbors,nCell])
-  area = reshape(IParea,[nIPneighbors,nCell])
-  areaNormal = reshape(IPareaNormal,[3,nIPneighbors,nCell])
-  coords = reshape(discretization_IPcoords,[3,nCell])
+  nCell = product(shape(IPVolume0))
+
+  v_0 = reshape(IPVolume0,[nCell])
+  a_0 = reshape(IPArea0,[nCellNeighbors,nCell])
+  x_0 = reshape(discretization_IPcoords,[3,nCell])
+  n_0 = reshape(IPAreaNormal0,[3,nCellNeighbors,nCell])
+  neighborhood = reshape(IPneighborhood,[3,nCellNeighbors,nCell])
 
   do ce = 1, size(material_entry_homogenization,1)
     do co = 1, homogenization_maxNconstituents
       if (material_ID_phase(co,ce) == ph) then
-        geom(ph)%V_0(material_entry_phase(co,ce)) = V(ce)
+        geom(ph)%v_0(material_entry_phase(co,ce)) = v_0(ce)
+        geom(ph)%a_0(:,material_entry_phase(co,ce)) = a_0(:,ce)
+        geom(ph)%x_0(:,material_entry_phase(co,ce)) = x_0(:,ce)
+        geom(ph)%n_0(:,:,material_entry_phase(co,ce)) = n_0(:,:,ce)
         geom(ph)%IPneighborhood(:,:,material_entry_phase(co,ce)) = neighborhood(:,:,ce)
-        geom(ph)%IParea(:,material_entry_phase(co,ce)) = area(:,ce)
-        geom(ph)%IPareaNormal(:,:,material_entry_phase(co,ce)) = areaNormal(:,:,ce)
-        geom(ph)%IPcoordinates(:,material_entry_phase(co,ce)) = coords(:,ce)
       end if
     end do
   end do
