@@ -1122,11 +1122,10 @@ function rhoDotFlux(timestep,ph,en)
     rho, &
     rho_0, &                                                                                        !< dislocation density at beginning of time step
     rhoDotFlux                                                                                      !< density evolution by flux
-  real(pREAL), dimension(param(ph)%sum_N_sl,8) :: &
-    rho_0_sgl_nbr, &                                                                                !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
-    rho_0_sgl                                                                                       !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
   real(pREAL), dimension(param(ph)%sum_N_sl,4) :: &
-    v, &                                                                                            !< current dislocation glide velocity
+    rho_0_sgl_mob, &                                                                                !< mobile dislocation densities of neighboring ip (positive/negative screw and edge)
+    rho_0_sgl_mob_nbr, &                                                                            !< mobile dislocation densities of neighboring ip (positive/negative screw and edge)
+    v, &                                                                                            !< dislocation glide velocity
     v_0, &
     v_0_nbr, &                                                                                      !< dislocation glide velocity of enighboring ip
     dot_gamma                                                                                       !< shear rates
@@ -1160,7 +1159,7 @@ function rhoDotFlux(timestep,ph,en)
 
   rho = getRho(ph,en)
   rho_0 = getRho0(ph,en)
-  rho_0_sgl = rho_0(:,sgl)
+  rho_0_sgl_mob = rho_0(:,mob)
 
   v = reshape(stt%v(:,en),[prm%sum_N_sl,4])                                                         !ToDo: MD: I think we should use state0 here
   dot_gamma = rho(:,mob) * v * spread(prm%b_sl,2,4)
@@ -1229,12 +1228,12 @@ function rhoDotFlux(timestep,ph,en)
 
         forall (s = 1:ns, t = 1:4)
           v_0_nbr(s,t) =          plasticState(ph_nbr)%state0(iV   (s,t,ph_nbr),en_nbr)
-          rho_0_sgl_nbr(s,t) = max(plasticState(ph_nbr)%state0(iRhoU(s,t,ph_nbr),en_nbr),0.0_pREAL)
+          rho_0_sgl_mob_nbr(s,t) = max(plasticState(ph_nbr)%state0(iRhoU(s,t,ph_nbr),en_nbr),0.0_pREAL)
         endforall
 
-        where (rho_0_sgl_nbr * IPvolume0(ip_nbr,el_nbr) ** 0.667_pREAL < prm%rho_min &
-          .or. rho_0_sgl_nbr < prm%rho_significant) &
-          rho_0_sgl_nbr = 0.0_pREAL
+        where (rho_0_sgl_mob_nbr * IPvolume0(ip_nbr,el_nbr) ** 0.667_pREAL < prm%rho_min &
+          .or. rho_0_sgl_mob_nbr < prm%rho_significant) &
+          rho_0_sgl_mob_nbr = 0.0_pREAL
         normal_neighbor2me_defConf = math_det33(Favg) * matmul(math_inv33(transpose(Favg)), &
                                      IPareaNormal0(1:3,n_nbr,ip_nbr,el_nbr))                        ! normal of the interface in (average) deformed configuration (pointing neighbor => en)
         normal_neighbor2me = matmul(transpose(F_e_nbr), normal_neighbor2me_defConf) &
@@ -1247,7 +1246,7 @@ function rhoDotFlux(timestep,ph,en)
             topp = t + mod(t,2) - mod(t+1,2)
             if (v_0_nbr(s,t) * math_inner(m(1:3,s,t), normal_neighbor2me) > 0.0_pREAL &             ! flux from my neighbor to en == entering flux for en
                 .and. v_0(s,t) * v_0_nbr(s,t) >= 0.0_pREAL ) then                                   ! ... only if no sign change in flux density
-              lineLength = rho_0_sgl_nbr(s,t) * v_0_nbr(s,t) &
+              lineLength = rho_0_sgl_mob_nbr(s,t) * v_0_nbr(s,t) &
                          * math_inner(m(1:3,s,t), normal_neighbor2me) * a                           ! positive line length that wants to enter through this interface
               where (dependentState(ph)%compatibility(c,:,s,n,en) > 0.0_pREAL) &
                 rhoDotFlux(:,t) = rhoDotFlux(1:ns,t) &
@@ -1287,7 +1286,7 @@ function rhoDotFlux(timestep,ph,en)
               else                                                                                  ! sign change in flux density means sign change in stress which does not allow for dislocations to arive at the neighbor
                 transmissivity = 0.0_pREAL
               end if
-              lineLength = rho_0_sgl(s,t) * v_0(s,t) &
+              lineLength = rho_0_sgl_mob(s,t) * v_0(s,t) &
                          * math_inner(m(1:3,s,t), normal_me2neighbor) * a                           ! positive line length of mobiles that wants to leave through this interface
               rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / geom(ph)%v_0(en)                     ! subtract dislocation flux from current type
               rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) &
