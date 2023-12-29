@@ -2,7 +2,7 @@ import os
 import json
 import functools
 import colorsys
-from typing import Optional, Union, TextIO
+from typing import Optional, Union
 from itertools import chain
 
 import numpy as np
@@ -344,30 +344,6 @@ class Colormap(mpl.colors.ListedColormap):
         return Colormap(np.array(rev.colors),rev.name[:-4] if rev.name.endswith('_r_r') else rev.name)
 
 
-    def _get_file_handle(self,
-                         fname: Union[FileHandle, None],
-                         suffix: str = '') -> TextIO:
-        """
-        Provide file handle.
-
-        Parameters
-        ----------
-        fname : file, str, pathlib.Path, or None
-            Name or handle of file.
-            If None, colormap name + suffix.
-        suffix: str, optional
-            Extension to use for colormap file.
-            Defaults to empty.
-
-        Returns
-        -------
-        f : file object
-            File handle with write access.
-
-        """
-        return util.open_text(self.name.replace(' ','_')+suffix if fname is None else fname, 'w')
-
-
     def save_paraview(self,
                       fname: Optional[FileHandle] = None):
         """
@@ -387,9 +363,9 @@ class Colormap(mpl.colors.ListedColormap):
                 'RGBPoints':list(chain.from_iterable([(i,*c) for i,c in enumerate(self.colors.round(6))]))
                }]
 
-        fhandle = self._get_file_handle(fname,'.json')
-        json.dump(out,fhandle,indent=4)
-        fhandle.write('\n')
+        with util.open_text(self.name.replace(' ','_')+'.json' if fname is None else fname, 'w') as fhandle:
+            json.dump(out,fhandle,indent=4)
+            fhandle.write('\n')
 
 
     def save_ASCII(self,
@@ -405,7 +381,9 @@ class Colormap(mpl.colors.ListedColormap):
         """
         labels = {'RGBA':4} if self.colors.shape[1] == 4 else {'RGB': 3}
         t = Table(labels,self.colors,[f'Creator: {util.execution_stamp("Colormap")}'])
-        t.save(self._get_file_handle(fname,'.txt'))
+
+        with util.open_text(self.name.replace(' ','_')+'.txt' if fname is None else fname, 'w') as fhandle:
+            t.save(fhandle)
 
 
     def save_GOM(self, fname: Optional[FileHandle] = None):
@@ -425,7 +403,8 @@ class Colormap(mpl.colors.ListedColormap):
                 + ' '.join([f' 0 {c[0]} {c[1]} {c[2]} 255 1' for c in reversed((self.colors*255).astype(np.int64))]) \
                 + '\n'
 
-        self._get_file_handle(fname,'.legend').write(GOM_str)
+        with util.open_text(self.name.replace(' ','_')+'.legend' if fname is None else fname, 'w') as fhandle:
+            fhandle.write(GOM_str)
 
 
     def save_gmsh(self,
@@ -443,7 +422,9 @@ class Colormap(mpl.colors.ListedColormap):
         gmsh_str = 'View.ColorTable = {\n' \
                  +'\n'.join([f'{c[0]},{c[1]},{c[2]},' for c in self.colors[:,:3]*255]) \
                  +'\n}\n'
-        self._get_file_handle(fname,'.msh').write(gmsh_str)
+
+        with util.open_text(self.name.replace(' ','_')+'.msh' if fname is None else fname, 'w') as fhandle:
+            fhandle.write(gmsh_str)
 
 
     @staticmethod

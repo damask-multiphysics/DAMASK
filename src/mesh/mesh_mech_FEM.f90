@@ -686,7 +686,6 @@ subroutine FEM_mechanical_forward(guess,Delta_t,Delta_t_prev,mechBC)
 ! forward last inc
   if (guess .and. .not. cutBack) then
     ForwardData = .True.
-    homogenization_F0 = homogenization_F
     call SNESGetDM(mechanical_snes,dm_local,err_PETSc)                                              !< retrieve mesh info from mechanical_snes into dm_local
     CHKERRQ(err_PETSc)
     call DMGetSection(dm_local,section,err_PETSc)

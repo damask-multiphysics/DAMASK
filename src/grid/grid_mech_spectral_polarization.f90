@@ -23,6 +23,7 @@ module grid_mechanical_spectral_polarization
   use math
   use rotations
   use spectral_utilities
+  use grid_mech_utilities
   use config
   use homogenization
   use discretization_grid
@@ -255,7 +256,6 @@ subroutine grid_mechanical_spectral_polarization_init(num_grid)
     F_tau_lastInc = 2.0_pREAL*F_lastInc
   end if restartRead
 
-  homogenization_F0 = reshape(F_lastInc, [3,3,product(cells(1:2))*cells3])                          ! set starting condition for homogenization_mechanical_response
   call utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call utilities_constitutiveResponse(P,P_av,C_volAvg,C_minMaxAvg, &                                ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
@@ -391,7 +391,6 @@ subroutine grid_mechanical_spectral_polarization_forward(cutBack,guess,Delta_t,D
     F_lastInc     = reshape(F,    [3,3,cells(1),cells(2),cells3])
     F_tau_lastInc = reshape(F_tau,[3,3,cells(1),cells(2),cells3])
 
-    homogenization_F0 = reshape(F,[3,3,product(cells(1:2))*cells3])
   end if
 
 !--------------------------------------------------------------------------------------------------

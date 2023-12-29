@@ -23,6 +23,7 @@ program DAMASK_grid
   use materialpoint
   use material
   use spectral_utilities
+  use grid_mech_utilities
   use grid_mechanical_spectral_basic
   use grid_mechanical_spectral_polarization
   use grid_mechanical_FEM

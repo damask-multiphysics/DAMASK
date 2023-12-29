@@ -29,6 +29,8 @@ else()
 endif()
 add_definitions("-D${DAMASK_SOLVER}")
 
+set(CMAKE_Fortran_PREPROCESS "ON") # works only for CMake >= 3.18
+
 # EXPERIMENTAL: This might help to detect HDF5 and FFTW3 in the future if PETSc is not aware of them
 set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/externalpackages:$ENV{PKG_CONFIG_PATH}")
 pkg_check_modules(HDF5 hdf5)
@@ -91,23 +93,23 @@ if(CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
 endif()
 
 
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 if   (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
-    include(Compiler-GNU)
     set(Fortran_COMPILER_VERSION_MIN 9.1)
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
-    include(Compiler-Intel)
     set(Fortran_COMPILER_VERSION_MIN 19)
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "IntelLLVM")
-    include(Compiler-IntelLLVM)
+    set(Fortran_COMPILER_VERSION_MIN 19)
+elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "LLVMFlang")
     set(Fortran_COMPILER_VERSION_MIN 19)
 else()
     message(FATAL_ERROR "Compiler '${CMAKE_Fortran_COMPILER_ID}' not supported")
 endif()
-
 if(CMAKE_Fortran_COMPILER_VERSION VERSION_LESS Fortran_COMPILER_VERSION_MIN)
     message(FATAL_ERROR "Version '${CMAKE_Fortran_COMPILER_VERSION}' of '${CMAKE_Fortran_COMPILER_ID}' is not supported")
 endif()
+
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+include("Compiler-${CMAKE_Fortran_COMPILER_ID}")
 
 file(STRINGS "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/petsc/conf/petscvariables" PETSC_EXTERNAL_LIB REGEX "PETSC_EXTERNAL_LIB_BASIC = .*$?")
 string(REPLACE "PETSC_EXTERNAL_LIB_BASIC = " "" PETSC_EXTERNAL_LIB "${PETSC_EXTERNAL_LIB}")

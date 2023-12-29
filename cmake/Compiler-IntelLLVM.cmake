@@ -1,10 +1,6 @@
 ###################################################################################################
-# Intel Compiler
+# IntelLLVM Compiler
 ###################################################################################################
-if (CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 18.0)
-  message (FATAL_ERROR "Intel Compiler version: ${CMAKE_Fortran_COMPILER_VERSION} not supported")
-endif ()
-
 if (OPENMP)
   set (OPENMP_FLAGS "-fiopenmp")
 endif ()
@@ -28,8 +24,7 @@ set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel -fc=ifx")
 
 #------------------------------------------------------------------------------------------------
 # Fine tuning compilation options
-set (COMPILE_FLAGS "${COMPILE_FLAGS} -fpp")
-# preprocessor
+set (COMPILE_FLAGS "${COMPILE_FLAGS} -fpp") # preprocessor, needed for CMake < 3.18
 
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -no-ftz")
 # disable flush underflow to zero, will be set if -O[1,2,3]

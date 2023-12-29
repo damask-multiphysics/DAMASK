@@ -77,8 +77,7 @@ module subroutine mechanical_init()
   call parseMechanical()
 
   allocate(homogenization_dPdF(3,3,3,3,discretization_Ncells), source=0.0_pREAL)
-  homogenization_F0 = spread(math_I3,3,discretization_Ncells)
-  homogenization_F = homogenization_F0
+  homogenization_F = spread(math_I3,3,discretization_Ncells)
   allocate(homogenization_P(3,3,discretization_Ncells),source=0.0_pREAL)
 
   if (any(mechanical_type == MECHANICAL_PASS_ID))      call pass_init()

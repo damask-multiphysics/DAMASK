@@ -131,7 +131,7 @@ subroutine utilities_constitutiveResponse(Delta_t,P_av,forwardData)
 
   call homogenization_mechanical_response(Delta_t,1,mesh_maxNips*mesh_NcpElems)                     ! calculate P field
   if (.not. terminallyIll) &
-    call homogenization_mechanical_response2(Delta_t,[1,mesh_maxNips],[1,mesh_NcpElems])
+    call homogenization_mechanical_response2(Delta_t,1,mesh_maxNips*mesh_NcpElems)
   cutBack = .false.
 
   P_av = sum(homogenization_P,dim=3) * wgt

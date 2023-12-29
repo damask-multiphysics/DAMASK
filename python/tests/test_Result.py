@@ -63,7 +63,7 @@ def h5py_dataset_iterator():
     """Iterate over all datasets in an HDF5 file."""
     def _h5py_dataset_iterator(g, prefix=''):
         for key,item in g.items():
-            path = os.path.join(prefix, key)
+            path = '/'.join([prefix, key])
             if isinstance(item, h5py.Dataset): # test for dataset
                 yield (path, item)
             elif isinstance(item, h5py.Group): # test for group (go down)
@@ -472,11 +472,15 @@ class TestResult:
                     c = [_.decode() for _ in cur[path]]
                     r = ['Unknown Phase Type'] + result.phases
                     assert c == r
-                grp = os.path.split(path)[0]
+                grp = str(path).rpartition('/')[0]
                 for attr in ref[grp].attrs:
                     assert np.array_equal(ref[grp].attrs[attr],cur[grp].attrs[attr])
                 for attr in dset.attrs:
                     assert np.array_equal(dset.attrs[attr],cur[path].attrs[attr])
+
+    def test_export_DREAM3D_invalid(self,res_path):
+        with pytest.raises(NotImplementedError):
+            Result(res_path/'4grains2x4x3_compressionY.hdf5').export_DREAM3D()
 
 
     def test_XDMF_datatypes(self,tmp_path,single_phase,update,res_path):
@@ -509,7 +513,7 @@ class TestResult:
         assert dim_vti == dim_xdmf and bounds_vti == bounds_xdmf
 
     def test_XDMF_invalid(self,default):
-        with pytest.raises(TypeError):
+        with pytest.raises(NotImplementedError):
             default.export_XDMF()
 
     def test_XDMF_custom_path(self,single_phase,tmp_path):
