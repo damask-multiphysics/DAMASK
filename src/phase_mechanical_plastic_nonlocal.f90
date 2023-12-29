@@ -1275,64 +1275,54 @@ end function rhoDotFlux
 ! plane normals and signed cosine of the angle between the slip directions. Only the largest values
 ! that sum up to a total of 1 are considered, all others are set to zero.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_updateCompatibility(orientation,ce)
+module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,en)
 
   type(tRotationContainer), dimension(:), intent(in) :: &
     orientation                                                                                     ! crystal orientation
   integer, intent(in) :: &
-    ce
+    ph, en
 
   integer :: &
     n, &                                                                                            ! neighbor index
-    ph, &
-    en, &
-    ip, &
-    el, &
     el_nbr, &                                                                                   ! element index of my neighbor
     ip_nbr, &                                                                                   ! integration point index of my neighbor
+    ce_nbr, &
     en_nbr, &
     ph_nbr, &
     ns, &                                                                                           ! number of active slip systems
     s1, &                                                                                           ! slip system index (en)
     s2                                                                                              ! slip system index (my neighbor)
-  real(pREAL), dimension(2,param(material_ID_phase(1,ce))%sum_N_sl,param(material_ID_phase(1,ce))%sum_N_sl,nCellNeighbors) :: &
+  real(pREAL), dimension(2,param(ph)%sum_N_sl,param(ph)%sum_N_sl,nCellNeighbors) :: &
     my_compatibility                                                                                ! my_compatibility for current element and ip
   real(pREAL) :: &
     my_compatibilitySum, &
     thresholdValue, &
     nThresholdValues
-  logical, dimension(param(material_ID_phase(1,ce))%sum_N_sl) :: &
+  logical, dimension(param(ph)%sum_N_sl) :: &
     belowThreshold
   type(tRotation) :: mis
 
 
-  ph = material_ID_phase(1,ce)
-  el = (ce-1)/discretization_nIPs + 1
-  ip = modulo(ce-1,discretization_nIPs) + 1
-
   associate(prm => param(ph))
     ns = prm%sum_N_sl
 
-    en = material_entry_phase(1,(el-1)*discretization_nIPs + ip)
     !*** start out fully compatible
     my_compatibility = 0.0_pREAL
     forall(s1 = 1:ns) my_compatibility(:,s1,s1,:) = 1.0_pREAL
 
     neighbors: do n = 1,nCellNeighbors
-      el_nbr = IPneighborhood(1,n,ip,el)
-      ip_nbr = IPneighborhood(2,n,ip,el)
-      en_nbr = material_entry_phase(1,(el_nbr-1)*discretization_nIPs + ip_nbr)
-      ph_nbr = material_ID_phase(1,(el_nbr-1)*discretization_nIPs + ip_nbr)
+      el_nbr = geom(ph)%IPneighborhood(1,n,en)
+      ip_nbr = geom(ph)%IPneighborhood(2,n,en)
+      ce_nbr = (el_nbr-1)*discretization_nIPs + ip_nbr
+      en_nbr = material_entry_phase(1,ce_nbr)
+      ph_nbr = material_ID_phase(1,ce_nbr)
 
-      if (el_nbr <= 0 .or. ip_nbr <= 0) then
-        !* FREE SURFACE
+      if (ce_nbr <= 0) then                                                                         ! free surface
         forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_surface)
-      elseif (ph_nbr /= ph) then
-        !* PHASE BOUNDARY
+      elseif (ph_nbr /= ph) then                                                                    ! phase boundary
         if (plasticState(ph_nbr)%nonlocal .and. plasticState(ph)%nonlocal) &
           forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = 0.0_pREAL
-      elseif (prm%chi_GB >= 0.0_pREAL) then
-        !* GRAIN BOUNDARY
+      elseif (prm%chi_GB >= 0.0_pREAL) then                                                         ! grain boundary
         if (any(dNeq(phase_O_0(ph)%data(en)%asQuaternion(), &
                      phase_O_0(ph_nbr)%data(en_nbr)%asQuaternion())) .and. &
             plasticState(ph_nbr)%nonlocal) &
@@ -1381,7 +1371,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ce)
 
     end do neighbors
 
-    dependentState(ph)%compatibility(:,:,:,:,material_entry_phase(1,(el-1)*discretization_nIPs + ip)) = my_compatibility
+    dependentState(ph)%compatibility(:,:,:,:,en) = my_compatibility
 
   end associate
 
