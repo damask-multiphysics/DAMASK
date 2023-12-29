@@ -1195,14 +1195,14 @@ function rhoDotFlux(timestep,ph,en)
         v_0_nbr = reshape(state0(ph_nbr)%v(:,en_nbr),[ns,4])
         rho_0_sgl_mob_nbr = max(reshape(state0(ph_nbr)%rho_sgl_mob(:,en_nbr),[ns,4]),0.0_pREAL)
 
-        where (rho_0_sgl_mob_nbr * IPvolume0(ip_nbr,el_nbr) ** 0.667_pREAL < prm%rho_min &
+        where (rho_0_sgl_mob_nbr * geom(ph_nbr)%v_0(en_nbr) ** 0.667_pREAL < prm%rho_min &
           .or. rho_0_sgl_mob_nbr < prm%rho_significant) &
           rho_0_sgl_mob_nbr = 0.0_pREAL
         normal_neighbor2me_defConf = math_det33(Favg) * matmul(math_inv33(transpose(Favg)), &
-                                     IPareaNormal0(1:3,n_nbr,ip_nbr,el_nbr))                        ! normal of the interface in (average) deformed configuration (pointing neighbor => en)
+                                     geom(ph_nbr)%n_0(1:3,n_nbr,en_nbr))                            ! normal of the interface in (average) deformed configuration (pointing neighbor => en)
         normal_neighbor2me = matmul(transpose(F_e_nbr), normal_neighbor2me_defConf) &
                            / math_det33(F_e_nbr)                                                    ! interface normal in the lattice configuration of my neighbor
-        a = IParea0(n_nbr,ip_nbr,el_nbr) * norm2(normal_neighbor2me)
+        a = geom(ph_nbr)%a_0(n_nbr,en_nbr) * norm2(normal_neighbor2me)
         normal_neighbor2me = normal_neighbor2me / norm2(normal_neighbor2me)                         ! normalize the surface normal to unit length
         do s = 1,ns
           do t = 1,4
