@@ -25,7 +25,7 @@ program DAMASK_mesh
   type :: tLoadCase
     real(pREAL)   :: t                   = 0.0_pREAL                                                !< length of increment
     integer       :: N                   = 0, &                                                     !< number of increments
-                    f_out                = 1                                                        !< frequency of result writes
+                     f_out               = 1                                                        !< frequency of result writes
     logical       :: estimate_rate       = .true.                                                   !< follow trajectory of former loadcase
     type(tMechBC),  allocatable, dimension(:) :: mechBC
   end type tLoadCase
@@ -39,8 +39,7 @@ program DAMASK_mesh
     t   = 0.0_pREAL, &                                                                              !< elapsed time
     t_0 = 0.0_pREAL, &                                                                              !< begin of interval
     Delta_t = 0.0_pREAL, &                                                                          !< current time interval
-    Delta_t_prev = 0.0_pREAL, &                                                                     !< previous time interval
-    t_remaining  = 0.0_pREAL                                                                        !< remaining time of current load case
+    Delta_t_prev = 0.0_pREAL                                                                        !< previous time interval
   logical :: &
     guess, &                                                                                        !< guess along former trajectory
     stagIterate
@@ -219,7 +218,6 @@ program DAMASK_mesh
       stepFraction = 0                                                                              ! fraction scaled by stepFactor**cutLevel
 
       subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
-        t_remaining = loadCases(l)%t + t_0 - t
         t = t + Delta_t                                                                             ! forward target time
         stepFraction = stepFraction + 1                                                             ! count step
 
