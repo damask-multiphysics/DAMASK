@@ -1711,7 +1711,7 @@ subroutine storeGeometry(ph)
 
   integer, intent(in) :: ph
 
-  integer :: ce, co, nCell
+  integer :: ce, nCell
   real(pREAL), dimension(:), allocatable :: v_0
   real(pREAL), dimension(:,:), allocatable :: a_0, x_0
   real(pREAL), dimension(:,:,:), allocatable :: n_0
@@ -1727,15 +1727,13 @@ subroutine storeGeometry(ph)
   neighborhood = reshape(IPneighborhood,[3,nCellNeighbors,nCell])
 
   do ce = 1, size(material_entry_homogenization,1)
-    do co = 1, homogenization_maxNconstituents
-      if (material_ID_phase(co,ce) == ph) then
-        geom(ph)%v_0(material_entry_phase(co,ce)) = v_0(ce)
-        geom(ph)%a_0(:,material_entry_phase(co,ce)) = a_0(:,ce)
-        geom(ph)%x_0(:,material_entry_phase(co,ce)) = x_0(:,ce)
-        geom(ph)%n_0(:,:,material_entry_phase(co,ce)) = n_0(:,:,ce)
-        geom(ph)%IPneighborhood(:,:,material_entry_phase(co,ce)) = neighborhood(:,:,ce)
-      end if
-    end do
+    if (material_ID_phase(1,ce) == ph) then
+      geom(ph)%v_0(material_entry_phase(1,ce)) = v_0(ce)
+      geom(ph)%a_0(:,material_entry_phase(1,ce)) = a_0(:,ce)
+      geom(ph)%x_0(:,material_entry_phase(1,ce)) = x_0(:,ce)
+      geom(ph)%n_0(:,:,material_entry_phase(1,ce)) = n_0(:,:,ce)
+      geom(ph)%IPneighborhood(:,:,material_entry_phase(1,ce)) = neighborhood(:,:,ce)
+    end if
   end do
 
 end subroutine storeGeometry
