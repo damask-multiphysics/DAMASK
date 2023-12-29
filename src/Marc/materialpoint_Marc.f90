@@ -158,9 +158,6 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
     else validCalculation
       call homogenization_mechanical_response(dt,(elCP-1)*discretization_nIPs + ip, &
                                                  (elCP-1)*discretization_nIPs + ip)
-      if (.not. terminallyIll) &
-        call homogenization_mechanical_response2(dt,(elCP-1)*discretization_nIPs + ip, &
-                                                    (elCP-1)*discretization_nIPs + ip)
 
       terminalIllness: if (terminallyIll) then
 

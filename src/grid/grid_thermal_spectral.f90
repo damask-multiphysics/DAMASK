@@ -323,6 +323,8 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
   real(pREAL), dimension(3,cells(1),cells(2),cells3) :: vectorField
 
 
+  call homogenization_thermal_response(Delta_t_,1,product(cells(1:2))*cells3)
+
   associate(T => x_scal)
     vectorField = utilities_ScalarGradient(T)
     ce = 0
