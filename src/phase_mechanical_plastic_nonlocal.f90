@@ -41,12 +41,6 @@ submodule(phase:plastic) nonlocal
     mob_scr_pos = 3, &                                                                              !< mobile screw positive
     mob_scr_neg = 4                                                                                 !< mobile screw positive
 
-  ! BEGIN DEPRECATED
-  integer, dimension(:,:,:), allocatable :: &
-    iRhoU, &                                                                                        !< state indices for unblocked density
-    iV                                                                                              !< state indices for dislocation velocities
-  !END DEPRECATED
-
   real(pREAL), dimension(:,:,:,:,:,:), allocatable :: &
     compatibility                                                                                   !< slip system compatibility between en and my neighbors
 
@@ -134,7 +128,7 @@ submodule(phase:plastic) nonlocal
     real(pREAL), pointer, dimension(:,:) :: &
       rho, &                                                                                        ! < all dislocations
         rho_sgl, &
-          rho_sgl_mob, &                       ! iRhoU
+          rho_sgl_mob, &
             rho_sgl_mob_edg_pos, &
             rho_sgl_mob_edg_neg, &
             rho_sgl_mob_scr_pos, &
@@ -178,8 +172,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     ph, &
     Nmembers, &
     sizeState, sizeDotState, sizeDeltaState, &
-    s1, s2, &
-    s, t, l
+    s1, s2
   real(pREAL), dimension(:,:), allocatable :: &
     a_nS                                                                                            !< non-Schmid coefficients
   character(len=:), allocatable :: &
@@ -416,6 +409,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
       dot%rho_sgl => plasticState(ph)%dotState                     (0*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
       del%rho_sgl => plasticState(ph)%deltaState                   (0*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
 
+        st0%rho_sgl_mob => plasticState(ph)%state0                 (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
         stt%rho_sgl_mob => plasticState(ph)%state                  (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
         dot%rho_sgl_mob => plasticState(ph)%dotState               (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
         del%rho_sgl_mob => plasticState(ph)%deltaState             (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
@@ -499,34 +493,6 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
   allocate(compatibility(2,maxval(param%sum_N_sl),maxval(param%sum_N_sl),nCellNeighbors,&
                          discretization_nIPs,discretization_Nelems), source=0.0_pREAL)
-
-! BEGIN DEPRECATED----------------------------------------------------------------------------------
-  allocate(iRhoU(maxval(param%sum_N_sl),4,phases%length), source=0)
-  allocate(iV(maxval(param%sum_N_sl),4,phases%length),    source=0)
-
-  do ph = 1, phases%length
-
-    if (.not. myPlasticity(ph)) cycle
-
-    phase => phases%get_dict(ph)
-    Nmembers = count(material_ID_phase == ph)
-    l = 0
-    do t = 1,4
-      do s = 1,param(ph)%sum_N_sl
-        l = l + 1
-        iRhoU(s,t,ph) = l
-      end do
-    end do
-    l = l + (4+2+1)*param(ph)%sum_N_sl ! immobile(4), dipole(2), shear
-    do t = 1,4
-      do s = 1,param(ph)%sum_N_sl
-        l = l + 1
-        iV(s,t,ph) = l
-      end do
-    end do
-    if (iV(param(ph)%sum_N_sl,4,ph) /= plasticState(ph)%sizeState) &
-      error stop 'state indices not properly set (nonlocal)'
-  end do
 
 end function plastic_nonlocal_init
 
@@ -929,7 +895,6 @@ module subroutine nonlocal_dotState(Mp,timestep, &
 
   integer ::  &
     c, &                                                                                            !< character of dislocation
-    t, &                                                                                            !< type of dislocation
     s                                                                                               !< index of my current slip system
   real(pREAL), dimension(param(ph)%sum_N_sl,10) :: &
     rho, &
@@ -1226,10 +1191,9 @@ function rhoDotFlux(timestep,ph,en)
       if (mechanical_plasticity_type(ph_nbr) == MECHANICAL_PLASTICITY_NONLOCAL .and. &
           any(dependentState(ph)%compatibility(:,:,:,n,en) > 0.0_pREAL)) then
 
-        forall (s = 1:ns, t = 1:4)
-          v_0_nbr(s,t) =          plasticState(ph_nbr)%state0(iV   (s,t,ph_nbr),en_nbr)
-          rho_0_sgl_mob_nbr(s,t) = max(plasticState(ph_nbr)%state0(iRhoU(s,t,ph_nbr),en_nbr),0.0_pREAL)
-        endforall
+        ! ToDo MD: Not sure if ns is correct here, but I think that compatibility is 0 if different phase
+        v_0_nbr = reshape(state0(ph_nbr)%v(:,en_nbr),[ns,4])
+        rho_0_sgl_mob_nbr = max(reshape(state0(ph_nbr)%rho_sgl_mob(:,en_nbr),[ns,4]),0.0_pREAL)
 
         where (rho_0_sgl_mob_nbr * IPvolume0(ip_nbr,el_nbr) ** 0.667_pREAL < prm%rho_min &
           .or. rho_0_sgl_mob_nbr < prm%rho_significant) &
