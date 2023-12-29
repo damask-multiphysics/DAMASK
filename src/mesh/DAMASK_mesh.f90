@@ -45,13 +45,10 @@ program DAMASK_mesh
     stagIterate
   integer :: &
     l, &
-    i, &
     m, &
     errorID, &
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
     stepFraction = 0, &                                                                             !< fraction of current time interval
-    currentLoadcase = 0, &                                                                          !< current load case
-    currentFace = 0, &
     inc, &                                                                                          !< current increment in current load case
     totalIncsCounter = 0, &                                                                         !< total # of increments
     statUnit = 0, &                                                                                 !< file unit for statistics output
