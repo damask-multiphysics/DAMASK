@@ -188,7 +188,7 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
   call FEM_Utilities_init(num_mesh)
-  call FEM_mechanical_init(loadCases(1)%mechBC(:),num_mesh)
+  call FEM_mechanical_init(loadCases(1)%mechBC,num_mesh)
   call config_numerics_deallocate()
 
   if (worldrank == 0) then
@@ -231,14 +231,14 @@ program DAMASK_mesh
                '-',stepFraction, '/', subStepFactor**cutBackLevel
         flush(IO_STDOUT)
 
-        call FEM_mechanical_forward(guess,Delta_t,Delta_t_prev,loadCases(l)%mechBC(:))
+        call FEM_mechanical_forward(guess,Delta_t,Delta_t_prev,loadCases(l)%mechBC)
 
 !--------------------------------------------------------------------------------------------------
 ! solve fields
         stagIter = 0
         stagIterate = .true.
         do while (stagIterate)
-          solres(1) = FEM_mechanical_solution(incInfo,Delta_t,Delta_t_prev,loadCases(l)%mechBC(:))
+          solres(1) = FEM_mechanical_solution(incInfo,Delta_t,Delta_t_prev,loadCases(l)%mechBC)
           if (.not. solres(1)%converged) exit
 
           stagIter = stagIter + 1
