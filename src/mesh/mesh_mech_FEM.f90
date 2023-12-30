@@ -461,7 +461,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
 ! evaluate constitutive response
   call utilities_constitutiveResponse(params%Delta_t,P_av,ForwardData)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   ForwardData = .false.
 
 !--------------------------------------------------------------------------------------------------

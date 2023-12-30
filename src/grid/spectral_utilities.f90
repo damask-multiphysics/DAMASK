@@ -77,7 +77,7 @@ module spectral_utilities
 
   type :: tNumerics
     integer :: &
-      divergence_correction                                                                         !< scale divergence/curl calculation: [0: no correction, 1: size scaled to 1, 2: size scaled to Npoints]
+      divergence_correction                                                                         !< scale divergence/curl calculation
     logical :: &
       memory_efficient                                                                              !< calculate gamma operator on the fly
   end type tNumerics
@@ -563,7 +563,7 @@ real(pREAL) function utilities_divergenceRMS(tensorField)
                                   conjg(-xi1st(1:3,cells1Red,k,j))*rescaledGeom))**2)
   end do; end do
   call MPI_Allreduce(MPI_IN_PLACE,utilities_divergenceRMS,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   utilities_divergenceRMS = sqrt(utilities_divergenceRMS) * wgt                                     ! RMS in real space calculated with Parsevals theorem from Fourier space
   if (cells(1) == 1) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pREAL                  ! counted twice in case of cells(1) == 1
 
@@ -629,7 +629,7 @@ real(pREAL) function utilities_curlRMS(tensorField)
   end do; end do
 
   call MPI_Allreduce(MPI_IN_PLACE,utilities_curlRMS,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   utilities_curlRMS = sqrt(utilities_curlRMS) * wgt                                                 ! RMS in real space calculated with Parsevals theorem from Fourier space
   if (cells(1) == 1) utilities_curlRMS = utilities_curlRMS * 0.5_pREAL                              ! counted twice in case of cells(1) == 1
 
@@ -778,7 +778,7 @@ subroutine utilities_updateCoords(F)
  ! average F
   if (cells3Offset == 0) Favg = tensorField_fourier(1:3,1:3,1,1,1)%re*wgt
   call MPI_Bcast(Favg,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
  !--------------------------------------------------------------------------------------------------
  ! integration in Fourier space to get fluctuations of cell center displacements
@@ -798,24 +798,24 @@ subroutine utilities_updateCoords(F)
 
  !--------------------------------------------------------------------------------------------------
  ! pad cell center fluctuations along z-direction (needed when running MPI simulation)
-  c = product(shape(u_tilde_p_padded(:,:,:,1)))                                                       !< amount of data to transfer
+  c = product(shape(u_tilde_p_padded(:,:,:,1)))                                                     !< amount of data to transfer
   rank_t = modulo(worldrank+1_MPI_INTEGER_KIND,worldsize)
   rank_b = modulo(worldrank-1_MPI_INTEGER_KIND,worldsize)
 
   ! send bottom layer to process below
   call MPI_Isend(u_tilde_p_padded(:,:,:,1),       c,MPI_DOUBLE,rank_b,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(1),err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   call MPI_Irecv(u_tilde_p_padded(:,:,:,cells3+1),c,MPI_DOUBLE,rank_t,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(2),err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
   ! send top layer to process above
   call MPI_Isend(u_tilde_p_padded(:,:,:,cells3)  ,c,MPI_DOUBLE,rank_t,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(3),err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   call MPI_Irecv(u_tilde_p_padded(:,:,:,0),       c,MPI_DOUBLE,rank_b,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(4),err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
   call MPI_Waitall(4,request,status,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   ! ToDo
 #else
@@ -868,7 +868,7 @@ subroutine selfTest()
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
   call MPI_Allreduce(sum(sum(sum(tensorField_real_,dim=5),dim=4),dim=3),tensorSum,9_MPI_INTEGER_KIND, &
                      MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   if (worldrank==0) then
     if (any(dNeq(tensorSum/tensorField_fourier(:,:,1,1,1)%re,1.0_pREAL,1.0e-12_pREAL))) &
       error stop 'mismatch avg tensorField FFT <-> real'
@@ -884,7 +884,7 @@ subroutine selfTest()
   call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
   call MPI_Allreduce(sum(sum(sum(vectorField_real_,dim=4),dim=3),dim=2),vectorSum,3_MPI_INTEGER_KIND, &
                      MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   if (worldrank==0) then
     if (any(dNeq(vectorSum/vectorField_fourier(:,1,1,1)%re,1.0_pREAL,1.0e-12_pREAL))) &
       error stop 'mismatch avg vectorField FFT <-> real'
@@ -900,7 +900,7 @@ subroutine selfTest()
   call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
   call MPI_Allreduce(sum(sum(sum(scalarField_real_,dim=3),dim=2),dim=1),scalarSum,1_MPI_INTEGER_KIND, &
                      MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   if (worldrank==0) then
     if (dNeq(scalarSum/scalarField_fourier(1,1,1)%re,1.0_pREAL,1.0e-12_pREAL)) &
       error stop 'mismatch avg scalarField FFT <-> real'
@@ -912,7 +912,7 @@ subroutine selfTest()
 
   call random_number(r)
   call MPI_Bcast(r,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
   scalarField_real_ = r(1,1)
   if (maxval(abs(utilities_scalarGradient(scalarField_real_)))>5.0e-9_pREAL)   error stop 'non-zero grad(const)'
