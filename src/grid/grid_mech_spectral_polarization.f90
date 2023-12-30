@@ -190,7 +190,7 @@ subroutine grid_mechanical_spectral_polarization_init(num_grid)
   CHKERRQ(err_PETSc)
   call MPI_Allgather(int(cells3,pPetscInt),1_MPI_INTEGER_KIND,MPI_INTEGER,&
                      cells3_global,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
@@ -230,16 +230,16 @@ subroutine grid_mechanical_spectral_polarization_init(num_grid)
 
     call HDF5_read(P_aim,groupHandle,'P_aim',.false.)
     call MPI_Bcast(P_aim,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(F_aim,groupHandle,'F_aim',.false.)
     call MPI_Bcast(F_aim,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
     call MPI_Bcast(F_aim_lastInc,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(F_aimDot,groupHandle,'F_aimDot',.false.)
     call MPI_Bcast(F_aimDot,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(temp33n,groupHandle,'F')
     F = reshape(temp33n,[9,cells(1),cells(2),cells3])
     call HDF5_read(temp33n,groupHandle,'F_lastInc')
@@ -267,13 +267,13 @@ subroutine grid_mechanical_spectral_polarization_init(num_grid)
     print '(1x,a,1x,i0)', 'loading additional restart data of increment', CLI_restartInc
     call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
     call MPI_Bcast(C_volAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
     call MPI_Bcast(C_volAvgLastInc,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(C_minMaxAvg,groupHandle,'C_minMaxAvg',.false.)
     call MPI_Bcast(C_minMaxAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
 
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
@@ -573,7 +573,7 @@ subroutine formResidual(residual_subdomain, FandF_tau, &
 
   F_av = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt
   call MPI_Allreduce(MPI_IN_PLACE,F_av,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
   call SNESGetNumberFunctionEvals(SNES_mech,nfuncs,err_PETSc)
   CHKERRQ(err_PETSc)

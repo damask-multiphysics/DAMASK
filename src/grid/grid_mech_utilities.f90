@@ -140,7 +140,7 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   P = reshape(homogenization_P, [3,3,cells(1),cells(2),cells3])
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   if (present(rotation_BC)) then
     if (any(dNeq(rotation_BC%asQuaternion(), real([1.0, 0.0, 0.0, 0.0],pREAL)))) &
       print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
@@ -168,21 +168,21 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
 
   valueAndRank = [dPdF_norm_max,real(worldrank,pREAL)]
   call MPI_Allreduce(MPI_IN_PLACE,valueAndRank,1_MPI_INTEGER_KIND,MPI_2DOUBLE_PRECISION,MPI_MAXLOC,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   call MPI_Bcast(dPdF_max,81_MPI_INTEGER_KIND,MPI_DOUBLE,int(valueAndRank(2),MPI_INTEGER_KIND),MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
   valueAndRank = [dPdF_norm_min,real(worldrank,pREAL)]
   call MPI_Allreduce(MPI_IN_PLACE,valueAndRank,1_MPI_INTEGER_KIND,MPI_2DOUBLE_PRECISION,MPI_MINLOC,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   call MPI_Bcast(dPdF_min,81_MPI_INTEGER_KIND,MPI_DOUBLE,int(valueAndRank(2),MPI_INTEGER_KIND),MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
   C_minmaxAvg = 0.5_pREAL*(dPdF_max + dPdF_min)
 
   C_volAvg = sum(homogenization_dPdF,dim=5)
   call MPI_Allreduce(MPI_IN_PLACE,C_volAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   C_volAvg = C_volAvg * wgt
 
 
@@ -238,7 +238,7 @@ function utilities_forwardTensorField(Delta_t,field_lastInc,rate,aim)
   if (present(aim)) then                                                                            !< correct to match average
     fieldDiff = sum(sum(sum(utilities_forwardTensorField,dim=5),dim=4),dim=3)*wgt
     call MPI_Allreduce(MPI_IN_PLACE,fieldDiff,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     fieldDiff = fieldDiff - aim
     utilities_forwardTensorField = utilities_forwardTensorField &
                                  - spread(spread(spread(fieldDiff,3,cells(1)),4,cells(2)),5,cells3)

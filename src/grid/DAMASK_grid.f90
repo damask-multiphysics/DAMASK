@@ -363,7 +363,7 @@ program DAMASK_grid
         end if; flush(IO_STDOUT)
 
         call MPI_Allreduce(signal_SIGUSR1,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
-        if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+        call parallelization_chkerr(err_MPI)
         if (mod(inc,loadCases(l)%f_out) == 0 .or. sig) then
           print'(/,1x,a)', '... saving results ........................................................'
           flush(IO_STDOUT)
@@ -371,7 +371,7 @@ program DAMASK_grid
         end if
         if (sig) call signal_setSIGUSR1(.false.)
         call MPI_Allreduce(signal_SIGUSR2,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
-        if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+        call parallelization_chkerr(err_MPI)
         if (mod(inc,loadCases(l)%f_restart) == 0 .or. sig) then
           do field = 1, nActiveFields
             select case (ID(field))
@@ -387,7 +387,7 @@ program DAMASK_grid
         end if
         if (sig) call signal_setSIGUSR2(.false.)
         call MPI_Allreduce(signal_SIGINT,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
-        if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+        call parallelization_chkerr(err_MPI)
         if (sig) exit loadCaseLooping
       end if skipping
 
