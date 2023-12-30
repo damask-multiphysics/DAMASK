@@ -168,7 +168,6 @@ module homogenization
   public ::  &
     homogenization_init, &
     homogenization_mechanical_response, &
-    homogenization_mechanical_response2, &
     homogenization_thermal_response, &
     homogenization_thermal_active, &
     homogenization_mu_T, &
@@ -227,7 +226,8 @@ subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
     doneAndHappy
 
 
-  !$OMP PARALLEL DO PRIVATE(en,ho,co,converged,doneAndHappy)
+  !$OMP PARALLEL
+  !$OMP DO PRIVATE(en,ho,co,converged,doneAndHappy)
   do ce = cell_start, cell_end
 
     en = material_entry_homogenization(ce)
@@ -260,7 +260,18 @@ subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
       terminallyIll = .true.
     end if
   end do
-  !$OMP END PARALLEL DO
+  !$OMP END DO
+
+  !$OMP DO PRIVATE(ho)
+  do ce = cell_start, cell_end
+      ho = material_ID_homogenization(ce)
+      do co = 1, homogenization_Nconstituents(ho)
+        call crystallite_orientations(co,ce)
+      end do
+      call mechanical_homogenize(Delta_t,ce)
+  end do
+  !$OMP END DO
+  !$OMP END PARALLEL
 
 end subroutine homogenization_mechanical_response
 
@@ -292,32 +303,6 @@ subroutine homogenization_thermal_response(Delta_t,cell_start,cell_end)
   !$OMP END PARALLEL DO
 
 end subroutine homogenization_thermal_response
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief
-!--------------------------------------------------------------------------------------------------
-subroutine homogenization_mechanical_response2(Delta_t,cell_start,cell_end)
-
-  real(pREAL), intent(in) :: Delta_t                                                                !< time increment
-  integer, intent(in) :: &
-    cell_start, cell_end
-
-  integer :: &
-    co, ce, ho
-
-
-  !$OMP PARALLEL DO PRIVATE(ho)
-  do ce = cell_start, cell_end
-      ho = material_ID_homogenization(ce)
-      do co = 1, homogenization_Nconstituents(ho)
-        call crystallite_orientations(co,ce)
-      end do
-      call mechanical_homogenize(Delta_t,ce)
-  end do
-  !$OMP END PARALLEL DO
-
-end subroutine homogenization_mechanical_response2
 
 
 !--------------------------------------------------------------------------------------------------
