@@ -8,7 +8,6 @@
 module grid_mechanical_spectral_variation
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
-#include <petsc/finclude/petscmat.h>
   use PETScDMDA
   use PETScSNES
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
@@ -536,19 +535,18 @@ subroutine formResidual(residual_subdomain, F, &
   F_aim = F_aim - deltaF_aim
   err_BC = maxval(abs(merge(.0_pREAL,P_av - P_aim,params%stress_mask)))
 
-  r = utilities_GammaConvolution(r,params%rotation_BC%rotate(deltaF_aim,active=.true.))
+  r = utilities_G_Convolution(r,params%rotation_BC%rotate(deltaF_aim,active=.true.))
 
 end subroutine formResidual
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Yi: matrix-free jacobian interface
 ! implementation ref: https://lists.mcs.anl.gov/pipermail/petsc-users/2023-December/050035.html
-!                     https://calcul.math.cnrs.fr/attachments/spip/IMG/pdf/matrixFree.pdf
 !                     petsc/src/ts/tutorial/ex22f_mf.f90
 ! question: 1. no need to use global size F?
 !           2. infer local size F or Jac from DMDALocalInfo residual_subdomain?
 !--------------------------------------------------------------------------------------------------
-subroutine formJacobian(da_local,F,Jac_pre,Jac,dummy,err_PETSc)
+subroutine formJacobian(residual_subdomain,F,Jac_pre,Jac,dummy,err_PETSc)
 
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
     residual_subdomain                                                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
@@ -561,15 +559,15 @@ subroutine formJacobian(da_local,F,Jac_pre,Jac,dummy,err_PETSc)
 
   N_dof = 9*product(cells(1:2))*cells3 
 
-  call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE, &
-  N_dof,N_dof,PETSC_NULL_INTEGER,Jac,err_PETSc)
+  call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,N_dof,N_dof,&
+          PETSC_NULL_INTEGER,Jac,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatShellSetOperation(Jac,MATOP_MULT,GK_op,err_PETSc)
   CHKERRQ(err_PETSc)
   
   ! for jac preconditioner
-  call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE, &
-  N_dof,N_dof,PETSC_NULL_INTEGER,Jac_pre,err_PETSc)
+  call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,N_dof,N_dof,&
+          PETSC_NULL_INTEGER,Jac_pre,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatShellSetOperation(Jac_pre,MATOP_MULT,GK_op,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -578,19 +576,22 @@ end subroutine formJacobian
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Yi: matrix-free operation GK_op -> GK_op(dF) = Fourier_inv( G_hat : Fourier(K:dF) )
-! implementation ref: https://github.com/hyharry/GooseFFT/blob/master/finite-strain/hyper-elasticity.py
+! implementation ref: https://github.com/tdegeus/GooseFFT/blob/master/finite-strain/hyper-elasticity.py
 !--------------------------------------------------------------------------------------------------
 subroutine GK_op(Jac,dF,output,err_PETSc)
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: &
     dF                                                                                               
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(out) :: &
     output                                                                                               
+  real(pREAL),  dimension(3,3) :: &
+    deltaF_aim
 
   Mat                                  :: Jac
   PetscErrorCode                       :: err_PETSc
 
   integer :: i, j, k, e
 
+  deltaF_aim = 0.0_pREAL
   ! ===== K:dF operartor =====
   e = 0
   do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
@@ -603,7 +604,7 @@ subroutine GK_op(Jac,dF,output,err_PETSc)
   end do; end do; end do
 
   ! ===== G* operator =====
-  utilities_G_Convolution()
+  output = utilities_G_Convolution(output,deltaF_aim)
   
 end subroutine GK_op
 

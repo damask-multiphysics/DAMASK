@@ -1,6 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Yi Hu, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Utilities used by the different spectral solver variants
 !--------------------------------------------------------------------------------------------------
 module spectral_utilities
@@ -21,6 +22,8 @@ module spectral_utilities
   use discretization_grid
   use discretization
   use homogenization
+
+  use phase
 
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
@@ -49,6 +52,7 @@ module spectral_utilities
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:,:),       pointer     :: vectorField_fourier           !< vector field in Fourier space
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:),         pointer     :: scalarField_fourier           !< scalar field in Fourier space
   complex(pREAL),            dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                     !< gamma operator (field) for spectral method
+  complex(pREAL),            dimension(:,:,:,:,:,:,:), allocatable :: G_hat                         !< G operator (field) for variation method
   complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi1st                         !< wave vector field for first derivatives
   complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi2nd                         !< wave vector field for second derivatives
   real(pREAL),               dimension(3,3,3,3)                    :: C_ref                         !< mechanic reference stiffness
@@ -102,6 +106,7 @@ module spectral_utilities
     spectral_utilities_init, &
     utilities_updateGamma, &
     utilities_GammaConvolution, &
+    utilities_G_Convolution, & ! Yi: add G_conv
     utilities_GreenConvolution, &
     utilities_divergenceRMS, &
     utilities_curlRMS, &
@@ -333,6 +338,8 @@ subroutine spectral_utilities_init()
     allocate (gamma_hat(3,3,3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
   end if
 
+  allocate (G_hat(3,3,3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL)) ! local to each grid point
+
   call selfTest()
 
 end subroutine spectral_utilities_init
@@ -491,6 +498,7 @@ end function utilities_GammaConvolution
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate G * field_real (convolution).
 !> @details ref from GammaConv, G*field_real = Fourier_inv( G_hat : Fourier(field_real) ) 
+!> @details Yi: make tensor field compatible 
 !--------------------------------------------------------------------------------------------------
 function utilities_G_Convolution(field, fieldAim) result(G_Field)
 
@@ -498,59 +506,55 @@ function utilities_G_Convolution(field, fieldAim) result(G_Field)
   real(pREAL), intent(in), dimension(3,3) :: fieldAim                                               !< desired average value of the field after convolution
   real(pREAL),             dimension(3,3,cells(1),cells(2),cells3) :: G_Field
 
-  complex(pREAL), dimension(3,3) :: temp33_cmplx, xiDyad_cmplx
-  real(pREAL),    dimension(6,6) :: A, A_inv
+  complex(pREAL), dimension(3,3) :: temp33_cmplx
   integer :: &
     i, j, k, &
     l, m, n, o
   logical :: err
 
+  real(pREAL) :: xi_norm_2
+  real(pREAL), dimension(3,3) :: delta
 
   print'(/,1x,a)', '... doing G convolution ...............................................'
   flush(IO_STDOUT)
+
+  delta = math_eye(3)
 
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL
   tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
-  !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,xiDyad_cmplx,A,A_inv,err,gamma_hat)
+  !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,err,G_hat)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
     if (any([i,j+cells2Offset,k] /= 1)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+      xi_norm_2 = dot_product(xi1st(:,i,k,j), xi1st(:,i,k,j))
+
+      ! ===== Yi: ToDo: G_hat just needs to be built once !!! =====
 #ifndef __INTEL_COMPILER
-      do concurrent(l = 1:3, m = 1:3)
-        xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,k,j))*xi1st(m,i,k,j)
-      end do
-      do concurrent(l = 1:3, m = 1:3)
-        temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pREAL,pREAL)*xiDyad_cmplx)
+      do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
+        if (xi_norm_2 > 1.e-16_pREAL) then
+          G_hat(l,m,n,o,i,k,j) = delta(l,o)*conjg(-xi1st(m,i,k,j))*xi1st(n,i,k,j)/xi_norm_2
+        end if
       end do
 #else
-      forall(l = 1:3, m = 1:3) &
-        xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,k,j))*xi1st(m,i,k,j)
-      forall(l = 1:3, m = 1:3) &
-        temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pREAL,pREAL)*xiDyad_cmplx)
+      forall(l=1:3, m=1:3, n=1:3, o=1:3) 
+        if (xi_norm_2 > 1.e-16_pREAL) then
+          G_hat(l,m,n,o,i,k,j) = delta(l,o)*conjg(-xi1st(m,i,k,j))*xi1st(n,i,k,j)/xi_norm_2
+        end if
+      end forall
 #endif
-      A(1:3,1:3) = temp33_cmplx%re; A(4:6,4:6) =  temp33_cmplx%re
-      A(1:3,4:6) = temp33_cmplx%im; A(4:6,1:3) = -temp33_cmplx%im
-      if (abs(math_det33(A(1:3,1:3))) > 1.e-16_pREAL) then
-        call math_invert(A_inv, err, A)
-        temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pREAL)
+
+      ! ===== convol op in Fourier space, check index order! =====
 #ifndef __INTEL_COMPILER
-        do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
-          gamma_hat(l,m,n,o,1,1,1) = temp33_cmplx(l,n)*xiDyad_cmplx(o,m)
-        end do
-        do concurrent(l = 1:3, m = 1:3)
-          temp33_cmplx(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,k,j))
-        end do
+      do concurrent(l=1:3, m=1:3)
+        temp33_cmplx(l,m) = sum(G_hat(l,m,1:3,1:3,i,k,j)*transpose(tensorField_fourier(1:3,1:3,i,k,j)))
+      end do
 #else
-        forall(l=1:3, m=1:3, n=1:3, o=1:3) &
-          gamma_hat(l,m,n,o,1,1,1) = temp33_cmplx(l,n)*xiDyad_cmplx(o,m)
-        forall(l = 1:3, m = 1:3) &
-          temp33_cmplx(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,k,j))
+      forall(l=1:3, m=1:3) 
+        temp33_cmplx(l,m) = sum(G_hat(l,m,1:3,1:3,i,k,j)*transpose(tensorField_fourier(1:3,1:3,i,k,j)))
+      end forall
 #endif
-        tensorField_fourier(1:3,1:3,i,k,j) = temp33_cmplx
-      else
-        tensorField_fourier(1:3,1:3,i,k,j) = cmplx(0.0_pREAL,0.0_pREAL,pREAL)
-      end if
+      tensorField_fourier(1:3,1:3,i,k,j) = temp33_cmplx
     end if
   end do; end do; end do
   !$OMP END PARALLEL DO
@@ -933,6 +937,8 @@ subroutine selfTest()
   real(pREAL), dimension(3,3) :: r
   integer(MPI_INTEGER_KIND) :: err_MPI
 
+  print*, '!!!!! test of spectral util !!!!!!'
+  print*, '+++++ tensor field start ++++++++++++++++++++++++'
 
   call random_number(tensorField_real)
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
@@ -949,6 +955,24 @@ subroutine selfTest()
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
   if (maxval(abs(tensorField_real_ - tensorField_real*wgt))>5.0e-15_pREAL) &
     error stop 'mismatch tensorField FFT/invFFT <-> real'
+
+  print*, 'upd gamma'
+  ! call utilities_updateGamma(math_Voigt66to3333_stiffness(elastic_C66(1,1)))
+  print*, 'C_ref 1111', C_ref(1,1,1,1)
+  call utilities_updateGamma(math_Voigt66to3333_stiffness(phase_homogenizedC66(1,10)))
+  !call utilities_updateGamma(1e9_pReal*math_identity4th())
+
+  print*, 'C_ref 1111', C_ref(1,1,1,1)
+
+  print*, utilities_curlRMS(tensorField_real_)
+  tensorField_real = utilities_GammaConvolution(tensorField_real_, math_eye(3))
+  print*, 'Gamma ->', utilities_curlRMS(tensorField_real)
+
+  print*, utilities_curlRMS(tensorField_real_)
+  tensorField_real = utilities_G_Convolution(tensorField_real_, math_eye(3))
+  print*, 'G ->', utilities_curlRMS(tensorField_real)
+
+  print*, '+++++ tensor field end ++++++++++++++++++++++++++'
 
   call random_number(vectorField_real)
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
