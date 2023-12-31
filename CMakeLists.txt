@@ -17,17 +17,14 @@ pkg_get_variable(CMAKE_Fortran_COMPILER PETSc fcompiler)
 pkg_get_variable(CMAKE_C_COMPILER PETSc ccompiler)
 
 # Solver determines name of project
-string(TOUPPER "${DAMASK_SOLVER}" DAMASK_SOLVER)
-if(DAMASK_SOLVER STREQUAL "GRID")
-    project(damask-grid HOMEPAGE_URL https://damask.mpie.de LANGUAGES Fortran C)
-elseif(DAMASK_SOLVER STREQUAL "MESH")
-    project(damask-mesh HOMEPAGE_URL https://damask.mpie.de LANGUAGES Fortran C)
-elseif(DAMASK_SOLVER STREQUAL "TEST")
-    project(damask-test HOMEPAGE_URL https://damask.mpie.de LANGUAGES Fortran C)
+string(TOUPPER "${DAMASK_SOLVER}" DAMASK_SOLVER_UPPER)
+string(TOLOWER "${DAMASK_SOLVER}" DAMASK_SOLVER_LOWER)
+if("${DAMASK_SOLVER_UPPER}" MATCHES "^(GRID|MESH|TEST)$")
+    project("damask-${DAMASK_SOLVER_LOWER}" HOMEPAGE_URL https://damask.mpie.de LANGUAGES Fortran C)
 else()
     message(FATAL_ERROR "Invalid solver: DAMASK_SOLVER=${DAMASK_SOLVER}")
 endif()
-add_definitions("-D${DAMASK_SOLVER}")
+add_definitions("-D${DAMASK_SOLVER_UPPER}")
 
 set(CMAKE_Fortran_PREPROCESS "ON") # works only for CMake >= 3.18
 

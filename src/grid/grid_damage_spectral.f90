@@ -129,7 +129,7 @@ subroutine grid_damage_spectral_init(num_grid)
   CHKERRQ(err_PETSc)
   call MPI_Allgather(int(cells3,MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
                      cells3_global,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   call DMDACreate3D(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
@@ -239,10 +239,10 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
   phi_max = maxval(phi)
   stagNorm = maxval(abs(phi - phi_stagInc))
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   solution%stagConverged = stagNorm < max(num%eps_damage_atol, num%eps_damage_rtol*phi_max)
   call MPI_Allreduce(MPI_IN_PLACE,solution%stagConverged,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LAND,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   phi_stagInc = phi
 
   call homogenization_set_phi(reshape(phi,[product(cells(1:2))*cells3]))
@@ -379,10 +379,10 @@ subroutine updateReference()
 
   K_ref = K_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,K_ref,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   mu_ref = mu_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,mu_ref,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
 end subroutine updateReference
 

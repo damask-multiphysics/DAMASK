@@ -121,13 +121,13 @@ subroutine discretization_mesh_init(restart)
   CHKERRQ(err_PETSc)
   mesh_Nboundaries = int(Nboundaries)
   call MPI_Bcast(mesh_Nboundaries,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   call MPI_Bcast(mesh_NcpElemsGlobal,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   dim = int(dimPlex)
   call MPI_Bcast(dim,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   dimPlex = int(dim,pPETSCINT)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
   if (worldsize == 1) then
     call DMClone(globalMesh,geomMesh,err_PETSc)
@@ -149,7 +149,7 @@ subroutine discretization_mesh_init(restart)
     call ISRestoreIndicesF90(faceSetIS,pFaceSets,err_PETSc)
   end if
   call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
   call DMDestroy(globalMesh,err_PETSc)
   CHKERRQ(err_PETSc)

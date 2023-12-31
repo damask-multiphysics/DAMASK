@@ -1,16 +1,7 @@
 file(GLOB damask-sources CONFIGURE_DEPENDS *.f90 *.c)
 
-if(PROJECT_NAME STREQUAL "damask-grid")
-    set(executable-name "DAMASK_grid")
-    file(GLOB solver-sources CONFIGURE_DEPENDS grid/*.f90)
-elseif(PROJECT_NAME STREQUAL "damask-mesh")
-    set(executable-name "DAMASK_mesh")
-    file(GLOB solver-sources CONFIGURE_DEPENDS mesh/*.f90)
-elseif(PROJECT_NAME STREQUAL "damask-test")
-    set(executable-name "DAMASK_test")
-    file(GLOB solver-sources CONFIGURE_DEPENDS test/*.f90)
-endif()
-
+set(executable-name "DAMASK_${DAMASK_SOLVER_LOWER}")
+file(GLOB solver-sources CONFIGURE_DEPENDS ${DAMASK_SOLVER_LOWER}/*.f90)
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
     add_executable(${executable-name} ${damask-sources} ${solver-sources})

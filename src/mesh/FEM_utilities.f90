@@ -18,6 +18,7 @@ module FEM_utilities
   use math
   use misc
   use IO
+  use parallelization
   use discretization_mesh
   use homogenization
   use FEM_quadrature
@@ -144,16 +145,15 @@ subroutine utilities_constitutiveResponse(Delta_t,P_av,forwardData)
 
   integer(MPI_INTEGER_KIND) :: err_MPI
 
+
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
 
   call homogenization_mechanical_response(Delta_t,1,mesh_maxNips*mesh_NcpElems)                     ! calculate P field
-  if (.not. terminallyIll) &
-    call homogenization_mechanical_response2(Delta_t,1,mesh_maxNips*mesh_NcpElems)
   cutBack = .false.
 
   P_av = sum(homogenization_P,dim=3) * wgt
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
 
 end subroutine utilities_constitutiveResponse
