@@ -25,10 +25,9 @@ program DAMASK_mesh
   type :: tLoadCase
     real(pREAL)   :: t                   = 0.0_pREAL                                                !< length of increment
     integer       :: N                   = 0, &                                                     !< number of increments
-                    f_out                = 1                                                        !< frequency of result writes
+                     f_out               = 1                                                        !< frequency of result writes
     logical       :: estimate_rate       = .true.                                                   !< follow trajectory of former loadcase
-    integer,        allocatable, dimension(:) :: tag
-    type(tMechBC) :: mechBC
+    type(tMechBC),  allocatable, dimension(:) :: mechBC
   end type tLoadCase
 
 
@@ -40,20 +39,16 @@ program DAMASK_mesh
     t   = 0.0_pREAL, &                                                                              !< elapsed time
     t_0 = 0.0_pREAL, &                                                                              !< begin of interval
     Delta_t = 0.0_pREAL, &                                                                          !< current time interval
-    Delta_t_prev = 0.0_pREAL, &                                                                     !< previous time interval
-    t_remaining  = 0.0_pREAL                                                                        !< remaining time of current load case
+    Delta_t_prev = 0.0_pREAL                                                                        !< previous time interval
   logical :: &
     guess, &                                                                                        !< guess along former trajectory
     stagIterate
   integer :: &
     l, &
-    i, &
     m, &
     errorID, &
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
     stepFraction = 0, &                                                                             !< fraction of current time interval
-    currentLoadcase = 0, &                                                                          !< current load case
-    currentFace = 0, &
     inc, &                                                                                          !< current increment in current load case
     totalIncsCounter = 0, &                                                                         !< total # of increments
     statUnit = 0, &                                                                                 !< file unit for statistics output
@@ -82,7 +77,6 @@ program DAMASK_mesh
   type(tSolutionState), allocatable, dimension(:) :: solres
   PetscInt :: faceSet, currentFaceSet, dimPlex
   PetscErrorCode :: err_PETSc
-  integer(kind(COMPONENT_UNDEFINED_ID)) :: ID
   external :: &
     quit
   character(len=:), allocatable :: &
@@ -124,25 +118,16 @@ program DAMASK_mesh
 
   allocate(loadCases(load_steps%length))
 
+
   do l = 1, load_steps%length
     load_step => load_steps%get_dict(l)
     step_bc   => load_step%get_dict('boundary_conditions')
     step_mech => step_bc%get_list('mechanical')
-    loadCases(l)%mechBC%nComponents = dimPlex                                                   !< X, Y (, Z) displacements
-    allocate(loadCases(l)%mechBC%componentBC(dimPlex))
-    do component = 1, dimPlex
-      select case (component)
-        case (1)
-          loadCases(l)%mechBC%componentBC(component)%ID = COMPONENT_MECH_X_ID
-        case (2)
-          loadCases(l)%mechBC%componentBC(component)%ID = COMPONENT_MECH_Y_ID
-        case (3)
-          loadCases(l)%mechBC%componentBC(component)%ID = COMPONENT_MECH_Z_ID
-      end select
-    end do
-    do component = 1, dimPlex
-      allocate(loadCases(l)%mechBC%componentBC(component)%Value(mesh_Nboundaries), source = 0.0_pREAL)
-      allocate(loadCases(l)%mechBC%componentBC(component)%Mask (mesh_Nboundaries), source = .false.)
+    allocate(loadCases(l)%mechBC(mesh_Nboundaries))
+    loadCases(l)%mechBC(:)%nComponents = dimPlex                                                   !< X, Y (, Z) displacements
+    do faceSet = 1, mesh_Nboundaries
+      allocate(loadCases(l)%mechBC(faceSet)%Value(dimPlex), source = 0.0_pREAL)
+      allocate(loadCases(l)%mechBC(faceSet)%Mask(dimPlex),  source = .false.)
     end do
 
     do m = 1, step_mech%length
@@ -152,11 +137,11 @@ program DAMASK_mesh
         if (mesh_boundaries(faceSet) == mech_BC%get_asInt('tag')) currentFaceSet = faceSet
       end do
       if (currentFaceSet < 0) call IO_error(error_ID = 837, ext_msg = 'invalid BC')
+      mech_u => mech_BC%get_list('dot_u')
       do component = 1, dimPlex
-        mech_u => mech_BC%get_list('dot_u')
         if (mech_u%get_asStr(component) /= 'x') then
-          loadCases(l)%mechBC%componentBC(component)%Mask(currentFaceSet)  = .true.
-          loadCases(l)%mechBC%componentBC(component)%Value(currentFaceSet) = mech_u%get_asReal(component)
+          loadCases(l)%mechBC(currentFaceSet)%Mask(component)  = .true.
+          loadCases(l)%mechBC(currentFaceSet)%Value(component) = mech_u%get_asReal(component)
         end if
       end do
     end do
@@ -183,12 +168,12 @@ program DAMASK_mesh
     print'(2x,a)', 'Field '//trim(FIELD_MECH_label)
 
     do faceSet = 1, mesh_Nboundaries
-       do component = 1, loadCases(l)%mechBC%nComponents
-         if (loadCases(l)%mechBC%componentBC(component)%Mask(faceSet)) &
+       do component = 1, dimPlex
+         if (loadCases(l)%mechBC(faceSet)%Mask(component)) &
            print'(a,i2,a,i2,a,f12.7)', &
            '    Face ', mesh_boundaries(faceSet), &
            ' Component ', component, &
-           ' Value ', loadCases(l)%mechBC%componentBC(component)%Value(faceSet)
+           ' Value ', loadCases(l)%mechBC(faceSet)%Value(component)
       end do
     end do
     print'(2x,a,f12.6)', 'time:       ', loadCases(l)%t
@@ -230,7 +215,6 @@ program DAMASK_mesh
       stepFraction = 0                                                                              ! fraction scaled by stepFactor**cutLevel
 
       subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
-        t_remaining = loadCases(l)%t + t_0 - t
         t = t + Delta_t                                                                             ! forward target time
         stepFraction = stepFraction + 1                                                             ! count step
 
@@ -314,5 +298,6 @@ program DAMASK_mesh
   if (worldrank == 0) close(statUnit)
 
   call quit(0)                                                                                      ! no complains ;)
+
 
 end program DAMASK_mesh

@@ -39,14 +39,6 @@ module FEM_utilities
   character(len=*), parameter, public :: &
     FIELD_MECH_label = 'mechanical'
 
-  enum, bind(c); enumerator :: &
-    COMPONENT_UNDEFINED_ID, &
-    COMPONENT_MECH_X_ID, &
-    COMPONENT_MECH_Y_ID, &
-    COMPONENT_MECH_Z_ID
-  end enum
-
-
 !--------------------------------------------------------------------------------------------------
 ! derived types
   type, public :: tSolutionState                                                                    !< return type of solution from FEM solver variants
@@ -55,15 +47,10 @@ module FEM_utilities
     PetscInt :: iterationsNeeded = 0_pPETSCINT
   end type tSolutionState
 
-  type, public :: tComponentBC
-    integer(kind(COMPONENT_UNDEFINED_ID)) :: ID
-    real(pREAL), allocatable, dimension(:) :: Value
-    logical,     allocatable, dimension(:) :: Mask
-  end type tComponentBC
-
   type, public :: tMechBC
     integer                            :: nComponents = 0
-    type(tComponentBC), allocatable, dimension(:) :: componentBC
+    real(pREAL), allocatable, dimension(:) :: Value
+    logical,     allocatable, dimension(:) :: Mask
   end type tMechBC
 
   external :: &                                                                                     ! ToDo: write interfaces
@@ -74,11 +61,7 @@ module FEM_utilities
   public :: &
     FEM_utilities_init, &
     utilities_constitutiveResponse, &
-    utilities_projectBCValues, &
-    COMPONENT_UNDEFINED_ID, &
-    COMPONENT_MECH_X_ID, &
-    COMPONENT_MECH_Y_ID, &
-    COMPONENT_MECH_Z_ID
+    utilities_projectBCValues
 
 contains
 
