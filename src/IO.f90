@@ -48,7 +48,8 @@ implicit none(type,external)
     IO_color, &
     IO_error, &
     IO_warning, &
-    IO_STDOUT
+    IO_STDOUT, &
+    tokenize
 
 contains
 
@@ -380,17 +381,11 @@ integer function IO_strAsInt(str)
 
   character(len=*), intent(in) :: str                                                               !< string for conversion to int value
 
-  integer                      :: readStatus
-  character(len=*), parameter  :: VALIDCHARS = '0123456789+- '
+  integer :: readStatus
 
 
-  valid: if (verify(str,VALIDCHARS) == 0) then
-    read(str,*,iostat=readStatus) IO_strAsInt
-    if (readStatus /= 0) call IO_error(111,str)
-  else valid
-    IO_strAsInt = 0
-    call IO_error(111,str)
-  end if valid
+  read(str,*,iostat=readStatus) IO_strAsInt
+  if (readStatus /= 0) call IO_error(111,'cannot represent "'//str//'" as integer')
 
 end function IO_strAsInt
 
@@ -402,27 +397,23 @@ real(pREAL) function IO_strAsReal(str)
 
   character(len=*), intent(in) :: str                                                               !< string for conversion to real value
 
-  integer                      :: readStatus
-  character(len=*), parameter  :: VALIDCHARS = '0123456789eE.+- '
+  integer :: readStatus
 
 
-  valid: if (verify(str,VALIDCHARS) == 0) then
-    read(str,*,iostat=readStatus) IO_strAsReal
-    if (readStatus /= 0) call IO_error(112,str)
-  else valid
-    IO_strAsReal = 0.0_pREAL
-    call IO_error(112,str)
-  end if valid
+  read(str,*,iostat=readStatus) IO_strAsReal
+  if (readStatus /= 0) call IO_error(111,'cannot represent "'//str//'" as real')
 
 end function IO_strAsReal
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Return logical value from given string.
+!> @details: 'True' and 'true' are converted to .true.
+!> @details: 'False' and 'false' are converted to .false.
 !--------------------------------------------------------------------------------------------------
 logical function IO_strAsBool(str)
 
-  character(len=*), intent(in) :: str                                                               !< string for conversion to int value
+  character(len=*), intent(in) :: str                                                               !< string for conversion to boolean
 
 
   if     (trim(adjustl(str)) == 'True' .or.  trim(adjustl(str)) == 'true') then
@@ -430,8 +421,7 @@ logical function IO_strAsBool(str)
   elseif (trim(adjustl(str)) == 'False' .or. trim(adjustl(str)) == 'false') then
     IO_strAsBool = .false.
   else
-    IO_strAsBool = .false.
-    call IO_error(113,str)
+    call IO_error(111,'cannot represent "'//str//'" as boolean')
   end if
 
 end function IO_strAsBool
@@ -498,11 +488,7 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
     case (110)
       msg = 'invalid chunk selected'
     case (111)
-      msg = 'invalid character for int:'
-    case (112)
-      msg = 'invalid character for real:'
-    case (113)
-      msg = 'invalid character for logical:'
+      msg = 'invalid string for conversion'
     case (114)
       msg = 'cannot decode base64 string:'
 
@@ -743,6 +729,33 @@ end function CRLF2LF
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Fortran 2023 tokenize (first form).
+!--------------------------------------------------------------------------------------------------
+pure subroutine tokenize(string,set,tokens)
+
+  character(len=*), intent(in) :: string, set
+  character(len=:), dimension(:), allocatable, intent(out) :: tokens
+
+  integer, allocatable, dimension(:,:) :: pos
+  integer :: i, s, e
+
+
+  allocate(pos(2,0))
+  e = 0
+  do while (e < verify(string,set,back=.true.))
+    s = e + merge(verify(string(e+1:),set),1,scan(string(e+1:),set)/=0)
+    e = s + merge(scan(string(s:),set)-2,len(string(s:))-1,scan(string(s:),set)/=0)
+    pos = reshape([pos,[s,e]],[2,size(pos)/2+1])
+  end do
+  allocate(character(len=merge(maxval(pos(2,:)-pos(1,:))+1,0,size(pos)>0))::tokens(size(pos,2)))
+  do i = 1, size(pos,2)
+    tokens(i) = string(pos(1,i):pos(2,i))
+  end do
+
+end subroutine tokenize
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Write statements to standard error.
 !--------------------------------------------------------------------------------------------------
 subroutine panel(paneltype,ID,msg,ext_msg,label1,ID1,label2,ID2)
@@ -808,6 +821,7 @@ subroutine IO_selfTest()
 
   integer, dimension(:), allocatable :: chunkPos
   character(len=:),      allocatable :: str,out
+  character(len=:), dimension(:), allocatable :: tokens
 
 
   if (dNeq(1.0_pREAL, IO_strAsReal('1.0')))          error stop 'IO_strAsReal'
@@ -886,6 +900,54 @@ subroutine IO_selfTest()
                                                      error stop 'IO_wrapLines/6'
   if ('abc,'//IO_EOL//'xxdefg,'//IO_EOL//'xxhij' /= IO_wrapLines('abc,defg, hij',filler='xx',length=4)) &
                                                      error stop 'IO_wrapLines/7'
+
+  call tokenize('','$',tokens)
+  if (size(tokens) /= 0 .or. len(tokens) /=0) error stop 'tokenize empty'
+  call tokenize('abcd','dcba',tokens)
+  if (size(tokens) /= 0 .or. len(tokens) /=0) error stop 'tokenize only separators'
+
+  tokens=['a']
+  call test_tokenize('a','#',tokens)
+  call test_tokenize('#a','#',tokens)
+  call test_tokenize('a#','#',tokens)
+
+  tokens=['aa']
+  call test_tokenize('aa','#',tokens)
+  call test_tokenize('$aa','$',tokens)
+  call test_tokenize('aa$','$',tokens)
+
+  tokens=['a','b']
+  call test_tokenize('a$b','$',tokens)
+  call test_tokenize('@a@$b@','$@',tokens)
+
+  tokens=['aa','bb']
+  call test_tokenize('aa$bb','$',tokens)
+  call test_tokenize('aa$$bb','$',tokens)
+  call test_tokenize('aa$bb$','$',tokens)
+
+  tokens=['aa  ','bbb ','cccc']
+  call test_tokenize('aa$bbb$cccc','$',tokens)
+  call test_tokenize('$aa$bbb$cccc$','$',tokens)
+  call tokenize('#aa@@bbb!!!cccc#','#@!',tokens)
+
+
+  contains
+  subroutine test_tokenize(input,delimiter,solution)
+
+    character(len=*), intent(in) :: input, delimiter
+    character(len=*), dimension(:), intent(in) :: solution
+
+    character(len=:), dimension(:), allocatable :: tok
+    integer :: i
+
+
+    call tokenize(input,delimiter,tok)
+    do i = 1,size(tok)
+      !if (solution(i) /= tok(i)) error stop 'tokenize "'//solution(i)//'" vs. "'//tok(i)//'"'      ! requires 2018 standard
+      if (solution(i) /= tok(i)) error stop 'tokenize'
+    end do
+
+  end subroutine test_tokenize
 
 end subroutine IO_selfTest
 

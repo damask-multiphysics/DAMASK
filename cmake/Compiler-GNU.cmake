@@ -1,10 +1,6 @@
 ###################################################################################################
 # GNU Compiler
 ###################################################################################################
-if (CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 9.0)
-  message (FATAL_ERROR "GCC Compiler version: ${CMAKE_Fortran_COMPILER_VERSION} not supported")
-endif ()
-
 if (OPENMP)
   set (OPENMP_FLAGS "-fopenmp")
 endif ()
@@ -23,8 +19,7 @@ set (STANDARD_CHECK "-std=f2018 -pedantic-errors" )
 
 #------------------------------------------------------------------------------------------------
 # Fine tuning compilation options
-set (COMPILE_FLAGS "${COMPILE_FLAGS} -cpp")
-# preprocessor
+set (COMPILE_FLAGS "${COMPILE_FLAGS} -cpp") # preprocessor, needed for CMake < 3.18
 
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -fPIE")
 # position independent code

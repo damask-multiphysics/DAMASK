@@ -204,6 +204,11 @@ submodule(phase:mechanical) plastic
         en
     end subroutine plastic_nonlocal_deltaState
 
+    module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,en)
+      integer, intent(in) :: ph, en
+        type(tRotationContainer), dimension(:), intent(in) :: orientation
+    end subroutine plastic_nonlocal_updateCompatibility
+
   end interface
 
 contains
@@ -359,6 +364,7 @@ module subroutine plastic_dependentState(ph,en)
 
     case (MECHANICAL_PLASTICITY_NONLOCAL) plasticType
       call nonlocal_dependentState(ph,en)
+      if (plasticState(ph)%nonlocal) call plastic_nonlocal_updateCompatibility(phase_O,ph,en)
 
   end select plasticType
 

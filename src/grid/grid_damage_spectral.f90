@@ -44,7 +44,6 @@ module grid_damage_spectral
 
   type(tNumerics) :: num
 
-  type(tSolutionParams) :: params
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   SNES :: SNES_damage
@@ -57,7 +56,7 @@ module grid_damage_spectral
 ! reference diffusion tensor, mobility etc.
   integer                     :: totalIter = 0                                                      !< total iteration in current increment
   real(pREAL), dimension(3,3) :: K_ref
-  real(pREAL)                 :: mu_ref
+  real(pREAL)                 :: mu_ref, Delta_t_
 
   public :: &
     grid_damage_spectral_init, &
@@ -130,7 +129,7 @@ subroutine grid_damage_spectral_init(num_grid)
   CHKERRQ(err_PETSc)
   call MPI_Allgather(int(cells3,MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
                      cells3_global,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   call DMDACreate3D(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
@@ -207,8 +206,7 @@ end subroutine grid_damage_spectral_init
 !--------------------------------------------------------------------------------------------------
 function grid_damage_spectral_solution(Delta_t) result(solution)
 
-  real(pREAL), intent(in) :: &
-    Delta_t                                                                                         !< increment in time for current solution
+  real(pREAL), intent(in) :: Delta_t                                                                !< increment in time for current solution
 
   type(tSolutionState) :: solution
   PetscInt  :: devNull
@@ -222,7 +220,7 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
-  params%Delta_t = Delta_t
+  Delta_t_ = Delta_t
 
   call SNESSolve(SNES_damage,PETSC_NULL_VEC,phi_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -241,10 +239,10 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
   phi_max = maxval(phi)
   stagNorm = maxval(abs(phi - phi_stagInc))
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   solution%stagConverged = stagNorm < max(num%eps_damage_atol, num%eps_damage_rtol*phi_max)
   call MPI_Allreduce(MPI_IN_PLACE,solution%stagConverged,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LAND,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   phi_stagInc = phi
 
   call homogenization_set_phi(reshape(phi,[product(cells(1:2))*cells3]))
@@ -350,12 +348,12 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
     ce = 0
     do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
       ce = ce + 1
-      r(i,j,k) = params%Delta_t*(r(i,j,k) + homogenization_f_phi(phi(i,j,k),ce)) &
+      r(i,j,k) = Delta_t_*(r(i,j,k) + homogenization_f_phi(phi(i,j,k),ce)) &
                + homogenization_mu_phi(ce)*(phi_lastInc(i,j,k) - phi(i,j,k)) &
                + mu_ref*phi(i,j,k)
     end do; end do; end do
 
-    r = max(min(utilities_GreenConvolution(r, K_ref, mu_ref, params%Delta_t),phi_lastInc),num%phi_min) &
+    r = max(min(utilities_GreenConvolution(r, K_ref, mu_ref, Delta_t_),phi_lastInc),num%phi_min) &
       - phi
   end associate
   err_PETSc = 0
@@ -381,10 +379,10 @@ subroutine updateReference()
 
   K_ref = K_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,K_ref,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   mu_ref = mu_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,mu_ref,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
 end subroutine updateReference
 

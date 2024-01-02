@@ -30,7 +30,8 @@ module materialpoint_Marc
   real(pREAL), dimension (:,:,:),   allocatable, private :: &
     materialpoint_cs                                                                                !< Cauchy stress
   real(pREAL), dimension (:,:,:,:), allocatable, private :: &
-    materialpoint_dcsdE                                                                             !< Cauchy stress tangent
+    materialpoint_dcsdE, &                                                                          !< Cauchy stress tangent
+    materialpoint_F                                                                                 !< deformation gradient
   real(pREAL), dimension (:,:,:,:), allocatable, private :: &
     materialpoint_dcsdE_knownGood                                                                   !< known good tangent
 
@@ -95,6 +96,7 @@ subroutine materialpoint_init()
 
   print'(/,1x,a)', '<<<+-  materialpoint init  -+>>>'; flush(IO_STDOUT)
 
+  allocate(materialpoint_F(              3,3,discretization_nIPs,discretization_Nelems), source= 0.0_pREAL)
   allocate(materialpoint_cs(               6,discretization_nIPs,discretization_Nelems), source= 0.0_pREAL)
   allocate(materialpoint_dcsdE(          6,6,discretization_nIPs,discretization_Nelems), source= 0.0_pREAL)
   allocate(materialpoint_dcsdE_knownGood(6,6,discretization_nIPs,discretization_Nelems), source= 0.0_pREAL)
@@ -140,10 +142,10 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
   if (iand(mode, materialpoint_RESTOREJACOBIAN) /= 0) &
     materialpoint_dcsde = materialpoint_dcsde_knownGood
 
-  if (iand(mode, materialpoint_AGERESULTS) /= 0) call materialpoint_forward
+  if (iand(mode, materialpoint_AGERESULTS) /= 0) call materialpoint_forward()
 
-    homogenization_F0(1:3,1:3,ce) = ffn
     homogenization_F(1:3,1:3,ce) = ffn1
+    materialpoint_F(1:3,1:3,ip,elCP) = ffn1
 
   if (iand(mode, materialpoint_CALCRESULTS) /= 0) then
 
@@ -154,9 +156,8 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
       materialpoint_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_eye(6)
 
     else validCalculation
-      call homogenization_mechanical_response(dt,(elCP-1)*discretization_nIPs + ip,(elCP-1)*discretization_nIPs + ip)
-      if (.not. terminallyIll) &
-        call homogenization_mechanical_response2(dt,[ip,ip],[elCP,elCP])
+      call homogenization_mechanical_response(dt,(elCP-1)*discretization_nIPs + ip, &
+                                                 (elCP-1)*discretization_nIPs + ip)
 
       terminalIllness: if (terminallyIll) then
 
@@ -168,17 +169,17 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
       else terminalIllness
 
         ! translate from P to sigma
-        Kirchhoff = matmul(homogenization_P(1:3,1:3,ce), transpose(homogenization_F(1:3,1:3,ce)))
-        J_inverse  = 1.0_pREAL / math_det33(homogenization_F(1:3,1:3,ce))
+        Kirchhoff = matmul(homogenization_P(1:3,1:3,ce), transpose(materialpoint_F(1:3,1:3,ip,elCP)))
+        J_inverse  = 1.0_pREAL / math_det33(materialpoint_F(1:3,1:3,ip,elCP))
         materialpoint_cs(1:6,ip,elCP) = math_sym33to6(J_inverse * Kirchhoff,weighted=.false.)
 
         !  translate from dP/dF to dCS/dE
         H = 0.0_pREAL
         do i=1,3; do j=1,3; do k=1,3; do l=1,3; do m=1,3; do n=1,3
           H(i,j,k,l) = H(i,j,k,l) &
-                     +  homogenization_F(j,m,ce) * homogenization_F(l,n,ce) &
-                                                 * homogenization_dPdF(i,m,k,n,ce) &
-                     -  math_delta(j,l) * homogenization_F(i,m,ce) * homogenization_P(k,m,ce) &
+                     +  materialpoint_F(j,m,ip,elCP) * materialpoint_F(l,n,ip,elCP) &
+                                                     * homogenization_dPdF(i,m,k,n,ce) &
+                     -  math_delta(j,l) * materialpoint_F(i,m,ip,elCP) * homogenization_P(k,m,ce) &
                      +  0.5_pREAL * (  Kirchhoff(j,l)*math_delta(i,k) + Kirchhoff(i,k)*math_delta(j,l) &
                                      + Kirchhoff(j,k)*math_delta(i,l) + Kirchhoff(i,l)*math_delta(j,k))
         end do; end do; end do; end do; end do; end do

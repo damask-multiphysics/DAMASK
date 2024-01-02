@@ -23,6 +23,7 @@ module grid_mechanical_spectral_basic
   use math
   use rotations
   use spectral_utilities
+  use grid_mech_utilities
   use homogenization
   use discretization_grid
 
@@ -168,7 +169,7 @@ subroutine grid_mechanical_spectral_basic_init(num_grid)
   CHKERRQ(err_PETSc)
   call MPI_Allgather(int(cells3,MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
                      cells3_global,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
@@ -206,16 +207,16 @@ subroutine grid_mechanical_spectral_basic_init(num_grid)
 
     call HDF5_read(P_aim,groupHandle,'P_aim',.false.)
     call MPI_Bcast(P_aim,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(F_aim,groupHandle,'F_aim',.false.)
     call MPI_Bcast(F_aim,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
     call MPI_Bcast(F_aim_lastInc,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(F_aimDot,groupHandle,'F_aimDot',.false.)
     call MPI_Bcast(F_aimDot,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(temp33n,groupHandle,'F')
     F = reshape(temp33n,[9,cells(1),cells(2),cells3])
     call HDF5_read(temp33n,groupHandle,'F_lastInc')
@@ -226,7 +227,6 @@ subroutine grid_mechanical_spectral_basic_init(num_grid)
     F = reshape(F_lastInc,[9,cells(1),cells(2),cells3])
   end if restartRead
 
-  homogenization_F0 = reshape(F_lastInc, [3,3,product(cells(1:2))*cells3])                          ! set starting condition for homogenization_mechanical_response
   call utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call utilities_constitutiveResponse(P,P_av,C_volAvg,C_minMaxAvg, &                                ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
@@ -238,13 +238,13 @@ subroutine grid_mechanical_spectral_basic_init(num_grid)
     print'(1x,a,1x,i0)', 'loading additional restart data of increment', CLI_restartInc
     call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
     call MPI_Bcast(C_volAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
     call MPI_Bcast(C_volAvgLastInc,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(C_minMaxAvg,groupHandle,'C_minMaxAvg',.false.)
     call MPI_Bcast(C_minMaxAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
 
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
@@ -347,8 +347,6 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
                                    F_lastInc,reshape(F,[3,3,cells(1),cells(2),cells3]),Delta_t_old, &
                                    rotation_BC%rotate(F_aimDot,active=.true.))
     F_lastInc = reshape(F,[3,3,cells(1),cells(2),cells3])
-
-    homogenization_F0 = reshape(F,[3,3,product(cells(1:2))*cells3])
   end if
 
 !--------------------------------------------------------------------------------------------------
@@ -521,7 +519,7 @@ subroutine formResidual(residual_subdomain, F, &
                                         P_av,C_volAvg,C_minMaxAvg, &
                                         F,params%Delta_t,params%rotation_BC)
     call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     err_div = utilities_divergenceRMS(P)
   end associate
 

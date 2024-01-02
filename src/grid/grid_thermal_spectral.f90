@@ -43,7 +43,6 @@ module grid_thermal_spectral
 
   type(tNumerics) :: num
 
-  type(tSolutionParams) :: params
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   SNES :: SNES_thermal
@@ -56,7 +55,7 @@ module grid_thermal_spectral
 ! reference diffusion tensor, mobility etc.
   integer                     :: totalIter = 0                                                      !< total iteration in current increment
   real(pREAL), dimension(3,3) :: K_ref
-  real(pREAL)                 :: mu_ref
+  real(pREAL)                 :: mu_ref, Delta_t_
 
   public :: &
     grid_thermal_spectral_init, &
@@ -124,7 +123,7 @@ subroutine grid_thermal_spectral_init(num_grid)
   CHKERRQ(err_PETSc)
   call MPI_Allgather(int(cells3,pPETSCINT),1_MPI_INTEGER_KIND,MPI_INTEGER,&
                      cells3_global,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   call DMDACreate3D(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
@@ -186,8 +185,7 @@ end subroutine grid_thermal_spectral_init
 !--------------------------------------------------------------------------------------------------
 function grid_thermal_spectral_solution(Delta_t) result(solution)
 
-  real(pREAL), intent(in) :: &
-    Delta_t                                                                                         !< increment in time for current solution
+  real(pREAL), intent(in) ::  Delta_t                                                               !< increment in time for current solution
 
   type(tSolutionState) :: solution
   PetscInt  :: devNull
@@ -201,7 +199,7 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
-  params%Delta_t = Delta_t
+  Delta_t_ = Delta_t
 
   call SNESSolve(SNES_thermal,PETSC_NULL_VEC,T_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -220,14 +218,14 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   T_max = maxval(T)
   stagNorm = maxval(abs(T - T_stagInc))
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   solution%stagConverged = stagNorm < max(num%eps_thermal_atol, num%eps_thermal_rtol*T_max)
   call MPI_Allreduce(MPI_IN_PLACE,solution%stagConverged,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LAND,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   T_stagInc = T
 
   call homogenization_thermal_setField(reshape(T,[product(cells(1:2))*cells3]), &
-                                       reshape(T-T_lastInc,[product(cells(1:2))*cells3])/params%Delta_t)
+                                       reshape(T-T_lastInc,[product(cells(1:2))*cells3])/Delta_t_)
 
   call DMDAVecRestoreArrayF90(DM_thermal,T_PETSc,T,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -264,7 +262,7 @@ subroutine grid_thermal_spectral_forward(cutBack)
     T = T_lastInc
     T_stagInc = T_lastInc
   else
-    dotT_lastInc = (T - T_lastInc)/params%Delta_t
+    dotT_lastInc = (T - T_lastInc)/Delta_t_
     T_lastInc = T
     call updateReference()
   end if
@@ -325,6 +323,8 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
   real(pREAL), dimension(3,cells(1),cells(2),cells3) :: vectorField
 
 
+  call homogenization_thermal_response(Delta_t_,1,product(cells(1:2))*cells3)
+
   associate(T => x_scal)
     vectorField = utilities_ScalarGradient(T)
     ce = 0
@@ -336,13 +336,13 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
     ce = 0
     do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
       ce = ce + 1
-      r(i,j,k) = params%Delta_t*(r(i,j,k) + homogenization_f_T(ce)) &
+      r(i,j,k) = Delta_t_*(r(i,j,k) + homogenization_f_T(ce)) &
                + homogenization_mu_T(ce) * (T_lastInc(i,j,k) - T(i,j,k)) &
                + mu_ref*T(i,j,k)
     end do; end do; end do
 
     r = T &
-      - utilities_GreenConvolution(r, K_ref, mu_ref, params%Delta_t)
+      - utilities_GreenConvolution(r, K_ref, mu_ref, Delta_t_)
   end associate
   err_PETSc = 0
 
@@ -367,10 +367,10 @@ subroutine updateReference()
 
   K_ref = K_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,K_ref,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   mu_ref = mu_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,mu_ref,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
 end subroutine updateReference
 

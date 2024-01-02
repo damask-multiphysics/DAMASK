@@ -18,6 +18,7 @@ module FEM_utilities
   use math
   use misc
   use IO
+  use parallelization
   use discretization_mesh
   use homogenization
   use FEM_quadrature
@@ -38,18 +39,6 @@ module FEM_utilities
   character(len=*), parameter, public :: &
     FIELD_MECH_label = 'mechanical'
 
-  enum, bind(c); enumerator :: &
-    FIELD_UNDEFINED_ID, &
-    FIELD_MECH_ID
-  end enum
-  enum, bind(c); enumerator :: &
-    COMPONENT_UNDEFINED_ID, &
-    COMPONENT_MECH_X_ID, &
-    COMPONENT_MECH_Y_ID, &
-    COMPONENT_MECH_Z_ID
-  end enum
-
-
 !--------------------------------------------------------------------------------------------------
 ! derived types
   type, public :: tSolutionState                                                                    !< return type of solution from FEM solver variants
@@ -58,17 +47,11 @@ module FEM_utilities
     PetscInt :: iterationsNeeded = 0_pPETSCINT
   end type tSolutionState
 
-  type, public :: tComponentBC
-    integer(kind(COMPONENT_UNDEFINED_ID)) :: ID
+  type, public :: tMechBC
+    integer                            :: nComponents = 0
     real(pREAL), allocatable, dimension(:) :: Value
     logical,     allocatable, dimension(:) :: Mask
-  end type tComponentBC
-
-  type, public :: tFieldBC
-    integer(kind(FIELD_UNDEFINED_ID))  :: ID
-    integer                            :: nComponents = 0
-    type(tComponentBC), allocatable, dimension(:) :: componentBC
-  end type tFieldBC
+  end type tMechBC
 
   external :: &                                                                                     ! ToDo: write interfaces
     PetscSectionGetFieldComponents, &
@@ -78,12 +61,7 @@ module FEM_utilities
   public :: &
     FEM_utilities_init, &
     utilities_constitutiveResponse, &
-    utilities_projectBCValues, &
-    FIELD_MECH_ID, &
-    COMPONENT_UNDEFINED_ID, &
-    COMPONENT_MECH_X_ID, &
-    COMPONENT_MECH_Y_ID, &
-    COMPONENT_MECH_Z_ID
+    utilities_projectBCValues
 
 contains
 
@@ -142,24 +120,23 @@ end subroutine FEM_utilities_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates constitutive response
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
+subroutine utilities_constitutiveResponse(Delta_t,P_av,forwardData)
 
-  real(pREAL), intent(in)                 :: timeinc                                                !< loading time
+  real(pREAL), intent(in)                 :: Delta_t                                                !< loading time
   logical,     intent(in)                 :: forwardData                                            !< age results
   real(pREAL),intent(out), dimension(3,3) :: P_av                                                   !< average PK stress
 
   integer(MPI_INTEGER_KIND) :: err_MPI
 
+
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
 
-  call homogenization_mechanical_response(timeinc,1,mesh_maxNips*mesh_NcpElems)                     ! calculate P field
-  if (.not. terminallyIll) &
-    call homogenization_mechanical_response2(timeinc,[1,mesh_maxNips],[1,mesh_NcpElems])
+  call homogenization_mechanical_response(Delta_t,1,mesh_maxNips*mesh_NcpElems)                     ! calculate P field
   cutBack = .false.
 
   P_av = sum(homogenization_P,dim=3) * wgt
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
 
 end subroutine utilities_constitutiveResponse
@@ -168,7 +145,7 @@ end subroutine utilities_constitutiveResponse
 !--------------------------------------------------------------------------------------------------
 !> @brief Project BC values to local vector
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCValue,BCDotValue,timeinc)
+subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCValue,BCDotValue,Delta_t)
 
   Vec                  :: localVec
   PetscInt             :: field, comp, nBcPoints, point, dof, numDof, numComp, offset
@@ -176,7 +153,7 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
   IS                   :: bcPointsIS
   PetscInt,    pointer :: bcPoints(:)
   real(pREAL), pointer :: localArray(:)
-  real(pREAL)          :: BCValue,BCDotValue,timeinc
+  real(pREAL)          :: BCValue,BCDotValue,Delta_t
   PetscErrorCode       :: err_PETSc
 
 
@@ -193,7 +170,7 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
     call PetscSectionGetFieldOffset(section,bcPoints(point),field,offset,err_PETSc)
     CHKERRQ(err_PETSc)
     do dof = offset+comp+1, offset+numDof, numComp
-      localArray(dof) = localArray(dof) + BCValue + BCDotValue*timeinc
+      localArray(dof) = localArray(dof) + BCValue + BCDotValue*Delta_t
     end do
   end do
   call VecRestoreArrayF90(localVec,localArray,err_PETSc)

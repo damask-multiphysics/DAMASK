@@ -36,8 +36,8 @@ module mesh_mechanical_FEM
 !--------------------------------------------------------------------------------------------------
 ! derived types
   type tSolutionParams
-    type(tFieldBC)  :: fieldBC
-    real(pREAL)     :: timeinc
+    type(tMechBC),allocatable, dimension(:)  :: mechBC
+    real(pREAL)    :: Delta_t
   end type tSolutionParams
 
   type(tSolutionParams)  :: params
@@ -97,9 +97,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data
 !--------------------------------------------------------------------------------------------------
-subroutine FEM_mechanical_init(fieldBC,num_mesh)
+subroutine FEM_mechanical_init(mechBC,num_mesh)
 
-  type(tFieldBC),       intent(in)       :: fieldBC
+  type(tMechBC), dimension(:), intent(in):: mechBC
   type(tDict), pointer, intent(in)       :: num_mesh
 
   DM                                     :: mechanical_mesh
@@ -112,7 +112,7 @@ subroutine FEM_mechanical_init(fieldBC,num_mesh)
 
   PetscInt,  dimension(:),       pointer :: pNumComp, pNumDof, pBcField, pBcPoint
   PetscInt                               :: numBC, bcSize, nc, &
-                                            field, faceSet, topologDim, nNodalPoints, &
+                                            component, faceSet, topologDim, nNodalPoints, &
                                             cellStart, cellEnd, cell, basis
 
   IS                                     :: bcPoint
@@ -208,17 +208,17 @@ subroutine FEM_mechanical_init(fieldBC,num_mesh)
     CHKERRQ(err_PETSc)
   end do
   numBC = 0
-  do field = 1, dimPlex; do faceSet = 1, mesh_Nboundaries
-    if (fieldBC%componentBC(field)%Mask(faceSet)) numBC = numBC + 1
+  do faceSet = 1, mesh_Nboundaries; do component = 1, dimPlex
+    if (mechBC(faceSet)%Mask(component)) numBC = numBC + 1
   end do; end do
   allocate(pbcField(numBC), source=0_pPETSCINT)
   allocate(pbcComps(numBC))
   allocate(pbcPoints(numBC))
   numBC = 0
-  do field = 1, dimPlex; do faceSet = 1, mesh_Nboundaries
-    if (fieldBC%componentBC(field)%Mask(faceSet)) then
+  do faceSet = 1, mesh_Nboundaries; do component = 1, dimPlex
+    if (mechBC(faceSet)%Mask(component)) then
       numBC = numBC + 1
-      call ISCreateGeneral(PETSC_COMM_WORLD,1_pPETSCINT,[field-1],PETSC_COPY_VALUES,pbcComps(numBC),err_PETSc)
+      call ISCreateGeneral(PETSC_COMM_WORLD,1_pPETSCINT,[component-1],PETSC_COPY_VALUES,pbcComps(numBC),err_PETSc)
       CHKERRQ(err_PETSc)
       call DMGetStratumSize(mechanical_mesh,'Face Sets',mesh_boundaries(faceSet),bcSize,err_PETSc)
       CHKERRQ(err_PETSc)
@@ -320,15 +320,15 @@ end subroutine FEM_mechanical_init
 !> @brief solution for the FEM load step
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function FEM_mechanical_solution( &
-             incInfoIn,timeinc,timeinc_old,fieldBC)
+             incInfoIn,Delta_t,Delta_t_prev,mechBC)
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
   real(pREAL), intent(in) :: &
-    timeinc, &                                                                                      !< increment in time for current solution
-    timeinc_old                                                                                     !< increment in time of last increment
-  type(tFieldBC),      intent(in) :: &
-    fieldBC
+    Delta_t, &                                                                                      !< increment in time for current solution
+    Delta_t_prev                                                                                    !< increment in time of last increment
+  type(tMechBC), dimension(:),intent(in) :: &
+    mechBC
   character(len=*), intent(in) :: &
     incInfoIn
 
@@ -339,8 +339,8 @@ type(tSolutionState) function FEM_mechanical_solution( &
   FEM_mechanical_solution%converged = .false.
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
-  params%timeinc = timeinc
-  params%fieldBC = fieldBC
+  params%Delta_t = Delta_t
+  params%mechBC = mechBC
 
   call SNESSolve(mechanical_snes,PETSC_NULL_VEC,solution,err_PETSc)                                 ! solve mechanical_snes based on solution guess (result in solution)
   CHKERRQ(err_PETSc)
@@ -380,7 +380,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
   real(pREAL), dimension(cellDof), target :: f_scal
   PetscReal                          ::  IcellJMat(dimPlex,dimPlex)
   PetscReal,    dimension(:),pointer :: pV0, pCellJ, pInvcellJ, basisField, basisFieldDer
-  PetscInt                           :: cellStart, cellEnd, cell, field, face, &
+  PetscInt                           :: cellStart, cellEnd, cell, component, face, &
                                         qPt, basis, comp, cidx, &
                                         numFields, &
                                         bcSize,m,i
@@ -406,14 +406,14 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
   CHKERRQ(err_PETSc)
   call VecWAXPY(x_local,1.0_pREAL,xx_local,solution_local,err_PETSc)
   CHKERRQ(err_PETSc)
-  do field = 1_pPETSCINT, dimPlex; do face = 1_pPETSCINT, mesh_Nboundaries
-    if (params%fieldBC%componentBC(field)%Mask(face)) then
+  do face = 1_pPETSCINT, mesh_Nboundaries; do component = 1_pPETSCINT, dimPlex
+    if (params%mechBC(face)%Mask(component)) then
       call DMGetStratumSize(dm_local,'Face Sets',mesh_boundaries(face),bcSize,err_PETSc)
       if (bcSize > 0) then
         call DMGetStratumIS(dm_local,'Face Sets',mesh_boundaries(face),bcPoints,err_PETSc)
         CHKERRQ(err_PETSc)
-        call utilities_projectBCValues(x_local,section,0_pPETSCINT,field-1,bcPoints, &
-                                       0.0_pREAL,params%fieldBC%componentBC(field)%Value(face),params%timeinc)
+        call utilities_projectBCValues(x_local,section,0_pPETSCINT,component-1,bcPoints, &
+                                       0.0_pREAL,params%mechBC(face)%Value(component),params%Delta_t)
         call ISDestroy(bcPoints,err_PETSc)
         CHKERRQ(err_PETSc)
       end if
@@ -459,9 +459,9 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call utilities_constitutiveResponse(params%timeinc,P_av,ForwardData)
+  call utilities_constitutiveResponse(params%Delta_t,P_av,ForwardData)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   ForwardData = .false.
 
 !--------------------------------------------------------------------------------------------------
@@ -529,7 +529,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
   real(pREAL),dimension(cellDOF,cellDOF),  target :: K_e
   real(pREAL),dimension(cellDOF,cellDOF) :: K_eA, K_eB
 
-  PetscInt :: cellStart, cellEnd, cell, field, face, &
+  PetscInt :: cellStart, cellEnd, cell, component, face, &
               qPt, basis, comp, cidx,bcSize, m, i
   IS :: bcPoints
 
@@ -556,14 +556,14 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
   CHKERRQ(err_PETSc)
   call VecWAXPY(x_local,1.0_pREAL,xx_local,solution_local,err_PETSc)
   CHKERRQ(err_PETSc)
-  do field = 1, dimPlex; do face = 1, mesh_Nboundaries
-    if (params%fieldBC%componentBC(field)%Mask(face)) then
+  do face = 1, mesh_Nboundaries; do component = 1, dimPlex
+    if (params%mechBC(face)%Mask(component)) then
       call DMGetStratumSize(dm_local,'Face Sets',mesh_boundaries(face),bcSize,err_PETSc)
       if (bcSize > 0) then
         call DMGetStratumIS(dm_local,'Face Sets',mesh_boundaries(face),bcPoints,err_PETSc)
         CHKERRQ(err_PETSc)
-        call utilities_projectBCValues(x_local,section,0_pPETSCINT,field-1,bcPoints, &
-                                       0.0_pREAL,params%fieldBC%componentBC(field)%Value(face),params%timeinc)
+        call utilities_projectBCValues(x_local,section,0_pPETSCINT,component-1,bcPoints, &
+                                       0.0_pREAL,params%mechBC(face)%Value(component),params%Delta_t)
         call ISDestroy(bcPoints,err_PETSc)
         CHKERRQ(err_PETSc)
       end if
@@ -665,17 +665,17 @@ end subroutine FEM_mechanical_formJacobian
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !--------------------------------------------------------------------------------------------------
-subroutine FEM_mechanical_forward(guess,timeinc,timeinc_old,fieldBC)
+subroutine FEM_mechanical_forward(guess,Delta_t,Delta_t_prev,mechBC)
 
-  type(tFieldBC), intent(in) :: &
-    fieldBC
+  type(tMechBC),  dimension(:), intent(in) :: &
+    mechBC
   real(pREAL),    intent(in) :: &
-    timeinc_old, &
-    timeinc
+    Delta_t_prev, &
+    Delta_t
   logical,        intent(in) :: &
     guess
 
-  PetscInt       :: field, face, bcSize
+  PetscInt       :: component, face, bcSize
   DM             :: dm_local
   Vec            :: x_local
   PetscSection   :: section
@@ -686,7 +686,6 @@ subroutine FEM_mechanical_forward(guess,timeinc,timeinc_old,fieldBC)
 ! forward last inc
   if (guess .and. .not. cutBack) then
     ForwardData = .True.
-    homogenization_F0 = homogenization_F
     call SNESGetDM(mechanical_snes,dm_local,err_PETSc)                                              !< retrieve mesh info from mechanical_snes into dm_local
     CHKERRQ(err_PETSc)
     call DMGetSection(dm_local,section,err_PETSc)
@@ -701,14 +700,14 @@ subroutine FEM_mechanical_forward(guess,timeinc,timeinc_old,fieldBC)
     CHKERRQ(err_PETSc)
     call VecAXPY(solution_local,1.0_pREAL,x_local,err_PETSc)
     CHKERRQ(err_PETSc)
-    do field = 1, dimPlex; do face = 1, mesh_Nboundaries
-      if (fieldBC%componentBC(field)%Mask(face)) then
+    do face = 1, mesh_Nboundaries; do component = 1, dimPlex
+      if (mechBC(face)%Mask(component)) then
         call DMGetStratumSize(dm_local,'Face Sets',mesh_boundaries(face),bcSize,err_PETSc)
         if (bcSize > 0) then
           call DMGetStratumIS(dm_local,'Face Sets',mesh_boundaries(face),bcPoints,err_PETSc)
           CHKERRQ(err_PETSc)
-          call utilities_projectBCValues(solution_local,section,0_pPETSCINT,field-1,bcPoints, &
-                                         0.0_pREAL,fieldBC%componentBC(field)%Value(face),timeinc_old)
+          call utilities_projectBCValues(solution_local,section,0_pPETSCINT,component-1,bcPoints, &
+                                         0.0_pREAL,mechBC(face)%Value(component),Delta_t_prev)
           call ISDestroy(bcPoints,err_PETSc)
           CHKERRQ(err_PETSc)
         end if
@@ -721,12 +720,12 @@ subroutine FEM_mechanical_forward(guess,timeinc,timeinc_old,fieldBC)
 ! update rate and forward last inc
     call VecCopy(solution,solution_rate,err_PETSc)
     CHKERRQ(err_PETSc)
-    call VecScale(solution_rate,timeinc_old**(-1),err_PETSc)
+    call VecScale(solution_rate,Delta_t_prev**(-1),err_PETSc)
     CHKERRQ(err_PETSc)
   end if
   call VecCopy(solution_rate,solution,err_PETSc)
   CHKERRQ(err_PETSc)
-  call VecScale(solution,timeinc,err_PETSc)
+  call VecScale(solution,Delta_t,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine FEM_mechanical_forward

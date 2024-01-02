@@ -8,12 +8,13 @@ import shlex as _shlex
 import re as _re
 import signal as _signal
 import fractions as _fractions
+import contextlib as _contextlib
 from collections import abc as _abc, OrderedDict as _OrderedDict
 from functools import reduce as _reduce, partial as _partial, wraps as _wraps
 import inspect
 from typing import Optional as _Optional, Callable as _Callable, Union as _Union, Iterable as _Iterable, \
                    Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, \
-                   Any as _Any, TextIO as _TextIO
+                   Any as _Any, TextIO as _TextIO, Generator as _Generator
 from pathlib import Path as _Path
 
 import numpy as _np
@@ -193,11 +194,15 @@ def run(cmd: str,
 
     return stdout, stderr
 
-
+@_contextlib.contextmanager
 def open_text(fname: _FileHandle,
-              mode: _Literal['r','w'] = 'r') -> _TextIO:                                            # noqa
+              mode: _Literal['r','w'] = 'r') -> _Generator[_TextIO, None, None]:                    # noqa
     """
-    Open a text file.
+    Open a text file with Unix line endings
+
+    If a path or string is given, a context manager ensures that
+    the file handle is closed.
+    If a file handle is given, it remains unmodified.
 
     Parameters
     ----------
@@ -211,8 +216,12 @@ def open_text(fname: _FileHandle,
     f : file handle
 
     """
-    return fname if not isinstance(fname, (str,_Path)) else \
-           open(_Path(fname).expanduser(),mode,newline=('\n' if mode == 'w' else None))
+    if isinstance(fname, (str,_Path)):
+        fhandle = open(_Path(fname).expanduser(),mode,newline=('\n' if mode == 'w' else None))
+        yield fhandle
+        fhandle.close()
+    else:
+        yield fname
 
 def time_stamp() -> str:
     """Provide current time as formatted string."""

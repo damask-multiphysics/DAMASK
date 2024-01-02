@@ -1560,7 +1560,7 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
     call HDF5_chkerr(hdferr)
     call MPI_Allgather(int(localShape(ubound(localShape,1)),MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
                        readSize,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
   end if
 #endif
   myStart                   = int(0,HSIZE_T)
@@ -1667,7 +1667,7 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
   if (parallel) then
     call MPI_Allgather(int(localShape(ubound(localShape,1)),MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
                        writeSize,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
   end if
 #endif
   myStart                   = int(0,HSIZE_T)
