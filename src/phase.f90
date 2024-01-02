@@ -326,11 +326,6 @@ module phase
       real(pREAL) :: f
     end function phase_f_T
 
-    module subroutine plastic_nonlocal_updateCompatibility(orientation,ce)
-      integer, intent(in) :: ce
-        type(tRotationContainer), dimension(:), intent(in) :: orientation
-    end subroutine plastic_nonlocal_updateCompatibility
-
     module subroutine plastic_dependentState(ph,en)
       integer, intent(in) :: &
         ph, &
@@ -363,7 +358,6 @@ module phase
     phase_allocateState, &
     phase_forward, &
     phase_restore, &
-    plastic_nonlocal_updateCompatibility, &
     converged, &
     phase_mechanical_constitutive, &
     phase_thermal_constitutive, &
@@ -575,9 +569,6 @@ subroutine crystallite_orientations(co,ce)
   en = material_entry_phase(co,ce)
 
   call phase_O(ph)%data(en)%fromMatrix(transpose(math_rotationalPart(mechanical_F_e(ph,en))))
-
-  if (plasticState(material_ID_phase(1,ce))%nonlocal) call plastic_nonlocal_updateCompatibility(phase_O,ce)
-
 
 end subroutine crystallite_orientations
 
