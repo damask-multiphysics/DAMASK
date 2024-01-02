@@ -189,9 +189,12 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   CHKERRQ(err_PETSc)
   ! Yi: Jacobian matrix
   ! ================================================================================== 
-  call DMDASNESsetJacobianLocal(DM_mech,formJacobian,PETSC_NULL_SNES,err_PETSc)       
-  CHKERRQ(err_PETSc)
+  ! call DMDASNESsetJacobianLocal(DM_mech,formJacobian,PETSC_NULL_SNES,err_PETSc)       
+  ! CHKERRQ(err_PETSc)
   ! ================================================================================== 
+  ! Yi: test more general interface
+  call DMSNESsetJacobianLocal(DM_mech,formJacobian,PETSC_NULL_SNES,err_PETSc)
+  CHKERRQ(err_PETSc)    
   call SNESsetConvergenceTest(SNES_mech,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc)    ! specify custom convergence check function "converged"
   CHKERRQ(err_PETSc)
   call SNESSetDM(SNES_mech,DM_mech,err_PETSc)
@@ -537,6 +540,8 @@ subroutine formResidual(residual_subdomain, F, &
 
   r = utilities_G_Convolution(r,params%rotation_BC%rotate(deltaF_aim,active=.true.))
 
+  print*, 'in my rhs'
+
 end subroutine formResidual
 
 !--------------------------------------------------------------------------------------------------
@@ -559,6 +564,8 @@ subroutine formJacobian(residual_subdomain,F,Jac_pre,Jac,dummy,err_PETSc)
 
   N_dof = 9*product(cells(1:2))*cells3 
 
+  print*, 'in my jac'
+  
   call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,N_dof,N_dof,&
           PETSC_NULL_INTEGER,Jac,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -572,6 +579,8 @@ subroutine formJacobian(residual_subdomain,F,Jac_pre,Jac,dummy,err_PETSc)
   call MatShellSetOperation(Jac_pre,MATOP_MULT,GK_op,err_PETSc)
   CHKERRQ(err_PETSc)
 
+  print*, 'in my jac'
+
 end subroutine formJacobian
 
 !--------------------------------------------------------------------------------------------------
@@ -584,7 +593,7 @@ subroutine GK_op(Jac,dF,output,err_PETSc)
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(out) :: &
     output                                                                                               
   real(pREAL),  dimension(3,3) :: &
-    deltaF_aim
+    deltaF_aim = 0.0_pREAL
 
   Mat                                  :: Jac
   PetscErrorCode                       :: err_PETSc
@@ -605,6 +614,7 @@ subroutine GK_op(Jac,dF,output,err_PETSc)
 
   ! ===== G* operator =====
   output = utilities_G_Convolution(output,deltaF_aim)
+  print*, 'in GK op'
   
 end subroutine GK_op
 
