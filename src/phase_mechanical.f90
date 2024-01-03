@@ -71,12 +71,12 @@ submodule(phase) mechanical
         dotState
     end function plastic_dotState
 
-    module function plastic_deltaState(ph, en) result(broken)
+    module function plastic_deltaState(ph, en) result(status)
       integer, intent(in) :: &
         ph, &
         en
-      logical :: &
-        broken
+      integer(kind(STATUS_OK)) :: &
+        status
     end function plastic_deltaState
 
     module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
@@ -377,11 +377,12 @@ end subroutine mechanical_result
 !> @brief calculation of stress (P) with time integration based on a residuum in Lp and
 !> intermediate acceleration of the Newton-Raphson correction
 !--------------------------------------------------------------------------------------------------
-function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(broken)
+function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
 
   real(pREAL), dimension(3,3), intent(in) :: F,Fp0,Fi0
   real(pREAL),                 intent(in) :: Delta_t
   integer, intent(in) :: ph, en
+  integer(kind(STATUS_OK)) :: status
 
   real(pREAL), dimension(3,3)::       Fp_new, &                                                     ! plastic deformation gradient at end of timestep
                                       invFp_new, &                                                  ! inverse of Fp_new
@@ -430,10 +431,10 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(broken)
                                       p, &
                                       jacoCounterLp, &
                                       jacoCounterLi                                                 ! counters to check for Jacobian update
-  logical :: error,broken
+  logical :: error
 
 
-  broken = .true.
+  status = STATUS_FAILED_PHASE_STRESS
   call plastic_dependentState(ph,en)
 
   Lpguess = phase_mechanical_Lp(ph)%data(1:3,1:3,en)                                                ! take as first guess
@@ -573,7 +574,7 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(broken)
   phase_mechanical_Fp(ph)%data(1:3,1:3,en) = Fp_new / math_det33(Fp_new)**(1.0_pREAL/3.0_pREAL)    ! regularize
   phase_mechanical_Fi(ph)%data(1:3,1:3,en) = Fi_new
   phase_mechanical_Fe(ph)%data(1:3,1:3,en) = matmul(matmul(F,invFp_new),invFi_new)
-  broken = .false.
+  status = STATUS_OK
 
 end function integrateStress
 
@@ -618,7 +619,7 @@ function integrateStateFPI(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
     dotState_last(1:sizeDotState,2) = merge(dotState_last(1:sizeDotState,1),0.0_pREAL, nIterationState > 1)
     dotState_last(1:sizeDotState,1) = dotState
 
-    broken = integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
+    broken = STATUS_OK /= integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
     if (broken) exit iteration
 
     dotState = plastic_dotState(Delta_t,ph,en)
@@ -633,7 +634,7 @@ function integrateStateFPI(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
     plasticState(ph)%state(1:sizeDotState,en) = plasticState(ph)%state(1:sizeDotState,en) - r
 
     if (converged(r,plasticState(ph)%state(1:sizeDotState,en),plasticState(ph)%atol(1:sizeDotState))) then
-      broken = plastic_deltaState(ph,en)
+      broken = STATUS_OK /= plastic_deltaState(ph,en)
       exit iteration
     end if
 
@@ -695,10 +696,10 @@ function integrateStateEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
   sizeDotState = plasticState(ph)%sizeDotState
   plasticState(ph)%state(1:sizeDotState,en) = state0 + dotState*Delta_t
 
-  broken = plastic_deltaState(ph,en)
+  broken = STATUS_OK /= plastic_deltaState(ph,en)
   if (broken) return
 
-  broken = integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
+  broken = STATUS_OK /= integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
 
 end function integrateStateEuler
 
@@ -734,10 +735,10 @@ function integrateStateAdaptiveEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(
   r = - dotState * 0.5_pREAL * Delta_t
   plasticState(ph)%state(1:sizeDotState,en) = state0 + dotState*Delta_t
 
-  broken = plastic_deltaState(ph,en)
+  broken = STATUS_OK /= plastic_deltaState(ph,en)
   if (broken) return
 
-  broken = integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
+  broken = STATUS_OK /= integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
   if (broken) return
 
   dotState = plastic_dotState(Delta_t,ph,en)
@@ -858,7 +859,7 @@ function integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C,DB) result(br
 
     plasticState(ph)%state(1:sizeDotState,en) = state0 + dotState*Delta_t
 
-    broken = integrateStress(F_0+(F-F_0)*Delta_t*C(stage),Fp0,Fi0,Delta_t*C(stage), ph,en)
+    broken = STATUS_OK /= integrateStress(F_0+(F-F_0)*Delta_t*C(stage),Fp0,Fi0,Delta_t*C(stage), ph,en)
     if (broken) exit
 
     dotState = plastic_dotState(Delta_t*C(stage), ph,en)
@@ -879,10 +880,10 @@ function integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C,DB) result(br
 
   if (broken) return
 
-  broken = plastic_deltaState(ph,en)
+  broken = STATUS_OK /= plastic_deltaState(ph,en)
   if (broken) return
 
-  broken = integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
+  broken = STATUS_OK /= integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
 
 end function integrateStateRK
 

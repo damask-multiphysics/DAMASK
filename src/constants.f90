@@ -1,6 +1,6 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, KU Leuven
-!> @brief  physical constants
+!> @brief Constants.
 !--------------------------------------------------------------------------------------------------
 module constants
   use prec
@@ -19,5 +19,12 @@ module constants
 
   character(len=*),          parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
   character(len=len(LOWER)), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+  enum, bind(c); enumerator :: &
+    STATUS_OK, &
+    STATUS_FAILED_PHASE_STATE, &
+    STATUS_FAILED_PHASE_DELTASTATE, &
+    STATUS_FAILED_PHASE_STRESS
+  end enum
 
 end module constants
