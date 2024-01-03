@@ -78,7 +78,8 @@ class TestResult:
 
 
     def test_view_all(self,default):
-        a = default.view(increments=True).get('F')
+        default = Result(default.fname)
+        a = default.view_all().get('F')
 
         assert dict_equal(a,default.view(increments='*').get('F'))
         assert dict_equal(a,default.view(increments=default.increments_in_range(0,np.iinfo(int).max)).get('F'))
@@ -95,7 +96,7 @@ class TestResult:
         label = 'increments' if what == 'times' else what
 
         assert n0.get('F') is n1.get('F') is None and \
-               len(n0.visible[label]) == len(n1.visible[label]) == 0
+               len(n0._visible[label]) == len(n1._visible[label]) == 0
 
     @pytest.mark.parametrize('what',['increments','times','phases','fields'])                       # ToDo: discuss homogenizations
     def test_view_more(self,default,what):
@@ -116,7 +117,7 @@ class TestResult:
         label = 'increments' if what == 'times' else what
 
         assert n0.get('F') is n1.get('F') is None and \
-               len(n0.visible[label]) == len(n1.visible[label]) == 0
+               len(n0._visible[label]) == len(n1._visible[label]) == 0
 
     def test_view_invalid_incstimes(self,default):
         with pytest.raises(ValueError):
@@ -126,7 +127,23 @@ class TestResult:
     @pytest.mark.parametrize('sign',[+1,-1])
     def test_view_approxtimes(self,default,inc,sign):
         eps = sign*1e-3
-        assert [default.increments[inc]] == default.view(times=default.times[inc]+eps).visible['increments']
+        times = list(default._times.values())
+        assert [default._increments[inc]] == default.view(times=times[inc]+eps)._visible['increments']
+
+    def test_getters(self,default):
+        file_layout = default.get('non-existing',prune=False,flatten=False)
+        for i in default.increments:
+            increment = file_layout[f'increment_{i}']
+            fields = []
+            for p in default.phases:
+                phase = increment['phase'][p]
+                for f in default.fields:
+                    fields.append(phase[f])
+            for h in default.homogenizations:
+                homogenization = increment['homogenization'][h]
+                for f in default.fields:
+                    fields.append(homogenization[f])
+            assert len(fields) > 0
 
     def test_add_invalid(self,default):
         default.add_absolute('xxxx')
@@ -470,7 +487,7 @@ class TestResult:
                     assert np.array_equal(dset,cur[path])
                 else:
                     c = [_.decode() for _ in cur[path]]
-                    r = ['Unknown Phase Type'] + result.phases
+                    r = ['Unknown Phase Type'] + result._phases
                     assert c == r
                 grp = str(path).rpartition('/')[0]
                 for attr in ref[grp].attrs:
@@ -654,8 +671,8 @@ class TestResult:
                                       'check_compile_job1.hdf5',])
     def test_export_DADF5(self,res_path,tmp_path,fname):
         r = Result(res_path/fname)
-        r = r.view(phases = random.sample(r.phases,1))
-        r = r.view(increments = random.sample(r.increments,np.random.randint(1,len(r.increments))))
+        r = r.view(phases = random.sample(r._phases,1))
+        r = r.view(increments = random.sample(r._increments,np.random.randint(1,len(r._increments))))
         r.export_DADF5(tmp_path/fname)
         r_exp = Result(tmp_path/fname)
         assert str(r.get()) == str(r_exp.get())
