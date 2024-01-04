@@ -138,9 +138,9 @@ jobs:
         run: |
           cd petsc-${PETSC_VERSION}
           ./configure \
-          --with-fc='mpiifort -fc=ifx' \
-          --with-cc='mpiicc -cc=icx' \
-          --with-cxx='mpiicpc -cxx=icpx' \
+          --with-fc=mpiifx \
+          --with-cc=mpiicx \
+          --with-cxx=mpiicpx \
           --download-fftw --download-hdf5 --download-hdf5-fortran-bindings=1 --download-zlib
           make all
 
