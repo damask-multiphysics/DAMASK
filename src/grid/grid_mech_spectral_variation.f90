@@ -55,6 +55,7 @@ module grid_mechanical_spectral_variation
   DM   :: DM_mech
   SNES :: SNES_mech
   Vec  :: F_PETSc
+  Mat  :: Jac_PETSc
 
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
@@ -92,6 +93,28 @@ module grid_mechanical_spectral_variation
     grid_mechanical_spectral_variation_forward, &
     grid_mechanical_spectral_variation_updateCoords, &
     grid_mechanical_spectral_variation_restartWrite
+
+  interface MatCreateShell
+    subroutine MatCreateShell(comm,mloc,nloc,m,n,ctx,mat,ierr)
+      use petscmat
+      MPI_Comm :: comm
+      PetscInt :: mloc,nloc,m,n
+      integer :: ctx
+      Mat :: mat
+      PetscErrorCode :: ierr
+    end subroutine MatCreateShell
+  end interface MatCreateShell 
+
+  interface MatShellSetOperation
+    subroutine MatShellSetOperation(mat,op_num,op_callback,ierr)
+      use petscmat
+      PetscEnum :: op_num
+      external :: op_callback
+      Mat :: mat
+      PetscErrorCode :: ierr
+    end subroutine MatShellSetOperation
+  end interface MatShellSetOperation 
+
 
 contains
 
@@ -189,12 +212,21 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   CHKERRQ(err_PETSc)
   ! Yi: Jacobian matrix
   ! ================================================================================== 
-  ! call DMDASNESsetJacobianLocal(DM_mech,formJacobian,PETSC_NULL_SNES,err_PETSc)       
-  ! CHKERRQ(err_PETSc)
+  ! vcall DMDASNESsetJacobianLocal(DM_mech,formJacobian,PETSC_NULL_SNES,err_PETSc)       
+  ! vCHKERRQ(err_PETSc)
   ! ================================================================================== 
   ! Yi: test more general interface
+  call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,&
+                      product(cells(1:2))*cells3,product(cells(1:2))*cells3,&
+                      0,Jac_PETSc,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call MatShellSetOperation(Jac_PETSc,MATOP_MULT,GK_op,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call SNESSetJacobian(SNES_mech,Jac_PETSc,Jac_PETSc,PETSC_NULL_FUNCTION,0) 
+  CHKERRQ(err_PETSc)
   call DMSNESsetJacobianLocal(DM_mech,formJacobian,PETSC_NULL_SNES,err_PETSc)
   CHKERRQ(err_PETSc)    
+  ! ================================================================================== 
   call SNESsetConvergenceTest(SNES_mech,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc)    ! specify custom convergence check function "converged"
   CHKERRQ(err_PETSc)
   call SNESSetDM(SNES_mech,DM_mech,err_PETSc)
@@ -552,7 +584,10 @@ end subroutine formResidual
 !           2. infer local size F or Jac from DMDALocalInfo residual_subdomain?
 !--------------------------------------------------------------------------------------------------
 subroutine formJacobian(residual_subdomain,F,Jac_pre,Jac,dummy,err_PETSc)
-
+  
+#include <petsc/finclude/petscmat.h>
+  use petscmat
+  implicit None
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
     residual_subdomain                                                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: &
@@ -566,18 +601,19 @@ subroutine formJacobian(residual_subdomain,F,Jac_pre,Jac,dummy,err_PETSc)
 
   print*, 'in my jac'
   
-  call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,N_dof,N_dof,&
-          PETSC_NULL_INTEGER,Jac,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call MatShellSetOperation(Jac,MATOP_MULT,GK_op,err_PETSc)
-  CHKERRQ(err_PETSc)
+  !call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,N_dof,N_dof,0,Jac,err_PETSc)
+  !CHKERRQ(err_PETSc)
+  !call MatShellSetOperation(Jac,MATOP_MULT,GK_op,err_PETSc)
+  !CHKERRQ(err_PETSc)
   
+  Jac = Jac_PETSc
+  Jac_pre = Jac_PETSc
+
   ! for jac preconditioner
-  call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,N_dof,N_dof,&
-          PETSC_NULL_INTEGER,Jac_pre,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call MatShellSetOperation(Jac_pre,MATOP_MULT,GK_op,err_PETSc)
-  CHKERRQ(err_PETSc)
+  !call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,N_dof,N_dof,0,Jac_pre,err_PETSc)
+  !CHKERRQ(err_PETSc)
+  !call MatShellSetOperation(Jac_pre,MATOP_MULT,GK_op,err_PETSc)
+  !CHKERRQ(err_PETSc)
 
   print*, 'in my jac'
 
