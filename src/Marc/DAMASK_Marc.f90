@@ -280,7 +280,6 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   elseif (lovl == 6) then                                                                           ! stress requested by marc
     computationMode = materialpoint_CALCRESULTS
     if (cptim > theTime .or. inc /= theInc) then                                                    ! reached "convergence"
-      terminallyIll = .false.
       cycleCounter = -1                                                                             ! first calc step increments this to cycle = 0
       if (inc == 0) then                                                                            ! >> start of analysis <<
         lastIncConverged = .false.
@@ -299,7 +298,6 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
     else if ( timinc < theDelta ) then                                                              ! >> cutBack <<
       lastIncConverged = .false.
       outdatedByNewInc = .false.
-      terminallyIll = .false.
       cycleCounter = -1                                                                             ! first calc step increments this to cycle = 0
       print'(a,i6,1x,i2)', '<< HYPELA2 >> cutback detected..! ',m(1),nn
     end if                                                                                          ! convergence treatment end

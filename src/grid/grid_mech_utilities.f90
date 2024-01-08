@@ -113,9 +113,10 @@ end function utilities_maskedCompliance
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate constitutive response.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
+subroutine utilities_constitutiveResponse(broken, P,P_av,C_volAvg,C_minmaxAvg,&
                                           F,Delta_t,rotation_BC)
 
+  logical,        intent(out)                                       :: broken
   real(pREAL),    intent(out), dimension(3,3,3,3)                   :: C_volAvg, C_minmaxAvg        !< average stiffness
   real(pREAL),    intent(out), dimension(3,3)                       :: P_av                         !< average PK stress
   real(pREAL),    intent(out), dimension(3,3,cells(1),cells(2),cells3) :: P                         !< PK stress
@@ -123,19 +124,19 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   real(pREAL),    intent(in)                                        :: Delta_t                      !< loading time
   type(tRotation), intent(in),  optional                            :: rotation_BC                  !< rotation of load frame
 
-
   integer :: i
   integer(MPI_INTEGER_KIND) :: err_MPI
   real(pREAL), dimension(3,3,3,3) :: dPdF_max,      dPdF_min
   real(pREAL)                     :: dPdF_norm_max, dPdF_norm_min
   real(pREAL), dimension(2) :: valueAndRank                                                         !< pair of min/max norm of dPdF to synchronize min/max of dPdF
 
+
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
   flush(IO_STDOUT)
 
   homogenization_F  = reshape(F,[3,3,product(cells(1:2))*cells3])                                   ! set materialpoint target F to estimated field
 
-  call homogenization_mechanical_response(Delta_t,1,product(cells(1:2))*cells3)                     ! calculate P field
+  call homogenization_mechanical_response(broken,Delta_t,1,product(cells(1:2))*cells3)              ! calculate P field
 
   P = reshape(homogenization_P, [3,3,cells(1),cells(2),cells3])
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt

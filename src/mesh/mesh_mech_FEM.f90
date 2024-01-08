@@ -68,7 +68,7 @@ module mesh_mechanical_FEM
   character(len=pSTRLEN) :: incInfo
   real(pREAL), dimension(3,3) :: &
     P_av = 0.0_pREAL
-  logical :: ForwardData
+  logical :: ForwardData, broken
   real(pREAL), parameter :: eps = 1.0e-18_pREAL
 
   external :: &                                                                                     ! ToDo: write interfaces
@@ -311,7 +311,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
     call DMPlexVecSetClosure(mechanical_mesh,section,solution_local,cell,px_scal,5,err_PETSc)
     CHKERRQ(err_PETSc)
   end do
-  call utilities_constitutiveResponse(0.0_pREAL,devNull,.true.)
+  call utilities_constitutiveResponse(broken,0.0_pREAL,devNull,.true.)
 
 end subroutine FEM_mechanical_init
 
@@ -346,12 +346,11 @@ type(tSolutionState) function FEM_mechanical_solution( &
   CHKERRQ(err_PETSc)
   call SNESGetConvergedReason(mechanical_snes,reason,err_PETSc)                                     ! solution converged?
   CHKERRQ(err_PETSc)
-  terminallyIll = .false.
 
   if (reason < 1) then                                                                              ! 0: still iterating (will not occur), negative -> convergence error
     FEM_mechanical_solution%converged = .false.
     FEM_mechanical_solution%iterationsNeeded = num%itmax
-  else                                                                                              ! >= 1 proper convergence (or terminally ill)
+  else                                                                                              ! >= 1 proper convergence (or broken)
     FEM_mechanical_solution%converged = .true.
     call SNESGetIterationNumber(mechanical_snes,FEM_mechanical_solution%iterationsNeeded,err_PETSc)
     CHKERRQ(err_PETSc)
@@ -459,8 +458,8 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call utilities_constitutiveResponse(params%Delta_t,P_av,ForwardData)
-  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+  call utilities_constitutiveResponse(broken,params%Delta_t,P_av,ForwardData)
+  call MPI_Allreduce(MPI_IN_PLACE,broken,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
   ForwardData = .false.
 
@@ -748,7 +747,7 @@ subroutine FEM_mechanical_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reaso
   divTol = max(maxval(abs(P_av(1:dimPlex,1:dimPlex)))*num%eps_struct_rtol,num%eps_struct_atol)
   call SNESConvergedDefault(snes_local,PETScIter,xnorm,snorm,fnorm/divTol,reason,dummy,err_PETSc)
   CHKERRQ(err_PETSc)
-  if (terminallyIll) reason = SNES_DIVERGED_FUNCTION_DOMAIN
+  if (broken) reason = SNES_DIVERGED_FUNCTION_DOMAIN
   print'(/,1x,a,a,i0,a,f0.3)', trim(incInfo), &
                   ' @ Iteration ',PETScIter,' mechanical residual norm = ',fnorm/divTol
   print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &

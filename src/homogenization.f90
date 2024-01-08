@@ -46,9 +46,6 @@ module homogenization
     thermal_active, &
     damage_active
 
-  logical, public :: &
-    terminallyIll = .false.                                                                         !< at least one material point is terminally ill
-
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
   real(pREAL),   dimension(:,:,:),     allocatable, public :: &
@@ -213,8 +210,9 @@ end subroutine homogenization_init
 !--------------------------------------------------------------------------------------------------
 !> @brief
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
+subroutine homogenization_mechanical_response(broken,Delta_t,cell_start,cell_end)
 
+  logical, intent(out) :: broken
   real(pREAL), intent(in) :: Delta_t                                                                !< time increment
   integer, intent(in) :: &
     cell_start, cell_end
@@ -226,8 +224,8 @@ subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
     doneAndHappy
 
 
-  !$OMP PARALLEL
-  !$OMP DO PRIVATE(en,ho,co,converged,doneAndHappy)
+  broken = .false.
+  !$OMP PARALLEL DO PRIVATE(en,ho,co,converged,doneAndHappy)
   do ce = cell_start, cell_end
 
     en = material_entry_homogenization(ce)
@@ -241,7 +239,7 @@ subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
 
     doneAndHappy = [.false.,.true.]
 
-    convergenceLooping: do while (.not. (terminallyIll .or. doneAndHappy(1)))
+    convergenceLooping: do while (.not. (broken .or. doneAndHappy(1)))
 
       call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
       converged = all([(phase_mechanical_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
@@ -252,17 +250,22 @@ subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
         doneAndHappy = [.true.,.false.]
       end if
     end do convergenceLooping
-
+    if (.not. converged) then
+      if (.not. broken) print*, ' Cell ', ce, ' failed (mechanics)'
+      broken = .true.
+    end if
     converged = converged .and. all([(phase_damage_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
 
     if (.not. converged) then
-      if (.not. terminallyIll) print*, ' Cell ', ce, ' terminally ill'
-      terminallyIll = .true.
+      if (.not. broken) print*, ' Cell ', ce, ' failed (damage)'
+      broken = .true.
     end if
   end do
-  !$OMP END DO
+  !$OMP END PARALLEL DO
 
-  !$OMP DO PRIVATE(ho)
+  if (broken) return
+
+  !$OMP PARALLEL DO PRIVATE(ho)
   do ce = cell_start, cell_end
       ho = material_ID_homogenization(ce)
       do co = 1, homogenization_Nconstituents(ho)
@@ -270,8 +273,7 @@ subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
       end do
       call mechanical_homogenize(Delta_t,ce)
   end do
-  !$OMP END DO
-  !$OMP END PARALLEL
+  !$OMP END PARALLEL DO
 
 end subroutine homogenization_mechanical_response
 
@@ -279,8 +281,10 @@ end subroutine homogenization_mechanical_response
 !--------------------------------------------------------------------------------------------------
 !> @brief
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_thermal_response(Delta_t,cell_start,cell_end)
+subroutine homogenization_thermal_response(broken, &
+                                           Delta_t,cell_start,cell_end)
 
+  logical, intent(out) :: broken
   real(pREAL), intent(in) :: Delta_t                                                                !< time increment
   integer, intent(in) :: &
     cell_start, cell_end
@@ -289,18 +293,20 @@ subroutine homogenization_thermal_response(Delta_t,cell_start,cell_end)
     co, ce, ho
 
 
+  broken = .false.
   !$OMP PARALLEL DO PRIVATE(ho)
   do ce = cell_start, cell_end
-    if (terminallyIll) continue
+    if (broken) continue
     ho = material_ID_homogenization(ce)
     do co = 1, homogenization_Nconstituents(ho)
       if (.not. phase_thermal_constitutive(Delta_t,material_ID_phase(co,ce),material_entry_phase(co,ce))) then
-        if (.not. terminallyIll) print*, ' Cell ', ce, ' terminally ill'
-        terminallyIll = .true.
+        if (.not. broken) print*, ' Cell ', ce, ' failed (thermal)'
+        broken = .true.
       end if
     end do
   end do
   !$OMP END PARALLEL DO
+  broken = broken
 
 end subroutine homogenization_thermal_response
 
