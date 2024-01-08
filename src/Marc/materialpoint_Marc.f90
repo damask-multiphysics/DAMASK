@@ -37,6 +37,8 @@ module materialpoint_Marc
 
   integer,                                       public :: &
     cycleCounter = 0                                                                                !< needs description
+  logical,                                       public :: &
+    broken = .false.                                                                                !< needs description
 
   integer, parameter,                            public :: &
     materialpoint_CALCRESULTS     = 2**0, &
@@ -129,9 +131,8 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
   integer                                             elCP, &                                       ! crystal plasticity element number
                                                       i, j, k, l, m, n, ph, homog, mySource,ce
 
-  real(pREAL), parameter ::                          ODD_STRESS    = 1e15_pREAL, &                  !< return value for stress if terminallyIll
-                                                     ODD_JACOBIAN  = 1e50_pREAL                     !< return value for jacobian if terminallyIll
-
+  real(pREAL), parameter ::                          ODD_STRESS    = 1e15_pREAL, &                  !< return value for stress if broken
+                                                     ODD_JACOBIAN  = 1e50_pREAL                     !< return value for jacobian if broken
 
   elCP = discretization_Marc_FEM2DAMASK_elem(elFE)
   ce   = discretization_Marc_FEM2DAMASK_cell(ip,elFE)
@@ -149,17 +150,17 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
 
   if (iand(mode, materialpoint_CALCRESULTS) /= 0) then
 
-    validCalculation: if (terminallyIll) then
+    validCalculation: if (broken) then
       call random_number(rnd)
       if (rnd < 0.5_pREAL) rnd = rnd - 1.0_pREAL
       materialpoint_cs(1:6,ip,elCP)        = ODD_STRESS * rnd
       materialpoint_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_eye(6)
 
     else validCalculation
-      call homogenization_mechanical_response(dt,(elCP-1)*discretization_nIPs + ip, &
-                                                 (elCP-1)*discretization_nIPs + ip)
+      call homogenization_mechanical_response(broken, &
+                                              dt,(elCP-1)*discretization_nIPs + ip, (elCP-1)*discretization_nIPs + ip)
 
-      terminalIllness: if (terminallyIll) then
+      terminalIllness: if (broken) then
 
         call random_number(rnd)
         if (rnd < 0.5_pREAL) rnd = rnd - 1.0_pREAL

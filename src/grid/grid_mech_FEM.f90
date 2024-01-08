@@ -83,8 +83,8 @@ module grid_mechanical_FEM
   real(pREAL) :: &
     err_BC                                                                                          !< deviation from stress BC
 
-  integer :: &
-    totalIter = 0                                                                                   !< total iteration in current increment
+  integer :: totalIter = 0                                                                          !< total iteration in current increment
+  logical :: broken
 
   public :: &
     grid_mechanical_FEM_init, &
@@ -271,7 +271,7 @@ subroutine grid_mechanical_FEM_init(num_grid)
   end if restartRead
 
   call utilities_updateCoords(F)
-  call utilities_constitutiveResponse(P_current,P_av,C_volAvg,devNull, &                            ! stress field, stress avg, global average of stiffness and (min+max)/2
+  call utilities_constitutiveResponse(broken,P_current,P_av,C_volAvg,devNull, &                     ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       F, &                                                          ! target F
                                       0.0_pREAL)                                                    ! time increment
   call DMDAVecRestoreArrayF90(DM_mech,u_PETSc,u,err_PETSc)
@@ -325,8 +325,7 @@ function grid_mechanical_FEM_solution(incInfoIn) result(solution)
 
   solution%converged = reason > 0
   solution%iterationsNeeded = totalIter
-  solution%termIll = terminallyIll
-  terminallyIll = .false.
+  solution%termIll = broken
   P_aim = merge(P_av,P_aim,params%stress_mask)
 
 end function grid_mechanical_FEM_solution
@@ -336,8 +335,8 @@ end function grid_mechanical_FEM_solution
 !> @brief forwarding routine
 !> @details find new boundary conditions and best F estimate for end of current timestep
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remaining,&
-                                 deformation_BC,stress_BC,rotation_BC)
+subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remaining, &
+                                       deformation_BC,stress_BC,rotation_BC)
 
   logical,                  intent(in) :: &
     cutBack, &
@@ -493,7 +492,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,e
   BCTol  = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
   if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL)) &
-       .or. terminallyIll) then
+       .or. broken) then
     reason = 1
   elseif (totalIter >= num%itmax) then
     reason = -1
@@ -571,10 +570,10 @@ subroutine formResidual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call utilities_constitutiveResponse(P_current,&
+  call utilities_constitutiveResponse(broken,P_current,&
                                       P_av,C_volAvg,devNull, &
                                       F,params%Delta_t,params%rotation_BC)
-  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+  call MPI_Allreduce(MPI_IN_PLACE,broken,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
 !--------------------------------------------------------------------------------------------------
