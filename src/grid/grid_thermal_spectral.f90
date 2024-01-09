@@ -25,6 +25,7 @@ module grid_thermal_spectral
   use homogenization
   use YAML_types
   use config
+  use constants
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
@@ -322,9 +323,11 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
 
   integer :: i, j, k, ce
   real(pREAL), dimension(3,cells(1),cells(2),cells3) :: vectorField
+  integer(kind(STATUS_OK)) :: status
 
 
-  call homogenization_thermal_response(broken,Delta_t_,1,product(cells(1:2))*cells3)
+  call homogenization_thermal_response(status,Delta_t_,1,product(cells(1:2))*cells3)
+  broken = STATUS_OK /= status
 
   associate(T => x_scal)
     vectorField = utilities_ScalarGradient(T)

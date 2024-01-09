@@ -257,7 +257,7 @@ subroutine homogenization_mechanical_response(status,Delta_t,cell_start,cell_end
     converged = converged .and. all([(phase_damage_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
 
     if (.not. converged) then
-      if (status == STATUS_OK) print*, ' Cell ', ce, ' failed (damage)'
+      if (STATUS_OK == status) print*, ' Cell ', ce, ' failed (damage)'
       status = STATUS_FAILED_DAMAGE
     end if
   end do
@@ -281,10 +281,10 @@ end subroutine homogenization_mechanical_response
 !--------------------------------------------------------------------------------------------------
 !> @brief
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_thermal_response(broken, &
+subroutine homogenization_thermal_response(status, &
                                            Delta_t,cell_start,cell_end)
 
-  logical, intent(out) :: broken
+  integer(kind(STATUS_OK)), intent(out) :: status
   real(pREAL), intent(in) :: Delta_t                                                                !< time increment
   integer, intent(in) :: &
     cell_start, cell_end
@@ -293,20 +293,19 @@ subroutine homogenization_thermal_response(broken, &
     co, ce, ho
 
 
-  broken = .false.
+  status = STATUS_OK
   !$OMP PARALLEL DO PRIVATE(ho)
   do ce = cell_start, cell_end
-    if (broken) continue
+    if (STATUS_OK /= status) continue
     ho = material_ID_homogenization(ce)
     do co = 1, homogenization_Nconstituents(ho)
       if (.not. phase_thermal_constitutive(Delta_t,material_ID_phase(co,ce),material_entry_phase(co,ce))) then
-        if (.not. broken) print*, ' Cell ', ce, ' failed (thermal)'
-        broken = .true.
+        if (STATUS_OK == status) print*, ' Cell ', ce, ' failed (thermal)'
+        status = STATUS_PHASE_THERMAL
       end if
     end do
   end do
   !$OMP END PARALLEL DO
-  broken = broken
 
 end subroutine homogenization_thermal_response
 
