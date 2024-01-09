@@ -28,7 +28,7 @@ module grid_mechanical_FEM
   use homogenization
   use discretization
   use discretization_grid
-
+  use constants
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
@@ -84,7 +84,7 @@ module grid_mechanical_FEM
     err_BC                                                                                          !< deviation from stress BC
 
   integer :: totalIter = 0                                                                          !< total iteration in current increment
-  logical :: broken
+  integer(kind(STATUS_OK)) :: status
 
   public :: &
     grid_mechanical_FEM_init, &
@@ -271,7 +271,7 @@ subroutine grid_mechanical_FEM_init(num_grid)
   end if restartRead
 
   call utilities_updateCoords(F)
-  call utilities_constitutiveResponse(broken,P_current,P_av,C_volAvg,devNull, &                     ! stress field, stress avg, global average of stiffness and (min+max)/2
+  call utilities_constitutiveResponse(status,P_current,P_av,C_volAvg,devNull, &                     ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       F, &                                                          ! target F
                                       0.0_pREAL)                                                    ! time increment
   call DMDAVecRestoreArrayF90(DM_mech,u_PETSc,u,err_PETSc)
@@ -325,7 +325,7 @@ function grid_mechanical_FEM_solution(incInfoIn) result(solution)
 
   solution%converged = reason > 0
   solution%iterationsNeeded = totalIter
-  solution%termIll = broken
+  solution%termIll = STATUS_OK /= status
   P_aim = merge(P_av,P_aim,params%stress_mask)
 
 end function grid_mechanical_FEM_solution
@@ -492,7 +492,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,e
   BCTol  = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
   if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL)) &
-       .or. broken) then
+       .or. STATUS_OK /= status) then
     reason = 1
   elseif (totalIter >= num%itmax) then
     reason = -1
@@ -570,10 +570,10 @@ subroutine formResidual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call utilities_constitutiveResponse(broken,P_current,&
+  call utilities_constitutiveResponse(status,P_current,&
                                       P_av,C_volAvg,devNull, &
                                       F,params%Delta_t,params%rotation_BC)
-  call MPI_Allreduce(MPI_IN_PLACE,broken,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+  call MPI_Allreduce(MPI_IN_PLACE,status,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
 !--------------------------------------------------------------------------------------------------
