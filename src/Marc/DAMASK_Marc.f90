@@ -16,8 +16,8 @@
 #endif
 
 #include "../prec.f90"
-#include "../parallelization.f90"
 #include "../constants.f90"
+#include "../parallelization.f90"
 #include "../misc.f90"
 #include "../IO.f90"
 #include "../YAML_types.f90"
