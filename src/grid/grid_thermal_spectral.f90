@@ -327,7 +327,7 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
 
 
   call homogenization_thermal_response(status,Delta_t_,1,product(cells(1:2))*cells3)
-  broken = STATUS_OK /= status
+  broken = status /= STATUS_OK
 
   associate(T => x_scal)
     vectorField = utilities_ScalarGradient(T)

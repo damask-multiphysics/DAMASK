@@ -239,7 +239,7 @@ subroutine homogenization_mechanical_response(status,Delta_t,cell_start,cell_end
 
     doneAndHappy = [.false.,.true.]
 
-    convergenceLooping: do while (.not. (status /= STATUS_OK .or. doneAndHappy(1)))
+    convergenceLooping: do while (status == STATUS_OK .and. .not. doneAndHappy(1))
 
       call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
       converged = all([(phase_mechanical_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
@@ -257,7 +257,7 @@ subroutine homogenization_mechanical_response(status,Delta_t,cell_start,cell_end
     converged = converged .and. all([(phase_damage_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
 
     if (.not. converged) then
-      if (STATUS_OK == status) print*, ' Cell ', ce, ' failed (damage)'
+      if (status == STATUS_OK) print*, ' Cell ', ce, ' failed (damage)'
       status = STATUS_FAILED_DAMAGE
     end if
   end do
@@ -296,11 +296,11 @@ subroutine homogenization_thermal_response(status, &
   status = STATUS_OK
   !$OMP PARALLEL DO PRIVATE(ho)
   do ce = cell_start, cell_end
-    if (STATUS_OK /= status) continue
+    if (status /= STATUS_OK) continue
     ho = material_ID_homogenization(ce)
     do co = 1, homogenization_Nconstituents(ho)
       if (.not. phase_thermal_constitutive(Delta_t,material_ID_phase(co,ce),material_entry_phase(co,ce))) then
-        if (STATUS_OK == status) print*, ' Cell ', ce, ' failed (thermal)'
+        if (status == STATUS_OK) print*, ' Cell ', ce, ' failed (thermal)'
         status = STATUS_PHASE_THERMAL
       end if
     end do

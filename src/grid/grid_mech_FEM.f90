@@ -325,7 +325,7 @@ function grid_mechanical_FEM_solution(incInfoIn) result(solution)
 
   solution%converged = reason > 0
   solution%iterationsNeeded = totalIter
-  solution%termIll = STATUS_OK /= status
+  solution%termIll = status /= STATUS_OK
   P_aim = merge(P_av,P_aim,params%stress_mask)
 
 end function grid_mechanical_FEM_solution
@@ -492,7 +492,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,e
   BCTol  = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
   if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL)) &
-       .or. STATUS_OK /= status) then
+       .or. status /= STATUS_OK) then
     reason = 1
   elseif (totalIter >= num%itmax) then
     reason = -1

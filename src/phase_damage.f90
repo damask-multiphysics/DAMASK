@@ -135,7 +135,7 @@ module function phase_damage_constitutive(Delta_t,co,ce) result(converged_)
   ph = material_ID_phase(co,ce)
   en = material_entry_phase(co,ce)
 
-  converged_ = STATUS_OK == integrateDamageState(Delta_t,ph,en)
+  converged_ = integrateDamageState(Delta_t,ph,en) == STATUS_OK
 
 end function phase_damage_constitutive
 

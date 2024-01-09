@@ -135,7 +135,7 @@ subroutine utilities_constitutiveResponse(broken, Delta_t,P_av,forwardData)
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
 
   call homogenization_mechanical_response(status,Delta_t,1,mesh_maxNips*mesh_NcpElems)              ! calculate P field
-  broken = STATUS_OK /= status
+  broken = status /= STATUS_OK
   cutBack = .false.
 
   P_av = sum(homogenization_P,dim=3) * wgt
