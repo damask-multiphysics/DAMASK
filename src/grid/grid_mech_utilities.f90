@@ -18,7 +18,7 @@ module grid_mech_utilities
   use discretization
   use spectral_utilities
   use homogenization
-
+  use constants
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
@@ -129,6 +129,7 @@ subroutine utilities_constitutiveResponse(broken, P,P_av,C_volAvg,C_minmaxAvg,&
   real(pREAL), dimension(3,3,3,3) :: dPdF_max,      dPdF_min
   real(pREAL)                     :: dPdF_norm_max, dPdF_norm_min
   real(pREAL), dimension(2) :: valueAndRank                                                         !< pair of min/max norm of dPdF to synchronize min/max of dPdF
+  integer(kind(STATUS_OK)) :: status
 
 
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
@@ -136,7 +137,8 @@ subroutine utilities_constitutiveResponse(broken, P,P_av,C_volAvg,C_minmaxAvg,&
 
   homogenization_F  = reshape(F,[3,3,product(cells(1:2))*cells3])                                   ! set materialpoint target F to estimated field
 
-  call homogenization_mechanical_response(broken,Delta_t,1,product(cells(1:2))*cells3)              ! calculate P field
+  call homogenization_mechanical_response(status,Delta_t,1,product(cells(1:2))*cells3)              ! calculate P field
+  broken = STATUS_OK /= status
 
   P = reshape(homogenization_P, [3,3,cells(1),cells(2),cells3])
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt

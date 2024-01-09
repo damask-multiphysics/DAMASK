@@ -210,9 +210,9 @@ end subroutine homogenization_init
 !--------------------------------------------------------------------------------------------------
 !> @brief
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_mechanical_response(broken,Delta_t,cell_start,cell_end)
+subroutine homogenization_mechanical_response(status,Delta_t,cell_start,cell_end)
 
-  logical, intent(out) :: broken
+  integer(kind(STATUS_OK)), intent(out) :: status
   real(pREAL), intent(in) :: Delta_t                                                                !< time increment
   integer, intent(in) :: &
     cell_start, cell_end
@@ -224,7 +224,7 @@ subroutine homogenization_mechanical_response(broken,Delta_t,cell_start,cell_end
     doneAndHappy
 
 
-  broken = .false.
+  status = STATUS_OK
   !$OMP PARALLEL DO PRIVATE(en,ho,co,converged,doneAndHappy)
   do ce = cell_start, cell_end
 
@@ -239,7 +239,7 @@ subroutine homogenization_mechanical_response(broken,Delta_t,cell_start,cell_end
 
     doneAndHappy = [.false.,.true.]
 
-    convergenceLooping: do while (.not. (broken .or. doneAndHappy(1)))
+    convergenceLooping: do while (.not. (status /= STATUS_OK .or. doneAndHappy(1)))
 
       call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
       converged = all([(phase_mechanical_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
@@ -251,19 +251,19 @@ subroutine homogenization_mechanical_response(broken,Delta_t,cell_start,cell_end
       end if
     end do convergenceLooping
     if (.not. converged) then
-      if (.not. broken) print*, ' Cell ', ce, ' failed (mechanics)'
-      broken = .true.
+      if (status == STATUS_OK) print*, ' Cell ', ce, ' failed (mechanics)'
+      status = STATUS_FAILED_MECHANICAL
     end if
     converged = converged .and. all([(phase_damage_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
 
     if (.not. converged) then
-      if (.not. broken) print*, ' Cell ', ce, ' failed (damage)'
-      broken = .true.
+      if (status == STATUS_OK) print*, ' Cell ', ce, ' failed (damage)'
+      status = STATUS_FAILED_DAMAGE
     end if
   end do
   !$OMP END PARALLEL DO
 
-  if (broken) return
+  if (status /= STATUS_OK) return
 
   !$OMP PARALLEL DO PRIVATE(ho)
   do ce = cell_start, cell_end

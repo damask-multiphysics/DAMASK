@@ -22,6 +22,7 @@ module FEM_utilities
   use discretization_mesh
   use homogenization
   use FEM_quadrature
+  use constants
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
@@ -128,11 +129,13 @@ subroutine utilities_constitutiveResponse(broken, Delta_t,P_av,forwardData)
   real(pREAL),intent(out), dimension(3,3) :: P_av                                                   !< average PK stress
 
   integer(MPI_INTEGER_KIND) :: err_MPI
+  integer(kind(STATUS_OK)) :: status
 
 
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
 
-  call homogenization_mechanical_response(broken,Delta_t,1,mesh_maxNips*mesh_NcpElems)              ! calculate P field
+  call homogenization_mechanical_response(status,Delta_t,1,mesh_maxNips*mesh_NcpElems)              ! calculate P field
+  broken = STATUS_OK /= status
   cutBack = .false.
 
   P_av = sum(homogenization_P,dim=3) * wgt
