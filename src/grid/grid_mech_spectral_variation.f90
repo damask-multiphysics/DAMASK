@@ -644,32 +644,34 @@ end subroutine formJacobian
 !--------------------------------------------------------------------------------------------------
 !> @brief Yi: matrix-free operation GK_op -> GK_op(dF) = Fourier_inv( G_hat : Fourier(K:dF) )
 ! implementation ref: https://github.com/tdegeus/GooseFFT/blob/master/finite-strain/hyper-elasticity.py
+!                     petsc/src/ts/tutorial/ex22f_mf.f90, array read-write procedure similar as grid_FEM, grid_polar
 !--------------------------------------------------------------------------------------------------
-subroutine GK_op(Jac,dF,output,err_PETSc)
-  real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: &
+subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
+
+  DM                                   :: dm_local ! Yi: later for is,ie
+  Vec                                  :: dF_local, output_local
+  Mat                                  :: Jac
+  PetscErrorCode                       :: err_PETSc
+
+  real(pREAL), pointer,dimension(:,:,:,:) :: dF_scal, output_scal
+
+  real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: &
     dF                                                                                               
-  real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(out) :: &
+  real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: &
     output                                                                                               
   real(pREAL),  dimension(3,3) :: &
     deltaF_aim = 0.0_pREAL
 
-  Mat                                  :: Jac
-  PetscErrorCode                       :: err_PETSc
-
   integer :: i, j, k, e
 
-  print*, 'start GK op'
-  call MatView(Jac,PETSC_VIEWER_STDOUT_WORLD,err_PETSc)
-  deltaF_aim = 0.0_pREAL
+  ! Yi: maybe used in parallel mode?
+  ! call SNESGetDM(SNES_mech,dm_local,err_PETSc)
+  ! CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayReadF90(DM_mech,dF_local,dF_scal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  dF = reshape(dF_scal, [3,3,cells(1),cells(2),cells3])
+
   ! ===== K:dF operartor =====
-  print*, 'in GK op'
-  !print*, shape(dF)
-  !e = 0
-  !e = 1
-  !i = cells(1)-1
-  !j = cells(2)-1
-  !k = cells3
-  !output(1:3,1:3,i,j,k) = dF(1:3,1:3,i,j,k)
   e = 0
   do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
     e = e + 1
@@ -678,15 +680,19 @@ subroutine GK_op(Jac,dF,output,err_PETSc)
     !! ToCheck: do we need multiple transpose? in GooseFFT, K_dF = trans2(ddot42(K4, trans2(dF)))
     !! trans2: ij -> ji, ddot42 (ijkl,lk) -> ij
     !! here we contracted transpose in ddot42 and trans2
-    !print*, dF(2,2,i-1,j-1,k)
-    !print*, 'dPdF', homogenization_dPdF(2,2,2,2,e)
-    !print*, i,j,k
   end do; end do; end do
-  print*, 'in GK op'
 
   ! ===== G* operator =====
   output = utilities_G_Convolution(output,deltaF_aim)
-  print*, 'end GK op'
+
+  call DMDAVecGetArrayF90(DM_mech,output_local,output_scal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  output_scal = reshape(output, [9,cells(1),cells(2),cells3])
+  call DMDAVecRestoreArrayF90(DM_mech,output_local,output_scal,err_PETSc)
+  CHKERRQ(err_PETSc)
+
+  call DMDAVecRestoreArrayF90(DM_mech,dF_local,dF_scal,err_PETSc)
+  CHKERRQ(err_PETSc)
   
 end subroutine GK_op
 
