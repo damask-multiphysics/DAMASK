@@ -115,6 +115,26 @@ module grid_mechanical_spectral_variation
     end subroutine MatShellSetOperation
   end interface MatShellSetOperation 
 
+  interface SNESSetJacobian
+    subroutine SNESSetJacobian(snes_mech,A,P,jac_callback,ctx,ierr)
+      use petscsnes
+      SNES :: snes_mech
+      Mat :: A, P
+      external :: jac_callback
+      integer :: ctx
+      PetscErrorCode :: ierr
+    end subroutine SNESSetJacobian
+  end interface SNESSetJacobian
+
+  !interface DMDASNESSetJacobianLocal
+  !  subroutine DMDASNESSetJacobianLocal(dm_mech,jac_callback,ctx,ierr)
+  !    use petscdmda
+  !    DM :: dm_mech
+  !    external :: jac_callback
+  !    integer :: ctx
+  !    PetscErrorCode :: ierr
+  !  end subroutine DMDASNESSetJacobianLocal
+  !end interface DMDASNESSetJacobianLocal
 
 contains
 
@@ -217,15 +237,15 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   ! ================================================================================== 
   ! Yi: test more general interface
   call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,&
-                      product(cells(1:2))*cells3,product(cells(1:2))*cells3,&
+                      9*product(cells(1:2))*cells3,9*product(cells(1:2))*cells3,&
                       0,Jac_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatShellSetOperation(Jac_PETSc,MATOP_MULT,GK_op,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESSetJacobian(SNES_mech,Jac_PETSc,Jac_PETSc,PETSC_NULL_FUNCTION,0) 
+  call SNESSetJacobian(SNES_mech,Jac_PETSc,Jac_PETSc,PETSC_NULL_FUNCTION,0,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMSNESsetJacobianLocal(DM_mech,formJacobian,PETSC_NULL_SNES,err_PETSc)
-  CHKERRQ(err_PETSc)    
+  CHKERRQ(err_PETSc)
   ! ================================================================================== 
   call SNESsetConvergenceTest(SNES_mech,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc)    ! specify custom convergence check function "converged"
   CHKERRQ(err_PETSc)
@@ -539,6 +559,8 @@ subroutine formResidual(residual_subdomain, F, &
   integer(MPI_INTEGER_KIND) :: err_MPI
 
 
+  print*, 'start my rhs'
+
   call SNESGetNumberFunctionEvals(SNES_mech,nfuncs,err_PETSc)
   CHKERRQ(err_PETSc)
   call SNESGetIterationNumber(SNES_mech,PETScIter,err_PETSc)
@@ -572,7 +594,7 @@ subroutine formResidual(residual_subdomain, F, &
 
   r = utilities_G_Convolution(r,params%rotation_BC%rotate(deltaF_aim,active=.true.))
 
-  print*, 'in my rhs'
+  print*, 'end my rhs'
 
 end subroutine formResidual
 
@@ -606,8 +628,8 @@ subroutine formJacobian(residual_subdomain,F,Jac_pre,Jac,dummy,err_PETSc)
   !call MatShellSetOperation(Jac,MATOP_MULT,GK_op,err_PETSc)
   !CHKERRQ(err_PETSc)
   
-  Jac = Jac_PETSc
-  Jac_pre = Jac_PETSc
+  !Jac = Jac_PETSc
+  !Jac_pre = Jac_PETSc
 
   ! for jac preconditioner
   !call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,N_dof,N_dof,0,Jac_pre,err_PETSc)
@@ -636,21 +658,35 @@ subroutine GK_op(Jac,dF,output,err_PETSc)
 
   integer :: i, j, k, e
 
+  print*, 'start GK op'
+  call MatView(Jac,PETSC_VIEWER_STDOUT_WORLD,err_PETSc)
   deltaF_aim = 0.0_pREAL
   ! ===== K:dF operartor =====
+  print*, 'in GK op'
+  !print*, shape(dF)
+  !e = 0
+  !e = 1
+  !i = cells(1)-1
+  !j = cells(2)-1
+  !k = cells3
+  !output(1:3,1:3,i,j,k) = dF(1:3,1:3,i,j,k)
   e = 0
   do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
     e = e + 1
     output(1:3,1:3,i,j,k) = &
       transpose(math_mul3333xx33(homogenization_dPdF(1:3,1:3,1:3,1:3,e), dF(1:3,1:3,i,j,k)))
-    ! ToCheck: do we need multiple transpose? in GooseFFT, K_dF = trans2(ddot42(K4, trans2(dF)))
-    ! trans2: ij -> ji, ddot42 (ijkl,lk) -> ij
-    ! here we contracted transpose in ddot42 and trans2
+    !! ToCheck: do we need multiple transpose? in GooseFFT, K_dF = trans2(ddot42(K4, trans2(dF)))
+    !! trans2: ij -> ji, ddot42 (ijkl,lk) -> ij
+    !! here we contracted transpose in ddot42 and trans2
+    !print*, dF(2,2,i-1,j-1,k)
+    !print*, 'dPdF', homogenization_dPdF(2,2,2,2,e)
+    !print*, i,j,k
   end do; end do; end do
+  print*, 'in GK op'
 
   ! ===== G* operator =====
   output = utilities_G_Convolution(output,deltaF_aim)
-  print*, 'in GK op'
+  print*, 'end GK op'
   
 end subroutine GK_op
 
