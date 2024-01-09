@@ -121,21 +121,19 @@ end subroutine FEM_utilities_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates constitutive response
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_constitutiveResponse(broken, Delta_t,P_av,forwardData)
+subroutine utilities_constitutiveResponse(status, Delta_t,P_av,forwardData)
 
-  logical,     intent(out)                :: broken
+  integer(kind(STATUS_OK)),  intent(out)  :: status
   real(pREAL), intent(in)                 :: Delta_t                                                !< loading time
   logical,     intent(in)                 :: forwardData                                            !< age results
   real(pREAL),intent(out), dimension(3,3) :: P_av                                                   !< average PK stress
 
   integer(MPI_INTEGER_KIND) :: err_MPI
-  integer(kind(STATUS_OK)) :: status
 
 
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
 
   call homogenization_mechanical_response(status,Delta_t,1,mesh_maxNips*mesh_NcpElems)              ! calculate P field
-  broken = status /= STATUS_OK
   cutBack = .false.
 
   P_av = sum(homogenization_P,dim=3) * wgt
