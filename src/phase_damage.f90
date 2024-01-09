@@ -135,7 +135,7 @@ module function phase_damage_constitutive(Delta_t,co,ce) result(converged_)
   ph = material_ID_phase(co,ce)
   en = material_entry_phase(co,ce)
 
-  converged_ = .not. integrateDamageState(Delta_t,ph,en)
+  converged_ = STATUS_OK == integrateDamageState(Delta_t,ph,en)
 
 end function phase_damage_constitutive
 
@@ -214,13 +214,13 @@ end function phase_f_phi
 !> @brief integrate stress, state with adaptive 1st order explicit Euler method
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
-function integrateDamageState(Delta_t,ph,en) result(broken)
+function integrateDamageState(Delta_t,ph,en) result(status)
 
   real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: &
     ph, &
     en
-  logical :: broken
+  integer(kind(STATUS_OK)) :: status
 
   integer :: &
     NiterationState, &                                                                              !< number of iterations in state loop
@@ -235,13 +235,13 @@ function integrateDamageState(Delta_t,ph,en) result(broken)
 
 
   if (damageState(ph)%sizeState == 0) then
-    broken = .false.
+    status = STATUS_OK
     return
   end if
 
   converged_ = .true.
-  broken = phase_damage_collectDotState(ph,en)
-  if (broken) return
+  status = phase_damage_collectDotState(ph,en)
+  if (status /= STATUS_OK) return
 
   size_so = damageState(ph)%sizeDotState
   damageState(ph)%state(1:size_so,en) = damageState(ph)%state0  (1:size_so,en) &
@@ -253,8 +253,8 @@ function integrateDamageState(Delta_t,ph,en) result(broken)
     if (nIterationState > 1) source_dotState(1:size_so,2) = source_dotState(1:size_so,1)
     source_dotState(1:size_so,1) = damageState(ph)%dotState(:,en)
 
-    broken = phase_damage_collectDotState(ph,en)
-    if (broken) exit iteration
+    status = phase_damage_collectDotState(ph,en)
+    if (status /= STATUS_OK) exit iteration
 
 
       zeta = damper(damageState(ph)%dotState(:,en),source_dotState(1:size_so,1),source_dotState(1:size_so,2))
@@ -270,14 +270,13 @@ function integrateDamageState(Delta_t,ph,en) result(broken)
 
 
     if (converged_) then
-      broken = phase_damage_deltaState(mechanical_F_e(ph,en),ph,en)
+      status = phase_damage_deltaState(mechanical_F_e(ph,en),ph,en)
       exit iteration
     end if
 
   end do iteration
 
-  broken = broken .or. .not. converged_
-
+  if (.not. converged_) status = STATUS_FAILED_DAMAGE_STATE
 
   contains
   !--------------------------------------------------------------------------------------------------
@@ -361,15 +360,15 @@ end subroutine damage_result
 !--------------------------------------------------------------------------------------------------
 !> @brief Constitutive equation for calculating the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-function phase_damage_collectDotState(ph,en) result(broken)
+function phase_damage_collectDotState(ph,en) result(status)
 
   integer, intent(in) :: &
     ph, &
     en                                                                                         !< counter in source loop
-  logical :: broken
+  integer(kind(STATUS_OK)) :: status
 
 
-  broken = .false.
+  status = STATUS_OK
 
   if (damageState(ph)%sizeState > 0) then
 
@@ -380,7 +379,7 @@ function phase_damage_collectDotState(ph,en) result(broken)
 
     end select sourceType
 
-    broken = broken .or. any(IEEE_is_NaN(damageState(ph)%dotState(:,en)))
+    if (any(IEEE_is_NaN(damageState(ph)%dotState(:,en)))) status = STATUS_FAILED_DAMAGE_STATE
 
   end if
 
@@ -419,7 +418,7 @@ end function phase_K_phi
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-function phase_damage_deltaState(Fe, ph, en) result(broken)
+function phase_damage_deltaState(Fe, ph, en) result(status)
 
   integer, intent(in) :: &
     ph, &
@@ -430,11 +429,10 @@ function phase_damage_deltaState(Fe, ph, en) result(broken)
   integer :: &
     myOffset, &
     mySize
-  logical :: &
-    broken
+  integer(kind(STATUS_OK)) :: status
 
 
-  broken = .false.
+  status = STATUS_OK
 
   if (damageState(ph)%sizeState == 0) return
 
@@ -442,8 +440,8 @@ function phase_damage_deltaState(Fe, ph, en) result(broken)
 
     case (DAMAGE_ISOBRITTLE) sourceType
       call isobrittle_deltaState(phase_homogenizedC66(ph,en), Fe, ph,en)
-      broken = any(IEEE_is_NaN(damageState(ph)%deltaState(:,en)))
-      if (.not. broken) then
+      if (any(IEEE_is_NaN(damageState(ph)%deltaState(:,en)))) status = STATUS_FAILED_DAMAGE_DELTASTATE
+      if (status == STATUS_OK) then
         myOffset = damageState(ph)%offsetDeltaState
         mySize   = damageState(ph)%sizeDeltaState
         damageState(ph)%state(myOffset + 1: myOffset + mySize,en) = &
