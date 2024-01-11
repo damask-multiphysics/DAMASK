@@ -990,13 +990,13 @@ end subroutine mechanical_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
+module function phase_mechanical_constitutive(Delta_t,co,ce) result(status)
 
   real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: &
     co, &
     ce
-  logical :: converged_
+  integer(kind(STATUS_OK)) :: status
 
   real(pREAL) :: &
     formerStep
@@ -1025,13 +1025,13 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
   F0  = phase_mechanical_F0(ph)%data(1:3,1:3,en)
   stepFrac = 0.0_pREAL
   todo = .true.
-  step = 1.0_pREAL/num%stepSizeCryst
-  converged_ = .false.                                                                              ! pretend failed step of 1/stepSizeCryst
+  step = 1.0_pREAL/num%stepSizeCryst                                                                ! pretend failed step of 1/stepSizeCryst
+  status = STATUS_ITERATING
 
   todo = .true.
   cutbackLooping: do while (todo)
 
-    if (converged_) then
+    if (status == STATUS_OK) then
       formerStep = step
       stepFrac = stepFrac + step
       step = min(1.0_pREAL - stepFrac, num%stepIncreaseCryst * step)
@@ -1067,7 +1067,7 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
       sizeDotState = plasticState(ph)%sizeDotState
       F = F0 &
            + step * (phase_mechanical_F(ph)%data(1:3,1:3,en) - phase_mechanical_F0(ph)%data(1:3,1:3,en))
-      converged_ = STATUS_OK == integrateState(F0,F,Fp0,Fi0,state0(1:sizeDotState),step * Delta_t,ph,en)
+      status = integrateState(F0,F,Fp0,Fi0,state0(1:sizeDotState),step * Delta_t,ph,en)
     end if
 
   end do cutbackLooping

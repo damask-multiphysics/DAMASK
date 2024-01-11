@@ -282,24 +282,22 @@ module phase
 
 ! == cleaned:end ===================================================================================
 
-    module function phase_thermal_constitutive(Delta_t,ph,en) result(converged_)
-
+    module function phase_thermal_constitutive(Delta_t,ph,en) result(status)
       real(pREAL), intent(in) :: Delta_t
       integer, intent(in) :: ph, en
-      logical :: converged_
-
+      integer(kind(STATUS_OK)) :: status
     end function phase_thermal_constitutive
 
-    module function phase_damage_constitutive(Delta_t,co,ce) result(converged_)
+    module function phase_damage_constitutive(Delta_t,co,ce) result(status)
       real(pREAL), intent(in) :: Delta_t
       integer, intent(in) :: co, ce
-      logical :: converged_
+      integer(kind(STATUS_OK)) :: status
     end function phase_damage_constitutive
 
-    module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
+    module function phase_mechanical_constitutive(Delta_t,co,ce) result(status)
       real(pREAL), intent(in) :: Delta_t
       integer, intent(in) :: co, ce
-      logical :: converged_
+      integer(kind(STATUS_OK)) :: status
     end function phase_mechanical_constitutive
 
     !ToDo: Merge all the stiffness functions

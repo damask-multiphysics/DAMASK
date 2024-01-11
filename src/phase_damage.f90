@@ -120,13 +120,13 @@ end subroutine damage_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-module function phase_damage_constitutive(Delta_t,co,ce) result(converged_)
+module function phase_damage_constitutive(Delta_t,co,ce) result(status)
 
   real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: &
     co, &
     ce
-  logical :: converged_
+  integer(kind(STATUS_OK)) :: status
 
   integer :: &
     ph, en
@@ -135,7 +135,7 @@ module function phase_damage_constitutive(Delta_t,co,ce) result(converged_)
   ph = material_ID_phase(co,ce)
   en = material_entry_phase(co,ce)
 
-  converged_ = integrateDamageState(Delta_t,ph,en) == STATUS_OK
+  status = integrateDamageState(Delta_t,ph,en)
 
 end function phase_damage_constitutive
 

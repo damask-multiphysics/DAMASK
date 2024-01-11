@@ -242,7 +242,7 @@ subroutine homogenization_mechanical_response(status,Delta_t,cell_start,cell_end
     convergenceLooping: do while (status == STATUS_OK .and. .not. doneAndHappy(1))
 
       call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
-      converged = all([(phase_mechanical_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
+      converged = all([(phase_mechanical_constitutive(Delta_t,co,ce) == STATUS_OK,co=1,homogenization_Nconstituents(ho))])
       if (converged) then
         doneAndHappy = mechanical_updateState(Delta_t,homogenization_F(1:3,1:3,ce),ce)
         converged = all(doneAndHappy)
@@ -254,7 +254,7 @@ subroutine homogenization_mechanical_response(status,Delta_t,cell_start,cell_end
       if (status == STATUS_OK) print*, ' Cell ', ce, ' failed (mechanics)'
       status = STATUS_FAILED_MECHANICAL
     end if
-    converged = converged .and. all([(phase_damage_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
+    converged = converged .and. all([(phase_damage_constitutive(Delta_t,co,ce)==STATUS_OK,co=1,homogenization_Nconstituents(ho))])
 
     if (.not. converged) then
       if (status == STATUS_OK) print*, ' Cell ', ce, ' failed (damage)'
@@ -299,7 +299,7 @@ subroutine homogenization_thermal_response(status, &
     if (status /= STATUS_OK) continue
     ho = material_ID_homogenization(ce)
     do co = 1, homogenization_Nconstituents(ho)
-      if (.not. phase_thermal_constitutive(Delta_t,material_ID_phase(co,ce),material_entry_phase(co,ce))) then
+      if (phase_thermal_constitutive(Delta_t,material_ID_phase(co,ce),material_entry_phase(co,ce)) /= STATUS_OK) then
         if (status == STATUS_OK) print*, ' Cell ', ce, ' failed (thermal)'
         status = STATUS_PHASE_THERMAL
       end if
