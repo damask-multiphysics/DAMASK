@@ -22,6 +22,7 @@ module constants
 
   enum, bind(c); enumerator :: &
     STATUS_OK, &
+    STATUS_ITERATING, &
     STATUS_FAILED_PHASE_STATE, &
     STATUS_FAILED_PHASE_DELTASTATE, &
     STATUS_FAILED_PHASE_STRESS, &
@@ -30,8 +31,7 @@ module constants
     STATUS_FAILED_DAMAGE, &
     STATUS_FAILED_MECHANICAL, &
     STATUS_PHASE_THERMAL, &
-    STATUS_PHASE_THERMAL_DOTSTATE, &
-    STATUS_ITERATING
+    STATUS_PHASE_THERMAL_DOTSTATE
   end enum
 
 end module constants
