@@ -276,7 +276,7 @@ function integrateDamageState(Delta_t,ph,en) result(status)
 
   end do iteration
 
-  if (.not. converged_) status = STATUS_FAILED_DAMAGE_STATE
+  if (.not. converged_) status = STATUS_FAIL_PHASE_DAMAGE_STATE
 
   contains
   !--------------------------------------------------------------------------------------------------
@@ -379,7 +379,7 @@ function phase_damage_collectDotState(ph,en) result(status)
 
     end select sourceType
 
-    if (any(IEEE_is_NaN(damageState(ph)%dotState(:,en)))) status = STATUS_FAILED_DAMAGE_STATE
+    if (any(IEEE_is_NaN(damageState(ph)%dotState(:,en)))) status = STATUS_FAIL_PHASE_DAMAGE_STATE
 
   end if
 
@@ -440,7 +440,7 @@ function phase_damage_deltaState(Fe, ph, en) result(status)
 
     case (DAMAGE_ISOBRITTLE) sourceType
       call isobrittle_deltaState(phase_homogenizedC66(ph,en), Fe, ph,en)
-      if (any(IEEE_is_NaN(damageState(ph)%deltaState(:,en)))) status = STATUS_FAILED_DAMAGE_DELTASTATE
+      if (any(IEEE_is_NaN(damageState(ph)%deltaState(:,en)))) status = STATUS_FAIL_PHASE_DAMAGE_DELTASTATE
       if (status == STATUS_OK) then
         myOffset = damageState(ph)%offsetDeltaState
         mySize   = damageState(ph)%sizeDeltaState

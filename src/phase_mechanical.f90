@@ -434,7 +434,7 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
   logical :: error
 
 
-  status = STATUS_FAILED_PHASE_STRESS
+  status = STATUS_FAIL_PHASE_MECHANICAL_STRESS
   call plastic_dependentState(ph,en)
 
   Lpguess = phase_mechanical_Lp(ph)%data(1:3,1:3,en)                                                ! take as first guess
@@ -605,7 +605,7 @@ function integrateStateFPI(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(status)
     dotState_last
 
 
-  status = STATUS_FAILED_PHASE_STATE
+  status = STATUS_FAIL_PHASE_MECHANICAL_STATE
 
   dotState = plastic_dotState(Delta_t,ph,en)
   if (any(IEEE_is_NaN(dotState))) return
@@ -687,7 +687,7 @@ function integrateStateEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(status)
     sizeDotState
 
 
-  status = STATUS_FAILED_PHASE_STATE
+  status = STATUS_FAIL_PHASE_MECHANICAL_STATE
 
   dotState = plastic_dotState(Delta_t,ph,en)
   if (any(IEEE_is_NaN(dotState))) return
@@ -724,7 +724,7 @@ function integrateStateAdaptiveEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(
     dotState
 
 
-  status = STATUS_FAILED_PHASE_STATE
+  status = STATUS_FAIL_PHASE_MECHANICAL_STATE
 
   dotState = plastic_dotState(Delta_t,ph,en)
   if (any(IEEE_is_NaN(dotState))) return
@@ -745,7 +745,7 @@ function integrateStateAdaptiveEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(
   if (any(IEEE_is_NaN(dotState))) return
 
   status = merge(STATUS_OK, &
-                 STATUS_FAILED_PHASE_STATE, &
+                 STATUS_FAIL_PHASE_MECHANICAL_STATE, &
                  converged(r + 0.5_pREAL * dotState * Delta_t, &
                            plasticState(ph)%state(1:sizeDotState,en), &
                            plasticState(ph)%atol(1:sizeDotState)))
@@ -843,7 +843,7 @@ function integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C,DB) result(st
     plastic_RKdotState
 
 
-  status = STATUS_FAILED_PHASE_STATE
+  status = STATUS_FAIL_PHASE_MECHANICAL_STATE
 
   dotState = plastic_dotState(Delta_t,ph,en)
   if (any(IEEE_is_NaN(dotState))) return
@@ -878,7 +878,7 @@ function integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C,DB) result(st
 
   if (present(DB)) &
     status = merge(STATUS_OK, &
-                   STATUS_FAILED_PHASE_STATE, &
+                   STATUS_FAIL_PHASE_MECHANICAL_STATE, &
                    converged(matmul(plastic_RKdotState(1:sizeDotState,1:size(DB)),DB) * Delta_t, &
                              plasticState(ph)%state(1:sizeDotState,en), &
                              plasticState(ph)%atol(1:sizeDotState)))

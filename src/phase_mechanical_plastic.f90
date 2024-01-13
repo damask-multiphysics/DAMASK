@@ -407,7 +407,7 @@ module function plastic_deltaState(ph, en) result(status)
 
       end select plasticType
 
-      if (any(IEEE_is_NaN(plasticState(ph)%deltaState(:,en)))) status = STATUS_FAILED_PHASE_DELTASTATE
+      if (any(IEEE_is_NaN(plasticState(ph)%deltaState(:,en)))) status = STATUS_FAIL_PHASE_MECHANICAL_DELTASTATE
       if (status == STATUS_OK) then
         mySize   = plasticState(ph)%sizeDeltaState
         plasticState(ph)%deltaState2(1:mySize,en) = plasticState(ph)%deltaState2(1:mySize,en) &

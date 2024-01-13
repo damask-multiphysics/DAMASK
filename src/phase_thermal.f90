@@ -202,7 +202,7 @@ function phase_thermal_collectDotState(ph,en) result(status)
     if (thermal_source_type(i,ph) == THERMAL_SOURCE_EXTERNALHEAT) &
       call source_externalheat_dotState(ph,en)
 
-    if (any(IEEE_is_NaN(thermalState(ph)%p(i)%dotState(:,en)))) status = STATUS_PHASE_THERMAL_DOTSTATE
+    if (any(IEEE_is_NaN(thermalState(ph)%p(i)%dotState(:,en)))) status = STATUS_FAIL_PHASE_THERMAL_DOTSTATE
 
   end do SourceLoop
 
