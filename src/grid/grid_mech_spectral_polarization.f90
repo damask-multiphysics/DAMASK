@@ -612,7 +612,7 @@ subroutine formResidual(residual_subdomain, FandF_tau, &
 #endif
                                         P_av,C_volAvg,C_minMaxAvg, &
                                         F - r_F_tau/num%beta,params%Delta_t,params%rotation_BC)
-    call MPI_Allreduce(MPI_IN_PLACE,status,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+    call MPI_Allreduce(MPI_IN_PLACE,status,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,err_MPI)
 #ifdef __GFORTRAN__
     err_div = utilities_divergenceRMS(r_F)
 #else

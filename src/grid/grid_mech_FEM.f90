@@ -573,7 +573,7 @@ subroutine formResidual(da_local,x_local, &
   call utilities_constitutiveResponse(status,P_current,&
                                       P_av,C_volAvg,devNull, &
                                       F,params%Delta_t,params%rotation_BC)
-  call MPI_Allreduce(MPI_IN_PLACE,status,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  call MPI_Allreduce(MPI_IN_PLACE,status,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
 !--------------------------------------------------------------------------------------------------
