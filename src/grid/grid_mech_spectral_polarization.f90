@@ -563,7 +563,7 @@ subroutine formResidual(residual_subdomain, FandF_tau, &
     nfuncs
   integer(MPI_INTEGER_KIND) :: err_MPI
   integer :: &
-    i, j, k, e
+    i, j, k, ce
 
 
   F       => FandF_tau(1:3,1:3,1,1:cells(1),1:cells(2),1:cells3)
@@ -618,11 +618,11 @@ subroutine formResidual(residual_subdomain, FandF_tau, &
 #else
     err_div = utilities_divergenceRMS(P)
 #endif
-    e = 0
+    ce = 0
     do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
-      e = e + 1
+      ce = ce + 1
       r_F(1:3,1:3,i,j,k) = &
-        math_mul3333xx33(math_invSym3333(homogenization_dPdF(1:3,1:3,1:3,1:3,e) + C_scale), &
+        math_mul3333xx33(math_invSym3333(homogenization_dPdF(1:3,1:3,1:3,1:3,ce) + C_scale), &
 #ifdef __GFORTRAN__
                          r_F(1:3,1:3,i,j,k) - matmul(F(1:3,1:3,i,j,k), &
 #else

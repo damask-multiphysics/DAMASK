@@ -525,7 +525,7 @@ subroutine formResidual(da_local,x_local, &
 
   real(pREAL), pointer,dimension(:,:,:,:) :: x_scal, r
   real(pREAL), dimension(8,3) :: x_elem,  f_elem
-  PetscInt             :: i, ii, j, jj, k, kk, ctr, ele
+  PetscInt             :: i, ii, j, jj, k, kk, ctr, ce
   PetscInt :: &
     PETScIter, &
     nfuncs
@@ -587,7 +587,7 @@ subroutine formResidual(da_local,x_local, &
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayReadF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
-  ele = 0
+  ce = 0
   r = 0.0_pREAL
   do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, cells(1)
     ctr = 0
@@ -595,11 +595,11 @@ subroutine formResidual(da_local,x_local, &
       ctr = ctr + 1
       x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
     end do; end do; end do
-    ele = ele + 1
+    ce = ce + 1
     f_elem = matmul(transpose(BMat),transpose(P_current(1:3,1:3,i,j,k-cells3Offset)))*detJ + &
-             matmul(HGMat,x_elem)*(homogenization_dPdF(1,1,1,1,ele) + &
-                                   homogenization_dPdF(2,2,2,2,ele) + &
-                                   homogenization_dPdF(3,3,3,3,ele))/3.0_pREAL
+             matmul(HGMat,x_elem)*(homogenization_dPdF(1,1,1,1,ce) + &
+                                   homogenization_dPdF(2,2,2,2,ce) + &
+                                   homogenization_dPdF(3,3,3,3,ce))/3.0_pREAL
     ctr = 0
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1

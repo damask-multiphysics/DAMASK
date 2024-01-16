@@ -124,7 +124,7 @@ subroutine utilities_constitutiveResponse(status, P,P_av,C_volAvg,C_minmaxAvg,&
   real(pREAL),    intent(in)                                        :: Delta_t                      !< loading time
   type(tRotation), intent(in),  optional                            :: rotation_BC                  !< rotation of load frame
 
-  integer :: i
+  integer :: ce
   integer(MPI_INTEGER_KIND) :: err_MPI
   real(pREAL), dimension(3,3,3,3) :: dPdF_max,      dPdF_min
   real(pREAL)                     :: dPdF_norm_max, dPdF_norm_min
@@ -156,14 +156,14 @@ subroutine utilities_constitutiveResponse(status, P,P_av,C_volAvg,C_minmaxAvg,&
   dPdF_norm_max = 0.0_pREAL
   dPdF_min = huge(1.0_pREAL)
   dPdF_norm_min = huge(1.0_pREAL)
-  do i = 1, product(cells(1:2))*cells3
-    if (dPdF_norm_max < sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)) then
-      dPdF_max = homogenization_dPdF(1:3,1:3,1:3,1:3,i)
-      dPdF_norm_max = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)
+  do ce = 1, product(cells(1:2))*cells3
+    if (dPdF_norm_max < sum(homogenization_dPdF(1:3,1:3,1:3,1:3,ce)**2)) then
+      dPdF_max = homogenization_dPdF(1:3,1:3,1:3,1:3,ce)
+      dPdF_norm_max = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,ce)**2)
     end if
-    if (dPdF_norm_min > sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)) then
-      dPdF_min = homogenization_dPdF(1:3,1:3,1:3,1:3,i)
-      dPdF_norm_min = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)
+    if (dPdF_norm_min > sum(homogenization_dPdF(1:3,1:3,1:3,1:3,ce)**2)) then
+      dPdF_min = homogenization_dPdF(1:3,1:3,1:3,1:3,ce)
+      dPdF_norm_min = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,ce)**2)
     end if
   end do
 

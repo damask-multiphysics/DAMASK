@@ -531,7 +531,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
   real(pREAL),dimension(cellDOF,cellDOF) :: K_eA, K_eB
 
   PetscInt :: cellStart, cellEnd, cell, component, face, &
-              qPt, basis, comp, cidx,bcSize, m, i
+              qPt, basis, comp, cidx,bcSize, ce, i
   IS :: bcPoints
 
 
@@ -583,7 +583,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
     FAvg = 0.0_pREAL
     BMatAvg = 0.0_pREAL
     do qPt = 0_pPETSCINT, nQuadrature-1_pPETSCINT
-      m = cell*nQuadrature + qPt + 1_pPETSCINT
+      ce = cell*nQuadrature + qPt + 1_pPETSCINT
       BMat = 0.0_pREAL
       do basis = 0_pPETSCINT, nBasis-1_pPETSCINT
         do comp = 0_pPETSCINT, dimPlex-1_pPETSCINT
@@ -593,7 +593,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
             matmul(reshape(pInvcellJ,[dimPlex,dimPlex]),basisFieldDer(i*dimPlex+1_pPETSCINT:(i+1_pPETSCINT)*dimPlex))
         end do
       end do
-      MatA = matmul(reshape(reshape(homogenization_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,m), &
+      MatA = matmul(reshape(reshape(homogenization_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,ce), &
                                     shape=[dimPlex,dimPlex,dimPlex,dimPlex], order=[2,1,4,3]), &
                             shape=[dimPlex*dimPlex,dimPlex*dimPlex]),BMat)*qWeights(qPt+1_pPETSCINT)
       if (num%BBarStabilization) then
@@ -601,11 +601,11 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
         FInv = math_inv33(F)
         K_eA = K_eA + matmul(transpose(BMat),MatA)*math_det33(FInv)**(1.0_pREAL/real(dimPlex,pREAL))
         K_eB = K_eB - &
-               matmul(transpose(matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,m),shape=[dimPlex**2,1_pPETSCINT]), &
+               matmul(transpose(matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,ce),shape=[dimPlex**2,1_pPETSCINT]), &
                                        matmul(reshape(FInv(1:dimPlex,1:dimPlex), &
                                                       shape=[1_pPETSCINT,dimPlex**2],order=[2,1]),BMat))),MatA)
         MatB = MatB &
-             + matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,m),shape=[1_pPETSCINT,dimPlex**2]),MatA)
+             + matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,ce),shape=[1_pPETSCINT,dimPlex**2]),MatA)
         FAvg = FAvg + F
         BMatAvg = BMatAvg + BMat
       else
