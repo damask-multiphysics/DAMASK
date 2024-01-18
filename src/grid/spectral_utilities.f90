@@ -956,21 +956,21 @@ subroutine selfTest()
   if (maxval(abs(tensorField_real_ - tensorField_real*wgt))>5.0e-15_pREAL) &
     error stop 'mismatch tensorField FFT/invFFT <-> real'
 
-  print*, 'upd gamma'
-  ! call utilities_updateGamma(math_Voigt66to3333_stiffness(elastic_C66(1,1)))
-  print*, 'C_ref 1111', C_ref(1,1,1,1)
-  call utilities_updateGamma(math_Voigt66to3333_stiffness(phase_homogenizedC66(1,10)))
-  !call utilities_updateGamma(1e9_pReal*math_identity4th())
+  ! print*, 'upd gamma'
+  ! ! call utilities_updateGamma(math_Voigt66to3333_stiffness(elastic_C66(1,1)))
+  ! print*, 'C_ref 1111', C_ref(1,1,1,1)
+  ! call utilities_updateGamma(math_Voigt66to3333_stiffness(phase_homogenizedC66(1,10)))
+  ! !call utilities_updateGamma(1e9_pReal*math_identity4th())
 
-  print*, 'C_ref 1111', C_ref(1,1,1,1)
+  ! print*, 'C_ref 1111', C_ref(1,1,1,1)
 
-  print*, utilities_curlRMS(tensorField_real_)
-  tensorField_real = utilities_GammaConvolution(tensorField_real_, math_eye(3))
-  print*, 'Gamma ->', utilities_curlRMS(tensorField_real)
+  ! print*, utilities_curlRMS(tensorField_real_)
+  ! tensorField_real = utilities_GammaConvolution(tensorField_real_, math_eye(3))
+  ! print*, 'Gamma ->', utilities_curlRMS(tensorField_real)
 
-  print*, utilities_curlRMS(tensorField_real_)
-  tensorField_real = utilities_G_Convolution(tensorField_real_, math_eye(3))
-  print*, 'G ->', utilities_curlRMS(tensorField_real)
+  ! print*, utilities_curlRMS(tensorField_real_)
+  ! tensorField_real = utilities_G_Convolution(tensorField_real_, math_eye(3))
+  ! print*, 'G ->', utilities_curlRMS(tensorField_real)
 
   print*, '+++++ tensor field end ++++++++++++++++++++++++++'
 

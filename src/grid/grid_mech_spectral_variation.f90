@@ -671,12 +671,13 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
   CHKERRQ(err_PETSc)
   dF = reshape(dF_scal, [3,3,cells(1),cells(2),cells3])
 
-  ! ===== K:dF operartor =====
+  ! ===== K:dF operartor, i.e. dP = K:dF =====
   e = 0
   do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
     e = e + 1
     output(1:3,1:3,i,j,k) = &
-      transpose(math_mul3333xx33(homogenization_dPdF(1:3,1:3,1:3,1:3,e), dF(1:3,1:3,i,j,k)))
+      math_mul3333xx33(homogenization_dPdF(1:3,1:3,1:3,1:3,e), dF(1:3,1:3,i,j,k))
+    ! transpose(math_mul3333xx33(homogenization_dPdF(1:3,1:3,1:3,1:3,e), dF(1:3,1:3,i,j,k)))
     !! ToCheck: do we need multiple transpose? in GooseFFT, K_dF = trans2(ddot42(K4, trans2(dF)))
     !! trans2: ij -> ji, ddot42 (ijkl,lk) -> ij
     !! here we contracted transpose in ddot42 and trans2
