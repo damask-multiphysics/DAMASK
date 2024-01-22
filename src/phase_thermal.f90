@@ -187,22 +187,22 @@ end function phase_f_T
 !--------------------------------------------------------------------------------------------------
 !> @brief tbd.
 !--------------------------------------------------------------------------------------------------
-function phase_thermal_collectDotState(ph,en) result(ok)
+function phase_thermal_collectDotState(ph,en) result(status)
 
   integer, intent(in) :: ph, en
-  logical :: ok
+  integer(kind(STATUS_OK)) :: status
 
   integer :: i
 
 
-  ok = .true.
+  status = STATUS_OK
 
   SourceLoop: do i = 1, thermal_Nsources(ph)
 
     if (thermal_source_type(i,ph) == THERMAL_SOURCE_EXTERNALHEAT) &
       call source_externalheat_dotState(ph,en)
 
-    ok = ok .and. .not. any(IEEE_is_NaN(thermalState(ph)%p(i)%dotState(:,en)))
+    if (any(IEEE_is_NaN(thermalState(ph)%p(i)%dotState(:,en)))) status = STATUS_FAIL_PHASE_THERMAL_DOTSTATE
 
   end do SourceLoop
 
@@ -238,14 +238,14 @@ module function phase_K_T(co,ce) result(K)
 end function phase_K_T
 
 
-module function phase_thermal_constitutive(Delta_t,ph,en) result(converged_)
+module function phase_thermal_constitutive(Delta_t,ph,en) result(status)
 
   real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: ph, en
-  logical :: converged_
+  integer(kind(STATUS_OK)) :: status
 
 
-  converged_ = integrateThermalState(Delta_t,ph,en)
+  status = integrateThermalState(Delta_t,ph,en)
 
 end function phase_thermal_constitutive
 
@@ -253,19 +253,19 @@ end function phase_thermal_constitutive
 !--------------------------------------------------------------------------------------------------
 !> @brief Integrate state with 1st order explicit Euler method.
 !--------------------------------------------------------------------------------------------------
-function integrateThermalState(Delta_t, ph,en) result(converged)
+function integrateThermalState(Delta_t, ph,en) result(status)
 
   real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: ph, en
-  logical :: converged
+  integer(kind(STATUS_OK)) :: status
 
   integer :: &
     so, &
     sizeDotState
 
 
-  converged = phase_thermal_collectDotState(ph,en)
-  if (converged) then
+  status = phase_thermal_collectDotState(ph,en)
+  if (status == STATUS_OK) then
 
     do so = 1, thermal_Nsources(ph)
       sizeDotState = thermalState(ph)%p(so)%sizeDotState

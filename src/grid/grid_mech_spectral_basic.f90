@@ -26,6 +26,7 @@ module grid_mechanical_spectral_basic
   use grid_mech_utilities
   use homogenization
   use discretization_grid
+  use constants
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
@@ -84,7 +85,7 @@ module grid_mechanical_spectral_basic
     err_div                                                                                         !< RMS of div of P
 
   integer :: totalIter = 0                                                                          !< total iteration in current increment
-  logical :: broken
+  integer(kind(STATUS_OK)) :: status
 
   public :: &
     grid_mechanical_spectral_basic_init, &
@@ -228,7 +229,7 @@ subroutine grid_mechanical_spectral_basic_init(num_grid)
   end if restartRead
 
   call utilities_updateCoords(reshape(F,shape(F_lastInc)))
-  call utilities_constitutiveResponse(broken,P,P_av,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
+  call utilities_constitutiveResponse(status,P,P_av,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
                                       0.0_pREAL)                                                    ! time increment
   call DMDAVecRestoreArrayF90(DM_mech,F_PETSc,F,err_PETSc)                                          ! deassociate pointer
@@ -287,7 +288,7 @@ function grid_mechanical_spectral_basic_solution(incInfoIn) result(solution)
 
   solution%converged = reason > 0
   solution%iterationsNeeded = totalIter
-  solution%termIll = broken
+  solution%termIll = status /= STATUS_OK
   P_aim = merge(P_av,P_aim,params%stress_mask)
 
 end function grid_mechanical_spectral_basic_solution
@@ -452,7 +453,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   BCTol = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
   if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL)) &
-       .or. broken) then
+       .or. status /= STATUS_OK) then
     reason = 1
   elseif (totalIter >= num%itmax) then
     reason = -1
@@ -514,10 +515,10 @@ subroutine formResidual(residual_subdomain, F, &
   end if newIteration
 
   associate (P => r)
-    call utilities_constitutiveResponse(broken,P, &
+    call utilities_constitutiveResponse(status,P, &
                                         P_av,C_volAvg,C_minMaxAvg, &
                                         F,params%Delta_t,params%rotation_BC)
-    call MPI_Allreduce(MPI_IN_PLACE,broken,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+    call MPI_Allreduce(MPI_IN_PLACE,status,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,err_MPI)
     call parallelization_chkerr(err_MPI)
     err_div = utilities_divergenceRMS(P)
   end associate

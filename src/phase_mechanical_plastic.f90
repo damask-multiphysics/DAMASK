@@ -375,12 +375,12 @@ end subroutine plastic_dependentState
 !> @brief for constitutive models that have an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-module function plastic_deltaState(ph, en) result(broken)
+module function plastic_deltaState(ph, en) result(status)
 
   integer, intent(in) :: &
     ph, &
     en
-  logical :: broken
+  integer(kind(STATUS_OK)) :: status
 
   real(pREAL), dimension(3,3) :: &
     Mp
@@ -388,7 +388,7 @@ module function plastic_deltaState(ph, en) result(broken)
     mySize
 
 
-  broken = .false.
+  status = STATUS_OK
 
   select case (mechanical_plasticity_type(ph))
     case (MECHANICAL_PLASTICITY_NONLOCAL,MECHANICAL_PLASTICITY_KINEHARDENING)
@@ -407,8 +407,8 @@ module function plastic_deltaState(ph, en) result(broken)
 
       end select plasticType
 
-      broken = any(IEEE_is_NaN(plasticState(ph)%deltaState(:,en)))
-      if (.not. broken) then
+      if (any(IEEE_is_NaN(plasticState(ph)%deltaState(:,en)))) status = STATUS_FAIL_PHASE_MECHANICAL_DELTASTATE
+      if (status == STATUS_OK) then
         mySize   = plasticState(ph)%sizeDeltaState
         plasticState(ph)%deltaState2(1:mySize,en) = plasticState(ph)%deltaState2(1:mySize,en) &
                                                   + plasticState(ph)%deltaState(1:mySize,en)

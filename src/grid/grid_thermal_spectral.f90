@@ -25,6 +25,7 @@ module grid_thermal_spectral
   use homogenization
   use YAML_types
   use config
+  use constants
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
@@ -56,7 +57,7 @@ module grid_thermal_spectral
   integer                     :: totalIter = 0                                                      !< total iteration in current increment
   real(pREAL), dimension(3,3) :: K_ref
   real(pREAL)                 :: mu_ref, Delta_t_
-  logical :: broken
+  integer(kind(STATUS_OK))    :: status
 
   public :: &
     grid_thermal_spectral_init, &
@@ -207,7 +208,7 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   call SNESGetConvergedReason(SNES_thermal,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  solution%converged = reason > 0 .and. .not. broken
+  solution%converged = reason > 0 .and. status == STATUS_OK
   solution%iterationsNeeded = merge(totalIter,num%itmax,solution%converged)
 
   call SNESGetDM(SNES_thermal,DM_thermal,err_PETSc)
@@ -324,7 +325,7 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
   real(pREAL), dimension(3,cells(1),cells(2),cells3) :: vectorField
 
 
-  call homogenization_thermal_response(broken,Delta_t_,1,product(cells(1:2))*cells3)
+  call homogenization_thermal_response(status,Delta_t_,1,product(cells(1:2))*cells3)
 
   associate(T => x_scal)
     vectorField = utilities_ScalarGradient(T)

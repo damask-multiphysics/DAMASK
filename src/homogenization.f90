@@ -50,9 +50,9 @@ module homogenization
 ! General variables for the homogenization at a  material point
   real(pREAL),   dimension(:,:,:),     allocatable, public :: &
     homogenization_F                                                                                !< def grad of IP to be reached at end of FE increment
-  real(pREAL),   dimension(:,:,:),     allocatable, public :: & !, protected :: &                   Issue with ifort
+  real(pREAL),   dimension(:,:,:),     allocatable, public, protected :: &
     homogenization_P                                                                                !< first P--K stress of IP
-  real(pREAL),   dimension(:,:,:,:,:), allocatable, public :: & !, protected ::  &
+  real(pREAL),   dimension(:,:,:,:,:), allocatable, public, protected :: &
     homogenization_dPdF                                                                             !< tangent of first P--K stress at IP
 
 !--------------------------------------------------------------------------------------------------
@@ -210,9 +210,9 @@ end subroutine homogenization_init
 !--------------------------------------------------------------------------------------------------
 !> @brief
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_mechanical_response(broken,Delta_t,cell_start,cell_end)
+subroutine homogenization_mechanical_response(status,Delta_t,cell_start,cell_end)
 
-  logical, intent(out) :: broken
+  integer(kind(STATUS_OK)), intent(out) :: status
   real(pREAL), intent(in) :: Delta_t                                                                !< time increment
   integer, intent(in) :: &
     cell_start, cell_end
@@ -224,7 +224,7 @@ subroutine homogenization_mechanical_response(broken,Delta_t,cell_start,cell_end
     doneAndHappy
 
 
-  broken = .false.
+  status = STATUS_OK
   !$OMP PARALLEL DO PRIVATE(en,ho,co,converged,doneAndHappy)
   do ce = cell_start, cell_end
 
@@ -239,10 +239,10 @@ subroutine homogenization_mechanical_response(broken,Delta_t,cell_start,cell_end
 
     doneAndHappy = [.false.,.true.]
 
-    convergenceLooping: do while (.not. (broken .or. doneAndHappy(1)))
+    convergenceLooping: do while (status == STATUS_OK .and. .not. doneAndHappy(1))
 
       call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
-      converged = all([(phase_mechanical_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
+      converged = all([(phase_mechanical_constitutive(Delta_t,co,ce) == STATUS_OK,co=1,homogenization_Nconstituents(ho))])
       if (converged) then
         doneAndHappy = mechanical_updateState(Delta_t,homogenization_F(1:3,1:3,ce),ce)
         converged = all(doneAndHappy)
@@ -251,19 +251,19 @@ subroutine homogenization_mechanical_response(broken,Delta_t,cell_start,cell_end
       end if
     end do convergenceLooping
     if (.not. converged) then
-      if (.not. broken) print*, ' Cell ', ce, ' failed (mechanics)'
-      broken = .true.
+      if (status == STATUS_OK) print*, ' Cell ', ce, ' failed (mechanics)'
+      status = STATUS_FAIL_PHASE_MECHANICAL
     end if
-    converged = converged .and. all([(phase_damage_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
+    converged = converged .and. all([(phase_damage_constitutive(Delta_t,co,ce)==STATUS_OK,co=1,homogenization_Nconstituents(ho))])
 
     if (.not. converged) then
-      if (.not. broken) print*, ' Cell ', ce, ' failed (damage)'
-      broken = .true.
+      if (status == STATUS_OK) print*, ' Cell ', ce, ' failed (damage)'
+      status = STATUS_FAIL_PHASE_DAMAGE
     end if
   end do
   !$OMP END PARALLEL DO
 
-  if (broken) return
+  if (status /= STATUS_OK) return
 
   !$OMP PARALLEL DO PRIVATE(ho)
   do ce = cell_start, cell_end
@@ -281,10 +281,10 @@ end subroutine homogenization_mechanical_response
 !--------------------------------------------------------------------------------------------------
 !> @brief
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_thermal_response(broken, &
+subroutine homogenization_thermal_response(status, &
                                            Delta_t,cell_start,cell_end)
 
-  logical, intent(out) :: broken
+  integer(kind(STATUS_OK)), intent(out) :: status
   real(pREAL), intent(in) :: Delta_t                                                                !< time increment
   integer, intent(in) :: &
     cell_start, cell_end
@@ -293,20 +293,19 @@ subroutine homogenization_thermal_response(broken, &
     co, ce, ho
 
 
-  broken = .false.
+  status = STATUS_OK
   !$OMP PARALLEL DO PRIVATE(ho)
   do ce = cell_start, cell_end
-    if (broken) continue
+    if (status /= STATUS_OK) continue
     ho = material_ID_homogenization(ce)
     do co = 1, homogenization_Nconstituents(ho)
-      if (.not. phase_thermal_constitutive(Delta_t,material_ID_phase(co,ce),material_entry_phase(co,ce))) then
-        if (.not. broken) print*, ' Cell ', ce, ' failed (thermal)'
-        broken = .true.
+      if (phase_thermal_constitutive(Delta_t,material_ID_phase(co,ce),material_entry_phase(co,ce)) /= STATUS_OK) then
+        if (status == STATUS_OK) print*, ' Cell ', ce, ' failed (thermal)'
+        status = STATUS_FAIL_PHASE_THERMAL
       end if
     end do
   end do
   !$OMP END PARALLEL DO
-  broken = broken
 
 end subroutine homogenization_thermal_response
 

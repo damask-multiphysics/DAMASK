@@ -22,6 +22,7 @@ module FEM_utilities
   use discretization_mesh
   use homogenization
   use FEM_quadrature
+  use constants
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
@@ -120,9 +121,9 @@ end subroutine FEM_utilities_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates constitutive response
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_constitutiveResponse(broken, Delta_t,P_av,forwardData)
+subroutine utilities_constitutiveResponse(status, Delta_t,P_av,forwardData)
 
-  logical,     intent(out)                :: broken
+  integer(kind(STATUS_OK)),  intent(out)  :: status
   real(pREAL), intent(in)                 :: Delta_t                                                !< loading time
   logical,     intent(in)                 :: forwardData                                            !< age results
   real(pREAL),intent(out), dimension(3,3) :: P_av                                                   !< average PK stress
@@ -132,7 +133,7 @@ subroutine utilities_constitutiveResponse(broken, Delta_t,P_av,forwardData)
 
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
 
-  call homogenization_mechanical_response(broken,Delta_t,1,mesh_maxNips*mesh_NcpElems)              ! calculate P field
+  call homogenization_mechanical_response(status,Delta_t,1,mesh_maxNips*mesh_NcpElems)              ! calculate P field
   cutBack = .false.
 
   P_av = sum(homogenization_P,dim=3) * wgt

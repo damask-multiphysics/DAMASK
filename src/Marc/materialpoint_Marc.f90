@@ -20,6 +20,7 @@ module materialpoint_Marc
   use material
   use phase
   use homogenization
+  use constants
 
   use discretization
   use discretization_Marc
@@ -27,18 +28,18 @@ module materialpoint_Marc
   implicit none(type,external)
   private
 
-  real(pREAL), dimension (:,:,:),   allocatable, private :: &
+  real(pREAL), dimension (:,:,:),   allocatable :: &
     materialpoint_cs                                                                                !< Cauchy stress
-  real(pREAL), dimension (:,:,:,:), allocatable, private :: &
+  real(pREAL), dimension (:,:,:,:), allocatable :: &
     materialpoint_dcsdE, &                                                                          !< Cauchy stress tangent
     materialpoint_F                                                                                 !< deformation gradient
-  real(pREAL), dimension (:,:,:,:), allocatable, private :: &
+  real(pREAL), dimension (:,:,:,:), allocatable :: &
     materialpoint_dcsdE_knownGood                                                                   !< known good tangent
 
   integer,                                       public :: &
     cycleCounter = 0                                                                                !< needs description
-  logical,                                       public :: &
-    broken = .false.                                                                                !< needs description
+  integer(kind(STATUS_OK)) :: &
+    status
 
   integer, parameter,                            public :: &
     materialpoint_CALCRESULTS     = 2**0, &
@@ -150,17 +151,17 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
 
   if (iand(mode, materialpoint_CALCRESULTS) /= 0) then
 
-    validCalculation: if (broken) then
+    validCalculation: if (status /= STATUS_OK) then
       call random_number(rnd)
       if (rnd < 0.5_pREAL) rnd = rnd - 1.0_pREAL
       materialpoint_cs(1:6,ip,elCP)        = ODD_STRESS * rnd
       materialpoint_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_eye(6)
 
     else validCalculation
-      call homogenization_mechanical_response(broken, &
+      call homogenization_mechanical_response(status, &
                                               dt,(elCP-1)*discretization_nIPs + ip, (elCP-1)*discretization_nIPs + ip)
 
-      terminalIllness: if (broken) then
+      terminalIllness: if (status /= STATUS_OK) then
 
         call random_number(rnd)
         if (rnd < 0.5_pREAL) rnd = rnd - 1.0_pREAL

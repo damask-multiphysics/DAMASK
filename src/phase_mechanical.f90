@@ -71,12 +71,12 @@ submodule(phase) mechanical
         dotState
     end function plastic_dotState
 
-    module function plastic_deltaState(ph, en) result(broken)
+    module function plastic_deltaState(ph, en) result(status)
       integer, intent(in) :: &
         ph, &
         en
-      logical :: &
-        broken
+      integer(kind(STATUS_OK)) :: &
+        status
     end function plastic_deltaState
 
     module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
@@ -377,11 +377,12 @@ end subroutine mechanical_result
 !> @brief calculation of stress (P) with time integration based on a residuum in Lp and
 !> intermediate acceleration of the Newton-Raphson correction
 !--------------------------------------------------------------------------------------------------
-function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(broken)
+function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
 
   real(pREAL), dimension(3,3), intent(in) :: F,Fp0,Fi0
   real(pREAL),                 intent(in) :: Delta_t
   integer, intent(in) :: ph, en
+  integer(kind(STATUS_OK)) :: status
 
   real(pREAL), dimension(3,3)::       Fp_new, &                                                     ! plastic deformation gradient at end of timestep
                                       invFp_new, &                                                  ! inverse of Fp_new
@@ -430,10 +431,10 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(broken)
                                       p, &
                                       jacoCounterLp, &
                                       jacoCounterLi                                                 ! counters to check for Jacobian update
-  logical :: error,broken
+  logical :: error
 
 
-  broken = .true.
+  status = STATUS_FAIL_PHASE_MECHANICAL_STRESS
   call plastic_dependentState(ph,en)
 
   Lpguess = phase_mechanical_Lp(ph)%data(1:3,1:3,en)                                                ! take as first guess
@@ -573,7 +574,7 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(broken)
   phase_mechanical_Fp(ph)%data(1:3,1:3,en) = Fp_new / math_det33(Fp_new)**(1.0_pREAL/3.0_pREAL)    ! regularize
   phase_mechanical_Fi(ph)%data(1:3,1:3,en) = Fi_new
   phase_mechanical_Fe(ph)%data(1:3,1:3,en) = matmul(matmul(F,invFp_new),invFi_new)
-  broken = .false.
+  status = STATUS_OK
 
 end function integrateStress
 
@@ -582,7 +583,7 @@ end function integrateStress
 !> @brief integrate stress, state with adaptive 1st order explicit Euler method
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
-function integrateStateFPI(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
+function integrateStateFPI(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(status)
 
   real(pREAL), intent(in),dimension(3,3) :: F_0,F,Fp0,Fi0
   real(pREAL), intent(in),dimension(:)   :: state0
@@ -590,8 +591,7 @@ function integrateStateFPI(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
   integer, intent(in) :: &
     ph, &
     en
-  logical :: &
-    broken
+  integer(kind(STATUS_OK)) :: status
 
   integer :: &
     NiterationState, &                                                                              !< number of iterations in state loop
@@ -605,7 +605,7 @@ function integrateStateFPI(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
     dotState_last
 
 
-  broken = .true.
+  status = STATUS_FAIL_PHASE_MECHANICAL_STATE
 
   dotState = plastic_dotState(Delta_t,ph,en)
   if (any(IEEE_is_NaN(dotState))) return
@@ -618,8 +618,8 @@ function integrateStateFPI(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
     dotState_last(1:sizeDotState,2) = merge(dotState_last(1:sizeDotState,1),0.0_pREAL, nIterationState > 1)
     dotState_last(1:sizeDotState,1) = dotState
 
-    broken = integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
-    if (broken) exit iteration
+    status = integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
+    if (status /= STATUS_OK) exit iteration
 
     dotState = plastic_dotState(Delta_t,ph,en)
     if (any(IEEE_is_NaN(dotState))) exit iteration
@@ -633,7 +633,7 @@ function integrateStateFPI(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
     plasticState(ph)%state(1:sizeDotState,en) = plasticState(ph)%state(1:sizeDotState,en) - r
 
     if (converged(r,plasticState(ph)%state(1:sizeDotState,en),plasticState(ph)%atol(1:sizeDotState))) then
-      broken = plastic_deltaState(ph,en)
+      status = plastic_deltaState(ph,en)
       exit iteration
     end if
 
@@ -670,7 +670,7 @@ end function integrateStateFPI
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate state with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
-function integrateStateEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
+function integrateStateEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(status)
 
   real(pREAL), intent(in),dimension(3,3) :: F_0,F,Fp0,Fi0
   real(pREAL), intent(in),dimension(:)   :: state0
@@ -678,8 +678,8 @@ function integrateStateEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
   integer, intent(in) :: &
     ph, &
     en                                                                                               !< grain index in grain loop
-  logical :: &
-    broken
+  integer(kind(STATUS_OK)) :: &
+    status
 
   real(pREAL), dimension(plasticState(ph)%sizeDotState) :: &
     dotState
@@ -687,7 +687,7 @@ function integrateStateEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
     sizeDotState
 
 
-  broken = .true.
+  status = STATUS_FAIL_PHASE_MECHANICAL_STATE
 
   dotState = plastic_dotState(Delta_t,ph,en)
   if (any(IEEE_is_NaN(dotState))) return
@@ -695,10 +695,10 @@ function integrateStateEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
   sizeDotState = plasticState(ph)%sizeDotState
   plasticState(ph)%state(1:sizeDotState,en) = state0 + dotState*Delta_t
 
-  broken = plastic_deltaState(ph,en)
-  if (broken) return
+  status = plastic_deltaState(ph,en)
+  if (status /= STATUS_OK) return
 
-  broken = integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
+  status = integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
 
 end function integrateStateEuler
 
@@ -706,7 +706,7 @@ end function integrateStateEuler
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
-function integrateStateAdaptiveEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
+function integrateStateAdaptiveEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(status)
 
   real(pREAL), intent(in),dimension(3,3) :: F_0,F,Fp0,Fi0
   real(pREAL), intent(in),dimension(:)   :: state0
@@ -714,8 +714,8 @@ function integrateStateAdaptiveEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(
   integer, intent(in) :: &
     ph, &
     en
-  logical :: &
-    broken
+  integer(kind(STATUS_OK)) :: &
+    status
 
   integer :: &
     sizeDotState
@@ -724,7 +724,7 @@ function integrateStateAdaptiveEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(
     dotState
 
 
-  broken = .true.
+  status = STATUS_FAIL_PHASE_MECHANICAL_STATE
 
   dotState = plastic_dotState(Delta_t,ph,en)
   if (any(IEEE_is_NaN(dotState))) return
@@ -734,18 +734,21 @@ function integrateStateAdaptiveEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(
   r = - dotState * 0.5_pREAL * Delta_t
   plasticState(ph)%state(1:sizeDotState,en) = state0 + dotState*Delta_t
 
-  broken = plastic_deltaState(ph,en)
-  if (broken) return
+  status = plastic_deltaState(ph,en)
+  if (status /= STATUS_OK) return
 
-  broken = integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
-  if (broken) return
+  status = integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
+  if (status /= STATUS_OK) return
 
   dotState = plastic_dotState(Delta_t,ph,en)
+  ! ToDo: MD: need to set status to failed
   if (any(IEEE_is_NaN(dotState))) return
 
-  broken = .not. converged(r + 0.5_pREAL * dotState * Delta_t, &
+  status = merge(STATUS_OK, &
+                 STATUS_FAIL_PHASE_MECHANICAL_STATE, &
+                 converged(r + 0.5_pREAL * dotState * Delta_t, &
                            plasticState(ph)%state(1:sizeDotState,en), &
-                           plasticState(ph)%atol(1:sizeDotState))
+                           plasticState(ph)%atol(1:sizeDotState)))
 
 end function integrateStateAdaptiveEuler
 
@@ -753,13 +756,13 @@ end function integrateStateAdaptiveEuler
 !---------------------------------------------------------------------------------------------------
 !> @brief Integrate state (including stress integration) with the classic Runge Kutta method
 !---------------------------------------------------------------------------------------------------
-function integrateStateRK4(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
+function integrateStateRK4(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(status)
 
   real(pREAL), intent(in),dimension(3,3) :: F_0,F,Fp0,Fi0
   real(pREAL), intent(in),dimension(:)   :: state0
   real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: ph, en
-  logical :: broken
+  integer(kind(STATUS_OK)) :: status
 
   real(pREAL), dimension(3,3), parameter :: &
     A = reshape([&
@@ -773,7 +776,7 @@ function integrateStateRK4(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
     B = [6.0_pREAL, 3.0_pREAL, 3.0_pREAL, 6.0_pREAL]**(-1)
 
 
-  broken = integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C)
+  status = integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C)
 
 end function integrateStateRK4
 
@@ -781,13 +784,13 @@ end function integrateStateRK4
 !---------------------------------------------------------------------------------------------------
 !> @brief Integrate state (including stress integration) with the Cash-Carp method
 !---------------------------------------------------------------------------------------------------
-function integrateStateRKCK45(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
+function integrateStateRKCK45(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(status)
 
   real(pREAL), intent(in),dimension(3,3) :: F_0,F,Fp0,Fi0
   real(pREAL), intent(in),dimension(:)   :: state0
   real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: ph, en
-  logical :: broken
+  integer(kind(STATUS_OK)) :: status
 
   real(pREAL), dimension(5,5), parameter :: &
     A = reshape([&
@@ -808,7 +811,7 @@ function integrateStateRKCK45(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(broken)
       13525.0_pREAL/55296.0_pREAL, 277.0_pREAL/14336.0_pREAL,  1._pREAL/4._pREAL]
 
 
-  broken = integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C,DB)
+  status = integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C,DB)
 
 end function integrateStateRKCK45
 
@@ -817,7 +820,7 @@ end function integrateStateRKCK45
 !> @brief Integrate state (including stress integration) with an explicit Runge-Kutta method or an
 !! embedded explicit Runge-Kutta method
 !--------------------------------------------------------------------------------------------------
-function integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C,DB) result(broken)
+function integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C,DB) result(status)
 
   real(pREAL), intent(in),dimension(3,3) :: F_0,F,Fp0,Fi0
   real(pREAL), intent(in),dimension(:)   :: state0
@@ -828,7 +831,7 @@ function integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C,DB) result(br
   integer, intent(in) :: &
     ph, &
     en
-  logical :: broken
+  integer(kind(STATUS_OK)) :: status
 
   integer :: &
     stage, &                                                                                        ! stage index in integration stage loop
@@ -840,7 +843,7 @@ function integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C,DB) result(br
     plastic_RKdotState
 
 
-  broken = .true.
+  status = STATUS_FAIL_PHASE_MECHANICAL_STATE
 
   dotState = plastic_dotState(Delta_t,ph,en)
   if (any(IEEE_is_NaN(dotState))) return
@@ -858,14 +861,15 @@ function integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C,DB) result(br
 
     plasticState(ph)%state(1:sizeDotState,en) = state0 + dotState*Delta_t
 
-    broken = integrateStress(F_0+(F-F_0)*Delta_t*C(stage),Fp0,Fi0,Delta_t*C(stage), ph,en)
-    if (broken) exit
+    status = integrateStress(F_0+(F-F_0)*Delta_t*C(stage),Fp0,Fi0,Delta_t*C(stage), ph,en)
+    if (status /= STATUS_OK) return
 
     dotState = plastic_dotState(Delta_t*C(stage), ph,en)
+    ! ToDo: MD: need to set status to failed
     if (any(IEEE_is_NaN(dotState))) exit
 
   end do
-  if (broken) return
+  if (status /= STATUS_OK) return
 
 
   plastic_RKdotState(1:sizeDotState,size(B)) = dotState
@@ -873,16 +877,18 @@ function integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C,DB) result(br
   plasticState(ph)%state(1:sizeDotState,en) = state0 + dotState*Delta_t
 
   if (present(DB)) &
-    broken = .not. converged(matmul(plastic_RKdotState(1:sizeDotState,1:size(DB)),DB) * Delta_t, &
+    status = merge(STATUS_OK, &
+                   STATUS_FAIL_PHASE_MECHANICAL_STATE, &
+                   converged(matmul(plastic_RKdotState(1:sizeDotState,1:size(DB)),DB) * Delta_t, &
                              plasticState(ph)%state(1:sizeDotState,en), &
-                             plasticState(ph)%atol(1:sizeDotState))
+                             plasticState(ph)%atol(1:sizeDotState)))
 
-  if (broken) return
+  if (status /= STATUS_OK) return
 
-  broken = plastic_deltaState(ph,en)
-  if (broken) return
+  status = plastic_deltaState(ph,en)
+  if (status /= STATUS_OK) return
 
-  broken = integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
+  status = integrateStress(F,Fp0,Fi0,Delta_t,ph,en)
 
 end function integrateStateRK
 
@@ -984,13 +990,13 @@ end subroutine mechanical_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
+module function phase_mechanical_constitutive(Delta_t,co,ce) result(status)
 
   real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: &
     co, &
     ce
-  logical :: converged_
+  integer(kind(STATUS_OK)) :: status
 
   real(pREAL) :: &
     formerStep
@@ -1019,13 +1025,13 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
   F0  = phase_mechanical_F0(ph)%data(1:3,1:3,en)
   stepFrac = 0.0_pREAL
   todo = .true.
-  step = 1.0_pREAL/num%stepSizeCryst
-  converged_ = .false.                                                                              ! pretend failed step of 1/stepSizeCryst
+  step = 1.0_pREAL/num%stepSizeCryst                                                                ! pretend failed step of 1/stepSizeCryst
+  status = STATUS_ITERATING
 
   todo = .true.
   cutbackLooping: do while (todo)
 
-    if (converged_) then
+    if (status == STATUS_OK) then
       formerStep = step
       stepFrac = stepFrac + step
       step = min(1.0_pREAL - stepFrac, num%stepIncreaseCryst * step)
@@ -1061,7 +1067,7 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
       sizeDotState = plasticState(ph)%sizeDotState
       F = F0 &
            + step * (phase_mechanical_F(ph)%data(1:3,1:3,en) - phase_mechanical_F0(ph)%data(1:3,1:3,en))
-      converged_ = .not. integrateState(F0,F,Fp0,Fi0,state0(1:sizeDotState),step * Delta_t,ph,en)
+      status = integrateState(F0,F,Fp0,Fi0,state0(1:sizeDotState),step * Delta_t,ph,en)
     end if
 
   end do cutbackLooping

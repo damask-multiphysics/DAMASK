@@ -7,6 +7,8 @@ module parallelization
     OUTPUT_UNIT, &
     ERROR_UNIT
 
+  use constants
+
 #ifdef PETSC
 #include <petsc/finclude/petscsys.h>
   use PETScSys
@@ -63,6 +65,7 @@ subroutine parallelization_init()
 !$ integer(pI32) :: OMP_NUM_THREADS
 !$ character(len=6) NumThreadsString
   PetscErrorCode :: err_PETSc
+  integer(kind(STATUS_OK)) :: status
 
 
 #ifdef _OPENMP
@@ -116,27 +119,29 @@ subroutine parallelization_init()
 #endif
 
   call MPI_Comm_size(MPI_COMM_WORLD,worldsize,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) &
-    error stop 'Could not determine worldsize'
+  call parallelization_chkerr(err_MPI)
   if (worldrank == 0) print'(/,1x,a,i0)', 'MPI processes: ',worldsize
 
   call MPI_Type_size(MPI_INTEGER,typeSize,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) &
-    error stop 'Could not determine size of MPI_INTEGER'
+  call parallelization_chkerr(err_MPI)
   if (typeSize*8_MPI_INTEGER_KIND /= int(bit_size(0),MPI_INTEGER_KIND)) &
     error stop 'Mismatch between MPI_INTEGER and DAMASK default integer'
 
   call MPI_Type_size(MPI_INTEGER8,typeSize,err_MPI)
-  if (err_MPI /= 0) &
-    error stop 'Could not determine size of MPI_INTEGER8'
+  call parallelization_chkerr(err_MPI)
   if (typeSize*8_MPI_INTEGER_KIND /= int(bit_size(0_pI64),MPI_INTEGER_KIND)) &
     error stop 'Mismatch between MPI_INTEGER8 and DAMASK pI64'
 
   call MPI_Type_size(MPI_DOUBLE,typeSize,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) &
-    error stop 'Could not determine size of MPI_DOUBLE'
+  call parallelization_chkerr(err_MPI)
   if (typeSize*8_MPI_INTEGER_KIND /= int(storage_size(0.0_pREAL),MPI_INTEGER_KIND)) &
     error stop 'Mismatch between MPI_DOUBLE and DAMASK pREAL'
+
+  call MPI_Type_size(MPI_INTEGER,typeSize,err_MPI)
+  call parallelization_chkerr(err_MPI)
+  if (typeSize*8_MPI_INTEGER_KIND /= int(bit_size(status),MPI_INTEGER_KIND)) &
+    error stop 'Mismatch between MPI_INTEGER and DAMASK status'
+
 
 !$ call get_environment_variable(name='OMP_NUM_THREADS',value=NumThreadsString,STATUS=got_env)
 !$ if (got_env /= 0) then

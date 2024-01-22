@@ -18,7 +18,7 @@ module grid_mech_utilities
   use discretization
   use spectral_utilities
   use homogenization
-
+  use constants
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
@@ -113,10 +113,10 @@ end function utilities_maskedCompliance
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate constitutive response.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_constitutiveResponse(broken, P,P_av,C_volAvg,C_minmaxAvg,&
+subroutine utilities_constitutiveResponse(status, P,P_av,C_volAvg,C_minmaxAvg,&
                                           F,Delta_t,rotation_BC)
 
-  logical,        intent(out)                                       :: broken
+  integer(kind(STATUS_OK)),  intent(out)                            :: status
   real(pREAL),    intent(out), dimension(3,3,3,3)                   :: C_volAvg, C_minmaxAvg        !< average stiffness
   real(pREAL),    intent(out), dimension(3,3)                       :: P_av                         !< average PK stress
   real(pREAL),    intent(out), dimension(3,3,cells(1),cells(2),cells3) :: P                         !< PK stress
@@ -124,7 +124,7 @@ subroutine utilities_constitutiveResponse(broken, P,P_av,C_volAvg,C_minmaxAvg,&
   real(pREAL),    intent(in)                                        :: Delta_t                      !< loading time
   type(tRotation), intent(in),  optional                            :: rotation_BC                  !< rotation of load frame
 
-  integer :: i
+  integer :: ce
   integer(MPI_INTEGER_KIND) :: err_MPI
   real(pREAL), dimension(3,3,3,3) :: dPdF_max,      dPdF_min
   real(pREAL)                     :: dPdF_norm_max, dPdF_norm_min
@@ -136,7 +136,7 @@ subroutine utilities_constitutiveResponse(broken, P,P_av,C_volAvg,C_minmaxAvg,&
 
   homogenization_F  = reshape(F,[3,3,product(cells(1:2))*cells3])                                   ! set materialpoint target F to estimated field
 
-  call homogenization_mechanical_response(broken,Delta_t,1,product(cells(1:2))*cells3)              ! calculate P field
+  call homogenization_mechanical_response(status,Delta_t,1,product(cells(1:2))*cells3)              ! calculate P field
 
   P = reshape(homogenization_P, [3,3,cells(1),cells(2),cells3])
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt
@@ -156,14 +156,14 @@ subroutine utilities_constitutiveResponse(broken, P,P_av,C_volAvg,C_minmaxAvg,&
   dPdF_norm_max = 0.0_pREAL
   dPdF_min = huge(1.0_pREAL)
   dPdF_norm_min = huge(1.0_pREAL)
-  do i = 1, product(cells(1:2))*cells3
-    if (dPdF_norm_max < sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)) then
-      dPdF_max = homogenization_dPdF(1:3,1:3,1:3,1:3,i)
-      dPdF_norm_max = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)
+  do ce = 1, product(cells(1:2))*cells3
+    if (dPdF_norm_max < sum(homogenization_dPdF(1:3,1:3,1:3,1:3,ce)**2)) then
+      dPdF_max = homogenization_dPdF(1:3,1:3,1:3,1:3,ce)
+      dPdF_norm_max = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,ce)**2)
     end if
-    if (dPdF_norm_min > sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)) then
-      dPdF_min = homogenization_dPdF(1:3,1:3,1:3,1:3,i)
-      dPdF_norm_min = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)
+    if (dPdF_norm_min > sum(homogenization_dPdF(1:3,1:3,1:3,1:3,ce)**2)) then
+      dPdF_min = homogenization_dPdF(1:3,1:3,1:3,1:3,ce)
+      dPdF_norm_min = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,ce)**2)
     end if
   end do
 

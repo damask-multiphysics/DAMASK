@@ -28,7 +28,7 @@ module grid_mechanical_FEM
   use homogenization
   use discretization
   use discretization_grid
-
+  use constants
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
@@ -84,7 +84,7 @@ module grid_mechanical_FEM
     err_BC                                                                                          !< deviation from stress BC
 
   integer :: totalIter = 0                                                                          !< total iteration in current increment
-  logical :: broken
+  integer(kind(STATUS_OK)) :: status
 
   public :: &
     grid_mechanical_FEM_init, &
@@ -271,7 +271,7 @@ subroutine grid_mechanical_FEM_init(num_grid)
   end if restartRead
 
   call utilities_updateCoords(F)
-  call utilities_constitutiveResponse(broken,P_current,P_av,C_volAvg,devNull, &                     ! stress field, stress avg, global average of stiffness and (min+max)/2
+  call utilities_constitutiveResponse(status,P_current,P_av,C_volAvg,devNull, &                     ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       F, &                                                          ! target F
                                       0.0_pREAL)                                                    ! time increment
   call DMDAVecRestoreArrayF90(DM_mech,u_PETSc,u,err_PETSc)
@@ -325,7 +325,7 @@ function grid_mechanical_FEM_solution(incInfoIn) result(solution)
 
   solution%converged = reason > 0
   solution%iterationsNeeded = totalIter
-  solution%termIll = broken
+  solution%termIll = status /= STATUS_OK
   P_aim = merge(P_av,P_aim,params%stress_mask)
 
 end function grid_mechanical_FEM_solution
@@ -492,7 +492,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,e
   BCTol  = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
   if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL)) &
-       .or. broken) then
+       .or. status /= STATUS_OK) then
     reason = 1
   elseif (totalIter >= num%itmax) then
     reason = -1
@@ -525,7 +525,7 @@ subroutine formResidual(da_local,x_local, &
 
   real(pREAL), pointer,dimension(:,:,:,:) :: x_scal, r
   real(pREAL), dimension(8,3) :: x_elem,  f_elem
-  PetscInt             :: i, ii, j, jj, k, kk, ctr, ele
+  PetscInt             :: i, ii, j, jj, k, kk, ctr, ce
   PetscInt :: &
     PETScIter, &
     nfuncs
@@ -570,10 +570,10 @@ subroutine formResidual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call utilities_constitutiveResponse(broken,P_current,&
+  call utilities_constitutiveResponse(status,P_current,&
                                       P_av,C_volAvg,devNull, &
                                       F,params%Delta_t,params%rotation_BC)
-  call MPI_Allreduce(MPI_IN_PLACE,broken,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+  call MPI_Allreduce(MPI_IN_PLACE,status,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
 !--------------------------------------------------------------------------------------------------
@@ -587,7 +587,7 @@ subroutine formResidual(da_local,x_local, &
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayReadF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
-  ele = 0
+  ce = 0
   r = 0.0_pREAL
   do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, cells(1)
     ctr = 0
@@ -595,11 +595,11 @@ subroutine formResidual(da_local,x_local, &
       ctr = ctr + 1
       x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
     end do; end do; end do
-    ele = ele + 1
+    ce = ce + 1
     f_elem = matmul(transpose(BMat),transpose(P_current(1:3,1:3,i,j,k-cells3Offset)))*detJ + &
-             matmul(HGMat,x_elem)*(homogenization_dPdF(1,1,1,1,ele) + &
-                                   homogenization_dPdF(2,2,2,2,ele) + &
-                                   homogenization_dPdF(3,3,3,3,ele))/3.0_pREAL
+             matmul(HGMat,x_elem)*(homogenization_dPdF(1,1,1,1,ce) + &
+                                   homogenization_dPdF(2,2,2,2,ce) + &
+                                   homogenization_dPdF(3,3,3,3,ce))/3.0_pREAL
     ctr = 0
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1

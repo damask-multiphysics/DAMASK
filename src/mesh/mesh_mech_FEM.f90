@@ -25,6 +25,7 @@ module mesh_mechanical_FEM
   use FEM_quadrature
   use homogenization
   use math
+  use constants
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
@@ -68,7 +69,8 @@ module mesh_mechanical_FEM
   character(len=pSTRLEN) :: incInfo
   real(pREAL), dimension(3,3) :: &
     P_av = 0.0_pREAL
-  logical :: ForwardData, broken
+  logical :: ForwardData
+  integer(kind(STATUS_OK)) :: status
   real(pREAL), parameter :: eps = 1.0e-18_pREAL
 
   external :: &                                                                                     ! ToDo: write interfaces
@@ -311,7 +313,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
     call DMPlexVecSetClosure(mechanical_mesh,section,solution_local,cell,px_scal,5,err_PETSc)
     CHKERRQ(err_PETSc)
   end do
-  call utilities_constitutiveResponse(broken,0.0_pREAL,devNull,.true.)
+  call utilities_constitutiveResponse(status,0.0_pREAL,devNull,.true.)
 
 end subroutine FEM_mechanical_init
 
@@ -458,8 +460,8 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call utilities_constitutiveResponse(broken,params%Delta_t,P_av,ForwardData)
-  call MPI_Allreduce(MPI_IN_PLACE,broken,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+  call utilities_constitutiveResponse(status,params%Delta_t,P_av,ForwardData)
+  call MPI_Allreduce(MPI_IN_PLACE,status,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
   ForwardData = .false.
 
@@ -529,7 +531,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
   real(pREAL),dimension(cellDOF,cellDOF) :: K_eA, K_eB
 
   PetscInt :: cellStart, cellEnd, cell, component, face, &
-              qPt, basis, comp, cidx,bcSize, m, i
+              qPt, basis, comp, cidx,bcSize, ce, i
   IS :: bcPoints
 
 
@@ -581,7 +583,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
     FAvg = 0.0_pREAL
     BMatAvg = 0.0_pREAL
     do qPt = 0_pPETSCINT, nQuadrature-1_pPETSCINT
-      m = cell*nQuadrature + qPt + 1_pPETSCINT
+      ce = cell*nQuadrature + qPt + 1_pPETSCINT
       BMat = 0.0_pREAL
       do basis = 0_pPETSCINT, nBasis-1_pPETSCINT
         do comp = 0_pPETSCINT, dimPlex-1_pPETSCINT
@@ -591,7 +593,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
             matmul(reshape(pInvcellJ,[dimPlex,dimPlex]),basisFieldDer(i*dimPlex+1_pPETSCINT:(i+1_pPETSCINT)*dimPlex))
         end do
       end do
-      MatA = matmul(reshape(reshape(homogenization_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,m), &
+      MatA = matmul(reshape(reshape(homogenization_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,ce), &
                                     shape=[dimPlex,dimPlex,dimPlex,dimPlex], order=[2,1,4,3]), &
                             shape=[dimPlex*dimPlex,dimPlex*dimPlex]),BMat)*qWeights(qPt+1_pPETSCINT)
       if (num%BBarStabilization) then
@@ -599,11 +601,11 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
         FInv = math_inv33(F)
         K_eA = K_eA + matmul(transpose(BMat),MatA)*math_det33(FInv)**(1.0_pREAL/real(dimPlex,pREAL))
         K_eB = K_eB - &
-               matmul(transpose(matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,m),shape=[dimPlex**2,1_pPETSCINT]), &
+               matmul(transpose(matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,ce),shape=[dimPlex**2,1_pPETSCINT]), &
                                        matmul(reshape(FInv(1:dimPlex,1:dimPlex), &
                                                       shape=[1_pPETSCINT,dimPlex**2],order=[2,1]),BMat))),MatA)
         MatB = MatB &
-             + matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,m),shape=[1_pPETSCINT,dimPlex**2]),MatA)
+             + matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,ce),shape=[1_pPETSCINT,dimPlex**2]),MatA)
         FAvg = FAvg + F
         BMatAvg = BMatAvg + BMat
       else
@@ -747,7 +749,7 @@ subroutine FEM_mechanical_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reaso
   divTol = max(maxval(abs(P_av(1:dimPlex,1:dimPlex)))*num%eps_struct_rtol,num%eps_struct_atol)
   call SNESConvergedDefault(snes_local,PETScIter,xnorm,snorm,fnorm/divTol,reason,dummy,err_PETSc)
   CHKERRQ(err_PETSc)
-  if (broken) reason = SNES_DIVERGED_FUNCTION_DOMAIN
+  if (status /= STATUS_OK) reason = SNES_DIVERGED_FUNCTION_DOMAIN
   print'(/,1x,a,a,i0,a,f0.3)', trim(incInfo), &
                   ' @ Iteration ',PETScIter,' mechanical residual norm = ',fnorm/divTol
   print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &

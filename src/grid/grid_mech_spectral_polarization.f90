@@ -27,6 +27,7 @@ module grid_mechanical_spectral_polarization
   use config
   use homogenization
   use discretization_grid
+  use constants
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
@@ -96,7 +97,7 @@ module grid_mechanical_spectral_polarization
     err_div                                                                                         !< RMS of div of P
 
   integer :: totalIter = 0                                                                          !< total iteration in current increment
-  logical :: broken
+  integer(kind(STATUS_OK)) :: status
 
   public :: &
     grid_mechanical_spectral_polarization_init, &
@@ -257,7 +258,7 @@ subroutine grid_mechanical_spectral_polarization_init(num_grid)
   end if restartRead
 
   call utilities_updateCoords(reshape(F,shape(F_lastInc)))
-  call utilities_constitutiveResponse(broken,P,P_av,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
+  call utilities_constitutiveResponse(status,P,P_av,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
                                       0.0_pREAL)                                                    ! time increment
   call DMDAVecRestoreArrayF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)                          ! deassociate pointer
@@ -322,7 +323,7 @@ function grid_mechanical_spectral_polarization_solution(incInfoIn) result(soluti
 
   solution%converged = reason > 0
   solution%iterationsNeeded = totalIter
-  solution%termIll = broken
+  solution%termIll = status /= STATUS_OK
   P_aim = merge(P_av,P_aim,params%stress_mask)
 
 end function grid_mechanical_spectral_polarization_solution
@@ -516,7 +517,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   BCTol = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
   if ((totalIter >= num%itmin .and. all([err_div/divTol, err_curl/curlTol, err_BC/BCTol] < 1.0_pREAL)) &
-       .or. broken) then
+       .or. status /= STATUS_OK) then
     reason = 1
   elseif (totalIter >= num%itmax) then
     reason = -1
@@ -562,7 +563,7 @@ subroutine formResidual(residual_subdomain, FandF_tau, &
     nfuncs
   integer(MPI_INTEGER_KIND) :: err_MPI
   integer :: &
-    i, j, k, e
+    i, j, k, ce
 
 
   F       => FandF_tau(1:3,1:3,1,1:cells(1),1:cells(2),1:cells3)
@@ -604,24 +605,24 @@ subroutine formResidual(residual_subdomain, FandF_tau, &
   err_curl = utilities_curlRMS(F)
 
 #ifdef __GFORTRAN__
-  call utilities_constitutiveResponse(broken,r_F, &
+  call utilities_constitutiveResponse(status,r_F, &
 #else
   associate (P => r_F)
-    call utilities_constitutiveResponse(broken, P, &
+    call utilities_constitutiveResponse(status, P, &
 #endif
                                         P_av,C_volAvg,C_minMaxAvg, &
                                         F - r_F_tau/num%beta,params%Delta_t,params%rotation_BC)
-    call MPI_Allreduce(MPI_IN_PLACE,broken,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+    call MPI_Allreduce(MPI_IN_PLACE,status,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,err_MPI)
 #ifdef __GFORTRAN__
     err_div = utilities_divergenceRMS(r_F)
 #else
     err_div = utilities_divergenceRMS(P)
 #endif
-    e = 0
+    ce = 0
     do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
-      e = e + 1
+      ce = ce + 1
       r_F(1:3,1:3,i,j,k) = &
-        math_mul3333xx33(math_invSym3333(homogenization_dPdF(1:3,1:3,1:3,1:3,e) + C_scale), &
+        math_mul3333xx33(math_invSym3333(homogenization_dPdF(1:3,1:3,1:3,1:3,ce) + C_scale), &
 #ifdef __GFORTRAN__
                          r_F(1:3,1:3,i,j,k) - matmul(F(1:3,1:3,i,j,k), &
 #else
