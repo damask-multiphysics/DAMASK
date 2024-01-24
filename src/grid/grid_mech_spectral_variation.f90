@@ -551,6 +551,8 @@ subroutine formResidual(residual_subdomain, F, &
   PetscObject :: dummy
   PetscErrorCode :: err_PETSc
 
+  real(pREAL), dimension(3,3) :: dP_with_BC ! Yi: delta P only for specified BC components
+
   real(pREAL),  dimension(3,3) :: &
     deltaF_aim
   PetscInt :: &
@@ -590,9 +592,11 @@ subroutine formResidual(residual_subdomain, F, &
 
   deltaF_aim = math_mul3333xx33(S, P_av - P_aim)                                                    ! S = 0.0 for no bc
   F_aim = F_aim - deltaF_aim
-  err_BC = maxval(abs(merge(.0_pREAL,P_av - P_aim,params%stress_mask)))
+  dP_with_BC = merge(.0_pREAL,P_av - P_aim,params%stress_mask)
+  err_BC = maxval(abs(dP_with_BC))
 
-  r = utilities_G_Convolution(r,params%rotation_BC%rotate(deltaF_aim,active=.true.))
+  ! Yi: unlike Gamma, G make r still in stress space, what about rotation?
+  r = utilities_G_Convolution(r,dP_with_BC)
 
   print*, 'end my rhs'
 
@@ -621,7 +625,7 @@ subroutine formJacobian(residual_subdomain,F,Jac_pre,Jac,dummy,err_PETSc)
 
   N_dof = 9*product(cells(1:2))*cells3 
 
-  print*, 'in my jac'
+  print*, 'start my jac'
   
   !call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,N_dof,N_dof,0,Jac,err_PETSc)
   !CHKERRQ(err_PETSc)
@@ -637,7 +641,7 @@ subroutine formJacobian(residual_subdomain,F,Jac_pre,Jac,dummy,err_PETSc)
   !call MatShellSetOperation(Jac_pre,MATOP_MULT,GK_op,err_PETSc)
   !CHKERRQ(err_PETSc)
 
-  print*, 'in my jac'
+  print*, 'end my jac'
 
 end subroutine formJacobian
 
@@ -662,8 +666,11 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
   real(pREAL),  dimension(3,3) :: &
     deltaF_aim = 0.0_pREAL
 
+  real(pREAL), dimension(3,3) :: dP_with_BC ! Yi: delta P only for specified BC components
+
   integer :: i, j, k, e
 
+  print*, 'start my GK_op'
   ! Yi: maybe used in parallel mode?
   ! call SNESGetDM(SNES_mech,dm_local,err_PETSc)
   ! CHKERRQ(err_PETSc)
@@ -677,14 +684,15 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
     e = e + 1
     output(1:3,1:3,i,j,k) = &
       math_mul3333xx33(homogenization_dPdF(1:3,1:3,1:3,1:3,e), dF(1:3,1:3,i,j,k))
-    ! transpose(math_mul3333xx33(homogenization_dPdF(1:3,1:3,1:3,1:3,e), dF(1:3,1:3,i,j,k)))
+      !transpose(math_mul3333xx33(homogenization_dPdF(1:3,1:3,1:3,1:3,e), dF(1:3,1:3,i,j,k)))
     !! ToCheck: do we need multiple transpose? in GooseFFT, K_dF = trans2(ddot42(K4, trans2(dF)))
     !! trans2: ij -> ji, ddot42 (ijkl,lk) -> ij
     !! here we contracted transpose in ddot42 and trans2
   end do; end do; end do
 
   ! ===== G* operator =====
-  output = utilities_G_Convolution(output,deltaF_aim)
+  dP_with_BC = merge(.0_pREAL,P_av - P_aim,params%stress_mask)
+  output = utilities_G_Convolution(output,dP_with_BC)
 
   call DMDAVecGetArrayF90(DM_mech,output_local,output_scal,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -694,6 +702,7 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
 
   call DMDAVecRestoreArrayF90(DM_mech,dF_local,dF_scal,err_PETSc)
   CHKERRQ(err_PETSc)
+  print*, 'end my GK_op'
   
 end subroutine GK_op
 

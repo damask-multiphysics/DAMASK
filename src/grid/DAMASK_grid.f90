@@ -512,8 +512,13 @@ function parseLoadsteps(load_steps) result(loadCases)
         end do; write(IO_STDOUT,'(/)',advance='no')
       end do
       if (any(loadCases(l)%stress%mask .eqv. loadCases(l)%deformation%mask)) errorID = 831
-      if (any(.not.(loadCases(l)%stress%mask .or. transpose(loadCases(l)%stress%mask)) .and. (math_I3<1))) &
+      if (any(.not.(loadCases(l)%stress%mask .or. transpose(loadCases(l)%stress%mask)) .and. (math_I3<1))) then
+        print*, .not.(loadCases(l)%stress%mask .or. transpose(loadCases(l)%stress%mask)), 'Yi: test test'
+        print*, 'Yi: test test'
+        print*, math_I3
+        print*, loadCases(l)%stress%values
         errorID = 838                                                                               ! no rotation is allowed by stress BC
+      endif
 
       if (loadCases(l)%stress%myType == 'P')     print'(2x,a)', 'P / MPa:'
       if (loadCases(l)%stress%myType == 'dot_P') print'(2x,a)', 'dot_P / MPa/s:'
