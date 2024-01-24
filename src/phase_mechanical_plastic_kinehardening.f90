@@ -145,6 +145,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
         a_nS(1,:) = pl%get_as1dReal('a_nonSchmid_110',defaultVal=emptyRealArray)
         prm%P_nS_pos = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=+1)
         prm%P_nS_neg = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=-1)
+        deallocate(a_nS)
       else
         prm%P_nS_pos = +prm%P
         prm%P_nS_neg = -prm%P

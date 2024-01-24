@@ -244,9 +244,10 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
       if (phase_lattice(ph) == 'cI') then
         allocate(a_nS(3,size(pl%get_as1dReal('a_nonSchmid_110',defaultVal=emptyRealArray))),source=0.0_pREAL)          ! anticipating parameters for all three families
-        a_nS(1,:) =          pl%get_as1dReal('a_nonSchmid_110',defaultVal=emptyRealArray)
+        a_nS(1,:) = pl%get_as1dReal('a_nonSchmid_110',defaultVal=emptyRealArray)
         prm%P_nS_pos = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=+1)
         prm%P_nS_neg = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=-1)
+        deallocate(a_nS)
       else
         prm%P_nS_pos = +prm%P_sl
         prm%P_nS_neg = -prm%P_sl
