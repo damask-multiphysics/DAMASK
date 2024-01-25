@@ -592,7 +592,7 @@ subroutine formResidual(residual_subdomain, F, &
 
   deltaF_aim = math_mul3333xx33(S, P_av - P_aim)                                                    ! S = 0.0 for no bc
   F_aim = F_aim - deltaF_aim
-  dP_with_BC = merge(.0_pREAL,P_av - P_aim,params%stress_mask)
+  dP_with_BC = merge(.0_pREAL,P_av-P_aim,params%stress_mask)
   err_BC = maxval(abs(dP_with_BC))
 
   ! Yi: unlike Gamma, G make r still in stress space, what about rotation?
@@ -664,7 +664,7 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: &
     output                                                                                               
   real(pREAL),  dimension(3,3) :: &
-    deltaF_aim = 0.0_pREAL
+    null_aim = 0.0_pREAL
 
   real(pREAL), dimension(3,3) :: dP_with_BC ! Yi: delta P only for specified BC components
 
@@ -691,7 +691,7 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
   end do; end do; end do
 
   ! ===== G* operator =====
-  dP_with_BC = merge(.0_pREAL,P_av - P_aim,params%stress_mask)
+  dP_with_BC = merge(.0_pREAL,P_av-P_aim,params%stress_mask)
   output = utilities_G_Convolution(output,dP_with_BC)
 
   call DMDAVecGetArrayF90(DM_mech,output_local,output_scal,err_PETSc)

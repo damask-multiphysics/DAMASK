@@ -527,19 +527,19 @@ function utilities_G_Convolution(field, fieldAim) result(G_Field)
   !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,err,G_hat)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
     if (any([i,j+cells2Offset,k] /= 1)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
-      xi_norm_2 = dot_product(xi1st(:,i,k,j), xi1st(:,i,k,j))
+      xi_norm_2 = abs(dot_product(xi1st(:,i,k,j), xi1st(:,i,k,j)))
 
       ! ===== Yi: ToDo: G_hat just needs to be built once !!! =====
 #ifndef __INTEL_COMPILER
       do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
         if (xi_norm_2 > 1.e-16_pREAL) then
-          G_hat(l,m,n,o,i,k,j) = delta(l,o)*conjg(-xi1st(m,i,k,j))*xi1st(n,i,k,j)/xi_norm_2
+          G_hat(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
         end if
       end do
 #else
       forall(l=1:3, m=1:3, n=1:3, o=1:3) 
         if (xi_norm_2 > 1.e-16_pREAL) then
-          G_hat(l,m,n,o,i,k,j) = delta(l,o)*conjg(-xi1st(m,i,k,j))*xi1st(n,i,k,j)/xi_norm_2
+          G_hat(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
         end if
       end forall
 #endif
@@ -547,11 +547,11 @@ function utilities_G_Convolution(field, fieldAim) result(G_Field)
       ! ===== convol op in Fourier space, check index order! =====
 #ifndef __INTEL_COMPILER
       do concurrent(l=1:3, m=1:3)
-        temp33_cmplx(l,m) = sum(G_hat(l,m,1:3,1:3,i,k,j)*transpose(tensorField_fourier(1:3,1:3,i,k,j)))
+        temp33_cmplx(l,m) = sum(G_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
       end do
 #else
       forall(l=1:3, m=1:3) 
-        temp33_cmplx(l,m) = sum(G_hat(l,m,1:3,1:3,i,k,j)*transpose(tensorField_fourier(1:3,1:3,i,k,j)))
+        temp33_cmplx(l,m) = sum(G_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
       end forall
 #endif
       tensorField_fourier(1:3,1:3,i,k,j) = temp33_cmplx
