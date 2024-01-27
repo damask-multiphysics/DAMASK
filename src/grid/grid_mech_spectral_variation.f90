@@ -552,8 +552,9 @@ subroutine formResidual(residual_subdomain, F, &
   PetscErrorCode :: err_PETSc
 
   real(pREAL), dimension(3,3) :: dP_with_BC ! Yi: delta P only for specified BC components
+  real(pREAL), dimension(3,3) :: null_aim = 0.0_pREAL
 
-  real(pREAL),  dimension(3,3) :: &
+  real(pREAL), dimension(3,3) :: &
     deltaF_aim
   PetscInt :: &
     PETScIter, &
