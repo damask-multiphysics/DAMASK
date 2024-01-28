@@ -54,6 +54,7 @@ module grid_mechanical_spectral_variation
 ! PETSc data
   DM   :: DM_mech
   SNES :: SNES_mech
+  KSP  :: KSP_mech
   Vec  :: F_PETSc
   Mat  :: Jac_PETSc
 
@@ -125,6 +126,17 @@ module grid_mechanical_spectral_variation
       PetscErrorCode :: ierr
     end subroutine SNESSetJacobian
   end interface SNESSetJacobian
+
+  interface KSPSetConvergenceTest
+    subroutine KSPSetConvergenceTest(ksp_mech, KSPConverged, ctx, ConvergedDestroy, ierr)
+      use petscksp
+      KSP :: ksp_mech
+      external :: KSPConverged
+      integer :: ctx
+      external :: ConvergedDestroy
+      PetscErrorCode :: ierr
+    end subroutine KSPSetConvergenceTest
+  end interface KSPSetConvergenceTest
 
   !interface DMDASNESSetJacobianLocal
   !  subroutine DMDASNESSetJacobianLocal(dm_mech,jac_callback,ctx,ierr)
@@ -254,6 +266,13 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   call SNESsetFromOptions(SNES_mech,err_PETSc)                                                      ! pull it all together with additional CLI arguments
   CHKERRQ(err_PETSc)
 
+  ! Yi: manually set ksp convergence, since shell jac always do extra iter
+  ! ================================================================================== 
+  call SNESGetKSP(SNES_mech,KSP_mech,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call KSPSetConvergenceTest(KSP_mech,converge_test_ksp,0,PETSC_NULL_FUNCTION,err_PETSc)
+  CHKERRQ(err_PETSc)
+
 !--------------------------------------------------------------------------------------------------
 ! init fields
   call DMDAVecGetArrayF90(DM_mech,F_PETSc,F,err_PETSc)                                              ! places pointer on PETSc data
@@ -329,6 +348,9 @@ function grid_mechanical_spectral_variation_solution(incInfoIn) result(solution)
     incInfoIn
   type(tSolutionState)                    :: &
     solution
+
+  logical, dimension(3,3)     :: mask_test=.false.                                     !< Yi: mask test
+
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
   PetscErrorCode :: err_PETSc
@@ -390,6 +412,9 @@ subroutine grid_mechanical_spectral_variation_forward(cutBack,guess,Delta_t,Delt
 
     F_aimDot = merge(merge(.0_pREAL,(F_aim-F_aim_lastInc)/Delta_t_old,stress_BC%mask),.0_pREAL,guess) ! estimate deformation rate for prescribed stress components
     F_aim_lastInc = F_aim
+    ! yiprint
+    print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+      'F_aim in forward =', transpose(F_aim)
 
     !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
@@ -415,6 +440,10 @@ subroutine grid_mechanical_spectral_variation_forward(cutBack,guess,Delta_t,Delt
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * Delta_t
+  ! yiprint
+  print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+    'F_aim lastInc in forward =', transpose(F_aim_lastInc)
+  print* ,Delta_t
   if (stress_BC%myType=='P')     P_aim = P_aim &
                                        + merge(.0_pREAL,(stress_BC%values - P_aim)/t_remaining,stress_BC%mask)*Delta_t
   if (stress_BC%myType=='dot_P') P_aim = P_aim &
@@ -530,6 +559,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   print'(1x,a,f12.2,a,es8.2,a,es9.2,a)',    'error stress BC  = ', &
           err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')'
   print'(/,1x,a)', '==========================================================================='
+  print* ,'reason !!!', reason
   flush(IO_STDOUT)
   err_PETSc = 0
 
@@ -562,7 +592,7 @@ subroutine formResidual(residual_subdomain, F, &
   integer(MPI_INTEGER_KIND) :: err_MPI
 
 
-  print*, 'start my rhs'
+  print*, '+++++ start my rhs +++++'
 
   call SNESGetNumberFunctionEvals(SNES_mech,nfuncs,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -591,15 +621,19 @@ subroutine formResidual(residual_subdomain, F, &
     err_div = utilities_divergenceRMS(P)
   end associate
 
-  deltaF_aim = math_mul3333xx33(S, P_av - P_aim)                                                    ! S = 0.0 for no bc
-  F_aim = F_aim - deltaF_aim
+  ! Yi: P_aim is prescribed by BC (forward step), 0 on unprescribed components
   dP_with_BC = merge(.0_pREAL,P_av-P_aim,params%stress_mask)
   err_BC = maxval(abs(dP_with_BC))
+  ! deltaF_aim = math_mul3333xx33(S, dP_with_BC)                                                    ! S = 0.0 for no bc
+  deltaF_aim = math_mul3333xx33(S, P_av - P_aim)                                                    ! from basic scheme
+  F_aim = F_aim - deltaF_aim 
+  print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+    'F_aim residual                 =', transpose(F_aim)
 
   ! Yi: unlike Gamma, G make r still in stress space, what about rotation?
   r = utilities_G_Convolution(r,dP_with_BC)
 
-  print*, 'end my rhs'
+  print*, '+++++ end my rhs +++++'
 
 end subroutine formResidual
 
@@ -626,7 +660,7 @@ subroutine formJacobian(residual_subdomain,F,Jac_pre,Jac,dummy,err_PETSc)
 
   N_dof = 9*product(cells(1:2))*cells3 
 
-  print*, 'start my jac'
+  print*, '$$$ start my jac $$$'
   
   !call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,N_dof,N_dof,0,Jac,err_PETSc)
   !CHKERRQ(err_PETSc)
@@ -642,7 +676,7 @@ subroutine formJacobian(residual_subdomain,F,Jac_pre,Jac,dummy,err_PETSc)
   !call MatShellSetOperation(Jac_pre,MATOP_MULT,GK_op,err_PETSc)
   !CHKERRQ(err_PETSc)
 
-  print*, 'end my jac'
+  print*, '$$$ end my jac $$$'
 
 end subroutine formJacobian
 
@@ -671,7 +705,7 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
 
   integer :: i, j, k, e
 
-  print*, 'start my GK_op'
+  print*, '@@ start my GK_op @@'
   ! Yi: maybe used in parallel mode?
   ! call SNESGetDM(SNES_mech,dm_local,err_PETSc)
   ! CHKERRQ(err_PETSc)
@@ -703,8 +737,27 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
 
   call DMDAVecRestoreArrayF90(DM_mech,dF_local,dF_scal,err_PETSc)
   CHKERRQ(err_PETSc)
-  print*, 'end my GK_op'
+  print*, '@@ end my GK_op @@'
   
 end subroutine GK_op
+
+subroutine converge_test_ksp(ksp, it, rnorm, reason, ctx, ierr)
+  use petsc
+  KSP       :: ksp
+  PetscInt  :: it
+  PetscReal :: rnorm
+  KSPConvergedReason :: reason
+  type(PetscObject), pointer :: ctx
+  PetscErrorCode :: ierr
+
+  print *, '!!!!!!!!!!!!!!!!!!!!!!my ksp test'
+  call KSPGetResidualNorm(ksp, rnorm, ierr)
+  print *, rnorm
+  if ( rnorm < 1.0e-3_pREAL ) then
+    reason = 1
+  endif 
+  return
+
+end subroutine converge_test_ksp
 
 end module grid_mechanical_spectral_variation

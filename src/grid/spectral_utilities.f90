@@ -513,16 +513,18 @@ function utilities_G_Convolution(field, fieldAim) result(G_Field)
   logical :: err
 
   real(pREAL) :: xi_norm_2
-  real(pREAL), dimension(3,3) :: delta
+  complex(pREAL), dimension(3,3) :: delta
 
   print'(/,1x,a)', '... doing G convolution ...............................................'
   flush(IO_STDOUT)
 
-  delta = math_eye(3)
+  delta = cmplx(math_eye(3),0.0_pREAL,pREAL)
 
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL
   tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
+  print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
+    'P_av in G_Conv / MPa =', transpose(real(tensorField_fourier(1:3,1:3,1,1,1)))*wgt*1.e-6_pREAL
 
   !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,err,G_hat)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red

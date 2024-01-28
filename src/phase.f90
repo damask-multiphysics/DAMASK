@@ -566,6 +566,7 @@ subroutine crystallite_orientations(co,ce)
   ph = material_ID_phase(co,ce)
   en = material_entry_phase(co,ce)
 
+
   call phase_O(ph)%data(en)%fromMatrix(transpose(math_rotationalPart(mechanical_F_e(ph,en))))
 
 end subroutine crystallite_orientations
