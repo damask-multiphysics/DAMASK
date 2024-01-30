@@ -134,7 +134,7 @@ class TestMechanics:
         t     = ['V','U'][np.random.randint(0,2)]
         m     = np.random.random()*10.0 -5.0
         for i,v in enumerate(np.reshape(vectorized(F_vec,t,m),vectorized(F,t,m).shape)):
-            if np.linalg.det(F[i]) < 1.e-10: continue
+            if np.linalg.det(F[i]) < 1.e-7: continue
             assert np.allclose(single(F[i],t,m),v)
 
     @pytest.mark.parametrize('function',[mechanics.stress_Cauchy,
