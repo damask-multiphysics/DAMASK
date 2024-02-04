@@ -230,7 +230,6 @@ pure function IO_strPos(str)
   do while (verify(str(right+1:),IO_WHITESPACE)>0)
     left  = right + verify(str(right+1:),IO_WHITESPACE)
     right = left + scan(str(left:),IO_WHITESPACE) - 2
-    if (str(left:left) == IO_COMMENT) exit                                                          ! ToDo: unexpected and undocumented
     IO_strPos = [IO_strPos,left,right]
     IO_strPos(1) = IO_strPos(1)+1
     endOfStr: if (right < left) then
