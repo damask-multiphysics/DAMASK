@@ -25,15 +25,12 @@ implicit none(type,external)
     IO_QUOTES  = "'"//'"'
   character, parameter, public :: &
     IO_EOL = LF                                                                                     !< end of line character
-  character, parameter :: &
-    IO_COMMENT = '#'
 
   public :: &
     IO_init, &
     IO_selfTest, &
     IO_read, &
     IO_readlines, &
-    IO_isBlank, &
     IO_wrapLines, &
     IO_strPos, &
     IO_strValue, &
@@ -147,22 +144,6 @@ function IO_read(fileName) result(fileContent)
   if (fileContent(fileLength:fileLength) /= IO_EOL) fileContent = fileContent//IO_EOL               ! ensure EOL@EOF
 
 end function IO_read
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Identifiy strings without content.
-!--------------------------------------------------------------------------------------------------
-logical pure function IO_isBlank(str)
-
-  character(len=*), intent(in) :: str                                                               !< string to check for content
-
-  integer :: posNonBlank
-
-
-  posNonBlank = verify(str,IO_WHITESPACE)
-  IO_isBlank = posNonBlank == 0 .or. posNonBlank == scan(str,IO_COMMENT)
-
-end function IO_isBlank
 
 
 !--------------------------------------------------------------------------------------------------
@@ -844,10 +825,6 @@ subroutine IO_selfTest()
   if (CRLF2LF('A'//CR//LF//'B'//CR//LF) /= &
               'A'//LF//'B'//LF)                      error stop 'CRLF2LF/4'
   if (CRLF2LF('A'//LF//CR//'B') /= 'A'//LF//CR//'B') error stop 'CRLF2LF/5'
-
-  str='  ';        if (.not. IO_isBlank(str))        error stop 'IO_isBlank/1'
-  str='  #isBlank';if (.not. IO_isBlank(str))        error stop 'IO_isBlank/2'
-  str='  i#s';     if (      IO_isBlank(str))        error stop 'IO_isBlank/3'
 
   str='*(HiU!)3';if ('*(hiu!)3' /= IO_lc(str))       error stop 'IO_lc'
 
