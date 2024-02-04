@@ -33,8 +33,6 @@ subroutine test_IO_run()
 
   str_out = IO_read(fname)
   if (rnd_str//IO_EOL /= str_out) error stop 'IO_read'
-  strarray_out = IO_readlines(fname)
-  if (rnd_str /= strarray_out(1)) error stop 'IO_readlines'
 
 end subroutine test_IO_run
 

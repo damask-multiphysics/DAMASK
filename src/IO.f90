@@ -30,7 +30,6 @@ implicit none(type,external)
     IO_init, &
     IO_selfTest, &
     IO_read, &
-    IO_readlines, &
     IO_wrapLines, &
     IO_strPos, &
     IO_strValue, &
@@ -61,53 +60,6 @@ subroutine IO_init()
   call IO_selfTest()
 
 end subroutine IO_init
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Read ASCII file and split at EOL.
-!--------------------------------------------------------------------------------------------------
-function IO_readlines(fileName) result(fileContent)
-
-  character(len=*),       intent(in)                :: fileName
-  character(len=pSTRLEN), dimension(:), allocatable :: fileContent                                  !< file content, separated per lines
-
-  character(len=pSTRLEN)                            :: line
-  character(len=:),                     allocatable :: rawData
-  integer ::  &
-    startPos, endPos, &
-    N_lines, &                                                                                      !< # lines in file
-    l
-  logical :: warned
-
-
-  rawData = IO_read(fileName)
-
-  N_lines = count([(rawData(l:l) == IO_EOL,l=1,len(rawData))])
-  allocate(fileContent(N_lines))
-
-!--------------------------------------------------------------------------------------------------
-! split raw data at end of line
-  warned = .false.
-  startPos = 1
-  l = 1
-  do while (l <= N_lines)
-    endPos = startPos + scan(rawData(startPos:),IO_EOL) - 2
-    if (endPos - startPos > pSTRLEN-1) then
-      line = rawData(startPos:startPos+pSTRLEN-1)
-      if (.not. warned) then
-        call IO_warning(207,trim(fileName),label1='line',ID1=l)
-        warned = .true.
-      end if
-    else
-      line = rawData(startPos:endpos)
-    end if
-    startPos = endPos + 2                                                                           ! jump to next line start
-
-    fileContent(l) = trim(line)//''
-    l = l + 1
-  end do
-
-end function IO_readlines
 
 
 !--------------------------------------------------------------------------------------------------

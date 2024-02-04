@@ -217,7 +217,7 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,materialAt)
                                    'MSC.Marc input deck')
   call result_closeJobFile()
 
-  inputFile = IO_readlines(trim(getSolverJobName())//InputFileExtension)
+  inputFile = readlines(trim(getSolverJobName())//InputFileExtension)
   call inputRead_fileFormat(fileFormatVersion, &
                             inputFile)
   call inputRead_tableStyles(initialcondTableStyle,hypoelasticTableStyle, &
@@ -249,6 +249,54 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,materialAt)
   call inputRead_material(materialAt, &
                           nElems,elem%nNodes,nameElemSet,mapElemSet,&
                           initialcondTableStyle,inputFile)
+
+contains
+!--------------------------------------------------------------------------------------------------
+!> @brief Read ASCII file and split at EOL.
+!--------------------------------------------------------------------------------------------------
+function readlines(fileName) result(fileContent)
+
+  character(len=*),       intent(in)                :: fileName
+  character(len=pSTRLEN), dimension(:), allocatable :: fileContent                                  !< file content, separated per lines
+
+  character(len=pSTRLEN)                            :: line
+  character(len=:),                     allocatable :: rawData
+  integer ::  &
+    startPos, endPos, &
+    N_lines, &                                                                                      !< # lines in file
+    l
+  logical :: warned
+
+
+  rawData = IO_read(fileName)
+
+  N_lines = count([(rawData(l:l) == IO_EOL,l=1,len(rawData))])
+  allocate(fileContent(N_lines))
+
+!--------------------------------------------------------------------------------------------------
+! split raw data at end of line
+  warned = .false.
+  startPos = 1
+  l = 1
+  do while (l <= N_lines)
+    endPos = startPos + scan(rawData(startPos:),IO_EOL) - 2
+    if (endPos - startPos > pSTRLEN-1) then
+      line = rawData(startPos:startPos+pSTRLEN-1)
+      if (.not. warned) then
+        call IO_warning(207,trim(fileName),label1='line',ID1=l)
+        warned = .true.
+      end if
+    else
+      line = rawData(startPos:endpos)
+    end if
+    startPos = endPos + 2                                                                           ! jump to next line start
+
+    fileContent(l) = trim(line)//''
+    l = l + 1
+  end do
+
+end function readlines
+
 end subroutine inputRead
 
 
