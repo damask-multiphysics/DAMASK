@@ -1265,6 +1265,8 @@ function tDict_get_as1dReal_chunked(self,k,defaultVal,requiredChunks) result(nod
         nodeAs1dReal = node_outer%asReal()
       class is(tList)
         list_outer => self%get_list(k)
+        if (list_outer%length /= size(requiredChunks)) &
+          call IO_error(709,'list "'//list_outer%asFormattedStr()//'" is not of length '//IO_intAsStr(size(requiredChunks)))
         do i = 1, size(requiredChunks)
           node_inner => list_outer%get(i)
           select type(node_inner)
