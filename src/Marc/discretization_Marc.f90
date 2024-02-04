@@ -313,10 +313,10 @@ subroutine inputRead_fileFormat(fileFormat,fileContent)
   integer :: l
 
   do l = 1, size(fileContent)
-    chunkPos = IO_strPos(fileContent(l))
+    chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 2) cycle
-    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'version') then
-      fileFormat = IO_intValue(fileContent(l),chunkPos,2)
+    if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'version') then
+      fileFormat = intValue(fileContent(l),chunkPos,2)
       exit
     end if
   end do
@@ -339,11 +339,11 @@ subroutine inputRead_tableStyles(initialcond,hypoelastic,fileContent)
   hypoelastic = 0
 
   do l = 1, size(fileContent)
-    chunkPos = IO_strPos(fileContent(l))
+    chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 6) cycle
-    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'table') then
-      initialcond = IO_intValue(fileContent(l),chunkPos,4)
-      hypoelastic = IO_intValue(fileContent(l),chunkPos,5)
+    if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'table') then
+      initialcond = intValue(fileContent(l),chunkPos,4)
+      hypoelastic = intValue(fileContent(l),chunkPos,5)
       exit
     end if
   end do
@@ -366,20 +366,20 @@ subroutine inputRead_matNumber(matNumber, &
 
 
   do l = 1, size(fileContent)
-    chunkPos = IO_strPos(fileContent(l))
+    chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
-    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'hypoelastic') then
+    if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'hypoelastic') then
       if (len_trim(fileContent(l+1))/=0) then
-        chunkPos = IO_strPos(fileContent(l+1))
-        data_blocks = IO_intValue(fileContent(l+1),chunkPos,1)
+        chunkPos = strPos(fileContent(l+1))
+        data_blocks = intValue(fileContent(l+1),chunkPos,1)
       else
         data_blocks = 1
       end if
       allocate(matNumber(data_blocks), source = 0)
       do i = 0, data_blocks - 1
         j = i*(2+tableStyle) + 1
-        chunkPos = IO_strPos(fileContent(l+1+j))
-        matNumber(i+1) = IO_intValue(fileContent(l+1+j),chunkPos,1)
+        chunkPos = strPos(fileContent(l+1+j))
+        matNumber(i+1) = intValue(fileContent(l+1+j),chunkPos,1)
       end do
       exit
     end if
@@ -404,13 +404,13 @@ subroutine inputRead_NnodesAndElements(nNodes,nElems,&
   nElems = 0
 
   do l = 1, size(fileContent)
-    chunkPos = IO_strPos(fileContent(l))
+    chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
-    if    (IO_lc(IO_StrValue(fileContent(l),chunkPos,1)) == 'sizing') then
-      nElems = IO_IntValue (fileContent(l),chunkPos,3)
-    elseif (IO_lc(IO_StrValue(fileContent(l),chunkPos,1)) == 'coordinates') then
-      chunkPos = IO_strPos(fileContent(l+1))
-      nNodes = IO_IntValue (fileContent(l+1),chunkPos,2)
+    if    (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'sizing') then
+      nElems = intValue (fileContent(l),chunkPos,3)
+    elseif (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'coordinates') then
+      chunkPos = strPos(fileContent(l+1))
+      nNodes = intValue (fileContent(l+1),chunkPos,2)
     end if
   end do
 
@@ -434,24 +434,24 @@ subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
   maxNelemInSet = 0
 
   do l = 1, size(fileContent)
-    chunkPos = IO_strPos(fileContent(l))
+    chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 2) cycle
-    if (IO_lc(IO_StrValue(fileContent(l),chunkPos,1)) == 'define' .and. &
-       IO_lc(IO_StrValue(fileContent(l),chunkPos,2)) == 'element') then
+    if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'define' .and. &
+       IO_lc(strValue(fileContent(l),chunkPos,2)) == 'element') then
       nElemSets = nElemSets + 1
 
-      chunkPos = IO_strPos(fileContent(l+1))
+      chunkPos = strPos(fileContent(l+1))
       if (containsRange(fileContent(l+1),chunkPos)) then
-        elemInCurrentSet = 1 + abs( IO_intValue(fileContent(l+1),chunkPos,3) &
-                                   -IO_intValue(fileContent(l+1),chunkPos,1))
+        elemInCurrentSet = 1 + abs( intValue(fileContent(l+1),chunkPos,3) &
+                                   -intValue(fileContent(l+1),chunkPos,1))
       else
         elemInCurrentSet = 0
         i = 0
         do while (.true.)
           i = i + 1
-          chunkPos = IO_strPos(fileContent(l+i))
+          chunkPos = strPos(fileContent(l+i))
           elemInCurrentSet = elemInCurrentSet + chunkPos(1) - 1                                     ! add line's count when assuming 'c'
-          if (IO_lc(IO_strValue(fileContent(l+i),chunkPos,chunkPos(1))) /= 'c') then                ! line finished, read last value
+          if (IO_lc(strValue(fileContent(l+i),chunkPos,chunkPos(1))) /= 'c') then                ! line finished, read last value
             elemInCurrentSet = elemInCurrentSet + 1                                                 ! data ended
             exit
           end if
@@ -484,12 +484,12 @@ subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,&
   elemSet = 0
 
   do l = 1, size(fileContent)
-    chunkPos = IO_strPos(fileContent(l))
+    chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 2) cycle
-    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'define' .and. &
-       IO_lc(IO_strValue(fileContent(l),chunkPos,2)) == 'element') then
+    if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'define' .and. &
+       IO_lc(strValue(fileContent(l),chunkPos,2)) == 'element') then
        elemSet = elemSet+1
-       nameElemSet(elemSet)  = trim(IO_strValue(fileContent(l),chunkPos,4))
+       nameElemSet(elemSet)  = trim(strValue(fileContent(l),chunkPos,4))
        mapElemSet(:,elemSet) = continuousIntValues(fileContent(l+1:),size(mapElemSet,1)-1,nameElemSet,mapElemSet,size(nameElemSet))
     end if
   end do
@@ -515,17 +515,17 @@ subroutine inputRead_mapElems(FEM2DAMASK, &
 
 
   do l = 1, size(fileContent)
-    chunkPos = IO_strPos(fileContent(l))
+    chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
-    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'connectivity') then
+    if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'connectivity') then
       j = 0
       do i = 1,nElems
-        chunkPos = IO_strPos(fileContent(l+1+i+j))
-        map_unsorted(:,i) = [IO_intValue(fileContent(l+1+i+j),chunkPos,1),i]
+        chunkPos = strPos(fileContent(l+1+i+j))
+        map_unsorted(:,i) = [intValue(fileContent(l+1+i+j),chunkPos,1),i]
         nNodesAlreadyRead = chunkPos(1) - 2
         do while(nNodesAlreadyRead < nNodesPerElem)                                                 ! read on if not all nodes in one line
           j = j + 1
-          chunkPos = IO_strPos(fileContent(l+1+i+j))
+          chunkPos = strPos(fileContent(l+1+i+j))
           nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
         end do
       end do
@@ -559,12 +559,12 @@ subroutine inputRead_mapNodes(FEM2DAMASK, &
 
 
   do l = 1, size(fileContent)
-    chunkPos = IO_strPos(fileContent(l))
+    chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
-    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'coordinates') then
+    if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'coordinates') then
       chunkPos = [1,1,10]
       do i = 1,nNodes
-        map_unsorted(:,i) = [IO_intValue(fileContent(l+1+i),chunkPos,1),i]
+        map_unsorted(:,i) = [intValue(fileContent(l+1+i),chunkPos,1),i]
       end do
       exit
     end if
@@ -596,13 +596,13 @@ subroutine inputRead_elemNodes(nodes, &
   allocate(nodes(3,nNode))
 
   do l = 1, size(fileContent)
-    chunkPos = IO_strPos(fileContent(l))
+    chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
-    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'coordinates') then
+    if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'coordinates') then
       chunkPos = [4,1,10,11,30,31,50,51,70]
       do i=1,nNode
-        m = discretization_Marc_FEM2DAMASK_node(IO_intValue(fileContent(l+1+i),chunkPos,1))
-        nodes(1:3,m) = [(mesh_unitlength * IO_realValue(fileContent(l+1+i),chunkPos,j+1),j=1,3)]
+        m = discretization_Marc_FEM2DAMASK_node(intValue(fileContent(l+1+i),chunkPos,1))
+        nodes(1:3,m) = [(mesh_unitlength * realValue(fileContent(l+1+i),chunkPos,j+1),j=1,3)]
       end do
       exit
     end if
@@ -627,23 +627,23 @@ subroutine inputRead_elemType(elem, &
 
   t = -1
   do l = 1, size(fileContent)
-    chunkPos = IO_strPos(fileContent(l))
+    chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
-    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'connectivity') then
+    if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'connectivity') then
       j = 0
       do i=1,nElem                                                                                  ! read all elements
-        chunkPos = IO_strPos(fileContent(l+1+i+j))
+        chunkPos = strPos(fileContent(l+1+i+j))
         if (t == -1) then
-          t = mapElemtype(IO_strValue(fileContent(l+1+i+j),chunkPos,2))
+          t = mapElemtype(strValue(fileContent(l+1+i+j),chunkPos,2))
           call elem%init(t)
         else
-          t_ = mapElemtype(IO_strValue(fileContent(l+1+i+j),chunkPos,2))
-          if (t /= t_) call IO_error(191,IO_strValue(fileContent(l+1+i+j),chunkPos,2),label1='type',ID1=t)
+          t_ = mapElemtype(strValue(fileContent(l+1+i+j),chunkPos,2))
+          if (t /= t_) call IO_error(191,strValue(fileContent(l+1+i+j),chunkPos,2),label1='type',ID1=t)
         end if
         remainingChunks = elem%nNodes - (chunkPos(1) - 2)
         do while(remainingChunks > 0)
           j = j + 1
-          chunkPos = IO_strPos(fileContent(l+1+i+j))
+          chunkPos = strPos(fileContent(l+1+i+j))
           remainingChunks = remainingChunks - chunkPos(1)
         end do
       end do
@@ -718,25 +718,25 @@ function inputRead_connectivityElem(nElem,nNodes,fileContent)
 
 
   do l = 1, size(fileContent)
-    chunkPos = IO_strPos(fileContent(l))
+    chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
-    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'connectivity') then
+    if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'connectivity') then
       j = 0
       do i = 1,nElem
-        chunkPos = IO_strPos(fileContent(l+1+i+j))
-        e = discretization_Marc_FEM2DAMASK_elem(IO_intValue(fileContent(l+1+i+j),chunkPos,1))
+        chunkPos = strPos(fileContent(l+1+i+j))
+        e = discretization_Marc_FEM2DAMASK_elem(intValue(fileContent(l+1+i+j),chunkPos,1))
         if (e /= 0) then                                                                            ! disregard non CP elems
           do k = 1,chunkPos(1)-2
             inputRead_connectivityElem(k,e) = &
-              discretization_Marc_FEM2DAMASK_node(IO_IntValue(fileContent(l+1+i+j),chunkPos,k+2))
+              discretization_Marc_FEM2DAMASK_node(intValue(fileContent(l+1+i+j),chunkPos,k+2))
           end do
           nNodesAlreadyRead = chunkPos(1) - 2
           do while(nNodesAlreadyRead < nNodes)                                                      ! read on if not all nodes in one line
             j = j + 1
-            chunkPos = IO_strPos(fileContent(l+1+i+j))
+            chunkPos = strPos(fileContent(l+1+i+j))
             do k = 1,chunkPos(1)
               inputRead_connectivityElem(nNodesAlreadyRead+k,e) = &
-                discretization_Marc_FEM2DAMASK_node(IO_IntValue(fileContent(l+1+i+j),chunkPos,k))
+                discretization_Marc_FEM2DAMASK_node(intValue(fileContent(l+1+i+j),chunkPos,k))
             end do
             nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
           end do
@@ -775,18 +775,18 @@ subroutine inputRead_material(materialAt,&
   allocate(materialAt(nElem))
 
   do l = 1, size(fileContent)
-    chunkPos = IO_strPos(fileContent(l))
+    chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 2) cycle
-    if (IO_lc(IO_strValue(fileContent(l),chunkPos,1)) == 'initial' .and. &
-       IO_lc(IO_strValue(fileContent(l),chunkPos,2)) == 'state') then
+    if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'initial' .and. &
+       IO_lc(strValue(fileContent(l),chunkPos,2)) == 'state') then
       k = merge(2,1,initialcondTableStyle == 2)
-      chunkPos = IO_strPos(fileContent(l+k))
-      sv = IO_IntValue(fileContent(l+k),chunkPos,1)                                                 ! # of state variable
+      chunkPos = strPos(fileContent(l+k))
+      sv = intValue(fileContent(l+k),chunkPos,1)                                                 ! # of state variable
       if (sv == 2) then                                                                             ! state var 2 gives material ID
         m = 1
-        chunkPos = IO_strPos(fileContent(l+k+m))
-        do while (scan(IO_strValue(fileContent(l+k+m),chunkPos,1),'+-',back=.true.)>1)              ! is no Efloat value?
-          ID = nint(IO_realValue(fileContent(l+k+m),chunkPos,1))
+        chunkPos = strPos(fileContent(l+k+m))
+        do while (scan(strValue(fileContent(l+k+m),chunkPos,1),'+-',back=.true.)>1)              ! is no Efloat value?
+          ID = nint(realValue(fileContent(l+k+m),chunkPos,1))
           if (initialcondTableStyle == 2) m = m + 2
           contInts = continuousIntValues(fileContent(l+k+m+1:),nElem,nameElemSet,mapElemSet,size(nameElemSet)) ! get affected elements
           do i = 1,contInts(1)
@@ -1182,6 +1182,87 @@ function IPneighborhood(elem)
 
 end function IPneighborhood
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Locate all whitespace-separated chunks in given string and returns array containing
+!! number them and the left/right position to be used by IO_xxxVal.
+!! Array size is dynamically adjusted to number of chunks found in string
+!! IMPORTANT: first element contains number of chunks!
+!--------------------------------------------------------------------------------------------------
+pure function strPos(str)
+
+  character(len=*),                  intent(in) :: str                                              !< string in which chunk positions are searched for
+  integer, dimension(:), allocatable            :: strPos
+
+  integer :: left, right
+
+
+  allocate(strPos(1), source=0)
+  right = 0
+
+  do while (verify(str(right+1:),IO_WHITESPACE)>0)
+    left  = right + verify(str(right+1:),IO_WHITESPACE)
+    right = left + scan(str(left:),IO_WHITESPACE) - 2
+    strPos = [strPos,left,right]
+    strPos(1) = strPos(1)+1
+    endOfStr: if (right < left) then
+      strPos(strPos(1)*2+1) = len_trim(str)
+      exit
+    end if endOfStr
+  end do
+
+end function strPos
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Read string value at myChunk from string.
+!--------------------------------------------------------------------------------------------------
+function strValue(str,chunkPos,myChunk)
+
+  character(len=*),             intent(in) :: str                                                   !< raw input with known start and end of each chunk
+  integer,   dimension(:),      intent(in) :: chunkPos                                              !< positions of start and end of each tag/chunk in given string
+  integer,                      intent(in) :: myChunk                                               !< position number of desired chunk
+  character(len=:), allocatable            :: strValue
+
+
+  validChunk: if (myChunk > chunkPos(1) .or. myChunk < 1) then
+    strValue = ''
+    call IO_error(110,'strValue: "'//trim(str)//'"',label1='chunk',ID1=myChunk)
+  else validChunk
+    strValue = str(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
+  end if validChunk
+
+end function strValue
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Read integer value at myChunk from string.
+!--------------------------------------------------------------------------------------------------
+integer function intValue(str,chunkPos,myChunk)
+
+  character(len=*),      intent(in) :: str                                                          !< raw input with known start and end of each chunk
+  integer, dimension(:), intent(in) :: chunkPos                                                     !< positions of start and end of each tag/chunk in given string
+  integer,               intent(in) :: myChunk                                                      !< position number of desired chunk
+
+
+  intValue = IO_strAsInt(strValue(str,chunkPos,myChunk))
+
+end function intValue
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Read real value at myChunk from string.
+!--------------------------------------------------------------------------------------------------
+real(pREAL) function realValue(str,chunkPos,myChunk)
+
+  character(len=*),        intent(in) :: str                                                        !< raw input with known start and end of each chunk
+  integer,   dimension(:), intent(in) :: chunkPos                                                   !< positions of start and end of each tag/chunk in given string
+  integer,                 intent(in) :: myChunk                                                    !< position number of desired chunk
+
+
+  realValue = IO_strAsReal(strValue(str,chunkPos,myChunk))
+
+end function realValue
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return integer list corresponding to items in consecutive lines.
@@ -1206,20 +1287,20 @@ function continuousIntValues(fileContent,maxN,lookupName,lookupMap,lookupMaxN)
   rangeGeneration = .false.
 
   do l = 1, size(fileContent)
-    chunkPos = IO_strPos(fileContent(l))
+    chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 1) then                                                                       ! empty line
       exit
-    elseif (verify(IO_strValue(fileContent(l),chunkPos,1),'0123456789') > 0) then                   ! a non-int, i.e. set name
+    elseif (verify(strValue(fileContent(l),chunkPos,1),'0123456789') > 0) then                   ! a non-int, i.e. set name
       do i = 1, lookupMaxN                                                                          ! loop over known set names
-        if (IO_strValue(fileContent(l),chunkPos,1) == lookupName(i)) then                           ! found matching name
+        if (strValue(fileContent(l),chunkPos,1) == lookupName(i)) then                           ! found matching name
           continuousIntValues = lookupMap(:,i)                                                      ! return resp. entity list
           exit
         end if
       end do
       exit
     elseif (containsRange(fileContent(l),chunkPos)) then
-      first = IO_intValue(fileContent(l),chunkPos,1)
-      last  = IO_intValue(fileContent(l),chunkPos,3)
+      first = intValue(fileContent(l),chunkPos,1)
+      last  = intValue(fileContent(l),chunkPos,3)
       do i = first, last, sign(1,last-first)
         continuousIntValues(1) = continuousIntValues(1) + 1
         continuousIntValues(1+continuousIntValues(1)) = i
@@ -1228,11 +1309,11 @@ function continuousIntValues(fileContent,maxN,lookupName,lookupMap,lookupMaxN)
     else
       do i = 1,chunkPos(1)-1                                                                        ! interpret up to second to last value
         continuousIntValues(1) = continuousIntValues(1) + 1
-        continuousIntValues(1+continuousIntValues(1)) = IO_intValue(fileContent(l),chunkPos,i)
+        continuousIntValues(1+continuousIntValues(1)) = intValue(fileContent(l),chunkPos,i)
       end do
-      if ( IO_lc(IO_strValue(fileContent(l),chunkPos,chunkPos(1))) /= 'c' ) then                    ! line finished, read last value
+      if ( IO_lc(strValue(fileContent(l),chunkPos,chunkPos(1))) /= 'c' ) then                    ! line finished, read last value
         continuousIntValues(1) = continuousIntValues(1) + 1
-        continuousIntValues(1+continuousIntValues(1)) = IO_intValue(fileContent(l),chunkPos,chunkPos(1))
+        continuousIntValues(1+continuousIntValues(1)) = intValue(fileContent(l),chunkPos,chunkPos(1))
         exit
       end if
     end if
@@ -1252,7 +1333,7 @@ logical function containsRange(str,chunkPos)
 
   containsRange = .False.
   if (chunkPos(1) == 3) then
-    if (IO_lc(IO_strValue(str,chunkPos,2)) == 'to') containsRange = .True.
+    if (IO_lc(strValue(str,chunkPos,2)) == 'to') containsRange = .True.
   end if
 
 end function containsRange

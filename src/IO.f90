@@ -31,10 +31,6 @@ implicit none(type,external)
     IO_selfTest, &
     IO_read, &
     IO_wrapLines, &
-    IO_strPos, &
-    IO_strValue, &
-    IO_intValue, &
-    IO_realValue, &
     IO_lc, &
     IO_glueDiffering, &
     IO_intAsStr, &
@@ -141,88 +137,6 @@ function IO_wrapLines(str,separator,filler,length)
   end if
 
 end function IO_wrapLines
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Locate all whitespace-separated chunks in given string and returns array containing
-!! number them and the left/right position to be used by IO_xxxVal.
-!! Array size is dynamically adjusted to number of chunks found in string
-!! IMPORTANT: first element contains number of chunks!
-!--------------------------------------------------------------------------------------------------
-pure function IO_strPos(str)
-
-  character(len=*),                  intent(in) :: str                                              !< string in which chunk positions are searched for
-  integer, dimension(:), allocatable            :: IO_strPos
-
-  integer :: left, right
-
-
-  allocate(IO_strPos(1), source=0)
-  right = 0
-
-  do while (verify(str(right+1:),IO_WHITESPACE)>0)
-    left  = right + verify(str(right+1:),IO_WHITESPACE)
-    right = left + scan(str(left:),IO_WHITESPACE) - 2
-    IO_strPos = [IO_strPos,left,right]
-    IO_strPos(1) = IO_strPos(1)+1
-    endOfStr: if (right < left) then
-      IO_strPos(IO_strPos(1)*2+1) = len_trim(str)
-      exit
-    end if endOfStr
-  end do
-
-end function IO_strPos
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Read string value at myChunk from string.
-!--------------------------------------------------------------------------------------------------
-function IO_strValue(str,chunkPos,myChunk)
-
-  character(len=*),             intent(in) :: str                                                   !< raw input with known start and end of each chunk
-  integer,   dimension(:),      intent(in) :: chunkPos                                              !< positions of start and end of each tag/chunk in given string
-  integer,                      intent(in) :: myChunk                                               !< position number of desired chunk
-  character(len=:), allocatable            :: IO_strValue
-
-
-  validChunk: if (myChunk > chunkPos(1) .or. myChunk < 1) then
-    IO_strValue = ''
-    call IO_error(110,'IO_strValue: "'//trim(str)//'"',label1='chunk',ID1=myChunk)
-  else validChunk
-    IO_strValue = str(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
-  end if validChunk
-
-end function IO_strValue
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Read integer value at myChunk from string.
-!--------------------------------------------------------------------------------------------------
-integer function IO_intValue(str,chunkPos,myChunk)
-
-  character(len=*),      intent(in) :: str                                                          !< raw input with known start and end of each chunk
-  integer, dimension(:), intent(in) :: chunkPos                                                     !< positions of start and end of each tag/chunk in given string
-  integer,               intent(in) :: myChunk                                                      !< position number of desired chunk
-
-
-  IO_intValue = IO_strAsInt(IO_strValue(str,chunkPos,myChunk))
-
-end function IO_intValue
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Read real value at myChunk from string.
-!--------------------------------------------------------------------------------------------------
-real(pREAL) function IO_realValue(str,chunkPos,myChunk)
-
-  character(len=*),        intent(in) :: str                                                        !< raw input with known start and end of each chunk
-  integer,   dimension(:), intent(in) :: chunkPos                                                   !< positions of start and end of each tag/chunk in given string
-  integer,                 intent(in) :: myChunk                                                    !< position number of desired chunk
-
-
-  IO_realValue = IO_strAsReal(IO_strValue(str,chunkPos,myChunk))
-
-end function IO_realValue
 
 
 !--------------------------------------------------------------------------------------------------
@@ -604,9 +518,9 @@ subroutine IO_warning(warning_ID,ext_msg,label1,ID1,label2,ID2)
   end select
 
   call panel('warning',warning_ID,msg, &
-                 ext_msg=ext_msg, &
-                 label1=label1,ID1=ID1, &
-                 label2=label2,ID2=ID2)
+             ext_msg=ext_msg, &
+             label1=label1,ID1=ID1, &
+             label2=label2,ID2=ID2)
 
 end subroutine IO_warning
 
@@ -754,17 +668,6 @@ subroutine IO_selfTest()
 
   if ('1234' /= IO_intAsStr(1234))                   error stop 'IO_intAsStr'
   if ('-12'  /= IO_intAsStr(-0012))                  error stop 'IO_intAsStr'
-
-  if (any([1,1,1]     /= IO_strPos('a')))            error stop 'IO_strPos'
-  if (any([2,2,3,5,5] /= IO_strPos(' aa b')))        error stop 'IO_strPos'
-
-  str = ' 1.0 xxx'
-  chunkPos = IO_strPos(str)
-  if (dNeq(1.0_pREAL,IO_realValue(str,chunkPos,1)))  error stop 'IO_realValue'
-
-  str = 'M 3112019 F'
-  chunkPos = IO_strPos(str)
-  if (3112019 /= IO_intValue(str,chunkPos,2))        error stop 'IO_intValue'
 
   if (CRLF2LF('') /= '')                             error stop 'CRLF2LF/0'
   if (CRLF2LF(LF)     /= LF)                         error stop 'CRLF2LF/1a'
