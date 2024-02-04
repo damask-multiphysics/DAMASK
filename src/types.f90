@@ -258,8 +258,14 @@ subroutine types_selfTest()
                                                       error stop 'tDict_asFormattedStr'
     if (d%get_asInt('three') /= 3)                    error stop 'tDict_get_asInt'
     if (dNeq(d%get_asReal('three'),3.0_pREAL))        error stop 'tDict_get_asReal'
+    if (any(d%get_as1dReal('one-two') /= real([1,2],pReal))) &
+                                                      error stop 'tDict_get_as1dReal'
+    if (any(d%get_as1dReal('three',requiredSize=3) /= real([3,3,3],pReal))) &
+                                                      error stop 'tDict_get_as1dReal/size'
     if (d%get_asStr('three') /= '3')                  error stop 'tDict_get_asStr'
     if (any(d%get_as1dInt('one-two') /= [1,2]))       error stop 'tDict_get_as1dInt'
+    if (any(d%get_as1dInt('three',requiredSize=3) /= [3,3,3])) &
+                                                      error stop 'tDict_get_as1dInt/size'
     call d%set('one-two',s4)
     if (d%asFormattedStr() /= '{one-two: 4, three: 3, four: 4}') &
                                                       error stop 'tDict_set overwrite'
@@ -1193,6 +1199,7 @@ end function tDict_get_asReal
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Get list by key and convert to real array (1D).
+!> @details If a size is required, scalars are valid input and are broadcasted to the required size.
 !--------------------------------------------------------------------------------------------------
 function tDict_get_as1dReal_size(self,k,defaultVal,requiredSize) result(nodeAs1dReal)
 
@@ -1202,12 +1209,21 @@ function tDict_get_as1dReal_size(self,k,defaultVal,requiredSize) result(nodeAs1d
   integer,          intent(in),               optional :: requiredSize
   real(pREAL), dimension(:), allocatable :: nodeAs1dReal
 
-  type(tList), pointer :: list
+  class(tNode), pointer :: content
 
 
   if (self%contains(k)) then
-    list => self%get_list(k)
-    nodeAs1dReal = list%as1dReal()
+    content => self%get(k)
+    select type(content)
+      class is(tScalar)
+        if (present(requiredSize)) then
+          allocate(nodeAs1dReal(requiredSize),source = content%asReal())
+        else
+          call IO_error(706,'"'//trim(content%asFormattedStr())//'" is not a list of reals')
+        end if
+      class is(tList)
+        nodeAs1dReal = content%as1dReal()
+    end select
   elseif (present(defaultVal)) then
     nodeAs1dReal = defaultVal
   else
@@ -1322,7 +1338,7 @@ function tDict_get_asInt(self,k,defaultVal) result(nodeAsInt)
   integer,          intent(in), optional :: defaultVal
   integer :: nodeAsInt
 
-  type(tScalar), pointer :: scalar
+ type(tScalar), pointer :: scalar
 
 
   if (self%contains(k)) then
@@ -1339,6 +1355,7 @@ end function tDict_get_asInt
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Get list by key and convert to int array (1D).
+!> @details If a size is required, scalars are valid input and are broadcasted to the required size.
 !--------------------------------------------------------------------------------------------------
 function tDict_get_as1dInt(self,k,defaultVal,requiredSize) result(nodeAs1dInt)
 
@@ -1348,12 +1365,21 @@ function tDict_get_as1dInt(self,k,defaultVal,requiredSize) result(nodeAs1dInt)
   integer,               intent(in), optional :: requiredSize
   integer, dimension(:), allocatable :: nodeAs1dInt
 
-  type(tList), pointer :: list
+  class(tNode), pointer :: content
 
 
   if (self%contains(k)) then
-    list => self%get_list(k)
-    nodeAs1dInt = list%as1dInt()
+    content => self%get(k)
+    select type(content)
+      class is(tScalar)
+        if (present(requiredSize)) then
+          allocate(nodeAs1dInt(requiredSize),source = content%asInt())
+        else
+          call IO_error(706,'"'//trim(content%asFormattedStr())//'" is not a list of integers')
+        end if
+      class is(tList)
+        nodeAs1dInt = content%as1dInt()
+    end select
   elseif (present(defaultVal)) then
     nodeAs1dInt = defaultVal
   else

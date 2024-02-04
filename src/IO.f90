@@ -573,8 +573,6 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
       msg = 'length mismatch'
     case (710)
       msg = 'closing quotation mark missing in string'
-    case (711)
-      msg = 'incorrect type'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the mesh solver
