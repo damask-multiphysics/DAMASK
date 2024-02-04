@@ -94,8 +94,8 @@ module types
       tDict_get_list, &
       tDict_get_dict, &
       tDict_get_asReal, &
-      tDict_get_as1dReal_shape, &
-      tDict_get_as1dReal_size, &
+      tDict_get_as1dReal_sized, &
+      tDict_get_as1dReal_chunked, &
       tDict_get_as2dReal, &
       tDict_get_asInt, &
       tDict_get_as1dInt, &
@@ -108,8 +108,8 @@ module types
     generic :: get_list     => tDict_get_list
     generic :: get_dict     => tDict_get_dict
     generic :: get_asReal   => tDict_get_asReal
-    generic :: get_as1dReal => tDict_get_as1dReal_size
-    generic :: get_as1dReal => tDict_get_as1dReal_shape
+    generic :: get_as1dReal => tDict_get_as1dReal_sized
+    generic :: get_as1dReal => tDict_get_as1dReal_chunked
     generic :: get_as2dReal => tDict_get_as2dReal
     generic :: get_asInt    => tDict_get_asInt
     generic :: get_as1dInt  => tDict_get_as1dInt
@@ -278,7 +278,7 @@ subroutine types_selfTest()
   end block dict
 
 #ifdef __GFORTRAN__
-  dict_get_as1dReal_shape: block
+  dict_get_as1dReal_chunked: block
     type(tDict),   pointer :: d
     type(tList),   pointer :: l_outer, l_inner
     type(tScalar), pointer :: s1,s2,s3
@@ -304,7 +304,7 @@ subroutine types_selfTest()
     call d%set('list',l_outer)
     call d%set('scalar',s1)
 
-    a = d%get_as1dReal('list',requiredShape=[2,3])
+    a = d%get_as1dReal('list',requiredChunks=[2,3])
     if (any(dNeq(a,real([1.0,2.0,3.0,3.0,3.0],pReal)))) &
       error stop 'dict_get_as1dReal_shape list'
 
@@ -315,10 +315,10 @@ subroutine types_selfTest()
     if (any(dNeq(d%get_as1dReal('non-existing',[42._pREAL, 5._pREAL],[2,3]),a))) &
       error stop 'dict_get_as1dReal_shape default group'
 
-    if (any(dNeq(d%get_as1dReal('scalar',requiredShape=[3,5,2]),misc_ones(10)))) &
+    if (any(dNeq(d%get_as1dReal('scalar',requiredChunks=[3,5,2]),misc_ones(10)))) &
       error stop 'dict_get_as1dReal_shape scalar'
 
-  end block dict_get_as1dReal_shape
+  end block dict_get_as1dReal_chunked
 #endif
 
 end subroutine types_selfTest
@@ -1201,7 +1201,7 @@ end function tDict_get_asReal
 !> @brief Get list by key and convert to real array (1D).
 !> @details If a size is required, scalars are valid input and are broadcasted to the required size.
 !--------------------------------------------------------------------------------------------------
-function tDict_get_as1dReal_size(self,k,defaultVal,requiredSize) result(nodeAs1dReal)
+function tDict_get_as1dReal_sized(self,k,defaultVal,requiredSize) result(nodeAs1dReal)
 
   class(tDict),     intent(in) :: self
   character(len=*), intent(in) :: k
@@ -1237,7 +1237,7 @@ function tDict_get_as1dReal_size(self,k,defaultVal,requiredSize) result(nodeAs1d
                     label2='required',ID2=requiredSize)
   end if
 
-end function tDict_get_as1dReal_size
+end function tDict_get_as1dReal_sized
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1245,13 +1245,13 @@ end function tDict_get_as1dReal_size
 !> @details Values will be broadcasted. A List content can be composed from mixture of scalar
 !> or list entries. [2., [1., 3.]] with required shape [3, 2] gives [2., 2., 2., 1., 3.].
 !--------------------------------------------------------------------------------------------------
-function tDict_get_as1dReal_shape(self,k,defaultVal,requiredShape) result(nodeAs1dReal)
+function tDict_get_as1dReal_chunked(self,k,defaultVal,requiredChunks) result(nodeAs1dReal)
 
   class(tDict),     intent(in) :: self
   character(len=*), intent(in) :: k
   real(pREAL),      intent(in), dimension(:), optional :: defaultVal
-  integer,          intent(in), dimension(:)           :: requiredShape
-  real(pREAL),                  dimension(sum(requiredShape)) :: nodeAs1dReal
+  integer,          intent(in), dimension(:)           :: requiredChunks
+  real(pREAL),                  dimension(sum(requiredChunks)) :: nodeAs1dReal
 
   type(tList), pointer :: list_outer, list_inner
   class(tNode), pointer :: node_outer, node_inner
@@ -1265,17 +1265,17 @@ function tDict_get_as1dReal_shape(self,k,defaultVal,requiredShape) result(nodeAs
         nodeAs1dReal = node_outer%asReal()
       class is(tList)
         list_outer => self%get_list(k)
-        do i = 1, size(requiredShape)
+        do i = 1, size(requiredChunks)
           node_inner => list_outer%get(i)
           select type(node_inner)
             class is(tScalar)
-              nodeAs1dReal(sum(requiredShape(:i-1))+1:sum(requiredShape(:i))) = node_inner%asReal()
+              nodeAs1dReal(sum(requiredChunks(:i-1))+1:sum(requiredChunks(:i))) = node_inner%asReal()
             class is(tList)
               list_inner => node_inner%asList()
-              if (size(list_inner%as1dReal()) /= requiredShape(i)) &
-                  call IO_error(709,'entry "'//k//'" is not of length '//IO_intAsStr(requiredShape(i)),&
+              if (size(list_inner%as1dReal()) /= requiredChunks(i)) &
+                  call IO_error(709,'entry "'//k//'" is not of length '//IO_intAsStr(requiredChunks(i)),&
                                 'position',i)
-              nodeAs1dReal(sum(requiredShape(:i-1))+1:sum(requiredShape(:i))) = list_inner%as1dReal()
+              nodeAs1dReal(sum(requiredChunks(:i-1))+1:sum(requiredChunks(:i))) = list_inner%as1dReal()
             class default
               call IO_error(706,'entry "'//k//'" is neither scalar nor list','position',i)
           end select
@@ -1284,9 +1284,9 @@ function tDict_get_as1dReal_shape(self,k,defaultVal,requiredShape) result(nodeAs
   elseif (present(defaultVal)) then
     if (size(defaultVal) == size(nodeAs1dReal)) then
       nodeAs1dReal = defaultVal
-    elseif (size(defaultVal) == size(requiredShape)) then
-      do i = 1, size(requiredShape)
-        nodeAs1dReal(sum(requiredShape(:i-1))+1:sum(requiredShape(:i))) = defaultVal(i)
+    elseif (size(defaultVal) == size(requiredChunks)) then
+      do i = 1, size(requiredChunks)
+        nodeAs1dReal(sum(requiredChunks(:i-1))+1:sum(requiredChunks(:i))) = defaultVal(i)
       end do
     else
       call IO_error(709,'default values not of required shape')
@@ -1295,7 +1295,7 @@ function tDict_get_as1dReal_shape(self,k,defaultVal,requiredShape) result(nodeAs
     call IO_error(143,ext_msg=k)
   end if
 
-end function tDict_get_as1dReal_shape
+end function tDict_get_as1dReal_chunked
 
 
 !--------------------------------------------------------------------------------------------------
