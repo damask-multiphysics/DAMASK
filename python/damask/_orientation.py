@@ -353,7 +353,7 @@ class Orientation(Rotation,Crystal):
         new : damask.Orientation
 
         """
-        o = cls(**kwargs)
+        o = cls(**kwargs,rotation=[1,0,0,0])
         x = o.to_frame(uvw=uvw)
         z = o.to_frame(hkl=hkl)
         om = np.stack([x,np.cross(z,x),z],axis=-2)
@@ -595,6 +595,80 @@ class Orientation(Rotation,Crystal):
                )
 
 
+    def to_lattice(self, *,
+                   direction: Optional[FloatSequence] = None,
+                   plane: Optional[FloatSequence] = None) -> np.ndarray:
+        """
+        Calculate lattice vector corresponding to crystal frame direction or plane normal.
+
+        Parameters
+        ----------
+        direction|plane : numpy.ndarray, shape (...,3)
+            Real space vector along direction or
+            reciprocal space vector along plane normal.
+
+        Returns
+        -------
+        Miller : numpy.ndarray, shape (...,3)
+            Lattice vector of direction or plane.
+            Use util.scale_to_coprime to convert to (integer) Miller indices.
+
+        Examples
+        --------
+        t.b.d.
+
+        >>> import np
+        >>> import damask
+        >>> np.set_printoptions(2,suppress=True,floatmode='fixed')
+        >>> cubic = damask.Orientation.from_axis_angle(n_omega=[1,0,0,90],degrees=True,lattice='cI')
+        >>> cubic.to_lattice(direction=[1, 0, 0])
+        array([ 1.0, 0.0, 0.0])
+        >>> cubic.to_lattice(direction=[0, 1, 0])
+        array([ 0.0, 0.0, 1.0])
+        >>> cubic.to_lattice(direction=[0, 0, 1])
+        array([ 0.0, -1.0, 0.0])
+
+        """
+        return ~self@super().to_lattice(direction=direction,plane=plane)
+
+
+    def to_frame(self, *,
+                 uvw: Optional[FloatSequence] = None,
+                 hkl: Optional[FloatSequence] = None) -> np.ndarray:
+        """
+        Calculate crystal frame vector corresponding to lattice direction [uvw] or plane normal (hkl).
+
+        Parameters
+        ----------
+        uvw|hkl : numpy.ndarray, shape (...,3)
+            Miller indices of crystallographic direction or plane normal.
+
+        Returns
+        -------
+        vector : numpy.ndarray, shape (...,3)
+            Crystal frame vector in real space along [uvw] direction or
+            in reciprocal space along (hkl) plane normal.
+
+        Examples
+        --------
+        Crystal frame vector (real space) of Magnesium corresponding to [1,1,0] direction:
+
+        >>> import damask
+        >>> Mg = damask.Crystal(lattice='hP', a=321e-12, c=521e-12)
+        >>> Mg.to_frame(uvw=[1, 1, 0])
+        array([1.60500000e-10, 2.77994155e-10, 0.00000000e+00])
+
+        Crystal frame vector (reciprocal space) of Titanium along (1,0,0) plane normal:
+
+        >>> import damask
+        >>> Ti = damask.Crystal(lattice='hP', a=295e-12, c=469e-12)
+        >>> Ti.to_frame(hkl=(1, 0, 0))
+        array([ 3.38983051e+09,  1.95711956e+09, -4.15134508e-07])
+
+        """
+        return ~self@super().to_frame(hkl=hkl,uvw=uvw)
+
+
     def to_SST(self,
                vector: FloatSequence,
                proper: bool = False,
@@ -802,7 +876,7 @@ class Orientation(Rotation,Crystal):
             [uvw] direction or (hkl) plane normal.
 
         """
-        v = self.to_frame(uvw=uvw,hkl=hkl)
+        v = super().to_frame(uvw=uvw,hkl=hkl)
         s_v = v.shape[:-1]
         blend = util.shapeblender(self.shape,s_v)
         if normalize:
@@ -857,8 +931,8 @@ class Orientation(Rotation,Crystal):
 
         if not active:
             raise ValueError('Schmid matrix not defined')
-        d = self.to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
-        p = self.to_frame(hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
+        d = super().to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
+        p = super().to_frame(hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
         P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=1,keepdims=True),
                                   p/np.linalg.norm(p,axis=1,keepdims=True))
 
