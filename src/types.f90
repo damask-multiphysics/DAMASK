@@ -1243,7 +1243,7 @@ end function tDict_get_as1dReal_sized
 !--------------------------------------------------------------------------------------------------
 !> @brief Get entry by key and convert to real array (1D).
 !> @details Values will be broadcasted. A List content can be composed from mixture of scalar
-!> or list entries. [2., [1., 3.]] with required shape [3, 2] gives [2., 2., 2., 1., 3.].
+!> or list entries. [2., [1., 3.]] with required chunks [3, 2] gives [2., 2., 2., 1., 3.].
 !--------------------------------------------------------------------------------------------------
 function tDict_get_as1dReal_chunked(self,k,defaultVal,requiredChunks) result(nodeAs1dReal)
 
