@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from scipy import linalg
 
 from damask import tensor
 from damask import mechanics
@@ -145,7 +146,7 @@ class TestMechanics:
         P = np.random.rand(self.n,3,3)
         assert np.allclose(function(P,np.broadcast_to(np.eye(3),(self.n,3,3))),tensor.symmetric(P))
 
-    def test_polar_decomposition(self):
+    def test_polar_decomposition_identity(self):
         """F = RU = VR."""
         F = np.broadcast_to(np.eye(3),[self.n,3,3])*np.random.rand(self.n,3,3)
         R = mechanics.rotation(F).as_matrix()
@@ -153,6 +154,16 @@ class TestMechanics:
         U = mechanics.stretch_right(F)
         assert np.allclose(np.matmul(R,U),
                            np.matmul(V,R))
+
+    @pytest.mark.parametrize('side',[('left','V'),('right','U')])
+    def test_polar_decomposition(self,side):
+        F     = np.random.rand(self.n,3,3)
+        F     = np.einsum('...ij,...jk',F,F) # positive determinant
+        F_vec = np.reshape(F,(self.n//10,10,3,3))
+        p = mechanics._polar_decomposition(F_vec,side[1])
+        for p_,F_ in zip(np.reshape(p,F.shape),F):
+            if np.linalg.det(F_) < 1.e-7: continue
+            assert np.allclose(p_,linalg.polar(F_,side[0])[1])
 
     @pytest.mark.parametrize('m',[0.0,np.random.random()*10.,np.random.random()*-10.])
     def test_strain_no_rotation(self,m):
