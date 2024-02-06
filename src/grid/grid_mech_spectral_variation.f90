@@ -100,11 +100,29 @@ module grid_mechanical_spectral_variation
       use petscmat
       MPI_Comm :: comm
       PetscInt :: mloc,nloc,m,n
-      integer :: ctx
+      Vec :: ctx
       Mat :: mat
       PetscErrorCode :: ierr
     end subroutine MatCreateShell
   end interface MatCreateShell 
+
+  interface MatShellSetContext
+    subroutine MatShellSetContext(mat,ctx,ierr)
+      use petscmat
+      Mat :: mat
+      Vec :: ctx
+      PetscErrorCode :: ierr
+    end subroutine MatShellSetContext
+  end interface MatShellSetContext 
+
+  interface MatShellGetContext
+    subroutine MatShellGetContext(mat,ctx,ierr)
+      use petscmat
+      Mat :: mat
+      Vec, Pointer :: ctx
+      PetscErrorCode :: ierr
+    end subroutine MatShellGetContext
+  end interface MatShellGetContext 
 
   interface MatShellSetOperation
     subroutine MatShellSetOperation(mat,op_num,op_callback,ierr)
@@ -127,16 +145,16 @@ module grid_mechanical_spectral_variation
     end subroutine SNESSetJacobian
   end interface SNESSetJacobian
 
-  interface KSPSetConvergenceTest
-    subroutine KSPSetConvergenceTest(ksp_mech, KSPConverged, ctx, ConvergedDestroy, ierr)
-      use petscksp
-      KSP :: ksp_mech
-      external :: KSPConverged
-      integer :: ctx
-      external :: ConvergedDestroy
-      PetscErrorCode :: ierr
-    end subroutine KSPSetConvergenceTest
-  end interface KSPSetConvergenceTest
+  !interface KSPSetConvergenceTest
+  !  subroutine KSPSetConvergenceTest(ksp_mech, KSPConverged, ctx, ConvergedDestroy, ierr)
+  !    use petscksp
+  !    KSP :: ksp_mech
+  !    external :: KSPConverged
+  !    integer :: ctx
+  !    external :: ConvergedDestroy
+  !    PetscErrorCode :: ierr
+  !  end subroutine KSPSetConvergenceTest
+  !end interface KSPSetConvergenceTest
 
   !interface DMDASNESSetJacobianLocal
   !  subroutine DMDASNESSetJacobianLocal(dm_mech,jac_callback,ctx,ierr)
@@ -171,6 +189,8 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   character(len=:), allocatable :: &
     extmsg, &
     petsc_options
+
+  Vec :: F_rec ! Yi: test
 
 
   print'(/,1x,a)', '<<<+-  grid_mechanical_spectral_variation init  -+>>>'; flush(IO_STDOUT)
@@ -240,6 +260,7 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   CHKERRQ(err_PETSc)
   call DMcreateGlobalVector(DM_mech,F_PETSc,err_PETSc)                                              ! global solution vector (cells x 9, i.e. every def grad tensor)
   CHKERRQ(err_PETSc)
+  CHKERRQ(err_PETSc)
   call DMDASNESsetFunctionLocal(DM_mech,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)       ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
   ! Yi: Jacobian matrix
@@ -250,7 +271,7 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   ! Yi: test more general interface
   call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,&
                       9*product(cells(1:2))*cells3,9*product(cells(1:2))*cells3,&
-                      0,Jac_PETSc,err_PETSc)
+                      F_PETSc,Jac_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatShellSetOperation(Jac_PETSc,MATOP_MULT,GK_op,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -268,10 +289,10 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
 
   ! Yi: manually set ksp convergence, since shell jac always do extra iter
   ! ================================================================================== 
-  call SNESGetKSP(SNES_mech,KSP_mech,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call KSPSetConvergenceTest(KSP_mech,converge_test_ksp,0,PETSC_NULL_FUNCTION,err_PETSc)
-  CHKERRQ(err_PETSc)
+  !call SNESGetKSP(SNES_mech,KSP_mech,err_PETSc)
+  !CHKERRQ(err_PETSc)
+  !call KSPSetConvergenceTest(KSP_mech,converge_test_ksp,0,PETSC_NULL_FUNCTION,err_PETSc)
+  !CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
