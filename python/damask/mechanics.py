@@ -337,7 +337,7 @@ def _polar_decomposition(T: _np.ndarray,
     if isinstance(requested, str): requested = [requested]
 
     u, _, vh = _np.linalg.svd(T)
-    R = _np.einsum('...ij,...jk',u,vh)
+    R = u @ vh
 
     output = []
     if 'R' in requested:

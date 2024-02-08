@@ -158,7 +158,7 @@ class TestMechanics:
     @pytest.mark.parametrize('side',[('left','V'),('right','U')])
     def test_polar_decomposition(self,side):
         F     = np.random.rand(self.n,3,3)
-        F     = np.einsum('...ij,...jk',F,F) # positive determinant
+        F     = F @ F # positive determinant
         F_vec = np.reshape(F,(self.n//10,10,3,3))
         p = mechanics._polar_decomposition(F_vec,side[1])
         for p_,F_ in zip(np.reshape(p,F.shape),F):
