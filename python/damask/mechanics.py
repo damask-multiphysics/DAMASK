@@ -5,7 +5,7 @@ All routines operate on numpy.ndarrays of shape (...,3,3).
 
 """
 
-from typing import Sequence as _Sequence#, Literal as _Literal
+from typing import Sequence as _Sequence, Union as _Union #, Literal as _Literal
 
 import numpy as _np
 
@@ -316,7 +316,7 @@ def stretch_right(T: _np.ndarray) -> _np.ndarray:
 
 
 def _polar_decomposition(T: _np.ndarray,
-                         requested: _Sequence[str]) -> tuple:
+                         requested: _Union[str, _Sequence[str]]) -> tuple:
     """
     Perform singular value decomposition.
 
@@ -334,6 +334,8 @@ def _polar_decomposition(T: _np.ndarray,
        Requested components of the singular value decomposition.
 
     """
+    if isinstance(requested, str): requested = [requested]
+
     u, _, vh = _np.linalg.svd(T)
     R = _np.einsum('...ij,...jk',u,vh)
 
