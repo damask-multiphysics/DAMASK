@@ -334,8 +334,6 @@ def _polar_decomposition(T: _np.ndarray,
        Requested components of the singular value decomposition.
 
     """
-    if isinstance(requested, str): requested = [requested]
-
     u, _, vh = _np.linalg.svd(T)
     R = u @ vh
 
