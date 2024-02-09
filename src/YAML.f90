@@ -4,11 +4,11 @@
 !> @brief Parser for YAML files.
 !> @details Module converts a YAML input file to an equivalent YAML flow style which is then parsed.
 !----------------------------------------------------------------------------------------------------
-module YAML_parse
+module YAML
   use prec
   use misc
   use IO
-  use YAML_types
+  use types
 #ifdef FYAML
   use system_routines
 #endif
@@ -17,9 +17,9 @@ module YAML_parse
   private
 
   public :: &
-    YAML_parse_init, &
-    YAML_parse_str_asList, &
-    YAML_parse_str_asDict
+    YAML_init, &
+    YAML_str_asList, &
+    YAML_str_asDict
 
 #ifdef FYAML
   interface
@@ -42,23 +42,23 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Do sanity checks.
 !--------------------------------------------------------------------------------------------------
-subroutine YAML_parse_init()
+subroutine YAML_init()
 
-  print'(/,1x,a)', '<<<+-  YAML_parse init  -+>>>'
+  print'(/,1x,a)', '<<<+-  YAML init  -+>>>'
 #ifdef FYAML
   print'(/,1x,a)', 'libfyaml powered'
 #else
-  call YAML_parse_selfTest()
+  call YAML_selfTest()
 #endif
 
-end subroutine YAML_parse_init
+end subroutine YAML_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Parse a YAML string with list at root into a structure of nodes.
 !> @details The string needs to end with a newline (unless using libfyaml).
 !--------------------------------------------------------------------------------------------------
-function YAML_parse_str_asList(str) result(list)
+function YAML_str_asList(str) result(list)
 
   character(len=*), intent(in) :: str
   type(tList), pointer :: list
@@ -69,14 +69,14 @@ function YAML_parse_str_asList(str) result(list)
   node => parse_flow(to_flow(str))
   list => node%asList()
 
-end function YAML_parse_str_asList
+end function YAML_str_asList
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Parse a YAML string with dict at root into a structure of nodes.
 !> @details The string needs to end with a newline (unless using libfyaml).
 !--------------------------------------------------------------------------------------------------
-function YAML_parse_str_asDict(str) result(dict)
+function YAML_str_asDict(str) result(dict)
 
   character(len=*), intent(in) :: str
   type(tDict), pointer :: dict
@@ -87,7 +87,7 @@ function YAML_parse_str_asDict(str) result(dict)
   node => parse_flow(to_flow(str))
   dict => node%asDict()
 
-end function YAML_parse_str_asDict
+end function YAML_str_asDict
 
 
 !--------------------------------------------------------------------------------------------------
@@ -310,8 +310,8 @@ logical function isKeyValue(line)
   isKeyValue = .false.
 
 
-  if ( .not. isKey(line) .and. index(IO_rmComment(line),':') > 0 .and. .not. isFlow(line)) then
-    if (index(IO_rmComment(line),': ') > 0) isKeyValue = .true.
+  if ( .not. isKey(line) .and. index(clean(line),':') > 0 .and. .not. isFlow(line)) then
+    if (index(clean(line),': ') > 0) isKeyValue = .true.
   end if
 
 end function isKeyValue
@@ -326,11 +326,11 @@ logical function isKey(line)
   character(len=*), intent(in) :: line
 
 
-  if (len(IO_rmComment(line)) == 0) then
+  if (len(clean(line)) == 0) then
     isKey = .false.
   else
-    isKey = index(IO_rmComment(line),':',back=.false.) == len(IO_rmComment(line)) .and. &
-            index(IO_rmComment(line),':',back=.true.)  == len(IO_rmComment(line)) .and. &
+    isKey = index(clean(line),':',back=.false.) == len(clean(line)) .and. &
+            index(clean(line),':',back=.true.)  == len(clean(line)) .and. &
             .not. isFlow(line)
   end if
 
@@ -364,7 +364,7 @@ subroutine skip_empty_lines(blck,s_blck)
 
   empty = .true.
   do while (empty .and. len_trim(blck(s_blck:)) /= 0)
-    empty = len_trim(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == 0
+    empty = len_trim(clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == 0
     if (empty) s_blck = s_blck + index(blck(s_blck:),IO_EOL)
   end do
 
@@ -383,11 +383,11 @@ subroutine skip_file_header(blck,s_blck)
   character(len=:), allocatable    :: line
 
 
-  line = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
+  line = clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
   if (index(adjustl(line),'%YAML') == 1) then
     s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     call skip_empty_lines(blck,s_blck)
-    if (trim(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == '---') then
+    if (trim(clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == '---') then
       s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     else
       call IO_error(708,ext_msg = line)
@@ -443,7 +443,7 @@ subroutine remove_line_break(blck,s_blck,e_char,flow_line)
   flow_line = ''
 
   do while (.not. line_end)
-    flow_line = flow_line//IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))//' '
+    flow_line = flow_line//clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))//' '
     line_end  = flow_is_closed(flow_line,e_char)
     s_blck    = s_blck + index(blck(s_blck:),IO_EOL)
   end do
@@ -466,14 +466,14 @@ subroutine list_item_inline(blck,s_blck,inline,offset)
 
 
   indent = indentDepth(blck(s_blck:),offset)
-  line   = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
+  line   = clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
   inline = line(indent-offset+3:)
   s_blck = s_blck + index(blck(s_blck:),IO_EOL)
 
   indent_next = indentDepth(blck(s_blck:))
 
   do while (indent_next > indent)
-    inline = inline//' '//trim(adjustl(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))))
+    inline = inline//' '//trim(adjustl(clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))))
     s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     indent_next = indentDepth(blck(s_blck:))
   end do
@@ -621,7 +621,7 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
   indent = indentDepth(blck(s_blck:),offset)
   do while (s_blck <= len_trim(blck))
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
-    line = IO_rmComment(blck(s_blck:e_blck))
+    line = clean(blck(s_blck:e_blck))
     if (trim(line) == '---' .or. trim(line) == '...') then
       exit
     elseif (len_trim(line) == 0) then
@@ -640,7 +640,7 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
         s_blck = e_blck + 2
         call skip_empty_lines(blck,s_blck)
         e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
-        line = IO_rmComment(blck(s_blck:e_blck))
+        line = clean(blck(s_blck:e_blck))
         if (trim(line) == '---') call IO_error(707,ext_msg=line)
         if (indentDepth(line) < indent .or. indentDepth(line) == indent) &
           call IO_error(701,ext_msg=line)
@@ -718,7 +718,7 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
 
   do while (s_blck <= len_trim(blck))
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
-    line = IO_rmComment(blck(s_blck:e_blck))
+    line = clean(blck(s_blck:e_blck))
     if (trim(line) == '---' .or. trim(line) == '...') then
       exit
     elseif (len_trim(line) == 0) then
@@ -796,7 +796,7 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
   if (s_blck <= len(blck)) then
     call skip_empty_lines(blck,s_blck)
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
-    line = IO_rmComment(blck(s_blck:e_blck))
+    line = clean(blck(s_blck:e_blck))
     if (trim(line) == '---' .or. trim(line) == '...') then
       continue                                                                                      ! end parsing at this point but not stop the simulation
     elseif (len_trim(line) == 0) then
@@ -854,11 +854,11 @@ function to_flow(blck)
   if (len_trim(blck) /= 0) then
     call skip_empty_lines(blck,s_blck)
     call skip_file_header(blck,s_blck)
-    line = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
+    line = clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
     if (trim(line) == '---') s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     call decide(blck,to_flow,s_blck,s_flow,offset)
   end if
-  line = IO_rmComment(blck(s_blck:s_blck+index(blck(s_blck:),IO_EOL)-2))
+  line = clean(blck(s_blck:s_blck+index(blck(s_blck:),IO_EOL)-2))
   if (trim(line)== '---') call IO_warning(709,ext_msg=line)
   to_flow = trim(to_flow(:s_flow-1))
   end_line = index(to_flow,IO_EOL)
@@ -868,9 +868,32 @@ end function to_flow
 
 
 !--------------------------------------------------------------------------------------------------
+! @brief Remove comments (characters beyond '#') and trailing space.
+!--------------------------------------------------------------------------------------------------
+function clean(line)
+
+  character(len=*), intent(in)  :: line
+  character(len=:), allocatable :: clean
+
+  integer :: split
+  character, parameter :: COMMENT_CHAR = '#'
+
+
+  split = index(line,COMMENT_CHAR)
+
+  if (split == 0) then
+    clean = trim(line)
+  else
+    clean = trim(line(:split-1))
+  end if
+
+end function clean
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some YAML functions.
 !--------------------------------------------------------------------------------------------------
-subroutine YAML_parse_selfTest()
+subroutine YAML_selfTest()
 
   if (indentDepth(' a') /= 1)     error stop 'indentDepth'
   if (indentDepth('a')  /= 0)     error stop 'indentDepth'
@@ -1024,14 +1047,31 @@ subroutine YAML_parse_selfTest()
       lst = '[1, 2, 3, 4]', &
       dct = '{a: 1, b: 2}'
 
-    list => YAML_parse_str_asList(lst//IO_EOL)
+    list => YAML_str_asList(lst//IO_EOL)
     if (list%asFormattedStr() /= lst) error stop 'str_asList'
-    dict => YAML_parse_str_asDict(dct//IO_EOL)
+    dict => YAML_str_asDict(dct//IO_EOL)
     if (dict%asFormattedStr() /= dct) error stop 'str_asDict'
 
   end block parse
 
-end subroutine YAML_parse_selfTest
+  comment: block
+    character(len=:),      allocatable :: str,out
+
+    str='#';out=clean(str)
+    if (out /= ''   .or. len(out) /= 0)  error stop 'clean/1'
+    str=' #';out=clean(str)
+    if (out /= ''   .or. len(out) /= 0)  error stop 'clean/2'
+    str=' # ';out=clean(str)
+    if (out /= ''   .or. len(out) /= 0)  error stop 'clean/3'
+    str=' # a';out=clean(str)
+    if (out /= ''   .or. len(out) /= 0)  error stop 'clean/4'
+    str=' a#';out=clean(str)
+    if (out /= ' a' .or. len(out) /= 2)  error stop 'clean/5'
+    str=' ab #';out=clean(str)
+    if (out /= ' ab'.or. len(out) /= 3)  error stop 'clean/6'
+  end block comment
+
+end subroutine YAML_selfTest
 #endif
 
-end module YAML_parse
+end module YAML

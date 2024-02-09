@@ -13,7 +13,7 @@ program DAMASK_test
   use test_crystal
   use test_rotations
   use test_IO
-  use test_YAML_types
+  use test_types
   use test_HDF5_utilities
 
   external :: quit
@@ -63,8 +63,8 @@ program DAMASK_test
   call test_IO_run()
   write(IO_STDOUT,fmt='(a)') ok
 
-  write(IO_STDOUT,fmt=fmt, advance='no') 'YAML_types','...'
-  call test_YAML_types_run()
+  write(IO_STDOUT,fmt=fmt, advance='no') 'types','...'
+  call test_types_run()
   write(IO_STDOUT,fmt='(a)') ok
 
   write(IO_STDOUT,fmt=fmt, advance='no') 'HDF5_utilities','...'

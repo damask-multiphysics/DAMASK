@@ -12,7 +12,7 @@ module material
   use IO
   use rotations
   use discretization
-  use YAML_types
+  use types
 
   implicit none(type,external)
   private

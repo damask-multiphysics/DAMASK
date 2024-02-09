@@ -24,22 +24,14 @@ implicit none(type,external)
     IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13), &                         !< whitespace characters
     IO_QUOTES  = "'"//'"'
   character, parameter, public :: &
-    IO_EOL = LF, &                                                                                  !< end of line character
-    IO_COMMENT = '#'
+    IO_EOL = LF                                                                                     !< end of line character
 
   public :: &
     IO_init, &
     IO_selfTest, &
     IO_read, &
-    IO_readlines, &
-    IO_isBlank, &
     IO_wrapLines, &
-    IO_strPos, &
-    IO_strValue, &
-    IO_intValue, &
-    IO_realValue, &
     IO_lc, &
-    IO_rmComment, &
     IO_glueDiffering, &
     IO_intAsStr, &
     IO_strAsInt, &
@@ -64,53 +56,6 @@ subroutine IO_init()
   call IO_selfTest()
 
 end subroutine IO_init
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Read ASCII file and split at EOL.
-!--------------------------------------------------------------------------------------------------
-function IO_readlines(fileName) result(fileContent)
-
-  character(len=*),       intent(in)                :: fileName
-  character(len=pSTRLEN), dimension(:), allocatable :: fileContent                                  !< file content, separated per lines
-
-  character(len=pSTRLEN)                            :: line
-  character(len=:),                     allocatable :: rawData
-  integer ::  &
-    startPos, endPos, &
-    N_lines, &                                                                                      !< # lines in file
-    l
-  logical :: warned
-
-
-  rawData = IO_read(fileName)
-
-  N_lines = count([(rawData(l:l) == IO_EOL,l=1,len(rawData))])
-  allocate(fileContent(N_lines))
-
-!--------------------------------------------------------------------------------------------------
-! split raw data at end of line
-  warned = .false.
-  startPos = 1
-  l = 1
-  do while (l <= N_lines)
-    endPos = startPos + scan(rawData(startPos:),IO_EOL) - 2
-    if (endPos - startPos > pSTRLEN-1) then
-      line = rawData(startPos:startPos+pSTRLEN-1)
-      if (.not. warned) then
-        call IO_warning(207,trim(fileName),label1='line',ID1=l)
-        warned = .true.
-      end if
-    else
-      line = rawData(startPos:endpos)
-    end if
-    startPos = endPos + 2                                                                           ! jump to next line start
-
-    fileContent(l) = trim(line)//''
-    l = l + 1
-  end do
-
-end function IO_readlines
 
 
 !--------------------------------------------------------------------------------------------------
@@ -147,22 +92,6 @@ function IO_read(fileName) result(fileContent)
   if (fileContent(fileLength:fileLength) /= IO_EOL) fileContent = fileContent//IO_EOL               ! ensure EOL@EOF
 
 end function IO_read
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Identifiy strings without content.
-!--------------------------------------------------------------------------------------------------
-logical pure function IO_isBlank(str)
-
-  character(len=*), intent(in) :: str                                                               !< string to check for content
-
-  integer :: posNonBlank
-
-
-  posNonBlank = verify(str,IO_WHITESPACE)
-  IO_isBlank = posNonBlank == 0 .or. posNonBlank == scan(str,IO_COMMENT)
-
-end function IO_isBlank
 
 
 !--------------------------------------------------------------------------------------------------
@@ -211,89 +140,6 @@ end function IO_wrapLines
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Locate all whitespace-separated chunks in given string and returns array containing
-!! number them and the left/right position to be used by IO_xxxVal.
-!! Array size is dynamically adjusted to number of chunks found in string
-!! IMPORTANT: first element contains number of chunks!
-!--------------------------------------------------------------------------------------------------
-pure function IO_strPos(str)
-
-  character(len=*),                  intent(in) :: str                                              !< string in which chunk positions are searched for
-  integer, dimension(:), allocatable            :: IO_strPos
-
-  integer                      :: left, right
-
-
-  allocate(IO_strPos(1), source=0)
-  right = 0
-
-  do while (verify(str(right+1:),IO_WHITESPACE)>0)
-    left  = right + verify(str(right+1:),IO_WHITESPACE)
-    right = left + scan(str(left:),IO_WHITESPACE) - 2
-    if ( str(left:left) == IO_COMMENT) exit
-    IO_strPos = [IO_strPos,left,right]
-    IO_strPos(1) = IO_strPos(1)+1
-    endOfStr: if (right < left) then
-      IO_strPos(IO_strPos(1)*2+1) = len_trim(str)
-      exit
-    end if endOfStr
-  end do
-
-end function IO_strPos
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Read string value at myChunk from string.
-!--------------------------------------------------------------------------------------------------
-function IO_strValue(str,chunkPos,myChunk)
-
-  character(len=*),             intent(in) :: str                                                   !< raw input with known start and end of each chunk
-  integer,   dimension(:),      intent(in) :: chunkPos                                              !< positions of start and end of each tag/chunk in given string
-  integer,                      intent(in) :: myChunk                                               !< position number of desired chunk
-  character(len=:), allocatable            :: IO_strValue
-
-
-  validChunk: if (myChunk > chunkPos(1) .or. myChunk < 1) then
-    IO_strValue = ''
-    call IO_error(110,'IO_strValue: "'//trim(str)//'"',label1='chunk',ID1=myChunk)
-  else validChunk
-    IO_strValue = str(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
-  end if validChunk
-
-end function IO_strValue
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Read integer value at myChunk from string.
-!--------------------------------------------------------------------------------------------------
-integer function IO_intValue(str,chunkPos,myChunk)
-
-  character(len=*),      intent(in) :: str                                                          !< raw input with known start and end of each chunk
-  integer, dimension(:), intent(in) :: chunkPos                                                     !< positions of start and end of each tag/chunk in given string
-  integer,               intent(in) :: myChunk                                                      !< position number of desired chunk
-
-
-  IO_intValue = IO_strAsInt(IO_strValue(str,chunkPos,myChunk))
-
-end function IO_intValue
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Read real value at myChunk from string.
-!--------------------------------------------------------------------------------------------------
-real(pREAL) function IO_realValue(str,chunkPos,myChunk)
-
-  character(len=*),        intent(in) :: str                                                        !< raw input with known start and end of each chunk
-  integer,   dimension(:), intent(in) :: chunkPos                                                   !< positions of start and end of each tag/chunk in given string
-  integer,                 intent(in) :: myChunk                                                    !< position number of desired chunk
-
-
-  IO_realValue = IO_strAsReal(IO_strValue(str,chunkPos,myChunk))
-
-end function IO_realValue
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Convert characters in string to lower case.
 !--------------------------------------------------------------------------------------------------
 pure function IO_lc(str)
@@ -316,27 +162,6 @@ pure function IO_lc(str)
 end function IO_lc
 
 
-!--------------------------------------------------------------------------------------------------
-! @brief Remove comments (characters beyond '#') and trailing space.
-! ToDo: Discuss name (the trim aspect is not clear)
-!--------------------------------------------------------------------------------------------------
-function IO_rmComment(line)
-
-  character(len=*), intent(in)  :: line
-  character(len=:), allocatable :: IO_rmComment
-
-  integer :: split
-
-
-  split = index(line,IO_COMMENT)
-
-  if (split == 0) then
-    IO_rmComment = trim(line)
-  else
-    IO_rmComment = trim(line(:split-1))
-  end if
-
-end function IO_rmComment
 
 
 !--------------------------------------------------------------------------------------------------
@@ -614,8 +439,6 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
       msg = 'length mismatch'
     case (710)
       msg = 'closing quotation mark missing in string'
-    case (711)
-      msg = 'incorrect type'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the mesh solver
@@ -695,9 +518,9 @@ subroutine IO_warning(warning_ID,ext_msg,label1,ID1,label2,ID2)
   end select
 
   call panel('warning',warning_ID,msg, &
-                 ext_msg=ext_msg, &
-                 label1=label1,ID1=ID1, &
-                 label2=label2,ID2=ID2)
+             ext_msg=ext_msg, &
+             label1=label1,ID1=ID1, &
+             label2=label2,ID2=ID2)
 
 end subroutine IO_warning
 
@@ -846,17 +669,6 @@ subroutine IO_selfTest()
   if ('1234' /= IO_intAsStr(1234))                   error stop 'IO_intAsStr'
   if ('-12'  /= IO_intAsStr(-0012))                  error stop 'IO_intAsStr'
 
-  if (any([1,1,1]     /= IO_strPos('a')))            error stop 'IO_strPos'
-  if (any([2,2,3,5,5] /= IO_strPos(' aa b')))        error stop 'IO_strPos'
-
-  str = ' 1.0 xxx'
-  chunkPos = IO_strPos(str)
-  if (dNeq(1.0_pREAL,IO_realValue(str,chunkPos,1)))  error stop 'IO_realValue'
-
-  str = 'M 3112019 F'
-  chunkPos = IO_strPos(str)
-  if (3112019 /= IO_intValue(str,chunkPos,2))        error stop 'IO_intValue'
-
   if (CRLF2LF('') /= '')                             error stop 'CRLF2LF/0'
   if (CRLF2LF(LF)     /= LF)                         error stop 'CRLF2LF/1a'
   if (CRLF2LF(CR//LF) /= LF)                         error stop 'CRLF2LF/1b'
@@ -867,24 +679,7 @@ subroutine IO_selfTest()
               'A'//LF//'B'//LF)                      error stop 'CRLF2LF/4'
   if (CRLF2LF('A'//LF//CR//'B') /= 'A'//LF//CR//'B') error stop 'CRLF2LF/5'
 
-  str='  ';        if (.not. IO_isBlank(str))        error stop 'IO_isBlank/1'
-  str='  #isBlank';if (.not. IO_isBlank(str))        error stop 'IO_isBlank/2'
-  str='  i#s';     if (      IO_isBlank(str))        error stop 'IO_isBlank/3'
-
   str='*(HiU!)3';if ('*(hiu!)3' /= IO_lc(str))       error stop 'IO_lc'
-
-  str='#';out=IO_rmComment(str)
-  if (out /= ''   .or. len(out) /= 0)                error stop 'IO_rmComment/1'
-  str=' #';out=IO_rmComment(str)
-  if (out /= ''   .or. len(out) /= 0)                error stop 'IO_rmComment/2'
-  str=' # ';out=IO_rmComment(str)
-  if (out /= ''   .or. len(out) /= 0)                error stop 'IO_rmComment/3'
-  str=' # a';out=IO_rmComment(str)
-  if (out /= ''   .or. len(out) /= 0)                error stop 'IO_rmComment/4'
-  str=' a#';out=IO_rmComment(str)
-  if (out /= ' a' .or. len(out) /= 2)                error stop 'IO_rmComment/5'
-  str=' ab #';out=IO_rmComment(str)
-  if (out /= ' ab'.or. len(out) /= 3)                error stop 'IO_rmComment/6'
 
   if ('abc, def' /= IO_wrapLines('abc, def')) &
                                                      error stop 'IO_wrapLines/1'
