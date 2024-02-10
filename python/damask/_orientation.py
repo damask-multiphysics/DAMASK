@@ -534,21 +534,23 @@ class Orientation(Rotation,Crystal):
 
         r_ = s[:,np.newaxis,...].misorientation(o[np.newaxis,:,...]) # type: ignore[index]
         _r = ~r_
+        shp = r_.shape[2:]
 
         forward = r_.in_disorientation_FZ
         reverse = _r.in_disorientation_FZ
         ok  = forward | reverse
-        ok &= (np.cumsum(ok.reshape((-1,)+blend),axis=0) == 1).reshape(ok.shape)
+        ok &= (np.cumsum(ok.reshape((-1,*shp)),axis=0) == 1).reshape(ok.shape)
         r = np.where(np.any((ok&forward)[...,np.newaxis],axis=(0,1),keepdims=True),
                      r_.quaternion,
                      _r.quaternion)
         loc  = np.where(ok)
         sort = 0 if len(loc) == 2 else np.lexsort(loc[:1:-1])
-        quat = r[ok][sort].reshape(blend+(4,))
+
+        quat = r[ok][sort].reshape((*shp,4))
 
         return (
                 (self.copy(rotation=quat),
-                 (np.vstack(loc[:2]).T)[sort].reshape(blend+(2,)))
+                 (np.vstack(loc[:2]).T)[sort].reshape((*shp,2)))
                 if return_operators else
                 self.copy(rotation=quat)
                )
