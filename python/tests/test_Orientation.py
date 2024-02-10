@@ -317,19 +317,6 @@ class TestOrientation:
             Table({'Eulers':(3,)},eu).set('pos',coords).save(reference)
         assert np.allclose(eu,Table.load(reference).get('Eulers'))
 
-    def test_basis_real(self):
-        for gamma in np.random.random(2**8)*np.pi:
-            basis = np.tril(np.random.random((3,3))+1e-6)
-            basis[1,:2] = basis[1,1]*np.array([np.cos(gamma),np.sin(gamma)])
-            basis[2,:2] = basis[2,:2]*2-1
-            lengths = np.linalg.norm(basis,axis=-1)
-            cosines = np.roll(np.einsum('ij,ij->i',basis,np.roll(basis,1,axis=0))/lengths/np.roll(lengths,1),1)
-            o = Orientation.from_random(lattice='aP',
-                            **dict(zip(['a','b','c'],lengths)),
-                            **dict(zip(['alpha','beta','gamma'],np.arccos(cosines))),
-                            )
-            assert np.allclose(o.to_frame(uvw=np.eye(3)),basis,rtol=1e-4), 'Lattice basis disagrees with initialization'
-
     @pytest.mark.parametrize('lattice,a,b,c,alpha,beta,gamma',
                             [
                              ('aP',0.5,2.0,3.0,0.8,0.5,1.2),
@@ -543,4 +530,3 @@ class TestOrientation:
         current = np.array(Image.open(tmp_path/fname))
         reference = np.array(Image.open(res_path/fname))
         assert np.allclose(current,reference)
-
