@@ -703,8 +703,8 @@ class Orientation(Rotation,Crystal):
         if vector_.shape[-1] != 3:
             raise ValueError('input is not a field of three-dimensional vectors')
 
-        blend = util.shapeblender( self.shape,vector_.shape[:-1])
-        eq    = self.broadcast_to(util.shapeshifter( self.shape,blend,mode='right')).equivalent
+        blend = util.shapeblender(self.shape,vector_.shape[:-1])
+        eq    = self.broadcast_to(util.shapeshifter(self.shape,blend,mode='right')).equivalent
         poles = np.atleast_2d(eq @ np.broadcast_to(vector_,(1,)+blend+(3,)))
         ok    = self.in_SST(poles,proper=proper)
         ok   &= np.cumsum(ok,axis=0) == 1
@@ -987,7 +987,6 @@ class Orientation(Rotation,Crystal):
         """
         lattice,o = self.relation_operations(model,target)
         target = Crystal(lattice=lattice) if target is None else target
-
         return Orientation(rotation=o*Rotation(self.quaternion)[np.newaxis,...],  # type: ignore
                           lattice=lattice,
                           b = self.b if target.ratio['b'] is None else self.a*target.ratio['b'],

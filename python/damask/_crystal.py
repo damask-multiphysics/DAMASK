@@ -542,8 +542,10 @@ class Crystal():
         return family if self.lattice is None else \
                util.srepr([family,
                            f'Bravais lattice: {self.lattice}',
-                           'a={:.5g} m, b={:.5g} m, c={:.5g} m'.format(*self.parameters[:3]),
-                           'α={:.5g}°, β={:.5g}°, γ={:.5g}°'.format(*np.degrees(self.parameters[3:]))])
+                           'a={a:.5g} m, b={b:.5g} m, c={c:.5g} m'.format(**self.parameters),
+                           'α={alpha:.5g}°, β={beta:.5g}°, γ={gamma:.5g}°'
+                           .format(**dict(map(lambda kv: (kv[0], np.degrees(kv[1])), self.parameters.items()))),
+                           ])
 
 
     def __eq__(self,
@@ -565,9 +567,10 @@ class Crystal():
                 self.family == other.family)                                                        # type: ignore
 
     @property
-    def parameters(self) -> Optional[Tuple]:
+    def parameters(self) -> Optional[Dict]:
         """Return lattice parameters a, b, c, alpha, beta, gamma."""
-        return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma) if hasattr(self,'a') else None
+        return dict(a=self.a,b=self.b,c=self.c,
+                    alpha=self.alpha,beta=self.beta,gamma=self.gamma) if hasattr(self,'a') else None
 
     @property
     def immutable(self) -> Dict[str, float]:
@@ -1208,12 +1211,12 @@ class Crystal():
 
         m_l,o_l = transform[0].split(sep)                                                           # type: ignore
         m_p,o_p = orientation_relationships[model][m_l+sep+o_l]
-        other = Crystal(lattice=o_l) if target is None else target
-        m_p = np.stack((self.to_frame(uvw=m_p[:,0] if len(m_p[0,0])==3 else util.Bravais_to_Miller(uvtw=m_p[:,0])),
-                        self.to_frame(hkl=m_p[:,1] if len(m_p[0,1])==3 else util.Bravais_to_Miller(hkil=m_p[:,1]))),
-                        axis=1)
-        o_p = np.stack((other.to_frame(uvw=o_p[:,0] if len(o_p[0,0])==3 else util.Bravais_to_Miller(uvtw=o_p[:,0])),
-                        other.to_frame(hkl=o_p[:,1] if len(o_p[0,1])==3 else util.Bravais_to_Miller(hkil=o_p[:,1]))),
-                        axis=1)
-
+        m = Crystal(lattice=m_l,**self.parameters)
+        o = Crystal(lattice=o_l) if target is None else target
+        m_p = np.stack((m.to_frame(uvw=m_p[:,0] if len(m_p[0,0])==3 else util.Bravais_to_Miller(uvtw=m_p[:,0])),
+                        m.to_frame(hkl=m_p[:,1] if len(m_p[0,1])==3 else util.Bravais_to_Miller(hkil=m_p[:,1]))),
+                        axis=-2)
+        o_p = np.stack((o.to_frame(uvw=o_p[:,0] if len(o_p[0,0])==3 else util.Bravais_to_Miller(uvtw=o_p[:,0])),
+                        o.to_frame(hkl=o_p[:,1] if len(o_p[0,1])==3 else util.Bravais_to_Miller(hkil=o_p[:,1]))),
+                        axis=-2)
         return (o_l,Rotation.from_parallel(a=m_p,b=o_p))

@@ -1002,7 +1002,7 @@ class Rotation:
         """
         a_ = np.array(a,dtype=float)
         b_ = np.array(b,dtype=float)
-        if a_.shape[-2:] != (2,3) or b_.shape[-2:] != (2,3) or a_.shape != b_.shape:
+        if a_.shape[-2:] != (2,3) or b_.shape[-2:] != (2,3):
             raise ValueError('invalid shape')
         am = np.stack([          a_[...,0,:],
                                              a_[...,1,:],
