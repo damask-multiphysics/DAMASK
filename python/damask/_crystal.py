@@ -1211,7 +1211,7 @@ class Crystal():
 
         m_l,o_l = transform[0].split(sep)                                                           # type: ignore
         m_p,o_p = orientation_relationships[model][m_l+sep+o_l]
-        m = Crystal(lattice=m_l) if self.parameters is None else Crystal(**(self.parameters|dict(lattice=m_l))) # type: ignore
+        m = Crystal(lattice=m_l) if self.parameters is None else Crystal(lattice=m_l,**self.parameters) # type: ignore
         o = Crystal(lattice=o_l) if target is None else target
         m_p = np.stack((m.to_frame(uvw=m_p[:,0] if len(m_p[0,0])==3 else util.Bravais_to_Miller(uvtw=m_p[:,0])),
                         m.to_frame(hkl=m_p[:,1] if len(m_p[0,1])==3 else util.Bravais_to_Miller(hkil=m_p[:,1]))),
