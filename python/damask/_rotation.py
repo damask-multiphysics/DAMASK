@@ -616,6 +616,7 @@ class Rotation:
         ----------
         other : damask.Rotation
             Rotation to which the misorientation is computed.
+            Compatible innermost dimensions will blend.
 
         Returns
         -------
@@ -623,7 +624,7 @@ class Rotation:
             Misorientation.
 
         """
-        return other/self
+        return ~(self*~other)
 
 
     ################################################################################################

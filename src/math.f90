@@ -10,7 +10,7 @@ module math
   use misc
   use IO
   use config
-  use YAML_types
+  use types
   use parallelization
   use LAPACK_interface
 

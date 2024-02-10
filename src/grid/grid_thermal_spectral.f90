@@ -23,7 +23,7 @@ module grid_thermal_spectral
   use spectral_utilities
   use discretization_grid
   use homogenization
-  use YAML_types
+  use types
   use config
   use constants
 

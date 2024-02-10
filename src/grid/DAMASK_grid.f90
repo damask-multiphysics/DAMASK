@@ -149,7 +149,7 @@ program DAMASK_grid
   end if
 
   call parallelization_bcast_str(fileContent)
-  load => YAML_parse_str_asDict(fileContent)
+  load => YAML_str_asDict(fileContent)
   solver => load%get_dict('solver')
 
 !--------------------------------------------------------------------------------------------------

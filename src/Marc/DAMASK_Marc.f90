@@ -20,8 +20,8 @@
 #include "../parallelization.f90"
 #include "../misc.f90"
 #include "../IO.f90"
-#include "../YAML_types.f90"
-#include "../YAML_parse.f90"
+#include "../types.f90"
+#include "../YAML.f90"
 #include "../HDF5_utilities.f90"
 
 module DAMASK_interface
@@ -187,7 +187,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   use prec
   use DAMASK_interface
   use config
-  use YAML_types
+  use types
   use discretization_Marc
   use homogenization
   use materialpoint_Marc

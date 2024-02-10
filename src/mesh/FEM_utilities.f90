@@ -3,12 +3,8 @@
 !> @brief Utilities used by the FEM solver
 !--------------------------------------------------------------------------------------------------
 module FEM_utilities
-#include <petsc/finclude/petscdmplex.h>
-#include <petsc/finclude/petscdmda.h>
-#include <petsc/finclude/petscis.h>
-  use PETScDMplex
-  use PETScDMDA
-  use PETScIS
+#include <petsc/finclude/petsc.h>
+  use PETSc
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   use MPI_f08
 #endif
