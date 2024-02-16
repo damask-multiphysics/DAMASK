@@ -530,7 +530,7 @@ subroutine formResidual(residual_subdomain, F, &
   err_BC = maxval(abs(merge(.0_pREAL,P_av - P_aim,params%stress_mask)))
 
   print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
-    'F_aim residual                 =', transpose(F_aim)
+    'F_aim in residual=', transpose(F_aim)
   r = utilities_GammaConvolution(r,params%rotation_BC%rotate(deltaF_aim,active=.true.))
 
 end subroutine formResidual

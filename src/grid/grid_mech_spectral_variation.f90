@@ -81,6 +81,9 @@ module grid_mechanical_spectral_variation
     C_minMaxAvgRestart = 0.0_pREAL, &                                                               !< (min+max)/2 stiffnes (restart)
     S = 0.0_pREAL                                                                                   !< current compliance (filled up with zeros)
 
+  real(pREAL), dimension(3,3) :: &
+    dP_curr ! Yi: helper with F_aim upd
+
   real(pREAL) :: &
     err_BC, &                                                                                       !< deviation from stress BC
     err_div                                                                                         !< RMS of div of P
@@ -278,6 +281,8 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   call SNESSetJacobian(SNES_mech,Jac_PETSc,Jac_PETSc,PETSC_NULL_FUNCTION,0,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMSNESsetJacobianLocal(DM_mech,formJacobian,PETSC_NULL_SNES,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call SNESSetUpdate(SNES_mech,set_F_aim,err_PETSc)
   CHKERRQ(err_PETSc)
   ! ================================================================================== 
   call SNESsetConvergenceTest(SNES_mech,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc)    ! specify custom convergence check function "converged"
@@ -645,14 +650,17 @@ subroutine formResidual(residual_subdomain, F, &
   ! Yi: P_aim is prescribed by BC (forward step), 0 on unprescribed components
   dP_with_BC = merge(.0_pREAL,P_av-P_aim,params%stress_mask)
   err_BC = maxval(abs(dP_with_BC))
-  ! deltaF_aim = math_mul3333xx33(S, dP_with_BC)                                                    ! S = 0.0 for no bc
-  deltaF_aim = math_mul3333xx33(S, P_av - P_aim)                                                    ! from basic scheme
-  F_aim = F_aim - deltaF_aim 
+  !deltaF_aim = math_mul3333xx33(S, dP_with_BC)                                                    ! S = 0.0 for no bc
+  dP_curr = P_av - P_aim
+  ! deltaF_aim = math_mul3333xx33(S, P_av - P_aim)                                                    ! from basic scheme
+  ! F_aim = F_aim - deltaF_aim 
+  ! F_aim should not always decrease!!
   print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
     'F_aim residual                 =', transpose(F_aim)
 
   ! Yi: unlike Gamma, G make r still in stress space, what about rotation?
   r = utilities_G_Convolution(r,dP_with_BC)
+  !r = utilities_G_Convolution(r,P_av-P_aim)
 
   print*, '+++++ end my rhs +++++'
 
@@ -749,6 +757,7 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
   ! ===== G* operator =====
   dP_with_BC = merge(.0_pREAL,P_av-P_aim,params%stress_mask)
   output = utilities_G_Convolution(output,dP_with_BC)
+  !output = utilities_G_Convolution(output,P_av-P_aim)
 
   call DMDAVecGetArrayF90(DM_mech,output_local,output_scal,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -780,5 +789,23 @@ subroutine converge_test_ksp(ksp, it, rnorm, reason, ctx, ierr)
   return
 
 end subroutine converge_test_ksp
+
+subroutine set_F_aim(snes, step, ierr)
+  SNES      :: snes
+  PetscInt  :: step ! curr step of iter -> completed petsc iter
+  PetscErrorCode :: ierr
+
+  real(pREAL), dimension(3,3) :: &
+    deltaF_aim
+
+  print *, '!! in set F_aim'
+  print*, step  
+  deltaF_aim = math_mul3333xx33(S, P_av - P_aim)                                                    ! from basic scheme
+  F_aim = F_aim - deltaF_aim 
+  print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+    'F_aim residual (in upd) =', transpose(F_aim)
+  !call SNESGetFunction(snes,formResidual,PETSC_NULL_FUNCTION,PETSC_NULL_INTEGER)
+
+end subroutine set_F_aim
 
 end module grid_mechanical_spectral_variation
