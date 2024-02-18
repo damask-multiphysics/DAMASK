@@ -425,6 +425,8 @@ subroutine grid_mechanical_spectral_variation_forward(cutBack,guess,Delta_t,Delt
   PetscErrorCode :: err_PETSc
   real(pREAL), pointer, dimension(:,:,:,:) :: F
 
+  real(pREAL), dimension(3,3) :: &
+    dF_aim_bc_stress ! Yi: F_aim from P bc
 
   call DMDAVecGetArrayF90(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -438,7 +440,7 @@ subroutine grid_mechanical_spectral_variation_forward(cutBack,guess,Delta_t,Delt
 
     F_aimDot = merge(merge(.0_pREAL,(F_aim-F_aim_lastInc)/Delta_t_old,stress_BC%mask),.0_pREAL,guess) ! estimate deformation rate for prescribed stress components
     F_aim_lastInc = F_aim
-    ! yiprint
+    ! Yi: print
     print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
       'F_aim in forward =', transpose(F_aim)
 
@@ -465,15 +467,38 @@ subroutine grid_mechanical_spectral_variation_forward(cutBack,guess,Delta_t,Delt
 
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
-  F_aim = F_aim_lastInc + F_aimDot * Delta_t
-  ! yiprint
-  print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
-    'F_aim lastInc in forward =', transpose(F_aim_lastInc)
-  print* ,Delta_t
+  !F_aim = F_aim_lastInc + F_aimDot * Delta_t
+
+  ! Yi: print
+  !print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+  !  'F_aim lastInc in forward =', transpose(F_aim_lastInc)
+  !print* ,Delta_t
+
+  ! Yi: before upd, get dF of bc stress
+  print*, 'S in forward', S(1,1,1,1)
+  if (S(1,1,1,1) > .0_pREAL) then
+    S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
+    print*, 'S in forward', S(1,1,1,1)
+  end if
+  dF_aim_bc_stress = math_mul3333xx33(S, stress_BC%values - P_aim)/t_remaining*Delta_t
+  F_aim = F_aim_lastInc + merge(F_aimDot*Delta_t, dF_aim_bc_stress, stress_BC%mask)
+  !F_aim = F_aim_lastInc + merge(F_aimDot*Delta_t, .0_pREAL, stress_BC%mask)
+
   if (stress_BC%myType=='P')     P_aim = P_aim &
                                        + merge(.0_pREAL,(stress_BC%values - P_aim)/t_remaining,stress_BC%mask)*Delta_t
   if (stress_BC%myType=='dot_P') P_aim = P_aim &
                                        + merge(.0_pREAL,stress_BC%values,stress_BC%mask)*Delta_t
+
+  ! Yi: add stress bc info into F petsc start
+  !!! S is not possible to calc for 1st load incr
+  ! S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
+  !!!
+  ! print*, 'get S in forward', S(1,1,1,1)
+
+  ! Yi: add stress bc info into F petsc start
+  !!! warning dF = S : dP, not F = S : P
+  !F_aim = F_aim + merge(.0_pREAL,dF_aim_bc_stress,stress_BC%mask)
+
 
   F = reshape(utilities_forwardTensorField(Delta_t,F_lastInc,Fdot, &                                ! estimate of F at end of time+Delta_t that matches rotated F_aim on average
               rotation_BC%rotate(F_aim,active=.true.)),[9,cells(1),cells(2),cells3])
@@ -649,7 +674,7 @@ subroutine formResidual(residual_subdomain, F, &
 
   ! Yi: P_aim is prescribed by BC (forward step), 0 on unprescribed components
   dP_with_BC = merge(.0_pREAL,P_av-P_aim,params%stress_mask)
-  err_BC = maxval(abs(dP_with_BC))
+  err_BC = maxval(abs(merge(.0_pREAL,P_av-P_aim,params%stress_mask)))
   !deltaF_aim = math_mul3333xx33(S, dP_with_BC)                                                    ! S = 0.0 for no bc
   dP_curr = P_av - P_aim
   ! deltaF_aim = math_mul3333xx33(S, P_av - P_aim)                                                    ! from basic scheme
@@ -660,6 +685,7 @@ subroutine formResidual(residual_subdomain, F, &
 
   ! Yi: unlike Gamma, G make r still in stress space, what about rotation?
   r = utilities_G_Convolution(r,dP_with_BC)
+  !r = utilities_G_Convolution(r,null_aim)
   !r = utilities_G_Convolution(r,P_av-P_aim)
 
   print*, '+++++ end my rhs +++++'
@@ -757,6 +783,7 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
   ! ===== G* operator =====
   dP_with_BC = merge(.0_pREAL,P_av-P_aim,params%stress_mask)
   output = utilities_G_Convolution(output,dP_with_BC)
+  !output = utilities_G_Convolution(output,null_aim)
   !output = utilities_G_Convolution(output,P_av-P_aim)
 
   call DMDAVecGetArrayF90(DM_mech,output_local,output_scal,err_PETSc)
