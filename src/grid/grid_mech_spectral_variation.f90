@@ -148,6 +148,15 @@ module grid_mechanical_spectral_variation
     end subroutine SNESSetJacobian
   end interface SNESSetJacobian
 
+  interface SNESSetUpdate
+    subroutine SNESSetUpdate(snes_mech,upd_callback,ierr)
+      use petscsnes
+      SNES :: snes_mech
+      external :: upd_callback
+      PetscErrorCode :: ierr
+    end subroutine SNESSetUpdate
+  end interface SNESSetUpdate
+
   !interface KSPSetConvergenceTest
   !  subroutine KSPSetConvergenceTest(ksp_mech, KSPConverged, ctx, ConvergedDestroy, ierr)
   !    use petscksp
