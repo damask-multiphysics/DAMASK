@@ -476,7 +476,7 @@ subroutine grid_mechanical_spectral_variation_forward(cutBack,guess,Delta_t,Delt
 
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
-  !F_aim = F_aim_lastInc + F_aimDot * Delta_t
+  F_aim = F_aim_lastInc + F_aimDot * Delta_t
 
   ! Yi: print
   !print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
@@ -484,13 +484,13 @@ subroutine grid_mechanical_spectral_variation_forward(cutBack,guess,Delta_t,Delt
   !print* ,Delta_t
 
   ! Yi: before upd, get dF of bc stress
-  print*, 'S in forward', S(1,1,1,1)
-  if (S(1,1,1,1) > .0_pREAL) then
-    S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
-    print*, 'S in forward', S(1,1,1,1)
-  end if
-  dF_aim_bc_stress = math_mul3333xx33(S, stress_BC%values - P_aim)/t_remaining*Delta_t
-  F_aim = F_aim_lastInc + merge(F_aimDot*Delta_t, dF_aim_bc_stress, stress_BC%mask)
+  !print*, 'S in forward', S(1,1,1,1)
+  !if (S(1,1,1,1) > .0_pREAL) then
+  !  S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
+  !  print*, 'S in forward', S(1,1,1,1)
+  !end if
+  !dF_aim_bc_stress = math_mul3333xx33(S, stress_BC%values - P_aim)/t_remaining*Delta_t
+  !F_aim = F_aim_lastInc + merge(F_aimDot*Delta_t, dF_aim_bc_stress, stress_BC%mask)
   !F_aim = F_aim_lastInc + merge(F_aimDot*Delta_t, .0_pREAL, stress_BC%mask)
 
   if (stress_BC%myType=='P')     P_aim = P_aim &
