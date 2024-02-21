@@ -586,14 +586,14 @@ end subroutine grid_mechanical_spectral_variation_restartWrite
 !--------------------------------------------------------------------------------------------------
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
-subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dummy,err_PETSc)
+subroutine converged(snes_local,PETScIter,devNull1,devNull2,rhs_norm,reason,dummy,err_PETSc)
 
   SNES :: snes_local
   PetscInt,  intent(in) :: PETScIter
   PetscReal, intent(in) :: &
     devNull1, &
     devNull2, &
-    devNull3
+    rhs_norm
   SNESConvergedReason :: reason
   PetscObject :: dummy
   PetscErrorCode :: err_PETSc
@@ -604,7 +604,8 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   divTol = max(maxval(abs(P_av))*num%eps_div_rtol, num%eps_div_atol)
   BCTol = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
-  if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL)) &
+  ! if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL)) &
+  if ((totalIter >= num%itmin .and. all([rhs_norm/divTol, err_BC/BCTol] < 1.0_pREAL)) &
        .or. terminallyIll) then
     reason = 1
   elseif (totalIter >= num%itmax) then
@@ -614,10 +615,12 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   end if
 
   print'(/,1x,a)', '... reporting .............................................................'
-  print'(/,1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error divergence = ', &
+  print'(/,1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error divergence (not used) = ', &
           err_div/divTol,  ' (',err_div,' / m, tol = ',divTol,')'
-  print'(1x,a,f12.2,a,es8.2,a,es9.2,a)',    'error stress BC  = ', &
+  print'(1x,a,f12.2,a,es8.2,a,es9.2,a)',    'error stress BC            = ', &
           err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')'
+  print'(1x,a,f12.2,a,es8.2,a,es9.2,a)',    '|rhs(P)|                   = ', &
+          rhs_norm/divTol, ' (',rhs_norm,' Pa,  tol = ',divTol,')'
   print'(/,1x,a)', '==========================================================================='
   print* ,'reason !!!', reason
   flush(IO_STDOUT)
@@ -683,6 +686,7 @@ subroutine formResidual(residual_subdomain, F, &
 
   ! Yi: P_aim is prescribed by BC (forward step), 0 on unprescribed components
   dP_with_BC = merge(.0_pREAL,P_av-P_aim,params%stress_mask)
+  ! dP_with_BC = merge(P_av,P_av-P_aim,params%stress_mask)
   err_BC = maxval(abs(merge(.0_pREAL,P_av-P_aim,params%stress_mask)))
   !deltaF_aim = math_mul3333xx33(S, dP_with_BC)                                                    ! S = 0.0 for no bc
   dP_curr = P_av - P_aim
@@ -691,11 +695,16 @@ subroutine formResidual(residual_subdomain, F, &
   ! F_aim should not always decrease!!
   print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
     'F_aim residual                 =', transpose(F_aim)
+  print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
+    'dP_with_BC / MPa =', transpose(dP_with_BC)*1.e-6_pREAL
 
   ! Yi: unlike Gamma, G make r still in stress space, what about rotation?
   r = utilities_G_Convolution(r,dP_with_BC)
   !r = utilities_G_Convolution(r,null_aim)
   !r = utilities_G_Convolution(r,P_av-P_aim)
+
+  ! Yi: should we do in real space?
+  ! err_div = utilities_divergenceRMS(r)
 
   print*, '+++++ end my rhs +++++'
 
@@ -791,6 +800,7 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
 
   ! ===== G* operator =====
   dP_with_BC = merge(.0_pREAL,P_av-P_aim,params%stress_mask)
+  ! dP_with_BC = merge(P_av,P_av-P_aim,params%stress_mask)
   output = utilities_G_Convolution(output,dP_with_BC)
   !output = utilities_G_Convolution(output,null_aim)
   !output = utilities_G_Convolution(output,P_av-P_aim)
