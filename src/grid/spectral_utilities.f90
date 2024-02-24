@@ -500,7 +500,7 @@ end function utilities_GammaConvolution
 !> @details ref from GammaConv, G*field_real = Fourier_inv( G_hat : Fourier(field_real) ) 
 !> @details Yi: make tensor field compatible 
 !--------------------------------------------------------------------------------------------------
-function utilities_G_Convolution(field, fieldAim) result(G_Field)
+function utilities_G_Convolution(field, fieldAim, opt_bc) result(G_Field)
 
   real(pREAL), intent(in), dimension(3,3,cells(1),cells(2),cells3) :: field
   real(pREAL), intent(in), dimension(3,3) :: fieldAim                                               !< desired average value of the field after convolution
@@ -511,6 +511,7 @@ function utilities_G_Convolution(field, fieldAim) result(G_Field)
     i, j, k, &
     l, m, n, o
   logical :: err
+  logical, intent(in) :: opt_bc
 
   real(pREAL) :: xi_norm_2
   complex(pREAL), dimension(3,3) :: delta
@@ -561,7 +562,9 @@ function utilities_G_Convolution(field, fieldAim) result(G_Field)
   end do; end do; end do
   !$OMP END PARALLEL DO
 
-  if (cells3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim,0.0_pREAL,pREAL)
+  if (opt_bc) then
+    if (cells3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim/wgt,0.0_pREAL,pREAL)
+  end if
 
   call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
   G_Field = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)
