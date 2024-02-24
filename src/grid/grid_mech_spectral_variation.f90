@@ -604,8 +604,8 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,rhs_norm,reason,dumm
   divTol = max(maxval(abs(P_av))*num%eps_div_rtol, num%eps_div_atol)
   BCTol = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
-  ! if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL)) &
-  if ((totalIter >= num%itmin .and. all([rhs_norm/divTol, err_BC/BCTol] < 1.0_pREAL)) &
+  if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL)) &
+  ! if ((totalIter >= num%itmin .and. all([rhs_norm/divTol, err_BC/BCTol] < 1.0_pREAL)) &
        .or. terminallyIll) then
     reason = 1
   elseif (totalIter >= num%itmax) then
@@ -696,10 +696,11 @@ subroutine formResidual(residual_subdomain, F, &
   print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
     'F_aim residual                 =', transpose(F_aim)
   print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
-    'dP_with_BC / MPa =', transpose(dP_with_BC)*1.e-6_pREAL
+    'dP_with_BC / Pa =', transpose(dP_with_BC)
 
   ! Yi: unlike Gamma, G make r still in stress space, what about rotation?
-  r = utilities_G_Convolution(r,dP_with_BC)
+  r = utilities_G_Convolution(r,dP_with_BC,.true.)
+  !r = utilities_G_Convolution(r,dP_with_BC,.false.)
   !r = utilities_G_Convolution(r,null_aim)
   !r = utilities_G_Convolution(r,P_av-P_aim)
 
@@ -801,7 +802,8 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
   ! ===== G* operator =====
   dP_with_BC = merge(.0_pREAL,P_av-P_aim,params%stress_mask)
   ! dP_with_BC = merge(P_av,P_av-P_aim,params%stress_mask)
-  output = utilities_G_Convolution(output,dP_with_BC)
+  ! output = utilities_G_Convolution(output,dP_with_BC,.true.)
+  output = utilities_G_Convolution(output,null_aim,.false.)
   !output = utilities_G_Convolution(output,null_aim)
   !output = utilities_G_Convolution(output,P_av-P_aim)
 
