@@ -51,13 +51,30 @@ def patch_plt_show(monkeypatch):
 def pytest_addoption(parser):
     parser.addoption('--update', action='store_true', default=False,
                      help='Update reference results.')
-
+    parser.addoption('--damaskroot',
+                     help='DAMASK root directory.')
 
 @pytest.fixture
-def update(request):
+def update(pytestconfig):
     """Store current results as new reference results."""
-    return request.config.getoption("--update")
+    return pytestconfig.getoption('--update')
 
+@pytest.fixture
+def damaskroot(pytestconfig):
+    """Store current results as new reference results."""
+    return pytestconfig.getoption('--damaskroot')
+
+# https://stackoverflow.com/questions/51883573
+def pytest_collection_modifyitems(config, items):
+    if config.getoption('--damaskroot') is None:
+        need_damaskroot = pytest.mark.skip(reason='need --damaskroot to run')
+        for item in items:
+            if 'need_damaskroot' in item.keywords: item.add_marker(need_damaskroot)
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        'markers', 'need_damaskroot: mark test to run only if DAMASK root is given'
+    )
 
 @pytest.fixture
 def res_path_base():
