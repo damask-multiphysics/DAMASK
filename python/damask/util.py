@@ -265,7 +265,7 @@ def show_progress(iterable: _Iterable,
     N_iter : int, optional
         Total number of iterations. Required if iterable is not a sequence.
     prefix : str, optional
-        Prefix string.
+        Prefix string. Defaults to ''
     bar_length : int, optional
         Length of progress bar in characters. Defaults to 50.
 
@@ -291,7 +291,8 @@ def show_progress(iterable: _Iterable,
             status.update(i)
 
 
-def scale_to_coprime(v: _FloatSequence) -> _np.ndarray:
+def scale_to_coprime(v: _FloatSequence,
+                     N_significant: int = 9) -> _np.ndarray:
     """
     Scale vector to co-prime (relatively prime) integers.
 
@@ -299,6 +300,8 @@ def scale_to_coprime(v: _FloatSequence) -> _np.ndarray:
     ----------
     v : sequence of float, len (:)
         Vector to scale.
+    N_significant: int, optional
+        Number of significant digits to consider. Defaults to 9
 
     Returns
     -------
@@ -306,26 +309,25 @@ def scale_to_coprime(v: _FloatSequence) -> _np.ndarray:
         Vector scaled to co-prime numbers.
 
     """
-    MAX_DENOMINATOR = 1000000
 
-    def get_square_denominator(x):
+    def get_square_denominator(x,max_denominator):
         """Denominator of the square of a number."""
-        return _fractions.Fraction(x ** 2).limit_denominator(MAX_DENOMINATOR).denominator
+        return _fractions.Fraction(x ** 2).limit_denominator(max_denominator).denominator
 
     def lcm(a,b):
         """Least common multiple."""
         try:
-            return _np.lcm(a,b)                                                                      # numpy > 1.18
+            return _np.abs(_np.lcm(a,b))                                                            # numpy > 1.18
         except AttributeError:
-            return a * b // _np.gcd(a, b)
+            return _np.abs(a * b // _np.gcd(a, b))
 
-    v_ = _np.array(v)
-    m = (v_ * _reduce(lcm, map(lambda x: int(get_square_denominator(x)),v_))**0.5).astype(_np.int64)
+    v_ = _np.round(_np.array(v,'float64')/_np.max(_np.abs(v)),N_significant)
+    max_denominator = int(10**(N_significant-1))
+    m = (v_ * _reduce(lcm, map(lambda x: int(get_square_denominator(x,max_denominator)),v_))**0.5).astype(_np.int64)
     m = m//_reduce(_np.gcd,m)
 
-    with _np.errstate(invalid='ignore'):
-        if not _np.allclose(_np.ma.masked_invalid(v_/m),v_[_np.argmax(abs(v_))]/m[_np.argmax(abs(v_))]):
-            raise ValueError(f'invalid result "{m}" for input "{v_}"')
+    if not _np.allclose(m/_np.max(_np.abs(m)),v/_np.max(_np.abs(v)),atol=1e-2,rtol=0):
+        raise ValueError(f'invalid result "{m}" for input "{v}"')
 
     return m
 
