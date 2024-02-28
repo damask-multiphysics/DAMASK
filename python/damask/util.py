@@ -265,7 +265,7 @@ def show_progress(iterable: _Iterable,
     N_iter : int, optional
         Total number of iterations. Required if iterable is not a sequence.
     prefix : str, optional
-        Prefix string. Defaults to ''
+        Prefix string. Defaults to ''.
     bar_length : int, optional
         Length of progress bar in characters. Defaults to 50.
 
@@ -301,7 +301,7 @@ def scale_to_coprime(v: _FloatSequence,
     v : sequence of float, len (:)
         Vector to scale.
     N_significant: int, optional
-        Number of significant digits to consider. Defaults to 9
+        Number of significant digits to consider. Defaults to 9.
 
     Returns
     -------
