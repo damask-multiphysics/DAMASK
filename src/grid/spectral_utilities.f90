@@ -497,8 +497,9 @@ end function utilities_GammaConvolution
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate G * field_real (convolution).
-!> @details ref from GammaConv, G*field_real = Fourier_inv( G_hat : Fourier(field_real) ) 
+!> @details G*field_real = Fourier_inv( G_hat : Fourier(field_real) ) 
 !> @details Yi: make tensor field compatible 
+!> @details Yi: G_hat index according to S Lucarini et al. MSMSE 2021
 !--------------------------------------------------------------------------------------------------
 function utilities_G_Convolution(field, fieldAim, opt_bc) result(G_Field)
 
@@ -511,21 +512,19 @@ function utilities_G_Convolution(field, fieldAim, opt_bc) result(G_Field)
     i, j, k, &
     l, m, n, o
   logical :: err
-  logical, intent(in) :: opt_bc
+  logical, intent(in) :: opt_bc ! Yi: option for impose with a fieldAim in zero freq
 
   real(pREAL) :: xi_norm_2
   complex(pREAL), dimension(3,3) :: delta
 
-  print'(/,1x,a)', '... doing G convolution ...............................................'
-  flush(IO_STDOUT)
+  ! print'(/,1x,a)', '... doing G convolution ...............................................'
+  ! flush(IO_STDOUT)
 
   delta = cmplx(math_eye(3),0.0_pREAL,pREAL)
 
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL
   tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
-  print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
-    'P_av in G_Conv / MPa =', transpose(real(tensorField_fourier(1:3,1:3,1,1,1)))*wgt*1.e-6_pREAL
 
   !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,err,G_hat)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
@@ -547,7 +546,6 @@ function utilities_G_Convolution(field, fieldAim, opt_bc) result(G_Field)
       end forall
 #endif
 
-      ! ===== convol op in Fourier space, check index order! =====
 #ifndef __INTEL_COMPILER
       do concurrent(l=1:3, m=1:3)
         temp33_cmplx(l,m) = sum(G_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
@@ -942,8 +940,6 @@ subroutine selfTest()
   real(pREAL), dimension(3,3) :: r
   integer(MPI_INTEGER_KIND) :: err_MPI
 
-  print*, '!!!!! test of spectral util !!!!!!'
-  print*, '+++++ tensor field start ++++++++++++++++++++++++'
 
   call random_number(tensorField_real)
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
@@ -960,24 +956,6 @@ subroutine selfTest()
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
   if (maxval(abs(tensorField_real_ - tensorField_real*wgt))>5.0e-15_pREAL) &
     error stop 'mismatch tensorField FFT/invFFT <-> real'
-
-  ! print*, 'upd gamma'
-  ! ! call utilities_updateGamma(math_Voigt66to3333_stiffness(elastic_C66(1,1)))
-  ! print*, 'C_ref 1111', C_ref(1,1,1,1)
-  ! call utilities_updateGamma(math_Voigt66to3333_stiffness(phase_homogenizedC66(1,10)))
-  ! !call utilities_updateGamma(1e9_pReal*math_identity4th())
-
-  ! print*, 'C_ref 1111', C_ref(1,1,1,1)
-
-  ! print*, utilities_curlRMS(tensorField_real_)
-  ! tensorField_real = utilities_GammaConvolution(tensorField_real_, math_eye(3))
-  ! print*, 'Gamma ->', utilities_curlRMS(tensorField_real)
-
-  ! print*, utilities_curlRMS(tensorField_real_)
-  ! tensorField_real = utilities_G_Convolution(tensorField_real_, math_eye(3))
-  ! print*, 'G ->', utilities_curlRMS(tensorField_real)
-
-  print*, '+++++ tensor field end ++++++++++++++++++++++++++'
 
   call random_number(vectorField_real)
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL

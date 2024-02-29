@@ -3,7 +3,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Yi Hu, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Grid solver for mechanics: Spectral variation
+!> @brief Grid solver for mechanics: spectral variation
 !--------------------------------------------------------------------------------------------------
 module grid_mechanical_spectral_variation
 #include <petsc/finclude/petscsnes.h>
@@ -54,7 +54,6 @@ module grid_mechanical_spectral_variation
 ! PETSc data
   DM   :: DM_mech
   SNES :: SNES_mech
-  KSP  :: KSP_mech
   Vec  :: F_PETSc
   Mat  :: Jac_PETSc
 
@@ -81,9 +80,6 @@ module grid_mechanical_spectral_variation
     C_minMaxAvgRestart = 0.0_pREAL, &                                                               !< (min+max)/2 stiffnes (restart)
     S = 0.0_pREAL                                                                                   !< current compliance (filled up with zeros)
 
-  real(pREAL), dimension(3,3) :: &
-    dP_curr ! Yi: helper with F_aim upd
-
   real(pREAL) :: &
     err_BC, &                                                                                       !< deviation from stress BC
     err_div                                                                                         !< RMS of div of P
@@ -98,6 +94,7 @@ module grid_mechanical_spectral_variation
     grid_mechanical_spectral_variation_updateCoords, &
     grid_mechanical_spectral_variation_restartWrite
 
+  ! Yi: missing interfaces for some petsc versions
   interface MatCreateShell
     subroutine MatCreateShell(comm,mloc,nloc,m,n,ctx,mat,ierr)
       use petscmat
@@ -157,27 +154,6 @@ module grid_mechanical_spectral_variation
     end subroutine SNESSetUpdate
   end interface SNESSetUpdate
 
-  !interface KSPSetConvergenceTest
-  !  subroutine KSPSetConvergenceTest(ksp_mech, KSPConverged, ctx, ConvergedDestroy, ierr)
-  !    use petscksp
-  !    KSP :: ksp_mech
-  !    external :: KSPConverged
-  !    integer :: ctx
-  !    external :: ConvergedDestroy
-  !    PetscErrorCode :: ierr
-  !  end subroutine KSPSetConvergenceTest
-  !end interface KSPSetConvergenceTest
-
-  !interface DMDASNESSetJacobianLocal
-  !  subroutine DMDASNESSetJacobianLocal(dm_mech,jac_callback,ctx,ierr)
-  !    use petscdmda
-  !    DM :: dm_mech
-  !    external :: jac_callback
-  !    integer :: ctx
-  !    PetscErrorCode :: ierr
-  !  end subroutine DMDASNESSetJacobianLocal
-  !end interface DMDASNESSetJacobianLocal
-
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -202,16 +178,20 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
     extmsg, &
     petsc_options
 
-  Vec :: F_rec ! Yi: test
-
 
   print'(/,1x,a)', '<<<+-  grid_mechanical_spectral_variation init  -+>>>'; flush(IO_STDOUT)
 
-  print'(/,1x,a)', 'muSpectre, GooseFFT'
-  print'(  1x,a)', 'github, gitlab'//IO_EOL
+  print'(/,1x,a)', 'J Vondřejc et al., Computers & Mathematics with Applications 68 (3), 156-173, 2014'
+  print'(  1x,a)', 'https://doi.org/10.1016/j.camwa.2014.05.014'//IO_EOL
 
-  print'(  1x,a)', 'J. Zeman et al., IJNME 2017, de Geus et al.'
-  print'(  1x,a)', 'https://doi.org/'
+  print'(  1x,a)', 'TWJ De Geus et al. Computer Methods in Applied Mechanics and Engineering 318, 412-430, 2017'
+  print'(  1x,a)', 'https://doi.org/10.1016/j.cma.2016.12.032'//IO_EOL
+
+  print'(  1x,a)', 'S Lucarini et al. Modelling and Simulation in Materials Science and Engineering 30 (2), 023002, 2021'
+  print'(  1x,a)', 'https://doi.org/10.1088/1361-651X/ac34e1'//IO_EOL
+
+  print'(  1x,a)', 'muSpectre'
+  print'(  1x,a)', 'https://gitlab.com/muspectre'
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
@@ -238,8 +218,9 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
-  petsc_options = misc_prefixOptions('-snes_type ngmres '//num_grid_mech%get_asStr('PETSc_options',defaultVal=''), &
-                                     'mechanical_')
+  petsc_options = &
+    misc_prefixOptions('-snes_type newtonls -ksp_type gmres -snes_linesearch_type bt '// & 
+                      num_grid_mech%get_asStr('PETSc_options',defaultVal=''), 'mechanical_')
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
 
@@ -275,12 +256,6 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   CHKERRQ(err_PETSc)
   call DMDASNESsetFunctionLocal(DM_mech,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)       ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
-  ! Yi: Jacobian matrix
-  ! ================================================================================== 
-  ! vcall DMDASNESsetJacobianLocal(DM_mech,formJacobian,PETSC_NULL_SNES,err_PETSc)       
-  ! vCHKERRQ(err_PETSc)
-  ! ================================================================================== 
-  ! Yi: test more general interface
   call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,&
                       9*product(cells(1:2))*cells3,9*product(cells(1:2))*cells3,&
                       F_PETSc,Jac_PETSc,err_PETSc)
@@ -293,20 +268,12 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   CHKERRQ(err_PETSc)
   call SNESSetUpdate(SNES_mech,set_F_aim,err_PETSc)
   CHKERRQ(err_PETSc)
-  ! ================================================================================== 
   call SNESsetConvergenceTest(SNES_mech,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc)    ! specify custom convergence check function "converged"
   CHKERRQ(err_PETSc)
   call SNESSetDM(SNES_mech,DM_mech,err_PETSc)
   CHKERRQ(err_PETSc)
   call SNESsetFromOptions(SNES_mech,err_PETSc)                                                      ! pull it all together with additional CLI arguments
   CHKERRQ(err_PETSc)
-
-  ! Yi: manually set ksp convergence, since shell jac always do extra iter
-  ! ================================================================================== 
-  !call SNESGetKSP(SNES_mech,KSP_mech,err_PETSc)
-  !CHKERRQ(err_PETSc)
-  !call KSPSetConvergenceTest(KSP_mech,converge_test_ksp,0,PETSC_NULL_FUNCTION,err_PETSc)
-  !CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
@@ -384,8 +351,6 @@ function grid_mechanical_spectral_variation_solution(incInfoIn) result(solution)
   type(tSolutionState)                    :: &
     solution
 
-  logical, dimension(3,3)     :: mask_test=.false.                                     !< Yi: mask test
-
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
   PetscErrorCode :: err_PETSc
@@ -434,8 +399,6 @@ subroutine grid_mechanical_spectral_variation_forward(cutBack,guess,Delta_t,Delt
   PetscErrorCode :: err_PETSc
   real(pREAL), pointer, dimension(:,:,:,:) :: F
 
-  real(pREAL), dimension(3,3) :: &
-    dF_aim_bc_stress ! Yi: F_aim from P bc
 
   call DMDAVecGetArrayF90(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -449,9 +412,6 @@ subroutine grid_mechanical_spectral_variation_forward(cutBack,guess,Delta_t,Delt
 
     F_aimDot = merge(merge(.0_pREAL,(F_aim-F_aim_lastInc)/Delta_t_old,stress_BC%mask),.0_pREAL,guess) ! estimate deformation rate for prescribed stress components
     F_aim_lastInc = F_aim
-    ! Yi: print
-    print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
-      'F_aim in forward =', transpose(F_aim)
 
     !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
@@ -478,36 +438,10 @@ subroutine grid_mechanical_spectral_variation_forward(cutBack,guess,Delta_t,Delt
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * Delta_t
 
-  ! Yi: print
-  !print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
-  !  'F_aim lastInc in forward =', transpose(F_aim_lastInc)
-  !print* ,Delta_t
-
-  ! Yi: before upd, get dF of bc stress
-  !print*, 'S in forward', S(1,1,1,1)
-  !if (S(1,1,1,1) > .0_pREAL) then
-  !  S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
-  !  print*, 'S in forward', S(1,1,1,1)
-  !end if
-  !dF_aim_bc_stress = math_mul3333xx33(S, stress_BC%values - P_aim)/t_remaining*Delta_t
-  !F_aim = F_aim_lastInc + merge(F_aimDot*Delta_t, dF_aim_bc_stress, stress_BC%mask)
-  !F_aim = F_aim_lastInc + merge(F_aimDot*Delta_t, .0_pREAL, stress_BC%mask)
-
   if (stress_BC%myType=='P')     P_aim = P_aim &
                                        + merge(.0_pREAL,(stress_BC%values - P_aim)/t_remaining,stress_BC%mask)*Delta_t
   if (stress_BC%myType=='dot_P') P_aim = P_aim &
                                        + merge(.0_pREAL,stress_BC%values,stress_BC%mask)*Delta_t
-
-  ! Yi: add stress bc info into F petsc start
-  !!! S is not possible to calc for 1st load incr
-  ! S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
-  !!!
-  ! print*, 'get S in forward', S(1,1,1,1)
-
-  ! Yi: add stress bc info into F petsc start
-  !!! warning dF = S : dP, not F = S : P
-  !F_aim = F_aim + merge(.0_pREAL,dF_aim_bc_stress,stress_BC%mask)
-
 
   F = reshape(utilities_forwardTensorField(Delta_t,F_lastInc,Fdot, &                                ! estimate of F at end of time+Delta_t that matches rotated F_aim on average
               rotation_BC%rotate(F_aim,active=.true.)),[9,cells(1),cells(2),cells3])
@@ -605,7 +539,6 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,rhs_norm,reason,dumm
   BCTol = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
   if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL)) &
-  ! if ((totalIter >= num%itmin .and. all([rhs_norm/divTol, err_BC/BCTol] < 1.0_pREAL)) &
        .or. terminallyIll) then
     reason = 1
   elseif (totalIter >= num%itmax) then
@@ -615,14 +548,11 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,rhs_norm,reason,dumm
   end if
 
   print'(/,1x,a)', '... reporting .............................................................'
-  print'(/,1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error divergence (not used) = ', &
+  print'(/,1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error divergence = ', &
           err_div/divTol,  ' (',err_div,' / m, tol = ',divTol,')'
-  print'(1x,a,f12.2,a,es8.2,a,es9.2,a)',    'error stress BC            = ', &
+  print'(1x,a,f12.2,a,es8.2,a,es9.2,a)',    'error stress BC  = ', &
           err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')'
-  print'(1x,a,f12.2,a,es8.2,a,es9.2,a)',    '|rhs(P)|                   = ', &
-          rhs_norm/divTol, ' (',rhs_norm,' Pa,  tol = ',divTol,')'
   print'(/,1x,a)', '==========================================================================='
-  print* ,'reason !!!', reason
   flush(IO_STDOUT)
   err_PETSc = 0
 
@@ -644,18 +574,13 @@ subroutine formResidual(residual_subdomain, F, &
   PetscObject :: dummy
   PetscErrorCode :: err_PETSc
 
-  real(pREAL), dimension(3,3) :: dP_with_BC ! Yi: delta P only for specified BC components
-  real(pREAL), dimension(3,3) :: null_aim = 0.0_pREAL
+  real(pREAL), dimension(3,3) :: dP_with_BC
 
-  real(pREAL), dimension(3,3) :: &
-    deltaF_aim
   PetscInt :: &
     PETScIter, &
     nfuncs
   integer(MPI_INTEGER_KIND) :: err_MPI
 
-
-  print*, '+++++ start my rhs +++++'
 
   call SNESGetNumberFunctionEvals(SNES_mech,nfuncs,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -684,45 +609,23 @@ subroutine formResidual(residual_subdomain, F, &
     err_div = utilities_divergenceRMS(P)
   end associate
 
-  ! Yi: P_aim is prescribed by BC (forward step), 0 on unprescribed components
+  ! Yi: only P_aim components enters in dP_with_BC, see e.g. Lucarini et al. 2022 MSMSE, Lucarini & Segurado 2019 IJNME
   dP_with_BC = merge(.0_pREAL,P_av-P_aim,params%stress_mask)
-  ! dP_with_BC = merge(P_av,P_av-P_aim,params%stress_mask)
   err_BC = maxval(abs(merge(.0_pREAL,P_av-P_aim,params%stress_mask)))
-  !deltaF_aim = math_mul3333xx33(S, dP_with_BC)                                                    ! S = 0.0 for no bc
-  dP_curr = P_av - P_aim
-  ! deltaF_aim = math_mul3333xx33(S, P_av - P_aim)                                                    ! from basic scheme
-  ! F_aim = F_aim - deltaF_aim 
-  ! F_aim should not always decrease!!
-  print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
-    'F_aim residual                 =', transpose(F_aim)
-  print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
-    'dP_with_BC / Pa =', transpose(dP_with_BC)
 
-  ! Yi: unlike Gamma, G make r still in stress space, what about rotation?
+  ! Yi: TODO: rotation
   r = utilities_G_Convolution(r,dP_with_BC,.true.)
-  !r = utilities_G_Convolution(r,dP_with_BC,.false.)
-  !r = utilities_G_Convolution(r,null_aim)
-  !r = utilities_G_Convolution(r,P_av-P_aim)
-
-  ! Yi: should we do in real space?
-  ! err_div = utilities_divergenceRMS(r)
-
-  print*, '+++++ end my rhs +++++'
 
 end subroutine formResidual
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Yi: matrix-free jacobian interface
+!> @brief Yi: matrix-free jacobian interface (dummy interface)
 ! implementation ref: https://lists.mcs.anl.gov/pipermail/petsc-users/2023-December/050035.html
 !                     petsc/src/ts/tutorial/ex22f_mf.f90
-! question: 1. no need to use global size F?
-!           2. infer local size F or Jac from DMDALocalInfo residual_subdomain?
+! TODO: use SNESSetJacobian() instead of DMSNESSetJacobianLocal()
 !--------------------------------------------------------------------------------------------------
 subroutine formJacobian(residual_subdomain,F,Jac_pre,Jac,dummy,err_PETSc)
-  
-#include <petsc/finclude/petscmat.h>
-  use petscmat
-  implicit None
+
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
     residual_subdomain                                                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: &
@@ -730,34 +633,11 @@ subroutine formJacobian(residual_subdomain,F,Jac_pre,Jac,dummy,err_PETSc)
   Mat                                  :: Jac, Jac_pre
   PetscObject                          :: dummy
   PetscErrorCode                       :: err_PETSc
-  PetscInt                             :: N_dof ! global number of DoF, maybe only a placeholder
-
-  N_dof = 9*product(cells(1:2))*cells3 
-
-  print*, '$$$ start my jac $$$'
-  
-  !call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,N_dof,N_dof,0,Jac,err_PETSc)
-  !CHKERRQ(err_PETSc)
-  !call MatShellSetOperation(Jac,MATOP_MULT,GK_op,err_PETSc)
-  !CHKERRQ(err_PETSc)
-  
-  !Jac = Jac_PETSc
-  !Jac_pre = Jac_PETSc
-
-  ! for jac preconditioner
-  !call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,N_dof,N_dof,0,Jac_pre,err_PETSc)
-  !CHKERRQ(err_PETSc)
-  !call MatShellSetOperation(Jac_pre,MATOP_MULT,GK_op,err_PETSc)
-  !CHKERRQ(err_PETSc)
-
-  print*, '$$$ end my jac $$$'
 
 end subroutine formJacobian
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Yi: matrix-free operation GK_op -> GK_op(dF) = Fourier_inv( G_hat : Fourier(K:dF) )
-! implementation ref: https://github.com/tdegeus/GooseFFT/blob/master/finite-strain/hyper-elasticity.py
-!                     petsc/src/ts/tutorial/ex22f_mf.f90, array read-write procedure similar as grid_FEM, grid_polar
 !--------------------------------------------------------------------------------------------------
 subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
 
@@ -775,12 +655,9 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
   real(pREAL),  dimension(3,3) :: &
     null_aim = 0.0_pREAL
 
-  real(pREAL), dimension(3,3) :: dP_with_BC ! Yi: delta P only for specified BC components
-
   integer :: i, j, k, e
 
-  print*, '@@ start my GK_op @@'
-  ! Yi: maybe used in parallel mode?
+  ! Yi: TODO in parallel mode?
   ! call SNESGetDM(SNES_mech,dm_local,err_PETSc)
   ! CHKERRQ(err_PETSc)
   call DMDAVecGetArrayReadF90(DM_mech,dF_local,dF_scal,err_PETSc)
@@ -793,19 +670,10 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
     e = e + 1
     output(1:3,1:3,i,j,k) = &
       math_mul3333xx33(homogenization_dPdF(1:3,1:3,1:3,1:3,e), dF(1:3,1:3,i,j,k))
-      !transpose(math_mul3333xx33(homogenization_dPdF(1:3,1:3,1:3,1:3,e), dF(1:3,1:3,i,j,k)))
-    !! ToCheck: do we need multiple transpose? in GooseFFT, K_dF = trans2(ddot42(K4, trans2(dF)))
-    !! trans2: ij -> ji, ddot42 (ijkl,lk) -> ij
-    !! here we contracted transpose in ddot42 and trans2
   end do; end do; end do
 
   ! ===== G* operator =====
-  dP_with_BC = merge(.0_pREAL,P_av-P_aim,params%stress_mask)
-  ! dP_with_BC = merge(P_av,P_av-P_aim,params%stress_mask)
-  ! output = utilities_G_Convolution(output,dP_with_BC,.true.)
   output = utilities_G_Convolution(output,null_aim,.false.)
-  !output = utilities_G_Convolution(output,null_aim)
-  !output = utilities_G_Convolution(output,P_av-P_aim)
 
   call DMDAVecGetArrayF90(DM_mech,output_local,output_scal,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -815,44 +683,22 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
 
   call DMDAVecRestoreArrayF90(DM_mech,dF_local,dF_scal,err_PETSc)
   CHKERRQ(err_PETSc)
-  print*, '@@ end my GK_op @@'
   
 end subroutine GK_op
 
-subroutine converge_test_ksp(ksp, it, rnorm, reason, ctx, ierr)
-  use petsc
-  KSP       :: ksp
-  PetscInt  :: it
-  PetscReal :: rnorm
-  KSPConvergedReason :: reason
-  type(PetscObject), pointer :: ctx
-  PetscErrorCode :: ierr
-
-  print *, '!!!!!!!!!!!!!!!!!!!!!!my ksp test'
-  call KSPGetResidualNorm(ksp, rnorm, ierr)
-  print *, rnorm
-  if ( rnorm < 1.0e-3_pREAL ) then
-    reason = 1
-  endif 
-  return
-
-end subroutine converge_test_ksp
-
+!--------------------------------------------------------------------------------------------------
+!> @brief Yi: upd F_aim only in newton step (not in line search step)
+!--------------------------------------------------------------------------------------------------
 subroutine set_F_aim(snes, step, ierr)
   SNES      :: snes
-  PetscInt  :: step ! curr step of iter -> completed petsc iter
+  PetscInt  :: step ! curr completed petsc iter
   PetscErrorCode :: ierr
 
   real(pREAL), dimension(3,3) :: &
     deltaF_aim
 
-  print *, '!! in set F_aim'
-  print*, step  
-  deltaF_aim = math_mul3333xx33(S, P_av - P_aim)                                                    ! from basic scheme
+  deltaF_aim = math_mul3333xx33(S, P_av - P_aim)
   F_aim = F_aim - deltaF_aim 
-  print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
-    'F_aim residual (in upd) =', transpose(F_aim)
-  !call SNESGetFunction(snes,formResidual,PETSC_NULL_FUNCTION,PETSC_NULL_INTEGER)
 
 end subroutine set_F_aim
 

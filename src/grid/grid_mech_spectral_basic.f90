@@ -351,9 +351,7 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * Delta_t
-  print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
-    'F_aim f                        =', transpose(F_aim_lastInc)
-  print* ,Delta_t
+
   if (stress_BC%myType=='P')     P_aim = P_aim &
                                        + merge(.0_pREAL,(stress_BC%values - P_aim)/t_remaining,stress_BC%mask)*Delta_t
   if (stress_BC%myType=='dot_P') P_aim = P_aim &
@@ -529,8 +527,6 @@ subroutine formResidual(residual_subdomain, F, &
   F_aim = F_aim - deltaF_aim
   err_BC = maxval(abs(merge(.0_pREAL,P_av - P_aim,params%stress_mask)))
 
-  print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
-    'F_aim in residual=', transpose(F_aim)
   r = utilities_GammaConvolution(r,params%rotation_BC%rotate(deltaF_aim,active=.true.))
 
 end subroutine formResidual
