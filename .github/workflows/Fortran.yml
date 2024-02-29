@@ -2,7 +2,7 @@ name: Grid and Mesh Solver
 on: [push]
 
 env:
-  PETSC_VERSION: '3.20.3'
+  PETSC_VERSION: '3.20.5'
   HOMEBREW_NO_ANALYTICS: 'ON'     # Make Homebrew installation a little quicker
   HOMEBREW_NO_AUTO_UPDATE: 'ON'
   HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK: 'ON'
@@ -89,8 +89,6 @@ jobs:
   intel:
 
     runs-on: ubuntu-22.04
-    container:
-      image: intel/oneapi-hpckit:latest
 
     strategy:
       fail-fast: false
@@ -100,10 +98,19 @@ jobs:
 
       - name: Intel - Install
         run: |
-          apt-get update --allow-insecure-repositories
-          apt-get install --allow-unauthenticated -y \
-          cmake build-essential autoconf libtool \
-          zlib1g-dev
+          sudo apt-get remove -y \
+          '^aspnetcore-runtime.*' '^clang.*' '^dotnet.*' '^gfortran.*' '^mono.*' '^llvm.*' '^ruby.*' '^r-cran.*' '^r-base.*' '^dotnet.*' '^apache2.*'
+          sudo apt-get autoremove -y
+          wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+          | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
+          | sudo tee /etc/apt/sources.list.d/oneAPI.list
+          sudo apt-get update
+          sudo apt-get install \
+          intel-basekit \
+          intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic intel-oneapi-compiler-fortran \
+          intel-oneapi-openmp intel-oneapi-mkl-devel
+          source /opt/intel/oneapi/setvars.sh
           printenv >> $GITHUB_ENV
 
       - name: PETSc - Cache download
@@ -121,7 +128,7 @@ jobs:
       - name: PETSc - Prepare
         run: |
           tar -xf download/petsc-${PETSC_VERSION}.tar.gz -C .
-          sed -i "1805s/if not os.path.isfile(os.path.join(self.packageDir,self.configureName)):/if True:/g" \
+          sed -i "1800s/if not os.path.isfile(os.path.join(self.packageDir,self.configureName)):/if True:/g" \
           ./petsc-${PETSC_VERSION}/config/BuildSystem/config/package.py
           export PETSC_DIR=${PWD}/petsc-${PETSC_VERSION}
           export PETSC_ARCH=intel
