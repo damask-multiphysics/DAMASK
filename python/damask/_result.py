@@ -2162,7 +2162,7 @@ class Result:
                 else:
                     u_p = f_in[inc]['geometry']['u_p'][()][mapping_flat]
                     f_out[inc]['geometry'].create_dataset('u_p',data=u_p)
-                    u_n = np.zeros((len(mapping_flat),3))                                           # ToDo: needs implementation
+                    u_n = np.zeros(np.array(cells+(2,))+1).reshape(-1,3)
                     f_out[inc]['geometry'].create_dataset('u_n',data=u_n)
 
 
