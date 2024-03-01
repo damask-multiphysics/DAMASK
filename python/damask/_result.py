@@ -13,6 +13,7 @@ from typing import Optional, Union, Callable, Any, Sequence, Literal, Dict, List
 import h5py
 import numpy as np
 from numpy import ma
+from scipy import interpolate
 
 import damask
 from . import VTK
@@ -2162,8 +2163,13 @@ class Result:
                 else:
                     u_p = f_in[inc]['geometry']['u_p'][()][mapping_flat]
                     f_out[inc]['geometry'].create_dataset('u_p',data=u_p)
-                    u_n = np.zeros(np.array(cells+(2,))+1).reshape(-1,3)
-                    f_out[inc]['geometry'].create_dataset('u_n',data=u_n)
+                    delta = self.size/np.array(mapping.shape)
+                    c_0_p = tuple([np.linspace(delta[i]/2,self.size[i]-delta[i]/2,mapping.shape[i]) for i in [0,1,2]])
+                    interpolator = interpolate.RegularGridInterpolator(c_0_p,np.reshape(u_p,tuple(cells)+(3,)),
+                                                                       fill_value=None,bounds_error=False,method='linear')
+                    c_0_n = grid_filters.coordinates0_node(mapping.shape,self.size).reshape(-1,3)
+                    f_out[inc]['geometry'].create_dataset('u_n',data=interpolator(c_0_n))
+                    f_out[inc]['geometry/u_n'].attrs.update(f_in[inc]['geometry/u_n'].attrs)
 
 
                 for label in self._homogenizations:
