@@ -323,9 +323,8 @@ def scale_to_coprime(v: _FloatSequence,
 
     max_denominator = int(10**(N_significant-1))
 
-    v_ = _np.array(v)
-    if v_.dtype in _np.sctypes['float']:
-        v_ = _np.round(_np.array(v,'float64')/_np.max(_np.abs(v)),N_significant)
+    if (v_ := _np.asarray(v)).dtype in _np.sctypes['float']:
+        v_ = _np.round(_np.asarray(v,'float64')/_np.max(_np.abs(v)),N_significant)
     m = (v_ * _reduce(lcm, map(lambda x: int(get_square_denominator(x,max_denominator)),v_))**0.5).astype(_np.int64)
     m = m//_reduce(_np.gcd,m)
 
