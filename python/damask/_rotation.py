@@ -442,7 +442,7 @@ class Rotation:
 
         """
         if isinstance(other, np.ndarray):
-            obs = util.shapeblender(self.shape,other.shape)[len(self.shape):]
+            obs = (util.shapeblender(self.shape,other.shape[:-1])+other.shape[-1:])[len(self.shape):]
             for l in [4,2,1]:
                 if obs[-l:] == l*(3,):
                     bs = util.shapeblender(self.shape,other.shape[:-l],False)
