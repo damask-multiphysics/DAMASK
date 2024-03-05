@@ -339,6 +339,7 @@ subroutine spectral_utilities_init()
   end if
 
   allocate (G_hat(3,3,3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL)) ! local to each grid point
+  call utilities_G_hat_init()
 
   call selfTest()
 
@@ -495,6 +496,46 @@ function utilities_GammaConvolution(field, fieldAim) result(gammaField)
 
 end function utilities_GammaConvolution
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief assemble G when spectral init
+!--------------------------------------------------------------------------------------------------
+subroutine utilities_G_hat_init()
+
+  integer :: &
+    i, j, k, &
+    l, m, n, o
+  logical :: err
+  real(pREAL) :: xi_norm_2
+  complex(pREAL), dimension(3,3) :: delta
+
+
+  delta = cmplx(math_eye(3),0.0_pREAL,pREAL)
+
+  !$OMP PARALLEL DO PRIVATE(l,m,n,o,err)
+  do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
+    if (any([i,j+cells2Offset,k] /= 1)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+      xi_norm_2 = abs(dot_product(xi1st(:,i,k,j), xi1st(:,i,k,j)))
+#ifndef __INTEL_COMPILER
+      do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
+        if (xi_norm_2 > 1.e-16_pREAL) then
+          G_hat(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
+        end if
+      end do
+#else
+      forall(l=1:3, m=1:3, n=1:3, o=1:3) 
+        if (xi_norm_2 > 1.e-16_pREAL) then
+          G_hat(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
+        end if
+      end forall
+#endif
+    end if
+  end do; end do; end do
+  !$OMP END PARALLEL DO
+
+end subroutine utilities_G_hat_init
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate G * field_real (convolution).
 !> @details G*field_real = Fourier_inv( G_hat : Fourier(field_real) ) 
@@ -533,26 +574,9 @@ function utilities_G_Convolution(field, fieldAim, stress_mask, opt_rhs) result(G
 
   field_zero_freq = real(tensorField_fourier(1:3,1:3,1,1,1)) ! f_hat(k=0) = f_ave * vol = f_ave / wgt
 
-  !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,err,G_hat)
+  !$OMP PARALLEL DO PRIVATE(l,m,temp33_cmplx,err)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
     if (any([i,j+cells2Offset,k] /= 1)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
-      xi_norm_2 = abs(dot_product(xi1st(:,i,k,j), xi1st(:,i,k,j)))
-
-      ! ===== Yi: ToDo: G_hat just needs to be built once !!! =====
-#ifndef __INTEL_COMPILER
-      do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
-        if (xi_norm_2 > 1.e-16_pREAL) then
-          G_hat(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
-        end if
-      end do
-#else
-      forall(l=1:3, m=1:3, n=1:3, o=1:3) 
-        if (xi_norm_2 > 1.e-16_pREAL) then
-          G_hat(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
-        end if
-      end forall
-#endif
-
 #ifndef __INTEL_COMPILER
       do concurrent(l=1:3, m=1:3)
         temp33_cmplx(l,m) = sum(G_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
@@ -580,6 +604,7 @@ function utilities_G_Convolution(field, fieldAim, stress_mask, opt_rhs) result(G
   G_Field = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)
 
 end function utilities_G_Convolution
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Convolution of Greens' operator for damage/thermal.

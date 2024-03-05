@@ -653,7 +653,7 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: &
     output                                                                                               
   real(pREAL),  dimension(3,3) :: &
-    null_aim = 0.0_pREAL
+    dummy_aim = 0.0_pREAL
 
   integer :: i, j, k, e
 
@@ -673,7 +673,7 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
   end do; end do; end do
 
   ! ===== G* operator =====
-  output = utilities_G_Convolution(output,null_aim,params%stress_mask,.false.)
+  output = utilities_G_Convolution(output,dummy_aim,params%stress_mask,.false.)
 
   call DMDAVecGetArrayF90(DM_mech,output_local,output_scal,err_PETSc)
   CHKERRQ(err_PETSc)
