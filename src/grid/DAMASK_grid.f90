@@ -329,8 +329,7 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! check solution and either advance or retry with smaller timestep
 
-          if ( (all(solres(:)%converged .and. solres(:)%stagConverged)) &                           ! converged
-               .and. .not. solres(1)%termIll) then                                                  ! and acceptable solution found
+          if (all(solres(:)%converged .and. solres(:)%stagConverged)) then                          ! converged and acceptable solution found
             call mechanical_updateCoords()
             Delta_t_prev = Delta_t
             cutBack = .false.
