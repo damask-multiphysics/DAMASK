@@ -499,9 +499,11 @@ end function utilities_GammaConvolution
 !> @brief Calculate G * field_real (convolution).
 !> @details G*field_real = Fourier_inv( G_hat : Fourier(field_real) ) 
 !> @details Yi: make tensor field compatible 
-!> @details Yi: G_hat index according to S Lucarini et al. MSMSE 2021
+!> @details G_hat index according to S Lucarini et al. MSMSE 2021
+!> @details fieldAim is for impose dP of stress bc in formResidual
+!> @details fieldAim is not needed for stress bc in formJacobian GK_op
 !--------------------------------------------------------------------------------------------------
-function utilities_G_Convolution(field, fieldAim, opt_bc) result(G_Field)
+function utilities_G_Convolution(field, fieldAim, stress_mask, opt_rhs) result(G_Field)
 
   real(pREAL), intent(in), dimension(3,3,cells(1),cells(2),cells3) :: field
   real(pREAL), intent(in), dimension(3,3) :: fieldAim                                               !< desired average value of the field after convolution
@@ -512,10 +514,13 @@ function utilities_G_Convolution(field, fieldAim, opt_bc) result(G_Field)
     i, j, k, &
     l, m, n, o
   logical :: err
-  logical, intent(in) :: opt_bc ! Yi: option for impose with a fieldAim in zero freq
+  logical, intent(in), dimension(3,3) :: stress_mask ! Yi: impose the mask component <=> G* in Lucarini
+  logical, intent(in) :: opt_rhs                     ! Yi: for stress field in formResidual
 
   real(pREAL) :: xi_norm_2
   complex(pREAL), dimension(3,3) :: delta
+
+  real(pREAL), dimension(3,3) :: field_zero_freq ! Yi: zero freq of field
 
   ! print'(/,1x,a)', '... doing G convolution ...............................................'
   ! flush(IO_STDOUT)
@@ -525,6 +530,8 @@ function utilities_G_Convolution(field, fieldAim, opt_bc) result(G_Field)
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL
   tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
+
+  field_zero_freq = real(tensorField_fourier(1:3,1:3,1,1,1)) ! f_hat(k=0) = f_ave * vol = f_ave / wgt
 
   !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,err,G_hat)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
@@ -560,8 +567,13 @@ function utilities_G_Convolution(field, fieldAim, opt_bc) result(G_Field)
   end do; end do; end do
   !$OMP END PARALLEL DO
 
-  if (opt_bc) then
-    if (cells3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim/wgt,0.0_pREAL,pREAL)
+  ! Yi: apply bc_stress
+  if (cells3Offset == 0) then
+    if (opt_rhs) then
+      tensorField_fourier(1:3,1:3,1,1,1) = cmplx(merge(0.0_pREAL,fieldAim/wgt,stress_mask),0.0_pREAL,pREAL)
+    else
+      tensorField_fourier(1:3,1:3,1,1,1) = cmplx(merge(0.0_pREAL,field_zero_freq,stress_mask),0.0_pREAL,pREAL)
+    end if
   end if
 
   call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)

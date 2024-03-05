@@ -611,10 +611,10 @@ subroutine formResidual(residual_subdomain, F, &
 
   ! Yi: only P_aim components enters in dP_with_BC, see e.g. Lucarini et al. 2022 MSMSE, Lucarini & Segurado 2019 IJNME
   dP_with_BC = merge(.0_pREAL,P_av-P_aim,params%stress_mask)
-  err_BC = maxval(abs(merge(.0_pREAL,P_av-P_aim,params%stress_mask)))
+  err_BC     = maxval(abs(dP_with_BC))
 
   ! Yi: TODO: rotation
-  r = utilities_G_Convolution(r,dP_with_BC,.true.)
+  r = utilities_G_Convolution(r,dP_with_BC,params%stress_mask,.true.)
 
 end subroutine formResidual
 
@@ -673,7 +673,7 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
   end do; end do; end do
 
   ! ===== G* operator =====
-  output = utilities_G_Convolution(output,null_aim,.false.)
+  output = utilities_G_Convolution(output,null_aim,params%stress_mask,.false.)
 
   call DMDAVecGetArrayF90(DM_mech,output_local,output_scal,err_PETSc)
   CHKERRQ(err_PETSc)
