@@ -24,8 +24,10 @@ module grid_mechanical_spectral_variation
   use math
   use rotations
   use spectral_utilities
+  use grid_mech_utilities
   use homogenization
   use discretization_grid
+  use constants
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
@@ -37,7 +39,6 @@ module grid_mechanical_spectral_variation
   type(tSolutionParams) :: params
 
   type :: tNumerics
-    logical :: update_gamma                                                                         !< update gamma operator with current stiffness
     integer :: &
       itmin, &                                                                                      !< minimum number of iterations
       itmax                                                                                         !< maximum number of iterations
@@ -86,6 +87,7 @@ module grid_mechanical_spectral_variation
 
   integer :: &
     totalIter = 0                                                                                   !< total iteration in current increment
+  integer(kind(STATUS_OK)) :: status
 
   public :: &
     grid_mechanical_spectral_variation_init, &
@@ -104,7 +106,7 @@ module grid_mechanical_spectral_variation
       Mat :: mat
       PetscErrorCode :: ierr
     end subroutine MatCreateShell
-  end interface MatCreateShell 
+  end interface MatCreateShell
 
   interface MatShellSetContext
     subroutine MatShellSetContext(mat,ctx,ierr)
@@ -113,7 +115,7 @@ module grid_mechanical_spectral_variation
       Vec :: ctx
       PetscErrorCode :: ierr
     end subroutine MatShellSetContext
-  end interface MatShellSetContext 
+  end interface MatShellSetContext
 
   interface MatShellGetContext
     subroutine MatShellGetContext(mat,ctx,ierr)
@@ -122,7 +124,7 @@ module grid_mechanical_spectral_variation
       Vec, Pointer :: ctx
       PetscErrorCode :: ierr
     end subroutine MatShellGetContext
-  end interface MatShellGetContext 
+  end interface MatShellGetContext
 
   interface MatShellSetOperation
     subroutine MatShellSetOperation(mat,op_num,op_callback,ierr)
@@ -132,7 +134,7 @@ module grid_mechanical_spectral_variation
       Mat :: mat
       PetscErrorCode :: ierr
     end subroutine MatShellSetOperation
-  end interface MatShellSetOperation 
+  end interface MatShellSetOperation
 
   interface SNESSetJacobian
     subroutine SNESSetJacobian(snes_mech,A,P,jac_callback,ctx,ierr)
@@ -200,7 +202,6 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
 
   num%itmin           = num_grid_mech%get_asInt('N_iter_min',defaultVal=1)
   num%itmax           = num_grid_mech%get_asInt('N_iter_max',defaultVal=100)
-  num%update_gamma    = num_grid_mech%get_asBool('update_gamma',defaultVal=.false.)
   num%eps_div_atol    = num_grid_mech%get_asReal('eps_abs_div(P)', defaultVal=1.0e-4_pREAL)
   num%eps_div_rtol    = num_grid_mech%get_asReal('eps_rel_div(P)', defaultVal=5.0e-4_pREAL)
   num%eps_stress_atol = num_grid_mech%get_asReal('eps_abs_P',      defaultVal=1.0e3_pREAL)
@@ -219,7 +220,7 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
   petsc_options = &
-    misc_prefixOptions('-snes_type newtonls -ksp_type gmres -snes_linesearch_type bt '// & 
+    misc_prefixOptions('-snes_type newtonls -ksp_type gmres -snes_linesearch_type bt '// &
                       num_grid_mech%get_asStr('PETSc_options',defaultVal=''), 'mechanical_')
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -237,7 +238,7 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   CHKERRQ(err_PETSc)
   call MPI_Allgather(int(cells3,MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
                      cells3_global,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
@@ -288,16 +289,16 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
 
     call HDF5_read(P_aim,groupHandle,'P_aim',.false.)
     call MPI_Bcast(P_aim,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(F_aim,groupHandle,'F_aim',.false.)
     call MPI_Bcast(F_aim,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
     call MPI_Bcast(F_aim_lastInc,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(F_aimDot,groupHandle,'F_aimDot',.false.)
     call MPI_Bcast(F_aimDot,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(temp33n,groupHandle,'F')
     F = reshape(temp33n,[9,cells(1),cells(2),cells3])
     call HDF5_read(temp33n,groupHandle,'F_lastInc')
@@ -308,9 +309,8 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
     F = reshape(F_lastInc,[9,cells(1),cells(2),cells3])
   end if restartRead
 
-  homogenization_F0 = reshape(F_lastInc, [3,3,product(cells(1:2))*cells3])                          ! set starting condition for homogenization_mechanical_response
   call utilities_updateCoords(reshape(F,shape(F_lastInc)))
-  call utilities_constitutiveResponse(P,P_av,C_volAvg,C_minMaxAvg, &                                ! stress field, stress avg, global average of stiffness and (min+max)/2
+  call utilities_constitutiveResponse(status,P,P_av,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
                                       0.0_pREAL)                                                    ! time increment
   call DMDAVecRestoreArrayF90(DM_mech,F_PETSc,F,err_PETSc)                                          ! deassociate pointer
@@ -320,21 +320,18 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
     print'(1x,a,1x,i0)', 'loading additional restart data of increment', CLI_restartInc
     call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
     call MPI_Bcast(C_volAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
     call MPI_Bcast(C_volAvgLastInc,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
     call HDF5_read(C_minMaxAvg,groupHandle,'C_minMaxAvg',.false.)
     call MPI_Bcast(C_minMaxAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call parallelization_chkerr(err_MPI)
 
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
 
   end if restartRead2
-
-  call utilities_updateGamma(C_minMaxAvg)
-  C_minMaxAvgRestart = C_minMaxAvg
 
 end subroutine grid_mechanical_spectral_variation_init
 
@@ -359,9 +356,8 @@ function grid_mechanical_spectral_variation_solution(incInfoIn) result(solution)
   incInfo = incInfoIn
 
 !--------------------------------------------------------------------------------------------------
-! update stiffness (and gamma operator)
+! update stiffness 
   S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
-  if (num%update_gamma) call utilities_updateGamma(C_minMaxAvg)
 
   call SNESsolve(SNES_mech,PETSC_NULL_VEC,F_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -370,8 +366,6 @@ function grid_mechanical_spectral_variation_solution(incInfoIn) result(solution)
 
   solution%converged = reason > 0
   solution%iterationsNeeded = totalIter
-  solution%termIll = terminallyIll
-  terminallyIll = .false.
   P_aim = merge(P_av,P_aim,params%stress_mask)
 
 end function grid_mechanical_spectral_variation_solution
@@ -430,8 +424,6 @@ subroutine grid_mechanical_spectral_variation_forward(cutBack,guess,Delta_t,Delt
                                    F_lastInc,reshape(F,[3,3,cells(1),cells(2),cells3]),Delta_t_old, &
                                    rotation_BC%rotate(F_aimDot,active=.true.))
     F_lastInc = reshape(F,[3,3,cells(1),cells(2),cells3])
-
-    homogenization_F0 = reshape(F,[3,3,product(cells(1:2))*cells3])
   end if
 
 !--------------------------------------------------------------------------------------------------
@@ -486,8 +478,6 @@ subroutine grid_mechanical_spectral_variation_restartWrite()
   call DMDAVecGetArrayReadF90(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  if (num%update_gamma) C_minMaxAvgRestart = C_minMaxAvg
-
   print'(1x,a)', 'saving solver data required for restart'; flush(IO_STDOUT)
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
@@ -539,7 +529,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,rhs_norm,reason,dumm
   BCTol = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
   if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL)) &
-       .or. terminallyIll) then
+       .and. status == STATUS_OK) then
     reason = 1
   elseif (totalIter >= num%itmax) then
     reason = -1
@@ -601,11 +591,11 @@ subroutine formResidual(residual_subdomain, F, &
   end if newIteration
 
   associate (P => r)
-    call utilities_constitutiveResponse(P, &
+    call utilities_constitutiveResponse(status,P, &
                                         P_av,C_volAvg,C_minMaxAvg, &
                                         F,params%Delta_t,params%rotation_BC)
-    call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call MPI_Allreduce(MPI_IN_PLACE,status,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+    call parallelization_chkerr(err_MPI)
     err_div = utilities_divergenceRMS(P)
   end associate
 
@@ -649,9 +639,9 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
   real(pREAL), pointer,dimension(:,:,:,:) :: dF_scal, output_scal
 
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: &
-    dF                                                                                               
+    dF
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: &
-    output                                                                                               
+    output
   real(pREAL),  dimension(3,3) :: &
     dummy_aim = 0.0_pREAL
 
@@ -683,7 +673,7 @@ subroutine GK_op(Jac,dF_local,output_local,err_PETSc)
 
   call DMDAVecRestoreArrayF90(DM_mech,dF_local,dF_scal,err_PETSc)
   CHKERRQ(err_PETSc)
-  
+
 end subroutine GK_op
 
 !--------------------------------------------------------------------------------------------------
@@ -698,7 +688,7 @@ subroutine set_F_aim(snes, step, ierr)
     deltaF_aim
 
   deltaF_aim = math_mul3333xx33(S, P_av - P_aim)
-  F_aim = F_aim - deltaF_aim 
+  F_aim = F_aim - deltaF_aim
 
 end subroutine set_F_aim
 

@@ -523,7 +523,7 @@ subroutine utilities_G_hat_init()
         end if
       end do
 #else
-      forall(l=1:3, m=1:3, n=1:3, o=1:3) 
+      forall(l=1:3, m=1:3, n=1:3, o=1:3)
         if (xi_norm_2 > 1.e-16_pREAL) then
           G_hat(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
         end if
@@ -538,8 +538,8 @@ end subroutine utilities_G_hat_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate G * field_real (convolution).
-!> @details G*field_real = Fourier_inv( G_hat : Fourier(field_real) ) 
-!> @details Yi: make tensor field compatible 
+!> @details G*field_real = Fourier_inv( G_hat : Fourier(field_real) )
+!> @details Yi: make tensor field compatible
 !> @details G_hat index according to S Lucarini et al. MSMSE 2021
 !> @details fieldAim is for impose dP of stress bc in formResidual
 !> @details fieldAim is not needed for stress bc in formJacobian GK_op
@@ -582,7 +582,7 @@ function utilities_G_Convolution(field, fieldAim, stress_mask, opt_rhs) result(G
         temp33_cmplx(l,m) = sum(G_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
       end do
 #else
-      forall(l=1:3, m=1:3) 
+      forall(l=1:3, m=1:3)
         temp33_cmplx(l,m) = sum(G_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
       end forall
 #endif
