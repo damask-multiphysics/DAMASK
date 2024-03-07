@@ -356,7 +356,7 @@ function grid_mechanical_spectral_variation_solution(incInfoIn) result(solution)
   incInfo = incInfoIn
 
 !--------------------------------------------------------------------------------------------------
-! update stiffness 
+! update stiffness
   S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
 
   call SNESsolve(SNES_mech,PETSC_NULL_VEC,F_PETSc,err_PETSc)
