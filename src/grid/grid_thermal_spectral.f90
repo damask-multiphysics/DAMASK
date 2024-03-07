@@ -166,7 +166,7 @@ subroutine grid_thermal_spectral_init(num_grid)
     dotT_lastInc = reshape(tempN,[cells(1),cells(2),cells3])
   else
     T = discretization_grid_getInitialCondition('T')
-    T_lastInc = T(0:,0:,0:)
+    T_lastInc = T(0:,0:,lbound(T,3):)
     T_stagInc = T_lastInc
     dotT_lastInc = 0.0_pREAL * T_lastInc
   end if restartRead
