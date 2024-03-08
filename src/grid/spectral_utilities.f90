@@ -512,7 +512,7 @@ subroutine utilities_G_hat_init()
 
   delta = cmplx(math_eye(3),0.0_pREAL,pREAL)
 
-  !$OMP PARALLEL DO PRIVATE(l,m,n,o,err)
+  !$OMP PARALLEL DO PRIVATE(l,m,n,o,xi_norm_2,err)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
     if (any([i,j+cells2Offset,k] /= 1)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
       xi_norm_2 = abs(dot_product(xi1st(:,i,k,j), xi1st(:,i,k,j)))
