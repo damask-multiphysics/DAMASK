@@ -76,7 +76,7 @@ subroutine grid_damage_spectral_init(num_grid)
   integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: cells3_global
   DM :: DM_damage
   real(pREAL), dimension(:,:,:), pointer :: phi                                                     ! 0-indexed
-  Vec :: uBound, lBound
+  Vec :: bound_u, bound_l
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
@@ -155,19 +155,19 @@ subroutine grid_damage_spectral_init(num_grid)
   CHKERRQ(err_PETSc)
   if (trim(snes_type) == 'vinewtonrsls' .or. &
       trim(snes_type) == 'vinewtonssls') then
-    call DMGetGlobalVector(DM_damage,lBound,err_PETSc)
+    call DMGetGlobalVector(DM_damage,bound_l,err_PETSc)
     CHKERRQ(err_PETSc)
-    call DMGetGlobalVector(DM_damage,uBound,err_PETSc)
+    call DMGetGlobalVector(DM_damage,bound_u,err_PETSc)
     CHKERRQ(err_PETSc)
-    call VecSet(lBound,0.0_pREAL,err_PETSc)
+    call VecSet(bound_l,0.0_pREAL,err_PETSc)
     CHKERRQ(err_PETSc)
-    call VecSet(uBound,1.0_pREAL,err_PETSc)
+    call VecSet(bound_u,1.0_pREAL,err_PETSc)
     CHKERRQ(err_PETSc)
-    call SNESVISetVariableBounds(SNES_damage,lBound,uBound,err_PETSc)                               ! variable bounds for variational inequalities
+    call SNESVISetVariableBounds(SNES_damage,bound_l,bound_u,err_PETSc)                               ! variable bounds for variational inequalities
     CHKERRQ(err_PETSc)
-    call DMRestoreGlobalVector(DM_damage,lBound,err_PETSc)
+    call DMRestoreGlobalVector(DM_damage,bound_l,err_PETSc)
     CHKERRQ(err_PETSc)
-    call DMRestoreGlobalVector(DM_damage,uBound,err_PETSc)
+    call DMRestoreGlobalVector(DM_damage,bound_u,err_PETSc)
     CHKERRQ(err_PETSc)
   end if
 
@@ -187,7 +187,7 @@ subroutine grid_damage_spectral_init(num_grid)
     phi_stagInc = phi_lastInc
   else
     phi = discretization_grid_getInitialCondition('phi')
-    phi_lastInc = phi(0:,0:,0:)
+    phi_lastInc = phi(0:,0:,lbound(phi,3):)
     phi_stagInc = phi_lastInc
   end if restartRead
 
