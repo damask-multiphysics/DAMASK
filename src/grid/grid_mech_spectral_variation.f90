@@ -258,7 +258,8 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   call DMDASNESsetFunctionLocal(DM_mech,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)       ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
   call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,&
-                      9*product(cells(1:2))*cells3,9*product(cells(1:2))*cells3,&
+                      int(9*product(cells(1:2))*cells3,pPETSCINT),&
+                      int(9*product(cells(1:2))*cells3,pPETSCINT),&
                       F_PETSc,Jac_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatShellSetOperation(Jac_PETSc,MATOP_MULT,GK_op,err_PETSc)
