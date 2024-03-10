@@ -56,7 +56,7 @@ module grid_mechanical_spectral_variation
   DM   :: DM_mech
   SNES :: SNES_mech
   Vec  :: F_PETSc
-  Vec  :: dF_PETSc
+  Vec  :: dF_PETSc_local
   Mat  :: Jac_PETSc
 
 !--------------------------------------------------------------------------------------------------
@@ -181,6 +181,9 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
     extmsg, &
     petsc_options
 
+  KSP :: ksp
+  PC  :: pc
+
 
   print'(/,1x,a)', '<<<+-  grid_mechanical_spectral_variation init  -+>>>'; flush(IO_STDOUT)
 
@@ -267,8 +270,12 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   CHKERRQ(err_PETSc)
   call SNESSetDM(SNES_mech,DM_mech,err_PETSc) ! Yi: associate snes with dm first, otherwise jac_shell not written
   CHKERRQ(err_PETSc)
-  call SNESSetJacobian(SNES_mech,Jac_PETSc,Jac_PETSc,formJacobian,0,err_PETSc)
+  !call SNESSetJacobian(SNES_mech,Jac_PETSc,Jac_PETSc,formJacobian,0,err_PETSc)
+  call SNESSetJacobian(SNES_mech,Jac_PETSc,Jac_PETSc,PETSC_NULL_FUNCTION,0,err_PETSc)
   CHKERRQ(err_PETSc)
+  call SNESGetKSP(SNES_mech,ksp,err_PETSc)
+  call KSPGetPC(ksp,pc,err_PETSc)
+  call PCSetType(pc,PCNONE,err_PETSc)
   ! -- end shell jac setup --
   call SNESSetUpdate(SNES_mech,set_F_aim,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -633,23 +640,30 @@ end subroutine formJacobian
 !--------------------------------------------------------------------------------------------------
 !> @brief Yi: matrix-free operation GK_op -> GK_op(dF) = Fourier_inv( G_hat : Fourier(K:dF) )
 !--------------------------------------------------------------------------------------------------
-subroutine GK_op(Jac,dF_global,output_local,err_PETSc)
+subroutine GK_op(Jac,dF_global,output_global,err_PETSc)
 
   DM                                   :: dm_local ! Yi: later for is,ie
-  Vec                                  :: dF_global, dF_local, output_local
+  Vec                                  :: dF_global
+  Vec                                  :: dF_local
+  Vec                                  :: output_global
+  Vec                                  :: output_local
   Mat                                  :: Jac
   PetscErrorCode                       :: err_PETSc
 
   real(pREAL), pointer,dimension(:,:,:,:) :: dF_scal, output_scal
 
-  real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: &
-    dF
-  real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: &
-    output
+  !real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: &
+  !  dF
+  !real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: &
+  !  output
+  real(pREAL), allocatable :: dF(:,:,:,:,:)
+  real(pREAL), allocatable :: output(:,:,:,:,:)
+
   real(pREAL),  dimension(3,3) :: &
     dummy_aim = 0.0_pREAL
 
   integer :: i, j, k, e
+  integer :: n, m, l
 
   ! Yi: TODO in parallel mode?
   call SNESGetDM(SNES_mech,dm_local,err_PETSc)
@@ -657,46 +671,62 @@ subroutine GK_op(Jac,dF_global,output_local,err_PETSc)
   ! CHKERRQ(err_PETSc)
   call DMDAVecGetArrayReadF90(DM_mech,dF_local,dF_scal,err_PETSc)
   CHKERRQ(err_PETSc)
-  call VecView(dF_global,PETSC_VIEWER_STDOUT_WORLD,err_PETSc)
+  !call VecView(dF_global,PETSC_VIEWER_STDOUT_WORLD,err_PETSc)
   print*, 'dbg: dF'
+  output_global = dF_global
 
-  call DMGetLocalVector(dm_local,dF_local,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call DMGlobalToLocalBegin(dm_local,dF_global,INSERT_VALUES,dF_local,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call DMGlobalToLocalEnd(dm_local,dF_global,INSERT_VALUES,dF_local,err_PETSc) ! Yi: ToDo: start/end indices are different when use local da
-  CHKERRQ(err_PETSc)
+  ! ==========================================
+  !call DMCreateLocalVector(dm_local,dF_local,err_PETSc)
+  !CHKERRQ(err_PETSc)
+  !call DMGlobalToLocalBegin(dm_local,dF_global,INSERT_VALUES,dF_local,err_PETSc)
+  !CHKERRQ(err_PETSc)
+  !call DMGlobalToLocalEnd(dm_local,dF_global,INSERT_VALUES,dF_local,err_PETSc) ! Yi: ToDo: start/end indices are different when use local da
+  !CHKERRQ(err_PETSc)
 
-  call DMDAVecGetArrayReadF90(dm_local,dF_local,dF_scal,err_PETSc)
-  !call VecView(dF_local,PETSC_VIEWER_STDOUT_WORLD,err_PETSc)
-  CHKERRQ(err_PETSc)
-  !print*, size(dF_scal)
-  !!dF = dF_scal
-  !!dF = 0
-  !!dF = reshape(dF_scal, [3,3,6,1,3])
-  dF = reshape(dF_scal, [3,3,cells(1),cells(2),cells3])
-  print*, 'dbg: dF'
+  !call DMDAVecGetArrayReadF90(dm_local,dF_local,dF_scal,err_PETSc)
+  !call DMDAVecGetArrayF90(dm_local,output_global,output_scal,err_PETSc)
 
-  ! ===== K:dF operartor, i.e. dP = K:dF =====
-  e = 0
-  do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
-    e = e + 1
-    output(1:3,1:3,i,j,k) = &
-      math_mul3333xx33(homogenization_dPdF(1:3,1:3,1:3,1:3,e), dF(1:3,1:3,i,j,k))
-  end do; end do; end do
+  !output_scal = dF_scal !!!! should be in correct portion of outpu_scal!!!!
 
-  ! ===== G* operator =====
-  output = utilities_G_Convolution(output,dummy_aim,params%stress_mask,.false.)
+  !call DMDAVecRestoreArrayF90(dm_local,output_global,output_scal,err_PETSc)
+  !call DMDAVecRestoreArrayF90(dm_local,dF_local,dF_scal,err_PETSc)
 
-  call DMDAVecGetArrayF90(dm_local,output_local,output_scal,err_PETSc)
-  CHKERRQ(err_PETSc)
-  output_scal = reshape(output, [9,cells(1),cells(2),cells3])
-  !!output_scal = pack(output, .true.)
-  call DMDAVecRestoreArrayF90(dm_local,output_local,output_scal,err_PETSc)
-  CHKERRQ(err_PETSc)
+  ! ==========================================
+  ! call DMDAVecGetArrayReadF90(dm_local,dF_local,dF_scal,err_PETSc)
+  ! !call VecView(dF_local,PETSC_VIEWER_STDOUT_WORLD,err_PETSc)
+  ! CHKERRQ(err_PETSc)
+  ! n = size(dF_scal,2) ! use dm_local to inspect
+  ! m = size(dF_scal,3)
+  ! l = size(dF_scal,4)
+  ! allocate(dF(3,3,n,m,l))
+  ! allocate(output(3,3,n,m,l))
+  ! !print*, size(dF_scal)
+  ! !!dF = dF_scal
+  ! !!dF = 0
+  ! !!dF = reshape(dF_scal, [3,3,6,1,3])
+  ! dF = reshape(dF_scal, [3,3,n,m,l])
+  ! print*, 'dbg: dF'
 
-  call DMDAVecRestoreArrayF90(dm_local,dF_local,dF_scal,err_PETSc)
-  CHKERRQ(err_PETSc)
+  ! ! ===== K:dF operartor, i.e. dP = K:dF =====
+  ! e = 0
+  ! do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
+  !   e = e + 1
+  !   output(1:3,1:3,i,j,k) = &
+  !     math_mul3333xx33(homogenization_dPdF(1:3,1:3,1:3,1:3,e), dF(1:3,1:3,i,j,k))
+  ! end do; end do; end do
+
+  ! ! ===== G* operator =====
+  ! output = utilities_G_Convolution(output,dummy_aim,params%stress_mask,.false.)
+
+  ! call DMDAVecGetArrayF90(dm_local,output_local,output_scal,err_PETSc)
+  ! CHKERRQ(err_PETSc)
+  ! output_scal = reshape(output, [9,cells(1),cells(2),cells3])
+  ! !!output_scal = pack(output, .true.)
+  ! call DMDAVecRestoreArrayF90(dm_local,output_local,output_scal,err_PETSc)
+  ! CHKERRQ(err_PETSc)
+
+  ! call DMDAVecRestoreArrayF90(dm_local,dF_local,dF_scal,err_PETSc)
+  ! CHKERRQ(err_PETSc)
 
 end subroutine GK_op
 
