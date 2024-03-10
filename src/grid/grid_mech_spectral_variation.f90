@@ -257,9 +257,7 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   CHKERRQ(err_PETSc)
   call DMDASNESsetFunctionLocal(DM_mech,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)       ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
-  ! -- Yi: set shell matrix --
-  !call DMCreateMatrix(DM_mech,Jac_PETSc,err_PETSc)
-  !CHKERRQ(err_PETSc)
+  ! -- Yi: set shell jacob --
   call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,&
                       int(9*product(cells(1:2))*cells3,pPETSCINT),&
                       int(9*product(cells(1:2))*cells3,pPETSCINT),&
@@ -267,18 +265,14 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   CHKERRQ(err_PETSc)
   call MatShellSetOperation(Jac_PETSc,MATOP_MULT,GK_op,err_PETSc)
   CHKERRQ(err_PETSc)
-  call MatSetDM(Jac_PETSc,DM_mech,err_PETSc)
+  call SNESSetDM(SNES_mech,DM_mech,err_PETSc) ! Yi: associate snes with dm first, otherwise jac_shell not written
   CHKERRQ(err_PETSc)
-  !call SNESSetJacobian(SNES_mech,Jac_PETSc,Jac_PETSc,PETSC_NULL_FUNCTION,0,err_PETSc)
   call SNESSetJacobian(SNES_mech,Jac_PETSc,Jac_PETSc,formJacobian,0,err_PETSc)
   CHKERRQ(err_PETSc)
-  !call DMSNESsetJacobianLocal(DM_mech,formJacobian,PETSC_NULL_SNES,err_PETSc)
-  !CHKERRQ(err_PETSc)
+  ! -- end shell jac setup --
   call SNESSetUpdate(SNES_mech,set_F_aim,err_PETSc)
   CHKERRQ(err_PETSc)
   call SNESsetConvergenceTest(SNES_mech,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc)    ! specify custom convergence check function "converged"
-  CHKERRQ(err_PETSc)
-  call SNESSetDM(SNES_mech,DM_mech,err_PETSc)
   CHKERRQ(err_PETSc)
   call SNESsetFromOptions(SNES_mech,err_PETSc)                                                      ! pull it all together with additional CLI arguments
   CHKERRQ(err_PETSc)
@@ -634,8 +628,6 @@ subroutine formJacobian(residual_subdomain,F,Jac_pre,Jac,dummy,err_PETSc)
   PetscObject                          :: dummy
   PetscErrorCode                       :: err_PETSc
 
-  print* ,'dbg: in dummy Jac'
-
 end subroutine formJacobian
 
 !--------------------------------------------------------------------------------------------------
@@ -663,7 +655,6 @@ subroutine GK_op(Jac,dF_global,output_local,err_PETSc)
   call SNESGetDM(SNES_mech,dm_local,err_PETSc)
   ! call SNESGetDM(SNES_mech,dm_local,err_PETSc)
   ! CHKERRQ(err_PETSc)
-  print* ,'dbg: start GK'
   call DMDAVecGetArrayReadF90(DM_mech,dF_local,dF_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   call VecView(dF_global,PETSC_VIEWER_STDOUT_WORLD,err_PETSc)
@@ -688,8 +679,7 @@ subroutine GK_op(Jac,dF_global,output_local,err_PETSc)
 
   ! ===== K:dF operartor, i.e. dP = K:dF =====
   e = 0
-  ! do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
-  do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, cells(1)
+  do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
     e = e + 1
     output(1:3,1:3,i,j,k) = &
       math_mul3333xx33(homogenization_dPdF(1:3,1:3,1:3,1:3,e), dF(1:3,1:3,i,j,k))
