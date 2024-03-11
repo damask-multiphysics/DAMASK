@@ -40,7 +40,7 @@ module types
   end type tScalar
 
   type, extends(tNode), public :: tList
-    class(tItem), pointer :: &
+    type(tItem), pointer :: &
       first => NULL(), &
       last => NULL()
     contains
@@ -123,7 +123,7 @@ module types
   type, public :: tItem
     character(len=:), allocatable :: key
     class(tNode),     pointer     :: node => NULL()
-    class(tItem),     pointer     :: next => NULL()
+    type(tItem),      pointer     :: next => NULL()
     contains
     final :: tItem_finalize
   end type tItem
@@ -703,7 +703,7 @@ function tList_get(self,i) result(node)
   integer,      intent(in)         :: i
   class(tNode), pointer :: node
 
-  class(tItem), pointer :: item
+  type(tItem), pointer :: item
   integer :: j
 
 
