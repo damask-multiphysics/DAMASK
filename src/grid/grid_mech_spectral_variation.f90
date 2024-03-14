@@ -56,7 +56,6 @@ module grid_mechanical_spectral_variation
   DM   :: DM_mech
   SNES :: SNES_mech
   Vec  :: F_PETSc
-  Vec  :: dF_PETSc_local
   Mat  :: Jac_PETSc
 
 !--------------------------------------------------------------------------------------------------
@@ -273,9 +272,6 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   !call SNESSetJacobian(SNES_mech,Jac_PETSc,Jac_PETSc,formJacobian,0,err_PETSc)
   call SNESSetJacobian(SNES_mech,Jac_PETSc,Jac_PETSc,PETSC_NULL_FUNCTION,0,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESGetKSP(SNES_mech,ksp,err_PETSc)
-  call KSPGetPC(ksp,pc,err_PETSc)
-  call PCSetType(pc,PCNONE,err_PETSc)
   ! -- end shell jac setup --
   call SNESSetUpdate(SNES_mech,set_F_aim,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -613,8 +609,6 @@ subroutine formResidual(residual_subdomain, F, &
 
   ! Yi: TODO: rotation
   r = utilities_G_Convolution(r,dP_with_BC,params%stress_mask,.true.)
-  print*, 'dbg: done rhs!'
-  print*, cells3
 
 end subroutine formResidual
 
@@ -661,13 +655,9 @@ subroutine GK_op(Jac,dF_global,output_global,err_PETSc)
   real(pREAL),  dimension(3,3) :: &
     dummy_aim = 0.0_pREAL
 
-  integer :: i, j, k, e
-  integer :: n, m, l
+  integer :: i, j, k, ce
 
   call SNESGetDM(SNES_mech,dm_local,err_PETSc)
-  ! call SNESGetDM(SNES_mech,dm_local,err_PETSc)
-  ! CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayReadF90(DM_mech,dF_local,dF_scal,err_PETSc)
   CHKERRQ(err_PETSc)
 
   call DMCreateLocalVector(dm_local,dF_local,err_PETSc)
@@ -682,11 +672,11 @@ subroutine GK_op(Jac,dF_global,output_global,err_PETSc)
   dF = reshape(dF_scal, [3,3,cells(1),cells(2),cells3])
 
   ! ===== K:dF operartor, i.e. dP = K:dF =====
-  e = 0
+  ce = 0
   do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
-    e = e + 1
+    ce = ce + 1
     output(1:3,1:3,i,j,k) = &
-      math_mul3333xx33(homogenization_dPdF(1:3,1:3,1:3,1:3,e), dF(1:3,1:3,i,j,k))
+      math_mul3333xx33(homogenization_dPdF(1:3,1:3,1:3,1:3,ce), dF(1:3,1:3,i,j,k))
   end do; end do; end do
 
   ! ===== G* operator =====
