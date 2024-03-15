@@ -271,7 +271,6 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   CHKERRQ(err_PETSc)
   call SNESSetDM(SNES_mech,DM_mech,err_PETSc) ! Yi: associate snes with dm first, otherwise jac_shell not written
   CHKERRQ(err_PETSc)
-  !call SNESSetJacobian(SNES_mech,Jac_PETSc,Jac_PETSc,formJacobian,0,err_PETSc)
   call SNESSetJacobian(SNES_mech,Jac_PETSc,Jac_PETSc,PETSC_NULL_FUNCTION,0,err_PETSc)
   CHKERRQ(err_PETSc)
   ! -- end shell jac setup --
@@ -605,7 +604,6 @@ subroutine formResidual(residual_subdomain, F, &
     err_div = utilities_divergenceRMS(P)
   end associate
 
-  ! Yi: only P_aim components enters in dP_with_BC, see e.g. Lucarini et al. 2022 MSMSE, Lucarini & Segurado 2019 IJNME
   dP_with_BC = merge(.0_pREAL,P_av-P_aim,params%stress_mask)
   err_BC     = maxval(abs(dP_with_BC))
 
@@ -614,36 +612,16 @@ subroutine formResidual(residual_subdomain, F, &
 
 end subroutine formResidual
 
-!--------------------------------------------------------------------------------------------------
-!> @brief Yi: matrix-free jacobian interface (dummy interface)
-! implementation ref: https://lists.mcs.anl.gov/pipermail/petsc-users/2023-December/050035.html
-!                     petsc/src/ts/tutorial/ex22f_mf.f90
-! TODO: use SNESSetJacobian() instead of DMSNESSetJacobianLocal()
-!--------------------------------------------------------------------------------------------------
-subroutine formJacobian(residual_subdomain,F,Jac_pre,Jac,dummy,err_PETSc)
-
-  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
-    residual_subdomain                                                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
-  !real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: &
-  !  F                                                                                               !< deformation gradient field
-  Vec :: F
-  PetscInt :: n
-  Mat                                  :: Jac, Jac_pre
-  PetscObject                          :: dummy
-  PetscErrorCode                       :: err_PETSc
-
-end subroutine formJacobian
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Yi: matrix-free operation GK_op -> GK_op(dF) = Fourier_inv( G_hat : Fourier(K:dF) )
 !--------------------------------------------------------------------------------------------------
 subroutine GK_op(Jac,dF_global,output_global,err_PETSc)
 
-  DM                                   :: dm_local ! Yi: later for is,ie
+  DM                                   :: dm_local
   Vec                                  :: dF_global
   Vec                                  :: dF_local
   Vec                                  :: output_global
-  Vec                                  :: output_local
   Mat                                  :: Jac
   PetscErrorCode                       :: err_PETSc
 
@@ -666,7 +644,7 @@ subroutine GK_op(Jac,dF_global,output_global,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMGlobalToLocalBegin(dm_local,dF_global,INSERT_VALUES,dF_local,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMGlobalToLocalEnd(dm_local,dF_global,INSERT_VALUES,dF_local,err_PETSc) ! Yi: ToDo: start/end indices are different when use local da
+  call DMGlobalToLocalEnd(dm_local,dF_global,INSERT_VALUES,dF_local,err_PETSc)
   CHKERRQ(err_PETSc)
 
   call DMDAVecGetArrayReadF90(dm_local,dF_local,dF_scal,err_PETSc)
@@ -694,6 +672,7 @@ subroutine GK_op(Jac,dF_global,output_global,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine GK_op
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Yi: upd F_aim only in newton step (not in line search step)
