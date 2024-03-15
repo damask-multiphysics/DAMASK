@@ -260,7 +260,9 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   call DMDASNESsetFunctionLocal(DM_mech,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)       ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
   ! -- Yi: set shell jacob --
-  call MatCreateShell(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,&
+  call MatCreateShell(PETSC_COMM_WORLD,&
+                      int(9*product(cells(1:2))*cells3,pPETSCINT),&
+                      int(9*product(cells(1:2))*cells3,pPETSCINT),&
                       int(9*product(cells(1:2))*sum(cells3_global),pPETSCINT),&
                       int(9*product(cells(1:2))*sum(cells3_global),pPETSCINT),&
                       F_PETSc,Jac_PETSc,err_PETSc)
