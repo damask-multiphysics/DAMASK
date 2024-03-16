@@ -640,7 +640,7 @@ subroutine GK_op(Jac,dF_global,output_global,err_PETSc)
   call SNESGetDM(SNES_mech,dm_local,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  call DMCreateLocalVector(dm_local,dF_local,err_PETSc)
+  call DMGetLocalVector(dm_local,dF_local,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMGlobalToLocalBegin(dm_local,dF_global,INSERT_VALUES,dF_local,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -669,6 +669,8 @@ subroutine GK_op(Jac,dF_global,output_global,err_PETSc)
   CHKERRQ(err_PETSc)
 
   call DMDAVecRestoreArrayF90(dm_local,dF_local,dF_scal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMRestoreLocalVector(dm_local,dF_local,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine GK_op
