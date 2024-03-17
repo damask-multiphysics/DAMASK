@@ -338,7 +338,7 @@ subroutine spectral_utilities_init()
     allocate (gamma_hat(3,3,3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
   end if
 
-  allocate (G_hat(3,3,3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL)) ! local to each grid point
+  allocate (G_hat(3,3,3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
   call utilities_G_hat_init()
 
   call selfTest()
@@ -551,26 +551,21 @@ function utilities_G_Convolution(field, fieldAim, stress_mask, opt_rhs) result(G
   complex(pREAL), dimension(3,3) :: temp33_cmplx
   integer :: &
     i, j, k, &
-    l, m, n, o
+    l, m
   logical :: err
   logical, intent(in), dimension(3,3) :: stress_mask ! Yi: impose the mask component <=> G* in Lucarini
   logical, intent(in) :: opt_rhs                     ! Yi: for stress field in formResidual
 
-  real(pREAL) :: xi_norm_2
-  complex(pREAL), dimension(3,3) :: delta
-
-  real(pREAL), dimension(3,3) :: field_zero_freq ! Yi: zero freq of field
+  complex(pREAL), dimension(3,3) :: field_zero_freq ! Yi: zero freq of field
 
   ! print'(/,1x,a)', '... doing G convolution ...............................................'
   ! flush(IO_STDOUT)
-
-  delta = cmplx(math_eye(3),0.0_pREAL,pREAL)
 
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL
   tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
-  field_zero_freq = real(tensorField_fourier(1:3,1:3,1,1,1)) ! f_hat(k=0) = f_ave * vol = f_ave / wgt
+  field_zero_freq = tensorField_fourier(1:3,1:3,1,1,1) ! f_hat(k=0) = f_ave * vol = f_ave / wgt
 
   !$OMP PARALLEL DO PRIVATE(l,m,temp33_cmplx,err)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
@@ -594,7 +589,7 @@ function utilities_G_Convolution(field, fieldAim, stress_mask, opt_rhs) result(G
     if (opt_rhs) then
       tensorField_fourier(1:3,1:3,1,1,1) = cmplx(merge(0.0_pREAL,fieldAim/wgt,stress_mask),0.0_pREAL,pREAL)
     else
-      tensorField_fourier(1:3,1:3,1,1,1) = cmplx(merge(0.0_pREAL,field_zero_freq,stress_mask),0.0_pREAL,pREAL)
+      tensorField_fourier(1:3,1:3,1,1,1) = merge(cmplx(0.0_pREAL,0.0_pREAL,pREAL),field_zero_freq,stress_mask)
     end if
   end if
 
