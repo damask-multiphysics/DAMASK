@@ -862,7 +862,7 @@ function integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C,DB) result(st
     plasticState(ph)%state(1:sizeDotState,en) = state0 &
                                               + dotState*Delta_t
 
-    status = integrateStress(F_0+(F-F_0)*Delta_t*C(stage),Fp0,Fi0,Delta_t*C(stage), ph,en)
+    status = integrateStress(F_0+(F-F_0)*C(stage),Fp0,Fi0,Delta_t*C(stage), ph,en)
     if (status /= STATUS_OK) return
 
     dotState = plastic_dotState(Delta_t*C(stage), ph,en)                                            !MD: Delta_t is only used for nonlocal and it's unclear whether scaling by C makes sense
