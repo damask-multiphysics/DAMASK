@@ -883,13 +883,13 @@ end subroutine plastic_nonlocal_deltaState
 !---------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
-module subroutine nonlocal_dotState(Mp,timestep, &
+module subroutine nonlocal_dotState(Mp,Delta_t, &
                                     ph,en)
 
   real(pREAL), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< MandelStress
   real(pREAL), intent(in) :: &
-    timestep                                                                                        !< substepped crystallite time increment
+    delta_T                                                                                        !< substepped crystallite time increment
   integer, intent(in) :: &
     ph, &
     en
@@ -921,7 +921,7 @@ module subroutine nonlocal_dotState(Mp,timestep, &
     mu, &
     nu, Temperature
 
-  if (timestep <= 0.0_pREAL) then
+  if (delta_T <= 0.0_pREAL) then
     plasticState(ph)%dotState = 0.0_pREAL
     return
   end if
@@ -1031,18 +1031,18 @@ module subroutine nonlocal_dotState(Mp,timestep, &
           / (PI * (1.0_pREAL-nu) * (dUpper(:,1) + dLower(:,1)) * K_B * Temperature)              ! eq. 3.54
   forall (s = 1:prm%sum_N_sl, dUpper(s,1) > dLower(s,1)) &
     rhoDotThermalAnnihilation(s,9) = max(- 4.0_pREAL * rho_dip(s,1) * v_climb(s) / (dUpper(s,1) - dLower(s,1)), &
-                                         - rho_dip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
+                                         - rho_dip(s,1) / delta_T - rhoDotAthermalAnnihilation(s,9) &
                                                                   - rhoDotSingle2DipoleGlide(s,9))  ! make sure that we do not annihilate more dipoles than we have
 
-  rhoDot = rhoDotFlux(timestep, ph,en) &
+  rhoDot = rhoDotFlux(delta_T, ph,en) &
          + rhoDotMultiplication &
          + rhoDotSingle2DipoleGlide &
          + rhoDotAthermalAnnihilation &
          + rhoDotThermalAnnihilation
 
 
-  if (    any(rho(:,mob) + rhoDot(:,1:4)  * timestep < -prm%atol_rho) &
-     .or. any(rho(:,dip) + rhoDot(:,9:10) * timestep < -prm%atol_rho)) then
+  if (    any(rho(:,mob) + rhoDot(:,1:4)  * delta_T < -prm%atol_rho) &
+     .or. any(rho(:,dip) + rhoDot(:,9:10) * delta_T < -prm%atol_rho)) then
     plasticState(ph)%dotState = IEEE_value(1.0_pREAL,IEEE_quiet_NaN)
   else
     dot%rho(:,en) = pack(rhoDot,.true.)
@@ -1058,12 +1058,12 @@ end subroutine nonlocal_dotState
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
 #if __INTEL_COMPILER >= 2020
-non_recursive function rhoDotFlux(timestep,ph,en)
+non_recursive function rhoDotFlux(delta_T,ph,en)
 #else
-function rhoDotFlux(timestep,ph,en)
+function rhoDotFlux(delta_T,ph,en)
 #endif
   real(pREAL), intent(in) :: &
-    timestep                                                                                        !< substepped crystallite time increment
+    delta_T                                                                                        !< substepped crystallite time increment
   integer, intent(in) :: &
     ph, &
     en
@@ -1139,7 +1139,7 @@ function rhoDotFlux(timestep,ph,en)
 
     !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
     if (any( abs(dot_gamma) > 0.0_pREAL &                                                           ! any active slip system ...
-            .and. prm%C_CFL * abs(v_0) * timestep &
+            .and. prm%C_CFL * abs(v_0) * delta_T &
                 > geom(ph)%v_0(en)/ maxval(geom(ph)%a_0(:,en)))) then                               ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
       rhoDotFlux = IEEE_value(1.0_pREAL,IEEE_quiet_NaN)                                             ! enforce cutback
       return
