@@ -37,7 +37,7 @@ class NiceDumper(SafeDumper):
 
     def represent_data(self,
                        data: Any):
-        """Cast YAML objects and its subclasses to dict."""
+        """Cast YAML objects and their subclasses to dict."""
         if isinstance(data, dict) and type(data) != dict:
             return self.represent_data(dict(data))
         if isinstance(data, np.ndarray):
@@ -67,13 +67,13 @@ class YAML(dict):
         ----------
         config : dict or str, optional
             YAML. String needs to be valid YAML.
-        **kwargs: arbitray keyword-value pairs, optional
-            Top level entries of the configuration.
+        **kwargs: arbitrary key–value pairs, optional
+            Top-level entries of the configuration.
 
         Notes
         -----
-        Values given as keyword-value pairs take precedence
-        over entries with the same keyword in 'config'.
+        Values given as key–value pairs take precedence
+        over entries with the same key in 'config'.
 
         """
         if int(platform.python_version_tuple()[1]) >= 9:
@@ -130,7 +130,7 @@ class YAML(dict):
         Parameters
         ----------
         other : damask.YAML or dict
-            Key-value pairs that update self.
+            Key–value pairs that update self.
 
         Returns
         -------
@@ -189,7 +189,7 @@ class YAML(dict):
         Parameters
         ----------
         fname : file, str, or pathlib.Path
-            Filename or file for writing.
+            Filename or file for reading.
 
         Returns
         -------
