@@ -184,12 +184,12 @@ class YAML(dict):
     def load(cls: Type[MyType],
              fname: FileHandle) -> MyType:
         """
-        Load from yaml file.
+        Load from YAML file.
 
         Parameters
         ----------
         fname : file, str, or pathlib.Path
-            Filename or file for reading.
+            Filename or file to read.
 
         Returns
         -------
@@ -205,12 +205,12 @@ class YAML(dict):
              fname: FileHandle,
              **kwargs):
         """
-        Save to yaml file.
+        Save to YAML file.
 
         Parameters
         ----------
         fname : file, str, or pathlib.Path
-            Filename or file for writing.
+            Filename or file to write.
         **kwargs : dict
             Keyword arguments parsed to yaml.dump.
 
