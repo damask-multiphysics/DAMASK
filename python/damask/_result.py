@@ -583,11 +583,11 @@ class Result:
 
     @property
     def increments(self):
-        return [int(i.split(prefix_inc)[-1]) for i in self._visible['increments']]
+        return [i for i in self._visible['increments']]
 
     @property
     def times(self):
-        return [self._times[i] for i in self.increments]
+        return [self._times[int(i.split(prefix_inc)[-1])] for i in self.increments]
 
     @property
     def phases(self):
