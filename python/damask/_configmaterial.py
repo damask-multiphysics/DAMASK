@@ -18,8 +18,7 @@ class ConfigMaterial(YAML):
 
     Manipulate material configurations for storage in YAML format.
     A complete material configuration file has the entries 'material',
-    'phase', and 'homogenization'. For use in DAMASK, it needs to be
-    stored as 'material.yaml'.
+    'phase', and 'homogenization'.
 
     """
 

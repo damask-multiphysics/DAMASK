@@ -133,7 +133,7 @@ class TestResult:
     def test_getters(self,default):
         file_layout = default.get('non-existing',prune=False,flatten=False)
         for i in default.increments:
-            increment = file_layout[f'increment_{i}']
+            increment = file_layout[i]
             fields = []
             for p in default.phases:
                 phase = increment['phase'][p]
