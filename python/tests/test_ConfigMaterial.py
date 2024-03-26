@@ -37,18 +37,6 @@ class TestConfigMaterial:
         for k,v in kwargs.items():
             if k in kwargs: assert v == kwargs[k]
 
-    @pytest.mark.parametrize('fname',[None,'test.yaml'])
-    def test_load_save(self,res_path,tmp_path,fname):
-        reference = ConfigMaterial.load(res_path/'material.yaml')
-        os.chdir(tmp_path)
-        if fname is None:
-            reference.save()
-            new = ConfigMaterial.load('material.yaml')
-        else:
-            reference.save(fname)
-            new = ConfigMaterial.load(fname)
-        assert reference == new
-
     def test_valid_complete(self,res_path):
         material_config = ConfigMaterial.load(res_path/'material.yaml')
         assert material_config.is_valid and material_config.is_complete

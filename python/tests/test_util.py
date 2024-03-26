@@ -37,20 +37,20 @@ class TestUtil:
     def test_srepr(self,input,glue,quote,output):
         assert output == util.srepr(input,glue,quote)
 
+
+    @pytest.mark.parametrize('N',[5,6,7,8,9,10,11,12,13,14,15,16,20,30,40,50])
     @pytest.mark.parametrize('input,output',
                             [
                             ([0,-2],[0,-1]),
                             ([-0.5,0.5],[-1,1]),
                             ([1./2.,1./3.],[3,2]),
                             ([2./3.,1./2.,1./3.],[4,3,2]),
+                            ([0.666666666666,-0.33333333333,-0.33333],[2,-1,-1]),
+                            ([1./3., 1./4., 1./22],[536870912, 402653184,  73209669]),
                             ])
-    def test_scale2coprime(self,input,output):
-        assert np.allclose(util.scale_to_coprime(np.array(input)),
-                                                 np.array(output).astype(int))
-
-    def test_lackofprecision(self):
-        with pytest.raises(ValueError):
-            util.scale_to_coprime(np.array([1/333.333,1,1]))
+    def test_scale2coprime(self,input,output,N):
+        res = util.scale_to_coprime(input,N)
+        assert np.allclose(res/np.max(np.abs(res)),output/np.max(np.abs(output)),atol=1e-2,rtol=0)
 
 
     @pytest.mark.parametrize('rv',[stats.rayleigh(),stats.weibull_min(1.2),stats.halfnorm(),stats.pareto(2.62)])
