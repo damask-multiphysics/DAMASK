@@ -230,13 +230,16 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
   solution%converged = reason > 0
   solution%iterationsNeeded = merge(totalIter,num%itmax,solution%converged)
 
+  call VecMin(phi_PETSc,devNull,phi_min,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecMax(phi_PETSc,devNull,phi_max,err_PETSc)
+  CHKERRQ(err_PETSc)
+
   call SNESGetDM(SNES_damage,DM_damage,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)                                        ! returns 0-indexed phi
   CHKERRQ(err_PETSc)
 
-  phi_min = minval(phi)
-  phi_max = maxval(phi)
   stagNorm = maxval(abs(phi - phi_stagInc))
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
