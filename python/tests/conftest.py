@@ -61,7 +61,7 @@ def update(pytestconfig):
 
 @pytest.fixture
 def damaskroot(pytestconfig):
-    """Store current results as new reference results."""
+    """Specify DAMASK root directory."""
     return pytestconfig.getoption('--damaskroot')
 
 # https://stackoverflow.com/questions/51883573
