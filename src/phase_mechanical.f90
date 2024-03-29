@@ -319,8 +319,8 @@ module subroutine mechanical_init(phases, num_mech)
     case('Euler')
       integrateState => integrateStateEuler
 
-    case('AdaptiveEuler')
-      integrateState => integrateStateAdaptiveEuler
+    case('Euler_Adaptive')
+      integrateState => integrateStateEulerAdaptive
 
     case('RK4')
       integrateState => integrateStateRK4
@@ -706,7 +706,7 @@ end function integrateStateEuler
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
-function integrateStateAdaptiveEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(status)
+function integrateStateEulerAdaptive(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(status)
 
   real(pREAL), intent(in),dimension(3,3) :: F_0,F,Fp0,Fi0
   real(pREAL), intent(in),dimension(:)   :: state0
@@ -750,7 +750,7 @@ function integrateStateAdaptiveEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(
                            plasticState(ph)%state(1:sizeDotState,en), &
                            plasticState(ph)%atol(1:sizeDotState)))
 
-end function integrateStateAdaptiveEuler
+end function integrateStateEulerAdaptive
 
 
 !---------------------------------------------------------------------------------------------------
