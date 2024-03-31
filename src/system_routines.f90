@@ -211,7 +211,6 @@ function getUserName()
 
 end function getUserName
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert C string to Fortran string.
 !> @details: C string is NULL terminated and, hence, longer by one than the Fortran string.
@@ -237,6 +236,7 @@ pure function c_f_string(c_string) result(f_string)
 end function c_f_string
 
 
+#if __INTEL_LLVM_COMPILER < 20240100
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert Fortran string to C string.
 !> @details: C string is NULL terminated and, hence, longer by one than the Fortran string.
@@ -250,6 +250,7 @@ pure function f_c_string(f_string) result(c_string)
   c_string = trim(f_string)//C_NULL_CHAR
 
 end function f_c_string
+#endif
 
 
 !--------------------------------------------------------------------------------------------------
