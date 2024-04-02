@@ -235,8 +235,7 @@ pure function c_f_string(c_string) result(f_string)
 
 end function c_f_string
 
-
-#if __INTEL_LLVM_COMPILER < 20240100
+#if __INTEL_COMPILER_BUILD_DATE < 20240000
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert Fortran string to C string.
 !> @details: C string is NULL terminated and, hence, longer by one than the Fortran string.
