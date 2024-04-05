@@ -1295,18 +1295,24 @@ class Rotation:
 
         Examples
         --------
-        Create an ideal α-fiber texture (<1 1 0> ǀǀ RD=x) consisting of
+        Create an ideal α-fiber texture ([1 1 0] ǀǀ RD=x) consisting of
         200 orientations:
 
         >>> import damask
         >>> import numpy as np
         >>> alpha = damask.Rotation.from_fiber_component([np.pi/4.,0.],[np.pi/2.,0.],shape=200)
 
-        Create an ideal γ-fiber texture (<1 1 1> ǀǀ ND=z) consisting of
+        Create an ideal γ-fiber texture ([1 1 1] ǀǀ ND=z) consisting of
         100 orientations:
 
         >>> import damask
         >>> gamma = damask.Rotation.from_fiber_component([54.7,45.],[0.,0.],shape=100,degrees=True)
+
+        Create a strong basal texture ([0 0 0 1] ǀǀ ND=z) consisting of
+        100 orientations:
+
+        >>> import damask
+        >>> basal = damask.Rotation.from_fiber_component([0.,0.],[0.,0.],shape=100,sigma=10,degrees=True)
 
         """
         rng = np.random.default_rng(rng_seed)
