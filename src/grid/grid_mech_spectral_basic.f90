@@ -267,6 +267,7 @@ function grid_mechanical_spectral_basic_solution(incInfoIn) result(solution)
     incInfoIn
   type(tSolutionState)                    :: &
     solution
+
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
   PetscErrorCode :: err_PETSc

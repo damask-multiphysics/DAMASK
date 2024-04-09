@@ -3,7 +3,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Yi Hu, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Grid solver for mechanics: spectral variation
+!> @brief Grid solver for mechanics: Spectral variation
 !--------------------------------------------------------------------------------------------------
 module grid_mechanical_spectral_variation
 #include <petsc/finclude/petscsnes.h>
@@ -85,8 +85,7 @@ module grid_mechanical_spectral_variation
     err_BC, &                                                                                       !< deviation from stress BC
     err_div                                                                                         !< RMS of div of P
 
-  integer :: &
-    totalIter = 0                                                                                   !< total iteration in current increment
+  integer :: totalIter = 0                                                                          !< total iteration in current increment
   integer(kind(STATUS_OK)) :: status
 
   public :: &
@@ -96,7 +95,7 @@ module grid_mechanical_spectral_variation
     grid_mechanical_spectral_variation_updateCoords, &
     grid_mechanical_spectral_variation_restartWrite
 
-  ! Yi: missing interfaces for some petsc versions
+  ! Missing interfaces for some PETSc versions
   interface MatCreateShell
     subroutine MatCreateShell(comm,mloc,nloc,m,n,ctx,mat,ierr)
       use petscmat
@@ -186,16 +185,16 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
 
   print'(/,1x,a)', '<<<+-  grid_mechanical_spectral_variation init  -+>>>'; flush(IO_STDOUT)
 
-  print'(/,1x,a)', 'J Vondřejc et al., Computers & Mathematics with Applications 68 (3), 156-173, 2014'
+  print'(/,1x,a)', 'J. Vondřejc et al., Computers & Mathematics with Applications 68(3):156–173, 2014'
   print'(  1x,a)', 'https://doi.org/10.1016/j.camwa.2014.05.014'//IO_EOL
 
-  print'(  1x,a)', 'TWJ De Geus et al. Computer Methods in Applied Mechanics and Engineering 318, 412-430, 2017'
+  print'(  1x,a)', 'T.W.J. de Geus et al., Computer Methods in Applied Mechanics and Engineering 318:412–430, 2017'
   print'(  1x,a)', 'https://doi.org/10.1016/j.cma.2016.12.032'//IO_EOL
 
-  print'(  1x,a)', 'S Lucarini et al. Modelling and Simulation in Materials Science and Engineering 30 (2), 023002, 2021'
+  print'(  1x,a)', 'S Lucarini et al., Modelling and Simulation in Materials Science and Engineering 30(2):023002, 2021'
   print'(  1x,a)', 'https://doi.org/10.1088/1361-651X/ac34e1'//IO_EOL
 
-  print'(  1x,a)', 'muSpectre'
+  print'(  1x,a)', 'µSpectre'
   print'(  1x,a)', 'https://gitlab.com/muspectre'
 
 !-------------------------------------------------------------------------------------------------
@@ -259,7 +258,8 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   CHKERRQ(err_PETSc)
   call DMDASNESsetFunctionLocal(DM_mech,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)       ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
-  ! -- Yi: set shell jacob --
+
+  ! Set shell Jacobian
   call MatCreateShell(PETSC_COMM_WORLD,&
                       int(9*product(cells(1:2))*cells3,pPETSCINT),&
                       int(9*product(cells(1:2))*cells3,pPETSCINT),&
@@ -269,11 +269,12 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   CHKERRQ(err_PETSc)
   call MatShellSetOperation(Jac_PETSc,MATOP_MULT,GK_op,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESSetDM(SNES_mech,DM_mech,err_PETSc) ! Yi: associate snes with dm first, otherwise jac_shell not written
+  call SNESSetDM(SNES_mech,DM_mech,err_PETSc)                                                       ! associate snes with dm first, otherwise jac_shell not written
   CHKERRQ(err_PETSc)
   call SNESSetJacobian(SNES_mech,Jac_PETSc,Jac_PETSc,PETSC_NULL_FUNCTION,0,err_PETSc)
   CHKERRQ(err_PETSc)
-  ! -- end shell jac setup --
+
+
   call SNESSetUpdate(SNES_mech,set_F_aim,err_PETSc)
   CHKERRQ(err_PETSc)
   call SNESsetConvergenceTest(SNES_mech,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc)    ! specify custom convergence check function "converged"
@@ -533,7 +534,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,rhs_norm,reason,dumm
   divTol = max(maxval(abs(P_av))*num%eps_div_rtol, num%eps_div_atol)
   BCTol = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
-  if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL)) &
+  if (totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL) &
        .and. status == STATUS_OK) then
     reason = 1
   elseif (totalIter >= num%itmax) then
@@ -614,7 +615,7 @@ end subroutine formResidual
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Yi: matrix-free operation GK_op -> GK_op(dF) = Fourier_inv( G_hat : Fourier(K:dF) )
+!> @brief Matrix-free operation GK_op -> GK_op(dF) = Fourier_inv( G_hat : Fourier(K:dF) )
 !--------------------------------------------------------------------------------------------------
 subroutine GK_op(Jac,dF_global,output_global,err_PETSc)
 
@@ -677,7 +678,7 @@ end subroutine GK_op
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Yi: upd F_aim only in newton step (not in line search step)
+!> @brief Update F_aim only in newton step (not in line search step)
 !--------------------------------------------------------------------------------------------------
 subroutine set_F_aim(snes, step, ierr)
   SNES      :: snes
