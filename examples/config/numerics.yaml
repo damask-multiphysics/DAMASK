@@ -87,7 +87,7 @@ phase:
       eps_abs_Lp:              1.0e-8   # absolute tolerance in Lp residuum
       N_iter_Lp_max:           40       # stress loop limit for Lp
       f_update_jacobi_Lp:      1        # frequency of Jacobian update of residuum in Lp
-      integrator_state:        FPI      # integration method (FPI = Fixed Point Iteration, Euler = Euler, Euler_Adaptive = Adaptive Euler, RK4 = classical 4th order Runge-Kutta, RKCK45 = 5th order Runge-Kutta Cash-Karp)
+      integrator_state:        FPI      # integration method (FPI = Fixed Point Iteration, Euler = Euler, Euler_adaptive = Adaptive Euler, RK4 = classical 4th order Runge-Kutta, RKCK45 = 5th order Runge-Kutta Cash-Karp)
 
     eigen:
       r_linesearch_Li:         0.5      # factor to decrease the step if Li calculation fails to converge

@@ -319,7 +319,7 @@ module subroutine mechanical_init(phases, num_mech)
     case('Euler')
       integrateState => integrateStateEuler
 
-    case('Euler_Adaptive')
+    case('Euler_adaptive')
       integrateState => integrateStateEulerAdaptive
 
     case('RK4')
