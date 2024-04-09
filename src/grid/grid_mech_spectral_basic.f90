@@ -112,7 +112,6 @@ subroutine grid_mechanical_spectral_basic_init(num_grid)
   real(pREAL), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
   integer(HID_T) :: fileHandle, groupHandle
   type(tDict), pointer :: &
-    num_grid_fft, &
     num_grid_mech
   character(len=:), allocatable :: &
     extmsg, &
@@ -129,7 +128,6 @@ subroutine grid_mechanical_spectral_basic_init(num_grid)
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid_fft =>  num_grid%get_dict('FFT',defaultVal=emptyDict)
   num_grid_mech => num_grid%get_dict('mechanical',defaultVal=emptyDict)
 
   num%itmin           = num_grid_mech%get_asInt('N_iter_min',defaultVal=1)

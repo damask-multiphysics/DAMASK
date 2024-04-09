@@ -40,7 +40,7 @@ module types
   end type tScalar
 
   type, extends(tNode), public :: tList
-    class(tItem), pointer :: &
+    type(tItem), pointer :: &
       first => NULL(), &
       last => NULL()
     contains
@@ -123,7 +123,7 @@ module types
   type, public :: tItem
     character(len=:), allocatable :: key
     class(tNode),     pointer     :: node => NULL()
-    class(tItem),     pointer     :: next => NULL()
+    type(tItem),      pointer     :: next => NULL()
     contains
     final :: tItem_finalize
   end type tItem
@@ -371,7 +371,7 @@ end function tScalar_asFormattedStr
 function tNode_asScalar(self) result(scalar)
 
   class(tNode),   intent(in), target :: self
-  class(tScalar), pointer            :: scalar
+  type(tScalar),  pointer            :: scalar
 
 
   select type(self)
@@ -703,7 +703,7 @@ function tList_get(self,i) result(node)
   integer,      intent(in)         :: i
   class(tNode), pointer :: node
 
-  class(tItem), pointer :: item
+  type(tItem), pointer :: item
   integer :: j
 
 
@@ -781,7 +781,7 @@ function tList_get_asReal(self,i) result(nodeAsReal)
   integer,      intent(in) :: i
   real(pREAL) :: nodeAsReal
 
-  class(tScalar),  pointer :: scalar
+  type(tScalar),   pointer :: scalar
 
 
   scalar => self%get_scalar(i)
@@ -817,7 +817,7 @@ function tList_get_asInt(self,i) result(nodeAsInt)
   integer,      intent(in) :: i
   integer :: nodeAsInt
 
-  class(tScalar),  pointer :: scalar
+  type(tScalar),   pointer :: scalar
 
 
   scalar => self%get_scalar(i)
@@ -853,7 +853,7 @@ function tList_get_asBool(self,i) result(nodeAsBool)
   integer,      intent(in) :: i
   logical :: nodeAsBool
 
-  class(tScalar),  pointer :: scalar
+  type(tScalar),   pointer :: scalar
 
 
   scalar => self%get_scalar(i)
@@ -889,7 +889,7 @@ function tList_get_asStr(self,i) result(nodeAsStr)
   integer,      intent(in) :: i
   character(len=:), allocatable :: nodeAsStr
 
-  class(tScalar),  pointer :: scalar
+  type(tScalar),   pointer :: scalar
 
 
   scalar => self%get_scalar(i)
