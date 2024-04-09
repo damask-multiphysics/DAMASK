@@ -609,7 +609,7 @@ subroutine formResidual(residual_subdomain, F, &
   err_BC     = maxval(abs(dP_with_BC))
 
   ! Yi: TODO: rotation
-  r = utilities_G_Convolution(r,dP_with_BC,params%stress_mask,.true.)
+  r = utilities_G_Convolution(r,params%stress_mask,dP_with_BC)
 
 end subroutine formResidual
 
@@ -633,10 +633,8 @@ subroutine GK_op(Jac,dF_global,output_global,err_PETSc)
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: &
    output
 
-  real(pREAL),  dimension(3,3) :: &
-    dummy_aim = 0.0_pREAL
-
   integer :: i, j, k, ce
+
 
   call SNESGetDM(SNES_mech,dm_local,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -661,7 +659,7 @@ subroutine GK_op(Jac,dF_global,output_global,err_PETSc)
   end do; end do; end do
 
   ! ===== G* operator =====
-  output = utilities_G_Convolution(output,dummy_aim,params%stress_mask,.false.)
+  output = utilities_G_Convolution(output,params%stress_mask)
 
   call DMDAVecGetArrayF90(dm_local,output_global,output_scal,err_PETSc)
   CHKERRQ(err_PETSc)

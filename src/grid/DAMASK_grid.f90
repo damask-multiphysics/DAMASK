@@ -26,7 +26,7 @@ program DAMASK_grid
   use grid_mech_utilities
   use grid_mechanical_spectral_basic
   use grid_mechanical_spectral_polarization
-  use grid_mechanical_spectral_variation ! Yi: new solver
+  use grid_mechanical_spectral_variation
   use grid_mechanical_FEM
   use grid_damage_spectral
   use grid_thermal_spectral
@@ -172,7 +172,6 @@ program DAMASK_grid
       mechanical_updateCoords => grid_mechanical_spectral_polarization_updateCoords
       mechanical_restartWrite => grid_mechanical_spectral_polarization_restartWrite
 
-    ! Yi: new solver
     case ('spectral_variation')
       mechanical_init         => grid_mechanical_spectral_variation_init
       mechanical_forward      => grid_mechanical_spectral_variation_forward
@@ -512,9 +511,8 @@ function parseLoadsteps(load_steps) result(loadCases)
         end do; write(IO_STDOUT,'(/)',advance='no')
       end do
       if (any(loadCases(l)%stress%mask .eqv. loadCases(l)%deformation%mask)) errorID = 831
-      if (any(.not.(loadCases(l)%stress%mask .or. transpose(loadCases(l)%stress%mask)) .and. (math_I3<1))) then
+      if (any(.not.(loadCases(l)%stress%mask .or. transpose(loadCases(l)%stress%mask)) .and. (math_I3<1))) &
         errorID = 838                                                                               ! no rotation is allowed by stress BC
-      endif
 
       if (loadCases(l)%stress%myType == 'P')     print'(2x,a)', 'P / MPa:'
       if (loadCases(l)%stress%myType == 'dot_P') print'(2x,a)', 'dot_P / MPa/s:'
