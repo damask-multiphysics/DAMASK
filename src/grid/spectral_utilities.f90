@@ -50,7 +50,7 @@ module spectral_utilities
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:,:),       pointer     :: vectorField_fourier           !< vector field in Fourier space
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:),         pointer     :: scalarField_fourier           !< scalar field in Fourier space
   complex(pREAL),            dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                     !< gamma operator (field) for spectral method
-  complex(pREAL),            dimension(:,:,:,:,:,:,:), allocatable :: G_hat                         !< G operator (field) for variation method
+  complex(pREAL),            dimension(:,:,:,:,:,:,:), allocatable :: G_hat                         !< G operator (field) for variational method
   complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi1st                         !< wave vector field for first derivatives
   complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi2nd                         !< wave vector field for second derivatives
   real(pREAL),               dimension(3,3,3,3)                    :: C_ref                         !< mechanic reference stiffness

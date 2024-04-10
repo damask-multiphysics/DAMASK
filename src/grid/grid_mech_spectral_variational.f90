@@ -3,9 +3,9 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Yi Hu, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Grid solver for mechanics: Spectral variation
+!> @brief Grid solver for mechanics: Spectral variational
 !--------------------------------------------------------------------------------------------------
-module grid_mechanical_spectral_variation
+module grid_mechanical_spectral_variational
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
   use PETScDMDA
@@ -89,11 +89,11 @@ module grid_mechanical_spectral_variation
   integer(kind(STATUS_OK)) :: status
 
   public :: &
-    grid_mechanical_spectral_variation_init, &
-    grid_mechanical_spectral_variation_solution, &
-    grid_mechanical_spectral_variation_forward, &
-    grid_mechanical_spectral_variation_updateCoords, &
-    grid_mechanical_spectral_variation_restartWrite
+    grid_mechanical_spectral_variational_init, &
+    grid_mechanical_spectral_variational_solution, &
+    grid_mechanical_spectral_variational_forward, &
+    grid_mechanical_spectral_variational_updateCoords, &
+    grid_mechanical_spectral_variational_restartWrite
 
   ! Missing interfaces for some PETSc versions
   interface MatCreateShell
@@ -160,7 +160,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Allocate all necessary fields and fill them with data, potentially from restart info.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_variation_init(num_grid)
+subroutine grid_mechanical_spectral_variational_init(num_grid)
 
   type(tDict), pointer, intent(in) :: num_grid
 
@@ -183,7 +183,7 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
   PC  :: pc
 
 
-  print'(/,1x,a)', '<<<+-  grid_mechanical_spectral_variation init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  grid_mechanical_spectral_variational init  -+>>>'; flush(IO_STDOUT)
 
   print'(/,1x,a)', 'J. Vondřejc et al., Computers & Mathematics with Applications 68(3):156–173, 2014'
   print'(  1x,a)', 'https://doi.org/10.1016/j.camwa.2014.05.014'//IO_EOL
@@ -339,13 +339,13 @@ subroutine grid_mechanical_spectral_variation_init(num_grid)
 
   end if restartRead2
 
-end subroutine grid_mechanical_spectral_variation_init
+end subroutine grid_mechanical_spectral_variational_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief solution for the variation scheme with internal iterations
+!> @brief solution for the variational scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_mechanical_spectral_variation_solution(incInfoIn) result(solution)
+function grid_mechanical_spectral_variational_solution(incInfoIn) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
@@ -374,14 +374,14 @@ function grid_mechanical_spectral_variation_solution(incInfoIn) result(solution)
   solution%iterationsNeeded = totalIter
   P_aim = merge(P_av,P_aim,params%stress_mask)
 
-end function grid_mechanical_spectral_variation_solution
+end function grid_mechanical_spectral_variational_solution
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !> @details find new boundary conditions and best F estimate for end of current timestep
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_variation_forward(cutBack,guess,Delta_t,Delta_t_old,t_remaining,&
+subroutine grid_mechanical_spectral_variational_forward(cutBack,guess,Delta_t,Delta_t_old,t_remaining,&
                                             deformation_BC,stress_BC,rotation_BC)
 
   logical,                  intent(in) :: &
@@ -452,13 +452,13 @@ subroutine grid_mechanical_spectral_variation_forward(cutBack,guess,Delta_t,Delt
   params%rotation_BC = rotation_BC
   params%Delta_t     = Delta_t
 
-end subroutine grid_mechanical_spectral_variation_forward
+end subroutine grid_mechanical_spectral_variational_forward
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Update coordinates.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_variation_updateCoords()
+subroutine grid_mechanical_spectral_variational_updateCoords()
 
   PetscErrorCode :: err_PETSc
   real(pREAL), dimension(:,:,:,:), pointer :: F
@@ -469,13 +469,13 @@ subroutine grid_mechanical_spectral_variation_updateCoords()
   call DMDAVecRestoreArrayReadF90(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
-end subroutine grid_mechanical_spectral_variation_updateCoords
+end subroutine grid_mechanical_spectral_variational_updateCoords
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write current solver and constitutive data for restart to file.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_variation_restartWrite()
+subroutine grid_mechanical_spectral_variational_restartWrite()
 
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
@@ -510,7 +510,7 @@ subroutine grid_mechanical_spectral_variation_restartWrite()
   call DMDAVecRestoreArrayReadF90(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
-end subroutine grid_mechanical_spectral_variation_restartWrite
+end subroutine grid_mechanical_spectral_variational_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
@@ -691,4 +691,4 @@ subroutine set_F_aim(snes, step, ierr)
 
 end subroutine set_F_aim
 
-end module grid_mechanical_spectral_variation
+end module grid_mechanical_spectral_variational
