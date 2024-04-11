@@ -23,7 +23,7 @@ module grid_mechanical_spectral_basic
   use math
   use rotations
   use spectral_utilities
-  use grid_mech_utilities
+  use grid_utilities
   use homogenization
   use discretization_grid
   use constants
