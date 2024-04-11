@@ -88,17 +88,11 @@ module spectral_utilities
   enum, bind(c); enumerator :: &
     DERIVATIVE_CONTINUOUS_ID, &
     DERIVATIVE_CENTRAL_DIFF_ID, &
-    DERIVATIVE_FWBW_DIFF_ID, &
-    DIVERGENCE_CORRECTION_NONE_ID, &
-    DIVERGENCE_CORRECTION_SIZE_ID, &
-    DIVERGENCE_CORRECTION_SIZE_GRID_ID
+    DERIVATIVE_FWBW_DIFF_ID
   end enum
 
   integer(kind(DERIVATIVE_CONTINUOUS_ID)) :: &
     spectral_derivative_ID
-
-  integer(kind(DIVERGENCE_CORRECTION_NONE_ID)) :: &
-    divergence_correction_ID
 
   public :: &
     spectral_utilities_init, &
@@ -169,19 +163,28 @@ subroutine spectral_utilities_init()
   cells1Red = cells(1)/2 + 1
   wgt = real(product(cells),pREAL)**(-1)
 
-  num%memory_efficient      = num_grid_fft%get_asBool('memory_efficient',     defaultVal=.true.)
+  num%memory_efficient = num_grid_fft%get_asBool('memory_efficient', defaultVal=.true.)
 
+!--------------------------------------------------------------------------------------------------
+! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and
+! resolution-independent divergence
   select case (num_grid_fft%get_asStr('divergence_correction',defaultVal='grid+size'))
     case ('none')
-      divergence_correction_ID = DIVERGENCE_CORRECTION_NONE_ID
-    case ('size')
-      divergence_correction_ID = DIVERGENCE_CORRECTION_SIZE_ID
+      do j = 1, 3
+       if (j /= minloc(geomSize,1) .and. j /= maxloc(geomSize,1)) &
+         scaledGeomSize = geomSize/geomSize(j)
+      end do
     case ('grid+size', 'size+grid')
-      divergence_correction_ID = DIVERGENCE_CORRECTION_SIZE_GRID_ID
+      do j = 1, 3
+       if (      j /= int(minloc(geomSize/real(cells,pREAL),1)) &
+           .and. j /= int(maxloc(geomSize/real(cells,pREAL),1))) &
+         scaledGeomSize = geomSize/geomSize(j)*real(cells(j),pREAL)
+      end do
+    case ('size')
+
     case default
       call IO_error(301,ext_msg=trim(num_grid_fft%get_asStr('divergence_correction')))
   end select
-
 
   select case (num_grid_fft%get_asStr('derivative',defaultVal='continuous'))
     case ('continuous')
@@ -194,23 +197,6 @@ subroutine spectral_utilities_init()
       call IO_error(892,ext_msg=trim(num_grid_fft%get_asStr('derivative')))
   end select
 
-!--------------------------------------------------------------------------------------------------
-! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and
-! resolution-independent divergence
-  if (divergence_correction_ID == DIVERGENCE_CORRECTION_NONE_ID) then
-    do j = 1, 3
-     if (j /= minloc(geomSize,1) .and. j /= maxloc(geomSize,1)) &
-       scaledGeomSize = geomSize/geomSize(j)
-    end do
-  elseif (divergence_correction_ID == DIVERGENCE_CORRECTION_SIZE_GRID_ID) then
-    do j = 1, 3
-     if (      j /= int(minloc(geomSize/real(cells,pREAL),1)) &
-         .and. j /= int(maxloc(geomSize/real(cells,pREAL),1))) &
-       scaledGeomSize = geomSize/geomSize(j)*real(cells(j),pREAL)
-    end do
-  else
-    scaledGeomSize = geomSize
-  end if
 
   select case(num_grid_fft%get_asStr('FFTW_plan_mode',defaultVal='FFTW_MEASURE'))
     case('fftw_estimate', 'FFTW_ESTIMATE')                                                          ! ordered from slow execution (but fast plan creation) to fast execution
