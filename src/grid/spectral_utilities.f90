@@ -37,7 +37,7 @@ module spectral_utilities
   real(pREAL), protected, public, dimension(3) :: scaledGeomSize                                    !< scaled geometry size for calculation of divergence
   integer :: &
     cells1Red, &                                                                                    !< cells(1)/2+1
-    cells2, &                                                                                       !< (local) cells in 2nd direction
+    cells2 = 0, &                                                                                   !< (local) cells in 2nd direction
     cells2Offset                                                                                    !< (local) cells offset in 2nd direction
 
 !--------------------------------------------------------------------------------------------------
@@ -221,6 +221,9 @@ subroutine spectral_utilities_init()
 
   cellsFFTW = int(cells,C_INTPTR_T)
 
+
+!--------------------------------------------------------------------------------------------------
+! set up FFTW data structures for tensor fields
   N = fftw_mpi_local_size_many_transposed(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)], &
                                           tensorSize,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD, &
                                           cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
@@ -233,35 +236,6 @@ subroutine spectral_utilities_init()
   call c_f_pointer(tensorField,tensorField_fourier, &
                    [3_C_INTPTR_T,3_C_INTPTR_T,int(cells1Red,  C_INTPTR_T),cellsFFTW(3),cells2FFTW])
 
-
-  N = fftw_mpi_local_size_many_transposed(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)], &
-                                          vectorSize,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD, &
-                                          cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
-  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (vector, real space)'
-  if (int(cells2FFTW) /= cells2) error stop 'domain decomposition mismatch (vector, Fourier space)'
-  vectorField = fftw_alloc_complex(N)
-  call c_f_pointer(vectorField,vectorField_real, &
-                   [3_C_INTPTR_T,int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
-  call c_f_pointer(vectorField,vectorField_fourier, &
-                   [3_C_INTPTR_T,int(cells1Red,  C_INTPTR_T),cellsFFTW(3),cells2FFTW])
-
-  N = fftw_mpi_local_size_3d_transposed(cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T), &
-                                        PETSC_COMM_WORLD,cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
-  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (scalar, real space)'
-  if (int(cells2FFTW) /= cells2) error stop 'domain decomposition mismatch (scalar, Fourier space)'
-  scalarField = fftw_alloc_complex(N)
-  call c_f_pointer(scalarField,scalarField_real, &
-                   [int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
-  call c_f_pointer(scalarField,scalarField_fourier, &
-                   [int(cells1Red,  C_INTPTR_T),cellsFFTW(3),cells2FFTW])
-
-!--------------------------------------------------------------------------------------------------
-! allocation
-  allocate (xi1st (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))          ! frequencies for first derivatives, only half the size for first dimension
-  allocate (xi2nd (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))          ! frequencies for second derivatives, only half the size for first dimension
-
-!--------------------------------------------------------------------------------------------------
-! tensor MPI fftw plans
   planTensorForth = fftw_mpi_plan_many_dft_r2c(3,cellsFFTW(3:1:-1),tensorSize, &
                                                FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
                                                tensorField_real,tensorField_fourier, &
@@ -274,7 +248,18 @@ subroutine spectral_utilities_init()
   if (.not. c_associated(planTensorBack))  error stop 'FFTW error c2r tensor'
 
 !--------------------------------------------------------------------------------------------------
-! vector MPI fftw plans
+! set up FFTW data structures for vector fields
+  N = fftw_mpi_local_size_many_transposed(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)], &
+                                          vectorSize,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD, &
+                                          cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
+  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (vector, real space)'
+  if (int(cells2FFTW) /= cells2) error stop 'domain decomposition mismatch (vector, Fourier space)'
+  vectorField = fftw_alloc_complex(N)
+  call c_f_pointer(vectorField,vectorField_real, &
+                   [3_C_INTPTR_T,int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
+  call c_f_pointer(vectorField,vectorField_fourier, &
+                   [3_C_INTPTR_T,int(cells1Red,  C_INTPTR_T),cellsFFTW(3),cells2FFTW])
+
   planVectorForth = fftw_mpi_plan_many_dft_r2c(3,cellsFFTW(3:1:-1),vectorSize, &
                                                FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
                                                vectorField_real,vectorField_fourier, &
@@ -287,7 +272,17 @@ subroutine spectral_utilities_init()
   if (.not. c_associated(planVectorBack))  error stop 'FFTW error c2r vector'
 
 !--------------------------------------------------------------------------------------------------
-! scalar MPI fftw plans
+! set up FFTW data structures for scalar fields
+  N = fftw_mpi_local_size_3d_transposed(cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T), &
+                                        PETSC_COMM_WORLD,cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
+  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (scalar, real space)'
+  if (int(cells2FFTW) /= cells2) error stop 'domain decomposition mismatch (scalar, Fourier space)'
+  scalarField = fftw_alloc_complex(N)
+  call c_f_pointer(scalarField,scalarField_real, &
+                   [int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
+  call c_f_pointer(scalarField,scalarField_fourier, &
+                   [int(cells1Red,  C_INTPTR_T),cellsFFTW(3),cells2FFTW])
+
   planScalarForth = fftw_mpi_plan_dft_r2c_3d(cellsFFTW(3),cellsFFTW(2),cellsFFTW(1), &
                                              scalarField_real,scalarField_fourier, &
                                              PETSC_COMM_WORLD,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_OUT)
@@ -297,8 +292,12 @@ subroutine spectral_utilities_init()
                                              PETSC_COMM_WORLD,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_IN)
   if (.not. c_associated(planScalarBack))  error stop 'FFTW error c2r scalar'
 
+
 !--------------------------------------------------------------------------------------------------
-! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
+! discrete angular frequencies, ordered as in FFTW (wrap around)
+  allocate (xi1st (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))          ! frequencies for first derivatives, only half the size for first dimension
+  allocate (xi2nd (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))          ! frequencies for second derivatives, only half the size for first dimension
+
   do j = cells2Offset+1, cells2Offset+cells2
     k_s(2) = j - 1
     if (j > cells(2)/2 + 1) k_s(2) = k_s(2) - cells(2)                                              ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
@@ -482,23 +481,20 @@ end function utilities_GammaConvolution
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief assemble G when spectral init
+!> @brief Assemble G.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_G_hat_init()
 
   integer :: &
     i, j, k, &
     l, m, n, o
-  logical :: err
   real(pREAL) :: xi_norm_2
-  complex(pREAL), dimension(3,3) :: delta
+  complex(pREAL), dimension(3,3), parameter :: delta = cmplx(math_I3,0.0_pREAL)
 
 
-  delta = cmplx(math_eye(3),0.0_pREAL,pREAL)
-
-  !$OMP PARALLEL DO PRIVATE(l,m,n,o,xi_norm_2,err)
+  !$OMP PARALLEL DO PRIVATE(l,m,n,o,xi_norm_2)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
-    if (any([i,j+cells2Offset,k] /= 1)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+    if (any([i,j+cells2Offset,k] /= 1)) then                                                        ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
       xi_norm_2 = abs(dot_product(xi1st(:,i,k,j), xi1st(:,i,k,j)))
       if (xi_norm_2 > 1.e-16_pREAL) then
 #ifndef __INTEL_COMPILER
