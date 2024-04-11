@@ -49,7 +49,7 @@ module spectral_utilities
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:,:,:),     pointer     :: tensorField_fourier           !< tensor field in Fourier space
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:,:),       pointer     :: vectorField_fourier           !< vector field in Fourier space
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:),         pointer     :: scalarField_fourier           !< scalar field in Fourier space
-  complex(pREAL),            dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                     !< gamma operator (field) for spectral method
+  complex(pREAL),            dimension(:,:,:,:,:,:,:), allocatable :: Gamma_hat                     !< gamma operator (field) for spectral method
   complex(pREAL),            dimension(:,:,:,:,:,:,:), allocatable :: G_hat                         !< G operator (field) for variational method
   complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi1st                         !< wave vector field for first derivatives
   complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi2nd                         !< wave vector field for second derivatives
@@ -316,13 +316,12 @@ subroutine spectral_utilities_init()
   end do; end do; end do
 
   if (num%memory_efficient) then                                                                    ! allocate just single fourth order tensor
-    allocate (gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
-  else                                                                                              ! precalculation of gamma_hat field
-    allocate (gamma_hat(3,3,3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
+    allocate (Gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
+  else                                                                                              ! precalculation of Gamma_hat field
+    allocate (Gamma_hat(3,3,3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
   end if
 
-  allocate (G_hat(3,3,3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
-  call utilities_G_hat_init()
+  G_hat = G_hat_init()
 
   call selfTest()
 
@@ -483,14 +482,18 @@ end function utilities_GammaConvolution
 !--------------------------------------------------------------------------------------------------
 !> @brief Assemble G.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_G_hat_init()
+function G_hat_init() result(G_hat_)
+
+  complex(pREAL), dimension(:,:,:,:,:,:,:), allocatable :: G_hat_                                   !< G operator (field) for variational method
 
   integer :: &
     i, j, k, &
     l, m, n, o
   real(pREAL) :: xi_norm_2
-  complex(pREAL), dimension(3,3), parameter :: delta = cmplx(math_I3,0.0_pREAL)
+  complex(pREAL), dimension(3,3), parameter :: delta = cmplx(math_I3,0.0_pREAL,pREAL)
 
+
+  allocate(G_hat_(3,3,3,3,cells1Red,cells(3),cells2))
 
   !$OMP PARALLEL DO PRIVATE(l,m,n,o,xi_norm_2)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
@@ -499,11 +502,11 @@ subroutine utilities_G_hat_init()
       if (xi_norm_2 > 1.e-16_pREAL) then
 #ifndef __INTEL_COMPILER
         do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
-            G_hat(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
+            G_hat_(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
         end do
 #else
         forall(l=1:3, m=1:3, n=1:3, o=1:3)
-            G_hat(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
+            G_hat_(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
         end forall
 #endif
       end if
@@ -511,7 +514,7 @@ subroutine utilities_G_hat_init()
   end do; end do; end do
   !$OMP END PARALLEL DO
 
-end subroutine utilities_G_hat_init
+end function G_hat_init
 
 
 !--------------------------------------------------------------------------------------------------
