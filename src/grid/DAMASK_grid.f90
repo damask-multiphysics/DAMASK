@@ -89,6 +89,7 @@ program DAMASK_grid
     nActiveFields = 0, &
     maxCutBack, &                                                                                   !< max number of cut backs
     stagItMax                                                                                       !< max number of field level staggered iterations
+  logical :: active_Gamma = .false., active_G = .false., active_parabolic = .false.
   integer(MPI_INTEGER_KIND) :: err_MPI
   character(len=pSTRLEN) :: &
     incInfo
@@ -164,6 +165,7 @@ program DAMASK_grid
       mechanical_solution     => grid_mechanical_spectral_basic_solution
       mechanical_updateCoords => grid_mechanical_spectral_basic_updateCoords
       mechanical_restartWrite => grid_mechanical_spectral_basic_restartWrite
+      active_Gamma = .true.
 
     case ('spectral_polarization')
       mechanical_init         => grid_mechanical_spectral_polarization_init
@@ -171,6 +173,7 @@ program DAMASK_grid
       mechanical_solution     => grid_mechanical_spectral_polarization_solution
       mechanical_updateCoords => grid_mechanical_spectral_polarization_updateCoords
       mechanical_restartWrite => grid_mechanical_spectral_polarization_restartWrite
+      active_Gamma = .true.
 
     case ('spectral_variational')
       mechanical_init         => grid_mechanical_spectral_variational_init
@@ -178,6 +181,7 @@ program DAMASK_grid
       mechanical_solution     => grid_mechanical_spectral_variational_solution
       mechanical_updateCoords => grid_mechanical_spectral_variational_updateCoords
       mechanical_restartWrite => grid_mechanical_spectral_variational_restartWrite
+      active_G = .true.
 
     case ('FEM')
       mechanical_init         => grid_mechanical_FEM_init
@@ -204,15 +208,17 @@ program DAMASK_grid
   thermalActive: if (solver%get_asStr('thermal',defaultVal = 'n/a') == 'spectral') then
     field = field + 1
     ID(field) = FIELD_THERMAL_ID
+    active_parabolic = .true.
   end if thermalActive
   damageActive: if (solver%get_asStr('damage',defaultVal = 'n/a') == 'spectral') then
     field = field + 1
     ID(field) = FIELD_DAMAGE_ID
+    active_parabolic = .true.
   end if damageActive
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
-  call spectral_utilities_init()
+  call spectral_utilities_init(active_Gamma, active_G, active_parabolic)
 
   do field = 2, nActiveFields
     select case (ID(field))
