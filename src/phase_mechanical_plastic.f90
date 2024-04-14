@@ -160,11 +160,11 @@ submodule(phase:mechanical) plastic
         dotState
     end function dislotungsten_dotState
 
-    module subroutine nonlocal_dotState(Mp,timestep,ph,en)
+    module subroutine nonlocal_dotState(Mp,Delta_T,ph,en)
       real(pREAL), dimension(3,3), intent(in) :: &
         Mp                                                                                          !< MandelStress
       real(pREAL), intent(in) :: &
-        timestep                                                                                    !< substepped crystallite time increment
+        Delta_T                                                                                     !< substepped crystallite time increment
       integer, intent(in) :: &
         ph, &
         en
