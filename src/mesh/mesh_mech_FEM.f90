@@ -129,7 +129,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   real(pREAL),                   pointer, dimension(:) :: px_scal
   real(pREAL),       allocatable, target, dimension(:) ::  x_scal
 
-  character(len=*), parameter            :: prefix = 'mechFE_'
+  character(len=*), parameter            :: prefix = 'mechanical_'
   PetscErrorCode                         :: err_PETSc
   real(pREAL), dimension(3,3) :: devNull
   type(tDict), pointer                   :: num_mech
