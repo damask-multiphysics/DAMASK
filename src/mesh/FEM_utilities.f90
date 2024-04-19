@@ -101,7 +101,7 @@ subroutine FEM_utilities_init(num_mesh)
                                &-snes_ksp_ew_rtol0 0.01 -snes_ksp_ew_rtolmax 0.01 &
                                &-ksp_type fgmres -ksp_max_it 25 ' // &
                                 num_mech%get_asStr('PETSc_options',defaultVal=''), 'mechanical_')
-  write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', p_s
+  write(petsc_optionsOrder,'(a,i0)') '-mechanical_petscspace_degree ', p_s
   petsc_options = petsc_options // ' ' // petsc_optionsOrder
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
