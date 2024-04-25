@@ -642,8 +642,7 @@ end subroutine panel
 !--------------------------------------------------------------------------------------------------
 subroutine IO_selfTest()
 
-  integer, dimension(:), allocatable :: chunkPos
-  character(len=:),      allocatable :: str,out
+  character(len=:),      allocatable :: str
   character(len=:), dimension(:), allocatable :: tokens
 
 
