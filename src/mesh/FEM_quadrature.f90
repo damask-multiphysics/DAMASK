@@ -69,44 +69,38 @@ subroutine FEM_quadrature_init()
   FEM_nQuadrature(2,3) = 6
 
   allocate(FEM_quadrature_weights(2,3)%p(FEM_nQuadrature(2,3)))
-  FEM_quadrature_weights(2,3)%p(1:3) = 2.2338158967801147e-1_pREAL
-  FEM_quadrature_weights(2,3)%p(4:6) = 1.0995174365532187e-1_pREAL
+  FEM_quadrature_weights(2,3)%p(1:3) = 2.8114980244097964825351432270207695e-1_pReal
+  FEM_quadrature_weights(2,3)%p(4:6) = 5.218353089235368507981901063125638e-2_pReal
 
   FEM_quadrature_points (2,3)%p = [ &
-    permutationStar21([4.4594849091596489e-1_pREAL]), &
-    permutationStar21([9.157621350977074e-2_pREAL]) ]
+    permutationStar21([1.6288285039589191090016180418490635e-1_pReal]), &
+    permutationStar21([4.7791988356756370000000000000000000e-1_pReal])]
 
 !--------------------------------------------------------------------------------------------------
 ! 2D quartic
-  FEM_nQuadrature(2,4) = 12
+  FEM_nQuadrature(2,4) = 6
 
   allocate(FEM_quadrature_weights(2,4)%p(FEM_nQuadrature(2,4)))
-  FEM_quadrature_weights(2,4)%p(1:3)  = 1.1678627572637937e-1_pREAL
-  FEM_quadrature_weights(2,4)%p(4:6)  = 5.0844906370206817e-2_pREAL
-  FEM_quadrature_weights(2,4)%p(7:12) = 8.285107561837358e-2_pREAL
+  FEM_quadrature_weights(2,4)%p(1:3) = (620._pReal + sqrt(213125._pReal - 53320._pReal * sqrt(10._pReal))) / 3720._pReal
+  FEM_quadrature_weights(2,4)%p(4:6) = (620._pReal - sqrt(213125._pReal - 53320._pReal * sqrt(10._pReal))) / 3720._pReal
 
   FEM_quadrature_points (2,4)%p = [ &
-    permutationStar21([2.4928674517091042e-1_pREAL]), &
-    permutationStar21([6.308901449150223e-2_pREAL]), &
-    permutationStar111([3.1035245103378440e-1_pREAL, 5.3145049844816947e-2_pREAL]) ]
+    permutationStar21([(8._pReal - sqrt(10._pReal) + sqrt(38._pReal - 44._pReal * sqrt(0.4_pReal))) / 18._pReal]), &
+    permutationStar21([(8._pReal - sqrt(10._pReal) - sqrt(38._pReal - 44._pReal * sqrt(0.4_pReal))) / 18._pReal])]
 
 !--------------------------------------------------------------------------------------------------
 ! 2D quintic
-  FEM_nQuadrature(2,5) = 16
+  FEM_nQuadrature(2,5) = 7
 
   allocate(FEM_quadrature_weights(2,5)%p(FEM_nQuadrature(2,5)))
-  FEM_quadrature_weights(2,5)%p(1:1)   = 1.4431560767778717e-1_pREAL
-  FEM_quadrature_weights(2,5)%p(2:4)   = 9.509163426728463e-2_pREAL
-  FEM_quadrature_weights(2,5)%p(5:7)   = 1.0321737053471825e-1_pREAL
-  FEM_quadrature_weights(2,5)%p(8:10)  = 3.2458497623198080e-2_pREAL
-  FEM_quadrature_weights(2,5)%p(11:16) = 2.7230314174434994e-2_pREAL
+  FEM_quadrature_weights(2,5)%p(1:3)   = (155._pReal - sqrt(15._pReal)) / 1200._pReal
+  FEM_quadrature_weights(2,5)%p(4:6)   = (155._pReal + sqrt(15._pReal)) / 1200._pReal
+  FEM_quadrature_weights(2,5)%p(7:7)   = 9._pReal/40._pReal
 
   FEM_quadrature_points (2,5)%p = [ &
-    permutationStar3([1._pREAL/3._pREAL]), &
-    permutationStar21([4.5929258829272316e-1_pREAL]), &
-    permutationStar21([1.705693077517602e-1_pREAL]), &
-    permutationStar21([5.0547228317030975e-2_pREAL]), &
-    permutationStar111([2.631128296346381e-1_pREAL, 8.3947774099576053e-2_pREAL]) ]
+    permutationStar21([(6._pReal - sqrt(15._pReal)) / 21._pReal]), &
+    permutationStar21([(6._pReal + sqrt(15._pReal)) / 21._pReal]), &
+    permutationStar3([1._pREAL/3._pREAL])]
 
 !--------------------------------------------------------------------------------------------------
 ! 3D linear
@@ -124,59 +118,49 @@ subroutine FEM_quadrature_init()
   allocate(FEM_quadrature_weights(3,2)%p(FEM_nQuadrature(3,2)))
   FEM_quadrature_weights(3,2)%p(1:4) = 0.25_pREAL
 
-  FEM_quadrature_points (3,2)%p = permutationStar31([1.3819660112501052e-1_pREAL])
+  FEM_quadrature_points (3,2)%p = permutationStar31([(5._pReal - sqrt(5._pReal)) / 20._pReal])
 
 !--------------------------------------------------------------------------------------------------
 ! 3D cubic
-  FEM_nQuadrature(3,3) = 14
+  FEM_nQuadrature(3,3) = 8
 
   allocate(FEM_quadrature_weights(3,3)%p(FEM_nQuadrature(3,3)))
-  FEM_quadrature_weights(3,3)%p(1:4)  = 7.3493043116361949e-2_pREAL
-  FEM_quadrature_weights(3,3)%p(5:8)  = 1.1268792571801585e-1_pREAL
-  FEM_quadrature_weights(3,3)%p(9:14) = 4.2546020777081467e-2_pREAL
+  FEM_quadrature_weights(3,3)%p(1:4)  = .125_pReal &
+                                      + sqrt((1715161837._pReal - 406006699._pReal * sqrt(17._pReal)) / 23101._pReal) / 3120._pReal
+  FEM_quadrature_weights(3,3)%p(5:8)  = .125_pReal &
+                                      - sqrt((1715161837._pReal - 406006699._pReal * sqrt(17._pReal)) / 23101._pReal) / 3120._pReal
 
   FEM_quadrature_points (3,3)%p = [ &
-    permutationStar31([9.273525031089123e-2_pREAL]), &
-    permutationStar31([3.108859192633006e-1_pREAL]), &
-    permutationStar22([4.5503704125649649e-2_pREAL]) ]
+    permutationStar31([(55._pReal - 3._pReal * sqrt(17._pReal) + sqrt(1022._pReal - 134._pReal * sqrt(17._pReal))) / 196._pReal]), &
+    permutationStar31([(55._pReal - 3._pReal * sqrt(17._pReal) - sqrt(1022._pReal - 134._pReal * sqrt(17._pReal))) / 196._pReal])]
 
 !--------------------------------------------------------------------------------------------------
-! 3D quartic (lower precision/unknown source)
-  FEM_nQuadrature(3,4) = 35
+! 3D quartic
+  FEM_nQuadrature(3,4) = 14
 
   allocate(FEM_quadrature_weights(3,4)%p(FEM_nQuadrature(3,4)))
-  FEM_quadrature_weights(3,4)%p(1:4)   = 0.0021900463965388_pREAL
-  FEM_quadrature_weights(3,4)%p(5:16)  = 0.0143395670177665_pREAL
-  FEM_quadrature_weights(3,4)%p(17:22) = 0.0250305395686746_pREAL
-  FEM_quadrature_weights(3,4)%p(23:34) = 0.0479839333057554_pREAL
-  FEM_quadrature_weights(3,4)%p(35)    = 0.0931745731195340_pREAL
+  FEM_quadrature_weights(3,4)%p(1:4)  = 7.34930431163619493435869458636788e-2_pReal
+  FEM_quadrature_weights(3,4)%p(5:8)  = 1.1268792571801585036501492847638892e-1_pReal
+  FEM_quadrature_weights(3,4)%p(9:14) = 4.254602077708146686093208377328816e-2_pReal
 
   FEM_quadrature_points (3,4)%p = [ &
-    permutationStar31([0.0267367755543735_pREAL]), &
-    permutationStar211([0.0391022406356488_pREAL, 0.7477598884818090_pREAL]), &
-    permutationStar22([0.4547545999844830_pREAL]), &
-    permutationStar211([0.2232010379623150_pREAL, 0.0504792790607720_pREAL]), &
-    permutationStar4([0.25_pREAL]) ]
+    permutationStar31([9.273525031089122628655892066032137e-2_pREAL]), &
+    permutationStar31([3.1088591926330060975814749494040332e-1_pREAL]), &
+    permutationStar22([4.55037041256496500e-2_pReal])]
 
 !--------------------------------------------------------------------------------------------------
-! 3D quintic (lower precision/unknown source)
-  FEM_nQuadrature(3,5) = 56
+! 3D quintic
+  FEM_nQuadrature(3,5) = 14
 
   allocate(FEM_quadrature_weights(3,5)%p(FEM_nQuadrature(3,5)))
-  FEM_quadrature_weights(3,5)%p(1:4)   = 0.0010373112336140_pREAL
-  FEM_quadrature_weights(3,5)%p(5:16)  = 0.0096016645399480_pREAL
-  FEM_quadrature_weights(3,5)%p(17:28) = 0.0164493976798232_pREAL
-  FEM_quadrature_weights(3,5)%p(29:40) = 0.0153747766513310_pREAL
-  FEM_quadrature_weights(3,5)%p(41:52) = 0.0293520118375230_pREAL
-  FEM_quadrature_weights(3,5)%p(53:56) = 0.0366291366405108_pREAL
+  FEM_quadrature_weights(3,5)%p(1:4)   = 1.1268792571801585079918565233328633e-1_pReal
+  FEM_quadrature_weights(3,5)%p(5:8)  = 7.349304311636194954371020548632750e-2_pReal
+  FEM_quadrature_weights(3,5)%p(9:14) = 4.254602077708146643806942812025744e-2_pReal
 
   FEM_quadrature_points (3,5)%p = [ &
-    permutationStar31([0.0149520651530592_pREAL]), &
-    permutationStar211([0.0340960211962615_pREAL, 0.1518319491659370_pREAL]), &
-    permutationStar211([0.0462051504150017_pREAL, 0.3549340560639790_pREAL]), &
-    permutationStar211([0.2281904610687610_pREAL, 0.0055147549744775_pREAL]), &
-    permutationStar211([0.3523052600879940_pREAL, 0.0992057202494530_pREAL]), &
-    permutationStar31([0.1344783347929940_pREAL]) ]
+    permutationStar31([3.1088591926330060979734573376345783e-1_pReal]), &
+    permutationStar31([9.273525031089122640232391373703061e-2_pReal]), &
+    permutationStar22([4.550370412564964949188052627933943e-2_pReal])]
 
   call selfTest()
 
