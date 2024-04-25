@@ -74,7 +74,7 @@ module mesh_mechanical_FEM
   real(pREAL), parameter :: eps = 1.0e-18_pREAL
 
   external :: &                                                                                     ! ToDo: write interfaces
-#if defined(PETSC_USE_64BIT_INDICES) || PETSC_VERSION_MINOR < 17
+#if defined(PETSC_USE_64BIT_INDICES) || PETSC_VERSION_MINOR < 16
     ISDestroy, &
 #endif
 #if PETSC_VERSION_MINOR > 18
@@ -373,9 +373,10 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
   PetscObject,intent(in)             :: dummy
   PetscErrorCode                     :: err_PETSc
   integer(MPI_INTEGER_KIND)          :: err_MPI
+  Vec                                :: f_local, xx_local
 
   PetscDS                            :: prob
-  Vec                                :: x_local, f_local, xx_local
+  Vec                                :: x_local
   PetscSection                       :: section
   real(pREAL), dimension(:), pointer :: x_scal, pf_scal
   real(pREAL), dimension(cellDof), target :: f_scal
