@@ -168,7 +168,7 @@ end subroutine FEM_quadrature_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief star 3 permutation of input
+!> @brief Star 3 permutation.
 !--------------------------------------------------------------------------------------------------
 pure function permutationStar3(point) result(qPt)
 
@@ -183,7 +183,7 @@ end function permutationStar3
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief star 21 permutation of input
+!> @brief Star 21 permutation.
 !--------------------------------------------------------------------------------------------------
 pure function permutationStar21(point) result(qPt)
 
@@ -200,27 +200,7 @@ end function permutationStar21
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief star 111 permutation of input
-!--------------------------------------------------------------------------------------------------
-pure function permutationStar111(point) result(qPt)
-
-  real(pREAL), dimension(12)            :: qPt
-  real(pREAL), dimension(2), intent(in) :: point
-
-
-  qPt = pack(matmul(triangle,reshape([ &
-    point(1), point(2), 1.0_pREAL - point(1) - point(2), &
-    point(1), 1.0_pREAL - point(1) - point(2), point(2), &
-    point(2), point(1), 1.0_pREAL - point(1) - point(2), &
-    point(2), 1.0_pREAL - point(1) - point(2), point(1), &
-    1.0_pREAL - point(1) - point(2), point(2), point(1), &
-    1.0_pREAL - point(1) - point(2), point(1), point(2)],[3,6])),.true.)
-
-end function permutationStar111
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief star 4 permutation of input
+!> @brief Star 4 permutation.
 !--------------------------------------------------------------------------------------------------
 pure function permutationStar4(point) result(qPt)
 
@@ -235,7 +215,7 @@ end function permutationStar4
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief star 31 permutation of input
+!> @brief Star 31 permutation.
 !--------------------------------------------------------------------------------------------------
 pure function permutationStar31(point) result(qPt)
 
@@ -253,7 +233,7 @@ end function permutationStar31
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief star 22 permutation of input
+!> @brief Star 22 permutation.
 !--------------------------------------------------------------------------------------------------
 function permutationStar22(point) result(qPt)
 
@@ -270,70 +250,6 @@ function permutationStar22(point) result(qPt)
     point(1), 0.5_pREAL - point(1), 0.5_pREAL - point(1), point(1)],[4,6])),.true.)
 
 end function permutationStar22
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief star 211 permutation of input
-!--------------------------------------------------------------------------------------------------
-pure function permutationStar211(point) result(qPt)
-
-  real(pREAL), dimension(36)            :: qPt
-  real(pREAL), dimension(2), intent(in) :: point
-
-
-  qPt = pack(matmul(tetrahedron,reshape([ &
-    point(1), point(1), point(2), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), &
-    point(1), point(1), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(2), &
-    point(1), point(2), point(1), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), &
-    point(1), point(2), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(1), &
-    point(1), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(1), point(2), &
-    point(1), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(2), point(1), &
-    point(2), point(1), point(1), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), &
-    point(2), point(1), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(1), &
-    point(2), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(1), point(1), &
-    1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(1), point(1), point(2), &
-    1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(1), point(2), point(1), &
-    1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(2), point(1), point(1)],[4,12])),.true.)
-
-end function permutationStar211
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief star 1111 permutation of input
-!--------------------------------------------------------------------------------------------------
-pure function permutationStar1111(point) result(qPt)
-
-  real(pREAL), dimension(72)            :: qPt
-  real(pREAL), dimension(3), intent(in) :: point
-
-
-  qPt = pack(matmul(tetrahedron,reshape([ &
-    point(1), point(2), point(3), 1.0_pREAL - point(1) - point(2)- point(3), &
-    point(1), point(2), 1.0_pREAL - point(1) - point(2)- point(3), point(3), &
-    point(1), point(3), point(2), 1.0_pREAL - point(1) - point(2)- point(3), &
-    point(1), point(3), 1.0_pREAL - point(1) - point(2)- point(3), point(2), &
-    point(1), 1.0_pREAL - point(1) - point(2)- point(3), point(2), point(3), &
-    point(1), 1.0_pREAL - point(1) - point(2)- point(3), point(3), point(2), &
-    point(2), point(1), point(3), 1.0_pREAL - point(1) - point(2)- point(3), &
-    point(2), point(1), 1.0_pREAL - point(1) - point(2)- point(3), point(3), &
-    point(2), point(3), point(1), 1.0_pREAL - point(1) - point(2)- point(3), &
-    point(2), point(3), 1.0_pREAL - point(1) - point(2)- point(3), point(1), &
-    point(2), 1.0_pREAL - point(1) - point(2)- point(3), point(1), point(3), &
-    point(2), 1.0_pREAL - point(1) - point(2)- point(3), point(3), point(1), &
-    point(3), point(1), point(2), 1.0_pREAL - point(1) - point(2)- point(3), &
-    point(3), point(1), 1.0_pREAL - point(1) - point(2)- point(3), point(2), &
-    point(3), point(2), point(1), 1.0_pREAL - point(1) - point(2)- point(3), &
-    point(3), point(2), 1.0_pREAL - point(1) - point(2)- point(3), point(1), &
-    point(3), 1.0_pREAL - point(1) - point(2)- point(3), point(1), point(2), &
-    point(3), 1.0_pREAL - point(1) - point(2)- point(3), point(2), point(1), &
-    1.0_pREAL - point(1) - point(2)- point(3), point(1), point(2), point(3), &
-    1.0_pREAL - point(1) - point(2)- point(3), point(1), point(3), point(2), &
-    1.0_pREAL - point(1) - point(2)- point(3), point(2), point(1), point(3), &
-    1.0_pREAL - point(1) - point(2)- point(3), point(2), point(3), point(1), &
-    1.0_pREAL - point(1) - point(2)- point(3), point(3), point(1), point(2), &
-    1.0_pREAL - point(1) - point(2)- point(3), point(3), point(2), point(1)],[4,24])),.true.)
-
-end function permutationStar1111
 
 
 !--------------------------------------------------------------------------------------------------
