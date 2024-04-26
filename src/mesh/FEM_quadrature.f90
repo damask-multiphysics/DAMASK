@@ -13,12 +13,12 @@ module FEM_quadrature
   real(pREAL),   dimension(2,3),       parameter :: &
     triangle    = reshape([-1.0_pREAL, -1.0_pREAL, &
                             1.0_pREAL, -1.0_pREAL, &
-                           -1.0_pREAL,  1.0_pREAL], shape=[2,3])
+                           -1.0_pREAL,  1.0_pREAL], shape=shape(triangle))
   real(pREAL),   dimension(3,4),       parameter :: &
     tetrahedron = reshape([-1.0_pREAL, -1.0_pREAL, -1.0_pREAL, &
                             1.0_pREAL, -1.0_pREAL, -1.0_pREAL, &
                            -1.0_pREAL,  1.0_pREAL, -1.0_pREAL, &
-                           -1.0_pREAL, -1.0_pREAL,  1.0_pREAL], shape=[3,4])
+                           -1.0_pREAL, -1.0_pREAL,  1.0_pREAL], shape=shape(tetrahedron))
 
   type :: group_real                                                                                !< variable length datatype
     real(pREAL), dimension(:), allocatable :: p
@@ -37,7 +37,7 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief initializes FEM interpolation data
+!> @brief Initialize FEM interpolation data.
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_quadrature_init()
 

@@ -2,7 +2,7 @@ name: Grid and Mesh Solver
 on: [push]
 
 env:
-  PETSC_VERSION: '3.20.5'
+  PETSC_VERSION: '3.21.0'
   HOMEBREW_NO_ANALYTICS: 'ON'     # Make Homebrew installation a little quicker
   HOMEBREW_NO_AUTO_UPDATE: 'ON'
   HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK: 'ON'
@@ -67,7 +67,7 @@ jobs:
         run: |
           cd petsc-${PETSC_VERSION}
           ./configure --with-fc=gfortran --with-cc=gcc --with-cxx=g++ \
-          --download-openmpi --download-fftw --download-hdf5 --download-hdf5-fortran-bindings=1 --download-zlib \
+          --download-openmpi --download-fftw --download-hdf5 --with-hdf5-fortran-bindings=1 --download-zlib \
           --with-mpi-f90module-visibility=1
           make all
 
@@ -107,9 +107,7 @@ jobs:
           | sudo tee /etc/apt/sources.list.d/oneAPI.list
           sudo apt-get update
           sudo apt-get install \
-          intel-basekit \
-          intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic intel-oneapi-compiler-fortran \
-          intel-oneapi-openmp intel-oneapi-mkl-devel
+          intel-basekit intel-hpckit
           source /opt/intel/oneapi/setvars.sh
           printenv >> $GITHUB_ENV
 
@@ -128,7 +126,7 @@ jobs:
       - name: PETSc - Prepare
         run: |
           tar -xf download/petsc-${PETSC_VERSION}.tar.gz -C .
-          sed -i "1800s/if not os.path.isfile(os.path.join(self.packageDir,self.configureName)):/if True:/g" \
+          sed -i "1802s/if not os.path.isfile(os.path.join(self.packageDir,self.configureName)):/if True:/g" \
           ./petsc-${PETSC_VERSION}/config/BuildSystem/config/package.py
           export PETSC_DIR=${PWD}/petsc-${PETSC_VERSION}
           export PETSC_ARCH=intel
@@ -148,7 +146,7 @@ jobs:
           --with-fc=mpiifx \
           --with-cc=mpiicx \
           --with-cxx=mpiicpx \
-          --download-fftw --download-hdf5 --download-hdf5-fortran-bindings=1 --download-zlib
+          --download-fftw --download-hdf5 --with-hdf5-fortran-bindings=1 --download-zlib
           make all
 
       - name: DAMASK - Compile

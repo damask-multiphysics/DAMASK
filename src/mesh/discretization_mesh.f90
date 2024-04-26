@@ -56,7 +56,7 @@ module discretization_mesh
   real(pREAL), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
-#if defined(PETSC_USE_64BIT_INDICES) || PETSC_VERSION_MINOR < 17
+#if defined(PETSC_USE_64BIT_INDICES) || PETSC_VERSION_MINOR < 16
   external :: &
     DMDestroy
 #endif

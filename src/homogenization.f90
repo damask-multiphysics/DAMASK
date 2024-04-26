@@ -257,8 +257,10 @@ subroutine homogenization_mechanical_response(status,Delta_t,cell_start,cell_end
     converged = converged .and. all([(phase_damage_constitutive(Delta_t,co,ce)==STATUS_OK,co=1,homogenization_Nconstituents(ho))])
 
     if (.not. converged) then
-      if (status == STATUS_OK) print*, ' Cell ', ce, ' failed (damage)'
-      status = STATUS_FAIL_PHASE_DAMAGE
+      if (status == STATUS_OK) then
+        print*, ' Cell ', ce, ' failed (damage)'
+        status = STATUS_FAIL_PHASE_DAMAGE
+      end if
     end if
   end do
   !$OMP END PARALLEL DO
