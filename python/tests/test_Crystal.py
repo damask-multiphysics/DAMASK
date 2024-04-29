@@ -1,8 +1,10 @@
 import pytest
 import numpy as np
+from pathlib import Path
 
 import damask
 from damask import Crystal
+from damask import util
 
 class TestCrystal:
 
@@ -118,3 +120,32 @@ class TestCrystal:
         with pytest.raises(ValueError):
             crystal.relation_operations(relationship,crystal)
 
+    @pytest.mark.parametrize('crystal', [Crystal(lattice='cF'),
+                                         Crystal(lattice='cI'),
+                                         Crystal(lattice='hP'),
+                                         Crystal(lattice='tI',c=1.2)])
+    @pytest.mark.parametrize('mode',['slip','twin'])
+    @pytest.mark.need_damaskroot
+    def test_system_match(self,crystal,mode,damaskroot):
+        if crystal.lattice == 'tI' and mode == 'twin': return
+
+        raw = []
+        name = f'{crystal.lattice.upper()}_SYSTEM{mode.upper()}'
+        with open(Path(damaskroot).expanduser()/'src'/'crystal.f90') as f:
+            in_matrix = False
+            for line in [l for l in f if l.split('!')[0].strip()]:
+                if f'shape({name})' in line: break
+                if in_matrix:
+                    entries = line.split('&')[0].strip().split(',')
+                    raw.append(list(filter(None, entries)))
+                in_matrix |= line.strip().startswith(f'{name}') and 'reshape' in line
+
+        d_fortran,p_fortran = np.hsplit(np.array(raw).astype(int),2)
+        if crystal.lattice == 'hP':
+            d_fortran = util.Bravais_to_Miller(uvtw=d_fortran)
+            p_fortran = util.Bravais_to_Miller(hkil=p_fortran)
+
+        python = crystal.kinematics(mode)
+
+        assert np.array_equal(d_fortran,np.vstack(python['direction']))
+        assert np.array_equal(p_fortran,np.vstack(python['plane']))
