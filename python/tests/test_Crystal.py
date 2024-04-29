@@ -133,17 +133,17 @@ class TestCrystal:
         name = f'{crystal.lattice.upper()}_SYSTEM{mode.upper()}'
         with open(Path(damaskroot).expanduser()/'src'/'crystal.f90') as f:
             in_matrix = False
-            for line in f:
-                if not line.strip() or not line.split('!')[0].strip(): continue
+            for line in [l for l in f if l.split('!')[0].strip()]:
                 if f'shape({name})' in line: break
                 if in_matrix:
                     entries = line.split('&')[0].strip().split(',')
                     raw.append(list(filter(None, entries)))
-                if line.strip().startswith(f'{name}') and 'reshape' in line: in_matrix = True
+                in_matrix |= line.strip().startswith(f'{name}') and 'reshape' in line
 
         d_fortran,p_fortran = np.hsplit(np.array(raw).astype(int),2)
-        if crystal.lattice == 'hP': d_fortran = util.Bravais_to_Miller(uvtw=d_fortran)
-        if crystal.lattice == 'hP': p_fortran = util.Bravais_to_Miller(hkil=p_fortran)
+        if crystal.lattice == 'hP':
+            d_fortran = util.Bravais_to_Miller(uvtw=d_fortran)
+            p_fortran = util.Bravais_to_Miller(hkil=p_fortran)
 
         python = crystal.kinematics(mode)
 
