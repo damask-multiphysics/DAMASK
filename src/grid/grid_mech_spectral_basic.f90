@@ -112,7 +112,6 @@ subroutine grid_mechanical_spectral_basic_init(num_grid)
   real(pREAL), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
   integer(HID_T) :: fileHandle, groupHandle
   type(tDict), pointer :: &
-    num_grid_fft, &
     num_grid_mech
   character(len=:), allocatable :: &
     extmsg, &
@@ -129,7 +128,6 @@ subroutine grid_mechanical_spectral_basic_init(num_grid)
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid_fft =>  num_grid%get_dict('FFT',defaultVal=emptyDict)
   num_grid_mech => num_grid%get_dict('mechanical',defaultVal=emptyDict)
 
   num%itmin           = num_grid_mech%get_asInt('N_iter_min',defaultVal=1)
@@ -288,7 +286,6 @@ function grid_mechanical_spectral_basic_solution(incInfoIn) result(solution)
 
   solution%converged = reason > 0
   solution%iterationsNeeded = totalIter
-  solution%termIll = status /= STATUS_OK
   P_aim = merge(P_av,P_aim,params%stress_mask)
 
 end function grid_mechanical_spectral_basic_solution
@@ -452,8 +449,8 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   divTol = max(maxval(abs(P_av))*num%eps_div_rtol, num%eps_div_atol)
   BCTol = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
-  if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL)) &
-       .or. status /= STATUS_OK) then
+  if (totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL) &
+       .and.  status == STATUS_OK) then
     reason = 1
   elseif (totalIter >= num%itmax) then
     reason = -1

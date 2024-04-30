@@ -3,7 +3,7 @@ from typing import Optional, Union, Sequence, Dict, Any, List
 import numpy as np
 import h5py
 
-from ._typehints import FileHandle, FloatSequence, StrSequence
+from ._typehints import FloatSequence, StrSequence
 from . import YAML
 from . import Rotation
 from . import Orientation
@@ -18,8 +18,7 @@ class ConfigMaterial(YAML):
 
     Manipulate material configurations for storage in YAML format.
     A complete material configuration file has the entries 'material',
-    'phase', and 'homogenization'. For use in DAMASK, it needs to be
-    stored as 'material.yaml'.
+    'phase', and 'homogenization'.
 
     """
 
@@ -54,43 +53,6 @@ class ConfigMaterial(YAML):
                 kwargs[arg] = value
 
         super().__init__(config,**kwargs)
-
-
-    def save(self,
-             fname: FileHandle = 'material.yaml',
-             **kwargs):
-        """
-        Save to YAML file.
-
-        Parameters
-        ----------
-        fname : file, str, or pathlib.Path, optional
-            Filename or file for writing. Defaults to 'material.yaml'.
-        **kwargs
-            Keyword arguments parsed to yaml.dump.
-
-        """
-        super().save(fname,**kwargs)
-
-
-    @classmethod
-    def load(cls,
-             fname: FileHandle = 'material.yaml') -> 'ConfigMaterial':
-        """
-        Load from YAML file.
-
-        Parameters
-        ----------
-        fname : file, str, or pathlib.Path, optional
-            Filename or file to read from. Defaults to 'material.yaml'.
-
-        Returns
-        -------
-        loaded : damask.ConfigMaterial
-            Material configuration from file.
-
-        """
-        return super(ConfigMaterial,cls).load(fname)
 
 
     @staticmethod

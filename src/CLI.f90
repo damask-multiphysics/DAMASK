@@ -6,7 +6,7 @@
 !> @brief Parse command line interface for PETSc-based solvers
 !--------------------------------------------------------------------------------------------------
 #define PETSC_MINOR_MIN 12
-#define PETSC_MINOR_MAX 20
+#define PETSC_MINOR_MAX 21
 
 module CLI
   use, intrinsic :: ISO_fortran_env
@@ -46,11 +46,13 @@ subroutine CLI_init()
 --  UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION ---
 #endif
 #if    PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==18
-  character(len=*), parameter :: PETSc_DOI = '10.2172/1893326'
+#define PETSC_DOI '10.2172/1893326'
 #elif  PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==19
-  character(len=*), parameter :: PETSc_DOI = '10.2172/1968587'
+#define PETSC_DOI '10.2172/1968587'
 #elif  PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==20
-  character(len=*), parameter :: PETSc_DOI = '10.2172/2205494'
+#define PETSC_DOI '10.2172/2205494'
+#elif  PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==21
+#define PETSC_DOI '10.2172/2337606'
 #endif
   character(len=:), allocatable :: &
     commandLine, &                                                                                  !< command line call as string
@@ -65,7 +67,9 @@ subroutine CLI_init()
     i, s
   integer, dimension(8) :: &
     dateAndTime
-
+#ifdef PETSC_DOI
+  character(len=*), parameter :: PETSc_DOI = PETSC_DOI
+#endif
 
   workingDirArg = getCWD()
 
@@ -97,7 +101,9 @@ subroutine CLI_init()
   print'(1x,a)', 'https://doi.org/10.1016/j.commatsci.2018.04.030'//IO_EOL
 #if PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18
   print'(1x,a,i0,a,i0)', 'S. Balay et al., PETSc/TAO User Manual Revision ',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR
+#ifdef PETSC_DOI
   print'(1x,a)', 'https://doi.org/'//PETSc_DOI
+#endif
 #endif
   print'(/,1x,a)', 'Version: '//DAMASKVERSION
 

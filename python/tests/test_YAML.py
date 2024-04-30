@@ -19,7 +19,7 @@ class TestYAML:
         assert YAML(config,p=2)['p'] == 2
 
     @pytest.mark.parametrize('flow_style',[None,True,False])
-    def test_load_save_str(self,tmp_path,flow_style):
+    def test_load_save_path(self,tmp_path,flow_style):
         config = YAML()
         config['A'] = 1
         config['B'] = [2,3]

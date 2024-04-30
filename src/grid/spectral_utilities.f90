@@ -71,8 +71,7 @@ module spectral_utilities
        iterationsNeeded  = 0
     logical :: &
        converged         = .true., &
-       stagConverged     = .true., &
-       termIll           = .false.
+       stagConverged     = .true.
   end type tSolutionState
 
   type :: tNumerics

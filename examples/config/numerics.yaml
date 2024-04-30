@@ -24,6 +24,10 @@ solver:
       eps_rel_div(P): 5.0e-4            # relative tolerance for fulfillment of stress equilibrium
       eps_abs_P: 1.0e3                  # absolute tolerance for fulfillment of stress BC
       eps_rel_P: 1.0e-3                 # relative tolerance for fulfillment of stress BC
+      eps_abs_curl(F): 1.0e-10          # absolute tolerance for fulfillment of strain compatibility
+      eps_rel_curl(F): 5.0e-4           # relative tolerance for fulfillment of strain compatibility
+      alpha: 1.0                        # polarization scheme parameter 0.0 < alpha < 2.0 (1.0: AL scheme, 2.0: accelerated scheme)
+      beta: 1.0                         # polarization scheme parameter 0.0 <  beta < 2.0 (1.0: AL scheme, 2.0: accelerated scheme)
       update_gamma: false               # update Gamma-operator with current dPdF (not possible if FFT: memory_efficient == true)
       PETSc_options: -snes_type ngmres -snes_ngmres_anderson   # PETSc solver options
 
@@ -33,10 +37,6 @@ solver:
       derivative: continuous            # approximation used for derivatives in Fourier space {continuous, central_difference, FWBW_difference}
       FFTW_plan_mode: FFTW_MEASURE      # planning-rigor flags, see manual at https://www.fftw.org/fftw3_doc/Planner-Flags.html
       FFTW_timelimit: -1.0              # time limit of plan creation for FFTW, see manual on www.fftw.org. (-1.0: disable time limit)
-      alpha: 1.0                        # polarization scheme parameter 0.0 < alpha < 2.0 (1.0: AL scheme, 2.0: accelerated scheme)
-      beta: 1.0                         # polarization scheme parameter 0.0 <  beta < 2.0 (1.0: AL scheme, 2.0: accelerated scheme)
-      eps_abs_curl(F): 1.0e-10          # absolute tolerance for fulfillment of strain compatibility
-      eps_rel_curl(F): 5.0e-4           # relative tolerance for fulfillment of strain compatibility
 
   mesh:
     N_cutback_max:        3             # maximum cut back level (0: 1, 1: 0.5, 2: 0.25, etc)
@@ -87,7 +87,7 @@ phase:
       eps_abs_Lp:              1.0e-8   # absolute tolerance in Lp residuum
       N_iter_Lp_max:           40       # stress loop limit for Lp
       f_update_jacobi_Lp:      1        # frequency of Jacobian update of residuum in Lp
-      integrator_state:        FPI      # integration method (FPI = Fixed Point Iteration, Euler = Euler, AdaptiveEuler = Adaptive Euler, RK4 = classical 4th order Runge-Kutta, RKCK45 = 5th order Runge-Kutta Cash-Karp)
+      integrator_state:        FPI      # integration method (FPI = Fixed Point Iteration, Euler = Euler, Euler_adaptive = Adaptive Euler, RK4 = classical 4th order Runge-Kutta, RKCK45 = 5th order Runge-Kutta Cash-Karp)
 
     eigen:
       r_linesearch_Li:         0.5      # factor to decrease the step if Li calculation fails to converge

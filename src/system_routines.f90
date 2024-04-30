@@ -153,7 +153,7 @@ function getCWD()
 
   character(len=:), allocatable :: getCWD
 
-  character(kind=C_CHAR), dimension(pPathLen+1) :: getCWD_Cstring
+  character(kind=C_CHAR,len=(pPathLen+1)) :: getCWD_Cstring
   integer(C_INT) :: stat
 
 
@@ -175,7 +175,7 @@ function getHostName()
 
   character(len=:), allocatable :: getHostName
 
-  character(kind=C_CHAR), dimension(pSTRLEN+1) :: getHostName_Cstring
+  character(kind=C_CHAR,len=(pSTRLEN+1)) :: getHostName_Cstring
   integer(C_INT) :: stat
 
 
@@ -197,7 +197,7 @@ function getUserName()
 
   character(len=:), allocatable :: getUserName
 
-  character(kind=C_CHAR), dimension(pSTRLEN+1) :: getUserName_Cstring
+  character(kind=C_CHAR,len=(pSTRLEN+1)) :: getUserName_Cstring
   integer(C_INT) :: stat
 
 
@@ -211,32 +211,31 @@ function getUserName()
 
 end function getUserName
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert C string to Fortran string.
 !> @details: C string is NULL terminated and, hence, longer by one than the Fortran string.
 !--------------------------------------------------------------------------------------------------
 pure function c_f_string(c_string) result(f_string)
 
-  character(kind=C_CHAR), dimension(:), intent(in) :: c_string
-  character(len=:),       allocatable              :: f_string
+  character(kind=C_CHAR,len=*), intent(in) :: c_string
+  character(len=:), allocatable            :: f_string
 
   integer(pI64) :: i
 
 
-  allocate(character(len=size(c_string,kind=pI64))::f_string)
-  arrayToString: do i=1_pI64,len(f_string,pI64)
-    if (c_string(i) /= C_NULL_CHAR) then
-      f_string(i:i)=c_string(i)
+  allocate(character(len=len(c_string,kind=pI64))::f_string)
+  do i=1_pI64,len(f_string,pI64)
+    if (c_string(i:i) /= C_NULL_CHAR) then
+      f_string(i:i)=c_string(i:i)
     else
       f_string = f_string(:i-1_pI64)
       exit
     end if
-  end do arrayToString
+  end do
 
 end function c_f_string
 
-
+#if __INTEL_COMPILER_BUILD_DATE < 20240000
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert Fortran string to C string.
 !> @details: C string is NULL terminated and, hence, longer by one than the Fortran string.
@@ -244,12 +243,13 @@ end function c_f_string
 pure function f_c_string(f_string) result(c_string)
 
   character(len=*), intent(in) :: f_string
-  character(kind=C_CHAR), dimension(len_trim(f_string,pI64)+1_pI64) :: c_string
+  character(kind=C_CHAR,len=len_trim(f_string,pI64)+1_pI64) :: c_string
 
 
-  c_string = transfer(trim(f_string)//C_NULL_CHAR,c_string,size=size(c_string,kind=pI64))
+  c_string = trim(f_string)//C_NULL_CHAR
 
 end function f_c_string
+#endif
 
 
 !--------------------------------------------------------------------------------------------------

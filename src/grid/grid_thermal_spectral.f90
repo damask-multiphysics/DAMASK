@@ -166,7 +166,7 @@ subroutine grid_thermal_spectral_init(num_grid)
     dotT_lastInc = reshape(tempN,[cells(1),cells(2),cells3])
   else
     T = discretization_grid_getInitialCondition('T')
-    T_lastInc = T(0:,0:,0:)
+    T_lastInc = T(0:,0:,lbound(T,3):)
     T_stagInc = T_lastInc
     dotT_lastInc = 0.0_pREAL * T_lastInc
   end if restartRead
@@ -211,13 +211,16 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   solution%converged = reason > 0 .and. status == STATUS_OK
   solution%iterationsNeeded = merge(totalIter,num%itmax,solution%converged)
 
+  call VecMin(T_PETSc,devNull,T_min,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecMax(T_PETSc,devNull,T_max,err_PETSc)
+  CHKERRQ(err_PETSc)
+
   call SNESGetDM(SNES_thermal,DM_thermal,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(DM_thermal,T_PETSc,T,err_PETSc)                                           ! returns 0-indexed T
   CHKERRQ(err_PETSc)
 
-  T_min = minval(T)
-  T_max = maxval(T)
   stagNorm = maxval(abs(T - T_stagInc))
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)

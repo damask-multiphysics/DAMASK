@@ -990,6 +990,7 @@ class TestRotation:
                                                  (Rotation.from_axis_angle,        np.array([1,0,0,4])),
                                                  (Rotation.from_axis_angle,        np.array([1,1,0,1])),
                                                  (Rotation.from_matrix,            np.random.rand(3,3)),
+                                                 (Rotation.from_matrix,            np.array([[2,0,0],[0,2,0],[0,1,0]])),
                                                  (Rotation.from_matrix,            np.array([[1,1,0],[1,2,0],[0,0,1]])),
                                                  (Rotation.from_Rodrigues_vector,  np.array([1,0,0,-1])),
                                                  (Rotation.from_Rodrigues_vector,  np.array([1,1,0,1])),
@@ -1128,10 +1129,13 @@ class TestRotation:
         R = Rotation.from_random()
         assert (R/R).isclose(R*R**(-1)) and (R/R).isclose(Rotation())
 
-    @pytest.mark.parametrize('item',[np.ones(3),np.ones((3,3)), np.ones((3,3,3,3))])
-    def test_apply(self,item):
-        r = Rotation.from_random()
-        assert (r.apply(item) == r@item).all()
+    @pytest.mark.parametrize('shape',[None,2,(2,3),(2,2),(2,3,3,3)])
+    @pytest.mark.parametrize('item',[np.random.rand(3),np.random.rand(3,3), np.random.rand(3,3,3,3)])
+    def test_apply(self,item,shape):
+        r = Rotation.from_random(shape)
+        i = r*~r
+        applied = i.apply(item)
+        assert np.allclose(np.broadcast_to(item,applied.shape),applied)
 
     @pytest.mark.parametrize('angle',[10,20,30,40,50,60,70,80,90,100,120])
     def test_average(self,angle):

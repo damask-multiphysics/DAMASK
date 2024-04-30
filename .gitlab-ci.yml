@@ -74,7 +74,7 @@ pytest:
   stage: python
   script:
     - cd python
-    - pytest --basetemp ${TESTROOT}/python -v --cov
+    - pytest --basetemp ${TESTROOT}/python -v --cov --damaskroot=${CI_PROJECT_DIR}
     - coverage report --fail-under=90 --show-missing
 
 mypy:

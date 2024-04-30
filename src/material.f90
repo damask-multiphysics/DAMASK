@@ -91,7 +91,7 @@ subroutine parse()
                           constituent, &                                                            !> constituent definition
                           homogenization
 
-  class(tItem), pointer :: item
+  type(tItem), pointer :: item
   integer, dimension(:), allocatable :: &
     counterPhase, &
     counterHomogenization, &
