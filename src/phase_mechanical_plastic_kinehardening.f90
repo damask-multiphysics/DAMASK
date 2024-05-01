@@ -140,14 +140,9 @@ module function plastic_kinehardening_init() result(myPlasticity)
       prm%systems_sl = crystal_labels_slip(N_sl,phase_lattice(ph))
       prm%P = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
-      if (phase_lattice(ph) == 'cI') then
-        a_nS = pl%get_as2dReal('a_non-Schmid',defaultVal=reshape(emptyRealArray,[0,0]))
-        prm%P_nS_pos = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=+1)
-        prm%P_nS_neg = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=-1)
-      else
-        prm%P_nS_pos = +prm%P
-        prm%P_nS_neg = -prm%P
-      end if
+      a_nS = pl%get_as2dReal('a_non-Schmid',defaultVal=reshape(emptyRealArray,[0,0]))
+      prm%P_nS_pos = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=+1)
+      prm%P_nS_neg = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=-1)
 
       prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
                                                    phase_lattice(ph))

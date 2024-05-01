@@ -242,14 +242,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
       prm%systems_sl = crystal_labels_slip(ini%N_sl,phase_lattice(ph))
       prm%P_sl = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph), phase_cOverA(ph))
 
-      if (phase_lattice(ph) == 'cI') then
-        a_nS = pl%get_as2dReal('a_non-Schmid',defaultVal=reshape(emptyRealArray,[0,0]))
-        prm%P_nS_pos = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=+1)
-        prm%P_nS_neg = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=-1)
-      else
-        prm%P_nS_pos = +prm%P_sl
-        prm%P_nS_neg = -prm%P_sl
-      end if
+      a_nS = pl%get_as2dReal('a_non-Schmid',defaultVal=reshape(emptyRealArray,[0,0]))
+      prm%P_nS_pos = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=+1)
+      prm%P_nS_neg = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=-1)
 
       prm%h_sl_sl = crystal_interaction_SlipBySlip(ini%N_sl,pl%get_as1dReal('h_sl-sl'), &
                                                    phase_lattice(ph))
