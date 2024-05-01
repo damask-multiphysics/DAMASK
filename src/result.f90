@@ -31,6 +31,10 @@ module result
 
   integer(HID_T) :: resultFile
 
+  interface result_closeGroup
+    module procedure HDF5_closeGroup
+  end interface result_closeGroup
+
   interface result_writeDataset
     module procedure result_writeTensorDataset_real
     module procedure result_writeVectorDataset_real
@@ -190,19 +194,6 @@ integer(HID_T) function result_addGroup(groupName)
   result_addGroup = HDF5_addGroup(resultFile,groupName)
 
 end function result_addGroup
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Close a group.
-!--------------------------------------------------------------------------------------------------
-subroutine result_closeGroup(group_id)
-
-  integer(HID_T), intent(in) :: group_id
-
-
-  call HDF5_closeGroup(group_id)
-
-end subroutine result_closeGroup
 
 
 !--------------------------------------------------------------------------------------------------
