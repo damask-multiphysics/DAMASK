@@ -106,11 +106,20 @@ class ConfigMaterial(YAML):
 
         Notes
         -----
-        damask.GeomGrid.load_DREAM3D gives the corresponding geometry for
-        the grid solver.
+        A grain-wise material configuration is based on segmented data from
+        the DREAM.3D file. This data is typically available when the microstructure
+        was synthetically created. In cell-wise representations, cells having the
+        same orientation and phase are grouped. Since synthetically created
+        microstructures have typically no in-grain scatter, cell-wise grids
+        can appear to be segmented.
 
-        For cell-wise data, only unique combinations of
-        orientation and phase are considered.
+        damask.GeomGrid.load_DREAM3D creates the corresponding grid-based
+        geometry definition. Since the numbering of materials in cell-wise
+        and grain-wise grids is different, it is imperative to use the same
+        mode for both load_DREAM3D functions. That means, if the "grain_data"
+        argument is used for this function, the correct grid configuration
+        is only obtained if the "feature_IDs" argument is used when calling
+        damask.GeomGrid.load_DREAM3D.
 
         Homogenization and phase entries are emtpy and need to be
         defined separately.

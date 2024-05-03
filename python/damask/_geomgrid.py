@@ -212,7 +212,7 @@ class GeomGrid:
         Returns
         -------
         loaded : damask.GeomGrid
-            GeomGrid-based geometry from file.
+            Grid-based geometry from file.
 
         """
         v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
@@ -241,7 +241,7 @@ class GeomGrid:
         Returns
         -------
         loaded : damask.GeomGrid
-            GeomGrid-based geometry from file.
+            Grid-based geometry from file.
 
         """
         return GeomGrid._load(fname,'material')
@@ -261,7 +261,7 @@ class GeomGrid:
         Returns
         -------
         loaded : damask.GeomGrid
-            GeomGrid-based geometry from file.
+            Grid-based geometry from file.
 
         Notes
         -----
@@ -289,7 +289,7 @@ class GeomGrid:
         Returns
         -------
         loaded : damask.GeomGrid
-            GeomGrid-based geometry from file.
+            Grid-based geometry from file.
 
         """
         warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.0.0', DeprecationWarning,2)
@@ -362,7 +362,7 @@ class GeomGrid:
         Returns
         -------
         loaded : damask.GeomGrid
-            GeomGrid-based geometry from file.
+            Grid-based geometry from file.
 
         Notes
         -----
@@ -437,15 +437,24 @@ class GeomGrid:
         Returns
         -------
         loaded : damask.GeomGrid
-            GeomGrid-based geometry from file.
+            Grid-based geometry from file.
 
         Notes
         -----
-        damask.ConfigMaterial.load_DREAM3D gives the corresponding
-        material definition.
+        A grain-wise geometry definition is based on segmented data from the
+        DREAM.3D file. This data is typically available when the microstructure
+        was synthetically created. In cell-wise representations, cells having
+        the same orientation and phase are grouped. Since synthetically created
+        microstructures have typically no in-grain scatter, cell-wise grids
+        can appear to be segmented.
 
-        For cell-wise data, only unique combinations of
-        orientation and phase are considered.
+        damask.ConfigMaterial.load_DREAM3D creates the corresponding
+        material definition. Since the numbering of materials in cell-wise
+        and grain-wise grids is different, it is imperative to use the same
+        mode for both load_DREAM3D functions. That means, if the "feature_IDs"
+        argument is used for this function, the correct material configuration
+        is only obtained if the "grain_data" argument is used when calling
+        damask.ConfigMaterial.load_DREAM3D.
 
         """
         with h5py.File(fname, 'r') as f:
@@ -493,7 +502,7 @@ class GeomGrid:
         Returns
         -------
         new : damask.GeomGrid
-            GeomGrid-based geometry from values in table.
+            Grid-based geometry from values in table.
 
         """
         cells,size,origin = grid_filters.cellsSizeOrigin_coordinates0_point(table.get(coordinates))
@@ -548,7 +557,7 @@ class GeomGrid:
         Returns
         -------
         new : damask.GeomGrid
-            GeomGrid-based geometry from tessellation.
+            Grid-based geometry from tessellation.
 
         """
         weights_p: FloatSequence
@@ -604,7 +613,7 @@ class GeomGrid:
         Returns
         -------
         new : damask.GeomGrid
-            GeomGrid-based geometry from tessellation.
+            Grid-based geometry from tessellation.
 
         """
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
@@ -691,7 +700,7 @@ class GeomGrid:
         Returns
         -------
         new : damask.GeomGrid
-            GeomGrid-based geometry from definition of minimal surface.
+            Grid-based geometry from definition of minimal surface.
 
         Notes
         -----

@@ -500,11 +500,11 @@ class TestGeomGrid:
         # grain-wise data (using existing DREAM.3D segmentation)
         grid_grain = GeomGrid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d','FeatureIds')
         material_grain = ConfigMaterial.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d','Grain Data')
-        O_grain = np.array([_['constituents'][0]['O'] for _ in material_grain['material']])
+        O_grain = np.array([material['constituents'][0]['O'] for material in material_grain['material']])
         # cell-wise data (clustering identical orientation-phase combinations)
         grid_cell = GeomGrid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d')
         material_cell = ConfigMaterial.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d')
-        O_cell = np.array([_['constituents'][0]['O'] for _ in material_cell['material']])
+        O_cell = np.array([material['constituents'][0]['O'] for material in material_cell['material']])
 
         assert np.allclose(grid_grain.origin,grid_cell.origin) and \
                np.allclose(grid_grain.size,grid_cell.size) and \
