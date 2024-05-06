@@ -144,8 +144,13 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%n_sl           = math_expand(pl%get_as1dReal('n_sl',          requiredSize=size(N_sl)), N_sl)
       prm%a_sl           = math_expand(pl%get_as1dReal('a_sl',          requiredSize=size(N_sl)), N_sl)
       prm%h_0_sl_sl      = math_expand(pl%get_as1dReal('h_0_sl-sl',     requiredSize=size(N_sl)), N_sl)
+#ifdef __GFORTRAN__
+      xi_0_sl            = pl%get_as1dReal('xi_0_sl',  requiredChunks=N_sl)
+      prm%xi_inf_sl      = pl%get_as1dReal('xi_inf_sl',requiredChunks=N_sl)
+#else
       xi_0_sl            = math_expand(pl%get_as1dReal('xi_0_sl',       requiredSize=size(N_sl)), N_sl)
       prm%xi_inf_sl      = math_expand(pl%get_as1dReal('xi_inf_sl',     requiredSize=size(N_sl)), N_sl)
+#endif
       prm%c_1            = math_expand(pl%get_as1dReal('c_1',           requiredSize=size(N_sl), &
                                                                         defaultVal=misc_zeros(size(N_sl))), N_sl)
       prm%c_2            = math_expand(pl%get_as1dReal('c_2',           requiredSize=size(N_sl), &

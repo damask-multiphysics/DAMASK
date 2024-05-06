@@ -213,8 +213,15 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
       f_edge       = math_expand(pl%get_as1dReal('f_edge',    requiredSize=size(N_sl), &
                                                  defaultVal=[(0.5_pREAL,i=1,size(N_sl))]),N_sl)
+
+#ifdef __GFORTRAN__
+      rho_mob_0    = pl%get_as1dReal('rho_mob_0', requiredChunks=N_sl)
+      rho_dip_0    = pl%get_as1dReal('rho_dip_0', requiredChunks=N_sl)
+#else
       rho_mob_0    = math_expand(pl%get_as1dReal('rho_mob_0', requiredSize=size(N_sl)),N_sl)
       rho_dip_0    = math_expand(pl%get_as1dReal('rho_dip_0', requiredSize=size(N_sl)),N_sl)
+#endif
+
       prm%v_0      = math_expand(pl%get_as1dReal('v_0',       requiredSize=size(N_sl)),N_sl)
       prm%b_sl     = math_expand(pl%get_as1dReal('b_sl',      requiredSize=size(N_sl)),N_sl)
       prm%Q_sl     = math_expand(pl%get_as1dReal('Q_sl',      requiredSize=size(N_sl)),N_sl)
