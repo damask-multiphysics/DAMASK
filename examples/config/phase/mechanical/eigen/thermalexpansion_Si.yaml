@@ -1,0 +1,13 @@
+type: thermalexpansion
+
+references:
+  - C. Bourgeois,
+    Proceedings of International Frequency Control Symposium 791-799, 1997
+    https://doi.org/10.1109/freq.1997.639192
+    Table I
+
+Alpha_11: 2.84e-6
+Alpha_11,T: 8.5e-9
+Alpha_11,T^2: -32.e-12
+
+T_ref: 298.15

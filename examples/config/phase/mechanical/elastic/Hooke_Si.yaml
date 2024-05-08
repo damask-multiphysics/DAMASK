@@ -1,0 +1,21 @@
+type: Hooke
+
+references:
+  - C. Bourgeois,
+    Proceedings of International Frequency Control Symposium 791-799, 1997
+    https://doi.org/10.1109/freq.1997.639192
+    Table III and Table IV (p-type)
+
+C_11: 165.64e+9
+C_11,T: -73.25e-6
+C_11,T^2: -49.26e-9
+
+C_12: 63.94e+9
+C_12,T: -91.59e-6
+C_12,T^2: -32.70e-9
+
+C_44: 79.51e+9
+C_44,T: -60.14e-6
+C_44,T^2: -51.28e-9
+
+T_ref: 298.15

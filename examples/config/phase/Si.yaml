@@ -1,0 +1,5 @@
+references:
+  - https://en.wikipedia.org/wiki/Silicon
+
+lattice: cF # face-centered diamond-cubic
+rho: 2329.1
