@@ -46,13 +46,13 @@ module types
     contains
     procedure :: &
       asFormattedStr => tList_asFormattedStr, &
-      append            => tList_append, &
-      as1dReal          => tList_as1dReal, &
-      as2dReal          => tList_as2dReal, &
-      as1dInt           => tList_as1dInt, &
-      as1dBool          => tList_as1dBool, &
-      as1dStr           => tList_as1dStr, &
-      contains          => tList_contains, &
+      append         => tList_append, &
+      as1dReal       => tList_as1dReal, &
+      as2dReal       => tList_as2dReal, &
+      as1dInt        => tList_as1dInt, &
+      as1dBool       => tList_as1dBool, &
+      as1dStr        => tList_as1dStr, &
+      contains       => tList_contains, &
       tList_get, &
       tList_get_scalar, &
       tList_get_list, &
@@ -96,7 +96,12 @@ module types
       tDict_get_asReal, &
       tDict_get_as1dReal_sized, &
       tDict_get_as1dReal_chunked, &
+#ifdef __GFORTRAN__
+      tDict_get_as2dReal_a, &
+      tDict_get_as2dReal_b, &
+#else
       tDict_get_as2dReal, &
+#endif
       tDict_get_asInt, &
       tDict_get_as1dInt, &
       tDict_get_asBool, &
@@ -110,7 +115,12 @@ module types
     generic :: get_asReal   => tDict_get_asReal
     generic :: get_as1dReal => tDict_get_as1dReal_sized
     generic :: get_as1dReal => tDict_get_as1dReal_chunked
+#ifdef __GFORTRAN__
+    generic :: get_as2dReal => tDict_get_as2dReal_a
+    generic :: get_as2dReal => tDict_get_as2dReal_b
+#else
     generic :: get_as2dReal => tDict_get_as2dReal
+#endif
     generic :: get_asInt    => tDict_get_asInt
     generic :: get_as1dInt  => tDict_get_as1dInt
     generic :: get_asBool   => tDict_get_asBool
@@ -1300,6 +1310,7 @@ function tDict_get_as1dReal_chunked(self,k,defaultVal,requiredChunks) result(nod
 end function tDict_get_as1dReal_chunked
 
 
+#ifndef __GFORTRAN__
 !--------------------------------------------------------------------------------------------------
 !> @brief Get list of lists by key and convert to real array (2D).
 !--------------------------------------------------------------------------------------------------
@@ -1329,6 +1340,68 @@ function tDict_get_as2dReal(self,k,defaultVal,requiredShape) result(nodeAs2dReal
 
 end function tDict_get_as2dReal
 
+#else
+!--------------------------------------------------------------------------------------------------
+! Older gfortran versions have issues with optional arguments of size zero.
+! it somehow works for the predefined parameters 'emptyXXXArray', but reshaping them to a
+! multidimensional array breaks things.
+! gfortran 10.x does not work, gfortran 13.x is known to work
+!--------------------------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Get list of lists by key and convert to real array (2D).
+!--------------------------------------------------------------------------------------------------
+function tDict_get_as2dReal_a(self,k,requiredShape) result(nodeAs2dReal)
+
+  class(tDict),     intent(in) :: self
+  character(len=*), intent(in) :: k
+  integer,          intent(in), dimension(2),   optional :: requiredShape
+  real(pREAL), dimension(:,:), allocatable :: nodeAs2dReal
+
+  type(tList), pointer :: list
+
+
+  if (self%contains(k)) then
+    list => self%get_list(k)
+    nodeAs2dReal = list%as2dReal()
+  else
+    call IO_error(143,ext_msg=k)
+  end if
+
+  if (present(requiredShape)) then
+    if (any(requiredShape /= shape(nodeAs2dReal))) call IO_error(146,ext_msg=k)
+  end if
+
+end function tDict_get_as2dReal_a
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Get list of lists by key and convert to real array (2D).
+!--------------------------------------------------------------------------------------------------
+function tDict_get_as2dReal_b(self,k,defaultVal,requiredShape) result(nodeAs2dReal)
+
+  class(tDict),     intent(in) :: self
+  character(len=*), intent(in) :: k
+  real(pREAL),      intent(in), dimension(:,:) :: defaultVal
+  integer,          intent(in), dimension(2),  optional :: requiredShape
+  real(pREAL), dimension(:,:), allocatable :: nodeAs2dReal
+
+  type(tList), pointer :: list
+
+
+  if (self%contains(k)) then
+    list => self%get_list(k)
+    nodeAs2dReal = list%as2dReal()
+  else
+    nodeAs2dReal = defaultVal
+  end if
+
+  if (present(requiredShape)) then
+    if (any(requiredShape /= shape(nodeAs2dReal))) call IO_error(146,ext_msg=k)
+  end if
+
+end function tDict_get_as2dReal_b
+#endif
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Get scalar by key and convert to int.

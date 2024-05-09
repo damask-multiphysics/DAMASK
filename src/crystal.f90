@@ -1375,25 +1375,23 @@ function crystal_SchmidMatrix_slip(Nslip,lattice,cOverA,nonSchmidCoefficients,se
     if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
       error stop 'dilatational Schmid matrix for slip'
 
-    if (present(nonSchmidCoefficients)) then
-      select case(lattice)
-        case('cI')
-          coeff(:) = 0.0_pREAL
-          select case(slipFamily(i))
-            case(1)
-              coeff(:size(nonSchmidCoefficients(1,:))) = nonSchmidCoefficients(1,:)
-              call R%fromAxisAngle([direction,60.0_pREAL],degrees=.true.,P=1)
-              np = R%rotate(normal)
-              SchmidMatrix(1:3,1:3,i) = SchmidMatrix(1:3,1:3,i) &
-                                      + coeff(1) * math_outer(direction, np) &
-                                      + coeff(2) * math_outer(math_cross(normal, direction), normal) &
-                                      + coeff(3) * math_outer(math_cross(np, direction), np) &
-                                      + coeff(4) * math_outer(normal, normal) &
-                                      + coeff(5) * math_outer(math_cross(normal, direction), &
-                                                              math_cross(normal, direction)) &
-                                      + coeff(6) * math_outer(direction, direction)
-          end select
-      end select
+    if (present(nonSchmidCoefficients) .and. lattice == 'cI') then
+      coeff(:) = 0.0_pREAL
+      family: select case(slipFamily(i))
+        case(1)
+          if (size(nonSchmidCoefficients,1) < 1) exit family
+          coeff(:size(nonSchmidCoefficients(1,:))) = nonSchmidCoefficients(1,:)
+          call R%fromAxisAngle([direction,60.0_pREAL],degrees=.true.,P=1)
+          np = R%rotate(normal)
+          SchmidMatrix(1:3,1:3,i) = SchmidMatrix(1:3,1:3,i) &
+                                  + coeff(1) * math_outer(direction, np) &
+                                  + coeff(2) * math_outer(math_cross(normal, direction), normal) &
+                                  + coeff(3) * math_outer(math_cross(np, direction), np) &
+                                  + coeff(4) * math_outer(normal, normal) &
+                                  + coeff(5) * math_outer(math_cross(normal, direction), &
+                                                          math_cross(normal, direction)) &
+                                  + coeff(6) * math_outer(direction, direction)
+      end select family
     end if
   end do
 
