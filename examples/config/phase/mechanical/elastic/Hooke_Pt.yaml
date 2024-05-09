@@ -1,9 +1,9 @@
 type: Hooke
 
 references:
-   - S.M. Collard and R.B. McLellan,
-     Acta Metallurgica et Materialia 40:699-702, 1992,
-     https://doi.org/10.1016/0956-7151(92)90011-3
+  - S.M. Collard and R.B. McLellan,
+    Acta Metallurgica et Materialia 40:699-702, 1992,
+    https://doi.org/10.1016/0956-7151(92)90011-3
 
 C_11: 373.42e+9
 C_11,T: -8.929e+7
