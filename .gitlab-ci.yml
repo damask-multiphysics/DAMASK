@@ -123,63 +123,63 @@ grid_GNU:
   stage: compile
   script:
     - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_GNU
 
 mesh_GNU:
   stage: compile
   script:
     - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU
 
 grid_GNU-64bit:
   stage: compile
   script:
     - module load Compiler/GNU/10 Libraries/PETSc/3.16.4/64bit
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_GNU-64bit
 
 mesh_GNU-64bit:
   stage: compile
   script:
     - module load Compiler/GNU/10 Libraries/PETSc/3.16.4/64bit
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU-64bit
 
 grid_IntelLLVM:
   stage: compile
   script:
     - module load ${COMPILER_INTELLLVM} ${MPI_INTELLLVM} ${PETSC_INTELLLVM}
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_IntelLLVM
 
 mesh_IntelLLVM:
   stage: compile
   script:
     - module load ${COMPILER_INTELLLVM} ${MPI_INTELLLVM} ${PETSC_INTELLLVM}
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_IntelLLVM
 
 grid_Intel:
   stage: compile
   script:
     - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_Intel
 
 mesh_Intel:
   stage: compile
   script:
     - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_Intel
 
 Marc_Intel:
   stage: compile
   script:
     - module load $IntelMarc $HDF5Marc $MSC
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and Marc' --basetemp ${TESTROOT}/compile_Marc
 
 setup_grid:
@@ -214,13 +214,13 @@ open-source:
   stage: fortran
   script:
     - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'not compile and not Marc' -m 'not cifail' --basetemp ${TESTROOT}/open-source -v
 
 Marc:
   stage: fortran
   script:
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'not compile and Marc' -m 'not cifail' --damask-root=${TESTROOT} --basetemp ${TESTROOT}/Marc -v
 
 # Needs closer look
