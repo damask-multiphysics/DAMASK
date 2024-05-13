@@ -1,0 +1,24 @@
+type: phenopowerlaw
+
+references:
+  - N. Prabhu and M. Diehl,
+    Integrating Materials and Manufacturing Innovation 13:xx-yy, 2008,
+    https://doi.org/10.1007/zzz,
+    Table 3(d)
+  - L.P. Kubin et al.,
+    Acta Materialia 56(20):6040-6049, 2008,
+    https://doi.org/10.1016/j.actamat.2008.08.012,
+    Table 1
+
+output: [xi_sl, gamma_sl]
+
+N_sl: [12]
+
+dot_gamma_0_sl: 2.e-4
+xi_0_sl: [143.5e+6]
+xi_inf_sl: [470.e+6]
+h_0_sl-sl: 1.12e+9
+a_sl: 1
+n_sl: 40
+
+h_sl-sl: [1, 1, 5.123, 0.574, 1.123, 1.123, 1]
