@@ -597,80 +597,6 @@ class Orientation(Rotation,Crystal):
                )
 
 
-    def to_lattice(self, *,
-                   direction: Optional[FloatSequence] = None,
-                   plane: Optional[FloatSequence] = None) -> np.ndarray:
-        """
-        Calculate lattice vector corresponding to crystal frame direction or plane normal.
-
-        Parameters
-        ----------
-        direction|plane : numpy.ndarray, shape (...,3)
-            Real space vector along direction or
-            reciprocal space vector along plane normal.
-
-        Returns
-        -------
-        Miller : numpy.ndarray, shape (...,3)
-            Lattice vector of direction or plane.
-            Use util.scale_to_coprime to convert to (integer) Miller indices.
-
-        Examples
-        --------
-        t.b.d.
-
-        >>> import np
-        >>> import damask
-        >>> np.set_printoptions(2,suppress=True,floatmode='fixed')
-        >>> cubic = damask.Orientation.from_axis_angle(n_omega=[1,0,0,90],degrees=True,lattice='cI')
-        >>> cubic.to_lattice(direction=[1, 0, 0])
-        array([ 1.0, 0.0, 0.0])
-        >>> cubic.to_lattice(direction=[0, 1, 0])
-        array([ 0.0, 0.0, 1.0])
-        >>> cubic.to_lattice(direction=[0, 0, 1])
-        array([ 0.0, -1.0, 0.0])
-
-        """
-        return ~self@super().to_lattice(direction=direction,plane=plane)
-
-
-    def to_frame(self, *,
-                 uvw: Optional[FloatSequence] = None,
-                 hkl: Optional[FloatSequence] = None) -> np.ndarray:
-        """
-        Calculate crystal frame vector corresponding to lattice direction [uvw] or plane normal (hkl).
-
-        Parameters
-        ----------
-        uvw|hkl : numpy.ndarray, shape (...,3)
-            Miller indices of crystallographic direction or plane normal.
-
-        Returns
-        -------
-        vector : numpy.ndarray, shape (...,3)
-            Crystal frame vector in real space along [uvw] direction or
-            in reciprocal space along (hkl) plane normal.
-
-        Examples
-        --------
-        Crystal frame vector (real space) of Magnesium corresponding to [1,1,0] direction:
-
-        >>> import damask
-        >>> Mg = damask.Crystal(lattice='hP', a=321e-12, c=521e-12)
-        >>> Mg.to_frame(uvw=[1, 1, 0])
-        array([1.60500000e-10, 2.77994155e-10, 0.00000000e+00])
-
-        Crystal frame vector (reciprocal space) of Titanium along (1,0,0) plane normal:
-
-        >>> import damask
-        >>> Ti = damask.Crystal(lattice='hP', a=295e-12, c=469e-12)
-        >>> Ti.to_frame(hkl=(1, 0, 0))
-        array([ 3.38983051e+09,  1.95711956e+09, -4.15134508e-07])
-
-        """
-        return ~self@super().to_frame(hkl=hkl,uvw=uvw)
-
-
     def to_SST(self,
                vector: FloatSequence,
                proper: bool = False,
@@ -681,7 +607,7 @@ class Orientation(Rotation,Crystal):
         Parameters
         ----------
         vector : numpy.ndarray, shape (...,3)
-            Lab frame vector to align with crystal frame direction.
+            Lab frame vector to align with an SST crystal frame direction.
             Shape of vector blends with shape of own rotation array.
             For example, a rotation array of shape (3,2) and a vector array of shape (2,4) result in (3,2,4) outputs.
         proper : bool, optional
@@ -849,11 +775,57 @@ class Orientation(Rotation,Crystal):
 ####################################################################################################
     # functions that require lattice, not just family
 
-    def to_pole(self, *,
-                uvw: Optional[FloatSequence] = None,
-                hkl: Optional[FloatSequence] = None,
-                with_symmetry: bool = False,
-                normalize: bool = True) -> np.ndarray:
+    def to_lattice(self, *,
+                   direction: Optional[FloatSequence] = None,
+                   plane: Optional[FloatSequence] = None) -> np.ndarray:
+        """
+        Calculate lattice vector corresponding to lab frame direction or plane normal.
+
+        Parameters
+        ----------
+        direction|plane : numpy.ndarray, shape (...,3)
+            Real space vector along direction or
+            reciprocal space vector along plane normal.
+            Shape of vector blends with shape of own rotation array.
+            For example, a rotation array of shape (3,2) and a vector
+            array of shape (2,4) result in (3,2,4) outputs.
+
+        Returns
+        -------
+        Miller : numpy.ndarray, shape (...,3)
+            Lattice vector of direction or plane.
+            Use util.scale_to_coprime to convert to (integer) Miller indices.
+
+        Examples
+        --------
+        >>> import np
+        >>> import damask
+        >>> np.set_printoptions(precision=2,suppress=True,floatmode='maxprec')
+        >>> cubic = damask.Orientation.from_axis_angle(n_omega=[1,0,0,90],degrees=True,lattice='cI')
+        >>> cubic.to_lattice(direction=[1, 0, 0])
+        array([1., 0., 0.])
+        >>> cubic.to_lattice(direction=[0, 1, 0])
+        array([ 0.,  0., -1.])
+        >>> cubic.to_lattice(direction=[0, 0, 1])
+        array([-0.,  1.,  0.])
+        >>> tetragonal = damask.Orientation(lattice='tI',c=0.5)
+        >>> damask.util.scale_to_coprime(tetragonal.to_lattice(direction=[1,1,1]))
+        array([1, 1, 2])
+        >>> damask.util.scale_to_coprime(tetragonal.to_lattice(plane=[1,1,1]))
+        array([2, 2, 1])
+
+        """
+        if (direction is not None) ^ (plane is None):
+            raise KeyError('specify either "direction" or "plane"')
+        return (super().to_lattice(direction=self@np.asarray(direction)) if plane is None else
+                super().to_lattice(plane=self@np.asarray(plane)))
+
+
+    def to_frame(self, *,
+                 uvw: Optional[FloatSequence] = None,
+                 hkl: Optional[FloatSequence] = None,
+                 with_symmetry: bool = False,
+                 normalize: bool = True) -> np.ndarray:
         """
         Calculate lab frame vector along lattice direction [uvw] or plane normal (hkl).
 
@@ -873,7 +845,7 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        vector : numpy.ndarray, shape (...,3) or (...,N,3)
+        vector : numpy.ndarray, shape (...,3) or (N,...,3)
             Lab frame vector (or vectors if with_symmetry) along
             [uvw] direction or (hkl) plane normal.
 
@@ -889,7 +861,9 @@ class Orientation(Rotation,Crystal):
             blend += sym_ops.shape
             v = sym_ops.broadcast_to(s_v) @ v[...,np.newaxis,:]
 
-        return ~(self.broadcast_to(blend)) @ np.broadcast_to(v,blend+(3,))
+        return np.moveaxis(~(self.broadcast_to(blend)) @ np.broadcast_to(v,blend+(3,)),
+                           -2 if with_symmetry else 0,
+                           0)
 
 
     def Schmid(self, *,
