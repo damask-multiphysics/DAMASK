@@ -328,20 +328,22 @@ class TestOrientation:
                             ])
     @pytest.mark.parametrize('kw',['uvw','hkl'])
     @pytest.mark.parametrize('with_symmetry',[False,True])
+    @pytest.mark.parametrize('symmetry_index',['head','tail'])
     @pytest.mark.parametrize('shape',[None,1,(12,24)])
     @pytest.mark.parametrize('vector',[
                                         np.random.random(     3 ),
                                         np.random.random(  (4,3)),
                                         np.random.random((4,8,3)),
                                       ])
-    def test_to_frame(self,shape,lattice,a,b,c,alpha,beta,gamma,vector,kw,with_symmetry):
+    def test_to_frame(self,shape,lattice,a,b,c,alpha,beta,gamma,vector,kw,with_symmetry,symmetry_index):
         o = Orientation.from_random(shape=shape,
                                     lattice=lattice,
                                     a=a,b=b,c=c,
                                     alpha=alpha,beta=beta,gamma=gamma)
-        assert o.to_frame(**{kw:vector,'with_symmetry':with_symmetry}).shape \
-            == (o.symmetry_operations.shape if with_symmetry else ()) \
+        assert o.to_frame(**{kw:vector,'with_symmetry':with_symmetry,'symmetry_index':symmetry_index}).shape \
+            == (o.symmetry_operations.shape if with_symmetry and symmetry_index=='head' else ()) \
              + util.shapeblender(o.shape,vector.shape[:-1]) \
+             + (o.symmetry_operations.shape if with_symmetry and symmetry_index=='tail' else ()) \
              + vector.shape[-1:]
 
     @pytest.mark.parametrize('lattice',['hP','cI','cF']) #tI not included yet

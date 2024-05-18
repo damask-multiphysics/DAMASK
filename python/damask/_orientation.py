@@ -57,7 +57,7 @@ class Orientation(Rotation,Crystal):
     and inherits the corresponding crystal family.
     Specifying a Bravais lattice, compared to just the crystal family,
     extends the functionality of Orientation objects to include operations such as
-    "Schmid", "related", or "to_pole" that require a lattice type and its parameters.
+    "Schmid", "related", or "to_frame" that require a lattice type and its parameters.
 
     Examples
     --------
@@ -825,7 +825,9 @@ class Orientation(Rotation,Crystal):
                  uvw: Optional[FloatSequence] = None,
                  hkl: Optional[FloatSequence] = None,
                  with_symmetry: bool = False,
-                 normalize: bool = True) -> np.ndarray:
+                 normalize: bool = True,
+                 symmetry_index: str = 'head',
+                 ) -> np.ndarray:
         """
         Calculate lab frame vector along lattice direction [uvw] or plane normal (hkl).
 
@@ -842,14 +844,19 @@ class Orientation(Rotation,Crystal):
         normalize : bool, optional
             Normalize output vector.
             Defaults to True.
+        symmetry_index : [head, tail], optional
+            Symmetrically equivalent results are indexed in leading or trailing dimension of resulting vector.
+            Defaults to 'head'.
 
         Returns
         -------
-        vector : numpy.ndarray, shape (...,3) or (N,...,3)
-            Lab frame vector (or vectors if with_symmetry) along
+        vector : numpy.ndarray, shape (...,3) or (N,...,3) or (...,N,3)
+            Lab frame vector (or N vectors if with_symmetry) along
             [uvw] direction or (hkl) plane normal.
 
         """
+        if symmetry_index not in ['head','tail']:
+            raise ValueError('symmetry_position is neither "head" nor "tail"')
         v = super().to_frame(uvw=uvw,hkl=hkl)
         s_v = v.shape[:-1]
         blend = util.shapeblender(self.shape,s_v)
@@ -862,7 +869,7 @@ class Orientation(Rotation,Crystal):
             v = sym_ops.broadcast_to(s_v) @ v[...,np.newaxis,:]
 
         return np.moveaxis(~(self.broadcast_to(blend)) @ np.broadcast_to(v,blend+(3,)),
-                           -2 if with_symmetry else 0,
+                           -2 if with_symmetry and symmetry_index=='head' else 0,
                            0)
 
 
