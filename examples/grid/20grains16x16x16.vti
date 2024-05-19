@@ -1,11 +1,6 @@
 <?xml version="1.0"?>
 <VTKFile type="ImageData" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">
   <ImageData WholeExtent="0 16 0 16 0 16" Origin="0 0 0" Spacing="0.0625 0.0625 0.0625" Direction="1 0 0 0 1 0 0 0 1">
-    <FieldData>
-      <Array type="String" Name="comments" NumberOfTuples="2" format="binary">
-        AQAAAACAAAAkAAAALAAAAA==eF7LzUwuyi8uKSpNLiktSi1WMDJgyMjPzU9PzcusSizJzM/jNGQAAASkDSY=
-      </Array>
-    </FieldData>
   <Piece Extent="0 16 0 16 0 16">
     <PointData>
     </PointData>
