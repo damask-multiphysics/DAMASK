@@ -950,9 +950,9 @@ class Rotation:
         if not orthonormal:
             (U,S,Vh) = np.linalg.svd(om)                                                            # singular value decomposition
             om = np.einsum('...ij,...jl',U,Vh)
-        elif  not np.allclose(np.einsum('...i,...i',om[...,0],om[...,1]),0.) \
-           or not np.allclose(np.einsum('...i,...i',om[...,1],om[...,2]),0.) \
-           or not np.allclose(np.einsum('...i,...i',om[...,2],om[...,0]),0.):
+        elif  (np.abs(np.einsum('...i,...i',om[...,0],om[...,1])) > 5.e-8).any() \
+           or (np.abs(np.einsum('...i,...i',om[...,1],om[...,2])) > 5.e-8).any() \
+           or (np.abs(np.einsum('...i,...i',om[...,2],om[...,0])) > 5.e-8).any():
             raise ValueError('orientation matrix is not orthogonal')
 
         if not np.allclose(np.linalg.det(om),1.):
