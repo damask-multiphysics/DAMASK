@@ -193,11 +193,11 @@ subroutine misc_selfTest()
   out=misc_prefixOptions(str,'p_')
   if (out /= '-p_a -1 -p_more 123 -p_flag -')                error stop 'misc_prefixOptions'
 
-  N = int(r*99._pReal)
+  N = int(r*99._pREAL)
   if (size(misc_zeros(N)) /= N)           error stop 'shape zeros'
   if (size(misc_ones(N)) /= N)            error stop 'shape ones'
-  if (any(dNeq(misc_zeros(N),0.0_pReal))) error stop 'value zeros'
-  if (any(dNeq(misc_ones(N),1.0_pReal)))  error stop 'value ones'
+  if (any(dNeq(misc_zeros(N),0.0_pREAL))) error stop 'value zeros'
+  if (any(dNeq(misc_ones(N),1.0_pREAL)))  error stop 'value ones'
 
 contains
 

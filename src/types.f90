@@ -268,9 +268,9 @@ subroutine types_selfTest()
                                                       error stop 'tDict_asFormattedStr'
     if (d%get_asInt('three') /= 3)                    error stop 'tDict_get_asInt'
     if (dNeq(d%get_asReal('three'),3.0_pREAL))        error stop 'tDict_get_asReal'
-    if (any(d%get_as1dReal('one-two') /= real([1,2],pReal))) &
+    if (any(d%get_as1dReal('one-two') /= real([1,2],pREAL))) &
                                                       error stop 'tDict_get_as1dReal'
-    if (any(d%get_as1dReal('three',requiredSize=3) /= real([3,3,3],pReal))) &
+    if (any(d%get_as1dReal('three',requiredSize=3) /= real([3,3,3],pREAL))) &
                                                       error stop 'tDict_get_as1dReal/size'
     if (d%get_asStr('three') /= '3')                  error stop 'tDict_get_asStr'
     if (any(d%get_as1dInt('one-two') /= [1,2]))       error stop 'tDict_get_as1dInt'
@@ -315,7 +315,7 @@ subroutine types_selfTest()
     call d%set('scalar',s1)
 
     a = d%get_as1dReal('list',requiredChunks=[2,3])
-    if (any(dNeq(a,real([1.0,2.0,3.0,3.0,3.0],pReal)))) &
+    if (any(dNeq(a,real([1.0,2.0,3.0,3.0,3.0],pREAL)))) &
       error stop 'dict_get_as1dReal_shape list'
 
     if (any(dNeq(d%get_as1dReal('non-existing',a,[2,3]),a))) &
