@@ -826,7 +826,6 @@ class Orientation(Rotation,Crystal):
                  hkl: Optional[FloatSequence] = None,
                  with_symmetry: bool = False,
                  normalize: bool = True,
-                 symmetry_index: str = 'head',
                  ) -> np.ndarray:
         """
         Calculate lab frame vector along lattice direction [uvw] or plane normal (hkl).
@@ -844,19 +843,14 @@ class Orientation(Rotation,Crystal):
         normalize : bool, optional
             Normalize output vector.
             Defaults to True.
-        symmetry_index : [head, tail], optional
-            Symmetrically equivalent results are indexed in leading or trailing dimension of resulting vector.
-            Defaults to 'head'.
 
         Returns
         -------
-        vector : numpy.ndarray, shape (...,3) or (N,...,3) or (...,N,3)
+        vector : numpy.ndarray, shape (...,3) or (N,...,3)
             Lab frame vector (or N vectors if with_symmetry) along
             [uvw] direction or (hkl) plane normal.
 
         """
-        if symmetry_index not in ['head','tail']:
-            raise ValueError('symmetry_position is neither "head" nor "tail"')
         v = super().to_frame(uvw=uvw,hkl=hkl)
         s_v = v.shape[:-1]
         blend = util.shapeblender(self.shape,s_v)
@@ -869,7 +863,7 @@ class Orientation(Rotation,Crystal):
             v = sym_ops.broadcast_to(s_v) @ v[...,np.newaxis,:]
 
         return np.moveaxis(~(self.broadcast_to(blend)) @ np.broadcast_to(v,blend+(3,)),
-                           -2 if with_symmetry and symmetry_index=='head' else 0,
+                           -2 if with_symmetry else 0,
                            0)
 
 

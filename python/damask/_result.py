@@ -1150,15 +1150,14 @@ class Result:
             ori = Orientation(q['data'],lattice=q['meta']['lattice'],a=1,c=c)
 
             return {
-                    'data': ori.to_frame(uvw=uvw,hkl=hkl,
-                                         with_symmetry=with_symmetry,
-                                         normalize=normalize,
-                                         symmetry_index='tail'),
+                    'data': np.moveaxis(ori.to_frame(uvw=uvw,hkl=hkl,
+                                                     with_symmetry=with_symmetry,
+                                                     normalize=normalize),0,-2 if with_symmetry else 0),
                     'label': label,
                     'meta' : {
                               'unit':        '1',
                               'description': f'{"normalized " if normalize else ""}lab frame vector along lattice ' \
-                                             + ('direction' if uvw is not None else 'plane') \
+                                             + ('plane' if uvw is None else 'direction') \
                                              + ('s' if with_symmetry else ''),
                               'creator':     'add_pole'
                               }
