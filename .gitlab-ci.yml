@@ -11,7 +11,7 @@ stages:
 ###################################################################################################
 default:
   before_script:
-    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID}
+    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN}
     - source env/DAMASK.sh
     - export PATH=${TESTROOT}/bin:${PATH}
     - echo Job start:" $(date)"
@@ -56,7 +56,7 @@ variables:
 create_testroot:
   stage: prepare
   before_script:
-    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID}
+    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN}
     - echo Job start:" $(date)"
   script:
     - mkdir -p ${TESTROOT}
@@ -233,7 +233,7 @@ Marc:
 grid_performance:
   stage: statistics
   before_script:
-    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} --blocking
+    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN} --blocking
     - source env/DAMASK.sh
     - echo Job start:" $(date)"
   script:
@@ -259,9 +259,9 @@ update_plots:
   script:
     - cd $(mktemp -d)
     - git clone -q git@git.damask.mpie.de:damask/statistics.git .
-    - ./plot_commithistory.py --color green -n 5 -N 100
-    - ./plot_commithistory.py --color green -n 5 -N 1000
-    - ./plot_commithistory.py --color green -n 5 -N 10000
+    - ./plot_commithistory.py ${TOKEN} --color green -n 5 -N 100
+    - ./plot_commithistory.py ${TOKEN} --color green -n 5 -N 1000
+    - ./plot_commithistory.py ${TOKEN} --color green -n 5 -N 10000
     - scp -r ./commits_*.html damask.mpie.de:~/
     - ssh damask.mpie.de "./update_statistics_commits.sh"
     - ./plot_performance.py --template=xgridoff
@@ -273,7 +273,7 @@ update_plots:
 update_revision:
   stage: finalize
   before_script:
-    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID}
+    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN}
     - echo Job start:" $(date)"
   script:
     - cd $(mktemp -d)
