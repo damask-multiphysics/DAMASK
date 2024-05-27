@@ -288,6 +288,9 @@ subroutine grid_damage_spectral_forward(cutBack)
     call updateReference()
   end if
 
+  call DMDAVecRestoreArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)
+  CHKERRQ(err_PETSc)
+
 end subroutine grid_damage_spectral_forward
 
 
