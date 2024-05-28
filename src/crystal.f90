@@ -2208,11 +2208,11 @@ subroutine crystal_selfTest()
   CoSy   = buildCoordinateSystem([1],[1],system,'cF',0.0_pREAL)
   if (any(dNeq(CoSy(1:3,1:3,1),math_I3))) error stop 'buildCoordinateSystem'
 
-  if (any(dNeq(buildCoordinateSystem(TI_NSLIPSYSTEM,TI_NSLIPSYSTEM,TI_SYSTEMSLIP,'cI',0.0_pReal), &
-               buildCoordinateSystem(TI_NSLIPSYSTEM,TI_NSLIPSYSTEM,TI_SYSTEMSLIP,'tI',1.0_pReal)))) &
+  if (any(dNeq(buildCoordinateSystem(TI_NSLIPSYSTEM,TI_NSLIPSYSTEM,TI_SYSTEMSLIP,'cI',0.0_pREAL), &
+               buildCoordinateSystem(TI_NSLIPSYSTEM,TI_NSLIPSYSTEM,TI_SYSTEMSLIP,'tI',1.0_pREAL)))) &
                                                            error stop 'cI/tI coordinate system'
-  if (all(dEq( buildCoordinateSystem(TI_NSLIPSYSTEM,TI_NSLIPSYSTEM,TI_SYSTEMSLIP,'tI',1.1_pReal + r(1)*0.9_pReal), &
-               buildCoordinateSystem(TI_NSLIPSYSTEM,TI_NSLIPSYSTEM,TI_SYSTEMSLIP,'tI',1.0_pReal)))) &
+  if (all(dEq( buildCoordinateSystem(TI_NSLIPSYSTEM,TI_NSLIPSYSTEM,TI_SYSTEMSLIP,'tI',1.1_pREAL + r(1)*0.9_pREAL), &
+               buildCoordinateSystem(TI_NSLIPSYSTEM,TI_NSLIPSYSTEM,TI_SYSTEMSLIP,'tI',1.0_pREAL)))) &
                                                            error stop 'tI coordinate system'
   do i = 1, 10
     call random_number(C)

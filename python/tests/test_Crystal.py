@@ -46,6 +46,19 @@ class TestCrystal:
         with pytest.raises(KeyError):
             Crystal(family='cubic').basis_real
 
+    def test_basis_real(self):
+        for gamma in np.random.random(2**8)*np.pi:
+            basis = np.tril(np.random.random((3,3))+1e-6)
+            basis[1,:2] = basis[1,1]*np.array([np.cos(gamma),np.sin(gamma)])
+            basis[2,:2] = basis[2,:2]*2-1
+            lengths = np.linalg.norm(basis,axis=-1)
+            cosines = np.roll(np.einsum('ij,ij->i',basis,np.roll(basis,1,axis=0))/lengths/np.roll(lengths,1),1)
+            o = Crystal(lattice='aP',
+                        **dict(zip(['a','b','c'],lengths)),
+                        **dict(zip(['alpha','beta','gamma'],np.arccos(cosines))),
+                        )
+            assert np.allclose(o.to_frame(uvw=np.eye(3)),basis,rtol=1e-4), 'Lattice basis disagrees with initialization'
+
     @pytest.mark.parametrize('keyFrame,keyLattice',[('uvw','direction'),('hkl','plane'),])
     @pytest.mark.parametrize('vector',np.array([
                                                 [1.,1.,1.],

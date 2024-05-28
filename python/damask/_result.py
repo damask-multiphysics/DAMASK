@@ -1132,7 +1132,7 @@ class Result:
             Miller indices of crystallographic direction or plane normal.
         with_symmetry : bool, optional
             Calculate all N symmetrically equivalent vectors.
-            Defaults to True.
+            Defaults to False.
         normalize : bool, optional
             Normalize output vector.
             Defaults to True.
@@ -1145,17 +1145,19 @@ class Result:
             c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1.0
             brackets = ['[]','()','⟨⟩','{}'][(uvw is None)*1+with_symmetry*2]
             label = 'p^' + '{}{} {} {}{}'.format(brackets[0],
-                                                  *(uvw if uvw else hkl),
-                                                  brackets[-1],)
+                                                 *(uvw if uvw else hkl),
+                                                 brackets[-1],)
             ori = Orientation(q['data'],lattice=q['meta']['lattice'],a=1,c=c)
 
             return {
-                    'data': ori.to_pole(uvw=uvw,hkl=hkl,with_symmetry=with_symmetry,normalize=normalize),
+                    'data': np.moveaxis(ori.to_frame(uvw=uvw,hkl=hkl,
+                                                     with_symmetry=with_symmetry,
+                                                     normalize=normalize),0,-2 if with_symmetry else 0),
                     'label': label,
                     'meta' : {
                               'unit':        '1',
                               'description': f'{"normalized " if normalize else ""}lab frame vector along lattice ' \
-                                             + ('direction' if uvw is not None else 'plane') \
+                                             + ('plane' if uvw is None else 'direction') \
                                              + ('s' if with_symmetry else ''),
                               'creator':     'add_pole'
                               }
