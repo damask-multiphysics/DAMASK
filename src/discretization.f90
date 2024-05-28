@@ -36,7 +36,7 @@ module discretization
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores the relevant information in globally accesible variables
+!> @brief Initialize global discretization variables.
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_init(materialAt,&
                                IPcoords0,NodeCoords0,&
@@ -49,6 +49,7 @@ subroutine discretization_init(materialAt,&
     NodeCoords0
   integer, optional,           intent(in) :: &
     sharedNodesBegin                                                                                !< index of first node shared among different processes (MPI)
+
 
   print'(/,1x,a)', '<<<+-  discretization init  -+>>>'; flush(6)
 
@@ -74,11 +75,12 @@ end subroutine discretization_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write the displacements
+!> @brief Write the displacements to DADF5.
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_result()
 
   real(pREAL), dimension(:,:), allocatable :: u
+
 
   call result_closeGroup(result_addGroup('current/geometry'))
 
@@ -94,11 +96,12 @@ end subroutine discretization_result
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores current IP coordinates
+!> @brief Store current IP coordinates.
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_setIPcoords(IPcoords)
 
   real(pREAL), dimension(:,:), intent(in) :: IPcoords
+
 
   discretization_IPcoords = IPcoords
 
@@ -106,11 +109,12 @@ end subroutine discretization_setIPcoords
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores current IP coordinates
+!> @brief Store current nodal coordinates.
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_setNodeCoords(NodeCoords)
 
   real(pREAL), dimension(:,:), intent(in) :: NodeCoords
+
 
   discretization_NodeCoords = NodeCoords
 

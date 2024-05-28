@@ -95,6 +95,7 @@ subroutine discretization_mesh_init(restart)
   real(pREAL), pointer, dimension(:) :: &
     mesh_node0_temp
 
+
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'
 
 !--------------------------------------------------------------------------------
@@ -200,6 +201,7 @@ subroutine mesh_FEM_build_ipVolumes(dimPlex)
   PetscInt           :: cellStart, cellEnd, cell
   PetscErrorCode     :: err_PETSc
 
+
   allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems),source=0.0_pREAL)
 
   call DMPlexGetHeightStratum(geomMesh,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
@@ -263,6 +265,7 @@ subroutine writeGeometry(coordinates_points,coordinates_nodes)
   real(pREAL), dimension(:,:), intent(in) :: &
   coordinates_nodes, &
   coordinates_points
+
 
   call result_openJobFile()
   call result_closeGroup(result_addGroup('geometry'))
