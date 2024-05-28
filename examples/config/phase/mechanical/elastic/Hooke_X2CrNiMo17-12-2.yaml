@@ -1,0 +1,18 @@
+type: Hooke
+
+references:
+  - J.-M. Scherer et al.,
+    Materials Science & Engineering A 900:146471, 2024,
+    https://doi.org/10.1016/j.msea.2024.146471,
+    Eq. (6-8) adjusted to T_ref=293.15K (T_min=20°C, T_max=300°C)
+
+C_11: 218.3e+9
+C_11,T: -5.13e+7
+
+C_12: 144.8e+9
+C_12,T: -2.77e+7
+
+C_44: 125.4e+9
+C_44,T: -3.08e+7
+
+T_ref: 293.15

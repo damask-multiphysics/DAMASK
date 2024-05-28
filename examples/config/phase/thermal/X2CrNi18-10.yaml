@@ -1,0 +1,14 @@
+references:
+  - C.S. Kim,
+    Thermophysical properties of stainless steels,
+    Argonne National Laboratory, Argonne, Illinois, 1975,
+    https://doi.org/10.2172/4152287,
+    Eq. 5 and Eq. 28 (T_min=300K, T_max=1600K)
+
+K_11: 12.86
+K_11,T: 1.618e-2
+
+C_p: 508.7
+C_p,T: 1.347e-1 # not implemented
+
+T_ref: 293.15
