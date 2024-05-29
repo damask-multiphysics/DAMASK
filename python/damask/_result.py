@@ -2140,7 +2140,11 @@ class Result:
             if mapping is not None:
                 cells = mapping.shape
                 mapping_flat = mapping.flatten(order='F')
+
                 f_out['geometry'].attrs['cells'] = cells
+                if self.version_major == 1 and self.version_minor > 0:
+                    f_out['geometry']['cells'][...] = cells
+
                 f_out.create_group('cell_to')                                                       # ToDo: attribute missing
                 mappings = {'phase':{},'homogenization':{}}                                         # type: ignore
 

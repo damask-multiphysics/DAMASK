@@ -90,12 +90,21 @@ subroutine result_init(restart)
   if (.not. restart) then
     resultFile = HDF5_openFile(getSolverJobName()//'.hdf5','w')
     call result_addAttribute('DADF5_version_major',1)
-    call result_addAttribute('DADF5_version_minor',0)
+    call result_addAttribute('DADF5_version_minor',1)
     call get_command_argument(0,commandLine)
     call result_addAttribute('creator',trim(commandLine)//' '//DAMASKVERSION)
     call result_addAttribute('created',now())
     call get_command(commandLine)
     call result_addAttribute('call',trim(commandLine))
+#ifdef DAMASK_GRID
+    call result_addAttribute('solver','grid')
+#endif
+#ifdef DAMASK_MESH
+    call result_addAttribute('solver','mesh')
+#endif
+#ifdef MARC4DAMASK
+    call result_addAttribute('solver','Marc')
+#endif
     call result_closeGroup(result_addGroup('cell_to'))
     call result_addAttribute('description','mappings to place data in space','cell_to')
     call result_closeGroup(result_addGroup('setup'))
