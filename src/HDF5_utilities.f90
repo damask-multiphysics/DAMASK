@@ -981,7 +981,7 @@ end subroutine HDF5_read_int5
 
 #if defined(__GFORTRAN__)
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type real with 1 dimension
+!> @brief Write dataset of type real with 1 dimension.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real1(dataset,loc_id,datasetName,parallel)
 
@@ -1018,7 +1018,7 @@ subroutine HDF5_write_real1(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_real1
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type real with 2 dimensions
+!> @brief Write dataset of type real with 2 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real2(dataset,loc_id,datasetName,parallel)
 
@@ -1055,7 +1055,7 @@ subroutine HDF5_write_real2(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_real2
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type real with 3 dimensions
+!> @brief Write dataset of type real with 3 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real3(dataset,loc_id,datasetName,parallel)
 
@@ -1092,7 +1092,7 @@ subroutine HDF5_write_real3(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_real3
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type real with 4 dimensions
+!> @brief Write dataset of type real with 4 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real4(dataset,loc_id,datasetName,parallel)
 
@@ -1130,7 +1130,7 @@ end subroutine HDF5_write_real4
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type real with 5 dimensions
+!> @brief Write dataset of type real with 5 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real5(dataset,loc_id,datasetName,parallel)
 
@@ -1169,7 +1169,7 @@ end subroutine HDF5_write_real5
 #else
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type real with 1-5 dimension
+!> @brief Write dataset of type real with 1-5 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real(dataset,loc_id,datasetName,parallel)
 
