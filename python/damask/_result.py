@@ -2113,11 +2113,16 @@ class Result:
             Names of the datasets to export.
             Defaults to '*', in which case all visible datasets are exported.
         mapping : numpy.ndarray of int, shape (:,:,:), optional
-            Indices for regridding.
+            Indices for regridding. Only applicable for grid
+            solver results.
 
         """
         if Path(fname).expanduser().absolute() == self.fname:
-            raise PermissionError(f'cannot overwrite {self.fname}')
+            raise PermissionError(f'cannot overwrite "{self.fname}"')
+
+        if mapping is not None and not self.structured:
+            raise PermissionError('cannot regrid unstructured mesh')
+
 
         def cp(path_in,path_out,label,mapping):
             if mapping is None:
@@ -2135,7 +2140,11 @@ class Result:
             if mapping is not None:
                 cells = mapping.shape
                 mapping_flat = mapping.flatten(order='F')
+
                 f_out['geometry'].attrs['cells'] = cells
+                if self.version_major == 1 and self.version_minor > 0:
+                    f_out['geometry']['cells'][...] = cells
+
                 f_out.create_group('cell_to')                                                       # ToDo: attribute missing
                 mappings = {'phase':{},'homogenization':{}}                                         # type: ignore
 
