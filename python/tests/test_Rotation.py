@@ -91,7 +91,7 @@ def qu2eu(qu):
     q12 = qu[1]**2+qu[2]**2
     chi = np.sqrt(q03*q12)
     if   np.abs(q12) < 1.e-8:
-        eu = np.array([np.arctan2(-_P*2.0*qu[0]*qu[3],qu[0]**2-qu[3]**2), 0.0,   0.0])
+        eu = np.array([np.arctan2(-_P*2.0*qu[0]*qu[3],qu[0]**2-qu[3]**2), 0.0,  0.0])
     elif np.abs(q03) < 1.e-8:
         eu = np.array([np.arctan2(   2.0*qu[1]*qu[2],qu[1]**2-qu[2]**2), np.pi, 0.0])
     else:
