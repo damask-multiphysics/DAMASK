@@ -7,11 +7,11 @@ references:
     fit to Fig. 1 (T_min=0°C, T_max=616°C)
 
 Alpha_11: 26.2e-6
-Alpha_11,T: 1.159e-08
+Alpha_11,T: 1.159e-8
 Alpha_11,T^2: 1.382e-11
 
 Alpha_33: 28.0e-6
-Alpha_33,T: 9.564e-09
+Alpha_33,T: 9.564e-9
 Alpha_33,T^2: 7.332e-12
 
 T_ref: 293.15
