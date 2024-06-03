@@ -3,5 +3,5 @@ references:
 
 output: [T]
 
-K_11: 1.50e+2
+K_11: 150.0
 C_p: 710.0

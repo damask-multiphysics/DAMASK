@@ -1,0 +1,9 @@
+references:
+  - C.S. Kim,
+    Thermophysical properties of stainless steels,
+    Argonne National Laboratory, Argonne, Illinois, 1975,
+    https://doi.org/10.2172/4152287,
+    Eq. 16 (T=293.15K)
+
+lattice: cF
+rho: 7896.4

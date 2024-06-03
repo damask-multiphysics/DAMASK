@@ -7,7 +7,7 @@ references:
     fit to Fig. 6 (T_min=100K, T_max=1200K)
 
 Alpha_11: 14.9e-6
-Alpha_11,T: 1.838e-08
+Alpha_11,T: 1.838e-8
 Alpha_11,T^2: -2.028e-11
 Alpha_11,T^3: 9.173e-15
 

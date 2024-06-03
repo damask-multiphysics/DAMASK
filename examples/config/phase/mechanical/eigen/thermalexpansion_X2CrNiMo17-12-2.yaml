@@ -1,0 +1,14 @@
+type: thermalexpansion
+
+references:
+  - C.S. Kim,
+    Thermophysical properties of stainless steels,
+    Argonne National Laboratory, Argonne, Illinois, 1975,
+    https://doi.org/10.2172/4152287,
+    Eq. 24 (T_min=300K, T_max=1600K)
+
+Alpha_11: 18.6e-6
+Alpha_11,T: 2.589e-9
+Alpha_11,T^2: 3.269e-13
+
+T_ref: 293.15
