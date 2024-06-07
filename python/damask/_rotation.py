@@ -625,7 +625,7 @@ class Rotation:
             Misorientation.
 
         """
-        return ~(self*~other)
+        return other*~self
 
 
     ################################################################################################
@@ -1014,13 +1014,13 @@ class Rotation:
             raise ValueError(f'invalid shape: {a_.shape}/{b_.shape}')
         am = np.stack([          a_[...,0,:],
                                              a_[...,1,:],
-                        np.cross(a_[...,0,:],a_[...,1,:]) ],axis=-2)
+                        np.cross(a_[...,0,:],a_[...,1,:]) ],axis=-1)
         bm = np.stack([          b_[...,0,:],
                                              b_[...,1,:],
-                        np.cross(b_[...,0,:],b_[...,1,:]) ],axis=-2)
+                        np.cross(b_[...,0,:],b_[...,1,:]) ],axis=-1)
 
-        return              Rotation.from_basis(np.swapaxes(am/np.linalg.norm(am,axis=-1,keepdims=True),-1,-2))\
-            .misorientation(Rotation.from_basis(np.swapaxes(bm/np.linalg.norm(bm,axis=-1,keepdims=True),-1,-2)))
+        return              Rotation.from_basis(am/np.linalg.norm(am,axis=-2,keepdims=True))\
+            .misorientation(Rotation.from_basis(bm/np.linalg.norm(bm,axis=-2,keepdims=True)))
 
 
     @staticmethod
