@@ -789,8 +789,8 @@ class TestRotation:
     def test_parallel(self,multidim_rotations):
         a = np.array([[1.42,0.0,0.0],
                       [0.0,0.3,0.0]])
-        assert Rotation.from_parallel(a,multidim_rotations@a).allclose( multidim_rotations)
-        assert Rotation.from_parallel(multidim_rotations@a,a).allclose(~multidim_rotations)
+        assert Rotation.from_parallel(a,multidim_rotations[...,np.newaxis]@a).allclose( multidim_rotations)
+        assert Rotation.from_parallel(multidim_rotations[...,np.newaxis]@a,a).allclose(~multidim_rotations)
 
 
     @pytest.mark.parametrize('normalize',[True,False])

@@ -1009,11 +1009,14 @@ class Rotation:
 
         """
         a_ = np.array(a,dtype=float)
-        a_ /= np.linalg.norm(a_,axis=-1,keepdims=True)
         b_ = np.array(b,dtype=float)
-        b_ /= np.linalg.norm(b_,axis=-1,keepdims=True)
+
         if a_.shape[-2:] != (2,3) or b_.shape[-2:] != (2,3):
             raise ValueError(f'invalid shape: {a_.shape}/{b_.shape}')
+
+        a_ /= np.linalg.norm(a_,axis=-1,keepdims=True)
+        b_ /= np.linalg.norm(b_,axis=-1,keepdims=True)
+
         am = np.stack([          a_[...,0,:],
                                              a_[...,1,:],
                         np.cross(a_[...,0,:],a_[...,1,:]) ],axis=-1)
