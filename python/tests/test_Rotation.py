@@ -877,9 +877,8 @@ class TestRotation:
         qu /= np.linalg.norm(qu,axis=1,keepdims=True)
         assert (Rotation(qu) == Rotation(-qu)).all()
 
-    def test_inversion(self):
-        r = Rotation.from_random()
-        assert r == ~~r
+    def test_inversion(self,multidim_rotations):
+        assert (multidim_rotations == ~~multidim_rotations).all()
 
     @pytest.mark.parametrize('shape',[1,(1,),(4,2),(1,1,1),tuple(np.random.randint(0,10,4))])
     def test_size(self,shape):
@@ -1081,9 +1080,12 @@ class TestRotation:
         with pytest.raises(TypeError):
             R@data
 
-    def test_misorientation_invariant(self):
-        R = Rotation.from_random()
-        assert np.allclose(R.misorientation(R).as_matrix(),np.eye(3))
+    def test_misorientation(self,multidim_rotations):
+        r = Rotation.from_random(multidim_rotations.shape)
+        assert multidim_rotations.misorientation(r).allclose(~(multidim_rotations*~r))
+
+    def test_misorientation_invariant(self,multidim_rotations):
+        assert np.allclose(multidim_rotations.misorientation(multidim_rotations).as_matrix(),np.eye(3))
 
     def test_misorientation_average(self):
         """2 times the average is the misorientation."""
