@@ -225,9 +225,10 @@ class TestMechanics:
         A = tensor.spherical(tensor.symmetric(np.random.rand(self.n,3,3)),True)
         assert np.allclose(mechanics.maximum_shear(A),0.0)
 
-    def test_invalid_decomposition(self):
+    @pytest.mark.parametrize('invalid',['A',['R','x']])
+    def test_invalid_decomposition(self,invalid):
         with pytest.raises(ValueError):
-            mechanics._polar_decomposition(np.random.rand(10,3,3),'A')
+            mechanics._polar_decomposition(np.random.rand(10,3,3),invalid)
 
     def test_invalid_strain(self):
         with pytest.raises(ValueError):

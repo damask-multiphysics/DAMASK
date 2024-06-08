@@ -1190,9 +1190,11 @@ class Rotation:
 
         Notes
         -----
-        Due to the distortion of Euler space in the vicinity of ϕ = 0, probability densities, p, defined on
-        grid points with ϕ = 0 will never result in reconstructed orientations as their dV/V = p dγ = p × 0.
-        Hence, it is recommended to transform any such dataset to a cell-centered version, which avoids grid points at ϕ = 0.
+        Due to the distortion of Euler space in the vicinity of ϕ = 0,
+        probability densities, p, defined on grid points with ϕ = 0 will never
+        result in reconstructed orientations as their dV/V = p dγ = p × 0.
+        Hence, it is recommended to transform any such dataset to a
+        cell-centered version, which avoids grid points at ϕ = 0.
 
         References
         ----------
@@ -1422,9 +1424,9 @@ class Rotation:
         eu_sum  = eu[...,0] + eu[...,2]
         eu_diff = eu[...,0] - eu[...,2]
 
-        is_zero  = np.isclose(eu[...,1],0.0)
-        is_pi    = np.isclose(eu[...,1],np.pi)
-        is_ok    = ~np.logical_or(is_zero,is_pi)
+        is_zero = np.isclose(eu[...,1],0.0)
+        is_pi   = np.isclose(eu[...,1],np.pi)
+        is_ok   = ~np.logical_or(is_zero,is_pi)
 
         eu[...,0][is_zero] =  2*eu[...,0][is_zero]
         eu[...,0][is_pi]   = -2*eu[...,2][is_pi]
