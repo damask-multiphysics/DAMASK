@@ -91,7 +91,7 @@ def qu2eu(qu):
     q12 = qu[1]**2+qu[2]**2
     chi = np.sqrt(q03*q12)
     if   np.abs(q12) < 1.e-8:
-        eu = np.array([np.arctan2(-_P*2.0*qu[0]*qu[3],qu[0]**2-qu[3]**2), 0.0,   0.0])
+        eu = np.array([np.arctan2(-_P*2.0*qu[0]*qu[3],qu[0]**2-qu[3]**2), 0.0,  0.0])
     elif np.abs(q03) < 1.e-8:
         eu = np.array([np.arctan2(   2.0*qu[1]*qu[2],qu[1]**2-qu[2]**2), np.pi, 0.0])
     else:
@@ -787,10 +787,10 @@ class TestRotation:
 
 
     def test_parallel(self,multidim_rotations):
-        a = np.array([[1.0,0.0,0.0],
-                      [0.0,1.0,0.0]])
-        assert Rotation.from_parallel(a,multidim_rotations@a).allclose( multidim_rotations)
-        assert Rotation.from_parallel(multidim_rotations@a,a).allclose(~multidim_rotations)
+        a = np.array([[1.42,0.0,0.0],
+                      [0.0,0.3,0.0]])
+        assert Rotation.from_parallel(a,multidim_rotations[...,np.newaxis]@a).allclose( multidim_rotations)
+        assert Rotation.from_parallel(multidim_rotations[...,np.newaxis]@a,a).allclose(~multidim_rotations)
 
 
     @pytest.mark.parametrize('normalize',[True,False])
@@ -877,9 +877,8 @@ class TestRotation:
         qu /= np.linalg.norm(qu,axis=1,keepdims=True)
         assert (Rotation(qu) == Rotation(-qu)).all()
 
-    def test_inversion(self):
-        r = Rotation.from_random()
-        assert r == ~~r
+    def test_inversion(self,multidim_rotations):
+        assert (multidim_rotations == ~~multidim_rotations).all()
 
     @pytest.mark.parametrize('shape',[1,(1,),(4,2),(1,1,1),tuple(np.random.randint(0,10,4))])
     def test_size(self,shape):
@@ -1081,9 +1080,12 @@ class TestRotation:
         with pytest.raises(TypeError):
             R@data
 
-    def test_misorientation_invariant(self):
-        R = Rotation.from_random()
-        assert np.allclose(R.misorientation(R).as_matrix(),np.eye(3))
+    def test_misorientation(self,multidim_rotations):
+        r = Rotation.from_random(multidim_rotations.shape)
+        assert multidim_rotations.misorientation(r).allclose(~(multidim_rotations*~r))
+
+    def test_misorientation_invariant(self,multidim_rotations):
+        assert np.allclose(multidim_rotations.misorientation(multidim_rotations).as_matrix(),np.eye(3))
 
     def test_misorientation_average(self):
         """2 times the average is the misorientation."""
