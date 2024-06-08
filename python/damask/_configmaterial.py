@@ -146,7 +146,6 @@ class ConfigMaterial(YAML):
                 except KeyError:
                     pass
 
-
         base_config = ConfigMaterial({'phase':{k if isinstance(k,int) else str(k): None for k in np.unique(phase)},
                                       'homogenization':{'direct':{'N_constituents':1}}})
         constituent = {k:np.atleast_1d(v[idx].squeeze()) for k,v in zip(['O','phase'],[O,phase])}

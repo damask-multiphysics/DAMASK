@@ -250,14 +250,14 @@ class Colormap(mpl.colors.ListedColormap):
         >>> damask.Colormap.from_predefined('strain')
 
         """
-        try:
+        if name in cm.__dict__:
             # matplotlib presets
             colormap = cm.__dict__[name]
             return Colormap(np.array(list(map(colormap,np.linspace(0,1,N)))
                                      if isinstance(colormap,mpl.colors.LinearSegmentedColormap) else
                                      colormap.colors),
                             name=name)
-        except KeyError:
+        else:
             # DAMASK presets
             definition = Colormap._predefined_DAMASK[name]
             return Colormap.from_range(definition['low'],definition['high'],name,N)
