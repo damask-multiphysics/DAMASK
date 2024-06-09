@@ -48,7 +48,7 @@ module spectral_utilities
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:,:,:),     pointer     :: tensorField_fourier           !< tensor field in Fourier space
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:,:),       pointer     :: vectorField_fourier           !< vector field in Fourier space
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:),         pointer     :: scalarField_fourier           !< scalar field in Fourier space
-  complex(pREAL),            dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                     !< gamma operator (field) for spectral method
+  complex(pREAL),            dimension(:,:,:,:,:,:,:), allocatable :: Gamma_hat                     !< gamma operator (field) for spectral method
   complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi1st                         !< wave vector field for first derivatives
   complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi2nd                         !< wave vector field for second derivatives
   real(pREAL),               dimension(3,3,3,3)                    :: C_ref                         !< mechanic reference stiffness
@@ -328,9 +328,9 @@ subroutine spectral_utilities_init()
   end do; end do; end do
 
   if (num%memory_efficient) then                                                                    ! allocate just single fourth order tensor
-    allocate (gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
+    allocate (Gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
   else                                                                                              ! precalculation of gamma_hat field
-    allocate (gamma_hat(3,3,3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
+    allocate (Gamma_hat(3,3,3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
   end if
 
   call selfTest()
@@ -359,7 +359,7 @@ subroutine utilities_updateGamma(C)
   C_ref = C/wgt
 
   if (.not. num%memory_efficient) then
-    gamma_hat = cmplx(0.0_pREAL,0.0_pREAL,pREAL)                                                    ! for the singular point and any non invertible A
+    Gamma_hat = cmplx(0.0_pREAL,0.0_pREAL,pREAL)                                                    ! for the singular point and any non invertible A
     !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,xiDyad_cmplx,A,A_inv,err)
     do j = cells2Offset+1, cells2Offset+cells2; do k = 1, cells(3); do i = 1, cells1Red
       if (any([i,j,k] /= 1)) then                                                                   ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
@@ -383,11 +383,11 @@ subroutine utilities_updateGamma(C)
           temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pREAL)
 #ifndef __INTEL_COMPILER
           do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
-            gamma_hat(l,m,n,o,i,k,j-cells2Offset) = temp33_cmplx(l,n) * xiDyad_cmplx(o,m)
+            Gamma_hat(l,m,n,o,i,k,j-cells2Offset) = temp33_cmplx(l,n) * xiDyad_cmplx(o,m)
           end do
 #else
           forall(l=1:3, m=1:3, n=1:3, o=1:3) &
-            gamma_hat(l,m,n,o,i,k,j-cells2Offset) = temp33_cmplx(l,n) * xiDyad_cmplx(o,m)
+            Gamma_hat(l,m,n,o,i,k,j-cells2Offset) = temp33_cmplx(l,n) * xiDyad_cmplx(o,m)
 #endif
         end if
       end if
@@ -447,16 +447,16 @@ function utilities_GammaConvolution(field, fieldAim) result(gammaField)
           temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pREAL)
 #ifndef __INTEL_COMPILER
           do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
-            gamma_hat(l,m,n,o,1,1,1) = temp33_cmplx(l,n)*xiDyad_cmplx(o,m)
+            Gamma_hat(l,m,n,o,1,1,1) = temp33_cmplx(l,n)*xiDyad_cmplx(o,m)
           end do
           do concurrent(l = 1:3, m = 1:3)
-            temp33_cmplx(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,k,j))
+            temp33_cmplx(l,m) = sum(Gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,k,j))
           end do
 #else
           forall(l=1:3, m=1:3, n=1:3, o=1:3) &
-            gamma_hat(l,m,n,o,1,1,1) = temp33_cmplx(l,n)*xiDyad_cmplx(o,m)
+            Gamma_hat(l,m,n,o,1,1,1) = temp33_cmplx(l,n)*xiDyad_cmplx(o,m)
           forall(l = 1:3, m = 1:3) &
-            temp33_cmplx(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,k,j))
+            temp33_cmplx(l,m) = sum(Gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,k,j))
 #endif
           tensorField_fourier(1:3,1:3,i,k,j) = temp33_cmplx
         else
@@ -470,11 +470,11 @@ function utilities_GammaConvolution(field, fieldAim) result(gammaField)
     do j = 1, cells2;  do k = 1, cells(3);  do i = 1,cells1Red
 #ifndef __INTEL_COMPILER
       do concurrent(l = 1:3, m = 1:3)
-        temp33_cmplx(l,m) = sum(gamma_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
+        temp33_cmplx(l,m) = sum(Gamma_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
       end do
 #else
       forall(l = 1:3, m = 1:3) &
-        temp33_cmplx(l,m) = sum(gamma_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
+        temp33_cmplx(l,m) = sum(Gamma_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
 #endif
       tensorField_fourier(1:3,1:3,i,k,j) = temp33_cmplx
     end do; end do; end do
