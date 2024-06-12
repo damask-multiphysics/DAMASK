@@ -210,13 +210,13 @@ subroutine spectral_utilities_init()
   end if
 
   select case(num_grid_fft%get_asStr('FFTW_plan_mode',defaultVal='FFTW_MEASURE'))
-    case('fftw_estimate', 'FFTW_ESTIMATE')                                                          ! ordered from slow execution (but fast plan creation) to fast execution
+    case('FFTW_ESTIMATE')                                                                           ! ordered from slow execution (but fast plan creation) to fast execution
       FFTW_planner_flag = FFTW_ESTIMATE
-    case('fftw_measure', 'FFTW_MEASURE')
+    case('FFTW_MEASURE')
       FFTW_planner_flag = FFTW_MEASURE
-    case('fftw_patient', 'FFTW_PATIENT')
+    case('FFTW_PATIENT')
       FFTW_planner_flag = FFTW_PATIENT
-    case('fftw_exhaustive', 'FFTW_EXHAUSTIVE')
+    case('FFTW_EXHAUSTIVE')
       FFTW_planner_flag = FFTW_EXHAUSTIVE
     case default
       call IO_warning(47,'using default FFTW_MEASURE instead of "'//trim(num_grid_fft%get_asStr('FFTW_plan_mode'))//'"')
