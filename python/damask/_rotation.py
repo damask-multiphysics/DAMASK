@@ -829,12 +829,20 @@ class Rotation:
         -------
         new : damask.Rotation
 
+        Examples
+        --------
+        >>> import damask
+        >>> damask.Rotation.from_quaternion([[1,0,0,0],[0,1,0,0]])
+        Quaternions of shape (2,)
+        [[1. 0. 0. 0.]
+         [0. 1. 0. 0.]]
+
         """
         qu = np.array(q,dtype=float)
         if qu.shape[:-2:-1] != (4,): raise ValueError(f'invalid shape: {qu.shape}')
         if abs(P) != 1: raise ValueError('P ∉ {-1,1}')
 
-        qu[...,1:4] *= -P
+        if P == 1: qu[...,1:4] *= -1
 
         if accept_homomorph:
             qu[qu[...,0]<0.] *= -1.
@@ -871,6 +879,12 @@ class Rotation:
         -----
         Bunge Euler angles correspond to a rotation axis sequence of z–x'–z''.
 
+        Examples
+        --------
+        >>> import damask
+        >>> damask.Rotation.from_Euler_angles([180,0,0],degrees=True)
+        Quaternion [0. 0. 0. 1.]
+
         """
         eu = np.array(phi,dtype=float)
         if eu.shape[:-2:-1] != (3,): raise ValueError(f'invalid shape: {eu.shape}')
@@ -906,12 +920,20 @@ class Rotation:
         -------
         new : damask.Rotation
 
+        Examples
+        --------
+        >>> import damask
+        >>> damask.Rotation.from_axis_angle([[0,0,1,90],[1,0,0,180]],degrees=True)
+        Quaternions of shape (2,)
+        [[0.707 0.    0.    0.707]
+         [0.    1.    0.    0.   ]]
+
         """
         ax = np.array(n_omega,dtype=float)
         if ax.shape[:-2:-1] != (4,): raise ValueError(f'invalid shape: {ax.shape}')
         if abs(P) != 1: raise ValueError('P ∉ {-1,1}')
 
-        ax[...,0:3] *= -P
+        if P == 1: ax[...,0:3] *= -1
         if degrees: ax[...,  3] = np.radians(ax[...,3])
         if np.any(ax[...,3] < 0.) or np.any(ax[...,3] > np.pi):
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
@@ -985,6 +1007,12 @@ class Rotation:
         -------
         new : damask.Rotation
 
+        Examples
+        --------
+        >>> import damask
+        >>> damask.Rotation.from_matrix([[1,0,0],[0,0,-1],[0,1,0]])
+        Quaternion [ 0.707 -0.707 0.  0. ]
+
         """
         return Rotation.from_basis(np.array(R,dtype=float) * (np.linalg.det(R)**(-1./3.))[...,np.newaxis,np.newaxis]
                                    if normalize else
@@ -1006,6 +1034,12 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
+
+        Examples
+        --------
+        >>> import damask
+        >>> damask.Rotation.from_parallel([[2,0,0],[0,1,0]],[[1,0,0],[0,2,0]])
+        Quaternion [1. 0. 0. 0.]
 
         """
         a_ = np.array(a,dtype=float)
@@ -1047,12 +1081,18 @@ class Rotation:
         -------
         new : damask.Rotation
 
+        Examples
+        --------
+        >>> import damask
+        >>> damask.Rotation.from_Rodrigues_vector([0,0,1,1])
+        Quaternion [0.707 0.    0.    0.707]
+
         """
         ro = np.array(rho,dtype=float)
         if ro.shape[:-2:-1] != (4,): raise ValueError(f'invalid shape: {ro}')
         if abs(P) != 1: raise ValueError('P ∉ {-1,1}')
 
-        ro[...,0:3] *= -P
+        if P == 1: ro[...,0:3] *= -1
         if np.any(ro[...,3] < 0.):
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'Rodrigues vector rotation angle is negative\n{ro}')
@@ -1087,7 +1127,7 @@ class Rotation:
         if ho.shape[:-2:-1] != (3,): raise ValueError(f'invalid shape: {ho.shape}')
         if abs(P) != 1: raise ValueError('P ∉ {-1,1}')
 
-        ho *= -P
+        if P == 1: ho *= -1
 
         if np.any(np.linalg.norm(ho,axis=-1) > _R1+1.e-9):
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
