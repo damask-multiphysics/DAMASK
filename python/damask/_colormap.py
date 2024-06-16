@@ -185,6 +185,7 @@ class Colormap(mpl.colors.ListedColormap):
         --------
         >>> import damask
         >>> damask.Colormap.from_range((0,0,1),(0,0,0),'blue_to_black')
+        Colormap: blue_to_black
 
         """
         toMsh = dict(
@@ -248,6 +249,7 @@ class Colormap(mpl.colors.ListedColormap):
         --------
         >>> import damask
         >>> damask.Colormap.from_predefined('strain')
+        Colormap: strain
 
         """
         if name in cm.__dict__:

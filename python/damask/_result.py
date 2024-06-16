@@ -64,7 +64,7 @@ def _empty_like(dataset: np.ma.core.MaskedArray,
 
 
 class Result:
-    """
+    r"""
     Add data to and export data from a DADF5 (DAMASK HDF5) file.
 
     A DADF5 file contains DAMASK results.
@@ -83,11 +83,11 @@ class Result:
 
     >>> import damask
     >>> r = damask.Result('my_file.hdf5')
-    >>> r.add_stress_Cauchy()
-    >>> r.add_equivalent_Mises('sigma')
-    >>> r.export_VTK()
-    >>> r_last = r.view(increments=-1)
-    >>> sigma_vM_last = r_last.get('sigma_vM')
+    >>> r
+    \x1b[2mCreated by DAMASK_grid ...
+            on ...
+     executing "..."\x1b[0m
+    ...
 
     """
 
@@ -394,7 +394,7 @@ class Result:
         >>> import damask
         >>> r_empty = damask.Result('my_file.hdf5').view(increments=False)
         >>> r_first = r_empty.view_more(increments=0)
-        >>> r_first_and_last = r.first.view_more(increments=-1)
+        >>> r_first_and_last = r_first.view_more(increments=-1)
 
         """
         return self._manage_view('add',increments,times,phases,homogenizations,fields)
@@ -458,7 +458,7 @@ class Result:
     def rename(self,
                name_src: str,
                name_dst: str):
-        """
+        r"""
         Rename/move datasets (within the same group/folder).
 
         This operation is discouraged because the history of the
@@ -478,6 +478,7 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r_unprotected = r.view(protected=False)
+        \x1b[93m\x1b[1mWarning: Modification of existing datasets allowed!\x1b[0m\x1b[0m
         >>> r_unprotected.rename('F','def_grad')
 
         """
@@ -499,7 +500,7 @@ class Result:
 
 
     def remove(self, name: str):
-        """
+        r"""
         Remove/delete datasets.
 
         This operation is discouraged because the history of the
@@ -517,6 +518,7 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r_unprotected = r.view(protected=False)
+        \x1b[93m\x1b[1mWarning: Modification of existing datasets allowed!\x1b[0m\x1b[0m
         >>> r_unprotected.remove('F')
 
         """
@@ -687,10 +689,13 @@ class Result:
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_calculation('np.sum(#rho_mob#,axis=1)','rho_mob_total',
         ...                    '1/m²','total mobile dislocation density')
+        [...]
         >>> r.add_calculation('np.sum(#rho_dip#,axis=1)','rho_dip_total',
         ...                    '1/m²','total dislocation dipole density')
+        [...]
         >>> r.add_calculation('#rho_dip_total#+#rho_mob_total#','rho_total',
         ...                    '1/m²','total dislocation density')
+        [...]
 
         Add Mises equivalent of the Cauchy stress without storage of
         intermediate results. Define a user function for better readability:
@@ -701,8 +706,10 @@ class Result:
         ...     return damask.mechanics.equivalent_stress_Mises(sigma)
         >>> r = damask.Result('my_file.hdf5')
         >>> r.enable_user_function(equivalent_stress)
+        Function equivalent_stress enabled in add_calculation.
         >>> r.add_calculation('equivalent_stress(#F#,#P#)','sigma_vM','Pa',
         ...                   'Mises equivalent of the Cauchy stress')
+        [...]
 
         """
         def calculation(**kwargs) -> DADF5Dataset:
@@ -778,6 +785,7 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_determinant('F_p')
+        [...]
 
         """
 
@@ -811,6 +819,7 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_deviator('sigma')
+        [...]
 
         """
 
@@ -848,6 +857,7 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_eigenvalue('sigma','min')
+        [...]
 
         """
 
@@ -922,7 +932,7 @@ class Result:
 
         Parameters
         ----------
-        l : numpy.array of shape (3)
+        l : numpy.array of shape (3) or compatible
             Lab frame direction for inverse pole figure.
         q : str, optional
             Name of the dataset containing the crystallographic orientation as quaternions.
@@ -934,7 +944,8 @@ class Result:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_IPF_color(np.array([0,1,1]))
+        >>> r.add_IPF_color(l = [0,1,1], q = 'O')
+        [...]
 
         """
 
@@ -1002,12 +1013,14 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_equivalent_Mises('sigma')
+        [...]
 
         Add the Mises equivalent of the spatial logarithmic strain 'epsilon_V^0.0(F)':
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_equivalent_Mises('epsilon_V^0.0(F)')
+        [...]
 
         """
         def equivalent_Mises(T_sym: DADF5Dataset, kind: str) -> DADF5Dataset:
@@ -1128,7 +1141,7 @@ class Result:
         q : str, optional
             Name of the dataset containing the crystallographic orientation as quaternions.
             Defaults to 'O'.
-        uvw|hkl : numpy.ndarray of shape (3)
+        uvw|hkl : numpy.ndarray of shape (3) or compatible
             Miller indices of crystallographic direction or plane normal.
         with_symmetry : bool, optional
             Calculate all N symmetrically equivalent vectors.
@@ -1182,6 +1195,7 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_rotation('F')
+        [...]
 
         """
         def rotation(F: DADF5Dataset) -> DADF5Dataset:
@@ -1214,6 +1228,7 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_spherical('sigma')
+        [...]
 
         """
         def spherical(T: DADF5Dataset) -> DADF5Dataset:
@@ -1257,12 +1272,14 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_strain(t='V',m=-1.0)
+        [...]
 
         Add the plastic Biot strain:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_strain('F_p','U',0.5)
+        [...]
 
         Notes
         -----

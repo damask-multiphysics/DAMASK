@@ -500,13 +500,8 @@ class Orientation(Rotation,Crystal):
         >>> a = damask.Orientation.from_Euler_angles(phi=[123,32,21],degrees=True,family='hexagonal')
         >>> b = damask.Orientation.from_Euler_angles(phi=[104,11,87],degrees=True,family='hexagonal')
         >>> a.disorientation(b)
-        Crystal family hexagonal
-        Quaternion: (real=0.976, imag=<+0.189, +0.018, +0.103>)
-        Matrix:
-        [[ 0.97831006  0.20710935  0.00389135]
-         [-0.19363288  0.90765544  0.37238141]
-         [ 0.07359167 -0.36505797  0.92807163]]
-        Bunge Eulers / deg: (11.40, 21.86, 0.60)
+        Crystal family: hexagonal
+        Quaternion [0.976   0.189 0.018 0.103]
 
         Plot a sample from the Mackenzie distribution.
 
@@ -517,6 +512,7 @@ class Orientation(Rotation,Crystal):
         >>> b = damask.Orientation.from_random(shape=N,family='cubic')
         >>> n,omega = a.disorientation(b).as_axis_angle(degrees=True,pair=True)
         >>> plt.hist(omega,25)
+        [...]
         >>> plt.show()
 
         """
@@ -732,7 +728,9 @@ class Orientation(Rotation,Crystal):
         >>> coord = damask.util.project_equal_area(o.to_SST(lab))
         >>> color = o.IPF_color(lab)
         >>> plt.scatter(coord[:,0],coord[:,1],color=color,s=.06)
+        [...]
         >>> plt.axis('scaled')
+        [...]
         >>> plt.show()
 
         """
@@ -798,16 +796,15 @@ class Orientation(Rotation,Crystal):
 
         Examples
         --------
-        >>> import np
+        >>> import numpy as np
         >>> import damask
-        >>> np.set_printoptions(precision=2,suppress=True,floatmode='maxprec')
         >>> cubic = damask.Orientation.from_axis_angle(n_omega=[1,0,0,90],degrees=True,lattice='cI')
         >>> cubic.to_lattice(direction=[1, 0, 0])
         array([1., 0., 0.])
         >>> cubic.to_lattice(direction=[0, 1, 0])
-        array([ 0.,  0., -1.])
+        array([0., 0., -1.])
         >>> cubic.to_lattice(direction=[0, 0, 1])
-        array([-0.,  1.,  0.])
+        array([-0., 1., 0.])
         >>> tetragonal = damask.Orientation(lattice='tI',c=0.5)
         >>> damask.util.scale_to_coprime(tetragonal.to_lattice(direction=[1,1,1]))
         array([1, 1, 2])
@@ -891,7 +888,6 @@ class Orientation(Rotation,Crystal):
 
         >>> import numpy as np
         >>> import damask
-        >>> np.set_printoptions(3,suppress=True,floatmode='fixed')
         >>> O = damask.Orientation.from_Euler_angles(phi=[0,45,0],degrees=True,lattice='cF')
         >>> O.Schmid(N_slip=[12])[0]
         array([[ 0.000,  0.000,  0.000],
@@ -944,20 +940,19 @@ class Orientation(Rotation,Crystal):
         --------
         Face-centered cubic orientations following from a
         body-centered cubic crystal in "Cube" orientation according
-        to the Bain orientation relationship (cI -> cF).
+        to the Bain orientation relationship (cF -> cI).
 
         >>> import numpy as np
         >>> import damask
-        >>> np.set_printoptions(3,suppress=True,floatmode='fixed')
-        >>> damask.Orientation(lattice='cI').related('Bain')
+        >>> damask.Orientation(lattice='cF').related('Bain')
         Crystal family: cubic
-        Bravais lattice: cF
+        Bravais lattice: cI
         a=1 m, b=1 m, c=1 m
         α=90°, β=90°, γ=90°
         Quaternions of shape (3,)
-        [[0.924 0.383 0.000 0.000]
-         [0.924 0.000 0.383 0.000]
-         [0.924 0.000 0.000 0.383]]
+        [[ 6.53281482e-01  2.70598050e-01  6.53281482e-01  2.70598050e-01]
+         [ 2.70598050e-01 -2.70598050e-01 -6.53281482e-01 -6.53281482e-01]
+         [ 9.23879533e-01 -5.55111512e-17 -2.77555756e-17 -3.82683432e-01]]
 
         """
         lattice,o = self.relation_operations(model,target)

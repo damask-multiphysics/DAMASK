@@ -402,44 +402,50 @@ class Rotation:
 
         Examples
         --------
-        All below examples rely on imported modules:
-        >>> import numpy as np
-        >>> import damask
-
         Application of twelve (random) rotations to a set of five vectors.
 
+        >>> import numpy as np
+        >>> import damask
         >>> r = damask.Rotation.from_random(shape=(12))
         >>> o = np.ones((5,3))
         >>> (r@o).shape                                    # (12) @ (5, 3)
-        (12,5, 3)
+        (12, 5, 3)
 
         Application of a (random) rotation to all twelve second-rank tensors.
 
+        >>> import numpy as np
+        >>> import damask
         >>> r = damask.Rotation.from_random()
         >>> o = np.ones((12,3,3))
         >>> (r@o).shape                                    # (1) @ (12, 3,3)
-        (12,3,3)
+        (12, 3, 3)
 
         Application of twelve (random) rotations to the corresponding twelve second-rank tensors.
 
+        >>> import numpy as np
+        >>> import damask
         >>> r = damask.Rotation.from_random(shape=(12))
         >>> o = np.ones((12,3,3))
         >>> (r@o).shape                                    # (12) @ (3,3)
-        (12,3,3)
+        (12, 3, 3)
 
         Application of each of three (random) rotations to all three vectors.
 
+        >>> import numpy as np
+        >>> import damask
         >>> r = damask.Rotation.from_random(shape=(3))
         >>> o = np.ones((3,3))
         >>> (r[...,np.newaxis]@o[np.newaxis,...]).shape    # (3,1) @ (1,3, 3)
-        (3,3,3)
+        (3, 3, 3)
 
         Application of twelve (random) rotations to all twelve second-rank tensors.
 
+        >>> import numpy as np
+        >>> import damask
         >>> r = damask.Rotation.from_random(shape=(12))
         >>> o = np.ones((12,3,3))
         >>> (r@o[np.newaxis,...]).shape                    # (12) @ (1,12, 3,3)
-        (12,3,3,3)
+        (12, 12, 3, 3)
 
         """
         if isinstance(other, np.ndarray):
@@ -923,10 +929,10 @@ class Rotation:
         Examples
         --------
         >>> import damask
-        >>> damask.Rotation.from_axis_angle([[0,0,1,90],[1,0,0,180]],degrees=True)
+        >>> damask.Rotation.from_axis_angle([[0,0,1,90],[1,0,0,90]],degrees=True)
         Quaternions of shape (2,)
         [[0.707 0.    0.    0.707]
-         [0.    1.    0.    0.   ]]
+         [0.707 0.707 0.    0.   ]]
 
         """
         ax = np.array(n_omega,dtype=float)
