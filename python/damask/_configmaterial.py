@@ -486,15 +486,16 @@ class ConfigMaterial(YAML):
                 v: 1.0
             homogenization: SX
 
-        Create three materials that each approximate a duplex stainless steel microstructure
+        Create five materials that each approximate a duplex stainless steel microstructure
         with three austenite and one relatively bigger ferrite grain of random orientation each:
 
         >>> import numpy as np
         >>> import damask
         >>> m = damask.ConfigMaterial()
-        >>> m = m.material_add(phase = np.array(['Austenite']*3+['Ferrite']),
-        ...                    O = damask.Rotation.from_random((5,4),rng_seed=20191102),
-        ...                    v = np.array([0.2]*3+[0.4]),
+        >>> N_materials = 5
+        >>> m = m.material_add(phase = np.array([['Austenite']*3+['Ferrite']]),
+        ...                    O = damask.Rotation.from_random((N_materials,4),rng_seed=20191102),
+        ...                    v = np.array([[0.2]*3+[0.4]]),
         ...                    homogenization = 'Taylor')
         >>> m
         homogenization: {Taylor: null}
