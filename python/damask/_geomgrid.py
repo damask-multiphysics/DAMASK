@@ -132,12 +132,12 @@ class GeomGrid:
                  material: np.ndarray):
         if len(material.shape) != 3:
             raise ValueError(f'invalid material shape {material.shape}')
-        if material.dtype not in np.sctypes['float'] and material.dtype not in np.sctypes['int']:
+        if material.dtype not in [np.float32,np.float64, np.int32,np.int64]:
             raise TypeError(f'invalid material data type "{material.dtype}"')
 
         self._material = np.copy(material)
 
-        if self.material.dtype in np.sctypes['float'] and \
+        if self.material.dtype in [np.float32,np.float64] and \
            np.all(self.material == self.material.astype(np.int64).astype(float)):
             self._material = self.material.astype(np.int64)
 
@@ -153,7 +153,7 @@ class GeomGrid:
         if len(size) != 3 or any(np.array(size) < 0):
             raise ValueError(f'invalid size {size}')
 
-        self._size = np.array(size)
+        self._size = np.array(size,np.float64)
 
     @property
     def origin(self) -> np.ndarray:
@@ -166,7 +166,7 @@ class GeomGrid:
         if len(origin) != 3:
             raise ValueError(f'invalid origin {origin}')
 
-        self._origin = np.array(origin)
+        self._origin = np.array(origin,np.float64)
 
     @property
     def initial_conditions(self) -> Dict[str,np.ndarray]:
@@ -812,7 +812,7 @@ class GeomGrid:
                    'homogenization 1',
                   ]
 
-        format_string = '%g' if self.material.dtype in np.sctypes['float'] else \
+        format_string = '%g' if self.material.dtype in [np.float32,np.float64] else \
                         '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.material)))))
         np.savetxt(fname,
                    self.material.reshape([self.cells[0],np.prod(self.cells[1:])],order='F').T,
@@ -1347,14 +1347,14 @@ class GeomGrid:
 
         """
         # radius and center
-        r = np.array(dimension)/2.0*self.size/self.cells if np.array(dimension).dtype in np.sctypes['int'] else \
+        r = np.array(dimension)/2.0*self.size/self.cells if np.issubdtype(np.array(dimension).dtype,np.integer) else \
             np.array(dimension)/2.0
-        c = (np.array(center) + .5)*self.size/self.cells if np.array(center).dtype    in np.sctypes['int'] else \
+        c = (np.array(center) + .5)*self.size/self.cells if np.issubdtype(np.array(center).dtype,   np.integer) else \
             (np.array(center) - self.origin)
 
         coords = grid_filters.coordinates0_point(self.cells,self.size,
                                           -(0.5*(self.size + (self.size/self.cells
-                                                              if np.array(center).dtype in np.sctypes['int'] else
+                                                              if np.issubdtype(np.array(center).dtype,np.integer) else
                                                               0)) if periodic else c))
         coords_rot = R.broadcast_to(tuple(self.cells))@coords
 

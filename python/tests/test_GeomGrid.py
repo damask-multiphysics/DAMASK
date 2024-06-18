@@ -80,8 +80,8 @@ class TestGeomGrid:
             GeomGrid(np.zeros((3,3,3),dtype='complex'),np.ones(3))
 
     def test_cast_to_int(self):
-        g = GeomGrid(np.zeros((3,3,3)),np.ones(3))
-        assert g.material.dtype in np.sctypes['int']
+        g = GeomGrid(np.zeros((3,3,3),dtype=np.float64),np.ones(3))
+        assert g.material.dtype in [np.int32,np.int64]
 
     def test_invalid_size(self,default):
         with pytest.raises(ValueError):
