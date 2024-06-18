@@ -369,11 +369,11 @@ def project_equal_angle(vector: _np.ndarray,
     >>> import damask
     >>> import numpy as np
     >>> project_equal_angle(np.ones(3))
-        [0.3660254, 0.3660254]
+    array([0.3660, 0.3660])
     >>> project_equal_angle(np.ones(3),direction='x',normalize=False,keepdims=True)
-        [0, 0.5, 0.5]
+    array([0. , 0.5, 0.5])
     >>> project_equal_angle([0,1,1],direction='y',normalize=True,keepdims=False)
-        [0.41421356, 0]
+    array([0.4142, 0. ])
 
     """
     shift = 'zyx'.index(direction)
@@ -418,11 +418,11 @@ def project_equal_area(vector: _np.ndarray,
     >>> import damask
     >>> import numpy as np
     >>> project_equal_area(np.ones(3))
-        [0.45970084, 0.45970084]
+    array([0.4597, 0.4597])
     >>> project_equal_area(np.ones(3),direction='x',normalize=False,keepdims=True)
-        [0.0, 0.70710678, 0.70710678]
+    array([0. , 0.7071, 0.7071])
     >>> project_equal_area([0,1,1],direction='y',normalize=True,keepdims=False)
-        [0.5411961, 0.0]
+    array([0.5412, 0. ])
 
     """
     shift = 'zyx'.index(direction)
@@ -503,7 +503,7 @@ def shapeshifter(fro: _Tuple[int, ...],
     >>> b = np.ones(4)
     >>> b_extended = b.reshape(util.shapeshifter(b.shape,a.shape))
     >>> (a * np.broadcast_to(b_extended,a.shape)).shape
-    (3,4,2)
+    (3, 4, 2)
 
     """
     if len(fro) == 0 and len(to) == 0: return tuple()
@@ -545,19 +545,19 @@ def shapeblender(a: _Tuple[int, ...],
     Examples
     --------
     >>> shapeblender((3,2),(3,2))
-        (3,2)
+    (3, 2)
     >>> shapeblender((4,3),(3,2))
-        (4,3,2)
+    (4, 3, 2)
     >>> shapeblender((4,4),(3,2))
-        (4,4,3,2)
+    (4, 4, 3, 2)
     >>> shapeblender((1,2),(1,2,3))
-        (1,2,3)
+    (1, 2, 3)
     >>> shapeblender((),(2,2,1))
-        (2,2,1)
+    (2, 2, 1)
     >>> shapeblender((1,),(2,2,1))
-        (2,2,1)
+    (2, 2, 1)
     >>> shapeblender((1,),(2,2,1),True)
-        (1,2,2,1)
+    (1, 2, 2, 1)
 
     """
     def is_broadcastable(a,b):

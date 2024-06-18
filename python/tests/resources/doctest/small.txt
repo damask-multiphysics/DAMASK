@@ -1,0 +1,4 @@
+1_pos 2_pos 3_pos 1_qu  2_qu  3_qu 4_qu   phase    homog                                
+0     0     0     1.0   0.0   0.0  0.0  Aluminum SX                                   
+1     0     0     0.0   1.0   0.0  0.0  Steel    SX                                   
+1     1     0     0.0   1.0   0.0  0.0  Steel    SX 

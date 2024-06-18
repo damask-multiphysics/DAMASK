@@ -377,6 +377,7 @@ class GeomGrid:
         >>> N_grains = 20
         >>> cells = (32,32,32)
         >>> damask.util.run(f'neper -T -n {N_grains} -tesrsize {cells[0]}:{cells[1]}:{cells[2]} -periodicity all -format vtk')
+        running 'neper -T -n 20 -tesrsize 32:32:32 -periodicity all -format vtk' ...
         >>> damask.GeomGrid.load_Neper(f'n{N_grains}-id1.vtk').renumber()
         cells:  32 × 32 × 32
         size:   1.0 × 1.0 × 1.0 m³
@@ -736,8 +737,8 @@ class GeomGrid:
         >>> import numpy as np
         >>> import damask
         >>> damask.GeomGrid.from_minimal_surface([64]*3,np.ones(3)*1.e-4,'Gyroid')
-        cells : 64 × 64 × 64
-        size  : 0.0001 × 0.0001 × 0.0001 m³
+        cells:  64 × 64 × 64
+        size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
         # materials: 2
 
@@ -747,8 +748,8 @@ class GeomGrid:
         >>> import damask
         >>> damask.GeomGrid.from_minimal_surface([80]*3,np.ones(3)*5.e-4,
         ...                                  'Neovius',materials=(1,5))
-        cells : 80 × 80 × 80
-        size  : 0.0005 × 0.0005 × 0.0005 m³
+        cells:  80 × 80 × 80
+        size:   0.0005 × 0.0005 × 0.0005 m³
         origin: 0.0   0.0   0.0 m
         # materials: 2 (min: 1, max: 5)
 
@@ -1087,8 +1088,8 @@ class GeomGrid:
         origin: 0.0   0.0   0.0 m
         # materials: 1
         >>> g.scale(g.cells*2)
-        cells : 64 × 64 × 64
-        size  : 0.0001 × 0.0001 × 0.0001 m³
+        cells:  64 × 64 × 64
+        size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
         # materials: 1
 
@@ -1328,8 +1329,8 @@ class GeomGrid:
         >>> import damask
         >>> g = damask.GeomGrid(np.zeros([64]*3,int), np.ones(3)*1e-4)
         >>> g.add_primitive(np.ones(3)*5e-5,np.ones(3)*5e-5,1)
-        cells : 64 × 64 × 64
-        size  : 0.0001 × 0.0001 × 0.0001 m³
+        cells:  64 × 64 × 64
+        size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
         # materials: 2
 
@@ -1339,8 +1340,8 @@ class GeomGrid:
         >>> import damask
         >>> g = damask.GeomGrid(np.zeros([64]*3,int), np.ones(3)*1e-4)
         >>> g.add_primitive(np.ones(3,int)*32,np.zeros(3),np.inf)
-        cells : 64 × 64 × 64
-        size  : 0.0001 × 0.0001 × 0.0001 m³
+        cells:  64 × 64 × 64
+        size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
         # materials: 2
 
