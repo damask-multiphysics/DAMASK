@@ -359,8 +359,7 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
                + mu_ref*phi(i,j,k)
     end do; end do; end do
 
-    r = max(min(utilities_GreenConvolution(r, K_ref, mu_ref, Delta_t_),phi_lastInc),num%phi_min) &
-      - phi
+    r = phi - max(min(utilities_GreenConvolution(r, K_ref, mu_ref, Delta_t_),phi_lastInc),num%phi_min)
   end associate
   err_PETSc = 0
 
