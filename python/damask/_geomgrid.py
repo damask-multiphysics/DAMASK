@@ -471,7 +471,7 @@ class GeomGrid:
                 O = Rotation.from_Euler_angles(f['/'.join([b,c,Euler_angles])]).as_quaternion().reshape(-1,4) # noqa
                 unique,unique_inverse = np.unique(np.hstack([O,phase]),return_inverse=True,axis=0)
                 ma = np.arange(cells.prod()) if len(unique) == cells.prod() else \
-                     np.arange(unique.size)[np.argsort(pd.unique(unique_inverse))][unique_inverse]
+                     np.arange(unique.size)[np.argsort(pd.unique(unique_inverse.squeeze()))][unique_inverse]
             else:
                 ma = f['/'.join([b,c,feature_IDs])][()].flatten()
 
@@ -512,7 +512,7 @@ class GeomGrid:
         unique,unique_inverse = np.unique(np.hstack([table.get(l) for l in labels_]),return_inverse=True,axis=0)
 
         ma = np.arange(cells.prod()) if len(unique) == cells.prod() else \
-             np.arange(unique.size)[np.argsort(pd.unique(unique_inverse))][unique_inverse]
+             np.arange(unique.size)[np.argsort(pd.unique(unique_inverse.squeeze()))][unique_inverse]
 
         return GeomGrid(material = ma.reshape(cells,order='F'),
                         size     = size,
