@@ -23,6 +23,7 @@ import h5py as _h5py
 from . import version as _version
 from ._typehints import FloatSequence as _FloatSequence, NumpyRngSeed as _NumpyRngSeed, FileHandle as _FileHandle
 
+
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
 # https://stackoverflow.com/questions/287871
 _colors = {
@@ -323,8 +324,9 @@ def scale_to_coprime(v: _FloatSequence,
 
     max_denominator = int(10**(N_significant-1))
 
-    if (v_ := _np.asarray(v)).dtype in _np.sctypes['float']:
-        v_ = _np.round(_np.asarray(v,'float64')/_np.max(_np.abs(v)),N_significant)
+    v_ = _np.asarray(v)
+    if _np.issubdtype(v_.dtype,_np.inexact):
+        v_ = _np.round(_np.asarray(v,_np.float64)/_np.max(_np.abs(v)),N_significant)
     m = (v_ * _reduce(lcm, map(lambda x: int(get_square_denominator(x,max_denominator)),v_))**0.5).astype(_np.int64)
     m = m//_reduce(_np.gcd,m)
 

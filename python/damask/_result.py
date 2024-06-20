@@ -25,10 +25,13 @@ from . import tensor
 from . import util
 from ._typehints import FloatSequence, IntSequence, DADF5Dataset
 
+
 h5py3 = h5py.__version__[0] == '3'
 
 chunk_size = 1024**2//8                                                                             # for compression in HDF5
+
 prefix_inc = 'increment_'
+
 
 def _read(dataset: h5py._hl.dataset.Dataset) -> np.ndarray:
     """Read a dataset and its metadata into a numpy.ndarray."""
@@ -59,7 +62,7 @@ def _empty_like(dataset: np.ma.core.MaskedArray,
                 fill_int: int) -> np.ma.core.MaskedArray:
     """Create empty numpy.ma.MaskedArray."""
     return ma.array(np.empty((N_materialpoints,)+dataset.shape[1:],dataset.dtype),
-                    fill_value = fill_float if dataset.dtype in np.sctypes['float'] else fill_int,
+                    fill_value = fill_float if np.issubdtype(dataset.dtype,np.floating) else fill_int,
                     mask = True)
 
 
@@ -1783,9 +1786,10 @@ class Result:
         attribute_type_map = defaultdict(lambda:'Matrix', ( ((),'Scalar'), ((3,),'Vector'), ((3,3),'Tensor')) )
 
         def number_type_map(dtype):
-            if dtype in np.sctypes['int']:   return 'Int'
-            if dtype in np.sctypes['uint']:  return 'UInt'
-            if dtype in np.sctypes['float']: return 'Float'
+            if np.issubdtype(dtype,np.signedinteger):   return 'Int'
+            if np.issubdtype(dtype,np.unsignedinteger): return 'UInt'
+            if np.issubdtype(dtype,np.floating):        return 'Float'
+            raise TypeError(f'invalid type "{dtype}"')
 
 
         xdmf = ET.Element('Xdmf')
