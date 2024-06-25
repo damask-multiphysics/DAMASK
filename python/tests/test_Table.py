@@ -123,6 +123,15 @@ class TestTable:
         saved = Table.load_ang(tmp_path/'simple.ang')
         assert saved == orig
 
+    def test_ang_no_header(self,res_path,tmp_path):
+        orig = Table.load_ang(res_path/'simple.ang')
+        with open(res_path/'simple.ang') as f_in, open(tmp_path/'no_header.ang','w') as f_out:
+            for l in f_in:
+                if not l.startswith('#'): f_out.write(l)
+        no_header = Table.load_ang(tmp_path/'no_header.ang')
+        assert no_header == orig
+
+
     @pytest.mark.parametrize('fname',['datatype-mix.txt','whitespace-mix.txt'])
     def test_read_strange(self,res_path,fname):
         with open(res_path/fname) as f:
