@@ -821,6 +821,8 @@ class Orientation(Rotation,Crystal):
     def to_frame(self, *,
                  uvw: Optional[FloatSequence] = None,
                  hkl: Optional[FloatSequence] = None,
+                 uvtw: Optional[FloatSequence] = None,
+                 hkil: Optional[FloatSequence] = None,
                  with_symmetry: bool = False,
                  normalize: bool = True,
                  ) -> np.ndarray:
@@ -829,7 +831,7 @@ class Orientation(Rotation,Crystal):
 
         Parameters
         ----------
-        uvw|hkl : numpy.ndarray, shape (...,3)
+        uvw|hkl|uvtw|hkil : numpy.ndarray, shape (...,3) or shape (...,4)
             Miller indices of crystallographic direction or plane normal.
             Shape of vector blends with shape of own rotation array.
             For example, a rotation array of shape (3,2) and a vector
@@ -845,10 +847,10 @@ class Orientation(Rotation,Crystal):
         -------
         vector : numpy.ndarray, shape (...,3) or (N,...,3)
             Lab frame vector (or N vectors if with_symmetry) along
-            [uvw] direction or (hkl) plane normal.
+            [uvw]/[uvtw] direction or (hkl)/(hkil) plane normal.
 
         """
-        v = super().to_frame(uvw=uvw,hkl=hkl)
+        v = super().to_frame(uvw=uvw,hkl=hkl,uvtw=uvtw,hkil=hkil)
         s_v = v.shape[:-1]
         blend = util.shapeblender(self.shape,s_v)
         if normalize:
