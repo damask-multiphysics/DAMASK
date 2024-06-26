@@ -344,6 +344,30 @@ class TestOrientation:
              + util.shapeblender(o.shape,vector.shape[:-1]) \
              + vector.shape[-1:]
 
+
+    @pytest.mark.parametrize('lattice,mode,vector,N_sym',
+                            [('hP','plane',[0,0,0,1],6),
+                             ('hP','direction',[0,0,0,1],6),
+                             ('hP','plane',[1,0,0,0],2),
+                             ('hP','direction',[1,0,0,0],2),
+                             ('hP','plane',[0,1,0,0],2),
+                             ('hP','direction',[0,1,0,0],2),
+                             ('hP','plane',[0,0,1,0],2),
+                             ('hP','direction',[0,0,1,0],1),
+                             ('cI','plane',[0,0,1],4),
+                             ('cI','direction',[0,0,1],4),
+                             ('cF','direction',[0,1,1],2),
+                             ('cF','direction',[1,1,1],3)])
+    def test_to_frame_symmetries(self,lattice,mode,vector,N_sym):
+        keyword = 'hkil' if mode == 'direction' else 'uvtw'
+        if lattice != 'hP': keyword = keyword[:2] + keyword[3]
+        o = Orientation.from_random(lattice=lattice)
+        frame = o.to_frame(**{keyword:vector,'with_symmetry':True})
+        shape_full = frame.shape[0]
+        shape_reduced = np.unique(np.around(frame,12),axis=0).shape[0]
+        assert shape_full//N_sym == shape_reduced
+
+
     @pytest.mark.parametrize('lattice',['hP','cI','cF']) #tI not included yet
     def test_Schmid(self,update,res_path,lattice):
         O = Orientation(lattice=lattice)                                                            # noqa

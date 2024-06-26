@@ -807,8 +807,8 @@ def DREAM3D_cell_data_group(fname: _Union[str, _Path, _h5py.File]) -> str:
 
 
 def Bravais_to_Miller(*,
-                      uvtw: _Optional[_np.ndarray] = None,
-                      hkil: _Optional[_np.ndarray] = None) -> _np.ndarray:
+                      uvtw: _Optional[_FloatSequence] = None,
+                      hkil: _Optional[_FloatSequence] = None) -> _np.ndarray:
     """
     Transform 4 Miller–Bravais indices to 3 Miller indices of crystal direction [uvw] or plane normal (hkl).
 
@@ -835,8 +835,8 @@ def Bravais_to_Miller(*,
     return _np.einsum('il,...l',basis,axis)
 
 def Miller_to_Bravais(*,
-                      uvw: _Optional[_np.ndarray] = None,
-                      hkl: _Optional[_np.ndarray] = None) -> _np.ndarray:
+                      uvw: _Optional[_FloatSequence] = None,
+                      hkl: _Optional[_FloatSequence] = None) -> _np.ndarray:
     """
     Transform 3 Miller indices to 4 Miller–Bravais indices of crystal direction [uvtw] or plane normal (hkil).
 

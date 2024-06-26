@@ -894,7 +894,7 @@ class Crystal():
         array([ 3.38983051e+09,  1.95711956e+09, -4.15134508e-07])
 
         """
-        if [uvw,hkl, uvtw,hkil].count(None) != 3:
+        if sum(arg is not None for arg in (uvw,hkl, uvtw,hkil)) != 1:
             raise KeyError('specify either "uvw", "hkl", "uvtw", or "hkil"')
         basis,axis = (self.basis_real,np.asarray(uvw if uvtw is None else util.Bravais_to_Miller(uvtw=uvtw))) \
                      if hkl is None and hkil is None else \
