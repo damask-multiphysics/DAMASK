@@ -964,6 +964,10 @@ class Orientation(Rotation,Crystal):
         target = Crystal(lattice=lattice) if target is None else target
         return Orientation(rotation=o*Rotation(self.quaternion)[np.newaxis,...],                    # type: ignore
                           lattice=target.lattice,
-                          a = target.a, b = target.b, c = target.c,
-                          alpha = target.alpha, beta  = target.beta, gamma = target.gamma,
+                          a=target.a,
+                          b=target.b,
+                          c=target.c,
+                          alpha=target.alpha,
+                          beta =target.beta,
+                          gamma=target.gamma,
                          )
