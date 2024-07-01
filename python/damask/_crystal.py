@@ -2,7 +2,7 @@ from typing import Optional, Union, Dict, List, Tuple
 
 import numpy as np
 
-from ._typehints import FloatSequence, CrystalFamily, BravaisLattice, CrystalKinematics
+from ._typehints import FloatSequence, IntSequence, CrystalFamily, BravaisLattice, CrystalKinematics
 from . import util
 from . import Rotation
 
@@ -859,10 +859,10 @@ class Crystal():
 
 
     def to_frame(self, *,
-                 uvw: Optional[FloatSequence] = None,
-                 hkl: Optional[FloatSequence] = None,
-                 uvtw: Optional[FloatSequence] = None,
-                 hkil: Optional[FloatSequence] = None) -> np.ndarray:
+                 uvw: Optional[IntSequence] = None,
+                 hkl: Optional[IntSequence] = None,
+                 uvtw: Optional[IntSequence] = None,
+                 hkil: Optional[IntSequence] = None) -> np.ndarray:
         """
         Calculate crystal frame vector corresponding to lattice direction [uvw] or plane normal (hkl).
 

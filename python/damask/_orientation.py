@@ -819,10 +819,10 @@ class Orientation(Rotation,Crystal):
 
 
     def to_frame(self, *,
-                 uvw: Optional[FloatSequence] = None,
-                 hkl: Optional[FloatSequence] = None,
-                 uvtw: Optional[FloatSequence] = None,
-                 hkil: Optional[FloatSequence] = None,
+                 uvw: Optional[IntSequence] = None,
+                 hkl: Optional[IntSequence] = None,
+                 uvtw: Optional[IntSequence] = None,
+                 hkil: Optional[IntSequence] = None,
                  with_symmetry: bool = False,
                  normalize: bool = True,
                  ) -> np.ndarray:
