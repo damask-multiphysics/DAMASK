@@ -831,14 +831,15 @@ def Bravais_to_Miller(*,
     if hkil is not None and (_np.sum(_np.asarray(hkil)[...,:3],axis=-1) != 0).any():
         raise ValueError(r'h+k+i≠0')
 
-    axis,basis  = (_np.array(uvtw),_np.array([[1,0,-1,0],
-                                              [0,1,-1,0],
-                                              [0,0, 0,1]])) \
-                  if hkil is None else \
-                  (_np.array(hkil),_np.array([[1,0,0,0],
-                                              [0,1,0,0],
-                                              [0,0,0,1]]))
-    return _np.einsum('il,...l',basis,axis)
+    axis,basis = (_np.array(uvtw),_np.array([[1,0,-1,0],
+                                             [0,1,-1,0],
+                                             [0,0, 0,1]])) \
+                 if hkil is None else \
+                 (_np.array(hkil),_np.array([[1,0,0,0],
+                                             [0,1,0,0],
+                                             [0,0,0,1]]))
+    uvw_hkl = _np.einsum('il,...l',basis,axis)
+    return uvw_hkl//_np.gcd.reduce(uvw_hkl,axis=-1,keepdims=True)
 
 def Miller_to_Bravais(*,
                       uvw: _Optional[_IntSequence] = None,
@@ -859,16 +860,17 @@ def Miller_to_Bravais(*,
     """
     if (uvw is not None) ^ (hkl is None):
         raise KeyError('specify either "uvw" or "hkl"')
-    axis,basis  = (_np.asarray(uvw),_np.array([[ 2,-1, 0],
-                                               [-1, 2, 0],
-                                               [-1,-1, 0],
-                                               [ 0, 0, 3]])/3) \
-                  if hkl is None else \
-                  (_np.asarray(hkl),_np.array([[ 1, 0, 0],
-                                               [ 0, 1, 0],
-                                               [-1,-1, 0],
-                                               [ 0, 0, 1]]))
-    return _np.einsum('il,...l',basis,axis)
+    axis,basis = (_np.asarray(uvw),_np.array([[ 2,-1, 0],
+                                              [-1, 2, 0],
+                                              [-1,-1, 0],
+                                              [ 0, 0, 3]])) \
+                 if hkl is None else \
+                 (_np.asarray(hkl),_np.array([[ 1, 0, 0],
+                                              [ 0, 1, 0],
+                                              [-1,-1, 0],
+                                              [ 0, 0, 1]]))
+    uvtw_hkil = _np.einsum('il,...l',basis,axis)
+    return uvtw_hkil//_np.gcd.reduce(uvtw_hkil,axis=-1,keepdims=True)
 
 
 def dict_prune(d: _Dict) -> _Dict:
