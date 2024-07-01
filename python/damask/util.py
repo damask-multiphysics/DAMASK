@@ -21,7 +21,8 @@ import numpy as _np
 import h5py as _h5py
 
 from . import version as _version
-from ._typehints import FloatSequence as _FloatSequence, NumpyRngSeed as _NumpyRngSeed, FileHandle as _FileHandle
+from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence, \
+                        NumpyRngSeed as _NumpyRngSeed, FileHandle as _FileHandle
 
 
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
@@ -807,8 +808,8 @@ def DREAM3D_cell_data_group(fname: _Union[str, _Path, _h5py.File]) -> str:
 
 
 def Bravais_to_Miller(*,
-                      uvtw: _Optional[_FloatSequence] = None,
-                      hkil: _Optional[_FloatSequence] = None) -> _np.ndarray:
+                      uvtw: _Optional[_IntSequence] = None,
+                      hkil: _Optional[_IntSequence] = None) -> _np.ndarray:
     """
     Transform 4 Miller–Bravais indices to 3 Miller indices of crystal direction [uvw] or plane normal (hkl).
 
@@ -825,6 +826,11 @@ def Bravais_to_Miller(*,
     """
     if (uvtw is not None) ^ (hkil is None):
         raise KeyError('specify either "uvtw" or "hkil"')
+    if uvtw is not None and (_np.sum(_np.asarray(uvtw)[...,:3],axis=-1) != 0).any():
+        raise ValueError(r'u+v+t≠0')
+    if hkil is not None and (_np.sum(_np.asarray(hkil)[...,:3],axis=-1) != 0).any():
+        raise ValueError(r'h+k+i≠0')
+
     axis,basis  = (_np.array(uvtw),_np.array([[1,0,-1,0],
                                               [0,1,-1,0],
                                               [0,0, 0,1]])) \
@@ -835,8 +841,8 @@ def Bravais_to_Miller(*,
     return _np.einsum('il,...l',basis,axis)
 
 def Miller_to_Bravais(*,
-                      uvw: _Optional[_FloatSequence] = None,
-                      hkl: _Optional[_FloatSequence] = None) -> _np.ndarray:
+                      uvw: _Optional[_IntSequence] = None,
+                      hkl: _Optional[_IntSequence] = None) -> _np.ndarray:
     """
     Transform 3 Miller indices to 4 Miller–Bravais indices of crystal direction [uvtw] or plane normal (hkil).
 

@@ -221,6 +221,11 @@ class TestUtil:
         with pytest.raises(KeyError):
             util.Miller_to_Bravais(uvw=np.ones(4),hkl=np.ones(4))
 
+    @pytest.mark.parametrize('key_value',[{'uvtw':[1,0,0,0]},
+                                          {'hkil':[1,0,0,0]}])
+    def test_invalid_MillerBravais(self,key_value):
+        with pytest.raises(ValueError):
+            util.Bravais_to_Miller(**key_value)
 
     @pytest.mark.parametrize('vector',np.array([
                                                 [1,0,0],
