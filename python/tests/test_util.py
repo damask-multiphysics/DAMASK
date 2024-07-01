@@ -237,6 +237,13 @@ class TestUtil:
     def test_Miller_Bravais_Miller(self,vector,kw_Miller,kw_Bravais):
         assert np.all(vector == util.Bravais_to_Miller(**{kw_Bravais:util.Miller_to_Bravais(**{kw_Miller:vector})}))
 
+    @pytest.mark.parametrize('kw_Miller,kw_Bravais',[('uvw','uvtw'),('hkl','hkil')])
+    def test_Miller_Bravais_Miller_random(self,kw_Miller,kw_Bravais):
+        vector = np.random.randint(-25,26,size=(5,6,3))
+        vector //= np.gcd.reduce(vector,axis=-1,keepdims=True)
+        assert np.all(vector == util.Bravais_to_Miller(**{kw_Bravais:util.Miller_to_Bravais(**{kw_Miller:vector})}))
+
+
     @pytest.mark.parametrize('vector',np.array([
                                                 [1,0,-1,2],
                                                 [1,-1,0,3],
