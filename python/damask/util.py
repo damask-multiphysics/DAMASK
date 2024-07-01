@@ -859,15 +859,15 @@ def Miller_to_Bravais(*,
     """
     if (uvw is not None) ^ (hkl is None):
         raise KeyError('specify either "uvw" or "hkl"')
-    axis,basis  = (_np.array(uvw),_np.array([[ 2,-1, 0],
-                                             [-1, 2, 0],
-                                             [-1,-1, 0],
-                                             [ 0, 0, 3]])/3) \
+    axis,basis  = (_np.asarray(uvw),_np.array([[ 2,-1, 0],
+                                               [-1, 2, 0],
+                                               [-1,-1, 0],
+                                               [ 0, 0, 3]])/3) \
                   if hkl is None else \
-                  (_np.array(hkl),_np.array([[ 1, 0, 0],
-                                             [ 0, 1, 0],
-                                             [-1,-1, 0],
-                                             [ 0, 0, 1]]))
+                  (_np.asarray(hkl),_np.array([[ 1, 0, 0],
+                                               [ 0, 1, 0],
+                                               [-1,-1, 0],
+                                               [ 0, 0, 1]]))
     return _np.einsum('il,...l',basis,axis)
 
 
