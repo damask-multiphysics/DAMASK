@@ -1055,6 +1055,7 @@ class TestRotation:
 
     def test_rotate_inverse(self):
         R = Rotation.from_random()
+        assert (~R).allclose(R**-1)
         assert np.allclose(np.eye(3),(~R*R).as_matrix())
 
     @pytest.mark.parametrize('data',[np.random.rand(3),

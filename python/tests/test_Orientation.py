@@ -306,11 +306,12 @@ class TestOrientation:
         with pytest.raises(ValueError):
             eval(f'o.{function}(np.ones(4))')
 
-    @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
-    @pytest.mark.parametrize('lattice',['cF','cI'])
+    @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch','Burgers'])
+    @pytest.mark.parametrize('lattice',['cF','cI'])                                                 # will be adjusted for Burgers
     def test_relationship_reference(self,update,res_path,model,lattice):
-        reference = res_path/f'{lattice}_{model}.txt'
-        o = Orientation(lattice=lattice)
+        lattice_ = 'hP' if lattice=='cF' and model=='Burgers' else lattice
+        reference = res_path/f'{lattice_}_{model}.txt'
+        o = Orientation(lattice=lattice_)
         eu = o.related(model).as_Euler_angles(degrees=True)
         if update:
             coords = np.array([(1,i+1) for i,x in enumerate(eu)])
@@ -510,11 +511,14 @@ class TestOrientation:
         with pytest.raises(TypeError):
             Orientation.from_random(lattice='cF')*np.ones(3)
 
-    @pytest.mark.parametrize('OR',['KS','NW','GT','GT_prime','Bain','Pitsch'])
+    @pytest.mark.parametrize('OR',['KS','NW','GT','GT_prime','Bain','Pitsch','Burgers'])
     @pytest.mark.parametrize('pole',[[0,0,1],[0,1,1],[1,1,1]])
     def test_OR_plot(self,update,res_path,tmp_path,OR,pole):
-        # https://doi.org/10.3390/cryst13040663 for comparison
-        O = Orientation(lattice='cF')
+        # comparison
+        # https://doi.org/10.3390/cryst13040663 (except Burgers)
+        # https://doi.org/10.1016/j.actamat.2003.12.029 (Burgers)
+        O = Orientation(lattice=('hP' if OR=='Burgers' else 'cF'),
+                                 a=2.856e-10,c=(2.8e-10*np.sqrt(8./3.) if OR=='Burgers' else None))
         poles = O.related(OR).to_frame(uvw=pole,with_symmetry=True).reshape(-1,3)
         points = util.project_equal_area(poles,'z')
 
