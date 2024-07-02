@@ -47,10 +47,10 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[-1, 1, 0],[ 1, 1,-1]],
         [[ 0,-1,-1],[ 1, 1,-1]],
         [[ 1, 0, 1],[ 1, 1,-1]],
-        ],dtype=float),
+        ]),
         2,axis=0),
         np.tile(np.array([[[-1,-1, 1],[ 0, 1, 1]],
-                          [[-1, 1,-1],[ 0, 1, 1]]],dtype=float),
+                          [[-1, 1,-1],[ 0, 1, 1]]]),
                 (12,1,1)),
     ],
     'cI-->cF' : [
@@ -72,10 +72,10 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
 
         [[ 1, 1, 1],[ 1,-1, 0]],
         [[ 1, 1,-1],[ 1,-1, 0]],
-        ],dtype=float),
+        ]),
         2,axis=0),
         np.tile(np.array([[[ 0, 1,-1],[ 1, 1, 1]],
-                          [[ 0,-1, 1],[ 1, 1, 1]]],dtype=float),
+                          [[ 0,-1, 1],[ 1, 1, 1]]]),
                 (12,1,1)),
     ],
   },
@@ -106,7 +106,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[  5, 17, 12],[  1, -1,  1]],
         [[ 12, -5,-17],[  1, -1,  1]],
         [[-17,-12,  5],[  1, -1,  1]],
-        ],dtype=float),
+        ]),
         np.array([
         [[-17, -7, 17],[  1,  0,  1]],
         [[ 17,-17, -7],[  1,  1,  0]],
@@ -132,7 +132,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 17, 17,  7],[  1, -1,  0]],
         [[  7,-17,-17],[  0, -1,  1]],
         [[-17, -7, 17],[  1,  0,  1]],
-        ],dtype=float),
+        ]),
     ],
     'cI-->cF' : [
         np.array([
@@ -160,7 +160,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 17, 17,  7],[  1, -1,  0]],
         [[  7,-17,-17],[  0, -1,  1]],
         [[-17, -7, 17],[  1,  0,  1]],
-        ],dtype=float),
+        ]),
         np.array([
         [[ -5,-12, 17],[  1,  1,  1]],
         [[ 17, -5,-12],[  1,  1,  1]],
@@ -186,7 +186,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[  5, 17, 12],[  1, -1,  1]],
         [[ 12, -5,-17],[  1, -1,  1]],
         [[-17,-12,  5],[  1, -1,  1]],
-        ],dtype=float),
+        ]),
     ],
   },
   'GT_prime': { # https://doi.org/10.1107/S0021889805038276
@@ -216,7 +216,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[  0,  1,  1],[ -7, 17,-17]],
         [[  1,  0, -1],[-17,  7,-17]],
         [[  1,  1,  0],[-17, 17, -7]],
-        ],dtype=float),
+        ]),
         np.array([
         [[  1,  1, -1],[ 12,  5, 17]],
         [[ -1,  1,  1],[ 17, 12,  5]],
@@ -242,7 +242,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[  1,  1,  1],[-12, 17, -5]],
         [[  1, -1, -1],[ -5, 12,-17]],
         [[  1,  1, -1],[-17,  5,-12]],
-        ],dtype=float),
+        ]),
     ],
     'cI-->cF' : [
         np.array([
@@ -270,7 +270,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[  1,  1,  1],[-12, 17, -5]],
         [[  1, -1, -1],[ -5, 12,-17]],
         [[  1,  1, -1],[-17,  5,-12]],
-        ],dtype=float),
+        ]),
         np.array([
         [[  0,  1, -1],[  7, 17, 17]],
         [[ -1,  0,  1],[ 17,  7, 17]],
@@ -296,7 +296,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[  0,  1,  1],[ -7, 17,-17]],
         [[  1,  0, -1],[-17,  7,-17]],
         [[  1,  1,  0],[-17, 17, -7]],
-        ],dtype=float),
+        ]),
     ],
   },
   'NW': { # https://doi.org/10.1016/j.matchar.2004.12.015
@@ -317,8 +317,8 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 2,-1, 1],[ 1, 1,-1]],
         [[-1, 2, 1],[ 1, 1,-1]],
         [[-1,-1,-2],[ 1, 1,-1]],
-        ],dtype=float),
-        np.broadcast_to(np.array([[ 0,-1, 1],[ 0, 1, 1]],dtype=float),
+        ]),
+        np.broadcast_to(np.array([[ 0,-1, 1],[ 0, 1, 1]]),
                         (12,2,3)),
     ],
     'cI-->cF' : [
@@ -329,12 +329,12 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
             [[ 1, 0, 1],[ 1, 0,-1]],
             [[ 1,-1, 0],[ 1, 1, 0]],
             [[ 1, 1, 0],[ 1,-1, 0]],
-            ],dtype=float),
+            ]),
             2,axis=0),
         np.tile(np.array([
             [[ 2,-1,-1],[ 1, 1, 1]],
             [[-2, 1, 1],[ 1, 1, 1]],
-            ],dtype=float),
+            ]),
             (6,1,1)),
     ],
   },
@@ -347,12 +347,12 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 1, 0,-1],[ 0, 1, 0]],
         [[ 1, 1, 0],[ 0, 0, 1]],
         [[ 1,-1, 0],[ 0, 0, 1]],
-        ],dtype=float),
+        ]),
         2,axis=0),
         np.tile(np.array([
         [[ 1, 1,-1],[ 0, 1, 1]],
         [[-1, 1,-1],[ 0, 1, 1]],
-        ],dtype=float),
+        ]),
         (6,1,1)),
     ],
     'cI-->cF' : [
@@ -369,8 +369,8 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 1,-1,-1],[ 1, 1, 0]],
         [[ 1, 1, 1],[ 1,-1, 0]],
         [[ 1, 1,-1],[ 1,-1, 0]],
-        ],dtype=float),
-        np.broadcast_to(np.array([[ 1, 1, 0],[ 0, 0, 1]],dtype=float),
+        ]),
+        np.broadcast_to(np.array([[ 1, 1, 0],[ 0, 0, 1]]),
                         (12,2,3)),
     ],
   },
@@ -380,8 +380,8 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 0, 1, 0],[ 1, 0, 0]],
         [[ 0, 0, 1],[ 0, 1, 0]],
         [[ 1, 0, 0],[ 0, 0, 1]],
-        ],dtype=float),
-        np.broadcast_to(np.array([[ 1, 1, 0],[ 0, 0, 1]],dtype=float),
+        ]),
+        np.broadcast_to(np.array([[ 1, 1, 0],[ 0, 0, 1]]),
                         (3,2,3)),
     ],
     'cI-->cF' : [
@@ -389,8 +389,8 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 0, 1, 1],[ 1, 0, 0]],
         [[ 1, 0, 1],[ 0, 1, 0]],
         [[ 1, 1, 0],[ 0, 0, 1]],
-        ],dtype=float),
-        np.broadcast_to(np.array([[ 1, 0, 0],[ 0, 0, 1]],dtype=float),
+        ]),
+        np.broadcast_to(np.array([[ 1, 0, 0],[ 0, 0, 1]]),
                         (3,2,3)),
     ]
   },
@@ -409,8 +409,8 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 1,-1,-1],[ 1, 1, 0]],
         [[ 1, 1, 1],[ 1,-1, 0]],
         [[ 1, 1,-1],[ 1,-1, 0]],
-        ],dtype=float),
-        np.broadcast_to(np.array([[ 2,-1,-1, 0],[ 0, 0, 0, 1]],dtype=float),
+        ]),
+        np.broadcast_to(np.array([[ 2,-1,-1, 0],[ 0, 0, 0, 1]]),
                         (12,2,4)),
     ],
     'hP-->cI' : [
@@ -418,12 +418,12 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 2,-1,-1, 0],[ 0, 0, 0, 1]],
         [[-1, 2,-1, 0],[ 0, 0, 0, 1]],
         [[-1,-1, 2, 0],[ 0, 0, 0, 1]],
-        ],dtype=float),
+        ]),
         2,axis=0),
         np.tile(np.array([
         [[ 1, 1,-1],[ 0, 1, 1]],
         [[-1, 1,-1],[ 0, 1, 1]],
-        ],dtype=float),
+        ]),
         (3,1,1)),
     ]
   },
@@ -794,7 +794,7 @@ class Crystal():
                            (np.cos(self.alpha)-np.cos(self.beta)*np.cos(self.gamma))                     /np.sin(self.gamma),
                            np.sqrt(1 - np.cos(self.alpha)**2 - np.cos(self.beta)**2 - np.cos(self.gamma)**2
                                  + 2 * np.cos(self.alpha)    * np.cos(self.beta)    * np.cos(self.gamma))/np.sin(self.gamma)],
-                         ],dtype=float).T \
+                         ]).T \
              * np.array([self.a,self.b,self.c])
 
 
