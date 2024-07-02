@@ -827,9 +827,9 @@ def Bravais_to_Miller(*,
     if (uvtw is not None) ^ (hkil is None):
         raise KeyError('specify either "uvtw" or "hkil"')
     if uvtw is not None and (_np.sum(_np.asarray(uvtw)[...,:3],axis=-1) != 0).any():
-        raise ValueError(r'u+v+t≠0')
+        raise ValueError(rf'u+v+t≠0: {uvtw}')
     if hkil is not None and (_np.sum(_np.asarray(hkil)[...,:3],axis=-1) != 0).any():
-        raise ValueError(r'h+k+i≠0')
+        raise ValueError(rf'h+k+i≠0: {hkil}')
 
     axis,basis = (_np.array(uvtw),_np.array([[2,1,0,0],
                                              [1,2,0,0],
@@ -839,6 +839,8 @@ def Bravais_to_Miller(*,
                                              [0,1,0,0],
                                              [0,0,0,1]]))
     uvw_hkl = _np.einsum('il,...l',basis,axis)
+    if not _np.issubdtype(uvw_hkl.dtype,_np.signedinteger):
+        raise TypeError('"uvtw"/"hkil" are not (signed) integers')
     return uvw_hkl//_np.gcd.reduce(uvw_hkl,axis=-1,keepdims=True)
 
 def Miller_to_Bravais(*,
@@ -870,6 +872,8 @@ def Miller_to_Bravais(*,
                                               [-1,-1, 0],
                                               [ 0, 0, 1]]))
     uvtw_hkil = _np.einsum('il,...l',basis,axis)
+    if not _np.issubdtype(uvtw_hkil.dtype,_np.signedinteger):
+        raise TypeError('"uvw"/"hkl" are not (signed) integers')
     return uvtw_hkil//_np.gcd.reduce(uvtw_hkil,axis=-1,keepdims=True)
 
 
