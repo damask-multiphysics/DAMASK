@@ -531,8 +531,8 @@ class Rotation:
         Parameters
         ----------
         newshape : (sequence of) int
-            New shape, number of elements needs to match the original shape.
-            If an integer is supplied, then the result will be a 1-D array of that length.
+            The new shape should be compatible with the original shape.
+            If an integer, then the result will be a 1-D array of that length.
         order : {'C', 'F', 'A'}, optional
             'C' flattens in row-major (C-style) order.
             'F' flattens in column-major (Fortran-style) order.

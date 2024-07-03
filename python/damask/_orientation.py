@@ -827,12 +827,12 @@ class Orientation(Rotation,Crystal):
                  normalize: bool = True,
                  ) -> np.ndarray:
         """
-        Calculate lab frame vector along lattice direction [uvw] or plane normal (hkl).
+        Calculate lab frame vector along lattice direction [uvw]/[uvtw] or plane normal (hkl)/(hkil).
 
         Parameters
         ----------
         uvw|hkl|uvtw|hkil : numpy.ndarray, shape (...,3) or shape (...,4)
-            Miller indices of crystallographic direction or plane normal.
+            Miller(–Bravais) indices of crystallographic direction or plane normal.
             Shape of vector blends with shape of own rotation array.
             For example, a rotation array of shape (3,2) and a vector
             array of shape (2,4) result in (3,2,4) outputs.

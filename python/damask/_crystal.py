@@ -864,12 +864,12 @@ class Crystal():
                  uvtw: Optional[IntSequence] = None,
                  hkil: Optional[IntSequence] = None) -> np.ndarray:
         """
-        Calculate crystal frame vector corresponding to lattice direction [uvw] or plane normal (hkl).
+        Calculate crystal frame vector corresponding to lattice direction [uvw]/[uvtw] or plane normal (hkl)/(hkil).
 
         Parameters
         ----------
         uvw|hkl|uvtw|hkil : numpy.ndarray, shape (...,3) or shape (...,4)
-            Miller indices of crystallographic direction or plane normal.
+            Miller(–Bravais) indices of crystallographic direction or plane normal.
 
         Returns
         -------
