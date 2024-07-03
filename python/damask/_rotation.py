@@ -523,16 +523,16 @@ class Rotation:
 
 
     def reshape(self: MyType,
-                shape: Union[int, IntSequence],
+                newshape: Union[int, IntSequence],
                 order: Literal['C','F','A'] = 'C') -> MyType:
         """
         Reshape array.
 
         Parameters
         ----------
-        shape : (sequence of) int
-            New shape, number of elements needs to match the original shape.
-            If an integer is supplied, then the result will be a 1-D array of that length.
+        newshape : (sequence of) int
+            The new shape should be compatible with the original shape.
+            If an integer, then the result will be a 1-D array of that length.
         order : {'C', 'F', 'A'}, optional
             'C' flattens in row-major (C-style) order.
             'F' flattens in column-major (Fortran-style) order.
@@ -546,7 +546,7 @@ class Rotation:
             Rotation of given shape.
 
         """
-        if isinstance(shape,(int,np.integer)): shape = (shape,)
+        shape = (newshape,) if isinstance(newshape,(int,np.integer)) else newshape
         return self.copy(self.quaternion.reshape(tuple(shape)+(4,),order=order))
 
 
@@ -1180,7 +1180,7 @@ class Rotation:
         Parameters
         ----------
         shape : (sequence of) int, optional
-            Shape of the returned array. Defaults to None, which gives a scalar.
+            Output shape. Defaults to None, which gives a scalar.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
@@ -1220,7 +1220,7 @@ class Rotation:
         phi : numpy.ndarray, shape (n,3)
             Grid coordinates in Euler space at which weights are defined.
         shape : (sequence of) int, optional
-            Shape of the returned array. Defaults to None, which gives a scalar.
+            Output shape. Defaults to None, which gives a scalar.
         degrees : bool, optional
             Euler space grid coordinates are in degrees. Defaults to True.
         fractions : bool, optional
@@ -1278,7 +1278,7 @@ class Rotation:
         sigma : float
             Standard deviation of (Gaussian) misorientation distribution.
         shape : (sequence of) int, optional
-            Shape of the returned array. Defaults to None, which gives a scalar.
+            Output shape. Defaults to None, which gives a scalar.
         degrees : bool, optional
             sigma is given in degrees. Defaults to False.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
@@ -1336,7 +1336,7 @@ class Rotation:
             Standard deviation of (Gaussian) misorientation distribution.
             Defaults to 0.
         shape : (sequence of) int, optional
-            Shape of the returned array. Defaults to None, which gives a scalar.
+            Output shape. Defaults to None, which gives a scalar.
         degrees : bool, optional
             sigma and polar coordinates are given in degrees. Defaults to False.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional

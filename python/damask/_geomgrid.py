@@ -84,7 +84,7 @@ class GeomGrid:
                f'cells:  {util.srepr(self.cells, " × ")}',
                f'size:   {util.srepr(self.size,  " × ")} m³',
                f'origin: {util.srepr(self.origin,"   ")} m',
-               f'# materials: {mat_N}' + ('' if mat_min == 0 and mat_max+1 == mat_N else
+               f'# materials: {mat_N}' + ('' if mat_min == 0 and mat_max == mat_N-1 else
                                           f' (min: {mat_min}, max: {mat_max})')
                ]+(['initial_conditions:']+[f'  - {f}' for f in self.initial_conditions] if self.initial_conditions else []))
 
