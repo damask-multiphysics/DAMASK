@@ -89,7 +89,7 @@ class VTK:
         Give short, human-readable summary.
 
         """
-        info = [self.vtk_data.__vtkname__]
+        info = [self.vtk_data.__vtkname__] # type: ignore
 
         for data in ['Cell Data', 'Point Data']:
             if data == 'Cell Data':  info.append(f'\n# cells: {self.N_cells}')
@@ -371,13 +371,13 @@ class VTK:
                 raise TypeError(f'unknown dataset type "{dataset_type}" for vtk file')
         else:
             if   ext == '.vti':
-                reader = vtkXMLImageDataReader()
+                reader = vtkXMLImageDataReader() # type: ignore
             elif ext == '.vtu':
-                reader = vtkXMLUnstructuredGridReader()
+                reader = vtkXMLUnstructuredGridReader() # type: ignore
             elif ext == '.vtp':
-                reader = vtkXMLPolyDataReader()
+                reader = vtkXMLPolyDataReader() # type: ignore
             elif ext == '.vtr':
-                reader = vtkXMLRectilinearGridReader()
+                reader = vtkXMLRectilinearGridReader() # type: ignore
             else:
                 raise TypeError(f'unknown file extension "{ext}"')
 
@@ -422,13 +422,13 @@ class VTK:
 
         """
         if   isinstance(self.vtk_data,vtkImageData):
-            writer = vtkXMLImageDataWriter()
+            writer = vtkXMLImageDataWriter() # type: ignore
         elif isinstance(self.vtk_data,vtkUnstructuredGrid):
-            writer = vtkXMLUnstructuredGridWriter()
+            writer = vtkXMLUnstructuredGridWriter() # type: ignore
         elif isinstance(self.vtk_data,vtkPolyData):
-            writer = vtkXMLPolyDataWriter()
+            writer = vtkXMLPolyDataWriter() # type: ignore
         elif isinstance(self.vtk_data,vtkRectilinearGrid):
-            writer = vtkXMLRectilinearGridWriter()
+            writer = vtkXMLRectilinearGridWriter() # type: ignore
 
         default_ext = '.'+writer.GetDefaultFileExtension()
         ext = Path(fname).suffix
