@@ -210,7 +210,7 @@ module crystal
     HP_NSLIPSYSTEM = [3, 3, 6, 12, 6]                                                               !< # of slip systems per family for hP
 
   integer, dimension(*), parameter :: &
-    HP_NTWINSYSTEM = [6, 6, 6, 6]                                                                   !< # of slip systems per family for hP
+    HP_NTWINSYSTEM = [6, 6, 6, 6]                                                                   !< # of twin systems per family for hP
 
   integer, parameter  :: &
     HP_NSLIP     = sum(HP_NSLIPSYSTEM), &                                                           !< total # of slip systems for hP
