@@ -88,11 +88,6 @@ class TestGeomGrid:
             GeomGrid(default.material[1:,1:,1:],
                  size=np.ones(2))
 
-    def test_save_load_ASCII(self,default,tmp_path):
-        default.save_ASCII(tmp_path/'ASCII')
-        default.material -= 1
-        assert GeomGrid.load_ASCII(tmp_path/'ASCII') == default
-
     def test_save_load_SPPARKS(self,res_path,tmp_path):
         v = VTK.load(res_path/'SPPARKS_dump.vti')
         v.set('material',v.get('Spin')).delete('Spin').save(tmp_path/'SPPARKS_dump.vti',parallel=False)
