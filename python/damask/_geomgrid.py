@@ -1,10 +1,8 @@
 import os
 import copy
-import warnings
 import multiprocessing as mp
 from functools import partial
-import typing
-from typing import Optional, Union, TextIO, Sequence, Dict
+from typing import Optional, Union, Sequence, Dict
 from pathlib import Path
 
 import numpy as np
@@ -270,83 +268,6 @@ class GeomGrid:
 
         """
         return GeomGrid._load(fname,'Spin')
-
-
-    @typing.no_type_check
-    @staticmethod
-    def load_ASCII(fname)-> 'GeomGrid':
-        """
-        Load from geom file.
-
-        Storing geometry files in ASCII format is deprecated.
-        This function will be removed in a future version of DAMASK.
-
-        Parameters
-        ----------
-        fname : str, pathlib.Path, or file handle
-            Geometry file to read.
-
-        Returns
-        -------
-        loaded : damask.GeomGrid
-            Grid-based geometry from file.
-
-        """
-        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.0.0', DeprecationWarning,2)
-        if isinstance(fname, (str, Path)):
-            f = open(fname)
-        elif isinstance(fname, TextIO):
-            f = fname
-        else:
-            raise TypeError
-
-        f.seek(0)
-        try:
-            header_length_,keyword = f.readline().split()[:2]
-            header_length = int(header_length_)
-        except ValueError:
-            header_length,keyword = (-1, 'invalid')
-        if not keyword.startswith('head') or header_length < 3:
-            raise TypeError('invalid or missing header length information')
-
-        comments = []
-        content = f.readlines()
-        for i,line in enumerate(content[:header_length]):
-            items = line.split('#')[0].lower().strip().split()
-            if (key := items[0] if items else '') ==  'grid':
-                cells  = np.array([  int(dict(zip(items[1::2],items[2::2]))[i]) for i in ['a','b','c']])
-            elif key == 'size':
-                size   = np.array([float(dict(zip(items[1::2],items[2::2]))[i]) for i in ['x','y','z']])
-            elif key == 'origin':
-                origin = np.array([float(dict(zip(items[1::2],items[2::2]))[i]) for i in ['x','y','z']])
-            else:
-                comments.append(line.strip())
-
-        material = np.empty(cells.prod())                                                           # initialize as flat array
-        i = 0
-        for line in content[header_length:]:
-            if len(items := line.split('#')[0].split()) == 3:
-                if items[1].lower() == 'of':
-                    material_entry = np.ones(int(items[0]))*float(items[2])
-                elif items[1].lower() == 'to':
-                    material_entry = np.linspace(int(items[0]),int(items[2]),
-                                        abs(int(items[2])-int(items[0]))+1,dtype=float)
-                else:                        material_entry = list(map(float, items))
-            else:                            material_entry = list(map(float, items))
-            material[i:i+len(material_entry)] = material_entry
-            i += len(items)
-
-        if i != cells.prod():
-            raise TypeError(f'mismatch between {cells.prod()} expected entries and {i} found')
-
-        if not np.any(np.mod(material,1) != 0.0):                                                   # no float present
-            material = material.astype(np.int64) - (1 if material.min() > 0 else 0)
-
-        return GeomGrid(material = material.reshape(cells,order='F'),
-                        size     = size,
-                        origin   = origin,
-                        comments = comments,
-                       )
 
 
     @staticmethod
@@ -787,36 +708,6 @@ class GeomGrid:
 
         v.save(fname,parallel=False,compress=compress)
 
-
-    def save_ASCII(self,
-                   fname: Union[str, TextIO]):
-        """
-        Save as geom file.
-
-        Storing geometry files in ASCII format is deprecated.
-        This function will be removed in a future version of DAMASK.
-
-        Parameters
-        ----------
-        fname : str or file handle
-            Geometry file to write with extension '.geom'.
-        compress : bool, optional
-            Compress geometry using 'x of y' and 'a to b'.
-
-        """
-        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.0.0', DeprecationWarning,2)
-        header =  [f'{len(self.comments)+4} header'] + self.comments \
-                + ['grid   a {} b {} c {}'.format(*self.cells),
-                   'size   x {} y {} z {}'.format(*self.size),
-                   'origin x {} y {} z {}'.format(*self.origin),
-                   'homogenization 1',
-                  ]
-
-        format_string = '%g' if self.material.dtype in [np.float32,np.float64] else \
-                        '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.material)))))
-        np.savetxt(fname,
-                   self.material.reshape([self.cells[0],np.prod(self.cells[1:])],order='F').T,
-                   header='\n'.join(header), fmt=format_string, comments='')
 
 
     def show(self,
