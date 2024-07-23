@@ -344,13 +344,13 @@ class Table:
             content = f.readlines()
 
         comments = [util.execution_stamp('Table','from_ang')]
-        for line in content:
+        for i,line in enumerate(content):
             if line.startswith('#'):
                 comments.append(line.split('#',1)[1].strip())
             else:
                 break
 
-        data = np.loadtxt(content)
+        data = np.loadtxt(content[i:])
 
         if (remainder := data.shape[1]-sum(shapes.values())) > 0:
             shapes['unknown'] = remainder
