@@ -345,8 +345,8 @@ def _polar_decomposition(T: _np.ndarray,
     if 'U' in requested:
         output+=[_np.einsum('...ji,...jk',R,T)]
 
-    if len(output) == 0:
-        raise ValueError('output not in {V, R, U}')
+    if len(output) == 0 or len(set(['V','R','U']).union(requested))> 3:
+        raise ValueError(f'requested invalid dataset {requested}')
 
     return tuple(output)
 

@@ -106,11 +106,20 @@ class ConfigMaterial(YAML):
 
         Notes
         -----
-        damask.GeomGrid.load_DREAM3D gives the corresponding geometry for
-        the grid solver.
+        A grain-wise material configuration is based on segmented data from
+        the DREAM.3D file. This data is typically available when the microstructure
+        was synthetically created. In cell-wise representations, cells having the
+        same orientation and phase are grouped. Since synthetically created
+        microstructures have typically no in-grain scatter, cell-wise grids
+        can appear to be segmented.
 
-        For cell-wise data, only unique combinations of
-        orientation and phase are considered.
+        damask.GeomGrid.load_DREAM3D creates the corresponding grid-based
+        geometry definition. Since the numbering of materials in cell-wise
+        and grain-wise grids is different, it is imperative to use the same
+        mode for both load_DREAM3D functions. That means, if the "grain_data"
+        argument is used for this function, the correct grid configuration
+        is only obtained if the "feature_IDs" argument is used when calling
+        damask.GeomGrid.load_DREAM3D.
 
         Homogenization and phase entries are emtpy and need to be
         defined separately.
@@ -136,7 +145,6 @@ class ConfigMaterial(YAML):
                     phase = names[phase]
                 except KeyError:
                     pass
-
 
         base_config = ConfigMaterial({'phase':{k if isinstance(k,int) else str(k): None for k in np.unique(phase)},
                                       'homogenization':{'direct':{'N_constituents':1}}})
@@ -189,42 +197,43 @@ class ConfigMaterial(YAML):
         Examples
         --------
         >>> import damask
-        >>> import damask.ConfigMaterial as cm
+        >>> from damask import ConfigMaterial as cm
         >>> t = damask.Table.load('small.txt')
         >>> t
-            3:pos  pos  pos   4:qu   qu    qu    qu   phase    homog
-        0     0    0    0     0.19  0.8   0.24 -0.51  Aluminum SX
-        1     1    0    0     0.8   0.19  0.24 -0.51  Steel    SX
-        2     1    1    0     0.8   0.19  0.24 -0.51  Steel    SX
+            3:pos  pos  pos  4:qu   qu   qu   qu     phase homog
+         0      0    0    0   1.0  0.0  0.0  0.0  Aluminum    SX
+         1      1    0    0   0.0  1.0  0.0  0.0     Steel    SX
+         2      1    1    0   0.0  1.0  0.0  0.0     Steel    SX
+
         >>> cm.from_table(t,O='qu',phase='phase',homogenization='homog')
-        material:
-          - constituents:
-              - O: [0.19, 0.8, 0.24, -0.51]
-                v: 1.0
-                phase: Aluminum
-            homogenization: SX
-          - constituents:
-              - O: [0.8, 0.19, 0.24, -0.51]
-                v: 1.0
-                phase: Steel
-            homogenization: SX
         homogenization: {SX: null}
         phase: {Aluminum: null, Steel: null}
+        material:
+        - constituents:
+          - phase: Aluminum
+            O: [1.0, 0.0, 0.0, 0.0]
+            v: 1.0
+          homogenization: SX
+        - constituents:
+          - phase: Steel
+            O: [0.0, 1.0, 0.0, 0.0]
+            v: 1.0
+          homogenization: SX
 
         >>> cm.from_table(t,O='qu',phase='phase',homogenization='single_crystal')
-        material:
-          - constituents:
-              - O: [0.19, 0.8, 0.24, -0.51]
-                v: 1.0
-                phase: Aluminum
-            homogenization: single_crystal
-          - constituents:
-              - O: [0.8, 0.19, 0.24, -0.51]
-                v: 1.0
-                phase: Steel
-            homogenization: single_crystal
         homogenization: {single_crystal: null}
         phase: {Aluminum: null, Steel: null}
+        material:
+        - constituents:
+          - phase: Aluminum
+            O: [1.0, 0.0, 0.0, 0.0]
+            v: 1.0
+          homogenization: single_crystal
+        - constituents:
+          - phase: Steel
+            O: [0.0, 1.0, 0.0, 0.0]
+            v: 1.0
+          homogenization: single_crystal
 
         """
         kwargs = {}
@@ -455,74 +464,113 @@ class ConfigMaterial(YAML):
         >>> import damask
         >>> m = damask.ConfigMaterial()
         >>> m = m.material_add(phase = ['Ferrite','Martensite','Ferrite'],
-        ...                    O = damask.Rotation.from_random(3),
+        ...                    O = damask.Rotation.from_random(3,rng_seed=20191102),
         ...                    homogenization = 'SX')
         >>> m
-        material:
-          - constituents:
-              - O: [0.577764, -0.146299, -0.617669, 0.513010]
-                v: 1.0
-                phase: Ferrite
-            homogenization: SX
-          - constituents:
-              - O: [0.184176, 0.340305, 0.737247, 0.553840]
-                v: 1.0
-                phase: Martensite
-            homogenization: SX
-          - constituents:
-              - O: [0.47925185, -0.04294454, 0.78760173, -0.3849116 ]
-                v: 1.0
-                phase: Ferrite
-            homogenization: SX
         homogenization: {SX: null}
         phase: {Ferrite: null, Martensite: null}
-
-        Create hundred materials that each approximate a duplex stainless steel microstructure
-        with three austenite and one relatively bigger ferrite grain of random orientation each:
-
-        >>> import damask
-        >>> m = damask.ConfigMaterial()
-        >>> m = m.material_add(phase = np.array(['Austenite']*3+['Ferrite']),
-        ...                    O = damask.Rotation.from_random((100,4)),
-        ...                    v = np.array([0.2]*3+[0.4]),
-        ...                    homogenization = 'Taylor')
-        >>> m
         material:
           - constituents:
-              - v: 0.2
-                phase: Austenite
-                O: [0.46183665006602664, 0.2215160420973196, -0.5594313187331139, 0.6516702781083836]
-              - v: 0.2
-                phase: Austenite
-                O: [0.11321658382410027, 0.6354079414360444, 0.00562701344273936, 0.7638108992590535]
-              - v: 0.2
-                phase: Austenite
-                O: [0.050991978809077604, 0.8069522034362003, -0.11352928955610851, -0.5773552285027659]
-              - v: 0.4
-                phase: Ferrite
-                O: [0.9460076150721788, 0.15880754622367604, -0.0069841062241482385, -0.28249066842661014]
-            homogenization: Taylor
-          .
-          .
-          .
+              - phase: Ferrite
+                O: [0.0047, -0.9582, 0.1084, 0.2645]
+                v: 1.0
+            homogenization: SX
           - constituents:
-              - v: 0.2
-                phase: Austenite
-                O: [0.12531400788494199, -0.18637769037997565, 0.31737548053338394, -0.9213210951197429]
-              - v: 0.2
-                phase: Austenite
-                O: [0.37453930577161404, -0.33529507696450805, -0.3266564259130028, -0.800370601162502]
-              - v: 0.2
-                phase: Austenite
-                O: [0.035776891752713764, -0.720706371010592, -0.4540438656728926, -0.5226342017569017]
-              - v: 0.4
-                phase: Ferrite
-                O: [0.6782596727966124, -0.20800082041703685, -0.138636083554039, 0.6909989227925536]
-            homogenization: Taylor
+              - phase: Martensite
+                O: [0.9147, -0.1907, 0.2901, -0.2068]
+                v: 1.0
+            homogenization: SX
+          - constituents:
+              - phase: Ferrite
+                O: [0.1068, -0.4427, 0.1369, 0.8797]
+                v: 1.0
+            homogenization: SX
 
+        Create five materials that each approximate a duplex stainless steel microstructure
+        with three austenite and one relatively bigger ferrite grain of random orientation each:
+
+        >>> import numpy as np
+        >>> import damask
+        >>> m = damask.ConfigMaterial()
+        >>> N_materials = 5
+        >>> m = m.material_add(phase = np.array([['Austenite']*3+['Ferrite']]),
+        ...                    O = damask.Rotation.from_random((N_materials,4),rng_seed=20191102),
+        ...                    v = np.array([[0.2]*3+[0.4]]),
+        ...                    homogenization = 'Taylor')
+        >>> m
         homogenization: {Taylor: null}
-
         phase: {Austenite: null, Ferrite: null}
+        material:
+        - constituents:
+          - phase: Austenite
+            v: 0.2
+            O: [0.004702411137213036, -0.9582446864633862, 0.1084379916089085, 0.2645490694937509]
+          - phase: Austenite
+            v: 0.2
+            O: [0.9147097460704486, -0.19068436891182194, 0.29014401444532145, -0.20678975501215882]
+          - phase: Austenite
+            v: 0.2
+            O: [0.10677819003833185, -0.4427133706883004, 0.13690394495734726, 0.879693468999888]
+          - phase: Ferrite
+            v: 0.4
+            O: [0.8664338002923555, 0.04448357787828491, -0.4945927532088464, 0.05188149461403649]
+          homogenization: Taylor
+        - constituents:
+          - phase: Austenite
+            v: 0.2
+            O: [0.5621873738314133, 0.0028841916095125584, -0.817023371343172, -0.1281009321680984]
+          - phase: Austenite
+            v: 0.2
+            O: [0.1566777437467901, -0.8117282158019414, 0.5096142534839398, 0.23841707348975383]
+          - phase: Austenite
+            v: 0.2
+            O: [0.3559036203819333, 0.1946923701552408, 0.058744995087853975, -0.9121274689178566]
+          - phase: Ferrite
+            v: 0.4
+            O: [0.467387781713959, -0.35644325887489176, 0.8031986430613528, 0.09679258489963502]
+          homogenization: Taylor
+        - constituents:
+          - phase: Austenite
+            v: 0.2
+            O: [0.4399087544327661, 0.12802483830067418, -0.8257167208737983, 0.32906203886337354]
+          - phase: Austenite
+            v: 0.2
+            O: [0.12410381094181624, -0.5125024631828828, -0.8493860709598213, 0.021972068647108236]
+          - phase: Austenite
+            v: 0.2
+            O: [0.03909373022192218, 0.4596226773046959, 0.42809626138739537, 0.7771436583738773]
+          - phase: Ferrite
+            v: 0.4
+            O: [0.737821660605232, 0.38809925187040367, -0.012129167758963711, 0.5521331824196455]
+          homogenization: Taylor
+        - constituents:
+          - phase: Austenite
+            v: 0.2
+            O: [0.4924738838478857, -0.0534798919571679, -0.6570981342247908, 0.5681825559468784]
+          - phase: Austenite
+            v: 0.2
+            O: [0.13073521303792138, 0.2534173177988532, -0.9582490914178947, -0.021133998872519554]
+          - phase: Austenite
+            v: 0.2
+            O: [0.1633346595899539, 0.6775968809652247, -0.07127256805012916, -0.71351557581203]
+          - phase: Ferrite
+            v: 0.4
+            O: [0.7658044627436773, -0.5327872540278646, 0.1102330397070761, 0.34282640467772235]
+          homogenization: Taylor
+        - constituents:
+          - phase: Austenite
+            v: 0.2
+            O: [0.25814496892598815, -0.6159961898524933, -0.5080223627084379, 0.543896265930874]
+          - phase: Austenite
+            v: 0.2
+            O: [0.8497433829153472, 0.4264182767672584, 0.05570674517418605, -0.3049596612218108]
+          - phase: Austenite
+            v: 0.2
+            O: [0.5146112784760113, 0.529467219604771, 0.661078636611197, 0.13347183839881469]
+          - phase: Ferrite
+            v: 0.4
+            O: [0.18430893147208752, 0.012407731059331692, -0.5551804816056372, -0.8109567798802285]
+          homogenization: Taylor
 
         """
         dim = {'O':(4,),'V_e':(3,3,)}

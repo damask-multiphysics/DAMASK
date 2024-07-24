@@ -57,7 +57,7 @@ class Orientation(Rotation,Crystal):
     and inherits the corresponding crystal family.
     Specifying a Bravais lattice, compared to just the crystal family,
     extends the functionality of Orientation objects to include operations such as
-    "Schmid", "related", or "to_pole" that require a lattice type and its parameters.
+    "Schmid", "related", or "to_frame" that require a lattice type and its parameters.
 
     Examples
     --------
@@ -353,7 +353,7 @@ class Orientation(Rotation,Crystal):
         new : damask.Orientation
 
         """
-        o = cls(**kwargs)
+        o = cls(**kwargs,rotation=[1,0,0,0])
         x = o.to_frame(uvw=uvw)
         z = o.to_frame(hkl=hkl)
         om = np.stack([x,np.cross(z,x),z],axis=-2)
@@ -500,13 +500,8 @@ class Orientation(Rotation,Crystal):
         >>> a = damask.Orientation.from_Euler_angles(phi=[123,32,21],degrees=True,family='hexagonal')
         >>> b = damask.Orientation.from_Euler_angles(phi=[104,11,87],degrees=True,family='hexagonal')
         >>> a.disorientation(b)
-        Crystal family hexagonal
-        Quaternion: (real=0.976, imag=<+0.189, +0.018, +0.103>)
-        Matrix:
-        [[ 0.97831006  0.20710935  0.00389135]
-         [-0.19363288  0.90765544  0.37238141]
-         [ 0.07359167 -0.36505797  0.92807163]]
-        Bunge Eulers / deg: (11.40, 21.86, 0.60)
+        Crystal family: hexagonal
+        Quaternion [0.976   0.189 0.018 0.103]
 
         Plot a sample from the Mackenzie distribution.
 
@@ -517,6 +512,7 @@ class Orientation(Rotation,Crystal):
         >>> b = damask.Orientation.from_random(shape=N,family='cubic')
         >>> n,omega = a.disorientation(b).as_axis_angle(degrees=True,pair=True)
         >>> plt.hist(omega,25)
+        [...]
         >>> plt.show()
 
         """
@@ -607,7 +603,7 @@ class Orientation(Rotation,Crystal):
         Parameters
         ----------
         vector : numpy.ndarray, shape (...,3)
-            Lab frame vector to align with crystal frame direction.
+            Lab frame vector to align with an SST crystal frame direction.
             Shape of vector blends with shape of own rotation array.
             For example, a rotation array of shape (3,2) and a vector array of shape (2,4) result in (3,2,4) outputs.
         proper : bool, optional
@@ -629,8 +625,8 @@ class Orientation(Rotation,Crystal):
         if vector_.shape[-1] != 3:
             raise ValueError('input is not a field of three-dimensional vectors')
 
-        blend = util.shapeblender( self.shape,vector_.shape[:-1])
-        eq    = self.broadcast_to(util.shapeshifter( self.shape,blend,mode='right')).equivalent
+        blend = util.shapeblender(self.shape,vector_.shape[:-1])
+        eq    = self.broadcast_to(util.shapeshifter(self.shape,blend,mode='right')).equivalent
         poles = np.atleast_2d(eq @ np.broadcast_to(vector_,(1,)+blend+(3,)))
         ok    = self.in_SST(poles,proper=proper)
         ok   &= np.cumsum(ok,axis=0) == 1
@@ -732,7 +728,9 @@ class Orientation(Rotation,Crystal):
         >>> coord = damask.util.project_equal_area(o.to_SST(lab))
         >>> color = o.IPF_color(lab)
         >>> plt.scatter(coord[:,0],coord[:,1],color=color,s=.06)
+        [...]
         >>> plt.axis('scaled')
+        [...]
         >>> plt.show()
 
         """
@@ -775,18 +773,66 @@ class Orientation(Rotation,Crystal):
 ####################################################################################################
     # functions that require lattice, not just family
 
-    def to_pole(self, *,
-                uvw: Optional[FloatSequence] = None,
-                hkl: Optional[FloatSequence] = None,
-                with_symmetry: bool = False,
-                normalize: bool = True) -> np.ndarray:
+    def to_lattice(self, *,
+                   direction: Optional[FloatSequence] = None,
+                   plane: Optional[FloatSequence] = None) -> np.ndarray:
         """
-        Calculate lab frame vector along lattice direction [uvw] or plane normal (hkl).
+        Calculate lattice vector corresponding to lab frame direction or plane normal.
 
         Parameters
         ----------
-        uvw|hkl : numpy.ndarray, shape (...,3)
-            Miller indices of crystallographic direction or plane normal.
+        direction|plane : numpy.ndarray, shape (...,3)
+            Real space vector along direction or
+            reciprocal space vector along plane normal.
+            Shape of vector blends with shape of own rotation array.
+            For example, a rotation array of shape (3,2) and a vector
+            array of shape (2,4) result in (3,2,4) outputs.
+
+        Returns
+        -------
+        Miller : numpy.ndarray, shape (...,3)
+            Lattice vector of direction or plane.
+            Use util.scale_to_coprime to convert to (integer) Miller indices.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> import damask
+        >>> cubic = damask.Orientation.from_axis_angle(n_omega=[1,0,0,90],degrees=True,lattice='cI')
+        >>> cubic.to_lattice(direction=[1, 0, 0])
+        array([1., 0., 0.])
+        >>> cubic.to_lattice(direction=[0, 1, 0])
+        array([0., 0., -1.])
+        >>> cubic.to_lattice(direction=[0, 0, 1])
+        array([-0., 1., 0.])
+        >>> tetragonal = damask.Orientation(lattice='tI',c=0.5)
+        >>> damask.util.scale_to_coprime(tetragonal.to_lattice(direction=[1,1,1]))
+        array([1, 1, 2])
+        >>> damask.util.scale_to_coprime(tetragonal.to_lattice(plane=[1,1,1]))
+        array([2, 2, 1])
+
+        """
+        if (direction is not None) ^ (plane is None):
+            raise KeyError('specify either "direction" or "plane"')
+        return (super().to_lattice(direction=self@np.asarray(direction)) if plane is None else
+                super().to_lattice(plane=self@np.asarray(plane)))
+
+
+    def to_frame(self, *,
+                 uvw: Optional[IntSequence] = None,
+                 hkl: Optional[IntSequence] = None,
+                 uvtw: Optional[IntSequence] = None,
+                 hkil: Optional[IntSequence] = None,
+                 with_symmetry: bool = False,
+                 normalize: bool = True,
+                 ) -> np.ndarray:
+        """
+        Calculate lab frame vector along lattice direction [uvw]/[uvtw] or plane normal (hkl)/(hkil).
+
+        Parameters
+        ----------
+        uvw|hkl|uvtw|hkil : numpy.ndarray, shape (...,3) or shape (...,4)
+            Miller(–Bravais) indices of crystallographic direction or plane normal.
             Shape of vector blends with shape of own rotation array.
             For example, a rotation array of shape (3,2) and a vector
             array of shape (2,4) result in (3,2,4) outputs.
@@ -799,12 +845,12 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        vector : numpy.ndarray, shape (...,3) or (...,N,3)
-            Lab frame vector (or vectors if with_symmetry) along
-            [uvw] direction or (hkl) plane normal.
+        vector : numpy.ndarray, shape (...,3) or (N,...,3)
+            Lab frame vector (or N vectors if with_symmetry) along
+            [uvw]/[uvtw] direction or (hkl)/(hkil) plane normal.
 
         """
-        v = self.to_frame(uvw=uvw,hkl=hkl)
+        v = super().to_frame(uvw=uvw,hkl=hkl,uvtw=uvtw,hkil=hkil)
         s_v = v.shape[:-1]
         blend = util.shapeblender(self.shape,s_v)
         if normalize:
@@ -815,7 +861,9 @@ class Orientation(Rotation,Crystal):
             blend += sym_ops.shape
             v = sym_ops.broadcast_to(s_v) @ v[...,np.newaxis,:]
 
-        return ~(self.broadcast_to(blend)) @ np.broadcast_to(v,blend+(3,))
+        return np.moveaxis(~(self.broadcast_to(blend)) @ np.broadcast_to(v,blend+(3,)),
+                           -2 if with_symmetry else 0,
+                           0)
 
 
     def Schmid(self, *,
@@ -842,7 +890,6 @@ class Orientation(Rotation,Crystal):
 
         >>> import numpy as np
         >>> import damask
-        >>> np.set_printoptions(3,suppress=True,floatmode='fixed')
         >>> O = damask.Orientation.from_Euler_angles(phi=[0,45,0],degrees=True,lattice='cF')
         >>> O.Schmid(N_slip=[12])[0]
         array([[ 0.000,  0.000,  0.000],
@@ -859,8 +906,8 @@ class Orientation(Rotation,Crystal):
 
         if not active:
             raise ValueError('Schmid matrix not defined')
-        d = self.to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
-        p = self.to_frame(hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
+        d = super().to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
+        p = super().to_frame(hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
         P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=1,keepdims=True),
                                   p/np.linalg.norm(p,axis=1,keepdims=True))
 
@@ -895,30 +942,29 @@ class Orientation(Rotation,Crystal):
         --------
         Face-centered cubic orientations following from a
         body-centered cubic crystal in "Cube" orientation according
-        to the Bain orientation relationship (cI -> cF).
+        to the Bain orientation relationship (cF -> cI).
 
         >>> import numpy as np
         >>> import damask
-        >>> np.set_printoptions(3,suppress=True,floatmode='fixed')
-        >>> damask.Orientation(lattice='cI').related('Bain')
+        >>> damask.Orientation(lattice='cF').related('Bain')
         Crystal family: cubic
-        Bravais lattice: cF
+        Bravais lattice: cI
         a=1 m, b=1 m, c=1 m
         α=90°, β=90°, γ=90°
         Quaternions of shape (3,)
-        [[0.924 0.383 0.000 0.000]
-         [0.924 0.000 0.383 0.000]
-         [0.924 0.000 0.000 0.383]]
+        [[ 6.53281482e-01  2.70598050e-01  6.53281482e-01  2.70598050e-01]
+         [ 2.70598050e-01 -2.70598050e-01 -6.53281482e-01 -6.53281482e-01]
+         [ 9.23879533e-01 -5.55111512e-17 -2.77555756e-17 -3.82683432e-01]]
 
         """
         lattice,o = self.relation_operations(model,target)
         target = Crystal(lattice=lattice) if target is None else target
-
-        return Orientation(rotation=o*Rotation(self.quaternion)[np.newaxis,...],  # type: ignore
-                          lattice=lattice,
-                          b = self.b if target.ratio['b'] is None else self.a*target.ratio['b'],
-                          c = self.c if target.ratio['c'] is None else self.a*target.ratio['c'],
-                          alpha = None if 'alpha' in target.immutable else self.alpha,
-                          beta  = None if 'beta'  in target.immutable else self.beta,
-                          gamma = None if 'gamma' in target.immutable else self.gamma,
-                         )
+        return Orientation(rotation=o*Rotation(self.quaternion)[np.newaxis,...],                    # type: ignore
+                           lattice=target.lattice,
+                           a=target.a,
+                           b=target.b,
+                           c=target.c,
+                           alpha=target.alpha,
+                           beta =target.beta,
+                           gamma=target.gamma,
+                           )

@@ -147,7 +147,7 @@ def from_grid(grid,
     >>> import numpy as np
     >>> import scipy.spatial
     >>> import damask
-    >>> seeds = damask.seeds.from_random(np.ones(3),29,[128]*3)
+    >>> seeds = damask.seeds.from_random(np.ones(3),29,[128]*3,rng_seed=20191102)
     >>> (g := damask.GeomGrid.from_Voronoi_tessellation([128]*3,np.ones(3),seeds))
     cells:  128 × 128 × 128
     size:   1.0 × 1.0 × 1.0 m³
@@ -156,7 +156,7 @@ def from_grid(grid,
     >>> COG,matID = damask.seeds.from_grid(g,average=True)
     >>> distance,ID = scipy.spatial.KDTree(COG,boxsize=g.size).query(seeds)
     >>> np.max(distance) / np.linalg.norm(g.size/g.cells)
-    7.8057356746350415
+    10.1
     >>> (ID == matID).all()
     True
 

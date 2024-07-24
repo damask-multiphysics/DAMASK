@@ -221,6 +221,24 @@ class TestUtil:
         with pytest.raises(KeyError):
             util.Miller_to_Bravais(uvw=np.ones(4),hkl=np.ones(4))
 
+    @pytest.mark.parametrize('key_value',[{'uvtw':[1.,0.,-1.,0.]},
+                                          {'hkil':[1.,0.,-1.,0.]}])
+    def test_float_Bravais_to_Miller(self,key_value):
+        with pytest.raises(TypeError):
+            util.Bravais_to_Miller(**key_value)
+
+    @pytest.mark.parametrize('key_value',[{'uvw':[1.,0.,-1.]},
+                                          {'hkl':[1.,0.,-1.]}])
+    def test_float_Miller_to_Bravais(self,key_value):
+        with pytest.raises(TypeError):
+            util.Miller_to_Bravais(**key_value)
+
+
+    @pytest.mark.parametrize('key_value',[{'uvtw':[1,0,0,0]},
+                                          {'hkil':[1,0,0,0]}])
+    def test_invalid_MillerBravais(self,key_value):
+        with pytest.raises(ValueError):
+            util.Bravais_to_Miller(**key_value)
 
     @pytest.mark.parametrize('vector',np.array([
                                                 [1,0,0],
@@ -231,6 +249,13 @@ class TestUtil:
     @pytest.mark.parametrize('kw_Miller,kw_Bravais',[('uvw','uvtw'),('hkl','hkil')])
     def test_Miller_Bravais_Miller(self,vector,kw_Miller,kw_Bravais):
         assert np.all(vector == util.Bravais_to_Miller(**{kw_Bravais:util.Miller_to_Bravais(**{kw_Miller:vector})}))
+
+    @pytest.mark.parametrize('kw_Miller,kw_Bravais',[('uvw','uvtw'),('hkl','hkil')])
+    def test_Miller_Bravais_Miller_random(self,kw_Miller,kw_Bravais):
+        vector = np.random.randint(-25,26,size=(5,6,3))
+        vector //= np.gcd.reduce(vector,axis=-1,keepdims=True)
+        assert np.all(vector == util.Bravais_to_Miller(**{kw_Bravais:util.Miller_to_Bravais(**{kw_Miller:vector})}))
+
 
     @pytest.mark.parametrize('vector',np.array([
                                                 [1,0,-1,2],

@@ -1,0 +1,35 @@
+type: dislotwin
+
+references:
+  - N. Prabhu and M. Diehl,
+    Integrating Materials and Manufacturing Innovation 13:xx-yy, 2008,
+    https://doi.org/10.1007/s40192-024-00359-1,
+    Table 3(d)
+  - R. Madec and L.P. Kubin,
+    Acta Materialia 126:166-173, 2017,
+    https://doi.org/10.1016/j.actamat.2016.12.040,
+    Table 1 for Ni
+  - L.P. Kubin et al.,
+    Acta Materialia 56(20):6040-6049, 2008,
+    https://doi.org/10.1016/j.actamat.2008.08.012,
+    Table 1 (self and coplanar)
+
+output: [rho_dip, rho_mob]
+
+N_sl: [12]
+
+b_sl: [2.48e-10]
+rho_mob_0: [2.8e+12]
+rho_dip_0: [1.0]
+v_0: [1400.0]
+Q_sl: [2.34e-19]
+tau_0: [600.0e+6]
+p_sl: [0.42]
+q_sl: [1.55]
+i_sl: [7.5]
+D_a: 4.0
+B: [0.001]
+Q_cl: 5.4e-19
+D: 1.08e-5
+
+h_sl-sl: [0.122, 0.122, 0.672, 0.044, 0.102, 0.09, 0.168]

@@ -2,7 +2,7 @@ from typing import Optional, Union, Dict, List, Tuple
 
 import numpy as np
 
-from ._typehints import FloatSequence, CrystalFamily, BravaisLattice, CrystalKinematics
+from ._typehints import FloatSequence, IntSequence, CrystalFamily, BravaisLattice, CrystalKinematics
 from . import util
 from . import Rotation
 
@@ -47,10 +47,10 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[-1, 1, 0],[ 1, 1,-1]],
         [[ 0,-1,-1],[ 1, 1,-1]],
         [[ 1, 0, 1],[ 1, 1,-1]],
-        ],dtype=float),
+        ]),
         2,axis=0),
         np.tile(np.array([[[-1,-1, 1],[ 0, 1, 1]],
-                          [[-1, 1,-1],[ 0, 1, 1]]],dtype=float),
+                          [[-1, 1,-1],[ 0, 1, 1]]]),
                 (12,1,1)),
     ],
     'cI-->cF' : [
@@ -72,10 +72,10 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
 
         [[ 1, 1, 1],[ 1,-1, 0]],
         [[ 1, 1,-1],[ 1,-1, 0]],
-        ],dtype=float),
+        ]),
         2,axis=0),
         np.tile(np.array([[[ 0, 1,-1],[ 1, 1, 1]],
-                          [[ 0,-1, 1],[ 1, 1, 1]]],dtype=float),
+                          [[ 0,-1, 1],[ 1, 1, 1]]]),
                 (12,1,1)),
     ],
   },
@@ -106,7 +106,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[  5, 17, 12],[  1, -1,  1]],
         [[ 12, -5,-17],[  1, -1,  1]],
         [[-17,-12,  5],[  1, -1,  1]],
-        ],dtype=float),
+        ]),
         np.array([
         [[-17, -7, 17],[  1,  0,  1]],
         [[ 17,-17, -7],[  1,  1,  0]],
@@ -132,7 +132,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 17, 17,  7],[  1, -1,  0]],
         [[  7,-17,-17],[  0, -1,  1]],
         [[-17, -7, 17],[  1,  0,  1]],
-        ],dtype=float),
+        ]),
     ],
     'cI-->cF' : [
         np.array([
@@ -160,7 +160,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 17, 17,  7],[  1, -1,  0]],
         [[  7,-17,-17],[  0, -1,  1]],
         [[-17, -7, 17],[  1,  0,  1]],
-        ],dtype=float),
+        ]),
         np.array([
         [[ -5,-12, 17],[  1,  1,  1]],
         [[ 17, -5,-12],[  1,  1,  1]],
@@ -186,7 +186,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[  5, 17, 12],[  1, -1,  1]],
         [[ 12, -5,-17],[  1, -1,  1]],
         [[-17,-12,  5],[  1, -1,  1]],
-        ],dtype=float),
+        ]),
     ],
   },
   'GT_prime': { # https://doi.org/10.1107/S0021889805038276
@@ -216,7 +216,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[  0,  1,  1],[ -7, 17,-17]],
         [[  1,  0, -1],[-17,  7,-17]],
         [[  1,  1,  0],[-17, 17, -7]],
-        ],dtype=float),
+        ]),
         np.array([
         [[  1,  1, -1],[ 12,  5, 17]],
         [[ -1,  1,  1],[ 17, 12,  5]],
@@ -242,7 +242,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[  1,  1,  1],[-12, 17, -5]],
         [[  1, -1, -1],[ -5, 12,-17]],
         [[  1,  1, -1],[-17,  5,-12]],
-        ],dtype=float),
+        ]),
     ],
     'cI-->cF' : [
         np.array([
@@ -270,7 +270,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[  1,  1,  1],[-12, 17, -5]],
         [[  1, -1, -1],[ -5, 12,-17]],
         [[  1,  1, -1],[-17,  5,-12]],
-        ],dtype=float),
+        ]),
         np.array([
         [[  0,  1, -1],[  7, 17, 17]],
         [[ -1,  0,  1],[ 17,  7, 17]],
@@ -296,7 +296,7 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[  0,  1,  1],[ -7, 17,-17]],
         [[  1,  0, -1],[-17,  7,-17]],
         [[  1,  1,  0],[-17, 17, -7]],
-        ],dtype=float),
+        ]),
     ],
   },
   'NW': { # https://doi.org/10.1016/j.matchar.2004.12.015
@@ -317,8 +317,8 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 2,-1, 1],[ 1, 1,-1]],
         [[-1, 2, 1],[ 1, 1,-1]],
         [[-1,-1,-2],[ 1, 1,-1]],
-        ],dtype=float),
-        np.broadcast_to(np.array([[ 0,-1, 1],[ 0, 1, 1]],dtype=float),
+        ]),
+        np.broadcast_to(np.array([[ 0,-1, 1],[ 0, 1, 1]]),
                         (12,2,3)),
     ],
     'cI-->cF' : [
@@ -329,12 +329,12 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
             [[ 1, 0, 1],[ 1, 0,-1]],
             [[ 1,-1, 0],[ 1, 1, 0]],
             [[ 1, 1, 0],[ 1,-1, 0]],
-            ],dtype=float),
+            ]),
             2,axis=0),
         np.tile(np.array([
             [[ 2,-1,-1],[ 1, 1, 1]],
             [[-2, 1, 1],[ 1, 1, 1]],
-            ],dtype=float),
+            ]),
             (6,1,1)),
     ],
   },
@@ -347,12 +347,12 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 1, 0,-1],[ 0, 1, 0]],
         [[ 1, 1, 0],[ 0, 0, 1]],
         [[ 1,-1, 0],[ 0, 0, 1]],
-        ],dtype=float),
+        ]),
         2,axis=0),
         np.tile(np.array([
         [[ 1, 1,-1],[ 0, 1, 1]],
         [[-1, 1,-1],[ 0, 1, 1]],
-        ],dtype=float),
+        ]),
         (6,1,1)),
     ],
     'cI-->cF' : [
@@ -369,8 +369,8 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 1,-1,-1],[ 1, 1, 0]],
         [[ 1, 1, 1],[ 1,-1, 0]],
         [[ 1, 1,-1],[ 1,-1, 0]],
-        ],dtype=float),
-        np.broadcast_to(np.array([[ 1, 1, 0],[ 0, 0, 1]],dtype=float),
+        ]),
+        np.broadcast_to(np.array([[ 1, 1, 0],[ 0, 0, 1]]),
                         (12,2,3)),
     ],
   },
@@ -380,8 +380,8 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 0, 1, 0],[ 1, 0, 0]],
         [[ 0, 0, 1],[ 0, 1, 0]],
         [[ 1, 0, 0],[ 0, 0, 1]],
-        ],dtype=float),
-        np.broadcast_to(np.array([[ 1, 1, 0],[ 0, 0, 1]],dtype=float),
+        ]),
+        np.broadcast_to(np.array([[ 1, 1, 0],[ 0, 0, 1]]),
                         (3,2,3)),
     ],
     'cI-->cF' : [
@@ -389,8 +389,8 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 0, 1, 1],[ 1, 0, 0]],
         [[ 1, 0, 1],[ 0, 1, 0]],
         [[ 1, 1, 0],[ 0, 0, 1]],
-        ],dtype=float),
-        np.broadcast_to(np.array([[ 1, 0, 0],[ 0, 0, 1]],dtype=float),
+        ]),
+        np.broadcast_to(np.array([[ 1, 0, 0],[ 0, 0, 1]]),
                         (3,2,3)),
     ]
   },
@@ -409,8 +409,8 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 1,-1,-1],[ 1, 1, 0]],
         [[ 1, 1, 1],[ 1,-1, 0]],
         [[ 1, 1,-1],[ 1,-1, 0]],
-        ],dtype=float),
-        np.broadcast_to(np.array([[ 2,-1,-1, 0],[ 0, 0, 0, 1]],dtype=float),
+        ]),
+        np.broadcast_to(np.array([[ 2,-1,-1, 0],[ 0, 0, 0, 1]]),
                         (12,2,4)),
     ],
     'hP-->cI' : [
@@ -418,12 +418,12 @@ orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
         [[ 2,-1,-1, 0],[ 0, 0, 0, 1]],
         [[-1, 2,-1, 0],[ 0, 0, 0, 1]],
         [[-1,-1, 2, 0],[ 0, 0, 0, 1]],
-        ],dtype=float),
+        ]),
         2,axis=0),
         np.tile(np.array([
         [[ 1, 1,-1],[ 0, 1, 1]],
         [[-1, 1,-1],[ 0, 1, 1]],
-        ],dtype=float),
+        ]),
         (3,1,1)),
     ]
   },
@@ -542,8 +542,10 @@ class Crystal():
         return family if self.lattice is None else \
                util.srepr([family,
                            f'Bravais lattice: {self.lattice}',
-                           'a={:.5g} m, b={:.5g} m, c={:.5g} m'.format(*self.parameters[:3]),
-                           'α={:.5g}°, β={:.5g}°, γ={:.5g}°'.format(*np.degrees(self.parameters[3:]))])
+                           'a={a:.5g} m, b={b:.5g} m, c={c:.5g} m'.format(**self.parameters),
+                           'α={alpha:.5g}°, β={beta:.5g}°, γ={gamma:.5g}°'
+                           .format(**dict(map(lambda kv: (kv[0], np.degrees(kv[1])), self.parameters.items()))),
+                           ])
 
 
     def __eq__(self,
@@ -565,9 +567,10 @@ class Crystal():
                 self.family == other.family)                                                        # type: ignore
 
     @property
-    def parameters(self) -> Optional[Tuple]:
+    def parameters(self) -> Optional[Dict]:
         """Return lattice parameters a, b, c, alpha, beta, gamma."""
-        return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma) if hasattr(self,'a') else None
+        return dict(a=self.a,b=self.b,c=self.c,
+                    alpha=self.alpha,beta=self.beta,gamma=self.gamma) if hasattr(self,'a') else None
 
     @property
     def immutable(self) -> Dict[str, float]:
@@ -791,7 +794,7 @@ class Crystal():
                            (np.cos(self.alpha)-np.cos(self.beta)*np.cos(self.gamma))                     /np.sin(self.gamma),
                            np.sqrt(1 - np.cos(self.alpha)**2 - np.cos(self.beta)**2 - np.cos(self.gamma)**2
                                  + 2 * np.cos(self.alpha)    * np.cos(self.beta)    * np.cos(self.gamma))/np.sin(self.gamma)],
-                         ],dtype=float).T \
+                         ]).T \
              * np.array([self.a,self.b,self.c])
 
 
@@ -849,28 +852,30 @@ class Crystal():
         """
         if (direction is not None) ^ (plane is None):
             raise KeyError('specify either "direction" or "plane"')
-        basis,axis = (self.basis_reciprocal,np.array(direction)) \
+        basis,axis = (self.basis_reciprocal,np.asarray(direction)) \
                      if plane is None else \
-                     (self.basis_real,np.array(plane))
+                     (self.basis_real,np.asarray(plane))
         return np.einsum('li,...l',basis,axis)
 
 
     def to_frame(self, *,
-                 uvw: Optional[FloatSequence] = None,
-                 hkl: Optional[FloatSequence] = None) -> np.ndarray:
+                 uvw: Optional[IntSequence] = None,
+                 hkl: Optional[IntSequence] = None,
+                 uvtw: Optional[IntSequence] = None,
+                 hkil: Optional[IntSequence] = None) -> np.ndarray:
         """
-        Calculate crystal frame vector corresponding to lattice direction [uvw] or plane normal (hkl).
+        Calculate crystal frame vector corresponding to lattice direction [uvw]/[uvtw] or plane normal (hkl)/(hkil).
 
         Parameters
         ----------
-        uvw|hkl : numpy.ndarray, shape (...,3)
-            Miller indices of crystallographic direction or plane normal.
+        uvw|hkl|uvtw|hkil : numpy.ndarray, shape (...,3) or shape (...,4)
+            Miller(–Bravais) indices of crystallographic direction or plane normal.
 
         Returns
         -------
         vector : numpy.ndarray, shape (...,3)
-            Crystal frame vector in real space along [uvw] direction or
-            in reciprocal space along (hkl) plane normal.
+            Crystal frame vector in real space along [uvw]/[uvtw] direction or
+            in reciprocal space along (hkl)/(hkil) plane normal.
 
         Examples
         --------
@@ -889,11 +894,11 @@ class Crystal():
         array([ 3.38983051e+09,  1.95711956e+09, -4.15134508e-07])
 
         """
-        if (uvw is not None) ^ (hkl is None):
-            raise KeyError('specify either "uvw" or "hkl"')
-        basis,axis = (self.basis_real,np.array(uvw)) \
-                     if hkl is None else \
-                     (self.basis_reciprocal,np.array(hkl))
+        if sum(arg is not None for arg in (uvw,hkl, uvtw,hkil)) != 1:
+            raise KeyError('specify either "uvw", "hkl", "uvtw", or "hkil"')
+        basis,axis = (self.basis_real,np.asarray(uvw if uvtw is None else util.Bravais_to_Miller(uvtw=uvtw))) \
+                     if hkl is None and hkil is None else \
+                     (self.basis_reciprocal,np.asarray(hkl if hkil is None else util.Bravais_to_Miller(hkil=hkil)))
         return np.einsum('il,...l',basis,axis)
 
 
@@ -951,69 +956,69 @@ class Crystal():
             },
             'cI': {
                 'slip': [np.array([
-                           [+1,-1,+1,  0,+1,+1],
-                           [-1,-1,+1,  0,-1,-1],
-                           [+1,+1,+1,  0,+1,-1],
-                           [-1,+1,+1,  0,-1,+1],
-                           [-1,+1,+1, -1, 0,-1],
-                           [-1,-1,+1, +1, 0,+1],
-                           [+1,+1,+1, -1, 0,+1],
-                           [+1,-1,+1, +1, 0,-1],
-                           [-1,+1,+1, +1,+1, 0],
-                           [+1,-1,+1, -1,-1, 0],
-                           [+1,+1,+1, +1,-1, 0],
-                           [-1,-1,+1, -1,+1, 0]]),
+                           [+1,-1,+1, +0,+1,+1],
+                           [+1,-1,+1, +1,+0,-1],
+                           [+1,-1,+1, -1,-1,+0],
+                           [-1,-1,+1, +0,-1,-1],
+                           [-1,-1,+1, +1,+0,+1],
+                           [-1,-1,+1, -1,+1,+0],
+                           [+1,+1,+1, +0,+1,-1],
+                           [+1,+1,+1, -1,+0,+1],
+                           [+1,+1,+1, +1,-1,+0],
+                           [-1,+1,+1, +0,-1,+1],
+                           [-1,+1,+1, -1,+0,-1],
+                           [-1,+1,+1, +1,+1,+0]]),
                          np.array([
-                           [-1,+1,+1, +2,+1,+1],
-                           [+1,+1,+1, -2,+1,+1],
-                           [+1,+1,-1, +2,-1,+1],
                            [+1,-1,+1, +2,+1,-1],
-                           [+1,-1,+1, +1,+2,+1],
-                           [+1,+1,-1, -1,+2,+1],
-                           [+1,+1,+1, +1,-2,+1],
-                           [-1,+1,+1, +1,+2,-1],
-                           [+1,+1,-1, +1,+1,+2],
                            [+1,-1,+1, -1,+1,+2],
+                           [+1,-1,+1, +1,+2,+1],
+                           [-1,-1,+1, +2,-1,+1],
+                           [-1,-1,+1, +1,+1,+2],
+                           [-1,-1,+1, -1,+2,+1],
+                           [+1,+1,+1, +1,+1,-2],
+                           [+1,+1,+1, +1,-2,+1],
+                           [+1,+1,+1, -2,+1,+1],
                            [-1,+1,+1, +1,-1,+2],
-                           [+1,+1,+1, +1,+1,-2]]),
+                           [-1,+1,+1, +1,+2,-1],
+                           [-1,+1,+1, +2,+1,+1]]),
                          np.array([
-                           [+1,+1,-1, +1,+2,+3],
                            [+1,-1,+1, -1,+2,+3],
-                           [-1,+1,+1, +1,-2,+3],
-                           [+1,+1,+1, +1,+2,-3],
                            [+1,-1,+1, +1,+3,+2],
-                           [+1,+1,-1, -1,+3,+2],
-                           [+1,+1,+1, +1,-3,+2],
-                           [-1,+1,+1, +1,+3,-2],
-                           [+1,+1,-1, +2,+1,+3],
                            [+1,-1,+1, -2,+1,+3],
-                           [-1,+1,+1, +2,-1,+3],
-                           [+1,+1,+1, +2,+1,-3],
                            [+1,-1,+1, +2,+3,+1],
-                           [+1,+1,-1, -2,+3,+1],
+                           [+1,-1,+1, +3,+1,-2],
+                           [+1,-1,+1, +3,+2,-1],
+                           [-1,-1,+1, +1,+2,+3],
+                           [-1,-1,+1, -1,+3,+2],
+                           [-1,-1,+1, +2,+1,+3],
+                           [-1,-1,+1, -2,+3,+1],
+                           [-1,-1,+1, +3,-1,+2],
+                           [-1,-1,+1, +3,-2,+1],
+                           [+1,+1,+1, +1,+2,-3],
+                           [+1,+1,+1, +1,-3,+2],
+                           [+1,+1,+1, +2,+1,-3],
                            [+1,+1,+1, +2,-3,+1],
+                           [+1,+1,+1, -3,+1,+2],
+                           [+1,+1,+1, -3,+2,+1],
+                           [-1,+1,+1, +1,-2, 3],
+                           [-1,+1,+1, +1,+3,-2],
+                           [-1,+1,+1, +2,-1,+3],
                            [-1,+1,+1, +2,+3,-1],
                            [-1,+1,+1, +3,+1,+2],
-                           [+1,+1,+1, -3,+1,+2],
-                           [+1,+1,-1, +3,-1,+2],
-                           [+1,-1,+1, +3,+1,-2],
-                           [-1,+1,+1, +3,+2,+1],
-                           [+1,+1,+1, -3,+2,+1],
-                           [+1,+1,-1, +3,-2,+1],
-                           [+1,-1,+1, +3,+2,-1]])],
+                           [-1,+1,+1, +3,+2,+1]])],
                 'twin': [np.array([
-                           [-1, 1, 1,  2, 1, 1],
-                           [ 1, 1, 1, -2, 1, 1],
-                           [ 1, 1,-1,  2,-1, 1],
-                           [ 1,-1, 1,  2, 1,-1],
-                           [ 1,-1, 1,  1, 2, 1],
-                           [ 1, 1,-1, -1, 2, 1],
-                           [ 1, 1, 1,  1,-2, 1],
-                           [-1, 1, 1,  1, 2,-1],
-                           [ 1, 1,-1,  1, 1, 2],
-                           [ 1,-1, 1, -1, 1, 2],
-                           [-1, 1, 1,  1,-1, 2],
-                           [ 1, 1, 1,  1, 1,-2]])]
+                           [+1,-1,+1, +2,+1,-1],
+                           [+1,-1,+1, -1,+1,+2],
+                           [+1,-1,+1, +1,+2,+1],
+                           [-1,-1,+1, +2,-1,+1],
+                           [-1,-1,+1, +1,+1,+2],
+                           [-1,-1,+1, -1,+2,+1],
+                           [+1,+1,+1, +1,+1,-2],
+                           [+1,+1,+1, +1,-2,+1],
+                           [+1,+1,+1, -2,+1,+1],
+                           [-1,+1,+1, +1,-1,+2],
+                           [-1,+1,+1, +1,+2,-1],
+                           [-1,+1,+1, +2,+1,+1]])]
             },
             'hP': {
                 'slip': [np.array([
@@ -1208,12 +1213,12 @@ class Crystal():
 
         m_l,o_l = transform[0].split(sep)                                                           # type: ignore
         m_p,o_p = orientation_relationships[model][m_l+sep+o_l]
-        other = Crystal(lattice=o_l) if target is None else target
-        m_p = np.stack((self.to_frame(uvw=m_p[:,0] if len(m_p[0,0])==3 else util.Bravais_to_Miller(uvtw=m_p[:,0])),
-                        self.to_frame(hkl=m_p[:,1] if len(m_p[0,1])==3 else util.Bravais_to_Miller(hkil=m_p[:,1]))),
-                        axis=1)
-        o_p = np.stack((other.to_frame(uvw=o_p[:,0] if len(o_p[0,0])==3 else util.Bravais_to_Miller(uvtw=o_p[:,0])),
-                        other.to_frame(hkl=o_p[:,1] if len(o_p[0,1])==3 else util.Bravais_to_Miller(hkil=o_p[:,1]))),
-                        axis=1)
-
+        m = Crystal(lattice=m_l) if self.parameters is None else Crystal(lattice=m_l,**self.parameters) # type: ignore
+        o = Crystal(lattice=o_l) if target is None else target
+        m_p = np.stack((m.to_frame(uvw=m_p[:,0] if m_l != 'hP' else util.Bravais_to_Miller(uvtw=m_p[:,0])),
+                        m.to_frame(hkl=m_p[:,1] if m_l != 'hP' else util.Bravais_to_Miller(hkil=m_p[:,1]))),
+                        axis=-2)
+        o_p = np.stack((o.to_frame(uvw=o_p[:,0] if o_l != 'hP' else util.Bravais_to_Miller(uvtw=o_p[:,0])),
+                        o.to_frame(hkl=o_p[:,1] if o_l != 'hP' else util.Bravais_to_Miller(hkil=o_p[:,1]))),
+                        axis=-2)
         return (o_l,Rotation.from_parallel(a=m_p,b=o_p))

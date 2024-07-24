@@ -11,7 +11,7 @@ stages:
 ###################################################################################################
 default:
   before_script:
-    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID}
+    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN}
     - source env/DAMASK.sh
     - export PATH=${TESTROOT}/bin:${PATH}
     - echo Job start:" $(date)"
@@ -56,7 +56,7 @@ variables:
 create_testroot:
   stage: prepare
   before_script:
-    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID}
+    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN}
     - echo Job start:" $(date)"
   script:
     - mkdir -p ${TESTROOT}
@@ -74,7 +74,7 @@ pytest:
   stage: python
   script:
     - cd python
-    - pytest --basetemp ${TESTROOT}/python -v --cov
+    - pytest --basetemp ${TESTROOT}/python -v --cov --damaskroot=${CI_PROJECT_DIR}
     - coverage report --fail-under=90 --show-missing
 
 mypy:
@@ -123,63 +123,63 @@ grid_GNU:
   stage: compile
   script:
     - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_GNU
 
 mesh_GNU:
   stage: compile
   script:
     - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU
 
 grid_GNU-64bit:
   stage: compile
   script:
     - module load Compiler/GNU/10 Libraries/PETSc/3.16.4/64bit
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_GNU-64bit
 
 mesh_GNU-64bit:
   stage: compile
   script:
     - module load Compiler/GNU/10 Libraries/PETSc/3.16.4/64bit
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU-64bit
 
 grid_IntelLLVM:
   stage: compile
   script:
     - module load ${COMPILER_INTELLLVM} ${MPI_INTELLLVM} ${PETSC_INTELLLVM}
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_IntelLLVM
 
 mesh_IntelLLVM:
   stage: compile
   script:
     - module load ${COMPILER_INTELLLVM} ${MPI_INTELLLVM} ${PETSC_INTELLLVM}
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_IntelLLVM
 
 grid_Intel:
   stage: compile
   script:
     - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_Intel
 
 mesh_Intel:
   stage: compile
   script:
     - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_Intel
 
 Marc_Intel:
   stage: compile
   script:
     - module load $IntelMarc $HDF5Marc $MSC
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'compile and Marc' --basetemp ${TESTROOT}/compile_Marc
 
 setup_grid:
@@ -214,13 +214,13 @@ open-source:
   stage: fortran
   script:
     - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'not compile and not Marc' -m 'not cifail' --basetemp ${TESTROOT}/open-source -v
 
 Marc:
   stage: fortran
   script:
-    - cd PRIVATE/testing/pytest
+    - cd PRIVATE/testing
     - pytest -k 'not compile and Marc' -m 'not cifail' --damask-root=${TESTROOT} --basetemp ${TESTROOT}/Marc -v
 
 # Needs closer look
@@ -233,7 +233,7 @@ Marc:
 grid_performance:
   stage: statistics
   before_script:
-    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} --blocking
+    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN} --blocking
     - source env/DAMASK.sh
     - echo Job start:" $(date)"
   script:
@@ -254,26 +254,18 @@ grid_performance:
 
 
 ###################################################################################################
-update_plots:
+update_website:
   stage: finalize
-  script:
-    - cd $(mktemp -d)
-    - git clone -q git@git.damask.mpie.de:damask/statistics.git .
-    - ./plot_commithistory.py --color green -n 5 -N 100
-    - ./plot_commithistory.py --color green -n 5 -N 1000
-    - ./plot_commithistory.py --color green -n 5 -N 10000
-    - scp -r ./commits_*.html damask.mpie.de:~/
-    - ssh damask.mpie.de "./update_statistics_commits.sh"
-    - ./plot_performance.py --template=xgridoff
-    - scp -r ./runtime.html ./memory.html damask.mpie.de:~/
-    - ssh damask.mpie.de "./update_statistics_performance.sh"
+  trigger:
+    project: damask/website
+    branch: master
   only:
     - development
 
 update_revision:
   stage: finalize
   before_script:
-    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID}
+    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN}
     - echo Job start:" $(date)"
   script:
     - cd $(mktemp -d)

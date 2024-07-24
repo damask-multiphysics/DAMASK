@@ -78,9 +78,9 @@ submodule(phase:plastic) dislotwin
     character(len=pSTRLEN),    allocatable, dimension(:) :: &
       output
     logical :: &
-      extendedDislocations, &                                                                       !< consider split into partials for climb calculation
-      fccTwinTransNucleation, &                                                                     !< twinning and transformation models are for fcc
-      omitDipoles                                                                                   !< flag controlling consideration of dipole formation
+      extendedDislocations = .false., &                                                             !< consider split into partials for climb calculation
+      fccTwinTransNucleation = .false., &                                                           !< twinning and transformation models are for fcc
+      omitDipoles = .false.                                                                         !< flag controlling consideration of dipole formation
     character(len=:),          allocatable, dimension(:) :: &
       systems_sl, &
       systems_tw
@@ -206,15 +206,22 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%P_sl       = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
       prm%n0_sl      = crystal_slip_normal(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
-      prm%extendedDislocations = pl%get_asBool('extend_dislocations',defaultVal=.false.)
-      prm%omitDipoles          = pl%get_asBool('omit_dipoles',       defaultVal=.false.)
+      prm%extendedDislocations = pl%get_asBool('extend_dislocations',defaultVal=prm%extendedDislocations)
+      prm%omitDipoles          = pl%get_asBool('omit_dipoles',       defaultVal=prm%omitDipoles)
 
       prm%Q_cl                 = pl%get_asReal('Q_cl')
 
       f_edge       = math_expand(pl%get_as1dReal('f_edge',    requiredSize=size(N_sl), &
                                                  defaultVal=[(0.5_pREAL,i=1,size(N_sl))]),N_sl)
+
+#ifdef __GFORTRAN__
+      rho_mob_0    = pl%get_as1dReal('rho_mob_0', requiredChunks=N_sl)
+      rho_dip_0    = pl%get_as1dReal('rho_dip_0', requiredChunks=N_sl)
+#else
       rho_mob_0    = math_expand(pl%get_as1dReal('rho_mob_0', requiredSize=size(N_sl)),N_sl)
       rho_dip_0    = math_expand(pl%get_as1dReal('rho_dip_0', requiredSize=size(N_sl)),N_sl)
+#endif
+
       prm%v_0      = math_expand(pl%get_as1dReal('v_0',       requiredSize=size(N_sl)),N_sl)
       prm%b_sl     = math_expand(pl%get_as1dReal('b_sl',      requiredSize=size(N_sl)),N_sl)
       prm%Q_sl     = math_expand(pl%get_as1dReal('Q_sl',      requiredSize=size(N_sl)),N_sl)

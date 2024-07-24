@@ -25,10 +25,13 @@ from . import tensor
 from . import util
 from ._typehints import FloatSequence, IntSequence, DADF5Dataset
 
+
 h5py3 = h5py.__version__[0] == '3'
 
 chunk_size = 1024**2//8                                                                             # for compression in HDF5
+
 prefix_inc = 'increment_'
+
 
 def _read(dataset: h5py._hl.dataset.Dataset) -> np.ndarray:
     """Read a dataset and its metadata into a numpy.ndarray."""
@@ -59,12 +62,12 @@ def _empty_like(dataset: np.ma.core.MaskedArray,
                 fill_int: int) -> np.ma.core.MaskedArray:
     """Create empty numpy.ma.MaskedArray."""
     return ma.array(np.empty((N_materialpoints,)+dataset.shape[1:],dataset.dtype),
-                    fill_value = fill_float if dataset.dtype in np.sctypes['float'] else fill_int,
+                    fill_value = fill_float if np.issubdtype(dataset.dtype,np.floating) else fill_int,
                     mask = True)
 
 
 class Result:
-    """
+    r"""
     Add data to and export data from a DADF5 (DAMASK HDF5) file.
 
     A DADF5 file contains DAMASK results.
@@ -83,11 +86,11 @@ class Result:
 
     >>> import damask
     >>> r = damask.Result('my_file.hdf5')
-    >>> r.add_stress_Cauchy()
-    >>> r.add_equivalent_Mises('sigma')
-    >>> r.export_VTK()
-    >>> r_last = r.view(increments=-1)
-    >>> sigma_vM_last = r_last.get('sigma_vM')
+    >>> r
+    \x1b[2mCreated by DAMASK_grid ...
+            on ...
+     executing "..."\x1b[0m
+    ...
 
     """
 
@@ -394,7 +397,7 @@ class Result:
         >>> import damask
         >>> r_empty = damask.Result('my_file.hdf5').view(increments=False)
         >>> r_first = r_empty.view_more(increments=0)
-        >>> r_first_and_last = r.first.view_more(increments=-1)
+        >>> r_first_and_last = r_first.view_more(increments=-1)
 
         """
         return self._manage_view('add',increments,times,phases,homogenizations,fields)
@@ -458,7 +461,7 @@ class Result:
     def rename(self,
                name_src: str,
                name_dst: str):
-        """
+        r"""
         Rename/move datasets (within the same group/folder).
 
         This operation is discouraged because the history of the
@@ -478,6 +481,7 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r_unprotected = r.view(protected=False)
+        \x1b[93m\x1b[1mWarning: Modification of existing datasets allowed!\x1b[0m\x1b[0m
         >>> r_unprotected.rename('F','def_grad')
 
         """
@@ -499,7 +503,7 @@ class Result:
 
 
     def remove(self, name: str):
-        """
+        r"""
         Remove/delete datasets.
 
         This operation is discouraged because the history of the
@@ -517,6 +521,7 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r_unprotected = r.view(protected=False)
+        \x1b[93m\x1b[1mWarning: Modification of existing datasets allowed!\x1b[0m\x1b[0m
         >>> r_unprotected.remove('F')
 
         """
@@ -687,10 +692,13 @@ class Result:
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_calculation('np.sum(#rho_mob#,axis=1)','rho_mob_total',
         ...                    '1/m²','total mobile dislocation density')
+        [...]
         >>> r.add_calculation('np.sum(#rho_dip#,axis=1)','rho_dip_total',
         ...                    '1/m²','total dislocation dipole density')
+        [...]
         >>> r.add_calculation('#rho_dip_total#+#rho_mob_total#','rho_total',
         ...                    '1/m²','total dislocation density')
+        [...]
 
         Add Mises equivalent of the Cauchy stress without storage of
         intermediate results. Define a user function for better readability:
@@ -701,8 +709,10 @@ class Result:
         ...     return damask.mechanics.equivalent_stress_Mises(sigma)
         >>> r = damask.Result('my_file.hdf5')
         >>> r.enable_user_function(equivalent_stress)
+        Function equivalent_stress enabled in add_calculation.
         >>> r.add_calculation('equivalent_stress(#F#,#P#)','sigma_vM','Pa',
         ...                   'Mises equivalent of the Cauchy stress')
+        [...]
 
         """
         def calculation(**kwargs) -> DADF5Dataset:
@@ -778,6 +788,7 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_determinant('F_p')
+        [...]
 
         """
 
@@ -811,6 +822,7 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_deviator('sigma')
+        [...]
 
         """
 
@@ -848,6 +860,7 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_eigenvalue('sigma','min')
+        [...]
 
         """
 
@@ -922,7 +935,7 @@ class Result:
 
         Parameters
         ----------
-        l : numpy.array of shape (3)
+        l : numpy.array of shape (3) or compatible
             Lab frame direction for inverse pole figure.
         q : str, optional
             Name of the dataset containing the crystallographic orientation as quaternions.
@@ -934,7 +947,8 @@ class Result:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_IPF_color(np.array([0,1,1]))
+        >>> r.add_IPF_color(l = [0,1,1], q = 'O')
+        [...]
 
         """
 
@@ -1002,12 +1016,14 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_equivalent_Mises('sigma')
+        [...]
 
         Add the Mises equivalent of the spatial logarithmic strain 'epsilon_V^0.0(F)':
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_equivalent_Mises('epsilon_V^0.0(F)')
+        [...]
 
         """
         def equivalent_Mises(T_sym: DADF5Dataset, kind: str) -> DADF5Dataset:
@@ -1128,11 +1144,11 @@ class Result:
         q : str, optional
             Name of the dataset containing the crystallographic orientation as quaternions.
             Defaults to 'O'.
-        uvw|hkl : numpy.ndarray of shape (3)
+        uvw|hkl : numpy.ndarray of shape (3) or compatible
             Miller indices of crystallographic direction or plane normal.
         with_symmetry : bool, optional
             Calculate all N symmetrically equivalent vectors.
-            Defaults to True.
+            Defaults to False.
         normalize : bool, optional
             Normalize output vector.
             Defaults to True.
@@ -1145,17 +1161,19 @@ class Result:
             c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1.0
             brackets = ['[]','()','⟨⟩','{}'][(uvw is None)*1+with_symmetry*2]
             label = 'p^' + '{}{} {} {}{}'.format(brackets[0],
-                                                  *(uvw if uvw else hkl),
-                                                  brackets[-1],)
+                                                 *(uvw if uvw else hkl),
+                                                 brackets[-1],)
             ori = Orientation(q['data'],lattice=q['meta']['lattice'],a=1,c=c)
 
             return {
-                    'data': ori.to_pole(uvw=uvw,hkl=hkl,with_symmetry=with_symmetry,normalize=normalize),
+                    'data': np.moveaxis(ori.to_frame(uvw=uvw,hkl=hkl,
+                                                     with_symmetry=with_symmetry,
+                                                     normalize=normalize),0,-2 if with_symmetry else 0),
                     'label': label,
                     'meta' : {
                               'unit':        '1',
                               'description': f'{"normalized " if normalize else ""}lab frame vector along lattice ' \
-                                             + ('direction' if uvw is not None else 'plane') \
+                                             + ('plane' if uvw is None else 'direction') \
                                              + ('s' if with_symmetry else ''),
                               'creator':     'add_pole'
                               }
@@ -1180,6 +1198,7 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_rotation('F')
+        [...]
 
         """
         def rotation(F: DADF5Dataset) -> DADF5Dataset:
@@ -1212,6 +1231,7 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_spherical('sigma')
+        [...]
 
         """
         def spherical(T: DADF5Dataset) -> DADF5Dataset:
@@ -1255,12 +1275,14 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_strain(t='V',m=-1.0)
+        [...]
 
         Add the plastic Biot strain:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_strain('F_p','U',0.5)
+        [...]
 
         Notes
         -----
@@ -1764,9 +1786,10 @@ class Result:
         attribute_type_map = defaultdict(lambda:'Matrix', ( ((),'Scalar'), ((3,),'Vector'), ((3,3),'Tensor')) )
 
         def number_type_map(dtype):
-            if dtype in np.sctypes['int']:   return 'Int'
-            if dtype in np.sctypes['uint']:  return 'UInt'
-            if dtype in np.sctypes['float']: return 'Float'
+            if np.issubdtype(dtype,np.signedinteger):   return 'Int'
+            if np.issubdtype(dtype,np.unsignedinteger): return 'UInt'
+            if np.issubdtype(dtype,np.floating):        return 'Float'
+            raise TypeError(f'invalid type "{dtype}"')
 
 
         xdmf = ET.Element('Xdmf')
@@ -1924,10 +1947,9 @@ class Result:
         out_dir.mkdir(parents=True,exist_ok=True)
 
         with h5py.File(self.fname,'r') as f:
-            if self.version_major == 1 or self.version_minor >= 13:
-                creator = f.attrs['creator'] if h5py3 else f.attrs['creator'].decode()
-                created = f.attrs['created'] if h5py3 else f.attrs['created'].decode()
-                v.comments += [f'{creator} ({created})']
+            creator = f.attrs['creator'] if h5py3 else f.attrs['creator'].decode()
+            created = f.attrs['created'] if h5py3 else f.attrs['created'].decode()
+            v.comments += [f'{creator} ({created})']
 
             for inc in util.show_progress(self._visible['increments']):
 
@@ -2112,11 +2134,16 @@ class Result:
             Names of the datasets to export.
             Defaults to '*', in which case all visible datasets are exported.
         mapping : numpy.ndarray of int, shape (:,:,:), optional
-            Indices for regridding.
+            Indices for regridding. Only applicable for grid
+            solver results.
 
         """
         if Path(fname).expanduser().absolute() == self.fname:
-            raise PermissionError(f'cannot overwrite {self.fname}')
+            raise PermissionError(f'cannot overwrite "{self.fname}"')
+
+        if mapping is not None and not self.structured:
+            raise PermissionError('cannot regrid unstructured mesh')
+
 
         def cp(path_in,path_out,label,mapping):
             if mapping is None:
@@ -2134,7 +2161,11 @@ class Result:
             if mapping is not None:
                 cells = mapping.shape
                 mapping_flat = mapping.flatten(order='F')
+
                 f_out['geometry'].attrs['cells'] = cells
+                if self.version_major == 1 and self.version_minor > 0:
+                    f_out['geometry']['cells'][...] = cells
+
                 f_out.create_group('cell_to')                                                       # ToDo: attribute missing
                 mappings = {'phase':{},'homogenization':{}}                                         # type: ignore
 

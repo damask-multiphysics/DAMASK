@@ -9,6 +9,7 @@ from damask import GeomGrid
 from damask import Table
 from damask import Rotation
 from damask import Colormap
+from damask import ConfigMaterial
 from damask import util
 from damask import seeds
 from damask import grid_filters
@@ -79,18 +80,13 @@ class TestGeomGrid:
             GeomGrid(np.zeros((3,3,3),dtype='complex'),np.ones(3))
 
     def test_cast_to_int(self):
-        g = GeomGrid(np.zeros((3,3,3)),np.ones(3))
-        assert g.material.dtype in np.sctypes['int']
+        g = GeomGrid(np.zeros((3,3,3),dtype=np.float64),np.ones(3))
+        assert g.material.dtype in [np.int32,np.int64]
 
     def test_invalid_size(self,default):
         with pytest.raises(ValueError):
             GeomGrid(default.material[1:,1:,1:],
                  size=np.ones(2))
-
-    def test_save_load_ASCII(self,default,tmp_path):
-        default.save_ASCII(tmp_path/'ASCII')
-        default.material -= 1
-        assert GeomGrid.load_ASCII(tmp_path/'ASCII') == default
 
     def test_save_load_SPPARKS(self,res_path,tmp_path):
         v = VTK.load(res_path/'SPPARKS_dump.vti')
@@ -491,12 +487,24 @@ class TestGeomGrid:
             default.get_grain_boundaries(directions=directions)
 
     def test_load_DREAM3D(self,res_path):
-        grain = GeomGrid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d','FeatureIds')
-        point = GeomGrid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d')
+        """
+        For synthetic microstructures (no in-grain scatter), check that:
+        1) the sorted and renumbered grain-wise representation is equivalent to the cell-wise representation.
+        2) the same orientations are assigned to each cell for the grain-wise and cell-wise approaches.
+        """
+        # grain-wise data (using existing DREAM.3D segmentation)
+        grid_grain = GeomGrid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d','FeatureIds')
+        material_grain = ConfigMaterial.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d','Grain Data')
+        O_grain = np.array([material['constituents'][0]['O'] for material in material_grain['material']])
+        # cell-wise data (clustering identical orientation-phase combinations)
+        grid_cell = GeomGrid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d')
+        material_cell = ConfigMaterial.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d')
+        O_cell = np.array([material['constituents'][0]['O'] for material in material_cell['material']])
 
-        assert np.allclose(grain.origin,point.origin) and \
-               np.allclose(grain.size,point.size) and \
-               (grain.sort().material == point.material+1).all()
+        assert np.allclose(grid_grain.origin,grid_cell.origin) and \
+               np.allclose(grid_grain.size,grid_cell.size) and \
+               np.allclose(O_grain[grid_grain.material],O_cell[grid_cell.material]) and \
+               (grid_grain.renumber().sort().material == grid_cell.material).all()
 
     def test_load_DREAM3D_reference(self,res_path,update):
         current   = GeomGrid.load_DREAM3D(res_path/'measured.dream3d')

@@ -144,8 +144,13 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%n_sl           = math_expand(pl%get_as1dReal('n_sl',          requiredSize=size(N_sl)), N_sl)
       prm%a_sl           = math_expand(pl%get_as1dReal('a_sl',          requiredSize=size(N_sl)), N_sl)
       prm%h_0_sl_sl      = math_expand(pl%get_as1dReal('h_0_sl-sl',     requiredSize=size(N_sl)), N_sl)
+#ifdef __GFORTRAN__
+      xi_0_sl            = pl%get_as1dReal('xi_0_sl',  requiredChunks=N_sl)
+      prm%xi_inf_sl      = pl%get_as1dReal('xi_inf_sl',requiredChunks=N_sl)
+#else
       xi_0_sl            = math_expand(pl%get_as1dReal('xi_0_sl',       requiredSize=size(N_sl)), N_sl)
       prm%xi_inf_sl      = math_expand(pl%get_as1dReal('xi_inf_sl',     requiredSize=size(N_sl)), N_sl)
+#endif
       prm%c_1            = math_expand(pl%get_as1dReal('c_1',           requiredSize=size(N_sl), &
                                                                         defaultVal=misc_zeros(size(N_sl))), N_sl)
       prm%c_2            = math_expand(pl%get_as1dReal('c_2',           requiredSize=size(N_sl), &
@@ -157,16 +162,9 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
       prm%P_sl = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
-      if (phase_lattice(ph) == 'cI') then
-        allocate(a_nS(3,size(pl%get_as1dReal('a_nonSchmid_110',defaultVal=emptyRealArray))),source=0.0_pREAL)
-        a_nS(1,:) = pl%get_as1dReal('a_nonSchmid_110',defaultVal=emptyRealArray)
-        prm%P_nS_pos = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=+1)
-        prm%P_nS_neg = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=-1)
-        deallocate(a_nS)
-      else
-        prm%P_nS_pos = +prm%P_sl
-        prm%P_nS_neg = -prm%P_sl
-      end if
+      a_nS = pl%get_as2dReal('a_non-Schmid',defaultVal=reshape(emptyRealArray,[0,0]))
+      prm%P_nS_pos = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=+1)
+      prm%P_nS_neg = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=-1)
 
       prm%systems_sl = crystal_labels_slip(N_sl,phase_lattice(ph))
 

@@ -1,0 +1,21 @@
+type: phenopowerlaw
+
+references:
+  - F.-J. Gallardo-Basile et al.,
+    Materials Science & Engineering A 881:145373, 2023,
+    https://doi.org/10.1016/j.msea.2023.145373,
+    Table 2, Fig. 19 indent II with contraints
+
+N_sl: [12, 12, 24]
+
+h_0_sl-sl: [1.0e+9, 1.0e+9, 1.0e+9]
+dot_gamma_0_sl: [4.e-2, 4.e-2, 4.e-2]
+n_sl: [20., 20., 20.]
+
+xi_0_sl: [61.e+6, 54.e+6, 52.e+6]
+xi_inf_sl: [277.e+6, 248.e+6, 237.e+6]
+a_sl: [2.1, 2.1, 2.1]
+
+h_sl-sl: [1.0, 1.4, 1.0, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
+          1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
+          1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4]

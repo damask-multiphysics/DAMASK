@@ -319,8 +319,8 @@ module subroutine mechanical_init(phases, num_mech)
     case('Euler')
       integrateState => integrateStateEuler
 
-    case('AdaptiveEuler')
-      integrateState => integrateStateAdaptiveEuler
+    case('Euler_adaptive')
+      integrateState => integrateStateEulerAdaptive
 
     case('RK4')
       integrateState => integrateStateRK4
@@ -706,7 +706,7 @@ end function integrateStateEuler
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
-function integrateStateAdaptiveEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(status)
+function integrateStateEulerAdaptive(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(status)
 
   real(pREAL), intent(in),dimension(3,3) :: F_0,F,Fp0,Fi0
   real(pREAL), intent(in),dimension(:)   :: state0
@@ -750,7 +750,7 @@ function integrateStateAdaptiveEuler(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(
                            plasticState(ph)%state(1:sizeDotState,en), &
                            plasticState(ph)%atol(1:sizeDotState)))
 
-end function integrateStateAdaptiveEuler
+end function integrateStateEulerAdaptive
 
 
 !---------------------------------------------------------------------------------------------------
@@ -844,27 +844,28 @@ function integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C,DB) result(st
 
 
   status = STATUS_FAIL_PHASE_MECHANICAL_STATE
-
-  dotState = plastic_dotState(Delta_t,ph,en)
-  if (any(IEEE_is_NaN(dotState))) return
-
   sizeDotState = plasticState(ph)%sizeDotState
+
+  dotState = plastic_dotState(Delta_t,ph,en)                                                        !MD: Delta_t is only used for nonlocal
+  if (any(IEEE_is_NaN(dotState))) return
 
   do stage = 1, size(A,1)
 
     plastic_RKdotState(1:sizeDotState,stage) = dotState
-    dotState = A(1,stage) * plastic_RKdotState(1:sizeDotState,1)
 
+    dotState = A(1,stage) * plastic_RKdotState(1:sizeDotState,1)
     do n = 2, stage
-      dotState = dotState + A(n,stage)*plastic_RKdotState(1:sizeDotState,n)
+      dotState = dotState &
+               + A(n,stage)*plastic_RKdotState(1:sizeDotState,n)
     end do
 
-    plasticState(ph)%state(1:sizeDotState,en) = state0 + dotState*Delta_t
+    plasticState(ph)%state(1:sizeDotState,en) = state0 &
+                                              + dotState*Delta_t
 
-    status = integrateStress(F_0+(F-F_0)*Delta_t*C(stage),Fp0,Fi0,Delta_t*C(stage), ph,en)
+    status = integrateStress(F_0+(F-F_0)*C(stage),Fp0,Fi0,Delta_t*C(stage), ph,en)
     if (status /= STATUS_OK) return
 
-    dotState = plastic_dotState(Delta_t*C(stage), ph,en)
+    dotState = plastic_dotState(Delta_t*C(stage), ph,en)                                            !MD: Delta_t is only used for nonlocal and it's unclear whether scaling by C makes sense
     ! ToDo: MD: need to set status to failed
     if (any(IEEE_is_NaN(dotState))) exit
 
@@ -873,8 +874,8 @@ function integrateStateRK(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en,A,B,C,DB) result(st
 
 
   plastic_RKdotState(1:sizeDotState,size(B)) = dotState
-  dotState = matmul(plastic_RKdotState,B)
-  plasticState(ph)%state(1:sizeDotState,en) = state0 + dotState*Delta_t
+  plasticState(ph)%state(1:sizeDotState,en) = state0 &
+                                            + matmul(plastic_RKdotState,B)*Delta_t
 
   if (present(DB)) &
     status = merge(STATUS_OK, &

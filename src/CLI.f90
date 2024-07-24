@@ -51,6 +51,8 @@ subroutine CLI_init()
 #define PETSC_DOI '10.2172/1968587'
 #elif  PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==20
 #define PETSC_DOI '10.2172/2205494'
+#elif  PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==21
+#define PETSC_DOI '10.2172/2337606'
 #endif
   character(len=:), allocatable :: &
     commandLine, &                                                                                  !< command line call as string

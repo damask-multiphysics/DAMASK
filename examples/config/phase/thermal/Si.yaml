@@ -1,0 +1,7 @@
+references:
+  - https://periodictable.com/Elements/014/data.html
+
+output: [T]
+
+K_11: 150.0
+C_p: 710.0

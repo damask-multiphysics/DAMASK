@@ -31,6 +31,10 @@ module result
 
   integer(HID_T) :: resultFile
 
+  interface result_closeGroup
+    module procedure HDF5_closeGroup
+  end interface result_closeGroup
+
   interface result_writeDataset
     module procedure result_writeTensorDataset_real
     module procedure result_writeVectorDataset_real
@@ -86,12 +90,21 @@ subroutine result_init(restart)
   if (.not. restart) then
     resultFile = HDF5_openFile(getSolverJobName()//'.hdf5','w')
     call result_addAttribute('DADF5_version_major',1)
-    call result_addAttribute('DADF5_version_minor',0)
+    call result_addAttribute('DADF5_version_minor',1)
     call get_command_argument(0,commandLine)
     call result_addAttribute('creator',trim(commandLine)//' '//DAMASKVERSION)
     call result_addAttribute('created',now())
     call get_command(commandLine)
     call result_addAttribute('call',trim(commandLine))
+#ifdef DAMASK_GRID
+    call result_addAttribute('solver','grid')
+#endif
+#ifdef DAMASK_MESH
+    call result_addAttribute('solver','mesh')
+#endif
+#ifdef MARC4DAMASK
+    call result_addAttribute('solver','Marc')
+#endif
     call result_closeGroup(result_addGroup('cell_to'))
     call result_addAttribute('description','mappings to place data in space','cell_to')
     call result_closeGroup(result_addGroup('setup'))
@@ -114,7 +127,7 @@ end subroutine result_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief opens the result file to append data
+!> @brief Open the result file to append data.
 !--------------------------------------------------------------------------------------------------
 subroutine result_openJobFile(parallel)
 
@@ -127,7 +140,7 @@ end subroutine result_openJobFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief closes the result file
+!> @brief Close the result file.
 !--------------------------------------------------------------------------------------------------
 subroutine result_closeJobFile
 
@@ -137,7 +150,7 @@ end subroutine result_closeJobFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief creates the group of increment and adds time as attribute to the file
+!> @brief Creates a group for the increment and add time as attribute to the file.
 !--------------------------------------------------------------------------------------------------
 subroutine result_addIncrement(inc,time)
 
@@ -156,8 +169,8 @@ end subroutine result_addIncrement
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief finalize increment
-!> @details remove soft link
+!> @brief Finalize increment.
+!> @details Remove soft link.
 !--------------------------------------------------------------------------------------------------
 subroutine result_finalizeIncrement
 
@@ -190,19 +203,6 @@ integer(HID_T) function result_addGroup(groupName)
   result_addGroup = HDF5_addGroup(resultFile,groupName)
 
 end function result_addGroup
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Close a group.
-!--------------------------------------------------------------------------------------------------
-subroutine result_closeGroup(group_id)
-
-  integer(HID_T), intent(in) :: group_id
-
-
-  call HDF5_closeGroup(group_id)
-
-end subroutine result_closeGroup
 
 
 !--------------------------------------------------------------------------------------------------
@@ -487,7 +487,7 @@ end subroutine result_writeTensorDataset_int
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds the unique mapping from spatial position and constituent ID to results
+!> @brief Add the unique mapping from spatial position and constituent ID to results.
 !--------------------------------------------------------------------------------------------------
 subroutine result_mapping_phase(ID,entry,label)
 
@@ -640,7 +640,7 @@ end subroutine result_mapping_phase
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds the unique mapping from spatial position and constituent ID to results
+!> @brief Add the unique mapping from spatial position and constituent ID to results.
 !--------------------------------------------------------------------------------------------------
 subroutine result_mapping_homogenization(ID,entry,label)
 

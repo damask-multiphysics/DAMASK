@@ -56,7 +56,7 @@ module discretization_mesh
   real(pREAL), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
-#if defined(PETSC_USE_64BIT_INDICES) || PETSC_VERSION_MINOR < 17
+#if defined(PETSC_USE_64BIT_INDICES) || PETSC_VERSION_MINOR < 16
   external :: &
     DMDestroy
 #endif
@@ -69,8 +69,7 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief initializes the mesh by calling all necessary private routines the mesh module
-!! Order and routines strongly depend on type of solver
+!> @brief Initialize the mesh.
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_mesh_init(restart)
 
@@ -95,6 +94,7 @@ subroutine discretization_mesh_init(restart)
   type(tvec) :: coords_node0
   real(pREAL), pointer, dimension(:) :: &
     mesh_node0_temp
+
 
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'
 
@@ -176,7 +176,6 @@ subroutine discretization_mesh_init(restart)
     call DMGetLabelValue(geomMesh,'Cell Sets',j-1,materialAt(j),err_PETSc)
     CHKERRQ(err_PETSc)
   end do
-  materialAt = materialAt + 1_pPETSCINT
 
   allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pREAL)
   mesh_node0(1:dimPlex,:) = reshape(mesh_node0_temp,[dimPlex,mesh_Nnodes])
@@ -192,7 +191,7 @@ end subroutine discretization_mesh_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculates IP volume. Allocates global array 'mesh_ipVolume'
+!> @brief Calculate IP volume. Allocate global array 'mesh_ipVolume'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_FEM_build_ipVolumes(dimPlex)
 
@@ -201,6 +200,7 @@ subroutine mesh_FEM_build_ipVolumes(dimPlex)
   PetscReal, pointer,dimension(:) :: pCent, pNorm
   PetscInt           :: cellStart, cellEnd, cell
   PetscErrorCode     :: err_PETSc
+
 
   allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems),source=0.0_pREAL)
 
@@ -218,7 +218,7 @@ end subroutine mesh_FEM_build_ipVolumes
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculates IP Coordinates. Allocates global array 'mesh_ipCoordinates'
+!> @brief Calculate IP Coordinates. Allocate global array 'mesh_ipCoordinates'.
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
 
@@ -238,7 +238,7 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
   allocatE(pinvCellJ(dimPlex**2))
   call DMPlexGetHeightStratum(geomMesh,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
-  do cell = cellStart, cellEnd-1                                                                     !< loop over all elements
+  do cell = cellStart, cellEnd-1                                                                    !< loop over all elements
     call DMPlexComputeCellGeometryAffineFEM(geomMesh,cell,pV0,pCellJ,pInvcellJ,detJ,err_PETSc)
     CHKERRQ(err_PETSc)
     qOffset = 0
@@ -256,14 +256,16 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
 
 end subroutine mesh_FEM_build_ipCoordinates
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief Write all information needed for the DADF5 geometry
+!> @brief Write all information needed for the DADF5 geometry.
 !--------------------------------------------------------------------------------------------------
 subroutine writeGeometry(coordinates_points,coordinates_nodes)
 
   real(pREAL), dimension(:,:), intent(in) :: &
   coordinates_nodes, &
   coordinates_points
+
 
   call result_openJobFile()
   call result_closeGroup(result_addGroup('geometry'))

@@ -23,10 +23,10 @@ q_sl: [1.69]
 tau_Peierls: [2.03e+9]
 h: [2.566e-10]
 h_sl-sl: [0.009, 0.72, 0.009, 0.05, 0.05, 0.06, 0.09]
-w: [2.992e-09] # 11b
+w: [2.992e-9] # 11b
 
 # values in Cereceda et al. are high, using parameters from Gröger et al.
-a_nonSchmid_110: [0.0, 0.56, 0.75] # Tab. 2
+a_non-Schmid: [[0.0, 0.56, 0.75]] # Tab. 2
 
 # (almost) no annhilation, adjustment needed for simulations beyond the yield point
 i_sl: [1]  # c, eq. (25)

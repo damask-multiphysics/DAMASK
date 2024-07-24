@@ -1,0 +1,18 @@
+type: Hooke
+
+references:
+  - M.R. Daymond and P.J. Bouchard,
+    Metallurgical and Materials Transactions A 37:1863-1873, 2006,
+    https://doi.org/10.1007/s11661-006-0129-4,
+    fit to Fig. 6 (solid lines, T_min=0°C, T_max=600°C)
+
+C_11: 118.6e+9
+C_11,T: -5.491e+7
+
+C_12: 154.2e+9
+C_12,T: -6.059e+7
+
+C_44: 229.0e+9
+C_44,T: -1.058e+8
+
+T_ref: 293.15

@@ -172,7 +172,7 @@ subroutine grid_thermal_spectral_init(num_grid)
   end if restartRead
 
   call homogenization_thermal_setField(reshape(T,[product(cells(1:2))*cells3]), &
-                                       [(0.0_pReal, ce = 1,product(cells(1:2))*cells3)])
+                                       [(0.0_pREAL, ce = 1,product(cells(1:2))*cells3)])
 
   call DMDAVecRestoreArrayF90(DM_thermal,T_PETSc,T,err_PETSc)
   CHKERRQ(err_PETSc)

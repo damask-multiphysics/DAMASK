@@ -1,0 +1,17 @@
+type: thermalexpansion
+
+references:
+  - P.D. Pathak and R.J. Desai,
+    physica status solidi (a) 66:K179-K182, 1981,
+    https://doi.org/10.1002/pssa.2210660271,
+    fit to Fig. 1 (T_min=0°C, T_max=616°C)
+
+Alpha_11: 26.2e-6
+Alpha_11,T: 1.159e-8
+Alpha_11,T^2: 1.382e-11
+
+Alpha_33: 28.0e-6
+Alpha_33,T: 9.564e-9
+Alpha_33,T^2: 7.332e-12
+
+T_ref: 293.15

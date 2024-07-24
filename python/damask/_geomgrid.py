@@ -1,10 +1,8 @@
 import os
 import copy
-import warnings
 import multiprocessing as mp
 from functools import partial
-import typing
-from typing import Optional, Union, TextIO, Sequence, Dict
+from typing import Optional, Union, Sequence, Dict
 from pathlib import Path
 
 import numpy as np
@@ -84,7 +82,7 @@ class GeomGrid:
                f'cells:  {util.srepr(self.cells, " × ")}',
                f'size:   {util.srepr(self.size,  " × ")} m³',
                f'origin: {util.srepr(self.origin,"   ")} m',
-               f'# materials: {mat_N}' + ('' if mat_min == 0 and mat_max+1 == mat_N else
+               f'# materials: {mat_N}' + ('' if mat_min == 0 and mat_max == mat_N-1 else
                                           f' (min: {mat_min}, max: {mat_max})')
                ]+(['initial_conditions:']+[f'  - {f}' for f in self.initial_conditions] if self.initial_conditions else []))
 
@@ -132,12 +130,12 @@ class GeomGrid:
                  material: np.ndarray):
         if len(material.shape) != 3:
             raise ValueError(f'invalid material shape {material.shape}')
-        if material.dtype not in np.sctypes['float'] and material.dtype not in np.sctypes['int']:
+        if material.dtype not in [np.float32,np.float64, np.int32,np.int64]:
             raise TypeError(f'invalid material data type "{material.dtype}"')
 
         self._material = np.copy(material)
 
-        if self.material.dtype in np.sctypes['float'] and \
+        if self.material.dtype in [np.float32,np.float64] and \
            np.all(self.material == self.material.astype(np.int64).astype(float)):
             self._material = self.material.astype(np.int64)
 
@@ -153,7 +151,7 @@ class GeomGrid:
         if len(size) != 3 or any(np.array(size) < 0):
             raise ValueError(f'invalid size {size}')
 
-        self._size = np.array(size)
+        self._size = np.array(size,np.float64)
 
     @property
     def origin(self) -> np.ndarray:
@@ -166,7 +164,7 @@ class GeomGrid:
         if len(origin) != 3:
             raise ValueError(f'invalid origin {origin}')
 
-        self._origin = np.array(origin)
+        self._origin = np.array(origin,np.float64)
 
     @property
     def initial_conditions(self) -> Dict[str,np.ndarray]:
@@ -212,7 +210,7 @@ class GeomGrid:
         Returns
         -------
         loaded : damask.GeomGrid
-            GeomGrid-based geometry from file.
+            Grid-based geometry from file.
 
         """
         v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
@@ -241,7 +239,7 @@ class GeomGrid:
         Returns
         -------
         loaded : damask.GeomGrid
-            GeomGrid-based geometry from file.
+            Grid-based geometry from file.
 
         """
         return GeomGrid._load(fname,'material')
@@ -261,7 +259,7 @@ class GeomGrid:
         Returns
         -------
         loaded : damask.GeomGrid
-            GeomGrid-based geometry from file.
+            Grid-based geometry from file.
 
         Notes
         -----
@@ -270,83 +268,6 @@ class GeomGrid:
 
         """
         return GeomGrid._load(fname,'Spin')
-
-
-    @typing.no_type_check
-    @staticmethod
-    def load_ASCII(fname)-> 'GeomGrid':
-        """
-        Load from geom file.
-
-        Storing geometry files in ASCII format is deprecated.
-        This function will be removed in a future version of DAMASK.
-
-        Parameters
-        ----------
-        fname : str, pathlib.Path, or file handle
-            Geometry file to read.
-
-        Returns
-        -------
-        loaded : damask.GeomGrid
-            GeomGrid-based geometry from file.
-
-        """
-        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.0.0', DeprecationWarning,2)
-        if isinstance(fname, (str, Path)):
-            f = open(fname)
-        elif isinstance(fname, TextIO):
-            f = fname
-        else:
-            raise TypeError
-
-        f.seek(0)
-        try:
-            header_length_,keyword = f.readline().split()[:2]
-            header_length = int(header_length_)
-        except ValueError:
-            header_length,keyword = (-1, 'invalid')
-        if not keyword.startswith('head') or header_length < 3:
-            raise TypeError('invalid or missing header length information')
-
-        comments = []
-        content = f.readlines()
-        for i,line in enumerate(content[:header_length]):
-            items = line.split('#')[0].lower().strip().split()
-            if (key := items[0] if items else '') ==  'grid':
-                cells  = np.array([  int(dict(zip(items[1::2],items[2::2]))[i]) for i in ['a','b','c']])
-            elif key == 'size':
-                size   = np.array([float(dict(zip(items[1::2],items[2::2]))[i]) for i in ['x','y','z']])
-            elif key == 'origin':
-                origin = np.array([float(dict(zip(items[1::2],items[2::2]))[i]) for i in ['x','y','z']])
-            else:
-                comments.append(line.strip())
-
-        material = np.empty(cells.prod())                                                           # initialize as flat array
-        i = 0
-        for line in content[header_length:]:
-            if len(items := line.split('#')[0].split()) == 3:
-                if items[1].lower() == 'of':
-                    material_entry = np.ones(int(items[0]))*float(items[2])
-                elif items[1].lower() == 'to':
-                    material_entry = np.linspace(int(items[0]),int(items[2]),
-                                        abs(int(items[2])-int(items[0]))+1,dtype=float)
-                else:                        material_entry = list(map(float, items))
-            else:                            material_entry = list(map(float, items))
-            material[i:i+len(material_entry)] = material_entry
-            i += len(items)
-
-        if i != cells.prod():
-            raise TypeError(f'mismatch between {cells.prod()} expected entries and {i} found')
-
-        if not np.any(np.mod(material,1) != 0.0):                                                   # no float present
-            material = material.astype(np.int64) - (1 if material.min() > 0 else 0)
-
-        return GeomGrid(material = material.reshape(cells,order='F'),
-                        size     = size,
-                        origin   = origin,
-                        comments = comments,
-                       )
 
 
     @staticmethod
@@ -362,7 +283,7 @@ class GeomGrid:
         Returns
         -------
         loaded : damask.GeomGrid
-            GeomGrid-based geometry from file.
+            Grid-based geometry from file.
 
         Notes
         -----
@@ -377,6 +298,7 @@ class GeomGrid:
         >>> N_grains = 20
         >>> cells = (32,32,32)
         >>> damask.util.run(f'neper -T -n {N_grains} -tesrsize {cells[0]}:{cells[1]}:{cells[2]} -periodicity all -format vtk')
+        running 'neper -T -n 20 -tesrsize 32:32:32 -periodicity all -format vtk' ...
         >>> damask.GeomGrid.load_Neper(f'n{N_grains}-id1.vtk').renumber()
         cells:  32 × 32 × 32
         size:   1.0 × 1.0 × 1.0 m³
@@ -437,15 +359,24 @@ class GeomGrid:
         Returns
         -------
         loaded : damask.GeomGrid
-            GeomGrid-based geometry from file.
+            Grid-based geometry from file.
 
         Notes
         -----
-        damask.ConfigMaterial.load_DREAM3D gives the corresponding
-        material definition.
+        A grain-wise geometry definition is based on segmented data from the
+        DREAM.3D file. This data is typically available when the microstructure
+        was synthetically created. In cell-wise representations, cells having
+        the same orientation and phase are grouped. Since synthetically created
+        microstructures have typically no in-grain scatter, cell-wise grids
+        can appear to be segmented.
 
-        For cell-wise data, only unique combinations of
-        orientation and phase are considered.
+        damask.ConfigMaterial.load_DREAM3D creates the corresponding
+        material definition. Since the numbering of materials in cell-wise
+        and grain-wise grids is different, it is imperative to use the same
+        mode for both load_DREAM3D functions. That means, if the "feature_IDs"
+        argument is used for this function, the correct material configuration
+        is only obtained if the "grain_data" argument is used when calling
+        damask.ConfigMaterial.load_DREAM3D.
 
         """
         with h5py.File(fname, 'r') as f:
@@ -461,7 +392,7 @@ class GeomGrid:
                 O = Rotation.from_Euler_angles(f['/'.join([b,c,Euler_angles])]).as_quaternion().reshape(-1,4) # noqa
                 unique,unique_inverse = np.unique(np.hstack([O,phase]),return_inverse=True,axis=0)
                 ma = np.arange(cells.prod()) if len(unique) == cells.prod() else \
-                     np.arange(unique.size)[np.argsort(pd.unique(unique_inverse))][unique_inverse]
+                     np.arange(unique.size)[np.argsort(pd.unique(unique_inverse.squeeze()))][unique_inverse]
             else:
                 ma = f['/'.join([b,c,feature_IDs])][()].flatten()
 
@@ -493,7 +424,7 @@ class GeomGrid:
         Returns
         -------
         new : damask.GeomGrid
-            GeomGrid-based geometry from values in table.
+            Grid-based geometry from values in table.
 
         """
         cells,size,origin = grid_filters.cellsSizeOrigin_coordinates0_point(table.get(coordinates))
@@ -502,7 +433,7 @@ class GeomGrid:
         unique,unique_inverse = np.unique(np.hstack([table.get(l) for l in labels_]),return_inverse=True,axis=0)
 
         ma = np.arange(cells.prod()) if len(unique) == cells.prod() else \
-             np.arange(unique.size)[np.argsort(pd.unique(unique_inverse))][unique_inverse]
+             np.arange(unique.size)[np.argsort(pd.unique(unique_inverse.squeeze()))][unique_inverse]
 
         return GeomGrid(material = ma.reshape(cells,order='F'),
                         size     = size,
@@ -548,7 +479,7 @@ class GeomGrid:
         Returns
         -------
         new : damask.GeomGrid
-            GeomGrid-based geometry from tessellation.
+            Grid-based geometry from tessellation.
 
         """
         weights_p: FloatSequence
@@ -604,7 +535,7 @@ class GeomGrid:
         Returns
         -------
         new : damask.GeomGrid
-            GeomGrid-based geometry from tessellation.
+            Grid-based geometry from tessellation.
 
         """
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
@@ -691,7 +622,7 @@ class GeomGrid:
         Returns
         -------
         new : damask.GeomGrid
-            GeomGrid-based geometry from definition of minimal surface.
+            Grid-based geometry from definition of minimal surface.
 
         Notes
         -----
@@ -727,8 +658,8 @@ class GeomGrid:
         >>> import numpy as np
         >>> import damask
         >>> damask.GeomGrid.from_minimal_surface([64]*3,np.ones(3)*1.e-4,'Gyroid')
-        cells : 64 × 64 × 64
-        size  : 0.0001 × 0.0001 × 0.0001 m³
+        cells:  64 × 64 × 64
+        size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
         # materials: 2
 
@@ -738,8 +669,8 @@ class GeomGrid:
         >>> import damask
         >>> damask.GeomGrid.from_minimal_surface([80]*3,np.ones(3)*5.e-4,
         ...                                  'Neovius',materials=(1,5))
-        cells : 80 × 80 × 80
-        size  : 0.0005 × 0.0005 × 0.0005 m³
+        cells:  80 × 80 × 80
+        size:   0.0005 × 0.0005 × 0.0005 m³
         origin: 0.0   0.0   0.0 m
         # materials: 2 (min: 1, max: 5)
 
@@ -777,36 +708,6 @@ class GeomGrid:
 
         v.save(fname,parallel=False,compress=compress)
 
-
-    def save_ASCII(self,
-                   fname: Union[str, TextIO]):
-        """
-        Save as geom file.
-
-        Storing geometry files in ASCII format is deprecated.
-        This function will be removed in a future version of DAMASK.
-
-        Parameters
-        ----------
-        fname : str or file handle
-            Geometry file to write with extension '.geom'.
-        compress : bool, optional
-            Compress geometry using 'x of y' and 'a to b'.
-
-        """
-        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.0.0', DeprecationWarning,2)
-        header =  [f'{len(self.comments)+4} header'] + self.comments \
-                + ['grid   a {} b {} c {}'.format(*self.cells),
-                   'size   x {} y {} z {}'.format(*self.size),
-                   'origin x {} y {} z {}'.format(*self.origin),
-                   'homogenization 1',
-                  ]
-
-        format_string = '%g' if self.material.dtype in np.sctypes['float'] else \
-                        '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.material)))))
-        np.savetxt(fname,
-                   self.material.reshape([self.cells[0],np.prod(self.cells[1:])],order='F').T,
-                   header='\n'.join(header), fmt=format_string, comments='')
 
 
     def show(self,
@@ -1078,8 +979,8 @@ class GeomGrid:
         origin: 0.0   0.0   0.0 m
         # materials: 1
         >>> g.scale(g.cells*2)
-        cells : 64 × 64 × 64
-        size  : 0.0001 × 0.0001 × 0.0001 m³
+        cells:  64 × 64 × 64
+        size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
         # materials: 1
 
@@ -1319,8 +1220,8 @@ class GeomGrid:
         >>> import damask
         >>> g = damask.GeomGrid(np.zeros([64]*3,int), np.ones(3)*1e-4)
         >>> g.add_primitive(np.ones(3)*5e-5,np.ones(3)*5e-5,1)
-        cells : 64 × 64 × 64
-        size  : 0.0001 × 0.0001 × 0.0001 m³
+        cells:  64 × 64 × 64
+        size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
         # materials: 2
 
@@ -1330,21 +1231,21 @@ class GeomGrid:
         >>> import damask
         >>> g = damask.GeomGrid(np.zeros([64]*3,int), np.ones(3)*1e-4)
         >>> g.add_primitive(np.ones(3,int)*32,np.zeros(3),np.inf)
-        cells : 64 × 64 × 64
-        size  : 0.0001 × 0.0001 × 0.0001 m³
+        cells:  64 × 64 × 64
+        size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
         # materials: 2
 
         """
         # radius and center
-        r = np.array(dimension)/2.0*self.size/self.cells if np.array(dimension).dtype in np.sctypes['int'] else \
+        r = np.array(dimension)/2.0*self.size/self.cells if np.issubdtype(np.array(dimension).dtype,np.integer) else \
             np.array(dimension)/2.0
-        c = (np.array(center) + .5)*self.size/self.cells if np.array(center).dtype    in np.sctypes['int'] else \
+        c = (np.array(center) + .5)*self.size/self.cells if np.issubdtype(np.array(center).dtype,   np.integer) else \
             (np.array(center) - self.origin)
 
         coords = grid_filters.coordinates0_point(self.cells,self.size,
                                           -(0.5*(self.size + (self.size/self.cells
-                                                              if np.array(center).dtype in np.sctypes['int'] else
+                                                              if np.issubdtype(np.array(center).dtype,np.integer) else
                                                               0)) if periodic else c))
         coords_rot = R.broadcast_to(tuple(self.cells))@coords
 

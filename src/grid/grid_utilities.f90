@@ -1,6 +1,6 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, KU Leuven
-!> @brief Utilities used by the mech grid solver variants
+!> @brief Utilities used by the grid solver variants
 !--------------------------------------------------------------------------------------------------
 module grid_utilities
 #include <petsc/finclude/petscsys.h>

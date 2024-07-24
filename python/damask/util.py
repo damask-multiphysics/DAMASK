@@ -21,7 +21,9 @@ import numpy as _np
 import h5py as _h5py
 
 from . import version as _version
-from ._typehints import FloatSequence as _FloatSequence, NumpyRngSeed as _NumpyRngSeed, FileHandle as _FileHandle
+from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence, \
+                        NumpyRngSeed as _NumpyRngSeed, FileHandle as _FileHandle
+
 
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
 # https://stackoverflow.com/questions/287871
@@ -323,8 +325,9 @@ def scale_to_coprime(v: _FloatSequence,
 
     max_denominator = int(10**(N_significant-1))
 
-    if (v_ := _np.asarray(v)).dtype in _np.sctypes['float']:
-        v_ = _np.round(_np.asarray(v,'float64')/_np.max(_np.abs(v)),N_significant)
+    v_ = _np.asarray(v)
+    if _np.issubdtype(v_.dtype,_np.inexact):
+        v_ = _np.round(_np.asarray(v,_np.float64)/_np.max(_np.abs(v)),N_significant)
     m = (v_ * _reduce(lcm, map(lambda x: int(get_square_denominator(x,max_denominator)),v_))**0.5).astype(_np.int64)
     m = m//_reduce(_np.gcd,m)
 
@@ -369,11 +372,11 @@ def project_equal_angle(vector: _np.ndarray,
     >>> import damask
     >>> import numpy as np
     >>> project_equal_angle(np.ones(3))
-        [0.3660254, 0.3660254]
+    array([0.3660, 0.3660])
     >>> project_equal_angle(np.ones(3),direction='x',normalize=False,keepdims=True)
-        [0, 0.5, 0.5]
+    array([0. , 0.5, 0.5])
     >>> project_equal_angle([0,1,1],direction='y',normalize=True,keepdims=False)
-        [0.41421356, 0]
+    array([0.4142, 0. ])
 
     """
     shift = 'zyx'.index(direction)
@@ -418,11 +421,11 @@ def project_equal_area(vector: _np.ndarray,
     >>> import damask
     >>> import numpy as np
     >>> project_equal_area(np.ones(3))
-        [0.45970084, 0.45970084]
+    array([0.4597, 0.4597])
     >>> project_equal_area(np.ones(3),direction='x',normalize=False,keepdims=True)
-        [0.0, 0.70710678, 0.70710678]
+    array([0. , 0.7071, 0.7071])
     >>> project_equal_area([0,1,1],direction='y',normalize=True,keepdims=False)
-        [0.5411961, 0.0]
+    array([0.5412, 0. ])
 
     """
     shift = 'zyx'.index(direction)
@@ -503,7 +506,7 @@ def shapeshifter(fro: _Tuple[int, ...],
     >>> b = np.ones(4)
     >>> b_extended = b.reshape(util.shapeshifter(b.shape,a.shape))
     >>> (a * np.broadcast_to(b_extended,a.shape)).shape
-    (3,4,2)
+    (3, 4, 2)
 
     """
     if len(fro) == 0 and len(to) == 0: return tuple()
@@ -545,19 +548,19 @@ def shapeblender(a: _Tuple[int, ...],
     Examples
     --------
     >>> shapeblender((3,2),(3,2))
-        (3,2)
+    (3, 2)
     >>> shapeblender((4,3),(3,2))
-        (4,3,2)
+    (4, 3, 2)
     >>> shapeblender((4,4),(3,2))
-        (4,4,3,2)
+    (4, 4, 3, 2)
     >>> shapeblender((1,2),(1,2,3))
-        (1,2,3)
+    (1, 2, 3)
     >>> shapeblender((),(2,2,1))
-        (2,2,1)
+    (2, 2, 1)
     >>> shapeblender((1,),(2,2,1))
-        (2,2,1)
+    (2, 2, 1)
     >>> shapeblender((1,),(2,2,1),True)
-        (1,2,2,1)
+    (1, 2, 2, 1)
 
     """
     def is_broadcastable(a,b):
@@ -805,8 +808,8 @@ def DREAM3D_cell_data_group(fname: _Union[str, _Path, _h5py.File]) -> str:
 
 
 def Bravais_to_Miller(*,
-                      uvtw: _Optional[_np.ndarray] = None,
-                      hkil: _Optional[_np.ndarray] = None) -> _np.ndarray:
+                      uvtw: _Optional[_IntSequence] = None,
+                      hkil: _Optional[_IntSequence] = None) -> _np.ndarray:
     """
     Transform 4 Miller–Bravais indices to 3 Miller indices of crystal direction [uvw] or plane normal (hkl).
 
@@ -823,18 +826,26 @@ def Bravais_to_Miller(*,
     """
     if (uvtw is not None) ^ (hkil is None):
         raise KeyError('specify either "uvtw" or "hkil"')
-    axis,basis  = (_np.array(uvtw),_np.array([[1,0,-1,0],
-                                              [0,1,-1,0],
-                                              [0,0, 0,1]])) \
-                  if hkil is None else \
-                  (_np.array(hkil),_np.array([[1,0,0,0],
-                                              [0,1,0,0],
-                                              [0,0,0,1]]))
-    return _np.einsum('il,...l',basis,axis)
+    if uvtw is not None and (_np.sum(_np.asarray(uvtw)[...,:3],axis=-1) != 0).any():
+        raise ValueError(rf'u+v+t≠0: {uvtw}')
+    if hkil is not None and (_np.sum(_np.asarray(hkil)[...,:3],axis=-1) != 0).any():
+        raise ValueError(rf'h+k+i≠0: {hkil}')
+
+    axis,basis = (_np.array(uvtw),_np.array([[2,1,0,0],
+                                             [1,2,0,0],
+                                             [0,0,0,1]])) \
+                 if hkil is None else \
+                 (_np.array(hkil),_np.array([[1,0,0,0],
+                                             [0,1,0,0],
+                                             [0,0,0,1]]))
+    uvw_hkl = _np.einsum('il,...l',basis,axis)
+    if not _np.issubdtype(uvw_hkl.dtype,_np.signedinteger):
+        raise TypeError('"uvtw"/"hkil" are not (signed) integers')
+    return uvw_hkl//_np.gcd.reduce(uvw_hkl,axis=-1,keepdims=True)
 
 def Miller_to_Bravais(*,
-                      uvw: _Optional[_np.ndarray] = None,
-                      hkl: _Optional[_np.ndarray] = None) -> _np.ndarray:
+                      uvw: _Optional[_IntSequence] = None,
+                      hkl: _Optional[_IntSequence] = None) -> _np.ndarray:
     """
     Transform 3 Miller indices to 4 Miller–Bravais indices of crystal direction [uvtw] or plane normal (hkil).
 
@@ -851,16 +862,19 @@ def Miller_to_Bravais(*,
     """
     if (uvw is not None) ^ (hkl is None):
         raise KeyError('specify either "uvw" or "hkl"')
-    axis,basis  = (_np.array(uvw),_np.array([[ 2,-1, 0],
-                                             [-1, 2, 0],
-                                             [-1,-1, 0],
-                                             [ 0, 0, 3]])/3) \
-                  if hkl is None else \
-                  (_np.array(hkl),_np.array([[ 1, 0, 0],
-                                             [ 0, 1, 0],
-                                             [-1,-1, 0],
-                                             [ 0, 0, 1]]))
-    return _np.einsum('il,...l',basis,axis)
+    axis,basis = (_np.asarray(uvw),_np.array([[ 2,-1, 0],
+                                              [-1, 2, 0],
+                                              [-1,-1, 0],
+                                              [ 0, 0, 3]])) \
+                 if hkl is None else \
+                 (_np.asarray(hkl),_np.array([[ 1, 0, 0],
+                                              [ 0, 1, 0],
+                                              [-1,-1, 0],
+                                              [ 0, 0, 1]]))
+    uvtw_hkil = _np.einsum('il,...l',basis,axis)
+    if not _np.issubdtype(uvtw_hkil.dtype,_np.signedinteger):
+        raise TypeError('"uvw"/"hkl" are not (signed) integers')
+    return uvtw_hkil//_np.gcd.reduce(uvtw_hkil,axis=-1,keepdims=True)
 
 
 def dict_prune(d: _Dict) -> _Dict:

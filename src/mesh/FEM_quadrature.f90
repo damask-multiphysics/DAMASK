@@ -11,14 +11,14 @@ module FEM_quadrature
   integer, parameter :: &
     maxOrder = 5                                                                                    !< maximum integration order
   real(pREAL),   dimension(2,3),       parameter :: &
-    triangle    = reshape([-1.0_pREAL, -1.0_pREAL, &
-                            1.0_pREAL, -1.0_pREAL, &
-                           -1.0_pREAL,  1.0_pREAL], shape=[2,3])
+    triangle    = real(reshape([-1, -1, &
+                                +1, -1, &
+                                -1, +1], shape=shape(triangle)),pREAL)
   real(pREAL),   dimension(3,4),       parameter :: &
-    tetrahedron = reshape([-1.0_pREAL, -1.0_pREAL, -1.0_pREAL, &
-                            1.0_pREAL, -1.0_pREAL, -1.0_pREAL, &
-                           -1.0_pREAL,  1.0_pREAL, -1.0_pREAL, &
-                           -1.0_pREAL, -1.0_pREAL,  1.0_pREAL], shape=[3,4])
+    tetrahedron = real(reshape([-1, -1, -1, &
+                                +1, -1, -1, &
+                                -1, +1, -1, &
+                                -1, -1, +1], shape=shape(tetrahedron)),pREAL)
 
   type :: group_real                                                                                !< variable length datatype
     real(pREAL), dimension(:), allocatable :: p
@@ -37,7 +37,7 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief initializes FEM interpolation data
+!> @brief Initialize FEM interpolation data.
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_quadrature_init()
 
@@ -53,7 +53,7 @@ subroutine FEM_quadrature_init()
   allocate(FEM_quadrature_weights(2,1)%p(FEM_nQuadrature(2,1)))
   FEM_quadrature_weights(2,1)%p(1) = 1._pREAL
 
-  FEM_quadrature_points (2,1)%p = permutationStar3([1._pREAL/3._pREAL])
+  FEM_quadrature_points (2,1)%p = permutationStar3()
 
 !--------------------------------------------------------------------------------------------------
 ! 2D quadratic
@@ -62,51 +62,45 @@ subroutine FEM_quadrature_init()
   allocate(FEM_quadrature_weights(2,2)%p(FEM_nQuadrature(2,2)))
   FEM_quadrature_weights(2,2)%p(1:3) = 1._pREAL/3._pREAL
 
-  FEM_quadrature_points (2,2)%p = permutationStar21([1._pREAL/6._pREAL])
+  FEM_quadrature_points (2,2)%p = permutationStar21(1._pREAL/6._pREAL)
 
 !--------------------------------------------------------------------------------------------------
 ! 2D cubic
   FEM_nQuadrature(2,3) = 6
 
   allocate(FEM_quadrature_weights(2,3)%p(FEM_nQuadrature(2,3)))
-  FEM_quadrature_weights(2,3)%p(1:3) = 2.2338158967801147e-1_pREAL
-  FEM_quadrature_weights(2,3)%p(4:6) = 1.0995174365532187e-1_pREAL
+  FEM_quadrature_weights(2,3)%p(1:3) = 2.8114980244097965e-1_pREAL
+  FEM_quadrature_weights(2,3)%p(4:6) = 5.218353089235369e-2_pREAL
 
   FEM_quadrature_points (2,3)%p = [ &
-    permutationStar21([4.4594849091596489e-1_pREAL]), &
-    permutationStar21([9.157621350977074e-2_pREAL]) ]
+    permutationStar21(1.628828503958919e-1_pREAL), &
+    permutationStar21(4.7791988356756370e-1_pREAL)]
 
 !--------------------------------------------------------------------------------------------------
 ! 2D quartic
-  FEM_nQuadrature(2,4) = 12
+  FEM_nQuadrature(2,4) = 6
 
   allocate(FEM_quadrature_weights(2,4)%p(FEM_nQuadrature(2,4)))
-  FEM_quadrature_weights(2,4)%p(1:3)  = 1.1678627572637937e-1_pREAL
-  FEM_quadrature_weights(2,4)%p(4:6)  = 5.0844906370206817e-2_pREAL
-  FEM_quadrature_weights(2,4)%p(7:12) = 8.285107561837358e-2_pREAL
+  FEM_quadrature_weights(2,4)%p(1:3) = (620._pREAL + sqrt(213125._pREAL - 53320._pREAL * sqrt(10._pREAL))) / 3720._pREAL
+  FEM_quadrature_weights(2,4)%p(4:6) = (620._pREAL - sqrt(213125._pREAL - 53320._pREAL * sqrt(10._pREAL))) / 3720._pREAL
 
   FEM_quadrature_points (2,4)%p = [ &
-    permutationStar21([2.4928674517091042e-1_pREAL]), &
-    permutationStar21([6.308901449150223e-2_pREAL]), &
-    permutationStar111([3.1035245103378440e-1_pREAL, 5.3145049844816947e-2_pREAL]) ]
+    permutationStar21((8._pREAL - sqrt(10._pREAL) + sqrt(38._pREAL - 44._pREAL * sqrt(0.4_pREAL))) / 18._pREAL), &
+    permutationStar21((8._pREAL - sqrt(10._pREAL) - sqrt(38._pREAL - 44._pREAL * sqrt(0.4_pREAL))) / 18._pREAL)]
 
 !--------------------------------------------------------------------------------------------------
 ! 2D quintic
-  FEM_nQuadrature(2,5) = 16
+  FEM_nQuadrature(2,5) = 7
 
   allocate(FEM_quadrature_weights(2,5)%p(FEM_nQuadrature(2,5)))
-  FEM_quadrature_weights(2,5)%p(1:1)   = 1.4431560767778717e-1_pREAL
-  FEM_quadrature_weights(2,5)%p(2:4)   = 9.509163426728463e-2_pREAL
-  FEM_quadrature_weights(2,5)%p(5:7)   = 1.0321737053471825e-1_pREAL
-  FEM_quadrature_weights(2,5)%p(8:10)  = 3.2458497623198080e-2_pREAL
-  FEM_quadrature_weights(2,5)%p(11:16) = 2.7230314174434994e-2_pREAL
+  FEM_quadrature_weights(2,5)%p(1:3)   = (155._pREAL - sqrt(15._pREAL)) / 1200._pREAL
+  FEM_quadrature_weights(2,5)%p(4:6)   = (155._pREAL + sqrt(15._pREAL)) / 1200._pREAL
+  FEM_quadrature_weights(2,5)%p(7:7)   = 9._pREAL/40._pREAL
 
   FEM_quadrature_points (2,5)%p = [ &
-    permutationStar3([1._pREAL/3._pREAL]), &
-    permutationStar21([4.5929258829272316e-1_pREAL]), &
-    permutationStar21([1.705693077517602e-1_pREAL]), &
-    permutationStar21([5.0547228317030975e-2_pREAL]), &
-    permutationStar111([2.631128296346381e-1_pREAL, 8.3947774099576053e-2_pREAL]) ]
+    permutationStar21((6._pREAL - sqrt(15._pREAL)) / 21._pREAL), &
+    permutationStar21((6._pREAL + sqrt(15._pREAL)) / 21._pREAL), &
+    permutationStar3()]
 
 !--------------------------------------------------------------------------------------------------
 ! 3D linear
@@ -115,7 +109,7 @@ subroutine FEM_quadrature_init()
   allocate(FEM_quadrature_weights(3,1)%p(FEM_nQuadrature(3,1)))
   FEM_quadrature_weights(3,1)%p(1) = 1.0_pREAL
 
-  FEM_quadrature_points (3,1)%p = permutationStar4([0.25_pREAL])
+  FEM_quadrature_points (3,1)%p = permutationStar4()
 
 !--------------------------------------------------------------------------------------------------
 ! 3D quadratic
@@ -124,59 +118,49 @@ subroutine FEM_quadrature_init()
   allocate(FEM_quadrature_weights(3,2)%p(FEM_nQuadrature(3,2)))
   FEM_quadrature_weights(3,2)%p(1:4) = 0.25_pREAL
 
-  FEM_quadrature_points (3,2)%p = permutationStar31([1.3819660112501052e-1_pREAL])
+  FEM_quadrature_points (3,2)%p = permutationStar31((5._pREAL - sqrt(5._pREAL)) / 20._pREAL)
 
 !--------------------------------------------------------------------------------------------------
 ! 3D cubic
-  FEM_nQuadrature(3,3) = 14
+  FEM_nQuadrature(3,3) = 8
 
   allocate(FEM_quadrature_weights(3,3)%p(FEM_nQuadrature(3,3)))
-  FEM_quadrature_weights(3,3)%p(1:4)  = 7.3493043116361949e-2_pREAL
-  FEM_quadrature_weights(3,3)%p(5:8)  = 1.1268792571801585e-1_pREAL
-  FEM_quadrature_weights(3,3)%p(9:14) = 4.2546020777081467e-2_pREAL
+  FEM_quadrature_weights(3,3)%p(1:4)  = .125_pREAL &
+                                      + sqrt((1715161837._pREAL - 406006699._pREAL * sqrt(17._pREAL)) / 23101._pREAL) / 3120._pREAL
+  FEM_quadrature_weights(3,3)%p(5:8)  = .125_pREAL &
+                                      - sqrt((1715161837._pREAL - 406006699._pREAL * sqrt(17._pREAL)) / 23101._pREAL) / 3120._pREAL
 
   FEM_quadrature_points (3,3)%p = [ &
-    permutationStar31([9.273525031089123e-2_pREAL]), &
-    permutationStar31([3.108859192633006e-1_pREAL]), &
-    permutationStar22([4.5503704125649649e-2_pREAL]) ]
+    permutationStar31((55._pREAL - 3._pREAL * sqrt(17._pREAL) + sqrt(1022._pREAL - 134._pREAL * sqrt(17._pREAL))) / 196._pREAL), &
+    permutationStar31((55._pREAL - 3._pREAL * sqrt(17._pREAL) - sqrt(1022._pREAL - 134._pREAL * sqrt(17._pREAL))) / 196._pREAL)]
 
 !--------------------------------------------------------------------------------------------------
-! 3D quartic (lower precision/unknown source)
-  FEM_nQuadrature(3,4) = 35
+! 3D quartic
+  FEM_nQuadrature(3,4) = 14
 
   allocate(FEM_quadrature_weights(3,4)%p(FEM_nQuadrature(3,4)))
-  FEM_quadrature_weights(3,4)%p(1:4)   = 0.0021900463965388_pREAL
-  FEM_quadrature_weights(3,4)%p(5:16)  = 0.0143395670177665_pREAL
-  FEM_quadrature_weights(3,4)%p(17:22) = 0.0250305395686746_pREAL
-  FEM_quadrature_weights(3,4)%p(23:34) = 0.0479839333057554_pREAL
-  FEM_quadrature_weights(3,4)%p(35)    = 0.0931745731195340_pREAL
+  FEM_quadrature_weights(3,4)%p(1:4)  = 7.3493043116361949e-2_pREAL
+  FEM_quadrature_weights(3,4)%p(5:8)  = 1.1268792571801585e-1_pREAL
+  FEM_quadrature_weights(3,4)%p(9:14) = 4.2546020777081467e-2_pREAL
 
   FEM_quadrature_points (3,4)%p = [ &
-    permutationStar31([0.0267367755543735_pREAL]), &
-    permutationStar211([0.0391022406356488_pREAL, 0.7477598884818090_pREAL]), &
-    permutationStar22([0.4547545999844830_pREAL]), &
-    permutationStar211([0.2232010379623150_pREAL, 0.0504792790607720_pREAL]), &
-    permutationStar4([0.25_pREAL]) ]
+    permutationStar31(9.273525031089123e-2_pREAL), &
+    permutationStar31(3.108859192633006e-1_pREAL), &
+    permutationStar22(4.5503704125649650e-2_pREAL)]
 
 !--------------------------------------------------------------------------------------------------
-! 3D quintic (lower precision/unknown source)
-  FEM_nQuadrature(3,5) = 56
+! 3D quintic
+  FEM_nQuadrature(3,5) = 14
 
   allocate(FEM_quadrature_weights(3,5)%p(FEM_nQuadrature(3,5)))
-  FEM_quadrature_weights(3,5)%p(1:4)   = 0.0010373112336140_pREAL
-  FEM_quadrature_weights(3,5)%p(5:16)  = 0.0096016645399480_pREAL
-  FEM_quadrature_weights(3,5)%p(17:28) = 0.0164493976798232_pREAL
-  FEM_quadrature_weights(3,5)%p(29:40) = 0.0153747766513310_pREAL
-  FEM_quadrature_weights(3,5)%p(41:52) = 0.0293520118375230_pREAL
-  FEM_quadrature_weights(3,5)%p(53:56) = 0.0366291366405108_pREAL
+  FEM_quadrature_weights(3,5)%p(1:4)  = 1.1268792571801585e-1_pREAL
+  FEM_quadrature_weights(3,5)%p(5:8)  = 7.3493043116361950e-2_pREAL
+  FEM_quadrature_weights(3,5)%p(9:14) = 4.2546020777081466e-2_pREAL
 
   FEM_quadrature_points (3,5)%p = [ &
-    permutationStar31([0.0149520651530592_pREAL]), &
-    permutationStar211([0.0340960211962615_pREAL, 0.1518319491659370_pREAL]), &
-    permutationStar211([0.0462051504150017_pREAL, 0.3549340560639790_pREAL]), &
-    permutationStar211([0.2281904610687610_pREAL, 0.0055147549744775_pREAL]), &
-    permutationStar211([0.3523052600879940_pREAL, 0.0992057202494530_pREAL]), &
-    permutationStar31([0.1344783347929940_pREAL]) ]
+    permutationStar31(3.108859192633006e-1_pREAL), &
+    permutationStar31(9.273525031089123e-2_pREAL), &
+    permutationStar22(4.5503704125649649e-2_pREAL)]
 
   call selfTest()
 
@@ -184,172 +168,86 @@ end subroutine FEM_quadrature_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief star 3 permutation of input
+!> @brief Star 3 permutation.
 !--------------------------------------------------------------------------------------------------
-pure function permutationStar3(point) result(qPt)
+pure function permutationStar3() result(qPt)
 
   real(pREAL), dimension(2)             :: qPt
-  real(pREAL), dimension(1), intent(in) :: point
 
 
   qPt = pack(matmul(triangle,reshape([ &
-    point(1), point(1), point(1)],[3,1])),.true.)
+    1._pREAL/3._pREAL, 1._pREAL/3._pREAL, 1._pREAL/3._pREAL],[3,1])),.true.)
 
 end function permutationStar3
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief star 21 permutation of input
+!> @brief Star 21 permutation.
 !--------------------------------------------------------------------------------------------------
-pure function permutationStar21(point) result(qPt)
+pure function permutationStar21(a) result(qPt)
 
   real(pREAL), dimension(6)             :: qPt
-  real(pREAL), dimension(1), intent(in) :: point
+  real(pREAL),               intent(in) :: a
 
 
   qPt = pack(matmul(triangle,reshape([ &
-    point(1), point(1), 1.0_pREAL - 2.0_pREAL*point(1), &
-    point(1), 1.0_pREAL - 2.0_pREAL*point(1), point(1), &
-    1.0_pREAL - 2.0_pREAL*point(1), point(1), point(1)],[3,3])),.true.)
+    a, a, 1.0_pREAL - 2.0_pREAL*a, &
+    a, 1.0_pREAL - 2.0_pREAL*a, a, &
+    1.0_pREAL - 2.0_pREAL*a, a, a],[3,3])),.true.)
 
 end function permutationStar21
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief star 111 permutation of input
+!> @brief Star 4 permutation.
 !--------------------------------------------------------------------------------------------------
-pure function permutationStar111(point) result(qPt)
-
-  real(pREAL), dimension(12)            :: qPt
-  real(pREAL), dimension(2), intent(in) :: point
-
-
-  qPt = pack(matmul(triangle,reshape([ &
-    point(1), point(2), 1.0_pREAL - point(1) - point(2), &
-    point(1), 1.0_pREAL - point(1) - point(2), point(2), &
-    point(2), point(1), 1.0_pREAL - point(1) - point(2), &
-    point(2), 1.0_pREAL - point(1) - point(2), point(1), &
-    1.0_pREAL - point(1) - point(2), point(2), point(1), &
-    1.0_pREAL - point(1) - point(2), point(1), point(2)],[3,6])),.true.)
-
-end function permutationStar111
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief star 4 permutation of input
-!--------------------------------------------------------------------------------------------------
-pure function permutationStar4(point) result(qPt)
+pure function permutationStar4() result(qPt)
 
   real(pREAL), dimension(3)             :: qPt
-  real(pREAL), dimension(1), intent(in) :: point
 
 
   qPt = pack(matmul(tetrahedron,reshape([ &
-    point(1), point(1), point(1), point(1)],[4,1])),.true.)
+    0.25_pREAL, 0.25_pREAL, 0.25_pREAL, 0.25_pREAL],[4,1])),.true.)
 
 end function permutationStar4
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief star 31 permutation of input
+!> @brief Star 31 permutation.
 !--------------------------------------------------------------------------------------------------
-pure function permutationStar31(point) result(qPt)
+pure function permutationStar31(a) result(qPt)
 
   real(pREAL), dimension(12)            :: qPt
-  real(pREAL), dimension(1), intent(in) :: point
+  real(pREAL),               intent(in) :: a
 
 
   qPt = pack(matmul(tetrahedron,reshape([ &
-    point(1), point(1), point(1), 1.0_pREAL - 3.0_pREAL*point(1), &
-    point(1), point(1), 1.0_pREAL - 3.0_pREAL*point(1), point(1), &
-    point(1), 1.0_pREAL - 3.0_pREAL*point(1), point(1), point(1), &
-    1.0_pREAL - 3.0_pREAL*point(1), point(1), point(1), point(1)],[4,4])),.true.)
+    a, a, a, 1.0_pREAL - 3.0_pREAL*a, &
+    a, a, 1.0_pREAL - 3.0_pREAL*a, a, &
+    a, 1.0_pREAL - 3.0_pREAL*a, a, a, &
+    1.0_pREAL - 3.0_pREAL*a, a, a, a],[4,4])),.true.)
 
 end function permutationStar31
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief star 22 permutation of input
+!> @brief Star 22 permutation.
 !--------------------------------------------------------------------------------------------------
-function permutationStar22(point) result(qPt)
+function permutationStar22(a) result(qPt)
 
   real(pREAL), dimension(18)            :: qPt
-  real(pREAL), dimension(1), intent(in) :: point
+  real(pREAL),               intent(in) :: a
 
 
   qPt = pack(matmul(tetrahedron,reshape([ &
-    point(1), point(1), 0.5_pREAL - point(1), 0.5_pREAL - point(1), &
-    point(1), 0.5_pREAL - point(1), point(1), 0.5_pREAL - point(1), &
-    0.5_pREAL - point(1), point(1), point(1), 0.5_pREAL - point(1), &
-    0.5_pREAL - point(1), point(1), 0.5_pREAL - point(1), point(1), &
-    0.5_pREAL - point(1), 0.5_pREAL - point(1), point(1), point(1), &
-    point(1), 0.5_pREAL - point(1), 0.5_pREAL - point(1), point(1)],[4,6])),.true.)
+    a, a, 0.5_pREAL - a, 0.5_pREAL - a, &
+    a, 0.5_pREAL - a, a, 0.5_pREAL - a, &
+    0.5_pREAL - a, a, a, 0.5_pREAL - a, &
+    0.5_pREAL - a, a, 0.5_pREAL - a, a, &
+    0.5_pREAL - a, 0.5_pREAL - a, a, a, &
+    a, 0.5_pREAL - a, 0.5_pREAL - a, a],[4,6])),.true.)
 
 end function permutationStar22
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief star 211 permutation of input
-!--------------------------------------------------------------------------------------------------
-pure function permutationStar211(point) result(qPt)
-
-  real(pREAL), dimension(36)            :: qPt
-  real(pREAL), dimension(2), intent(in) :: point
-
-
-  qPt = pack(matmul(tetrahedron,reshape([ &
-    point(1), point(1), point(2), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), &
-    point(1), point(1), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(2), &
-    point(1), point(2), point(1), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), &
-    point(1), point(2), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(1), &
-    point(1), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(1), point(2), &
-    point(1), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(2), point(1), &
-    point(2), point(1), point(1), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), &
-    point(2), point(1), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(1), &
-    point(2), 1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(1), point(1), &
-    1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(1), point(1), point(2), &
-    1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(1), point(2), point(1), &
-    1.0_pREAL - 2.0_pREAL*point(1) - point(2), point(2), point(1), point(1)],[4,12])),.true.)
-
-end function permutationStar211
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief star 1111 permutation of input
-!--------------------------------------------------------------------------------------------------
-pure function permutationStar1111(point) result(qPt)
-
-  real(pREAL), dimension(72)            :: qPt
-  real(pREAL), dimension(3), intent(in) :: point
-
-
-  qPt = pack(matmul(tetrahedron,reshape([ &
-    point(1), point(2), point(3), 1.0_pREAL - point(1) - point(2)- point(3), &
-    point(1), point(2), 1.0_pREAL - point(1) - point(2)- point(3), point(3), &
-    point(1), point(3), point(2), 1.0_pREAL - point(1) - point(2)- point(3), &
-    point(1), point(3), 1.0_pREAL - point(1) - point(2)- point(3), point(2), &
-    point(1), 1.0_pREAL - point(1) - point(2)- point(3), point(2), point(3), &
-    point(1), 1.0_pREAL - point(1) - point(2)- point(3), point(3), point(2), &
-    point(2), point(1), point(3), 1.0_pREAL - point(1) - point(2)- point(3), &
-    point(2), point(1), 1.0_pREAL - point(1) - point(2)- point(3), point(3), &
-    point(2), point(3), point(1), 1.0_pREAL - point(1) - point(2)- point(3), &
-    point(2), point(3), 1.0_pREAL - point(1) - point(2)- point(3), point(1), &
-    point(2), 1.0_pREAL - point(1) - point(2)- point(3), point(1), point(3), &
-    point(2), 1.0_pREAL - point(1) - point(2)- point(3), point(3), point(1), &
-    point(3), point(1), point(2), 1.0_pREAL - point(1) - point(2)- point(3), &
-    point(3), point(1), 1.0_pREAL - point(1) - point(2)- point(3), point(2), &
-    point(3), point(2), point(1), 1.0_pREAL - point(1) - point(2)- point(3), &
-    point(3), point(2), 1.0_pREAL - point(1) - point(2)- point(3), point(1), &
-    point(3), 1.0_pREAL - point(1) - point(2)- point(3), point(1), point(2), &
-    point(3), 1.0_pREAL - point(1) - point(2)- point(3), point(2), point(1), &
-    1.0_pREAL - point(1) - point(2)- point(3), point(1), point(2), point(3), &
-    1.0_pREAL - point(1) - point(2)- point(3), point(1), point(3), point(2), &
-    1.0_pREAL - point(1) - point(2)- point(3), point(2), point(1), point(3), &
-    1.0_pREAL - point(1) - point(2)- point(3), point(2), point(3), point(1), &
-    1.0_pREAL - point(1) - point(2)- point(3), point(3), point(1), point(2), &
-    1.0_pREAL - point(1) - point(2)- point(3), point(3), point(2), point(1)],[4,24])),.true.)
-
-end function permutationStar1111
 
 
 !--------------------------------------------------------------------------------------------------

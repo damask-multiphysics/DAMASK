@@ -10,6 +10,7 @@
 *.pdf binary
 *.dream3d binary
 *.pbz2 binary
+*.vtk binary
 
 # ignore files from MSC.Marc in language statistics
 install/MarcMentat/** linguist-vendored

@@ -3,7 +3,8 @@ type: phenopowerlaw
 references:
   - C.C. Tasan et al.,
     Acta Materialia 81:386-400, 2014,
-    https://doi.org/10.1016/j.actamat.2014.07.071
+    https://doi.org/10.1016/j.actamat.2014.07.071,
+    Table 1
   - U.F. Kocks,
     Metallurgical and Materials Transactions B 1:1121–1143, 1970,
     https://doi.org/10.1007/BF02900224

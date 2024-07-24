@@ -19,6 +19,8 @@ module discretization_grid
   use CLI
   use IO
   use config
+  use HDF5
+  use HDF5_utilities
   use result
   use discretization
   use geometry_plastic_nonlocal
@@ -73,6 +75,7 @@ subroutine discretization_grid_init(restart)
     displs, sendcounts
   character(len=:), allocatable :: &
     fileContent, fname
+  integer(HID_T) :: handle
 
 
   print'(/,1x,a)', '<<<+-  discretization_grid init  -+>>>'; flush(IO_STDOUT)
@@ -145,12 +148,19 @@ subroutine discretization_grid_init(restart)
 
 !--------------------------------------------------------------------------------------------------
 ! store geometry information for post processing
-  if (.not. restart) then
-    call result_openJobFile()
-    call result_closeGroup(result_addGroup('geometry'))
-    call result_addAttribute('cells', cells,   '/geometry')
-    call result_addAttribute('size',  geomSize,'/geometry')
-    call result_addAttribute('origin',origin,  '/geometry')
+  if (.not. restart .and. worldrank == 0) then
+    call result_openJobFile(parallel=.false.)
+    handle = result_addGroup('geometry')
+    call HDF5_write(cells,   handle,'cells', .false.)
+    call HDF5_write(geomSize,handle,'size',  .false.)
+    call HDF5_write(origin,  handle,'origin',.false.)
+    call HDF5_addAttribute(handle,'unit','1','cells')
+    call HDF5_addAttribute(handle,'unit','m³','size')
+    call HDF5_addAttribute(handle,'unit','m','origin')
+    call result_addAttribute('cells', cells,   '/geometry') ! legacy for DADF5 1.x
+    call result_addAttribute('size',  geomSize,'/geometry') ! legacy for DADF5 1.x
+    call result_addAttribute('origin',origin,  '/geometry') ! legacy for DADF5 1.x
+    call result_closeGroup(handle)
     call result_closeJobFile()
   end if
 

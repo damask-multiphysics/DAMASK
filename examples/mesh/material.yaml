@@ -24,11 +24,6 @@ phase:
 
 material:
   - constituents:
-      - O: [1., 0., 0., 0.] # dummy material
-        v: 1.0
-        phase: Aluminum
-    homogenization: SX
-  - constituents:
       - O: [0.17835925061073415, -0.7576341567357145, 0.5458453874401553, 0.3102116620619653]
         v: 1.0
         phase: Aluminum

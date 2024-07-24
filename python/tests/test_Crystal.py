@@ -1,8 +1,10 @@
 import pytest
 import numpy as np
+from pathlib import Path
 
 import damask
 from damask import Crystal
+from damask import util
 
 class TestCrystal:
 
@@ -43,6 +45,19 @@ class TestCrystal:
     def test_basis_invalid(self):
         with pytest.raises(KeyError):
             Crystal(family='cubic').basis_real
+
+    def test_basis_real(self):
+        for gamma in np.random.random(2**8)*np.pi:
+            basis = np.tril(np.random.random((3,3))+1e-6)
+            basis[1,:2] = basis[1,1]*np.array([np.cos(gamma),np.sin(gamma)])
+            basis[2,:2] = basis[2,:2]*2-1
+            lengths = np.linalg.norm(basis,axis=-1)
+            cosines = np.roll(np.einsum('ij,ij->i',basis,np.roll(basis,1,axis=0))/lengths/np.roll(lengths,1),1)
+            o = Crystal(lattice='aP',
+                        **dict(zip(['a','b','c'],lengths)),
+                        **dict(zip(['alpha','beta','gamma'],np.arccos(cosines))),
+                        )
+            assert np.allclose(o.to_frame(uvw=np.eye(3)),basis,rtol=1e-4), 'Lattice basis disagrees with initialization'
 
     @pytest.mark.parametrize('keyFrame,keyLattice',[('uvw','direction'),('hkl','plane'),])
     @pytest.mark.parametrize('vector',np.array([
@@ -118,3 +133,32 @@ class TestCrystal:
         with pytest.raises(ValueError):
             crystal.relation_operations(relationship,crystal)
 
+    @pytest.mark.parametrize('crystal', [Crystal(lattice='cF'),
+                                         Crystal(lattice='cI'),
+                                         Crystal(lattice='hP'),
+                                         Crystal(lattice='tI',c=1.2)])
+    @pytest.mark.parametrize('mode',['slip','twin'])
+    @pytest.mark.need_damaskroot
+    def test_system_match(self,crystal,mode,damaskroot):
+        if crystal.lattice == 'tI' and mode == 'twin': return
+
+        raw = []
+        name = f'{crystal.lattice.upper()}_SYSTEM{mode.upper()}'
+        with open(Path(damaskroot).expanduser()/'src'/'crystal.f90') as f:
+            in_matrix = False
+            for line in [l for l in f if l.split('!')[0].strip()]:
+                if f'shape({name})' in line: break
+                if in_matrix:
+                    entries = line.split('&')[0].strip().split(',')
+                    raw.append(list(filter(None, entries)))
+                in_matrix |= line.strip().startswith(f'{name}') and 'reshape' in line
+
+        d_fortran,p_fortran = np.hsplit(np.array(raw).astype(int),2)
+        if crystal.lattice == 'hP':
+            d_fortran = util.Bravais_to_Miller(uvtw=d_fortran)
+            p_fortran = util.Bravais_to_Miller(hkil=p_fortran)
+
+        python = crystal.kinematics(mode)
+
+        assert np.array_equal(d_fortran,np.vstack(python['direction']))
+        assert np.array_equal(p_fortran,np.vstack(python['plane']))
