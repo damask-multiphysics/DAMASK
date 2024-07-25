@@ -11,7 +11,7 @@ stages:
 ###################################################################################################
 default:
   before_script:
-    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN}
+    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} ${TOKEN}
     - source env/DAMASK.sh
     - export PATH=${TESTROOT}/bin:${PATH}
     - echo Job start:" $(date)"
@@ -56,7 +56,7 @@ variables:
 create_testroot:
   stage: prepare
   before_script:
-    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN}
+    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} ${TOKEN}
     - echo Job start:" $(date)"
   script:
     - mkdir -p ${TESTROOT}
