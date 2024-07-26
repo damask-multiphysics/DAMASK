@@ -453,7 +453,7 @@ class Orientation(Rotation,Crystal):
                     (np.isclose(c[1],v[...,1]) | (v[...,1] > c[1])) &
                     (np.isclose(c[2],v[...,2]) | (v[...,2] > c[2]))).astype(bool)
 
-        rho  = self.as_Rodrigues_vector(compact=True)
+        rho = self.as_Rodrigues_vector(compact=True)
         return larger_or_equal(rho,
                                      [rho[...,1],           rho[...,2],0] if self.family == 'cubic'
                                 else [rho[...,1]*np.sqrt(3),0,         0] if self.family == 'hexagonal'
@@ -472,10 +472,8 @@ class Orientation(Rotation,Crystal):
         Parameters
         ----------
         other : Orientation
-            Orientation to calculate disorientation for.
-            Shape of other blends with shape of own rotation array.
-            For example, shapes of (2,3) for own rotations
-            and (3,2) for other's result in (2,3,2) disorientations.
+            Orientation to which the disorientation is computed.
+            Compatible innermost dimensions will blend.
         return_operators : bool, optional
             Return index pair of symmetrically equivalent orientations
             that result in disorientation axis falling into FZ.
@@ -528,7 +526,7 @@ class Orientation(Rotation,Crystal):
         s =  self.broadcast_to(s_m).equivalent
         o = other.broadcast_to(s_o).equivalent
 
-        r_ = s[:,np.newaxis,...].misorientation(o[np.newaxis,:,...]) # type: ignore[index]
+        r_ = s[:,np.newaxis,...].misorientation(o[np.newaxis,:,...])                                # type: ignore[index]
         _r = ~r_
         shp = r_.shape[2:]
 
@@ -545,8 +543,7 @@ class Orientation(Rotation,Crystal):
         quat = r[ok][sort].reshape((*shp,4))
 
         return (
-                (self.copy(rotation=quat),
-                 (np.vstack(loc[:2]).T)[sort].reshape((*shp,2)))
+                (self.copy(rotation=quat), (np.vstack(loc[:2]).T)[sort].reshape((*shp,2)))
                 if return_operators else
                 self.copy(rotation=quat)
                )
