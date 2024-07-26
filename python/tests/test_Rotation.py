@@ -1111,6 +1111,19 @@ class TestRotation:
         with pytest.raises(TypeError):
             Rotation()*np.ones(3)
 
+    @pytest.mark.parametrize('shape',[[None,None,()],
+                                      [[2,3,4],[2,3,4],(2,3,4)],
+                                      [[3,4],[4,5],(3,4,5)],
+                                      [[3,2,4],[2,4,6],(3,2,4,6)],
+                                      [[3,4,4],[4,4,2],(3,4,4,2)],
+                                      [100,100,(100,)]])
+    def test_shape_blending(self,shape):
+        r_1 = Rotation.from_random(shape=shape[0])
+        r_2 = Rotation.from_random(shape=shape[1])
+        full = r_1.misorientation(r_2).as_axis_angle(pair=True)[1]
+        composition = r_1*r_2
+        assert full.shape == composition.shape == shape[2]
+
     def test_composition_inverse(self):
         a,b = (Rotation.from_random(),Rotation.from_random())
         c = a / b
