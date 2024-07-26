@@ -1284,7 +1284,7 @@ class Rotation:
 
         Notes
         -----
-        The crystal direction for (θ=0,φ=0) is [0 0 1],
+        The crystal direction for (θ=0,φ=0) is [0 0 1];
         the sample direction for (θ=0,φ=0) is z.
 
         Polar coordinates follow the ISO 80000-2:2019 convention
@@ -1295,24 +1295,21 @@ class Rotation:
 
         Examples
         --------
-        Create an ideal α-fiber texture ([1 1 0] ǀǀ RD=x) consisting of
-        200 orientations:
+        Create an ideal α-fiber texture ([1 0 1] ǀǀ x=RD) consisting of 600 orientations:
 
         >>> import damask
         >>> import numpy as np
-        >>> alpha = damask.Rotation.from_fiber_component([np.pi/4.,0.],[np.pi/2.,0.],shape=200)
+        >>> alpha = damask.Rotation.from_fiber_component([np.pi/4.,0.],[np.pi/2.,0.],shape=600)
 
-        Create an ideal γ-fiber texture ([1 1 1] ǀǀ ND=z) consisting of
-        100 orientations:
-
-        >>> import damask
-        >>> gamma = damask.Rotation.from_fiber_component([54.7,45.],[0.,0.],shape=100,degrees=True)
-
-        Create a strong basal texture ([0 0 0 1] ǀǀ ND=z) consisting of
-        100 orientations:
+        Create an ideal γ-fiber texture ([1 1 1] ǀǀ z=ND) consisting of 250 orientations:
 
         >>> import damask
-        >>> basal = damask.Rotation.from_fiber_component([0.,0.],[0.,0.],shape=100,sigma=10,degrees=True)
+        >>> gamma = damask.Rotation.from_fiber_component([54.736,45.],[0.,0.],shape=250,degrees=True)
+
+        Create a relatively strong basal texture ([0 0 0 1] ǀǀ z=ND) consisting of 320 orientations:
+
+        >>> import damask
+        >>> basal = damask.Rotation.from_fiber_component([0.,0.],[0.,0.],shape=320,sigma=10,degrees=True)
 
         """
         rng = np.random.default_rng(rng_seed)
@@ -1321,9 +1318,9 @@ class Rotation:
 
         d_cr  = np.array([np.sin(alpha[0])*np.cos(alpha[1]), np.sin(alpha[0])*np.sin(alpha[1]), np.cos(alpha[0])])
         d_lab = np.array([np.sin( beta[0])*np.cos( beta[1]), np.sin( beta[0])*np.sin( beta[1]), np.cos( beta[0])])
-        ax_align = np.append(np.cross(d_lab,d_cr), np.arccos(np.dot(d_lab,d_cr)))
+        ax_align = np.append(np.cross(d_cr,d_lab), np.arccos(np.dot(d_cr,d_lab)))                   # align crystal frame direction to sample frame direction
         if np.isclose(ax_align[3],0.): ax_align[:3] = np.array([1.,0.,0.])
-        R_align  = Rotation.from_axis_angle(ax_align if ax_align[3] > 0. else -ax_align,normalize=True) # rotate fiber axis from sample to crystal frame
+        R_align  = Rotation.from_axis_angle(ax_align if ax_align[3] > 0. else -ax_align,normalize=True)
 
         N = 1 if shape is None else np.prod(shape).astype(int)
         u,Theta  = (rng.random((N,2)) * 2. * np.array([1.,np.pi]) - np.array([1.,0.])).T
