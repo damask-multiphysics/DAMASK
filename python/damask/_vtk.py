@@ -92,7 +92,7 @@ class VTK:
         Give short, human-readable summary.
 
         """
-        info = [self.vtk_data.__vtkname__] # type: ignore
+        info = [self.vtk_data.__vtkname__]                                                          # type: ignore
 
         for data in ['Cell Data', 'Point Data']:
             if data == 'Cell Data':  info.append(f'\n# cells: {self.N_cells}')
