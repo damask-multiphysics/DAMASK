@@ -4,6 +4,9 @@ from pathlib import Path
 from typing import Optional, Union, Literal, List, Sequence
 
 import numpy as np
+
+from vtkmodules.vtkIOXML import vtkXMLReader, vtkXMLWriter
+
 from vtkmodules.vtkCommonCore import (
     vtkPoints,
     vtkStringArray,
@@ -79,7 +82,7 @@ class VTK:
             vtkPolyData, and vtkRectilinearGrid.
 
         """
-        self.vtk_data = vtk_data
+        self.vtk_data: vtkDataSet = vtk_data
 
 
     def __repr__(self) -> str:
@@ -89,7 +92,7 @@ class VTK:
         Give short, human-readable summary.
 
         """
-        info = [self.vtk_data.__vtkname__]
+        info = [self.vtk_data.__vtkname__]                                                          # type: ignore
 
         for data in ['Cell Data', 'Point Data']:
             if data == 'Cell Data':  info.append(f'\n# cells: {self.N_cells}')
@@ -351,39 +354,34 @@ class VTK:
         if not Path(fname).expanduser().is_file():                                                  # vtk has a strange error handling
             raise FileNotFoundError(f'file "{fname}" not found')
         if (ext := Path(fname).suffix) == '.vtk' or dataset_type is not None:
-            reader = vtkGenericDataObjectReader()
-            reader.SetFileName(str(Path(fname).expanduser()))
+            vtk_reader = vtkGenericDataObjectReader()
+            vtk_reader.SetFileName(str(Path(fname).expanduser()))
             if dataset_type is None:
                 raise TypeError('dataset type for *.vtk file not given')
-            elif dataset_type.lower().endswith(('imagedata','image_data')):
-                reader.Update()
-                vtk_data = reader.GetStructuredPointsOutput()
-            elif dataset_type.lower().endswith(('unstructuredgrid','unstructured_grid')):
-                reader.Update()
-                vtk_data = reader.GetUnstructuredGridOutput()
-            elif dataset_type.lower().endswith(('polydata','poly_data')):
-                reader.Update()
-                vtk_data = reader.GetPolyDataOutput()
-            elif dataset_type.lower().endswith(('rectilineargrid','rectilinear_grid')):
-                reader.Update()
-                vtk_data = reader.GetRectilinearGridOutput()
+            vtk_reader.Update()
+            if dataset_type.lower().endswith(('imagedata', 'image_data')):
+                vtk_data = vtk_reader.GetStructuredPointsOutput()
+            elif dataset_type.lower().endswith(('unstructuredgrid', 'unstructured_grid')):
+                vtk_data = vtk_reader.GetUnstructuredGridOutput()
+            elif dataset_type.lower().endswith(('polydata', 'poly_data')):
+                vtk_data = vtk_reader.GetPolyDataOutput()
+            elif dataset_type.lower().endswith(('rectilineargrid', 'rectilinear_grid')):
+                vtk_data = vtk_reader.GetRectilinearGridOutput()
             else:
                 raise TypeError(f'unknown dataset type "{dataset_type}" for vtk file')
         else:
-            if   ext == '.vti':
-                reader = vtkXMLImageDataReader()
-            elif ext == '.vtu':
-                reader = vtkXMLUnstructuredGridReader()
-            elif ext == '.vtp':
-                reader = vtkXMLPolyDataReader()
-            elif ext == '.vtr':
-                reader = vtkXMLRectilinearGridReader()
-            else:
+            xml_reader: Optional[vtkXMLReader] = (
+                vtkXMLImageDataReader() if ext == '.vti' else
+                vtkXMLUnstructuredGridReader() if ext == '.vtu' else
+                vtkXMLPolyDataReader() if ext == '.vtp' else
+                vtkXMLRectilinearGridReader() if ext == '.vtr' else
+                None
+            )
+            if xml_reader is None:
                 raise TypeError(f'unknown file extension "{ext}"')
-
-            reader.SetFileName(str(Path(fname).expanduser()))
-            reader.Update()
-            vtk_data = reader.GetOutput()
+            xml_reader.SetFileName(str(Path(fname).expanduser()))
+            xml_reader.Update()
+            vtk_data = xml_reader.GetOutputAsDataSet()
 
         return VTK(vtk_data)
 
@@ -421,14 +419,15 @@ class VTK:
             Compress with zlib algorithm. Defaults to True.
 
         """
-        if   isinstance(self.vtk_data,vtkImageData):
-            writer = vtkXMLImageDataWriter()
-        elif isinstance(self.vtk_data,vtkUnstructuredGrid):
-            writer = vtkXMLUnstructuredGridWriter()
-        elif isinstance(self.vtk_data,vtkPolyData):
-            writer = vtkXMLPolyDataWriter()
-        elif isinstance(self.vtk_data,vtkRectilinearGrid):
-            writer = vtkXMLRectilinearGridWriter()
+        writer: Optional[vtkXMLWriter] = (
+            vtkXMLImageDataWriter() if isinstance(self.vtk_data, vtkImageData) else
+            vtkXMLUnstructuredGridWriter() if isinstance(self.vtk_data, vtkUnstructuredGrid) else
+            vtkXMLPolyDataWriter() if isinstance(self.vtk_data, vtkPolyData) else
+            vtkXMLRectilinearGridWriter() if isinstance(self.vtk_data, vtkRectilinearGrid) else
+            None
+        )
+        if writer is None:
+            raise TypeError(f'unknown vtk_data type "{type(self.vtk_data)}"')
 
         default_ext = '.'+writer.GetDefaultFileExtension()
         ext = Path(fname).suffix
@@ -656,8 +655,8 @@ class VTK:
         for i,c in enumerate(colormap_.colors):
             lut.SetTableValue(i,c if len(c)==4 else np.append(c,1.0))
         lut.Build()
-
-        self.vtk_data.GetCellData().SetActiveScalars(label)
+        if label is not None:
+            self.vtk_data.GetCellData().SetActiveScalars(label)
         mapper = vtkDataSetMapper()
         mapper.SetInputData(self.vtk_data)
         mapper.SetLookupTable(lut)
