@@ -1164,9 +1164,25 @@ class TestRotation:
         assert (.9 < sigma/sigma_out < 1.1) and p > 1e-2, f'{sigma/sigma_out},{p}'
 
 
+    @pytest.mark.parametrize('examples',[
+        ([np.pi/4.,0.],[np.pi/2.,0.],False,[1,0,1],[1,0,0]),
+        ([54.73561,45.],[0.,0.],True,[1,1,1],[0,0,1]),
+        ([0.,0.],[0.,0.],False,[0,0,1],[0,0,1]),
+        ])
+    def test_from_fiber_component_examples(self,examples):
+        (crystal,sample,degrees,c,s) = examples
+        assert np.isclose(
+            np.linalg.norm(
+                np.cross(np.asarray(c),
+                         Rotation.from_fiber_component(crystal=crystal,
+                                                       sample=sample,
+                                                       degrees=degrees)@np.asarray(s))
+                         ),0.0)
+
+
     @pytest.mark.parametrize('sigma',[5,10,15,20])
     @pytest.mark.parametrize('shape',[1000,10000,100000,(10,100)])
-    def test_from_fiber_component(self,sigma,shape):
+    def test_from_fiber_component_sigma_shape(self,sigma,shape):
 
         def astuple(a):
             return tuple(a) if hasattr(a,'__len__') else (a,)
@@ -1178,7 +1194,7 @@ class TestRotation:
 
             f_in_C = np.array([np.sin(alpha[0])*np.cos(alpha[1]), np.sin(alpha[0])*np.sin(alpha[1]), np.cos(alpha[0])])
             f_in_S = np.array([np.sin( beta[0])*np.cos( beta[1]), np.sin( beta[0])*np.sin( beta[1]), np.cos( beta[0])])
-            ax = np.append(np.cross(f_in_C,f_in_S), - np.arccos(np.dot(f_in_C,f_in_S)))
+            ax = np.append(np.cross(f_in_S,f_in_C), - np.arccos(np.dot(f_in_S,f_in_C)))
             n = Rotation.from_axis_angle(ax if ax[3] > 0.0 else -ax,normalize=True)           # rotation to align fiber axis in crystal and sample system
             o = Rotation.from_fiber_component(alpha,beta,np.radians(sigma),shape,False)
             angles = np.arccos(np.clip(np.dot(o@np.broadcast_to(f_in_S,astuple(shape)+(3,)),n@f_in_S),-1,1))
