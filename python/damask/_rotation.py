@@ -1309,7 +1309,7 @@ class Rotation:
         Create a relatively strong basal texture ([0 0 0 1] ǀǀ z=ND) consisting of 320 orientations:
 
         >>> import damask
-        >>> basal = damask.Rotation.from_fiber_component([0.,0.],[0.,0.],shape=320,sigma=10,degrees=True)
+        >>> basal = damask.Rotation.from_fiber_component([0.,0.],[0.,0.],shape=320,sigma=10)
 
         """
         rng = np.random.default_rng(rng_seed)
