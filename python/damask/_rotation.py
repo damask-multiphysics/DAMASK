@@ -631,7 +631,7 @@ class Rotation:
             Misorientation.
 
         """
-        return other*~self
+        return ~(self*~other)
 
 
     ################################################################################################
