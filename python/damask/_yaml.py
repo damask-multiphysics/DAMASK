@@ -18,6 +18,7 @@ from ._typehints import FileHandle
 from . import Rotation
 from . import util
 
+
 MyType = TypeVar('MyType', bound='YAML')
 
 class NiceDumper(SafeDumper):

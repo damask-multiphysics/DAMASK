@@ -1,5 +1,5 @@
 import copy
-from typing import Optional, Union, TypeVar
+from typing import Tuple, Optional, Union, TypeVar
 
 import numpy as np
 
@@ -8,6 +8,7 @@ from . import Rotation
 from . import Crystal
 from . import util
 from . import tensor
+
 
 MyType = TypeVar('MyType', bound='Orientation')
 
@@ -463,9 +464,9 @@ class Orientation(Rotation,Crystal):
                                 else [-np.inf,        -np.inf,   -np.inf]) & self.in_FZ
 
 
-    def disorientation(self,
-                       other: 'Orientation',
-                       return_operators: bool = False) -> object:
+    def disorientation(self: MyType,
+                       other: MyType,
+                       return_operators: bool = False) -> Union[Tuple[MyType, np.ndarray], MyType]:
         """
         Calculate disorientation between self and given other orientation.
 
@@ -549,9 +550,9 @@ class Orientation(Rotation,Crystal):
                )
 
 
-    def average(self,
+    def average(self: MyType,                                                                       # type: ignore[override]
                 weights: Optional[FloatSequence] = None,
-                return_cloud: bool = False):
+                return_cloud: bool = False) -> Union[Tuple[MyType, MyType], MyType]:
         """
         Return orientation average over last dimension.
 
@@ -578,8 +579,8 @@ class Orientation(Rotation,Crystal):
 
         """
         eq = self.equivalent
-        m  = eq.misorientation(self[...,0].reshape((1,)+self.shape[:-1]+(1,))             # type: ignore
-                                          .broadcast_to(eq.shape)).as_axis_angle()[...,3] # type: ignore
+        m  = eq.misorientation(self[...,0].reshape((1,)+self.shape[:-1]+(1,))                       # type: ignore
+                                          .broadcast_to(eq.shape)).as_axis_angle()[...,3]           # type: ignore
         r = Rotation(np.squeeze(np.take_along_axis(eq.quaternion,
                                                    np.argmin(m,axis=0)[np.newaxis,...,np.newaxis],
                                                    axis=0),

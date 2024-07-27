@@ -629,10 +629,10 @@ def _docstringer(docstring: _Union[str, _Callable],
                                  docstring_,flags=_re.MULTILINE)
         else:
             section_content_regex = fr'{section_regex}(?P<content>.*?)\n *(\n|\Z)'
-            adopted_: str = adopted.__doc__ if callable(adopted) else adopted #type: ignore
+            adopted_: str = adopted.__doc__ if callable(adopted) else adopted                       #type: ignore
             try:
                 if _re.search(fr'{section_regex}', adopted_, flags=_re.MULTILINE):
-                    adopted_ = _re.search(section_content_regex, #type: ignore
+                    adopted_ = _re.search(section_content_regex,                                    #type: ignore
                                           adopted_,
                                           flags=_re.MULTILINE|_re.DOTALL).group('content')
             except AttributeError:
@@ -645,7 +645,7 @@ def _docstringer(docstring: _Union[str, _Callable],
                 f'{" "*-shift}{line}') for line in adopted_.split('\n') if line.strip()])
 
             if _re.search(section_regex, docstring_, flags=_re.MULTILINE):
-                docstring_section_content = _re.search(section_content_regex, # type: ignore
+                docstring_section_content = _re.search(section_content_regex,                       # type: ignore
                                                        docstring_,
                                                        flags=_re.MULTILINE|_re.DOTALL).group('content')
                 a_items, d_items = (_re.findall('^[ ]*([A-Za-z0-9_ ]*?)[ ]*:',content,flags=_re.MULTILINE)
@@ -699,7 +699,7 @@ def extend_docstring(docstring: _Union[None, str, _Callable] = None,
 
 def pass_on(keyword: str,
             target: _Callable,
-            wrapped: _Callable = None) -> _Callable: # type: ignore
+            wrapped: _Callable = None) -> _Callable:                                                # type: ignore
     """
     Decorator: Combine signatures of 'wrapped' and 'target' functions and pass on output of 'target' as 'keyword' argument.
 

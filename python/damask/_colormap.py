@@ -18,6 +18,7 @@ from ._typehints import FloatSequence, FileHandle
 from . import util
 from . import Table
 
+
 _EPS   = 216./24389.
 _KAPPA = 24389./27.
 _REF_WHITE = np.array([.95047, 1.00000, 1.08883])                                                   # Observer = 2, Illuminant = D65
