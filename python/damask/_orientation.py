@@ -550,6 +550,91 @@ class Orientation(Rotation,Crystal):
                )
 
 
+    def disorientation_angle(self: MyType,
+                             other: MyType) -> np.ndarray:
+        """
+        Calculate disorientation angle between self and given other orientation.
+
+        Parameters
+        ----------
+        other : Orientation
+            Orientation to which the disorientation angle is computed.
+            Compatible innermost dimensions will blend.
+
+        Returns
+        -------
+        omega : np.ndarray
+            Disorientation angle.
+
+        Notes
+        -----
+        Requires same crystal family for both orientations.
+
+        References
+        ----------
+        Lionel Germain, personal communication.
+
+        """
+        q_abs = np.abs((self*~other).quaternion)
+
+        if   'triclinic' == other.family == self.family:
+            trace_max = q_abs[...,0:1]
+
+        elif 'monoclinic' == other.family == self.family:
+            trace_max = np.maximum(q_abs[...,0:1],
+                                   q_abs[...,2:3])
+
+        elif 'orthorhombic' == other.family == self.family:
+            trace_max = np.maximum.reduce([q_abs[...,0:1],
+                                           q_abs[...,1:2],
+                                           q_abs[...,2:3],
+                                           q_abs[...,3:4]])
+
+        elif 'tetragonal' == other.family == self.family:
+            m1,m2,m3,m4 = np.split(q_abs,4,axis=-1)
+
+            trace_max = np.maximum.reduce([m1,m2,m3,m4,
+                                           (m1+m4)*np.sqrt(2.)/2.,
+                                           (m2+m3)*np.sqrt(2.)/2.])
+
+        elif 'hexagonal' == other.family == self.family:
+            m1,m2,m3,m4 = np.split(q_abs,4,axis=-1)
+
+            mask = m1 < m4
+            m1[mask],m4[mask] = m4[mask],m1[mask]
+            mask = m2 < m3
+            m2[mask],m3[mask] = m3[mask],m2[mask]
+
+            trace_max = np.maximum.reduce([m1,m2,
+                                           m1*np.sqrt(3.)/2.+m4*.5,
+                                           m2*np.sqrt(3.)/2.+m3*.5])
+
+        elif 'cubic' == other.family == self.family:
+            m1,m2,m3,m4 = np.split(q_abs,4,axis=-1)
+
+            trace_max = np.sum(q_abs,axis=-1,keepdims=True)*.5
+
+            mask = m1 < m2
+            m1[mask],m2[mask] = m2[mask],m1[mask]
+            mask = m3 < m4
+            m3[mask],m4[mask] = m4[mask],m3[mask]
+
+            mask1 = m1 > m3
+            mask2 = np.logical_and(mask1,m2<m3)
+            mask3 = np.logical_not(mask1)
+
+            m2[mask2] = m3[mask2]
+            m2[mask3] = np.where(m4[mask3]<m1[mask3],m1[mask3],m4[mask3])
+            m1[mask3] = m3[mask3]
+
+            trace_max = np.maximum.reduce([trace_max,m1,(m1+m2)*np.sqrt(2.)/2.])
+
+        else:
+            return self.disorientation(other).as_axis_angle(pair=True)[1]                           # type: ignore
+
+        return 2.*np.arccos(np.clip(np.round(trace_max[...,0],15),None,1.))
+
+
     def average(self: MyType,                                                                       # type: ignore[override]
                 weights: Optional[FloatSequence] = None,
                 return_cloud: bool = False) -> Union[Tuple[MyType, MyType], MyType]:
@@ -579,8 +664,8 @@ class Orientation(Rotation,Crystal):
 
         """
         eq = self.equivalent
-        m  = eq.misorientation(self[...,0].reshape((1,)+self.shape[:-1]+(1,))                       # type: ignore
-                                          .broadcast_to(eq.shape)).as_axis_angle()[...,3]           # type: ignore
+        m  = eq.misorientation_angle(self[...,0].reshape((1,)+self.shape[:-1]+(1,))
+                                                .broadcast_to(eq.shape))
         r = Rotation(np.squeeze(np.take_along_axis(eq.quaternion,
                                                    np.argmin(m,axis=0)[np.newaxis,...,np.newaxis],
                                                    axis=0),

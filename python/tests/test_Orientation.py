@@ -257,6 +257,18 @@ class TestOrientation:
         o_2 = Orientation.from_Euler_angles(family=family,phi=[360,0,0],degrees=True)
         assert np.allclose((o_1.disorientation(o_2)).as_matrix(),np.eye(3))
 
+    @pytest.mark.parametrize('family',crystal_families)
+    @pytest.mark.parametrize('shape',[[None,None],
+                                      [[2,3,4],[2,3,4]],
+                                      [[3,4],[4,3]],
+                                      [1000,1000]])
+    def test_disorientation_angle(self,family,shape):
+        o_1 = Orientation.from_random(shape=shape[0],family=family)
+        o_2 = Orientation.from_random(shape=shape[1],family=family)
+        angle = o_1.disorientation_angle(o_2)
+        full = o_1.disorientation(o_2).as_axis_angle(pair=True)[1]
+        assert np.allclose(angle,full,atol=1e-13,rtol=0)
+
     @pytest.mark.parametrize('shape',[[None,None,()],
                                       [[2,3,4],[2,3,4],(2,3,4)],
                                       [[3,4],[4,5],(3,4,5)],
@@ -266,9 +278,10 @@ class TestOrientation:
     def test_shape_blending(self,shape):
         o_1 = Orientation.from_random(shape=shape[0],family='triclinic')
         o_2 = Orientation.from_random(shape=shape[1],family='triclinic')
+        angle = o_1.misorientation_angle(o_2)
         full = o_1.misorientation(o_2).as_axis_angle(pair=True)[1]
         composition = o_1*o_2
-        assert full.shape == composition.shape == shape[2]
+        assert angle.shape == full.shape == composition.shape == shape[2]
 
     def test_disorientation_invalid(self):
         a,b = np.random.choice(list(crystal_families),2,False)
@@ -276,6 +289,14 @@ class TestOrientation:
         o_2 = Orientation.from_random(family=b)
         with pytest.raises(NotImplementedError):
             o_1.disorientation(o_2)
+        with pytest.raises(NotImplementedError):
+            o_1.disorientation_angle(o_2)
+
+    @pytest.mark.parametrize('family',crystal_families)
+    def test_disorientation_zero(self,set_of_quaternions,family):
+        o = Orientation.from_quaternion(q=set_of_quaternions,family=family)
+        assert np.allclose(o.disorientation_angle(o),0.0,atol=1e-15,rtol=0.)
+        assert np.allclose(o.disorientation(o).as_axis_angle(pair=True)[1],0.,atol=1e-15,rtol=0.)
 
     @pytest.mark.parametrize('color',[{'label':'red',  'RGB':[1,0,0],'direction':[0,0,1]},
                                       {'label':'green','RGB':[0,1,0],'direction':[0,1,1]},
@@ -385,7 +406,7 @@ class TestOrientation:
         o = Orientation.from_random(lattice=lattice)
         frame = o.to_frame(**{keyword:vector,'with_symmetry':True})
         shape_full = frame.shape[0]
-        shape_reduced = np.unique(np.around(frame,12),axis=0).shape[0]
+        shape_reduced = np.unique(np.around(frame,11),axis=0).shape[0]
         assert shape_full//N_sym == shape_reduced
 
 

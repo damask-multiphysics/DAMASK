@@ -1101,6 +1101,22 @@ class TestRotation:
         R_2 = Rotation.from_Euler_angles([360,0,0],degrees=True)
         assert np.allclose(R_1.misorientation(R_2).as_matrix(),np.eye(3))
 
+    def test_misorientation_zero(self,set_of_quaternions):
+        r = Rotation.from_quaternion(set_of_quaternions)
+        assert np.allclose(r.misorientation_angle(r),0.0,atol=1e-15,rtol=0.)
+        assert np.allclose(r.misorientation(r).as_axis_angle(pair=True)[1],0.,atol=1e-15,rtol=0.)
+
+    @pytest.mark.parametrize('shape',[[None,None],
+                                      [[2,3,4],[2,3,4]],
+                                      [[3,4],[4,3]],
+                                      [1000,1000]])
+    def test_misorientation_angle(self,shape):
+        r_1 = Rotation.from_random(shape=shape[0])
+        r_2 = Rotation.from_random(shape=shape[1])
+        angle = r_1.misorientation_angle(r_2)
+        full = r_1.misorientation(r_2).as_axis_angle(pair=True)[1]
+        assert np.allclose(angle,full,atol=1e-13,rtol=0)
+
     def test_composition(self):
         a,b = (Rotation.from_random(),Rotation.from_random())
         c = a * b
@@ -1120,9 +1136,10 @@ class TestRotation:
     def test_shape_blending(self,shape):
         r_1 = Rotation.from_random(shape=shape[0])
         r_2 = Rotation.from_random(shape=shape[1])
+        angle = r_1.misorientation_angle(r_2)
         full = r_1.misorientation(r_2).as_axis_angle(pair=True)[1]
         composition = r_1*r_2
-        assert full.shape == composition.shape == shape[2]
+        assert angle.shape == full.shape == composition.shape == shape[2]
 
     def test_composition_inverse(self):
         a,b = (Rotation.from_random(),Rotation.from_random())
