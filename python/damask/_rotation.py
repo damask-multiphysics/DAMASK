@@ -1,5 +1,6 @@
 import sys
 import copy
+import builtins
 from typing import Optional, Union, Sequence, Tuple, Literal, List, TypeVar
 
 import numpy as np
@@ -8,6 +9,7 @@ from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
 from . import tensor
 from . import util
 from . import grid_filters
+
 
 _P = -1
 
@@ -112,8 +114,9 @@ class Rotation:
     copy = __copy__
 
 
-    def __getitem__(self,
-                    item: Union[Tuple[Union[None, int, slice]], int, bool, np.bool_, np.ndarray]):
+    def __getitem__(self: MyType,
+                    item: Union[Tuple[Union[None, int, slice, "builtins.ellipsis"], ...],
+                                int, bool, np.bool_, np.ndarray]) -> MyType:
         """
         Return self[item].
 
@@ -631,7 +634,7 @@ class Rotation:
             Misorientation.
 
         """
-        return other*~self
+        return ~(self*~other)
 
 
     ################################################################################################

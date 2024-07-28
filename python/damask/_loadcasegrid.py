@@ -41,7 +41,7 @@ class LoadcaseGrid(YAML):
         """
         kwargs: Dict[str,Union[Dict[str,str],List[Dict[str,Any]]]] = {}
         default: Union[List,Dict]
-        for arg,value,default in [('solver',solver,{}),('loadstep',loadstep,[])]: # type: ignore[assignment]
+        for arg,value,default in [('solver',solver,{}),('loadstep',loadstep,[])]:                   # type: ignore[assignment]
             if value is not None:
                 kwargs[arg] = value
             elif config is None:
