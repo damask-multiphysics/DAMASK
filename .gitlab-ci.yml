@@ -65,6 +65,10 @@ create_testroot:
 ###################################################################################################
 setuptools:
   stage: python
+  tags:
+    - matesting2-container-runner
+  image: git.damask.mpie.de:5050/damask/damask:python310_2407
+  before_script: []
   script:
     - sed -i 's/-[[:digit:]]*-.*//' VERSION
     - cd python
@@ -72,13 +76,22 @@ setuptools:
 
 pytest:
   stage: python
+  tags:
+    - matesting2-container-runner
+  image: git.damask.mpie.de:5050/damask/damask:python310_2407
+  before_script: []
   script:
+    - PYTHONPATH=$(pwd)/python:$PYTHONPATH
     - cd python
-    - pytest --basetemp ${TESTROOT}/python -v --cov --damaskroot=${CI_PROJECT_DIR}
+    - python3 -m pytest -v --cov=damask --cov-report=xml
     - coverage report --fail-under=90 --show-missing
 
 mypy:
   stage: python
+  tags:
+    - matesting2-container-runner
+  image: git.damask.mpie.de:5050/damask/damask:python310_2407
+  before_script: []
   script:
     - cd python
     - mypy damask
