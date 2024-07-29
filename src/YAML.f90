@@ -122,7 +122,7 @@ recursive function parse_flow(YAML_flow) result(node)
       d = s + scan(flow_string(s+1_pI64:),':',kind=pI64)
       e = d + find_end(flow_string(d+1_pI64:),'}')
       key = trim(adjustl(flow_string(s+1_pI64:d-1_pI64)))
-      if (quotedStr(key)) key = key(2:len(key)-1)
+      if (quotedStr(key)) key = key(2_pI64:len(key,kind=pI64)-1_pI64)
       myVal => parse_flow(flow_string(d+1_pI64:e-1_pI64))                                           ! parse items (recursively)
 
       select type (node)
@@ -148,7 +148,7 @@ recursive function parse_flow(YAML_flow) result(node)
       select type (node)
         class is (tScalar)
           if (quotedStr(flow_string)) then
-            node = trim(adjustl(flow_string(2:len(flow_string)-1)))
+            node = trim(adjustl(flow_string(2_pI64:len(flow_string,kind=pI64)-1_pI64)))
           else
             node = trim(adjustl(flow_string))
           end if
@@ -198,11 +198,11 @@ logical function quotedStr(line)
 
   quotedStr = .false.
 
-  if (len(line) == 0) return
+  if (len(line,kind=pI64) == 0) return
 
-  if (scan(line(:1),IO_QUOTES) == 1) then
+  if (scan(line(:1),IO_QUOTES,kind=pI64) == 1_pI64) then
     quotedStr = .true.
-    if (line(len(line):len(line)) /= line(:1)) call IO_error(710,ext_msg=line)
+    if (line(len(line,kind=pI64):len(line,kind=pI64)) /= line(:1)) call IO_error(710,ext_msg=line)
   end if
 
 end function quotedStr
@@ -228,7 +228,7 @@ function to_flow(mixed) result(flow)
   block
     character(len=strlen,kind=c_char), pointer :: s
     call c_f_pointer(str_ptr,s)
-    flow = s(:len(s,pI64)-1_pI64)
+    flow = s(:len(s,kind=pI64)-1_pI64)
   end block
 
   call free_C(str_ptr)
@@ -243,13 +243,13 @@ end function to_flow
 ! In case of nested lists, an offset is added to determine the indent of the item block (skip
 ! leading dashes).
 !--------------------------------------------------------------------------------------------------
-integer function indentDepth(line,offset)
+integer(pI64) function indentDepth(line,offset)
 
   character(len=*), intent(in) :: line
-  integer, optional,intent(in) :: offset
+  integer(pI64), optional,intent(in) :: offset
 
 
-  indentDepth = verify(line,IO_WHITESPACE) - 1 + misc_optional(offset,0)
+  indentDepth = verify(line,IO_WHITESPACE,kind=pI64) - 1_pI64 + misc_optional(offset,0_pI64)
 
 end function indentDepth
 
@@ -262,7 +262,7 @@ logical function isFlow(line)
   character(len=*), intent(in) :: line
 
 
-  isFlow = index(adjustl(line),'[') == 1 .or. index(adjustl(line),'{') == 1
+  isFlow = index(adjustl(line),'[',kind=pI64) == 1_pI64 .or. index(adjustl(line),'{',kind=pI64) == 1_pI64
 
 end function isFlow
 
@@ -292,8 +292,8 @@ logical function isListItem(line)
 
 
   isListItem = .false.
-  if (len_trim(adjustl(line))> 2 .and. index(trim(adjustl(line)), '-') == 1) then
-    isListItem = scan(trim(adjustl(line)),' ') == 2
+  if (len_trim(adjustl(line),pI64)> 2_pI64 .and. index(trim(adjustl(line)),'-',kind=pI64) == 1_pI64) then
+    isListItem = scan(trim(adjustl(line)),' ',kind=pI64) == 2_pI64
   else
     isListItem = trim(adjustl(line)) == '-'
   end if
@@ -310,8 +310,8 @@ logical function isKeyValue(line)
   isKeyValue = .false.
 
 
-  if ( .not. isKey(line) .and. index(clean(line),':') > 0 .and. .not. isFlow(line)) then
-    if (index(clean(line),': ') > 0) isKeyValue = .true.
+  if ( .not. isKey(line) .and. index(clean(line),':',kind=pI64) > 0_pI64 .and. .not. isFlow(line)) then
+    if (index(clean(line),': ',kind=pI64) > 0_pI64) isKeyValue = .true.
   end if
 
 end function isKeyValue
@@ -326,11 +326,11 @@ logical function isKey(line)
   character(len=*), intent(in) :: line
 
 
-  if (len(clean(line)) == 0) then
+  if (len(clean(line),kind=pI64) == 0_pI64) then
     isKey = .false.
   else
-    isKey = index(clean(line),':',back=.false.) == len(clean(line)) .and. &
-            index(clean(line),':',back=.true.)  == len(clean(line)) .and. &
+    isKey = index(clean(line),':',back=.false.,kind=pI64) == len(clean(line),kind=pI64) .and. &
+            index(clean(line),':',back=.true.,kind=pI64)  == len(clean(line),kind=pI64) .and. &
             .not. isFlow(line)
   end if
 
@@ -345,7 +345,7 @@ logical function isFlowList(line)
   character(len=*), intent(in) :: line
 
 
-  isFlowList = index(adjustl(line),'[') == 1
+  isFlowList = index(adjustl(line),'[',kind=pI64) == 1_pI64
 
 end function isFlowList
 
@@ -357,15 +357,15 @@ end function isFlowList
 subroutine skip_empty_lines(blck,s_blck)
 
   character(len=*), intent(in)     :: blck
-  integer,          intent(inout)  :: s_blck
+  integer(pI64),    intent(inout)  :: s_blck
 
   logical :: empty
 
 
   empty = .true.
-  do while (empty .and. len_trim(blck(s_blck:)) /= 0)
-    empty = len_trim(clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == 0
-    if (empty) s_blck = s_blck + index(blck(s_blck:),IO_EOL)
+  do while (empty .and. len_trim(blck(s_blck:),pI64) /= 0_pI64)
+    empty = len_trim(clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL,kind=pI64) - 2_pI64)),pI64) == 0_pI64
+    if (empty) s_blck = s_blck + index(blck(s_blck:),IO_EOL,kind=pI64)
   end do
 
 end subroutine skip_empty_lines
@@ -378,17 +378,17 @@ end subroutine skip_empty_lines
 subroutine skip_file_header(blck,s_blck)
 
   character(len=*), intent(in)     :: blck
-  integer,          intent(inout)  :: s_blck
+  integer(pI64),    intent(inout)  :: s_blck
 
   character(len=:), allocatable    :: line
 
 
-  line = clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
-  if (index(adjustl(line),'%YAML') == 1) then
-    s_blck = s_blck + index(blck(s_blck:),IO_EOL)
+  line = clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL,kind=pI64) - 2_pI64))
+  if (index(adjustl(line),'%YAML',kind=pI64) == 1_pI64) then
+    s_blck = s_blck + index(blck(s_blck:),IO_EOL,kind=pI64)
     call skip_empty_lines(blck,s_blck)
-    if (trim(clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == '---') then
-      s_blck = s_blck + index(blck(s_blck:),IO_EOL)
+    if (trim(clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL,kind=pI64) - 2_pI64))) == '---') then
+      s_blck = s_blck + index(blck(s_blck:),IO_EOL,kind=pI64)
     else
       call IO_error(708,ext_msg = line)
     end if
@@ -404,24 +404,24 @@ logical function flow_is_closed(str,e_char)
 
   character(len=*), intent(in) :: str
   character,        intent(in) :: e_char                                                            !< end of list/dict  ( '}' or ']')
-  integer                      :: N_sq, &                                                           !< number of open square brackets
+  integer(pI64)                :: N_sq, &                                                           !< number of open square brackets
                                   N_cu, &                                                           !< number of open curly brackets
                                   i
   character(len=:), allocatable:: line
 
 
   flow_is_closed = .false.
-  N_sq = 0
-  N_cu = 0
-  if (e_char == ']') line = str(index(str(:),'[')+1:)
-  if (e_char == '}') line = str(index(str(:),'{')+1:)
+  N_sq = 0_pI64
+  N_cu = 0_pI64
+  if (e_char == ']') line = str(index(str(:),'[',kind=pI64)+1:)
+  if (e_char == '}') line = str(index(str(:),'{',kind=pI64)+1:)
 
-  do i = 1, len_trim(line)
-    flow_is_closed = (N_sq==0 .and. N_cu==0 .and. scan(line(i:i),e_char) == 1)
-    N_sq = N_sq + merge(1,0,line(i:i) == '[')
-    N_cu = N_cu + merge(1,0,line(i:i) == '{')
-    N_sq = N_sq - merge(1,0,line(i:i) == ']')
-    N_cu = N_cu - merge(1,0,line(i:i) == '}')
+  do i = 1_pI64, len_trim(line,pI64)
+    flow_is_closed = (N_sq==0 .and. N_cu==0 .and. scan(line(i:i),e_char,kind=pI64) == 1_pI64)
+    N_sq = N_sq + merge(1_pI64,0_pI64,line(i:i) == '[')
+    N_cu = N_cu + merge(1_pI64,0_pI64,line(i:i) == '{')
+    N_sq = N_sq - merge(1_pI64,0_pI64,line(i:i) == ']')
+    N_cu = N_cu - merge(1_pI64,0_pI64,line(i:i) == '}')
   end do
 
 end function flow_is_closed
@@ -433,7 +433,7 @@ end function flow_is_closed
 subroutine remove_line_break(blck,s_blck,e_char,flow_line)
 
   character(len=*), intent(in)               :: blck                                                !< YAML in mixed style
-  integer,          intent(inout)            :: s_blck
+  integer(pI64),    intent(inout)            :: s_blck
   character,        intent(in)               :: e_char                                              !< end of list/dict  ( '}' or ']')
   character(len=:), allocatable, intent(out) :: flow_line
   logical :: line_end
@@ -443,9 +443,9 @@ subroutine remove_line_break(blck,s_blck,e_char,flow_line)
   flow_line = ''
 
   do while (.not. line_end)
-    flow_line = flow_line//clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))//' '
+    flow_line = flow_line//clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL,kind=pI64) - 2_pI64))//' '
     line_end  = flow_is_closed(flow_line,e_char)
-    s_blck    = s_blck + index(blck(s_blck:),IO_EOL)
+    s_blck    = s_blck + index(blck(s_blck:),IO_EOL,kind=pI64)
   end do
 
 end subroutine remove_line_break
@@ -457,28 +457,28 @@ end subroutine remove_line_break
 subroutine list_item_inline(blck,s_blck,inline,offset)
 
   character(len=*), intent(in)                 :: blck                                              !< YAML in mixed style
-  integer,          intent(inout)              :: s_blck
+  integer(pI64),    intent(inout)              :: s_blck
   character(len=:), allocatable, intent(out)   :: inline
-  integer,                       intent(inout) :: offset
+  integer(pI64),                 intent(inout) :: offset
 
   character(len=:), allocatable :: line
-  integer :: indent,indent_next
+  integer(pI64) :: indent,indent_next
 
 
   indent = indentDepth(blck(s_blck:),offset)
-  line   = clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
-  inline = line(indent-offset+3:)
-  s_blck = s_blck + index(blck(s_blck:),IO_EOL)
+  line   = clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL,kind=pI64) - 2_pI64))
+  inline = line(indent-offset+3_pI64:)
+  s_blck = s_blck + index(blck(s_blck:),IO_EOL,kind=pI64)
 
   indent_next = indentDepth(blck(s_blck:))
 
   do while (indent_next > indent)
-    inline = inline//' '//trim(adjustl(clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))))
-    s_blck = s_blck + index(blck(s_blck:),IO_EOL)
+    inline = inline//' '//trim(adjustl(clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL,kind=pI64) - 2_pI64))))
+    s_blck = s_blck + index(blck(s_blck:),IO_EOL,kind=pI64)
     indent_next = indentDepth(blck(s_blck:))
   end do
 
-  if (scan(inline,",") > 0) inline = '"'//inline//'"'
+  if (scan(inline,",",kind=pI64) > 0_pI64) inline = '"'//inline//'"'
 
 end subroutine list_item_inline
 
@@ -490,57 +490,57 @@ end subroutine list_item_inline
 recursive subroutine line_isFlow(flow,s_flow,line)
 
   character(len=*), intent(inout) :: flow                                                           !< YAML in flow style only
-  integer,          intent(inout) :: s_flow                                                         !< start position in flow
+  integer(pI64),    intent(inout) :: s_flow                                                         !< start position in flow
   character(len=*), intent(in)    :: line
 
-  integer :: &
+  integer(pI64) :: &
     s, &
     list_chunk, &
     dict_chunk
 
 
-  if (index(adjustl(line),'[') == 1) then
-    s = index(line,'[')
+  if (index(adjustl(line),'[',kind=pI64) == 1_pI64) then
+    s = index(line,'[',kind=pI64)
     flow(s_flow:s_flow) = '['
-    s_flow = s_flow+1
-    do while (s < len_trim(line))
-      list_chunk = s + find_end(line(s+1:),']')
-      if (iskeyValue(line(s+1:list_chunk-1))) then
+    s_flow = s_flow + 1_pI64
+    do while (s < len_trim(line,pI64))
+      list_chunk = s + find_end(line(s+1_pI64:),']')
+      if (iskeyValue(line(s+1_pI64:list_chunk-1_pI64))) then
         flow(s_flow:s_flow) = '{'
-        s_flow = s_flow+1
-        call keyValue_toFlow(flow,s_flow,line(s+1:list_chunk-1))
+        s_flow = s_flow + 1_pI64
+        call keyValue_toFlow(flow,s_flow,line(s+1_pI64:list_chunk-1_pI64))
         flow(s_flow:s_flow) = '}'
-        s_flow = s_flow+1
-      elseif (isFlow(line(s+1:list_chunk-1))) then
-        call line_isFlow(flow,s_flow,line(s+1:list_chunk-1))
+        s_flow = s_flow + 1_pI64
+      elseif (isFlow(line(s+1_pI64:list_chunk-1_pI64))) then
+        call line_isFlow(flow,s_flow,line(s+1_pI64:list_chunk-1_pI64))
       else
-        call line_toFlow(flow,s_flow,line(s+1:list_chunk-1))
+        call line_toFlow(flow,s_flow,line(s+1_pI64:list_chunk-1_pI64))
       end if
-      flow(s_flow:s_flow+1) = ', '
-      s_flow = s_flow+2
-      s = s + find_end(line(s+1:),']')
+      flow(s_flow:s_flow+1_pI64) = ', '
+      s_flow = s_flow + 2_pI64
+      s = s + find_end(line(s+1_pI64:),']')
     end do
-    s_flow = s_flow-1
-    if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow-1
+    s_flow = s_flow - 1_pI64
+    if (flow(s_flow-1_pI64:s_flow-1_pI64) == ',') s_flow = s_flow - 1_pI64
     flow(s_flow:s_flow) = ']'
-    s_flow = s_flow+1
+    s_flow = s_flow + 1_pI64
 
-  elseif (index(adjustl(line),'{') == 1) then
-    s = index(line,'{')
+  elseif (index(adjustl(line),'{',kind=pI64) == 1_pI64) then
+    s = index(line,'{',kind=pI64)
     flow(s_flow:s_flow) = '{'
-    s_flow = s_flow+1
-    do while (s < len_trim(line))
-      dict_chunk = s + find_end(line(s+1:),'}')
-      if (.not. iskeyValue(line(s+1:dict_chunk-1))) call IO_error(705,ext_msg=line)
-      call keyValue_toFlow(flow,s_flow,line(s+1:dict_chunk-1))
-      flow(s_flow:s_flow+1) = ', '
-      s_flow = s_flow+2
+    s_flow = s_flow + 1_pI64
+    do while (s < len_trim(line,pI64))
+      dict_chunk = s + find_end(line(s+1_pI64:),'}')
+      if (.not. iskeyValue(line(s+1_pI64:dict_chunk-1_pI64))) call IO_error(705,ext_msg=line)
+      call keyValue_toFlow(flow,s_flow,line(s+1_pI64:dict_chunk-1_pI64))
+      flow(s_flow:s_flow+1_pI64) = ', '
+      s_flow = s_flow + 2_pI64
       s = s + find_end(line(s+1:),'}')
     end do
-    s_flow = s_flow-1
-    if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow-1
+    s_flow = s_flow - 1_pI64
+    if (flow(s_flow-1_pI64:s_flow-1_pI64) == ',') s_flow = s_flow - 1_pI64
     flow(s_flow:s_flow) = '}'
-    s_flow = s_flow+1
+    s_flow = s_flow + 1_pI64
   else
     call line_toFlow(flow,s_flow,line)
   end if
@@ -555,26 +555,26 @@ end subroutine line_isFlow
 recursive subroutine keyValue_toFlow(flow,s_flow,line)
 
   character(len=*), intent(inout) :: flow                                                           !< YAML in flow style only
-  integer,          intent(inout) :: s_flow                                                         !< start position in flow
+  integer(pI64),    intent(inout) :: s_flow                                                         !< start position in flow
   character(len=*), intent(in)    :: line
 
   character(len=:), allocatable   :: line_asStandard                                                ! standard form of <key>: <value>
-  integer :: &
+  integer(pI64) :: &
     d_flow, &
     col_pos, &
     offset_value
 
 
-  col_pos = index(line,':')
-  if (line(col_pos+1:col_pos+1) /= ' ') call IO_error(704,ext_msg=line)
-  if (isFlow(line(col_pos+1:))) then
-    d_flow = len_trim(adjustl(line(:col_pos)))
-    flow(s_flow:s_flow+d_flow+1) = trim(adjustl(line(:col_pos)))//' '
-    s_flow = s_flow + d_flow+1
-    call line_isFlow(flow,s_flow,line(col_pos+1:))
+  col_pos = index(line,':',kind=pI64)
+  if (line(col_pos+1_pI64:col_pos+1_pI64) /= ' ') call IO_error(704,ext_msg=line)
+  if (isFlow(line(col_pos+1_pI64:))) then
+    d_flow = len_trim(adjustl(line(:col_pos)),pI64)
+    flow(s_flow:s_flow+d_flow+1_pI64) = trim(adjustl(line(:col_pos)))//' '
+    s_flow = s_flow + d_flow + 1_pI64
+    call line_isFlow(flow,s_flow,line(col_pos+1_pI64:))
   else
-    offset_value = indentDepth(line(col_pos+2:))
-    line_asStandard = line(:col_pos+1)//line(col_pos+2+offset_value:)
+    offset_value = indentDepth(line(col_pos+2_pI64:))
+    line_asStandard = line(:col_pos+1_pI64)//line(col_pos+2_pI64+offset_value:)
     call line_toFlow(flow,s_flow,line_asStandard)
   end if
 
@@ -587,13 +587,13 @@ end subroutine keyValue_toFlow
 subroutine line_toFlow(flow,s_flow,line)
 
   character(len=*), intent(inout) :: flow                                                           !< YAML in flow style only
-  integer,          intent(inout) :: s_flow                                                         !< start position in flow
+  integer(pI64),    intent(inout) :: s_flow                                                         !< start position in flow
   character(len=*), intent(in)    :: line
 
-  integer :: &
-    d_flow
+  integer(pI64) :: d_flow
 
-  d_flow = len_trim(adjustl(line))
+
+  d_flow = len_trim(adjustl(line),pI64)
   flow(s_flow:s_flow+d_flow) = trim(adjustl(line))
   s_flow = s_flow + d_flow
 
@@ -612,34 +612,35 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
 
   character(len=*), intent(in)    :: blck                                                           !< YAML in mixed style
   character(len=*), intent(inout) :: flow                                                           !< YAML in flow style only
-  integer,          intent(inout) :: s_blck, &                                                      !< start position in blck
+  integer(pI64),    intent(inout) :: s_blck, &                                                      !< start position in blck
                                      s_flow, &                                                      !< start position in flow
                                      offset                                                         !< stores leading '- ' in nested lists
   character(len=:), allocatable :: line,flow_line,inline
-  integer :: e_blck,indent
+  integer(pI64) :: e_blck,indent
+
 
   indent = indentDepth(blck(s_blck:),offset)
-  do while (s_blck <= len_trim(blck))
-    e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
+  do while (s_blck <= len_trim(blck,pI64))
+    e_blck = s_blck + index(blck(s_blck:),IO_EOL,kind=pI64) - 2_pI64
     line = clean(blck(s_blck:e_blck))
     if (trim(line) == '---' .or. trim(line) == '...') then
       exit
-    elseif (len_trim(line) == 0) then
-      s_blck = e_blck + 2                                                                           ! forward to next line
+    elseif (len_trim(line,pI64) == 0_pI64) then
+      s_blck = e_blck + 2_pI64                                                                      ! forward to next line
       cycle
     elseif (indentDepth(line,offset) > indent) then
       call decide(blck,flow,s_blck,s_flow,offset)
-      offset = 0
+      offset = 0_pI64
       flow(s_flow:s_flow+1) = ', '
-      s_flow = s_flow + 2
+      s_flow = s_flow + 2_pI64
     elseif (indentDepth(line,offset) < indent .or. .not. isListItem(line)) then
-      offset = 0
+      offset = 0_pI64
       exit                                                                                          ! job done (lower level)
     else
-      if (trim(adjustl(line)) == '-') then                                                           ! list item in next line
-        s_blck = e_blck + 2
+      if (trim(adjustl(line)) == '-') then                                                          ! list item in next line
+        s_blck = e_blck + 2_pI64
         call skip_empty_lines(blck,s_blck)
-        e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
+        e_blck = s_blck + index(blck(s_blck:),IO_EOL,kind=pI64) - 2_pI64
         line = clean(blck(s_blck:e_blck))
         if (trim(line) == '---') call IO_error(707,ext_msg=line)
         if (indentDepth(line) < indent .or. indentDepth(line) == indent) &
@@ -647,8 +648,8 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
 
         if (isScalar(line)) then
           call line_toFlow(flow,s_flow,line)
-          s_blck = e_blck +2
-          offset = 0
+          s_blck = e_blck + 2_pI64
+          offset = 0_pI64
         elseif (isFlow(line)) then
           if (isFlowList(line)) then
             call remove_line_break(blck,s_blck,']',flow_line)
@@ -656,39 +657,39 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
             call remove_line_break(blck,s_blck,'}',flow_line)
           end if
           call line_isFlow(flow,s_flow,flow_line)
-          offset = 0
+          offset = 0_pI64
         end if
       else                                                                                          ! list item in the same line
-        line = line(indentDepth(line)+3:)
+        line = line(indentDepth(line)+3_pI64:)
         if (isScalar(line)) then
           call list_item_inline(blck,s_blck,inline,offset)
-          offset = 0
+          offset = 0_pI64
           call line_toFlow(flow,s_flow,inline)
         elseif (isFlow(line)) then
-          s_blck = s_blck + index(blck(s_blck:),'-')
+          s_blck = s_blck + index(blck(s_blck:),'-',kind=pI64)
           if (isFlowList(line)) then
             call remove_line_break(blck,s_blck,']',flow_line)
           else
             call remove_line_break(blck,s_blck,'}',flow_line)
           end if
           call line_isFlow(flow,s_flow,flow_line)
-          offset = 0
+          offset = 0_pI64
         else                                                                                        ! non scalar list item
-          offset = offset + indentDepth(blck(s_blck:))+1                                            ! offset in spaces to be ignored
-          s_blck = s_blck + index(blck(s_blck:e_blck),'-')                                          ! s_blck after '-' symbol
+          offset = offset + indentDepth(blck(s_blck:))+1_pI64                                       ! offset in spaces to be ignored
+          s_blck = s_blck + index(blck(s_blck:e_blck),'-',kind=pI64)                                ! s_blck after '-' symbol
          end if
       end if
     end if
 
     if (isScalar(line) .or. isFlow(line)) then
-      flow(s_flow:s_flow+1) = ', '
-      s_flow = s_flow+2
+      flow(s_flow:s_flow+1_pI64) = ', '
+      s_flow = s_flow + 2_pI64
     end if
 
   end do
 
-  s_flow = s_flow-1
-  if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow-1
+  s_flow = s_flow-1_pI64
+  if (flow(s_flow-1_pI64:s_flow-1_pI64) == ',') s_flow = s_flow-1_pI64
 
 end subroutine lst
 
@@ -704,48 +705,48 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
 
   character(len=*), intent(in)    :: blck                                                           !< YAML in mixed style
   character(len=*), intent(inout) :: flow                                                           !< YAML in flow style only
-  integer,          intent(inout) :: s_blck, &                                                      !< start position in blck
+  integer(pI64),    intent(inout) :: s_blck, &                                                      !< start position in blck
                                      s_flow, &                                                      !< start position in flow
                                      offset
 
   character(len=:), allocatable :: line,flow_line
-  integer :: e_blck,indent,col_pos
+  integer(pI64) :: e_blck,indent,col_pos
   logical :: previous_isKey
 
   previous_isKey = .false.
 
   indent = indentDepth(blck(s_blck:),offset)
 
-  do while (s_blck <= len_trim(blck))
-    e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
+  do while (s_blck <= len_trim(blck,pI64))
+    e_blck = s_blck + index(blck(s_blck:),IO_EOL,kind=pI64) - 2_pI64
     line = clean(blck(s_blck:e_blck))
     if (trim(line) == '---' .or. trim(line) == '...') then
       exit
-    elseif (len_trim(line) == 0) then
-      s_blck = e_blck + 2                                                                           ! forward to next line
+    elseif (len_trim(line,pI64) == 0_pI64) then
+      s_blck = e_blck + 2_pI64                                                                      ! forward to next line
       cycle
     elseif (indentDepth(line,offset) < indent) then
       if (isScalar(line) .or. isFlow(line) .and. previous_isKey) &
         call IO_error(701,ext_msg=line)
-      offset = 0
+      offset = 0_pI64
       exit                                                                                          ! job done (lower level)
     elseif (indentDepth(line,offset) > indent .or. isListItem(line)) then
-      offset = 0
+      offset = 0_pI64
       call decide(blck,flow,s_blck,s_flow,offset)
     else
       if (isScalar(line)) call IO_error(701,ext_msg=line)
       if (isFlow(line))   call IO_error(702,ext_msg=line)
 
-      line = line(indentDepth(line)+1:)
+      line = line(indentDepth(line)+1_pI64:)
       if (previous_isKey) then
-        flow(s_flow-1:s_flow) = ', '
-        s_flow = s_flow+1
+        flow(s_flow-1_pI64:s_flow) = ', '
+        s_flow = s_flow + 1_pI64
       end if
 
       if (isKeyValue(line)) then
-        col_pos = index(line,':')
-        if (isFlow(line(col_pos+1:))) then
-          if (isFlowList(line(col_pos+1:))) then
+        col_pos = index(line,':',kind=pI64)
+        if (isFlow(line(col_pos+1_pI64:))) then
+          if (isFlowList(line(col_pos+1_pI64:))) then
             call remove_line_break(blck,s_blck,']',flow_line)
           else
             call remove_line_break(blck,s_blck,'}',flow_line)
@@ -753,29 +754,29 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
           call keyValue_toFlow(flow,s_flow,flow_line)
         else
           call keyValue_toFlow(flow,s_flow,line)
-          s_blck = e_blck + 2
+          s_blck = e_blck + 2_pI64
         end if
       else
         call line_toFlow(flow,s_flow,line)
-        s_blck = e_blck + 2
+        s_blck = e_blck + 2_pI64
       end if
     end if
 
     if (isScalar(line) .or. isKeyValue(line)) then
       flow(s_flow:s_flow) = ','
-      s_flow = s_flow+1
+      s_flow = s_flow + 1_pI64
       previous_isKey = .false.
     else
       previous_isKey = .true.
     end if
 
     flow(s_flow:s_flow) = ' '
-    s_flow = s_flow+1
-    offset = 0
+    s_flow = s_flow + 1_pI64
+    offset = 0_pI64
   end do
 
-  s_flow = s_flow-1
-  if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow-1
+  s_flow = s_flow - 1_pI64
+  if (flow(s_flow-1_pI64:s_flow-1_pI64) == ',') s_flow = s_flow - 1_pI64
 
 end subroutine dct
 
@@ -787,33 +788,34 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
 
   character(len=*), intent(in)    :: blck                                                           !< YAML in mixed style
   character(len=*), intent(inout) :: flow                                                           !< YAML in flow style only
-  integer,          intent(inout) :: s_blck, &                                                      !< start position in blck
+  integer(pI64),    intent(inout) :: s_blck, &                                                      !< start position in blck
                                      s_flow, &                                                      !< start position in flow
                                      offset
-  integer :: e_blck
+  integer(pI64) :: e_blck
   character(len=:), allocatable :: line,flow_line
 
-  if (s_blck <= len(blck)) then
+
+  if (s_blck <= len(blck,kind=pI64)) then
     call skip_empty_lines(blck,s_blck)
-    e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
+    e_blck = s_blck + index(blck(s_blck:),IO_EOL,kind=pI64) - 2_pI64
     line = clean(blck(s_blck:e_blck))
     if (trim(line) == '---' .or. trim(line) == '...') then
       continue                                                                                      ! end parsing at this point but not stop the simulation
-    elseif (len_trim(line) == 0) then
-      s_blck = e_blck + 2
+    elseif (len_trim(line,pI64) == 0_pI64) then
+      s_blck = e_blck + 2_pI64
       call decide(blck,flow,s_blck,s_flow,offset)
     elseif (isListItem(line)) then
       flow(s_flow:s_flow) = '['
-      s_flow = s_flow+1
+      s_flow = s_flow + 1_pI64
       call lst(blck,flow,s_blck,s_flow,offset)
       flow(s_flow:s_flow) = ']'
-      s_flow = s_flow+1
+      s_flow = s_flow + 1_pI64
     elseif (isKey(line) .or. isKeyValue(line)) then
       flow(s_flow:s_flow) = '{'
-      s_flow = s_flow+1
+      s_flow = s_flow + 1_pI64
       call dct(blck,flow,s_blck,s_flow,offset)
       flow(s_flow:s_flow) = '}'
-      s_flow = s_flow+1
+      s_flow = s_flow + 1_pI64
     elseif (isFlow(line)) then
       if (isFlowList(line)) then
         call remove_line_break(blck,s_blck,']',flow_line)
@@ -824,7 +826,7 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
     else
       line = line(indentDepth(line)+1:)
       call line_toFlow(flow,s_flow,line)
-      s_blck = e_blck + 2
+      s_blck = e_blck + 2_pI64
     end if
   end if
 
@@ -841,28 +843,28 @@ function to_flow(blck)
   character(len=*), intent(in)  :: blck                                                             !< YAML mixed style
 
   character(len=:), allocatable :: line
-  integer                       :: s_blck, &                                                        !< start position in blck
+  integer(pI64)                 :: s_blck, &                                                        !< start position in blck
                                    s_flow, &                                                        !< start position in flow
                                    offset, &                                                        !< counts leading '- ' in nested lists
                                    end_line
 
-  allocate(character(len=len(blck)*2)::to_flow)
-  s_flow = 1
-  s_blck = 1
-  offset = 0
+  allocate(character(len=len(blck,kind=pI64)*2)::to_flow)
+  s_flow = 1_pI64
+  s_blck = 1_pI64
+  offset = 0_pI64
 
-  if (len_trim(blck) /= 0) then
+  if (len_trim(blck,pI64) /= 0_pI64) then
     call skip_empty_lines(blck,s_blck)
     call skip_file_header(blck,s_blck)
-    line = clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
-    if (trim(line) == '---') s_blck = s_blck + index(blck(s_blck:),IO_EOL)
+    line = clean(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL,kind=pI64) - 2_pI64))
+    if (trim(line) == '---') s_blck = s_blck + index(blck(s_blck:),IO_EOL,kind=pI64)
     call decide(blck,to_flow,s_blck,s_flow,offset)
   end if
-  line = clean(blck(s_blck:s_blck+index(blck(s_blck:),IO_EOL)-2))
+  line = clean(blck(s_blck:s_blck+index(blck(s_blck:),IO_EOL,kind=pI64)-2_pI64))
   if (trim(line)== '---') call IO_warning(709,ext_msg=line)
-  to_flow = trim(to_flow(:s_flow-1))
-  end_line = index(to_flow,IO_EOL)
-  if (end_line > 0) to_flow = to_flow(:end_line-1)
+  to_flow = trim(to_flow(:s_flow-1_pI64))
+  end_line = index(to_flow,IO_EOL,kind=pI64)
+  if (end_line > 0_pI64) to_flow = to_flow(:end_line-1_pI64)
 
 end function to_flow
 
@@ -875,16 +877,16 @@ function clean(line)
   character(len=*), intent(in)  :: line
   character(len=:), allocatable :: clean
 
-  integer :: split
+  integer(pI64) :: split
   character, parameter :: COMMENT_CHAR = '#'
 
 
-  split = index(line,COMMENT_CHAR)
+  split = index(line,COMMENT_CHAR,kind=pI64)
 
-  if (split == 0) then
+  if (split == 0_pI64) then
     clean = trim(line)
   else
-    clean = trim(line(:split-1))
+    clean = trim(line(:split-1_pI64))
   end if
 
 end function clean
