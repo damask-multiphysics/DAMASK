@@ -68,7 +68,7 @@ subroutine materialpoint_initAll()
   call tables_init()
   call crystal_init()
 #if   defined(MESH)
-  call discretization_mesh_init(restart=CLI_restartInc>0)
+  call discretization_mesh_init()
 #elif defined(GRID)
   call discretization_grid_init(restart=CLI_restartInc>0)
 #endif
