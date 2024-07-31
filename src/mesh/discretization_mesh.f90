@@ -17,7 +17,6 @@ module discretization_mesh
 
   use CLI
   use parallelization
-  use IO
   use config
   use discretization
   use result
