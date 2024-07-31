@@ -23,7 +23,7 @@ module grid_mechanical_FEM
   use math
   use rotations
   use spectral_utilities
-  use grid_mech_utilities
+  use grid_utilities
   use config
   use homogenization
   use discretization
