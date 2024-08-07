@@ -1,5 +1,5 @@
 The following tasks are required for a new release.
-Detailed instructions for each step are documented in the wiki
+Detailed instructions for each step are documented in the [wiki](https://git.damask.mpie.de/damask/DAMASK/-/wikis/releasing).
 
 1. [ ] Compile changelog
 1. [ ] Update repository
