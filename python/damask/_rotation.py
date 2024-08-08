@@ -1,5 +1,6 @@
 import sys
 import copy
+import re
 import builtins
 from typing import Optional, Union, Sequence, Tuple, Literal, List, TypeVar
 
@@ -94,8 +95,9 @@ class Rotation:
         Give short, human-readable summary.
 
         """
-        return f'Quaternion{" " if self.quaternion.shape == (4,) else "s of shape "+str(self.quaternion.shape[:-1])+chr(10)}'\
-               + str(self.quaternion)
+        s = self.quaternion.__repr__()[6:-1].replace('\n'+' '*6,'\n')
+        return re.sub(r'\[([^\[\]]*),\n? ?([^\[\]]*),\n? ?([^\[\]]*),\n? ?([^\[\]]*)\]',
+                      r'real=\1, imag=<\2,\3,\4>',s)
 
 
     def __copy__(self: MyType,
