@@ -12,10 +12,7 @@ program DAMASK_mesh
   use prec
   use CLI
   use parallelization
-  use IO
-  use math
   use materialpoint
-  use config
   use discretization_mesh
   use FEM_Utilities
   use mesh_mechanical_FEM

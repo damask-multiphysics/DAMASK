@@ -11,7 +11,7 @@ stages:
 ###################################################################################################
 default:
   before_script:
-    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN}
+    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} ${TOKEN}
     - source env/DAMASK.sh
     - export PATH=${TESTROOT}/bin:${PATH}
     - echo Job start:" $(date)"
@@ -56,7 +56,7 @@ variables:
 create_testroot:
   stage: prepare
   before_script:
-    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN}
+    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} ${TOKEN}
     - echo Job start:" $(date)"
   script:
     - mkdir -p ${TESTROOT}
@@ -65,6 +65,10 @@ create_testroot:
 ###################################################################################################
 setuptools:
   stage: python
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:python310_2407
+  before_script: []
   script:
     - sed -i 's/-[[:digit:]]*-.*//' VERSION
     - cd python
@@ -72,13 +76,22 @@ setuptools:
 
 pytest:
   stage: python
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:python310_2407
+  before_script: []
   script:
+    - PYTHONPATH=$(pwd)/python:$PYTHONPATH
     - cd python
-    - pytest --basetemp ${TESTROOT}/python -v --cov --damaskroot=${CI_PROJECT_DIR}
+    - python3 -m pytest -v --cov=damask --cov-report=xml
     - coverage report --fail-under=90 --show-missing
 
 mypy:
   stage: python
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:python310_2407
+  before_script: []
   script:
     - cd python
     - mypy damask
@@ -243,7 +256,7 @@ grid_performance:
     - make -j2 all install
     - export PATH=${PWD}/bin:${PATH}
     - cd $(mktemp -d)
-    - git clone -q git@git.damask.mpie.de:damask/statistics.git .
+    - git clone -q git@git.damask-multiphysics.org:damask/statistics.git .
     - ./measure_performance.py --input_dir ${CI_PROJECT_DIR}/examples/grid --tag ${CI_COMMIT_SHA}
     - >
         if [ ${CI_COMMIT_BRANCH} == development ]; then
@@ -269,7 +282,7 @@ update_revision:
     - echo Job start:" $(date)"
   script:
     - cd $(mktemp -d)
-    - git clone -q git@git.damask.mpie.de:damask/DAMASK.git .
+    - git clone -q git@git.damask-multiphysics.org:damask/DAMASK.git .
     - git pull
     - export VERSION=$(git describe ${CI_COMMIT_SHA})
     - echo ${VERSION:1} > VERSION

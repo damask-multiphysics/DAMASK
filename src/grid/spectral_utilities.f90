@@ -1,6 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Yi Hu, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Utilities used by the different spectral solver variants
 !--------------------------------------------------------------------------------------------------
 module spectral_utilities
@@ -36,7 +37,7 @@ module spectral_utilities
   real(pREAL), protected, public, dimension(3) :: scaledGeomSize                                    !< scaled geometry size for calculation of divergence
   integer :: &
     cells1Red, &                                                                                    !< cells(1)/2+1
-    cells2, &                                                                                       !< (local) cells in 2nd direction
+    cells2 = 0, &                                                                                   !< (local) cells in 2nd direction
     cells2Offset                                                                                    !< (local) cells offset in 2nd direction
 
 !--------------------------------------------------------------------------------------------------
@@ -49,6 +50,7 @@ module spectral_utilities
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:,:),       pointer     :: vectorField_fourier           !< vector field in Fourier space
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:),         pointer     :: scalarField_fourier           !< scalar field in Fourier space
   complex(pREAL),            dimension(:,:,:,:,:,:,:), allocatable :: Gamma_hat                     !< gamma operator (field) for spectral method
+  complex(pREAL),            dimension(:,:,:,:,:,:,:), allocatable :: G_hat                         !< G operator (field) for Galerkin method
   complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi1st                         !< wave vector field for first derivatives
   complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi2nd                         !< wave vector field for second derivatives
   real(pREAL),               dimension(3,3,3,3)                    :: C_ref                         !< mechanic reference stiffness
@@ -86,22 +88,17 @@ module spectral_utilities
   enum, bind(c); enumerator :: &
     DERIVATIVE_CONTINUOUS_ID, &
     DERIVATIVE_CENTRAL_DIFF_ID, &
-    DERIVATIVE_FWBW_DIFF_ID, &
-    DIVERGENCE_CORRECTION_NONE_ID, &
-    DIVERGENCE_CORRECTION_SIZE_ID, &
-    DIVERGENCE_CORRECTION_SIZE_GRID_ID
+    DERIVATIVE_FWBW_DIFF_ID
   end enum
 
   integer(kind(DERIVATIVE_CONTINUOUS_ID)) :: &
     spectral_derivative_ID
 
-  integer(kind(DIVERGENCE_CORRECTION_NONE_ID)) :: &
-    divergence_correction_ID
-
   public :: &
     spectral_utilities_init, &
     utilities_updateGamma, &
     utilities_GammaConvolution, &
+    utilities_G_Convolution, &
     utilities_GreenConvolution, &
     utilities_divergenceRMS, &
     utilities_curlRMS, &
@@ -114,7 +111,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Allocate all neccessary fields and create plans for FFTW.
 !--------------------------------------------------------------------------------------------------
-subroutine spectral_utilities_init()
+subroutine spectral_utilities_init(active_Gamma, active_G, active_parabolic)
+
+  logical, intent(in) :: active_Gamma, active_G, active_parabolic
 
   PetscErrorCode :: err_PETSc
   integer        :: i, j, k, &
@@ -168,17 +167,26 @@ subroutine spectral_utilities_init()
 
   num%memory_efficient      = num_grid_fft%get_asBool('memory_efficient',     defaultVal=.true.)
 
+!--------------------------------------------------------------------------------------------------
+! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and
+! resolution-independent divergence
   select case (num_grid_fft%get_asStr('divergence_correction',defaultVal='grid+size'))
     case ('none')
-      divergence_correction_ID = DIVERGENCE_CORRECTION_NONE_ID
-    case ('size')
-      divergence_correction_ID = DIVERGENCE_CORRECTION_SIZE_ID
+      do j = 1, 3
+       if (j /= minloc(geomSize,1) .and. j /= maxloc(geomSize,1)) &
+         scaledGeomSize = geomSize/geomSize(j)
+      end do
     case ('grid+size', 'size+grid')
-      divergence_correction_ID = DIVERGENCE_CORRECTION_SIZE_GRID_ID
+      do j = 1, 3
+       if (      j /= int(minloc(geomSize/real(cells,pREAL),1)) &
+           .and. j /= int(maxloc(geomSize/real(cells,pREAL),1))) &
+         scaledGeomSize = geomSize/geomSize(j)*real(cells(j),pREAL)
+      end do
+    case ('size')
+
     case default
       call IO_error(301,ext_msg=trim(num_grid_fft%get_asStr('divergence_correction')))
   end select
-
 
   select case (num_grid_fft%get_asStr('derivative',defaultVal='continuous'))
     case ('continuous')
@@ -191,23 +199,6 @@ subroutine spectral_utilities_init()
       call IO_error(892,ext_msg=trim(num_grid_fft%get_asStr('derivative')))
   end select
 
-!--------------------------------------------------------------------------------------------------
-! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and
-! resolution-independent divergence
-  if (divergence_correction_ID == DIVERGENCE_CORRECTION_NONE_ID) then
-    do j = 1, 3
-     if (j /= minloc(geomSize,1) .and. j /= maxloc(geomSize,1)) &
-       scaledGeomSize = geomSize/geomSize(j)
-    end do
-  elseif (divergence_correction_ID == DIVERGENCE_CORRECTION_SIZE_GRID_ID) then
-    do j = 1, 3
-     if (      j /= int(minloc(geomSize/real(cells,pREAL),1)) &
-         .and. j /= int(maxloc(geomSize/real(cells,pREAL),1))) &
-       scaledGeomSize = geomSize/geomSize(j)*real(cells(j),pREAL)
-    end do
-  else
-    scaledGeomSize = geomSize
-  end if
 
   select case(num_grid_fft%get_asStr('FFTW_plan_mode',defaultVal='FFTW_MEASURE'))
     case('FFTW_ESTIMATE')                                                                           ! ordered from slow execution (but fast plan creation) to fast execution
@@ -232,47 +223,23 @@ subroutine spectral_utilities_init()
 
   cellsFFTW = int(cells,C_INTPTR_T)
 
+
+!--------------------------------------------------------------------------------------------------
+! set up FFTW data structures for tensor fields
+! ToDo: FEM uses tensor field to calculate coordinates, this is not needed
   N = fftw_mpi_local_size_many_transposed(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)], &
                                           tensorSize,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD, &
                                           cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
   cells2 = int(cells2FFTW)
   cells2Offset = int(cells2_offset)
   if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (tensor, real space)'
+
   tensorField = fftw_alloc_complex(N)
   call c_f_pointer(tensorField,tensorField_real, &
                    [3_C_INTPTR_T,3_C_INTPTR_T,int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
   call c_f_pointer(tensorField,tensorField_fourier, &
                    [3_C_INTPTR_T,3_C_INTPTR_T,int(cells1Red,  C_INTPTR_T),cellsFFTW(3),cells2FFTW])
 
-
-  N = fftw_mpi_local_size_many_transposed(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)], &
-                                          vectorSize,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD, &
-                                          cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
-  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (vector, real space)'
-  if (int(cells2FFTW) /= cells2) error stop 'domain decomposition mismatch (vector, Fourier space)'
-  vectorField = fftw_alloc_complex(N)
-  call c_f_pointer(vectorField,vectorField_real, &
-                   [3_C_INTPTR_T,int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
-  call c_f_pointer(vectorField,vectorField_fourier, &
-                   [3_C_INTPTR_T,int(cells1Red,  C_INTPTR_T),cellsFFTW(3),cells2FFTW])
-
-  N = fftw_mpi_local_size_3d_transposed(cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T), &
-                                        PETSC_COMM_WORLD,cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
-  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (scalar, real space)'
-  if (int(cells2FFTW) /= cells2) error stop 'domain decomposition mismatch (scalar, Fourier space)'
-  scalarField = fftw_alloc_complex(N)
-  call c_f_pointer(scalarField,scalarField_real, &
-                   [int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
-  call c_f_pointer(scalarField,scalarField_fourier, &
-                   [int(cells1Red,  C_INTPTR_T),cellsFFTW(3),cells2FFTW])
-
-!--------------------------------------------------------------------------------------------------
-! allocation
-  allocate (xi1st (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))          ! frequencies for first derivatives, only half the size for first dimension
-  allocate (xi2nd (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))          ! frequencies for second derivatives, only half the size for first dimension
-
-!--------------------------------------------------------------------------------------------------
-! tensor MPI fftw plans
   planTensorForth = fftw_mpi_plan_many_dft_r2c(3,cellsFFTW(3:1:-1),tensorSize, &
                                                FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
                                                tensorField_real,tensorField_fourier, &
@@ -285,7 +252,20 @@ subroutine spectral_utilities_init()
   if (.not. c_associated(planTensorBack))  error stop 'FFTW error c2r tensor'
 
 !--------------------------------------------------------------------------------------------------
-! vector MPI fftw plans
+! set up FFTW data structures for vector fields
+! ToDo: FEM uses vector field to calculate coordinates, this is not needed
+  N = fftw_mpi_local_size_many_transposed(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)], &
+                                          vectorSize,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD, &
+                                          cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
+  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (vector, real space)'
+  if (int(cells2FFTW) /= cells2) error stop 'domain decomposition mismatch (vector, Fourier space)'
+
+  vectorField = fftw_alloc_complex(N)
+  call c_f_pointer(vectorField,vectorField_real, &
+                   [3_C_INTPTR_T,int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
+  call c_f_pointer(vectorField,vectorField_fourier, &
+                   [3_C_INTPTR_T,int(cells1Red,  C_INTPTR_T),cellsFFTW(3),cells2FFTW])
+
   planVectorForth = fftw_mpi_plan_many_dft_r2c(3,cellsFFTW(3:1:-1),vectorSize, &
                                                FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
                                                vectorField_real,vectorField_fourier, &
@@ -298,18 +278,34 @@ subroutine spectral_utilities_init()
   if (.not. c_associated(planVectorBack))  error stop 'FFTW error c2r vector'
 
 !--------------------------------------------------------------------------------------------------
-! scalar MPI fftw plans
-  planScalarForth = fftw_mpi_plan_dft_r2c_3d(cellsFFTW(3),cellsFFTW(2),cellsFFTW(1), &
-                                             scalarField_real,scalarField_fourier, &
-                                             PETSC_COMM_WORLD,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_OUT)
-  if (.not. c_associated(planScalarForth)) error stop 'FFTW error r2c scalar'
-  planScalarBack  = fftw_mpi_plan_dft_c2r_3d(cellsFFTW(3),cellsFFTW(2),cellsFFTW(1), &
-                                             scalarField_fourier,scalarField_real, &
-                                             PETSC_COMM_WORLD,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_IN)
-  if (.not. c_associated(planScalarBack))  error stop 'FFTW error c2r scalar'
+! set up FFTW data structures for scalar fields
+  if (active_parabolic) then
+    N = fftw_mpi_local_size_3d_transposed(cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T), &
+                                          PETSC_COMM_WORLD,cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
+    if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (scalar, real space)'
+    if (int(cells2FFTW) /= cells2) error stop 'domain decomposition mismatch (scalar, Fourier space)'
+
+    scalarField = fftw_alloc_complex(N)
+    call c_f_pointer(scalarField,scalarField_real, &
+                     [int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
+    call c_f_pointer(scalarField,scalarField_fourier, &
+                     [int(cells1Red,  C_INTPTR_T),cellsFFTW(3),cells2FFTW])
+
+    planScalarForth = fftw_mpi_plan_dft_r2c_3d(cellsFFTW(3),cellsFFTW(2),cellsFFTW(1), &
+                                               scalarField_real,scalarField_fourier, &
+                                               PETSC_COMM_WORLD,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_OUT)
+    if (.not. c_associated(planScalarForth)) error stop 'FFTW error r2c scalar'
+    planScalarBack  = fftw_mpi_plan_dft_c2r_3d(cellsFFTW(3),cellsFFTW(2),cellsFFTW(1), &
+                                               scalarField_fourier,scalarField_real, &
+                                               PETSC_COMM_WORLD,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_IN)
+    if (.not. c_associated(planScalarBack))  error stop 'FFTW error c2r scalar'
+  end if
 
 !--------------------------------------------------------------------------------------------------
-! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
+! discrete angular frequencies, ordered as in FFTW (wrap around)
+  allocate (xi1st (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))          ! frequencies for first derivatives, only half the size for first dimension
+  allocate (xi2nd (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))          ! frequencies for second derivatives, only half the size for first dimension
+
   do j = cells2Offset+1, cells2Offset+cells2
     k_s(2) = j - 1
     if (j > cells(2)/2 + 1) k_s(2) = k_s(2) - cells(2)                                              ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
@@ -327,11 +323,15 @@ subroutine spectral_utilities_init()
             endwhere
   end do; end do; end do
 
-  if (num%memory_efficient) then                                                                    ! allocate just single fourth order tensor
-    allocate (Gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
-  else                                                                                              ! precalculation of gamma_hat field
-    allocate (Gamma_hat(3,3,3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
+  if (active_Gamma) then
+    if (num%memory_efficient) then                                                                  ! allocate just single fourth order tensor
+      allocate (Gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
+    else                                                                                            ! precalculation of Gamma_hat field
+      allocate (Gamma_hat(3,3,3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
+    end if
   end if
+
+  if (active_G) G_hat = G_hat_init()
 
   call selfTest()
 
@@ -424,7 +424,7 @@ function utilities_GammaConvolution(field, fieldAim) result(gammaField)
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
   memoryEfficient: if (num%memory_efficient) then
-    !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,xiDyad_cmplx,A,A_inv,err,gamma_hat)
+    !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,xiDyad_cmplx,A,A_inv,err,Gamma_hat)
     do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
       if (any([i,j+cells2Offset,k] /= 1)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
 #ifndef __INTEL_COMPILER
@@ -487,6 +487,108 @@ function utilities_GammaConvolution(field, fieldAim) result(gammaField)
   gammaField = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)
 
 end function utilities_GammaConvolution
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Assemble G.
+!--------------------------------------------------------------------------------------------------
+function G_hat_init() result(G_hat_)
+
+  complex(pREAL), dimension(:,:,:,:,:,:,:), allocatable :: G_hat_                                   !< G operator (field) for Galerkin method
+
+  integer :: &
+    i, j, k, &
+    l, m, n, o
+  complex(pREAL) :: xi_norm_2
+  complex(pREAL), dimension(3,3), parameter :: delta = cmplx(math_I3,0.0_pREAL,pREAL)
+
+
+  allocate(G_hat_(3,3,3,3,cells1Red,cells(3),cells2),source=cmplx(.0_pReal,.0_pReal,pREAL))
+
+  !$OMP PARALLEL DO PRIVATE(l,m,n,o,xi_norm_2)
+  do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
+    if (any([i,j+cells2Offset,k] /= 1)) then                                                        ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+      xi_norm_2 = cmplx(abs(dot_product(xi1st(:,i,k,j), xi1st(:,i,k,j))),0.0_pReal,pREAL)
+      if (xi_norm_2%re > 1.e-16_pREAL) then
+#ifndef __INTEL_COMPILER
+        do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
+            G_hat_(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
+        end do
+#else
+        forall(l=1:3, m=1:3, n=1:3, o=1:3)
+            G_hat_(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
+        end forall
+#endif
+      end if
+    end if
+  end do; end do; end do
+  !$OMP END PARALLEL DO
+
+end function G_hat_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculate G * field_real (convolution).
+!> @details G*field_real = Fourier_inv( G_hat : Fourier(field_real) )
+!> @details Yi: make tensor field compatible
+!> @details G_hat index according to S Lucarini et al. MSMSE 2021
+!> @details fieldAim is for impose dP of stress bc in formResidual
+!> @details fieldAim is not needed for stress bc in formJacobian GK_op
+!--------------------------------------------------------------------------------------------------
+function utilities_G_Convolution(field,stress_mask,fieldAim) result(G_Field)
+
+  real(pREAL), intent(in), dimension(3,3,cells(1),cells(2),cells3) :: field
+  logical,     intent(in), dimension(3,3) :: stress_mask                                            !< impose the mask component <=> G* in Lucarini
+  real(pREAL), intent(in), dimension(3,3), optional :: fieldAim                                     !< desired average value of the field after convolution
+
+  real(pREAL),             dimension(3,3,cells(1),cells(2),cells3) :: G_Field
+
+  complex(pREAL), dimension(3,3) :: temp33_cmplx
+  integer :: &
+    i, j, k, &
+    l, m
+
+  complex(pREAL), dimension(3,3) :: field_zero_freq                                                 !< zero freq of field
+
+  ! print'(/,1x,a)', '... doing G convolution ...............................................'
+  ! flush(IO_STDOUT)
+
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL
+  tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = field
+  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
+
+  if (present(fieldAim)) then
+    field_zero_freq = cmplx(fieldAim/wgt,0.0_pREAL,pREAL)
+  else
+    field_zero_freq = tensorField_fourier(1:3,1:3,1,1,1) ! f_hat(k=0) = f_ave * vol = f_ave / wgt
+  endif
+
+  !$OMP PARALLEL DO PRIVATE(l,m,temp33_cmplx)
+  do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
+    if (any([i,j+cells2Offset,k] /= 1)) then                                                        ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+#ifndef __INTEL_COMPILER
+      do concurrent(l=1:3, m=1:3)
+        temp33_cmplx(l,m) = sum(G_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
+      end do
+#else
+      forall(l=1:3, m=1:3)
+        temp33_cmplx(l,m) = sum(G_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
+      end forall
+#endif
+      tensorField_fourier(1:3,1:3,i,k,j) = temp33_cmplx
+    end if
+  end do; end do; end do
+  !$OMP END PARALLEL DO
+
+  ! Apply stress bounday conditions
+  if (cells3Offset == 0) &
+    tensorField_fourier(1:3,1:3,1,1,1) = merge(cmplx(0.0_pREAL,0.0_pREAL,pREAL),field_zero_freq,stress_mask)
+
+
+  call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
+  G_Field = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)
+
+end function utilities_G_Convolution
 
 
 !--------------------------------------------------------------------------------------------------
@@ -860,89 +962,97 @@ subroutine selfTest()
   real(pREAL), dimension(3,3) :: r
   integer(MPI_INTEGER_KIND) :: err_MPI
 
-
-  call random_number(tensorField_real)
-  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
-  tensorField_real_ = tensorField_real
-  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
-  call MPI_Allreduce(sum(sum(sum(tensorField_real_,dim=5),dim=4),dim=3),tensorSum,9_MPI_INTEGER_KIND, &
-                     MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  call parallelization_chkerr(err_MPI)
-  if (worldrank==0) then
-    if (any(dNeq(tensorSum/tensorField_fourier(:,:,1,1,1)%re,1.0_pREAL,1.0e-12_pREAL))) &
-      error stop 'mismatch avg tensorField FFT <-> real'
-  end if
-  call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
-  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
-  if (maxval(abs(tensorField_real_ - tensorField_real*wgt))>5.0e-15_pREAL) &
-    error stop 'mismatch tensorField FFT/invFFT <-> real'
-
-  call random_number(vectorField_real)
-  vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
-  vectorField_real_ = vectorField_real
-  call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
-  call MPI_Allreduce(sum(sum(sum(vectorField_real_,dim=4),dim=3),dim=2),vectorSum,3_MPI_INTEGER_KIND, &
-                     MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  call parallelization_chkerr(err_MPI)
-  if (worldrank==0) then
-    if (any(dNeq(vectorSum/vectorField_fourier(:,1,1,1)%re,1.0_pREAL,1.0e-12_pREAL))) &
-      error stop 'mismatch avg vectorField FFT <-> real'
-  end if
-  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
-  vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
-  if (maxval(abs(vectorField_real_ - vectorField_real*wgt))>5.0e-15_pREAL) &
-    error stop 'mismatch vectorField FFT/invFFT <-> real'
-
-  call random_number(scalarField_real)
-  scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
-  scalarField_real_ = scalarField_real
-  call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
-  call MPI_Allreduce(sum(sum(sum(scalarField_real_,dim=3),dim=2),dim=1),scalarSum,1_MPI_INTEGER_KIND, &
-                     MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  call parallelization_chkerr(err_MPI)
-  if (worldrank==0) then
-    if (dNeq(scalarSum/scalarField_fourier(1,1,1)%re,1.0_pREAL,1.0e-12_pREAL)) &
-      error stop 'mismatch avg scalarField FFT <-> real'
-  end if
-  call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
-  scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
-  if (maxval(abs(scalarField_real_ - scalarField_real*wgt))>5.0e-15_pREAL) &
-    error stop 'mismatch scalarField FFT/invFFT <-> real'
-
   call random_number(r)
   call MPI_Bcast(r,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
-  scalarField_real_ = r(1,1)
-  if (maxval(abs(utilities_scalarGradient(scalarField_real_)))>5.0e-9_pREAL)   error stop 'non-zero grad(const)'
+  if (associated(tensorField_real)) then
+    call random_number(tensorField_real)
+    tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
+    tensorField_real_ = tensorField_real
+    call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
+    call MPI_Allreduce(sum(sum(sum(tensorField_real_,dim=5),dim=4),dim=3),tensorSum,9_MPI_INTEGER_KIND, &
+                       MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+    call parallelization_chkerr(err_MPI)
+    if (worldrank==0) then
+      if (any(dNeq(tensorSum/tensorField_fourier(:,:,1,1,1)%re,1.0_pREAL,1.0e-12_pREAL))) &
+        error stop 'mismatch avg tensorField FFT <-> real'
+    end if
+    call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
+    tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
+    if (maxval(abs(tensorField_real_ - tensorField_real*wgt))>5.0e-15_pREAL) &
+      error stop 'mismatch tensorField FFT/invFFT <-> real'
 
-  vectorField_real_ = spread(spread(spread(r(1,:),2,cells(1)),3,cells(2)),4,cells3)
-  if (maxval(abs(utilities_vectorDivergence(vectorField_real_)))>5.0e-9_pREAL) error stop 'non-zero div(const)'
+    tensorField_real_ = spread(spread(spread(r,3,cells(1)),4,cells(2)),5,cells3)
+    if (utilities_divergenceRMS(tensorField_real_)>5.0e-14_pREAL) error stop 'non-zero RMS div(const)'
+    if (utilities_curlRMS(tensorField_real_)>5.0e-14_pREAL)       error stop 'non-zero RMS curl(const)'
+  end if
 
-  tensorField_real_ = spread(spread(spread(r,3,cells(1)),4,cells(2)),5,cells3)
-  if (utilities_divergenceRMS(tensorField_real_)>5.0e-14_pREAL) error stop 'non-zero RMS div(const)'
-  if (utilities_curlRMS(tensorField_real_)>5.0e-14_pREAL)       error stop 'non-zero RMS curl(const)'
+  if (associated(vectorField_real)) then
+    call random_number(vectorField_real)
+    vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
+    vectorField_real_ = vectorField_real
+    call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
+    call MPI_Allreduce(sum(sum(sum(vectorField_real_,dim=4),dim=3),dim=2),vectorSum,3_MPI_INTEGER_KIND, &
+                       MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+    call parallelization_chkerr(err_MPI)
+    if (worldrank==0) then
+      if (any(dNeq(vectorSum/vectorField_fourier(:,1,1,1)%re,1.0_pREAL,1.0e-12_pREAL))) &
+        error stop 'mismatch avg vectorField FFT <-> real'
+    end if
+    call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
+    vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
+    if (maxval(abs(vectorField_real_ - vectorField_real*wgt))>5.0e-15_pREAL) &
+      error stop 'mismatch vectorField FFT/invFFT <-> real'
+  end if
 
-  if (cells(1) > 2 .and.  spectral_derivative_ID == DERIVATIVE_CONTINUOUS_ID) then
-    scalarField_real_ = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
-    vectorField_real_ = utilities_scalarGradient(scalarField_real_)/TAU*geomSize(1)
-    scalarField_real_ = -spread(spread(planeSine  (cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pREAL) error stop 'grad cosine'
-    scalarField_real_ = spread(spread(planeSine  (cells(1)),2,cells(2)),3,cells3)
-    vectorField_real_ = utilities_scalarGradient(scalarField_real_)/TAU*geomSize(1)
-    scalarField_real_ = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pREAL) error stop 'grad sine'
+  if (associated(scalarField_real)) then
+    call random_number(scalarField_real)
+    scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
+    scalarField_real_ = scalarField_real
+    call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
+    call MPI_Allreduce(sum(sum(sum(scalarField_real_,dim=3),dim=2),dim=1),scalarSum,1_MPI_INTEGER_KIND, &
+                       MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+    call parallelization_chkerr(err_MPI)
+    if (worldrank==0) then
+      if (dNeq(scalarSum/scalarField_fourier(1,1,1)%re,1.0_pREAL,1.0e-12_pREAL)) &
+        error stop 'mismatch avg scalarField FFT <-> real'
+    end if
+    call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
+    scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pREAL
+    if (maxval(abs(scalarField_real_ - scalarField_real*wgt))>5.0e-15_pREAL) &
+      error stop 'mismatch scalarField FFT/invFFT <-> real'
+  end if
 
-    vectorField_real_(2:3,:,:,:) = 0.0_pREAL
-    vectorField_real_(1,:,:,:) = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
-    scalarField_real_ = utilities_vectorDivergence(vectorField_real_)/TAU*geomSize(1)
-    vectorField_real_(1,:,:,:) =-spread(spread(planeSine(  cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pREAL) error stop 'div cosine'
-    vectorField_real_(2:3,:,:,:) = 0.0_pREAL
-    vectorField_real_(1,:,:,:) = spread(spread(planeSine(  cells(1)),2,cells(2)),3,cells3)
-    scalarField_real_ = utilities_vectorDivergence(vectorField_real_)/TAU*geomSize(1)
-    vectorField_real_(1,:,:,:) = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pREAL) error stop 'div sine'
+  if (associated(scalarField_real) .and. associated(vectorField_real)) then
+    scalarField_real_ = r(1,1)
+    if (maxval(abs(utilities_scalarGradient(scalarField_real_)))>5.0e-9_pREAL)   error stop 'non-zero grad(const)'
+
+    vectorField_real_ = spread(spread(spread(r(1,:),2,cells(1)),3,cells(2)),4,cells3)
+    if (maxval(abs(utilities_vectorDivergence(vectorField_real_)))>5.0e-9_pREAL) error stop 'non-zero div(const)'
+
+
+    if (cells(1) > 2 .and.  spectral_derivative_ID == DERIVATIVE_CONTINUOUS_ID) then
+      scalarField_real_ = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
+      vectorField_real_ = utilities_scalarGradient(scalarField_real_)/TAU*geomSize(1)
+      scalarField_real_ = -spread(spread(planeSine  (cells(1)),2,cells(2)),3,cells3)
+      if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pREAL) error stop 'grad cosine'
+      scalarField_real_ = spread(spread(planeSine  (cells(1)),2,cells(2)),3,cells3)
+      vectorField_real_ = utilities_scalarGradient(scalarField_real_)/TAU*geomSize(1)
+      scalarField_real_ = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
+      if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pREAL) error stop 'grad sine'
+
+      vectorField_real_(2:3,:,:,:) = 0.0_pREAL
+      vectorField_real_(1,:,:,:) = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
+      scalarField_real_ = utilities_vectorDivergence(vectorField_real_)/TAU*geomSize(1)
+      vectorField_real_(1,:,:,:) =-spread(spread(planeSine(  cells(1)),2,cells(2)),3,cells3)
+      if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pREAL) error stop 'div cosine'
+      vectorField_real_(2:3,:,:,:) = 0.0_pREAL
+      vectorField_real_(1,:,:,:) = spread(spread(planeSine(  cells(1)),2,cells(2)),3,cells3)
+      scalarField_real_ = utilities_vectorDivergence(vectorField_real_)/TAU*geomSize(1)
+      vectorField_real_(1,:,:,:) = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
+      if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pREAL) error stop 'div sine'
+    end if
   end if
 
   contains

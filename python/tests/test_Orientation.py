@@ -258,30 +258,31 @@ class TestOrientation:
         assert np.allclose((o_1.disorientation(o_2)).as_matrix(),np.eye(3))
 
     @pytest.mark.parametrize('family',crystal_families)
-    @pytest.mark.parametrize('shape',[[None,None],
-                                      [[2,3,4],[2,3,4]],
-                                      [[3,4],[4,3]],
-                                      [1000,1000]])
-    def test_disorientation_angle(self,family,shape):
-        o_1 = Orientation.from_random(shape=shape[0],family=family)
-        o_2 = Orientation.from_random(shape=shape[1],family=family)
+    @pytest.mark.parametrize('shapes',[[None,None],
+                                       [[2,3,4],[2,3,4]],
+                                       [[3,4],[4,3]],
+                                       [1000,1000]])
+    def test_disorientation_angle(self,family,shapes):
+        o_1 = Orientation.from_random(shape=shapes[0],family=family)
+        o_2 = Orientation.from_random(shape=shapes[1],family=family)
         angle = o_1.disorientation_angle(o_2)
         full = o_1.disorientation(o_2).as_axis_angle(pair=True)[1]
         assert np.allclose(angle,full,atol=1e-13,rtol=0)
 
-    @pytest.mark.parametrize('shape',[[None,None,()],
+    @pytest.mark.parametrize('shapes',[[None,None,()],
                                       [[2,3,4],[2,3,4],(2,3,4)],
                                       [[3,4],[4,5],(3,4,5)],
                                       [[3,2,4],[2,4,6],(3,2,4,6)],
                                       [[3,4,4],[4,4,2],(3,4,4,2)],
                                       [100,100,(100,)]])
-    def test_shape_blending(self,shape):
-        o_1 = Orientation.from_random(shape=shape[0],family='triclinic')
-        o_2 = Orientation.from_random(shape=shape[1],family='triclinic')
+    def test_shape_blending(self,shapes):
+        me,other,blend = shapes
+        o_1 = Orientation.from_random(shape=me,family='triclinic')
+        o_2 = Orientation.from_random(shape=other,family='triclinic')
         angle = o_1.misorientation_angle(o_2)
-        full = o_1.misorientation(o_2).as_axis_angle(pair=True)[1]
+        full = o_1.misorientation(o_2)
         composition = o_1*o_2
-        assert angle.shape == full.shape == composition.shape == shape[2]
+        assert angle.shape == full.shape == composition.shape == blend
 
     def test_disorientation_invalid(self):
         a,b = np.random.choice(list(crystal_families),2,False)

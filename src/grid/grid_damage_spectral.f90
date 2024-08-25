@@ -163,7 +163,7 @@ subroutine grid_damage_spectral_init(num_grid)
     CHKERRQ(err_PETSc)
     call VecSet(bound_u,1.0_pREAL,err_PETSc)
     CHKERRQ(err_PETSc)
-    call SNESVISetVariableBounds(SNES_damage,bound_l,bound_u,err_PETSc)                               ! variable bounds for variational inequalities
+    call SNESVISetVariableBounds(SNES_damage,bound_l,bound_u,err_PETSc)                             ! variable bounds for variational inequalities
     CHKERRQ(err_PETSc)
     call DMRestoreGlobalVector(DM_damage,bound_l,err_PETSc)
     CHKERRQ(err_PETSc)

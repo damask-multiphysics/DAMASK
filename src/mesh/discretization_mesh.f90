@@ -17,7 +17,6 @@ module discretization_mesh
 
   use CLI
   use parallelization
-  use IO
   use config
   use discretization
   use result
@@ -71,9 +70,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Initialize the mesh.
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_mesh_init(restart)
-
-  logical, intent(in) :: restart
+subroutine discretization_mesh_init()
 
   PetscInt :: dimPlex, &
     mesh_Nnodes, &                                                                                  !< total number of nodes in mesh

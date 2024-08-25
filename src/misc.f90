@@ -12,7 +12,8 @@ module misc
 
   interface misc_optional
     module procedure misc_optional_bool
-    module procedure misc_optional_int
+    module procedure misc_optional_pI32
+    module procedure misc_optional_pI64
     module procedure misc_optional_real
     module procedure misc_optional_str
   end interface misc_optional
@@ -60,13 +61,13 @@ end function misc_optional_bool
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return integer value if given, otherwise default.
+!> @brief Return integer(pI32) value if given, otherwise default.
 !--------------------------------------------------------------------------------------------------
-pure function misc_optional_int(given,default) result(var)
+pure function misc_optional_pI32(given,default) result(var)
 
-  integer, intent(in), optional :: given
-  integer, intent(in)           :: default
-  integer                       :: var
+  integer(pI32), intent(in), optional :: given
+  integer(pI32), intent(in)           :: default
+  integer(pI32)                       :: var
 
 
   if (present(given)) then
@@ -75,7 +76,26 @@ pure function misc_optional_int(given,default) result(var)
     var = default
   end if
 
-end function misc_optional_int
+end function misc_optional_pI32
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Return integer(pI64) value if given, otherwise default.
+!--------------------------------------------------------------------------------------------------
+pure function misc_optional_pI64(given,default) result(var)
+
+  integer(pI64), intent(in), optional :: given
+  integer(pI64), intent(in)           :: default
+  integer(pI64)                       :: var
+
+
+  if (present(given)) then
+    var = given
+  else
+    var = default
+  end if
+
+end function misc_optional_pI64
 
 
 !--------------------------------------------------------------------------------------------------
@@ -179,8 +199,8 @@ subroutine misc_selfTest()
   if (test_str('DAMASK') /= 'DAMASK')                        error stop 'optional_str, present'
   if (test_str() /= 'default')                               error stop 'optional_str, not present'
   if (misc_optional(default='default') /= 'default')         error stop 'optional_str, default only'
-  if (test_int(20191102) /= 20191102)                        error stop 'optional_int, present'
-  if (test_int() /= 42)                                      error stop 'optional_int, not present'
+  if (test_pI32(20191102_pI32) /= 20191102_pI32)             error stop 'optional_int, present'
+  if (test_pI32() /= 42_pI32)                                error stop 'optional_int, not present'
   if (misc_optional(default=20191102) /= 20191102)           error stop 'optional_int, default only'
   if (dNeq(test_real(r),r))                                  error stop 'optional_real, present'
   if (dNeq(test_real(),0.0_pREAL))                           error stop 'optional_real, not present'
@@ -212,15 +232,15 @@ contains
   end function test_str
 
 
-  function test_int(int_in) result(int_out)
+  function test_pI32(int_in) result(int_out)
 
-    integer                       :: int_out
-    integer, intent(in), optional :: int_in
+    integer(pI32)                       :: int_out
+    integer(pI32), intent(in), optional :: int_in
 
 
-    int_out = misc_optional_int(int_in,42)
+    int_out = misc_optional_pI32(int_in,42_pI32)
 
-  end function test_int
+  end function test_pI32
 
 
   function test_real(real_in) result(real_out)

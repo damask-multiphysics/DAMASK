@@ -1106,13 +1106,13 @@ class TestRotation:
         assert np.allclose(r.misorientation_angle(r),0.0,atol=1e-15,rtol=0.)
         assert np.allclose(r.misorientation(r).as_axis_angle(pair=True)[1],0.,atol=1e-15,rtol=0.)
 
-    @pytest.mark.parametrize('shape',[[None,None],
-                                      [[2,3,4],[2,3,4]],
-                                      [[3,4],[4,3]],
-                                      [1000,1000]])
-    def test_misorientation_angle(self,shape):
-        r_1 = Rotation.from_random(shape=shape[0])
-        r_2 = Rotation.from_random(shape=shape[1])
+    @pytest.mark.parametrize('shapes',[[None,None],
+                                       [[2,3,4],[2,3,4]],
+                                       [[3,4],[4,3]],
+                                       [1000,1000]])
+    def test_misorientation_angle(self,shapes):
+        r_1 = Rotation.from_random(shape=shapes[0])
+        r_2 = Rotation.from_random(shape=shapes[1])
         angle = r_1.misorientation_angle(r_2)
         full = r_1.misorientation(r_2).as_axis_angle(pair=True)[1]
         assert np.allclose(angle,full,atol=1e-13,rtol=0)
@@ -1127,19 +1127,20 @@ class TestRotation:
         with pytest.raises(TypeError):
             Rotation()*np.ones(3)
 
-    @pytest.mark.parametrize('shape',[[None,None,()],
+    @pytest.mark.parametrize('shapes',[[None,None,()],
                                       [[2,3,4],[2,3,4],(2,3,4)],
                                       [[3,4],[4,5],(3,4,5)],
                                       [[3,2,4],[2,4,6],(3,2,4,6)],
                                       [[3,4,4],[4,4,2],(3,4,4,2)],
                                       [100,100,(100,)]])
-    def test_shape_blending(self,shape):
-        r_1 = Rotation.from_random(shape=shape[0])
-        r_2 = Rotation.from_random(shape=shape[1])
+    def test_shape_blending(self,shapes):
+        me,other,blend = shapes
+        r_1 = Rotation.from_random(shape=me)
+        r_2 = Rotation.from_random(shape=other)
         angle = r_1.misorientation_angle(r_2)
-        full = r_1.misorientation(r_2).as_axis_angle(pair=True)[1]
+        full = r_1.misorientation(r_2)
         composition = r_1*r_2
-        assert angle.shape == full.shape == composition.shape == shape[2]
+        assert angle.shape == full.shape == composition.shape == blend
 
     def test_composition_inverse(self):
         a,b = (Rotation.from_random(),Rotation.from_random())

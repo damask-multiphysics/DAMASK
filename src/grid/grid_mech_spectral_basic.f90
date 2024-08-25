@@ -23,7 +23,7 @@ module grid_mechanical_spectral_basic
   use math
   use rotations
   use spectral_utilities
-  use grid_mech_utilities
+  use grid_utilities
   use homogenization
   use discretization_grid
   use constants
@@ -267,6 +267,7 @@ function grid_mechanical_spectral_basic_solution(incInfoIn) result(solution)
     incInfoIn
   type(tSolutionState)                    :: &
     solution
+
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
   PetscErrorCode :: err_PETSc
@@ -349,6 +350,7 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * Delta_t
+
   if (stress_BC%myType=='P')     P_aim = P_aim &
                                        + merge(.0_pREAL,(stress_BC%values - P_aim)/t_remaining,stress_BC%mask)*Delta_t
   if (stress_BC%myType=='dot_P') P_aim = P_aim &

@@ -20,8 +20,6 @@ module mesh_mechanical_FEM
   use FEM_utilities
   use discretization
   use discretization_mesh
-  use config
-  use IO
   use FEM_quadrature
   use homogenization
   use math
