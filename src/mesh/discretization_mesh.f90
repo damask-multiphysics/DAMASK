@@ -41,7 +41,7 @@ module discretization_mesh
 !!!! BEGIN DEPRECATED !!!!!
   integer, public, protected :: &
     mesh_maxNips                                                                                    !< max number of IPs in any CP element
-!!!! BEGIN DEPRECATED !!!!!
+!!!! END DEPRECATED !!!!!
 
   DM, public :: geomMesh
 
@@ -158,11 +158,6 @@ subroutine discretization_mesh_init()
   CHKERRQ(err_PETSc)
 
 ! Get initial nodal coordinates
-  call DMGetCoordinatesLocal(geomMesh,coords_node0,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call VecGetArrayF90(coords_node0, mesh_node0_temp,err_PETSc)
-  CHKERRQ(err_PETSc)
-
   mesh_maxNips = FEM_nQuadrature(dimPlex,p_i)
 
   call mesh_FEM_build_ipCoordinates(dimPlex,FEM_quadrature_points(dimPlex,p_i)%p)
@@ -174,9 +169,14 @@ subroutine discretization_mesh_init()
     CHKERRQ(err_PETSc)
   end do
 
+  call DMGetCoordinatesLocal(geomMesh,coords_node0,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecGetArrayReadF90(coords_node0, mesh_node0_temp,err_PETSc)
+  CHKERRQ(err_PETSc)
   allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pREAL)
   mesh_node0(1:dimPlex,:) = reshape(mesh_node0_temp,[dimPlex,mesh_Nnodes])
-
+  call VecRestoreArrayReadF90(coords_node0, mesh_node0_temp,err_PETSc)
+  CHKERRQ(err_PETSc)
 
   call discretization_init(int(materialAt),&
                            reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
