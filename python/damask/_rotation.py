@@ -640,6 +640,27 @@ class Rotation:
         return ~(self*~other)
 
 
+    def misorientation_angle(self: MyType,
+                             other: MyType) -> np.ndarray:
+        """
+        Calculate misorientation angle to other Rotation.
+
+        Parameters
+        ----------
+        other : damask.Rotation
+            Rotation to which the misorientation angle is computed.
+            Compatible innermost dimensions will blend.
+
+        Returns
+        -------
+        omega : np.ndarray
+            Misorientation angle.
+
+        """
+        trace_max = np.abs((self*~other).quaternion[...,0])
+        return 2.*np.arccos(np.clip(np.round(trace_max,15),None,1.))
+
+
     ################################################################################################
     # convert to different orientation representations (numpy arrays)
 
