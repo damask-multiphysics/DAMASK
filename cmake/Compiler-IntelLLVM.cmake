@@ -19,7 +19,7 @@ endif ()
 set (STANDARD_CHECK "-stand f18 -assume nostd_mod_proc_name")
 set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel")
 # Link against shared Intel libraries instead of static ones
-set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel -fc=ifx")
+set (LINKER_FLAGS   "${LINKER_FLAGS} -fc=ifx")
 # enforce use of ifx for MPI wrapper
 
 #------------------------------------------------------------------------------------------------
