@@ -96,8 +96,9 @@ class Rotation:
 
         """
         s = self.quaternion.__repr__()[6:-1].replace('\n'+' '*6,'\n')
-        return re.sub(r'\[([^\[\]]*),\n? ?([^\[\]]*),\n? ?([^\[\]]*),\n? ?([^\[\]]*)\]',
-                      r'\1,    \2,\3,\4',s)
+        print(f'debug:\n{self.quaternion.__repr__()}\n{s}')
+        return re.sub(r'\[([^\[\]]*),(\n )? ?([^\[\]]*),(\n )? ?([^\[\]]*),(\n )? ?([^\[\]]*)\]',
+                      r'\1,    \3,\5,\7',s)
 
 
     def __copy__(self: MyType,
