@@ -88,17 +88,28 @@ class Rotation:
             raise TypeError('"rotation" is neither a Rotation nor a quaternion')
 
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         """
-        Return repr(self).
+        Return str(self).
 
         Give short, human-readable summary.
 
         """
-        s = self.quaternion.__repr__()[6:-1].replace('\n'+' '*6,'\n')
-        print(f'debug:\n{self.quaternion.__repr__()}\n{s}')
-        return re.sub(r'\[([^\[\]]*),(\n )? ?([^\[\]]*),(\n )? ?([^\[\]]*),(\n )? ?([^\[\]]*)\]',
-                      r'\1,    \3,\5,\7',s)
+        s = self.quaternion.__str__()
+        return re.sub(r'\[(\+|-| )([^\s]+)\s*(\+|-| )([^\s]+)\s*(\+|-| )([^\s]+)\s*(\+|-| )(.+?)\]',
+                      r'\1\2    \3\4 \5\6 \7\8',s)
+
+
+    def __repr__(self) -> str:
+        """
+        Return repr(self).
+
+        Give unambiguous representation.
+
+        """
+        s = self.quaternion.__repr__()
+        return re.sub(r'\[(\+|-| )([^,]+,)\s*(\+|-| )([^,]+,)\s*(\+|-| )([^,]+,)\s*(\+|-| )(.+?)\]',
+                      r'(\1\2    \3\4 \5\6 \7\8)',s)
 
 
     def __copy__(self: MyType,
