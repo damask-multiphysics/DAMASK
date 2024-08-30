@@ -1,5 +1,6 @@
 import sys
 import copy
+import re
 import builtins
 from typing import Optional, Union, Sequence, Tuple, Literal, List, TypeVar
 
@@ -87,15 +88,26 @@ class Rotation:
             raise TypeError('"rotation" is neither a Rotation nor a quaternion')
 
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         """
-        Return repr(self).
+        Return str(self).
 
         Give short, human-readable summary.
 
         """
-        return f'Quaternion{" " if self.quaternion.shape == (4,) else "s of shape "+str(self.quaternion.shape[:-1])+chr(10)}'\
-               + str(self.quaternion)
+        return re.sub(r'\[(\+|-| )([^\s]+)\s*(\+|-| )([^\s]+)\s*(\+|-| )([^\s]+)\s*(\+|-| )(.+?)\]',
+                      r'\1\2    \3\4 \5\6 \7\8',self.quaternion.__str__())
+
+
+    def __repr__(self) -> str:
+        """
+        Return repr(self).
+
+        Give unambiguous representation.
+
+        """
+        return re.sub(r'\[(\+|-| )([^,]+,)\s*(\+|-| )([^,]+,)\s*(\+|-| )([^,]+,)\s*(\+|-| )(.+?)\]',
+                      r'(\1\2    \3\4 \5\6 \7\8)',self.quaternion.__repr__())
 
 
     def __copy__(self: MyType,
