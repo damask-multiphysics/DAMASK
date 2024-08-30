@@ -95,9 +95,8 @@ class Rotation:
         Give short, human-readable summary.
 
         """
-        s = self.quaternion.__str__()
         return re.sub(r'\[(\+|-| )([^\s]+)\s*(\+|-| )([^\s]+)\s*(\+|-| )([^\s]+)\s*(\+|-| )(.+?)\]',
-                      r'\1\2    \3\4 \5\6 \7\8',s)
+                      r'\1\2    \3\4 \5\6 \7\8',self.quaternion.__str__())
 
 
     def __repr__(self) -> str:
@@ -107,9 +106,8 @@ class Rotation:
         Give unambiguous representation.
 
         """
-        s = self.quaternion.__repr__()
         return re.sub(r'\[(\+|-| )([^,]+,)\s*(\+|-| )([^,]+,)\s*(\+|-| )([^,]+,)\s*(\+|-| )(.+?)\]',
-                      r'(\1\2    \3\4 \5\6 \7\8)',s)
+                      r'(\1\2    \3\4 \5\6 \7\8)',self.quaternion.__repr__())
 
 
     def __copy__(self: MyType,
