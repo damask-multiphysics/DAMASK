@@ -685,12 +685,32 @@ class Crystal():
         """
         Return symmetry operations.
 
+        Notes
+        -----
+        The symmetry operations defined here only consider Rotations.
+        More specifically, for each crystal family, an enantiomorphic
+        point symmetry is selected. In case that there are multiple
+        point groups with enantiomorphic point symmetry, the one with
+        the highest order is chosen:
+
+        Overview of crystal classes and point group in Hermann-Mauguin
+        notation used for definition of symmetry operations.
+        - tricinic: 1
+        - monoclinic: 2
+        - orthorhombic: 222
+        - tetragonal: 422
+        - hexagonal: 622
+        - cubic: 432
+
+
         References
         ----------
         U.F. Kocks et al.,
-        Texture and Anisotropy:
-        Preferred Orientations in Polycrystals and their Effect on Materials Properties.
+        Texture and Anisotropy: Preferred Orientations in Polycrystals
+        and their Effect on Materials Properties.
         Cambridge University Press 1998. Table II
+
+        https://en.wikipedia.org/wiki/Crystal_system#Crystal_classes
 
         """
         _symmetry_operations: Dict[CrystalFamily, List]  = {
