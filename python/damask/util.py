@@ -43,6 +43,22 @@ _colors = {
 ####################################################################################################
 # Functions
 ####################################################################################################
+
+def _broadcast_shapes(a1,a2):
+    """
+    Backport from NumPy for versions < 1.20.
+
+    References
+    ----------
+    https://github.com/numpy/numpy/blob/2f7fe64b8b6d7591dd208942f1cc74473d5db4cb/numpy/lib/_stride_tricks_impl.py#L427
+
+    """
+    return _np.broadcast(*[_np.empty(x, dtype=_np.dtype([])) for x in [a1,a2]]).shape
+
+
+if _np.lib.NumpyVersion(_np.__version__) < '2.20.0':
+    _np.broadcast_shapes = _broadcast_shapes # type: ignore
+
 def srepr(msg,
           glue: str = '\n',
           quote: bool = False) -> str:

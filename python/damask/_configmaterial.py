@@ -585,6 +585,9 @@ class ConfigMaterial(YAML):
             N_materials = max(N_materials,s[0]) if len(s)>0 else N_materials
             N_constituents = max(N_constituents,s[1]) if len(s)>1 else N_constituents
 
+        dup = self.copy()
+        if len(shape) == 0: return dup
+
         shape['v'] = np.array(shape.get('v',1./N_constituents),float)
 
         mat: Sequence[dict] = [{'constituents':[{} for _ in range(N_constituents)]} for _ in range(N_materials)]
@@ -610,8 +613,7 @@ class ConfigMaterial(YAML):
                     for j in range(N_constituents):
                         mat[i]['constituents'][j][k] = broadcasted[i,j]
 
-        dup = self.copy()
-        dup['material'] = dup['material'] + mat if 'material' in dup else mat
+        dup['material'] = dup['material'] + mat if 'material' in dup and dup['material'] is not None else mat
 
         for what in [item for item in ['phase','homogenization'] if item in shape]:
             for k in np.unique(shape[what]):                                                        # type: ignore
