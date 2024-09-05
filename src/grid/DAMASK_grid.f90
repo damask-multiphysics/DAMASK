@@ -538,7 +538,7 @@ function parseLoadsteps(load_steps) result(loadCases)
                  transpose(loadCases(l)%rot%asMatrix())
 
       if (loadCases(l)%r <= 0.0_pREAL) errorID = 833
-      if (loadCases(l)%t < 0.0_pREAL)  errorID = 834
+      if (loadCases(l)%t <= 0.0_pREAL) errorID = 834
       if (loadCases(l)%N < 1)          errorID = 835
       if (loadCases(l)%f_out < 1)      errorID = 836
       if (loadCases(l)%f_restart < 1)  errorID = 839
