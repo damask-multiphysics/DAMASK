@@ -257,6 +257,9 @@ module crystal
 
   real(pREAL), dimension(4+4,HP_NTWIN), parameter :: &
     HP_SYSTEMTWIN =  reshape(real([&
+    ! η_1                 K_1
+    ! -----------------------------------
+
     ! <-10.1>{10.2} systems, shear = (3-(c/a)^2)/(sqrt(3) c/a)
     ! tension in Co, Mg, Zr, Ti, and Be; compression in Cd and Zn
       -1,  0,  1,  1,     1,  0, -1,  2, & !
@@ -436,9 +439,13 @@ function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
 
 
   select case(lattice)
-    case('cF','cI')                                                                                 ! 10.1016/0079-6425(94)00007-7, Table 1
+
+    ! https://doi.org/10.1016/0079-6425(94)00007-7, Table 1
+    case('cF','cI')
       characteristicShear = 0.5_pREAL*sqrt(2.0_pREAL)
-    case('hP')                                                                                      ! 10.1016/0079-6425(94)00007-7, Table 3
+
+    ! https://doi.org/10.1016/0079-6425(94)00007-7, Table 3
+    case('hP')
       if (cOverA < 1.0_pREAL .or. cOverA > 2.0_pREAL) &
         call IO_error(131,ext_msg='crystal_characteristicShear_Twin')
 
@@ -447,7 +454,7 @@ function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
         e = sum(Ntwin(:f))
         select case(f)
           case (1)                                                                                  ! <-10.1>{10.2}
-            characteristicShear(s:e) = (3.0_pREAL-cOverA**2)/sqrt(3.0_pREAL)/CoverA
+            characteristicShear(s:e) = (3.0_pREAL-cOverA**2)/sqrt(3.0_pREAL)/CoverA                 ! reversed sign compared to reference
           case (2)                                                                                  ! <11.6>{-1-1.1}
             characteristicShear(s:e) = 1.0_pREAL/cOverA
           case (3)                                                                                  ! <10.-2>{10.1}
@@ -456,8 +463,10 @@ function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
             characteristicShear(s:e) = 2.0_pREAL*(cOverA**2-2.0_pREAL)/3.0_pREAL/cOverA
         end select
       end do myFamilies
+
     case default
       call IO_error(137,ext_msg='crystal_characteristicShear_Twin: '//trim(lattice))
+
   end select
 
 end function crystal_characteristicShear_Twin
@@ -2302,6 +2311,15 @@ subroutine crystal_selfTest()
     error stop 'isotropic_mu/isostress/cI-hP'
   if (dNeq(crystal_isotropic_nu(C,'isostress','cF'), crystal_isotropic_nu(C,'isostress'), 1.0e-12_pREAL)) &
     error stop 'isotropic_nu/isostress/cF-tI'
+
+  if (any(dNeq(crystal_characteristicShear_Twin([1],'hP',1.6235_pREAL),[0.129_pREAL],1.0e-3_pREAL))) & ! https://doi.org/10.1016/j.msea.2022.143856, p 7
+    error stop 'characteristicShear/Mg'
+  if (any(dNeq(crystal_characteristicShear_Twin([1],'hP',1.856_pREAL),[-0.139_pREAL],1.0e-2_pREAL))) & ! Rend. Sem. Mat. Univ. Pol. Torino, Vol. 58, 1, pp. 99–111, 2000, p 2
+    error stop 'characteristicShear/Zn'
+  if (any(dNeq(crystal_characteristicShear_Twin([1],'hP',2.725_pREAL),[0.367_pREAL],1.0e-2_pREAL))) & ! https://doi.org/10.1016/0079-6425(94)00007-7, p 28
+    error stop 'characteristicShear/hexagonal graphite'
+  if (any(dNeq(crystal_characteristicShear_Twin([0,0,0,1],'hP',1.588_pREAL),[-0.218_pREAL],1.0e-2_pREAL))) & ! http://dx.doi.org/10.1016/j.actamat.2016.12.066, p 232
+    error stop 'characteristicShear/Ti'
 
 end subroutine crystal_selfTest
 
