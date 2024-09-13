@@ -493,7 +493,7 @@ class Crystal():
         self.lattice = lattice
 
         if self.lattice is not None:
-            self.a = 1 if a is None else a
+            self.a = 1. if a is None else a
             self.b = b
             self.c = c
             self.a = float(self.a) if self.a is not None else \
@@ -1159,6 +1159,16 @@ class Crystal():
                 'plane':    [util.Bravais_to_Miller(hkil=m[:,4:8]) if self.lattice == 'hP'
                                                     else m[:,3:6] for m in master]}
 
+    def characteristic_shear_twin(self):
+        if self.lattice in ['cI', 'cF']:
+            return [0.5*np.sqrt(2.0)]
+        elif self.lattice == 'hP':
+            c_a = self.c/self.a
+            return [(3.0-c_a**2)/np.sqrt(3.0)/c_a,
+                    1.0/c_a,
+                    (4.0*c_a**2-9.0)/np.sqrt(48.0)/c_a,
+                    2.0*(c_a**2-2.0)/3.0/c_a]
+        else: raise TypeError
 
     def relation_operations(self,
                             model: str,
