@@ -411,10 +411,10 @@ class TestOrientation:
         assert shape_full//N_sym == shape_reduced
 
 
-    @pytest.mark.parametrize('lattice',['hP','cI','cF']) #tI not included yet
+    @pytest.mark.parametrize('lattice',['hP','cI','cF','tI'])
     def test_Schmid(self,update,res_path,lattice):
-        O = Orientation(lattice=lattice)                                                            # noqa
-        for mode in ['slip','twin']:
+        O = Orientation(lattice=lattice,c=(1.2 if lattice == 'tI' else None))                       # noqa
+        for mode in ['slip']+([] if lattice == 'tI' else ['twin']):
             reference = res_path/f'{lattice}_{mode}.txt'
             P = O.Schmid(N_slip='*') if mode == 'slip' else O.Schmid(N_twin='*')
             if update:
@@ -441,10 +441,10 @@ class TestOrientation:
 
 ### vectorization tests ###
 
-    @pytest.mark.parametrize('lattice',['hP','cI','cF']) # tI not included yet
+    @pytest.mark.parametrize('lattice',['hP','cI','cF','tI'])
     def test_Schmid_vectorization(self,lattice):
-        O = Orientation.from_random(shape=4,lattice=lattice)                                        # noqa
-        for mode in ['slip','twin']:
+        O = Orientation.from_random(shape=4,lattice=lattice,c=(1.2 if lattice == 'tI' else None))   # noqa
+        for mode in ['slip']+([] if lattice == 'tI' else ['twin']):
             Ps = O.Schmid(N_slip='*') if mode == 'slip' else O.Schmid(N_twin='*')
             for i in range(4):
                 P = O[i].Schmid(N_slip='*') if mode == 'slip' else O[i].Schmid(N_twin='*')
