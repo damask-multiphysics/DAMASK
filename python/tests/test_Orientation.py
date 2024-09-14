@@ -425,6 +425,19 @@ class TestOrientation:
         with pytest.raises(KeyError):
             Orientation(lattice='fcc').Schmid()
 
+    # https://doi.org/10.1016/0079-6425(94)00007-7, Fig. 22
+    @pytest.mark.parametrize('c_a,mode',
+                            [(np.sqrt(2)*0.99,['c','c','c','c']),
+                             (np.sqrt(2)*1.01,['c','c','c','t']),
+                             (1.5*0.99,['c','c','c','t']),
+                             (1.5*1.01,['c','c','t','t']),
+                             (np.sqrt(3)*0.99,['c','c','t','t']),
+                             (np.sqrt(3)*1.01,['t','c','t','t'])])
+    def test_Schmid_twin_direction(self,c_a,mode):
+        O = Orientation(lattice='hP',c=c_a)
+        expected = np.broadcast_to(np.array(mode).reshape(4,1),(4,6)).flatten()
+        assert (np.where(np.einsum('...ii,i',O.Schmid(N_twin=[6,6,6,6]),[0,0,1])>0,'c','t')==expected).all()
+
 
 ### vectorization tests ###
 

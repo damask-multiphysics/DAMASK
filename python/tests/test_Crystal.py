@@ -117,6 +117,17 @@ class TestCrystal:
         assert [len(s) for s in crystal.kinematics('twin')['direction']] == length
         assert [len(s) for s in crystal.kinematics('twin')['plane']] == length
 
+    @pytest.mark.parametrize('c_a,mode',
+                            [(np.sqrt(2)*0.99,['c','c','c','c']),
+                             (np.sqrt(2)*1.01,['c','c','c','t']),
+                             (1.5*0.99,['c','c','c','t']),
+                             (1.5*1.01,['c','c','t','t']),
+                             (np.sqrt(3)*0.99,['c','c','t','t']),
+                             (np.sqrt(3)*1.01,['t','c','t','t'])])
+    def test_characteristic_twin_direction(self,c_a,mode):
+        C = Crystal(lattice='hP',c=c_a)
+        assert (np.where(C.characteristic_shear_twin()>0,'c','t')==mode).all()
+
     @pytest.mark.parametrize('crystal', [Crystal(lattice='cF'),
                                          Crystal(lattice='cI'),
                                          Crystal(lattice='hP'),
@@ -135,7 +146,7 @@ class TestCrystal:
 
     @pytest.mark.parametrize('crystal', [Crystal(lattice='cF'),
                                          Crystal(lattice='cI'),
-                                         Crystal(lattice='hP'),
+                                         Crystal(lattice='hP',c=np.sqrt(2.)*.99),
                                          Crystal(lattice='tI',c=1.2)])
     @pytest.mark.parametrize('mode',['slip','twin'])
     @pytest.mark.need_damaskroot

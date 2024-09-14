@@ -1071,19 +1071,19 @@ class Crystal():
                            [-1, 2,-1, 6,  1,-2, 1, 1],
                            [-2, 1, 1, 6,  2,-1,-1, 1]]),
                          np.array([
-                           [ 1, 0,-1,-2,  1, 0,-1, 1],   # shear = (4(c/a)^2-9)/(4 sqrt(3) c/a)  <10.-2>{10.1}
-                           [ 0, 1,-1,-2,  0, 1,-1, 1],
-                           [-1, 1, 0,-2, -1, 1, 0, 1],
-                           [-1, 0, 1,-2, -1, 0, 1, 1],
-                           [ 0,-1, 1,-2,  0,-1, 1, 1],
-                           [ 1,-1, 0,-2,  1,-1, 0, 1]]),
+                           [ 1, 0,-1,-2, -1,-0, 1,-1],   # shear = (4(c/a)^2-9)/(4 sqrt(3) c/a)  <10.-2>{10.1}
+                           [ 0, 1,-1,-2, -0,-1, 1,-1],
+                           [-1, 1, 0,-2,  1,-1,-0,-1],
+                           [-1, 0, 1,-2,  1,-0,-1,-1],
+                           [ 0,-1, 1,-2, -0, 1,-1,-1],
+                           [ 1,-1, 0,-2, -1, 1,-0,-1]]),
                          np.array([
-                           [ 1, 1,-2,-3,  1, 1,-2, 2],   # shear = 2((c/a)^2-2)/(3 c/a)  <11.-3>{11.2}
-                           [-1, 2,-1,-3, -1, 2,-1, 2],
-                           [-2, 1, 1,-3, -2, 1, 1, 2],
-                           [-1,-1, 2,-3, -1,-1, 2, 2],
-                           [ 1,-2, 1,-3,  1,-2, 1, 2],
-                           [ 2,-1,-1,-3,  2,-1,-1, 2]])]
+                           [ 1, 1,-2,-3, -1,-1, 2,-2],   # shear = 2((c/a)^2-2)/(3 c/a)  <11.-3>{11.2}
+                           [-1, 2,-1,-3,  1,-2, 1,-2],
+                           [-2, 1, 1,-3,  2,-1,-1,-2],
+                           [-1,-1, 2,-3,  1, 1,-2,-2],
+                           [ 1,-2, 1,-3, -1, 2,-1,-2],
+                           [ 2,-1,-1,-3, -2, 1, 1,-2]])]
             },
             'tI': {
                 'slip': [np.array([
@@ -1154,20 +1154,26 @@ class Crystal():
                 }
         }
         master = _kinematics[self.lattice][mode]
-        return {'direction':[util.Bravais_to_Miller(uvtw=m[:,0:4]) if self.lattice == 'hP'
+        kinematics = {'direction':[util.Bravais_to_Miller(uvtw=m[:,0:4]) if self.lattice == 'hP'
                                                     else m[:,0:3] for m in master],
-                'plane':    [util.Bravais_to_Miller(hkil=m[:,4:8]) if self.lattice == 'hP'
+                      'plane':    [util.Bravais_to_Miller(hkil=m[:,4:8]) if self.lattice == 'hP'
                                                     else m[:,3:6] for m in master]}
+        if mode == 'twin':
+            gamma_char_direction = np.sign(self.characteristic_shear_twin()).astype('int')
+            kinematics['plane'] = [k*gamma_char_direction[i] for i,k in enumerate(kinematics['plane'])]
+
+        return kinematics
+
 
     def characteristic_shear_twin(self):
         if self.lattice in ['cI', 'cF']:
-            return [0.5*np.sqrt(2.0)]
+            return np.array([0.5*np.sqrt(2.0)])
         elif self.lattice == 'hP':
             c_a = self.c/self.a
-            return [(3.0-c_a**2)/np.sqrt(3.0)/c_a,
-                    1.0/c_a,
-                    (4.0*c_a**2-9.0)/np.sqrt(48.0)/c_a,
-                    2.0*(c_a**2-2.0)/3.0/c_a]
+            return np.array([(3.0-c_a**2)/np.sqrt(3.0)/c_a,
+                              1.0/c_a,
+                              (9.0-4.0*c_a**2)/np.sqrt(48.0)/c_a,
+                              2.0*(2.0-c_a**2)/3.0/c_a])
         else: raise TypeError
 
     def relation_operations(self,

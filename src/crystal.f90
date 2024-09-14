@@ -261,7 +261,7 @@ module crystal
     ! -----------------------------------
 
     ! <-10.1>{10.2} systems, shear = (3-(c/a)^2)/(sqrt(3) c/a)
-    ! tension in Co, Mg, Zr, Ti, and Be; compression in Cd and Zn
+    ! tension for c/a < sqrt(3): Mg, Ti, Co, Zr, and Be; compression for c/a > sqrt(3): Zn and Cd
       -1,  0,  1,  1,     1,  0, -1,  2, & !
        0, -1,  1,  1,     0,  1, -1,  2, &
        1, -1,  0,  1,    -1,  1,  0,  2, &
@@ -269,7 +269,7 @@ module crystal
        0,  1, -1,  1,     0, -1,  1,  2, &
       -1,  1,  0,  1,     1, -1,  0,  2, &
     ! <11.6>{-1-1.1} systems, shear = 1/(c/a)
-    ! tension in Co, Re, and Zr
+    ! tension: Ti, Re, Zr, Co, and graphite
       -1, -1,  2,  6,     1,  1, -2,  1, &
        1, -2,  1,  6,    -1,  2, -1,  1, &
        2, -1, -1,  6,    -2,  1,  1,  1, &
@@ -277,22 +277,23 @@ module crystal
       -1,  2, -1,  6,     1, -2,  1,  1, &
       -2,  1,  1,  6,     2, -1, -1,  1, &
     ! <10.-2>{10.1} systems, shear = (4(c/a)^2-9)/(4 sqrt(3) c/a)
-    ! compression in Mg
-       1,  0, -1, -2,     1,  0, -1,  1, &
-       0,  1, -1, -2,     0,  1, -1,  1, &
-      -1,  1,  0, -2,    -1,  1,  0,  1, &
-      -1,  0,  1, -2,    -1,  0,  1,  1, &
-       0, -1,  1, -2,     0, -1,  1,  1, &
-       1, -1,  0, -2,     1, -1,  0,  1, &
+    ! compression for c/a > 1.5: Mg and Re
+       1,  0, -1, -2,    -1, -0,  1, -1, &
+       0,  1, -1, -2,    -0, -1,  1, -1, &
+      -1,  1,  0, -2,     1, -1, -0, -1, &
+      -1,  0,  1, -2,     1, -0, -1, -1, &
+       0, -1,  1, -2,    -0,  1, -1, -1, &
+       1, -1,  0, -2,    -1,  1, -0, -1, &
     ! <11.-3>{11.2} systems, shear = 2((c/a)^2-2)/(3 c/a)
-    ! compression in Ti and Zr
-       1,  1, -2, -3,     1,  1, -2,  2, &
-      -1,  2, -1, -3,    -1,  2, -1,  2, &
-      -2,  1,  1, -3,    -2,  1,  1,  2, &
-      -1, -1,  2, -3,    -1, -1,  2,  2, &
-       1, -2,  1, -3,     1, -2,  1,  2, &
-       2, -1, -1, -3,     2, -1, -1,  2  &
+    ! compression for c/a > sqrt(2): Ti and Zr
+       1,  1, -2, -3,    -1, -1,  2, -2, &
+      -1,  2, -1, -3,     1, -2,  1, -2, &
+      -2,  1,  1, -3,     2, -1, -1, -2, &
+      -1, -1,  2, -3,     1,  1, -2, -2, &
+       1, -2,  1, -3,    -1,  2, -1, -2, &
+       2, -1, -1, -3,    -2,  1,  1, -2  &
       ],pREAL),shape(HP_SYSTEMTWIN))                                                                !< hP twin systems, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
+                                                                                                    !< tension in c-direction results in positive RSS, needs reversal for compression twins
 
 !--------------------------------------------------------------------------------------------------
 ! tI: body centered tetragonal (bct)
@@ -424,7 +425,8 @@ end subroutine crystal_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Characteristic shear for twinning
+!> @brief Characteristic shear for twinning.
+!> @details A positive value indicates a tension twin, a negative value a compression twin.
 !--------------------------------------------------------------------------------------------------
 function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(characteristicShear)
 
@@ -444,9 +446,9 @@ function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
     case('cF','cI')
       characteristicShear = 0.5_pREAL*sqrt(2.0_pREAL)
 
-    ! https://doi.org/10.1016/0079-6425(94)00007-7, Table 3
+    ! https://doi.org/10.1016/0079-6425(94)00007-7, Table 3 with reversed signs for modes that shear in tension and compression
     case('hP')
-      if (cOverA < 1.0_pREAL .or. cOverA > 2.0_pREAL) &
+      if (cOverA < 1.0_pREAL .or. cOverA > 3.0_pREAL) &
         call IO_error(131,ext_msg='crystal_characteristicShear_Twin')
 
       myFamilies: do f = 1,size(Ntwin,1)
@@ -454,13 +456,13 @@ function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
         e = sum(Ntwin(:f))
         select case(f)
           case (1)                                                                                  ! <-10.1>{10.2}
-            characteristicShear(s:e) = (3.0_pREAL-cOverA**2)/sqrt(3.0_pREAL)/CoverA                 ! reversed sign compared to reference
+            characteristicShear(s:e) = (3.0_pREAL-cOverA**2)/sqrt(3.0_pREAL)/CoverA
           case (2)                                                                                  ! <11.6>{-1-1.1}
             characteristicShear(s:e) = 1.0_pREAL/cOverA
           case (3)                                                                                  ! <10.-2>{10.1}
-            characteristicShear(s:e) = (4.0_pREAL*cOverA**2-9.0_pREAL)/sqrt(48.0_pREAL)/cOverA
+            characteristicShear(s:e) = (9.0_pREAL-4.0_pREAL*cOverA**2)/sqrt(48.0_pREAL)/cOverA
           case (4)                                                                                  ! <11.-3>{11.2}
-            characteristicShear(s:e) = 2.0_pREAL*(cOverA**2-2.0_pREAL)/3.0_pREAL/cOverA
+            characteristicShear(s:e) = 2.0_pREAL*(2.0_pREAL-cOverA**2)/3.0_pREAL/cOverA
         end select
       end do myFamilies
 
@@ -893,7 +895,7 @@ end function crystal_interaction_SlipBySlip
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Twin-twin interaction matrix
-!> details only active twin systems are considered
+!> @details only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
 function crystal_interaction_TwinByTwin(Ntwin,interactionValues,lattice) result(interactionMatrix)
 
@@ -992,7 +994,7 @@ end function crystal_interaction_TwinByTwin
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Trans-trans interaction matrix
-!> details only active trans systems are considered
+!> @details only active trans systems are considered
 !--------------------------------------------------------------------------------------------------
 function crystal_interaction_TransByTrans(Ntrans,interactionValues,lattice) result(interactionMatrix)
 
@@ -1034,7 +1036,7 @@ end function crystal_interaction_TransByTrans
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Slip-twin interaction matrix
-!> details only active slip and twin systems are considered
+!> @details only active slip and twin systems are considered
 !--------------------------------------------------------------------------------------------------
 function crystal_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,lattice) result(interactionMatrix)
 
@@ -1194,7 +1196,7 @@ end function crystal_interaction_SlipByTwin
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Slip-trans interaction matrix
-!> details only active slip and trans systems are considered
+!> @details only active slip and trans systems are considered
 !--------------------------------------------------------------------------------------------------
 function crystal_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,lattice) result(interactionMatrix)
 
@@ -1247,7 +1249,7 @@ function crystal_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,lattice)
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Twin-slip interaction matrix
-!> details only active twin and slip systems are considered
+!> @details only active twin and slip systems are considered
 !--------------------------------------------------------------------------------------------------
 function crystal_interaction_TwinBySlip(Ntwin,Nslip,interactionValues,lattice) result(interactionMatrix)
 
@@ -1323,7 +1325,7 @@ end function crystal_interaction_TwinBySlip
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Schmid matrix for slip
-!> details only active slip systems are considered
+!> @details only active slip systems are considered
 ! Non-schmid projections for cI with up to 6 coefficients
 ! https://doi.org/10.1016/j.actamat.2012.03.053, eq. (17)
 ! https://doi.org/10.1016/j.actamat.2008.07.037, table 1
@@ -1409,7 +1411,7 @@ end function crystal_SchmidMatrix_slip
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Schmid matrix for twinning
-!> details only active twin systems are considered
+!> @details only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
 function crystal_SchmidMatrix_twin(Ntwin,lattice,cOverA) result(SchmidMatrix)
 
@@ -1419,6 +1421,7 @@ function crystal_SchmidMatrix_twin(Ntwin,lattice,cOverA) result(SchmidMatrix)
   real(pREAL), dimension(3,3,sum(Ntwin))             :: SchmidMatrix
 
   real(pREAL), dimension(3,3,sum(Ntwin))             :: coordinateSystem
+  real(pREAL), dimension(sum(Ntwin))                 :: gamma_char
   real(pREAL), dimension(:,:),           allocatable :: twinSystems
   integer,     dimension(:),             allocatable :: NtwinMax
   integer                                            :: i
@@ -1444,9 +1447,11 @@ function crystal_SchmidMatrix_twin(Ntwin,lattice,cOverA) result(SchmidMatrix)
     call IO_error(144,ext_msg='Ntwin '//trim(lattice))
 
   coordinateSystem = buildCoordinateSystem(Ntwin,NtwinMax,twinSystems,lattice,cOverA)
+  gamma_char = crystal_characteristicShear_Twin(Ntwin,lattice,cOverA)
 
   do i = 1, sum(Ntwin)
-    SchmidMatrix(1:3,1:3,i) = math_outer(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
+    SchmidMatrix(1:3,1:3,i) = math_outer(coordinateSystem(1:3,1,i), &
+                                         coordinateSystem(1:3,2,i)*sign(1._pREAL,gamma_char(i)))
     if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
       error stop 'dilatational Schmid matrix for twin'
   end do
@@ -1456,7 +1461,7 @@ end function crystal_SchmidMatrix_twin
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Schmid matrix for transformation
-!> details only active twin systems are considered
+!> @details only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
 function crystal_SchmidMatrix_trans(Ntrans,crystal_target,cOverA,a_cF,a_cI) result(SchmidMatrix)
 
@@ -1485,7 +1490,7 @@ end function crystal_SchmidMatrix_trans
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Schmid matrix for cleavage
-!> details only active cleavage systems are considered
+!> @details only active cleavage systems are considered
 !--------------------------------------------------------------------------------------------------
 function crystal_SchmidMatrix_cleavage(Ncleavage,lattice,cOverA) result(SchmidMatrix)
 
@@ -1583,7 +1588,7 @@ end function crystal_slip_transverse
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Labels of slip systems
-!> details only active slip systems are considered
+!> @details only active slip systems are considered
 !--------------------------------------------------------------------------------------------------
 function crystal_labels_slip(Nslip,lattice) result(labels)
 
@@ -1697,7 +1702,7 @@ end function crystal_symmetrize_C66
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Labels for twin systems
-!> details only active twin systems are considered
+!> @details only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
 function crystal_labels_twin(Ntwin,lattice) result(labels)
 
@@ -2064,7 +2069,7 @@ end subroutine buildTransformationSystem
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief select active systems as strings
+!> @brief Select active systems as strings.
 !--------------------------------------------------------------------------------------------------
 function getlabels(active,potential,system) result(labels)
 
@@ -2120,7 +2125,7 @@ end function getlabels
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Equivalent Poisson's ratio (ν)
+!> @brief Equivalent Poisson's ratio (ν).
 !> @details https://doi.org/10.1143/JPSJ.20.635
 !--------------------------------------------------------------------------------------------------
 pure function crystal_isotropic_nu(C,assumption,lattice) result(nu)
@@ -2152,7 +2157,7 @@ end function crystal_isotropic_nu
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Equivalent shear modulus (μ)
+!> @brief Equivalent shear modulus (μ).
 !> @details https://doi.org/10.1143/JPSJ.20.635
 !> @details Nonlinear Mechanics of Crystals 10.1007/978-94-007-0350-6, pp 563
 !--------------------------------------------------------------------------------------------------
@@ -2316,10 +2321,14 @@ subroutine crystal_selfTest()
     error stop 'characteristicShear/Mg'
   if (any(dNeq(crystal_characteristicShear_Twin([1],'hP',1.856_pREAL),[-0.139_pREAL],1.0e-2_pREAL))) & ! Rend. Sem. Mat. Univ. Pol. Torino, Vol. 58, 1, pp. 99–111, 2000, p 2
     error stop 'characteristicShear/Zn'
-  if (any(dNeq(crystal_characteristicShear_Twin([1],'hP',2.725_pREAL),[0.367_pREAL],1.0e-2_pREAL))) & ! https://doi.org/10.1016/0079-6425(94)00007-7, p 28
+  if (any(dNeq(crystal_characteristicShear_Twin([0,1],'hP',2.725_pREAL),[0.367_pREAL],1.0e-2_pREAL))) & ! https://doi.org/10.1016/0079-6425(94)00007-7, p 28
     error stop 'characteristicShear/hexagonal graphite'
   if (any(dNeq(crystal_characteristicShear_Twin([0,0,0,1],'hP',1.588_pREAL),[-0.218_pREAL],1.0e-2_pREAL))) & ! http://dx.doi.org/10.1016/j.actamat.2016.12.066, p 232
     error stop 'characteristicShear/Ti'
+  if (any(crystal_characteristicShear_Twin([1,1,1,1],'hP',sqrt(2._pREAL)*0.99_pREAL)<0._pREAL)) &   ! https://doi.org/10.1016/0079-6425(94)00007-7, Fig. 22
+    error stop 'characteristicShear/tension only'
+  if (any(crystal_characteristicShear_Twin([1,0,1,1],'hP',sqrt(3._pREAL)*1.01_pREAL)>0._pREAL)) &   ! https://doi.org/10.1016/0079-6425(94)00007-7, Fig. 22
+    error stop 'characteristicShear/compression only'
 
 end subroutine crystal_selfTest
 
