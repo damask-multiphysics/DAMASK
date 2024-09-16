@@ -8,7 +8,7 @@ references:
     Acta Materialia 132:598-610, 2017,
     https://doi.org/10.1016/j.actamat.2017.05.015
 
-output: [gamma_sl]
+output: [xi_sl, gamma_sl]
 
 N_sl: [3, 3, 0, 12]   # basal, prism, -, 1. pyr<c+a>
 

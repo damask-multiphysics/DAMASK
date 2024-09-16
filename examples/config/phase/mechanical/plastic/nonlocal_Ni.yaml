@@ -6,7 +6,24 @@ references:
     RWTH Aachen 2013,
     http://publications.rwth-aachen.de/record/229993/files/4862.pdf
 
-output: [rho_u_ed_pos, rho_b_ed_pos, rho_u_ed_neg, rho_b_ed_neg, rho_u_sc_pos, rho_b_sc_pos, rho_u_sc_neg, rho_b_sc_neg, rho_d_ed, rho_d_sc]
+output:
+  - rho_u_ed_pos
+  - rho_b_ed_pos
+  - rho_u_ed_neg
+  - rho_b_ed_neg
+  - rho_d_ed
+  - rho_u_sc_pos
+  - rho_b_sc_pos
+  - rho_u_sc_neg
+  - rho_b_sc_neg
+  - rho_d_sc
+  - rho_f
+  - v_ed_pos
+  - v_ed_neg
+  - v_sc_pos
+  - v_sc_neg
+  - gamma
+  - tau_pass
 
 N_sl: [12]
 

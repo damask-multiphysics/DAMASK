@@ -1,5 +1,7 @@
 references:
   - https://de.wikipedia.org/wiki/Gold
 
+output: [T]
+
 K_11: 320.0
 C_p: 128.0

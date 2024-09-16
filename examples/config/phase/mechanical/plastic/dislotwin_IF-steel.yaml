@@ -8,7 +8,7 @@ references:
     Mechanics of Materials, 164:104117, 2022,
     https://doi.org/10.1016/j.mechmat.2021.104117
 
-output: [rho_dip, rho_mob]
+output: [rho_dip, rho_mob, gamma_sl, Lambda_sl, tau_pass]
 
 N_sl: [12, 12]
 

@@ -1,3 +1,4 @@
 # For homogenization with N_constituents > 1
 type: isotemperature
-output: ['T']
+
+output: [T]

@@ -14,7 +14,7 @@ references:
     https://doi.org/10.1016/j.actamat.2008.08.012,
     Table 1 (self and coplanar)
 
-output: [rho_dip, rho_mob]
+output: [rho_dip, rho_mob, gamma_sl, Lambda_sl, tau_pass]
 
 N_sl: [12]
 

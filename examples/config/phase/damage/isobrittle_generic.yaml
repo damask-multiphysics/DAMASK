@@ -1,6 +1,6 @@
 type: isobrittle
 
-output: [f_phi]
+output: [r_W]
 
 G_crit: 1400000.0
 l_c: 1.0

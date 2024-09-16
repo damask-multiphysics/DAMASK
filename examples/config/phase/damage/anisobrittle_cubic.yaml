@@ -1,6 +1,6 @@
 type: anisobrittle
 
-output: [f_phi]
+output: [Psi_D]
 
 N_cl: [3]
 
