@@ -218,7 +218,7 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
 
   call SNESGetDM(SNES_thermal,DM_thermal,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(DM_thermal,T_PETSc,T,err_PETSc)                                           ! returns 0-indexed T
+  call DMDAVecGetArrayReadF90(DM_thermal,T_PETSc,T,err_PETSc)                                       ! returns 0-indexed T
   CHKERRQ(err_PETSc)
 
   stagNorm = maxval(abs(T - T_stagInc))
@@ -232,7 +232,7 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   call homogenization_thermal_setField(reshape(T,[product(cells(1:2))*cells3]), &
                                        reshape(T-T_lastInc,[product(cells(1:2))*cells3])/Delta_t_)
 
-  call DMDAVecRestoreArrayF90(DM_thermal,T_PETSc,T,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(DM_thermal,T_PETSc,T,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (solution%converged) &

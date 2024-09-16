@@ -13,6 +13,7 @@ Detailed instructions for each step are documented in the [wiki](https://git.dam
    - [ ] PyPi package (wheel)
    - [ ] Arch Linux (PKGBUILD)
    - [ ] Ubuntu (Launchpad)
+   - [ ] Flatpak (Flathub)
    - Open build service
      - [ ] Debian
      - [ ] Fedora/Suse

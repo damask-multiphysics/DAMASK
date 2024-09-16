@@ -237,7 +237,7 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
 
   call SNESGetDM(SNES_damage,DM_damage,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)                                        ! returns 0-indexed phi
+  call DMDAVecGetArrayReadF90(DM_damage,phi_PETSc,phi,err_PETSc)                                    ! returns 0-indexed phi
   CHKERRQ(err_PETSc)
 
   stagNorm = maxval(abs(phi - phi_stagInc))
@@ -250,7 +250,7 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
 
   call homogenization_set_phi(reshape(phi,[product(cells(1:2))*cells3]))
 
-  call DMDAVecRestoreArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)
+  call DMDAVecRestoreArrayReadF90(DM_damage,phi_PETSc,phi,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (solution%converged) &

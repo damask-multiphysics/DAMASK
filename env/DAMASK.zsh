@@ -17,8 +17,10 @@ cd $DAMASK_ROOT >/dev/null; BRANCH=$(git branch 2>/dev/null| grep -E '^\* '); cd
 
 PATH=${DAMASK_ROOT}/bin:$PATH
 
-SOLVER=$(which DAMASK_grid || true 2>/dev/null)
-[[ "x$SOLVER" == "x" ]] && SOLVER=$(blink 'Not found!')
+SOLVER_GRID=$(which DAMASK_grid || true 2>/dev/null)
+[[ "x$SOLVER_GRID" == "x" ]] && SOLVER_GRID=$(blink 'Not found!')
+SOLVER_MESH=$(which DAMASK_mesh || true 2>/dev/null)
+[[ "x$SOLVER_MESH" == "x" ]] && SOLVER_MESH=$(blink 'Not found!')
 
 
 # currently, there is no information that unlimited stack size causes problems
@@ -32,12 +34,13 @@ ulimit -s unlimited 2>/dev/null # maximum stack size (kB)
 if [ ! -z "$PS1" ]; then
   echo
   echo Düsseldorf Advanced Materials Simulation Kit --- DAMASK
-  echo Max-Planck-Institut für Eisenforschung GmbH, Düsseldorf
+  echo Max-Planck-Institut für Nachhaltige Materialien GmbH, Düsseldorf
   echo https://damask.mpie.de
   echo
   echo "Using environment with ..."
   echo "DAMASK             $DAMASK_ROOT $BRANCH"
-  echo "Grid Solver        $SOLVER"
+  echo "Grid Solver        $SOLVER_GRID"
+  echo "Mesh Solver        $SOLVER_MESH"
   if [ "x$PETSC_DIR" != "x" ]; then
     echo -n "PETSc location     "
     [ -d $PETSC_DIR ] && echo $PETSC_DIR || blink $PETSC_DIR

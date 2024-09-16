@@ -685,12 +685,32 @@ class Crystal():
         """
         Return symmetry operations.
 
+        Notes
+        -----
+        The symmetry operations defined here only consider Rotations.
+        More specifically, for each crystal family, an enantiomorphic
+        point symmetry is selected. In case that there are multiple
+        point groups with enantiomorphic point symmetry, the one with
+        the highest order is chosen:
+
+        Overview of crystal classes and point group in Hermann-Mauguin
+        notation used for definition of symmetry operations.
+        - tricinic: 1
+        - monoclinic: 2
+        - orthorhombic: 222
+        - tetragonal: 422
+        - hexagonal: 622
+        - cubic: 432
+
+
         References
         ----------
         U.F. Kocks et al.,
-        Texture and Anisotropy:
-        Preferred Orientations in Polycrystals and their Effect on Materials Properties.
+        Texture and Anisotropy: Preferred Orientations in Polycrystals
+        and their Effect on Materials Properties.
         Cambridge University Press 1998. Table II
+
+        https://en.wikipedia.org/wiki/Crystal_system#Crystal_classes
 
         """
         _symmetry_operations: Dict[CrystalFamily, List]  = {
@@ -719,7 +739,7 @@ class Crystal():
                               [-0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2), 0.0            ],
                               [-0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0,            0.0            ],
                               [-0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0,            0.0            ],
-                            ],
+                            ], # 432
             'hexagonal':    [
                               [ 1.0,            0.0,            0.0,            0.0            ],
                               [-0.5*np.sqrt(3), 0.0,            0.0,           -0.5            ],
@@ -733,7 +753,7 @@ class Crystal():
                               [ 0.0,            0.0,            1.0,            0.0            ],
                               [ 0.0,           -0.5,           -0.5*np.sqrt(3), 0.0            ],
                               [ 0.0,            0.5*np.sqrt(3), 0.5,            0.0            ],
-                            ],
+                            ], # 622
             'tetragonal':   [
                               [ 1.0,            0.0,            0.0,            0.0            ],
                               [ 0.0,            1.0,            0.0,            0.0            ],
@@ -743,20 +763,20 @@ class Crystal():
                               [ 0.0,           -0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
                               [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
                               [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                            ],
+                            ], # 422
             'orthorhombic': [
                               [ 1.0,0.0,0.0,0.0 ],
                               [ 0.0,1.0,0.0,0.0 ],
                               [ 0.0,0.0,1.0,0.0 ],
                               [ 0.0,0.0,0.0,1.0 ],
-                            ],
+                            ], # 222
             'monoclinic':   [
                               [ 1.0,0.0,0.0,0.0 ],
                               [ 0.0,0.0,1.0,0.0 ],
-                            ],
+                            ], # 2
             'triclinic':    [
                               [ 1.0,0.0,0.0,0.0 ],
-                            ]}
+                            ]} # 1
         return Rotation.from_quaternion(_symmetry_operations[self.family],accept_homomorph=True)
 
 

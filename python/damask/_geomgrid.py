@@ -476,6 +476,10 @@ class GeomGrid:
         periodic : bool, optional
             Assume grid to be periodic. Defaults to True.
 
+        Notes
+        -----
+        damask.seeds contains functionality for seed generation.
+
         Returns
         -------
         new : damask.GeomGrid
@@ -536,6 +540,27 @@ class GeomGrid:
         -------
         new : damask.GeomGrid
             Grid-based geometry from tessellation.
+
+        Notes
+        -----
+        damask.seeds contains functionality for seed generation.
+
+        Examples
+        --------
+        Generate microstructure with three grains.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> seeds = np.array([[0.30828, 0.64020, 0.65237],
+        ...                   [0.62200, 0.56858, 0.32842],
+        ...                   [0.57315, 0.94534, 0.87531]])*1e-6
+        >>> damask.GeomGrid.from_Voronoi_tessellation(cells=[10,10,10],
+        ...                                           size=[1e-6]*3,
+        ...                                           seeds=seeds)
+        cells:  10 × 10 × 10
+        size:   1e-06 × 1e-06 × 1e-06 m³
+        origin: 0.0   0.0   0.0 m
+        # materials: 3
 
         """
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
@@ -882,7 +907,7 @@ class GeomGrid:
 
         Invariance of flipping a (fully) mirrored grid.
 
-        >>> g.mirror('x',True) == g.mirror('x',True).flip('x')
+        >>> g.mirror('x',reflect=True) == g.mirror('x',reflect=True).flip('x')
         True
 
         """
@@ -1182,6 +1207,14 @@ class GeomGrid:
                       periodic: bool = True) -> 'GeomGrid':
         """
         Insert a primitive geometric object at a given position.
+
+        The shape of the object is defined as
+
+        .. math::
+
+           |x|^{2^a} + |y|^{2^b} + |z|^{2^c} < 1
+
+        where dimension = (x,y,z) and exponent = (a,b,c).
 
         Parameters
         ----------

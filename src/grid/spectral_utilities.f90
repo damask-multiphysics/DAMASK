@@ -503,12 +503,12 @@ function G_hat_init() result(G_hat_)
   complex(pREAL), dimension(3,3), parameter :: delta = cmplx(math_I3,0.0_pREAL,pREAL)
 
 
-  allocate(G_hat_(3,3,3,3,cells1Red,cells(3),cells2),source=cmplx(.0_pReal,.0_pReal,pREAL))
+  allocate(G_hat_(3,3,3,3,cells1Red,cells(3),cells2),source=cmplx(.0_pREAL,.0_pREAL,pREAL))
 
   !$OMP PARALLEL DO PRIVATE(l,m,n,o,xi_norm_2)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
     if (any([i,j+cells2Offset,k] /= 1)) then                                                        ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
-      xi_norm_2 = cmplx(abs(dot_product(xi1st(:,i,k,j), xi1st(:,i,k,j))),0.0_pReal,pREAL)
+      xi_norm_2 = cmplx(abs(dot_product(xi1st(:,i,k,j), xi1st(:,i,k,j))),0.0_pREAL,pREAL)
       if (xi_norm_2%re > 1.e-16_pREAL) then
 #ifndef __INTEL_COMPILER
         do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)

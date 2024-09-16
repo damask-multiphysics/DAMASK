@@ -379,7 +379,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
   real(pREAL), dimension(:), pointer :: x_scal, pf_scal
   real(pREAL), dimension(cellDof), target :: f_scal
   PetscReal                          ::  IcellJMat(dimPlex,dimPlex)
-  PetscReal,    dimension(:),pointer :: pV0, pCellJ, pInvcellJ, basisField, basisFieldDer
+  PetscReal,    dimension(:),pointer :: pV0, pCellJ, pInvcellJ, dev_null, basisFieldDer
   PetscInt                           :: cellStart, cellEnd, cell, component, face, &
                                         qPt, basis, comp, cidx, &
                                         numFields, &
@@ -395,10 +395,6 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
   allocate(x_scal(cellDof))
 
   call DMGetLocalSection(dm_local,section,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call DMGetDS(dm_local,prob,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call PetscDSGetTabulation(prob,0_pPETSCINT,basisField,basisFieldDer,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMPlexGetHeightStratum(dm_local,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -422,6 +418,11 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate field derivatives
+  call DMGetDS(dm_local,prob,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call PetscDSGetTabulation(prob,0_pPETSCINT,dev_null,basisFieldDer,err_PETSc)
+  CHKERRQ(err_PETSc)
+
   do cell = cellStart, cellEnd-1_pPETSCINT                                                          !< loop over all elements
 
     call PetscSectionGetNumFields(section,numFields,err_PETSc)
@@ -496,6 +497,8 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,x_scal,err_PETSc)
     CHKERRQ(err_PETSc)
   end do
+  call PetscDSRestoreTabulation(prob,0_pPETSCINT,dev_null,basisFieldDer,err_PETSc)
+  CHKERRQ(err_PETSc)
   call DMRestoreLocalVector(dm_local,x_local,err_PETSc)
   CHKERRQ(err_PETSc)
 
@@ -521,8 +524,8 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
   PetscReal, dimension(dimPlex**2,cellDof)  :: BMat, BMatAvg, MatA
   PetscReal, dimension(3,3)          :: F, FAvg, FInv
   PetscReal                          :: detJ
-  PetscReal, dimension(:),   pointer :: basisField, basisFieldDer, &
-                                          pV0, pCellJ, pInvcellJ
+  PetscReal, dimension(:),   pointer :: dev_null, basisFieldDer, &
+                                        pV0, pCellJ, pInvcellJ
 
   real(pREAL), dimension(:),   pointer :: pK_e, x_scal
 
@@ -546,7 +549,6 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
   CHKERRQ(err_PETSc)
   call DMGetDS(dm_local,prob,err_PETSc)
   CHKERRQ(err_PETSc)
-  call PetscDSGetTabulation(prob,0_pPETSCINT,basisField,basisFieldDer,err_PETSc)
   call DMGetLocalSection(dm_local,section,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMGetGlobalSection(dm_local,gSection,err_PETSc)
@@ -569,6 +571,9 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
       end if
     end if
   end do; end do
+
+  call PetscDSGetTabulation(prob,0_pPETSCINT,dev_null,basisFieldDer,err_PETSc)
+  CHKERRQ(err_PETSc)
   call DMPlexGetHeightStratum(dm_local,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
   do cell = cellStart, cellEnd-1                                                                    !< loop over all elements
@@ -641,6 +646,8 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
   call MatAssemblyEnd(Jac_pre,MAT_FINAL_ASSEMBLY,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMRestoreLocalVector(dm_local,x_local,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call PetscDSRestoreTabulation(prob,0_pPETSCINT,dev_null,basisFieldDer,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -781,7 +788,7 @@ subroutine FEM_mechanical_updateCoords()
               cellStart, cellEnd, c, n
   PetscSection :: section
   PetscQuadrature :: mechQuad
-  PetscReal, dimension(:), pointer :: basisField, basisFieldDer, &
+  PetscReal, dimension(:), pointer :: basisField, dev_null, &
     nodeCoords_linear                                                                               !< nodal coordinates (dimPlex*Nnodes)
   real(pREAL), dimension(:), pointer :: x_scal
 
@@ -815,7 +822,7 @@ subroutine FEM_mechanical_updateCoords()
   ! write ip displacements
   call DMPlexGetHeightStratum(dm_local,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
-  call PetscDSGetTabulation(mechQuad,0_pPETSCINT,basisField,basisFieldDer,err_PETSc)
+  call PetscDSGetTabulation(mechQuad,0_pPETSCINT,basisField,dev_null,err_PETSc)
   CHKERRQ(err_PETSc)
   allocate(ipCoords(3,nQuadrature,mesh_NcpElems),source=0.0_pREAL)
   do c=cellStart,cellEnd-1_pPETSCINT
@@ -841,6 +848,8 @@ subroutine FEM_mechanical_updateCoords()
   end do
   call discretization_setIPcoords(reshape(ipCoords,[3,mesh_NcpElems*nQuadrature]))
   call DMRestoreLocalVector(dm_local,x_local,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call PetscDSRestoreTabulation(mechQuad,0_pPETSCINT,basisField,dev_null,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine FEM_mechanical_updateCoords
