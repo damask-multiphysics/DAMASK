@@ -260,31 +260,31 @@ module crystal
     ! η_1                 K_1
     ! -----------------------------------
 
-    ! <-10.1>{10.2} systems, shear = (3-(c/a)^2)/(sqrt(3) c/a)
-    ! tension for c/a < sqrt(3): Mg, Ti, Co, Zr, and Be; compression for c/a > sqrt(3): Zn and Cd
+    ! <-10.1>{10.2} systems, twin shear = (3-(c/a)^2)/(sqrt(3) c/a)
+    ! extension for c/a < sqrt(3): Mg, Ti, Co, Zr, and Be; compression for c/a > sqrt(3): Zn and Cd
       -1,  0,  1,  1,     1,  0, -1,  2, & !
        0, -1,  1,  1,     0,  1, -1,  2, &
        1, -1,  0,  1,    -1,  1,  0,  2, &
        1,  0, -1,  1,    -1,  0,  1,  2, &
        0,  1, -1,  1,     0, -1,  1,  2, &
       -1,  1,  0,  1,     1, -1,  0,  2, &
-    ! <11.6>{-1-1.1} systems, shear = 1/(c/a)
-    ! tension: Ti, Re, Zr, Co, and graphite
+    ! <11.6>{-1-1.1} systems, twin shear = 1/(c/a)
+    ! extension
       -1, -1,  2,  6,     1,  1, -2,  1, &
        1, -2,  1,  6,    -1,  2, -1,  1, &
        2, -1, -1,  6,    -2,  1,  1,  1, &
        1,  1, -2,  6,    -1, -1,  2,  1, &
       -1,  2, -1,  6,     1, -2,  1,  1, &
       -2,  1,  1,  6,     2, -1, -1,  1, &
-    ! <10.-2>{10.1} systems, shear = (9-4(c/a)^2)/(4 sqrt(3) c/a)
-    ! compression for c/a > 1.5: Mg and Re
+    ! <10.-2>{10.1} systems, twin shear = (9-4(c/a)^2)/(4 sqrt(3) c/a)
+    ! compression for c/a > 1.5
        1,  0, -1, -2,    -1, -0,  1, -1, &
        0,  1, -1, -2,    -0, -1,  1, -1, &
       -1,  1,  0, -2,     1, -1, -0, -1, &
       -1,  0,  1, -2,     1, -0, -1, -1, &
        0, -1,  1, -2,    -0,  1, -1, -1, &
        1, -1,  0, -2,    -1,  1, -0, -1, &
-    ! <11.-3>{11.2} systems, shear = 2(2-(c/a)^2)/(3 c/a)
+    ! <11.-3>{11.2} systems, twin shear = 2(2-(c/a)^2)/(3 c/a)
     ! compression for c/a > sqrt(2): Ti and Zr
        1,  1, -2, -3,    -1, -1,  2, -2, &
       -1,  2, -1, -3,     1, -2,  1, -2, &
@@ -293,7 +293,9 @@ module crystal
        1, -2,  1, -3,    -1,  2, -1, -2, &
        2, -1, -1, -3,    -2,  1,  1, -2  &
       ],pREAL),shape(HP_SYSTEMTWIN))                                                                !< hP twin systems, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
-                                                                                                    !< tension in c-direction results in positive RSS, needs reversal for compression twins
+                                                                                                    !< twin shear is positive for extension twins and negative for compression twins
+                                                                                                    !< above systems are listed for the extension twin versions
+                                                                                                    !< and get negated if a large enough c/a turn them into a compression twin
 
 !--------------------------------------------------------------------------------------------------
 ! tI: body centered tetragonal (bct)
@@ -302,7 +304,7 @@ module crystal
     TI_NSLIPSYSTEM = [2, 2, 2, 4, 2, 4, 2, 2, 4, 8, 4, 8, 8 ]                                       !< # of slip systems per family for tI
 
   integer, parameter :: &
-    TI_NSLIP = sum(TI_NSLIPSYSTEM)                                                                 !< total # of slip systems for tI
+    TI_NSLIP = sum(TI_NSLIPSYSTEM)                                                                  !< total # of slip systems for tI
 
   real(pREAL), dimension(3+3,TI_NSLIP), parameter :: &
     TI_SYSTEMSLIP = reshape(real([&
@@ -1412,6 +1414,7 @@ end function crystal_SchmidMatrix_slip
 !--------------------------------------------------------------------------------------------------
 !> @brief Schmid matrix for twinning
 !> @details only active twin systems are considered
+!> Twin kinematics correspond to Schmid matrix multiplied by abs(characteristic_twin_shear)
 !--------------------------------------------------------------------------------------------------
 function crystal_SchmidMatrix_twin(Ntwin,lattice,cOverA) result(SchmidMatrix)
 
@@ -1421,7 +1424,7 @@ function crystal_SchmidMatrix_twin(Ntwin,lattice,cOverA) result(SchmidMatrix)
   real(pREAL), dimension(3,3,sum(Ntwin))             :: SchmidMatrix
 
   real(pREAL), dimension(3,3,sum(Ntwin))             :: coordinateSystem
-  real(pREAL), dimension(sum(Ntwin))                 :: gamma_char
+  real(pREAL), dimension(sum(Ntwin))                 :: twinSense
   real(pREAL), dimension(:,:),           allocatable :: twinSystems
   integer,     dimension(:),             allocatable :: NtwinMax
   integer                                            :: i
@@ -1447,11 +1450,12 @@ function crystal_SchmidMatrix_twin(Ntwin,lattice,cOverA) result(SchmidMatrix)
     call IO_error(144,ext_msg='Ntwin '//trim(lattice))
 
   coordinateSystem = buildCoordinateSystem(Ntwin,NtwinMax,twinSystems,lattice,cOverA)
-  gamma_char = crystal_characteristicShear_Twin(Ntwin,lattice,cOverA)
+  twinSense = sign(1.0_pREAL,crystal_characteristicShear_Twin(Ntwin,lattice,cOverA))
 
   do i = 1, sum(Ntwin)
-    SchmidMatrix(1:3,1:3,i) = math_outer(coordinateSystem(1:3,1,i), &
-                                         coordinateSystem(1:3,2,i)*sign(1._pREAL,gamma_char(i)))
+    SchmidMatrix(1:3,1:3,i) = twinSense(i) * &
+                              math_outer(coordinateSystem(1:3,1,i), &
+                                         coordinateSystem(1:3,2,i))
     if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
       error stop 'dilatational Schmid matrix for twin'
   end do
