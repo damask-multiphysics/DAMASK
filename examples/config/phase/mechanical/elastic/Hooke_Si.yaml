@@ -1,10 +1,10 @@
 type: Hooke
 
 references:
-  - C. Bourgeois,
-    Proceedings of International Frequency Control Symposium 791-799, 1997
-    https://doi.org/10.1109/freq.1997.639192
-    Table III and Table IV (p-type)
+  - C. Bourgeois et al.,
+    Proceedings of International Frequency Control Symposium 791-799, 1997,
+    https://doi.org/10.1109/freq.1997.639192,
+    Table III and Table IV (p-type, T_min=0ºC, T_max=110ºC)
 
 C_11: 165.64e+9
 C_11,T: -73.25e-6
