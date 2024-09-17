@@ -21,7 +21,7 @@ The site is primarily meant to provide a forum for [Discussions](https://github.
 
 ## Contact Information
 
-Max-Planck-Institut für Nachhaltige Materialien GmbH
+Max-Planck-Institut für Nachhaltige Materialien GmbH  
 Max-Planck-Str. 1  
 40237 Düsseldorf  
-Germany  
+Germany
