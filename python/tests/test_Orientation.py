@@ -436,7 +436,7 @@ class TestOrientation:
     def test_Schmid_twin_direction(self,c_a,mode):
         O = Orientation(lattice='hP',c=c_a)
         expected = np.broadcast_to(np.array(mode).reshape(4,1),(4,6)).flatten()
-        assert (np.where(np.einsum('...ii,i',O.Schmid(N_twin=[6,6,6,6]),[0,0,1])>0,'c','t')==expected).all()
+        assert (np.where(O.Schmid(N_twin=[6,6,6,6])[...,2,2]>0,'c','t')==expected).all()
 
 
 ### vectorization tests ###

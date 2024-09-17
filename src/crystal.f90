@@ -257,6 +257,8 @@ module crystal
 
   real(pREAL), dimension(4+4,HP_NTWIN), parameter :: &
     HP_SYSTEMTWIN =  reshape(real([&
+    ! https://doi.org/10.1016/0079-6425(94)00007-7, Table 3 and Fig. 22
+    ! -----------------------------------
     ! η_1                 K_1
     ! -----------------------------------
 
@@ -269,7 +271,7 @@ module crystal
        0,  1, -1,  1,     0, -1,  1,  2, &
       -1,  1,  0,  1,     1, -1,  0,  2, &
     ! <11.6>{-1-1.1} systems, twin shear = 1/(c/a)
-    ! extension
+    ! extension: Ti, Re, Zr, Co, and graphite
       -1, -1,  2,  6,     1,  1, -2,  1, &
        1, -2,  1,  6,    -1,  2, -1,  1, &
        2, -1, -1,  6,    -2,  1,  1,  1, &
@@ -277,7 +279,7 @@ module crystal
       -1,  2, -1,  6,     1, -2,  1,  1, &
       -2,  1,  1,  6,     2, -1, -1,  1, &
     ! <10.-2>{10.1} systems, twin shear = (9-4(c/a)^2)/(4 sqrt(3) c/a)
-    ! compression for c/a > 1.5
+    ! compression for c/a > 1.5: Mg and Re
        1,  0, -1, -2,    -1, -0,  1, -1, &
        0,  1, -1, -2,    -0, -1,  1, -1, &
       -1,  1,  0, -2,     1, -1, -0, -1, &
@@ -1453,9 +1455,8 @@ function crystal_SchmidMatrix_twin(Ntwin,lattice,cOverA) result(SchmidMatrix)
   twinSense = sign(1.0_pREAL,crystal_characteristicShear_Twin(Ntwin,lattice,cOverA))
 
   do i = 1, sum(Ntwin)
-    SchmidMatrix(1:3,1:3,i) = twinSense(i) * &
-                              math_outer(coordinateSystem(1:3,1,i), &
-                                         coordinateSystem(1:3,2,i))
+    SchmidMatrix(1:3,1:3,i) = twinSense(i) &
+                            * math_outer(coordinateSystem(1:3,1,i), coordinateSystem(1:3,2,i))
     if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
       error stop 'dilatational Schmid matrix for twin'
   end do
