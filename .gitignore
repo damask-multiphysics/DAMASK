@@ -1,6 +1,3 @@
-*.bak
-*~
-.DS_Store
-bin
-build
 system_report.txt
+bin/
+build/
