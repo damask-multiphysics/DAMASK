@@ -20,7 +20,9 @@ module mesh_mechanical_FEM
   use FEM_utilities
   use discretization
   use discretization_mesh
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
   use FEM_quadrature
+#endif
   use homogenization
   use math
   use constants
@@ -75,7 +77,7 @@ module mesh_mechanical_FEM
 #if defined(PETSC_USE_64BIT_INDICES) || PETSC_VERSION_MINOR < 16
     ISDestroy, &
 #endif
-#if PETSC_VERSION_MINOR > 18
+#if PETSC_VERSION_MINOR > 18 && PETSC_VERSION_MINOR < 22
     DMAddField, &
 #endif
     PetscSectionGetNumFields, &
@@ -120,6 +122,9 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   PetscSection                           :: section
 
   PetscReal,      dimension(:),  pointer :: qPointsP, qWeightsP, &
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18)
+                                            PETSC_NULL_REAL_PTR => null(), &
+#endif
                                             nodalPointsP, nodalWeightsP,pV0, pCellJ, pInvcellJ
   PetscReal                              :: detJ
   PetscReal,         allocatable, target :: cellJMat(:,:)
@@ -160,6 +165,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech discretization
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
   qPoints  = FEM_quadrature_points( dimPlex,num%p_i)%p
   qWeights = FEM_quadrature_weights(dimPlex,num%p_i)%p
   nQuadrature = FEM_nQuadrature(    dimPlex,num%p_i)
@@ -170,6 +176,19 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   nc = dimPlex
   call PetscQuadratureSetData(mechQuad,dimPlex,nc,int(nQuadrature,pPETSCINT),qPointsP,qWeightsP,err_PETSc)
   CHKERRQ(err_PETSc)
+#else
+  call PetscDTSimplexQuadrature(dimplex,num%p_i,-1,mechQuad,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call PetscQuadratureGetData(mechQuad,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
+                              nQuadrature,PETSC_NULL_REAL_PTR,qWeightsP,err_PETSc)
+  CHKERRQ(err_PETSc)
+  qWeights = qWeightsP
+  call PetscQuadratureRestoreData(mechQuad,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
+                                  PETSC_NULL_INTEGER(1),PETSC_NULL_REAL_PTR,qWeightsP, &
+                                  err_PETSc)
+  CHKERRQ(err_PETSc)
+  nc = dimPlex
+#endif
   call PetscFECreateDefault(PETSC_COMM_SELF,dimPlex,nc,PETSC_TRUE,prefix, &
                             num%p_i,mechFE,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -787,14 +806,14 @@ subroutine FEM_mechanical_updateCoords()
   PetscInt :: pStart, pEnd, p, s, e, q, &
               cellStart, cellEnd, c, n
   PetscSection :: section
-  PetscQuadrature :: mechQuad
+  PetscDS :: mechDS
   PetscReal, dimension(:), pointer :: basisField, dev_null, &
     nodeCoords_linear                                                                               !< nodal coordinates (dimPlex*Nnodes)
   real(pREAL), dimension(:), pointer :: x_scal
 
   call SNESGetDM(mechanical_snes,dm_local,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMGetDS(dm_local,mechQuad,err_PETSc)
+  call DMGetDS(dm_local,mechDS,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMGetLocalSection(dm_local,section,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -822,7 +841,7 @@ subroutine FEM_mechanical_updateCoords()
   ! write ip displacements
   call DMPlexGetHeightStratum(dm_local,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
-  call PetscDSGetTabulation(mechQuad,0_pPETSCINT,basisField,dev_null,err_PETSc)
+  call PetscDSGetTabulation(mechDS,0_pPETSCINT,basisField,dev_null,err_PETSc)
   CHKERRQ(err_PETSc)
   allocate(ipCoords(3,nQuadrature,mesh_NcpElems),source=0.0_pREAL)
   do c=cellStart,cellEnd-1_pPETSCINT
@@ -849,7 +868,7 @@ subroutine FEM_mechanical_updateCoords()
   call discretization_setIPcoords(reshape(ipCoords,[3,mesh_NcpElems*nQuadrature]))
   call DMRestoreLocalVector(dm_local,x_local,err_PETSc)
   CHKERRQ(err_PETSc)
-  call PetscDSRestoreTabulation(mechQuad,0_pPETSCINT,basisField,dev_null,err_PETSc)
+  call PetscDSRestoreTabulation(mechDS,0_pPETSCINT,basisField,dev_null,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine FEM_mechanical_updateCoords

@@ -27,7 +27,10 @@ module materialpoint
   use homogenization
   use discretization
 #if   defined(MESH)
+#include "petscversion.h"
+#if  (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
   use FEM_quadrature
+#endif
   use discretization_mesh
 #elif defined(GRID)
   use base64
@@ -52,7 +55,7 @@ subroutine materialpoint_initAll()
   call prec_init()
   call misc_init()
   call IO_init()
-#if   defined(MESH)
+#if   defined(MESH) && (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
   call FEM_quadrature_init()
 #elif defined(GRID)
    call base64_init()
