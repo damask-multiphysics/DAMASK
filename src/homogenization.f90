@@ -185,13 +185,9 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief module initialization
+!> @brief Module initialization.
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_init()
-
-  type(tDict) , pointer :: &
-    num_homog, &
-    num_homogGeneric
 
   print'(/,1x,a)', '<<<+-  homogenization init  -+>>>'; flush(IO_STDOUT)
 

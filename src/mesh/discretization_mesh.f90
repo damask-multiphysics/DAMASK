@@ -11,6 +11,9 @@ module discretization_mesh
   use PETScDMplex
   use PETScDMDA
   use PETScIS
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18)
+  use PETScDT
+#endif
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   use MPI_f08
 #endif
@@ -20,7 +23,9 @@ module discretization_mesh
   use config
   use discretization
   use result
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
   use FEM_quadrature
+#endif
   use types
   use prec
 
@@ -80,6 +85,9 @@ subroutine discretization_mesh_init()
   PetscInt :: nFaceSets, Nboundaries, NelemsGlobal, Nelems
   PetscInt, pointer, dimension(:) :: pFaceSets
   IS :: faceSetIS
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18)
+  PetscQuadrature :: quadrature
+#endif
   PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscInt, dimension(:), allocatable :: &
@@ -91,6 +99,11 @@ subroutine discretization_mesh_init()
   type(tvec) :: coords_node0
   real(pREAL), pointer, dimension(:) :: &
     mesh_node0_temp
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18)
+  real(pREAL), pointer, dimension(:) :: &
+    qPointsP, &
+    PETSC_NULL_REAL_PTR => null()
+#endif
 
 
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'
@@ -158,10 +171,27 @@ subroutine discretization_mesh_init()
   CHKERRQ(err_PETSc)
 
 ! Get initial nodal coordinates
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
   mesh_maxNips = FEM_nQuadrature(dimPlex,p_i)
 
   call mesh_FEM_build_ipCoordinates(dimPlex,FEM_quadrature_points(dimPlex,p_i)%p)
   call mesh_FEM_build_ipVolumes(dimPlex)
+#else
+  call PetscDTSimplexQuadrature(dimplex, p_i, -1, quadrature, err_PETSc)
+  CHKERRQ(err_PETSc)
+  call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
+                              mesh_maxNips,qPointsP,PETSC_NULL_REAL_PTR,err_PETSc)
+  CHKERRQ(err_PETSc)
+
+  call mesh_FEM_build_ipCoordinates(dimPlex,qPointsP)
+  call mesh_FEM_build_ipVolumes(dimPlex)
+
+  call PetscQuadratureRestoreData(quadrature,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
+                                  PETSC_NULL_INTEGER(1),qPointsP,PETSC_NULL_REAL_PTR,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call PetscQuadratureDestroy(quadrature, err_PETSc)
+  CHKERRQ(err_PETSc)
+#endif
 
   allocate(materialAt(mesh_NcpElems))
   do j = 1, mesh_NcpElems
