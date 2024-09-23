@@ -6,6 +6,8 @@ references:
     https://doi.org/10.1016/j.msea.2023.145373,
     Table 2, Fig. 19 indent II with contraints
 
+output: [xi_sl, gamma_sl]
+
 N_sl: [12, 12, 24]
 
 h_0_sl-sl: [1.0e+9, 1.0e+9, 1.0e+9]

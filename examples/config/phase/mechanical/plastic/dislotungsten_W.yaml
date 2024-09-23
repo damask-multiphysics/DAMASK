@@ -8,7 +8,7 @@ references:
     Acta Materialia 56(19):5412-5425, 2008,
     https://doi.org/10.1016/j.actamat.2008.07.037
 
-output: [Lambda_sl]
+output: [rho_mob, rho_dip, gamma_sl, Lambda_sl, tau_pass]
 
 N_sl: [12]
 

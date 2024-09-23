@@ -1,3 +1,4 @@
 # For single point calculations, requires N_constituents = 1
 type: pass
-output: ['T']
+
+output: [phi]
