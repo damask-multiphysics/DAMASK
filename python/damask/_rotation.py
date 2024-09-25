@@ -775,7 +775,7 @@ class Rotation:
         Returns
         -------
         h : numpy.ndarray, shape (...,3)
-            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3/4*π)^(1/3).
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
 
         Examples
         --------
@@ -795,7 +795,7 @@ class Rotation:
         Returns
         -------
         x : numpy.ndarray, shape (...,3)
-            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2*π^(2/3).
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2 π^(2/3).
 
         Examples
         --------
@@ -1026,7 +1026,8 @@ class Rotation:
 
     @staticmethod
     def from_parallel(a: np.ndarray,
-                      b: np.ndarray ) -> 'Rotation':
+                      b: np.ndarray,
+                      active: bool = False ) -> 'Rotation':
         """
         Initialize from pairs of two orthogonal basis vectors.
 
@@ -1036,10 +1037,19 @@ class Rotation:
             Two three-dimensional vectors of first orthogonal basis.
         b : numpy.ndarray, shape (...,2,3)
             Corresponding three-dimensional vectors of second basis.
+        active : bool, optional
+            Consider rotations as active, i.e. return (B^-1⋅A) instead of (B⋅A^-1).
+            Defaults to False.
 
         Returns
         -------
         new : damask.Rotation
+
+        Notes
+        -----
+        If rotations $A = [a_1,a_2,a_1 × a_2]^T$ and B = $[b_1,b_2,b_1 × b_2]^T$
+        are considered "active", the resulting rotation will be $B^{-1}⋅A$ instead
+        of the default result $B⋅A^{-1}$.
 
         Examples
         --------
@@ -1059,10 +1069,10 @@ class Rotation:
 
         am = np.stack([          a_[...,0,:],
                                              a_[...,1,:],
-                        np.cross(a_[...,0,:],a_[...,1,:]) ],axis=-1)
+                        np.cross(a_[...,0,:],a_[...,1,:]) ],axis=-1 if active else -2)
         bm = np.stack([          b_[...,0,:],
                                              b_[...,1,:],
-                        np.cross(b_[...,0,:],b_[...,1,:]) ],axis=-1)
+                        np.cross(b_[...,0,:],b_[...,1,:]) ],axis=-1 if active else -2)
 
         return Rotation.from_basis(am).misorientation(Rotation.from_basis(bm))
 
@@ -1120,7 +1130,7 @@ class Rotation:
         Parameters
         ----------
         h : numpy.ndarray, shape (...,3)
-            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3/4*π)^(1/3).
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
         P : int ∈ {-1,1}, optional
             Sign convention. Defaults to -1.
 
@@ -1150,7 +1160,7 @@ class Rotation:
         Parameters
         ----------
         x : numpy.ndarray, shape (...,3)
-            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2*π^(2/3).
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2 π^(2/3).
         P : int ∈ {-1,1}, optional
             Sign convention. Defaults to -1.
 

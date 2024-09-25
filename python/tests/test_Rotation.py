@@ -789,8 +789,16 @@ class TestRotation:
     def test_parallel(self,multidim_rotations):
         a = np.array([[1.42,0.0,0.0],
                       [0.0,0.3,0.0]])
-        assert Rotation.from_parallel(a,multidim_rotations[...,np.newaxis]@a).allclose( multidim_rotations)
-        assert Rotation.from_parallel(multidim_rotations[...,np.newaxis]@a,a).allclose(~multidim_rotations)
+        b = ~multidim_rotations[...,np.newaxis]@a            # actively rotate a axes as new b axes
+        assert Rotation.from_parallel(a,b).allclose( multidim_rotations)
+        assert Rotation.from_parallel(b,a).allclose(~multidim_rotations)
+
+
+    def test_basis_parallel_consistency(self,multidim_rotations):
+        M = multidim_rotations.as_matrix()
+        assert Rotation.from_basis(M).allclose(
+               Rotation.from_parallel(np.broadcast_to(np.identity(3),M.shape)[...,:2,:],
+                                      M[...,:2,:]))
 
 
     @pytest.mark.parametrize('normalize',[True,False])
