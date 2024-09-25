@@ -1241,4 +1241,4 @@ class Crystal():
         o_p = np.stack((o.to_frame(uvw=o_p[:,0] if o_l != 'hP' else util.Bravais_to_Miller(uvtw=o_p[:,0])),
                         o.to_frame(hkl=o_p[:,1] if o_l != 'hP' else util.Bravais_to_Miller(hkil=o_p[:,1]))),
                         axis=-2)
-        return (o_l,Rotation.from_parallel(a=m_p,b=o_p))
+        return (o_l,Rotation.from_parallel(a=m_p,b=o_p,active=True))
