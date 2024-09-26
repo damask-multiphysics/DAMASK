@@ -1,0 +1,12 @@
+type: Hooke
+
+references:
+  - M. Kamitani et al.,
+    Journal of Applied Physics 82:3152-3154, 1997,
+    https://doi.org/10.1063/1.366100
+
+C_11: 501.e+9
+C_12: 111.e+9
+C_44: 163.e+9
+C_33: 553.e+9
+C_13: 52.e+9
