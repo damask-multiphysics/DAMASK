@@ -86,7 +86,7 @@ The rotation functionality of  the `damask` package does not rely on `SciPy` in 
 # Availability
 
 The `damask` Python package is developed within the DAMASK main repository, but is also available as a separate package via multiple channels.
-For documentation and installation options we refer to the [DAMASK website](https://damask.mpie.de).
+For documentation and installation options we refer to the [DAMASK website](https://damask-multiphysics.org).
 
 
 # Acknowledgements
