@@ -57,7 +57,7 @@ In contrast, the configuration of the materialpoint model and the DAMASK-specifi
 The DAMASK Python library is a package called `damask` and contains functionality for pre-processing tasks, such as the generation and manipulation of microstructures, load cases, material definition, or numerical parameters, as well as functionality for post-processing that enables analysis and visualization of DAMASK results.
 A particular focus is laid on finite-strain continuum mechanics and crystallography.
 The routines for conversion between the different kinds of orientation representations, such as Euler angles, rotation matrices, unit quaternions, or axis-angle pairs, are based a consistent set of conventions [@rowenhorst2015consistent].
-The provided routines and datas tructures interoperate seamlessly with other libraries from the Python ecosystem, such as `NumPy` [@harris2020array], `pandas` [@mckinney-proc-scipy-2010], `Matplotlib` [@hunter2007matplotlib], `SciPy` [@2020SciPy-NMeth], `VTK`/`PyVista` [@ahrens200536] [@Sullivan_PyVista_3D_plotting_2019], `PyYAML`, `h5py` [@collette_python_hdf5_2014] [@FolkEtAl2011], and `orix` [@johnstone2020density] to facilitate the definition of custom ICME workflows.
+The provided routines and data tructures interoperate seamlessly with other libraries from the Python ecosystem, such as `NumPy` [@harris2020array], `pandas` [@mckinney-proc-scipy-2010], `Matplotlib` [@hunter2007matplotlib], `SciPy` [@2020SciPy-NMeth], `VTK`/`PyVista` [@ahrens200536] [@Sullivan_PyVista_3D_plotting_2019], `PyYAML`, `h5py` [@collette_python_hdf5_2014] [@FolkEtAl2011], and `orix` [@johnstone2020density] to facilitate the definition of custom ICME workflows.
 
 Apart from its DAMASK-specific processing capabilities, many routines of the library can be used in other material science and continuum mechanics applications.
 
@@ -71,7 +71,7 @@ In addition to the three mandatory input files, i.e., geometry definition, mater
 ## Post-Processing
 
 The post-processing tools are centered around the HDF5 output file resulting from a DAMASK simulation.
-This flexible file format is called DADF5, short for "DAMASK HDF5" ensures FAIR data storage [@WilkinsonEtAl2016].
+This flexible file format is called DADF5, short for "DAMASK HDF5", and ensures data storage according to the FAIR principles [@WilkinsonEtAl2016].
 The `Result` class provides custom views on the hierarchical data layout of the DADF5 file and enables the computation of derived quantities that are stored alongside with automatically created metadata in the output file.
 The data can be further processed within Python or exported to various file formats for analysis using third-party tools such as `DREAM.3D`, `ParaView`, or `MTEX` [@BachmannEtAl2010].
 
