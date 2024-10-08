@@ -179,6 +179,15 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
 #else
   call PetscDTSimplexQuadrature(dimplex,num%p_i,-1,mechQuad,err_PETSc)
   CHKERRQ(err_PETSc)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=22)
+  call PetscQuadratureGetData(mechQuad,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                              nQuadrature,PETSC_NULL_REAL_PTR,qWeightsP,err_PETSc)
+  CHKERRQ(err_PETSc)
+  qWeights = qWeightsP
+  call PetscQuadratureRestoreData(mechQuad,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                                  PETSC_NULL_INTEGER,PETSC_NULL_REAL_PTR,qWeightsP, &
+                                  err_PETSc)
+#else
   call PetscQuadratureGetData(mechQuad,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
                               nQuadrature,PETSC_NULL_REAL_PTR,qWeightsP,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -186,6 +195,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   call PetscQuadratureRestoreData(mechQuad,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
                                   PETSC_NULL_INTEGER(1),PETSC_NULL_REAL_PTR,qWeightsP, &
                                   err_PETSc)
+#endif
   CHKERRQ(err_PETSc)
   nc = dimPlex
 #endif

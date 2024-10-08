@@ -179,15 +179,25 @@ subroutine discretization_mesh_init()
 #else
   call PetscDTSimplexQuadrature(dimplex, p_i, -1, quadrature, err_PETSc)
   CHKERRQ(err_PETSc)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=22)
+  call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                              mesh_maxNips,qPointsP,PETSC_NULL_REAL_PTR,err_PETSc)
+#else
   call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
                               mesh_maxNips,qPointsP,PETSC_NULL_REAL_PTR,err_PETSc)
+#endif
   CHKERRQ(err_PETSc)
 
   call mesh_FEM_build_ipCoordinates(dimPlex,qPointsP)
   call mesh_FEM_build_ipVolumes(dimPlex)
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=22)
+  call PetscQuadratureRestoreData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                                  PETSC_NULL_INTEGER,qPointsP,PETSC_NULL_REAL_PTR,err_PETSc)
+#else
   call PetscQuadratureRestoreData(quadrature,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
                                   PETSC_NULL_INTEGER(1),qPointsP,PETSC_NULL_REAL_PTR,err_PETSc)
+#endif
   CHKERRQ(err_PETSc)
   call PetscQuadratureDestroy(quadrature, err_PETSc)
   CHKERRQ(err_PETSc)
