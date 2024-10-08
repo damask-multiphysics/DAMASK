@@ -77,7 +77,7 @@ module mesh_mechanical_FEM
 #if defined(PETSC_USE_64BIT_INDICES) || PETSC_VERSION_MINOR < 16
     ISDestroy, &
 #endif
-#if PETSC_VERSION_MINOR > 18
+#if PETSC_VERSION_MINOR > 18 && PETSC_VERSION_MINOR < 22
     DMAddField, &
 #endif
     PetscSectionGetNumFields, &
@@ -782,7 +782,7 @@ subroutine FEM_mechanical_updateCoords()
   PetscInt :: pStart, pEnd, p, s, e, q, &
               cellStart, cellEnd, c, n
   PetscSection :: section
-  PetscQuadrature :: mechQuad
+  PetscDS :: mechQuad
   PetscReal, dimension(:), pointer :: basisField, basisFieldDer, &
     nodeCoords_linear                                                                               !< nodal coordinates (dimPlex*Nnodes)
   real(pREAL), dimension(:), pointer :: x_scal
