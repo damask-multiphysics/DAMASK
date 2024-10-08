@@ -158,7 +158,8 @@ end function asMatrix
 !--------------------------------------------------------------------------------------------------
 ! Initialize rotation from different representations.
 !--------------------------------------------------------------------------------------------------
-subroutine fromQuaternion(self,qu)
+! recursive: workaround for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115348, but seems to cause no harm
+recursive subroutine fromQuaternion(self,qu)
 
   class(tRotation), intent(out)         :: self
   real(pREAL), dimension(4), intent(in) :: qu
@@ -170,7 +171,7 @@ subroutine fromQuaternion(self,qu)
 
 end subroutine fromQuaternion
 !--------------------------------------------------------------------------------------------------
-subroutine fromEulers(self,eu,degrees)
+recursive subroutine fromEulers(self,eu,degrees)
 
   class(tRotation), intent(out)         :: self
   real(pREAL), dimension(3), intent(in) :: eu
@@ -188,7 +189,7 @@ subroutine fromEulers(self,eu,degrees)
 
 end subroutine fromEulers
 !--------------------------------------------------------------------------------------------------
-subroutine fromAxisAngle(self,ax,degrees,P)
+recursive subroutine fromAxisAngle(self,ax,degrees,P)
 
   class(tRotation), intent(out)         :: self
   real(pREAL), dimension(4), intent(in) :: ax
@@ -211,7 +212,7 @@ subroutine fromAxisAngle(self,ax,degrees,P)
 
 end subroutine fromAxisAngle
 !--------------------------------------------------------------------------------------------------
-subroutine fromMatrix(self,om)
+recursive subroutine fromMatrix(self,om)
 
   class(tRotation), intent(out)           :: self
   real(pREAL), dimension(3,3), intent(in) :: om
