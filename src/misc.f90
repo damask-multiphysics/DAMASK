@@ -15,6 +15,7 @@ module misc
     module procedure misc_optional_pI32
     module procedure misc_optional_pI64
     module procedure misc_optional_real
+    module procedure misc_optional_complex
     module procedure misc_optional_str
   end interface misc_optional
 
@@ -44,7 +45,7 @@ end subroutine misc_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Return bool value if given, otherwise default.
 !--------------------------------------------------------------------------------------------------
-pure function misc_optional_bool(given,default) result(var)
+pure elemental function misc_optional_bool(given,default) result(var)
 
   logical, intent(in), optional :: given
   logical, intent(in)           :: default
@@ -63,7 +64,7 @@ end function misc_optional_bool
 !--------------------------------------------------------------------------------------------------
 !> @brief Return integer(pI32) value if given, otherwise default.
 !--------------------------------------------------------------------------------------------------
-pure function misc_optional_pI32(given,default) result(var)
+pure elemental function misc_optional_pI32(given,default) result(var)
 
   integer(pI32), intent(in), optional :: given
   integer(pI32), intent(in)           :: default
@@ -82,7 +83,7 @@ end function misc_optional_pI32
 !--------------------------------------------------------------------------------------------------
 !> @brief Return integer(pI64) value if given, otherwise default.
 !--------------------------------------------------------------------------------------------------
-pure function misc_optional_pI64(given,default) result(var)
+pure elemental function misc_optional_pI64(given,default) result(var)
 
   integer(pI64), intent(in), optional :: given
   integer(pI64), intent(in)           :: default
@@ -101,7 +102,7 @@ end function misc_optional_pI64
 !--------------------------------------------------------------------------------------------------
 !> @brief Return real value if given, otherwise default.
 !--------------------------------------------------------------------------------------------------
-pure function misc_optional_real(given,default) result(var)
+pure elemental function misc_optional_real(given,default) result(var)
 
   real(pREAL), intent(in), optional :: given
   real(pREAL), intent(in)           :: default
@@ -116,6 +117,24 @@ pure function misc_optional_real(given,default) result(var)
 
 end function misc_optional_real
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Return complex value if given, otherwise default.
+!--------------------------------------------------------------------------------------------------
+pure elemental function misc_optional_complex(given,default) result(var)
+
+  complex(pREAL), intent(in), optional :: given
+  complex(pREAL), intent(in)           :: default
+  complex(pREAL)                       :: var
+
+
+  if (present(given)) then
+    var = given
+  else
+    var = default
+  end if
+
+end function misc_optional_complex
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Return string value if given, otherwise default.
@@ -192,10 +211,16 @@ end function misc_ones
 subroutine misc_selfTest()
 
   real(pREAL) :: r
+  real(pREAL), dimension(:), allocatable :: rN
   character(len=:),      allocatable :: str,out
   integer :: N
 
+
   call random_number(r)
+  N = int(r*99._pREAL)
+  allocate(rN(N),source=0.0_pREAL)
+  call random_number(rN)
+
   if (test_str('DAMASK') /= 'DAMASK')                        error stop 'optional_str, present'
   if (test_str() /= 'default')                               error stop 'optional_str, not present'
   if (misc_optional(default='default') /= 'default')         error stop 'optional_str, default only'
@@ -205,6 +230,7 @@ subroutine misc_selfTest()
   if (dNeq(test_real(r),r))                                  error stop 'optional_real, present'
   if (dNeq(test_real(),0.0_pREAL))                           error stop 'optional_real, not present'
   if (dNeq(misc_optional(default=r),r))                      error stop 'optional_real, default only'
+  if (any(dNeq(misc_optional(default=rN),rN)))               error stop 'optional_real array, default only'
   if (test_bool(r<0.5_pREAL) .neqv. r<0.5_pREAL)             error stop 'optional_bool, present'
   if (.not. test_bool())                                     error stop 'optional_bool, not present'
   if (misc_optional(default=r>0.5_pREAL) .neqv. r>0.5_pREAL) error stop 'optional_bool, default only'
