@@ -4,7 +4,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Grid solver for mechanics: Spectral Polarisation
 !--------------------------------------------------------------------------------------------------
-module grid_mechanical_spectral_polarization
+module grid_mech_spectral_polarization                                                              ! "mechanics" => "mech": workaround for ifx
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
   use PETScDMDA
@@ -100,18 +100,18 @@ module grid_mechanical_spectral_polarization
   integer(kind(STATUS_OK)) :: status
 
   public :: &
-    grid_mechanical_spectral_polarization_init, &
-    grid_mechanical_spectral_polarization_solution, &
-    grid_mechanical_spectral_polarization_forward, &
-    grid_mechanical_spectral_polarization_updateCoords, &
-    grid_mechanical_spectral_polarization_restartWrite
+    grid_mech_spectral_polarization_init, &
+    grid_mech_spectral_polarization_solution, &
+    grid_mech_spectral_polarization_forward, &
+    grid_mech_spectral_polarization_updateCoords, &
+    grid_mech_spectral_polarization_restartWrite
 
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Allocate all necessary fields and fill them with data, potentially from restart info.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_polarization_init(num_grid)
+subroutine grid_mech_spectral_polarization_init(num_grid)
 
   type(tDict), pointer, intent(in) :: num_grid
 
@@ -132,7 +132,7 @@ subroutine grid_mechanical_spectral_polarization_init(num_grid)
     petsc_options
 
 
-  print '(/,1x,a)', '<<<+-  grid_mechanical_spectral_polarization init  -+>>>'; flush(IO_STDOUT)
+  print '(/,1x,a)', '<<<+-  grid_mech_spectral_polarization init  -+>>>'; flush(IO_STDOUT)
 
   print '(/,1x,a)', 'P. Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
   print '(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2014.02.006'
@@ -284,13 +284,13 @@ subroutine grid_mechanical_spectral_polarization_init(num_grid)
   C_scale = C_minMaxAvg
   S_scale = math_invSym3333(C_minMaxAvg)
 
-end subroutine grid_mechanical_spectral_polarization_init
+end subroutine grid_mech_spectral_polarization_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the Polarisation scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_mechanical_spectral_polarization_solution(incInfoIn) result(solution)
+function grid_mech_spectral_polarization_solution(incInfoIn) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
@@ -323,14 +323,14 @@ function grid_mechanical_spectral_polarization_solution(incInfoIn) result(soluti
   solution%iterationsNeeded = totalIter
   P_aim = merge(P_av,P_aim,params%stress_mask)
 
-end function grid_mechanical_spectral_polarization_solution
+end function grid_mech_spectral_polarization_solution
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !> @details find new boundary conditions and best F estimate for end of current timestep
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_polarization_forward(cutBack,guess,Delta_t,Delta_t_old,t_remaining,&
+subroutine grid_mech_spectral_polarization_forward(cutBack,guess,Delta_t,Delta_t_old,t_remaining,&
                                                    deformation_BC,stress_BC,rotation_BC)
 
   logical,                  intent(in) :: &
@@ -423,13 +423,13 @@ subroutine grid_mechanical_spectral_polarization_forward(cutBack,guess,Delta_t,D
   params%rotation_BC = rotation_BC
   params%Delta_t     = Delta_t
 
-end subroutine grid_mechanical_spectral_polarization_forward
+end subroutine grid_mech_spectral_polarization_forward
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Update coordinates.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_polarization_updateCoords()
+subroutine grid_mech_spectral_polarization_updateCoords()
 
   PetscErrorCode :: err_PETSc
   real(pREAL), dimension(:,:,:,:), pointer :: FandF_tau
@@ -440,13 +440,13 @@ subroutine grid_mechanical_spectral_polarization_updateCoords()
   call DMDAVecRestoreArrayReadF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
 
-end subroutine grid_mechanical_spectral_polarization_updateCoords
+end subroutine grid_mech_spectral_polarization_updateCoords
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write current solver and constitutive data for restart to file.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_polarization_restartWrite()
+subroutine grid_mech_spectral_polarization_restartWrite()
 
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
@@ -487,7 +487,7 @@ subroutine grid_mechanical_spectral_polarization_restartWrite()
   call DMDAVecRestoreArrayReadF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
 
-end subroutine grid_mechanical_spectral_polarization_restartWrite
+end subroutine grid_mech_spectral_polarization_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
@@ -640,4 +640,4 @@ subroutine formResidual(residual_subdomain, FandF_tau, &
 
 end subroutine formResidual
 
-end module grid_mechanical_spectral_polarization
+end module grid_mech_spectral_polarization
