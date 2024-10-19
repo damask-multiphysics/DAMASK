@@ -56,7 +56,7 @@ def _broadcast_shapes(a1,a2):
     return _np.broadcast(*[_np.empty(x, dtype=_np.dtype([])) for x in [a1,a2]]).shape
 
 
-if _np.lib.NumpyVersion(_np.__version__) < '2.20.0':
+if _np.lib.NumpyVersion(_np.__version__) < '1.20.0':
     _np.broadcast_shapes = _broadcast_shapes # type: ignore
 
 def srepr(msg,
