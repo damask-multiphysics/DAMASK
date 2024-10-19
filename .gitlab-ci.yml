@@ -11,7 +11,7 @@ stages:
 ###################################################################################################
 default:
   before_script:
-    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN}
+    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} ${TOKEN}
     - source env/DAMASK.sh
     - export PATH=${TESTROOT}/bin:${PATH}
     - echo Job start:" $(date)"
@@ -243,7 +243,7 @@ grid_performance:
     - make -j2 all install
     - export PATH=${PWD}/bin:${PATH}
     - cd $(mktemp -d)
-    - git clone -q git@git.damask.mpie.de:damask/statistics.git .
+    - git clone -q git@git.damask-multiphysics.org:damask/statistics.git .
     - ./measure_performance.py --input_dir ${CI_PROJECT_DIR}/examples/grid --tag ${CI_COMMIT_SHA}
     - >
         if [ ${CI_COMMIT_BRANCH} == development ]; then
@@ -269,7 +269,7 @@ update_revision:
     - echo Job start:" $(date)"
   script:
     - cd $(mktemp -d)
-    - git clone -q git@git.damask.mpie.de:damask/DAMASK.git .
+    - git clone -q git@git.damask-multiphysics.org:damask/DAMASK.git .
     - git pull
     - export VERSION=$(git describe ${CI_COMMIT_SHA})
     - echo ${VERSION:1} > VERSION
