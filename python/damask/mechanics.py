@@ -150,7 +150,7 @@ def rotation(T: _np.ndarray) -> _rotation.Rotation:
     Returns
     -------
     R : damask.Rotation, shape (...)
-        Rotational part of the vector.
+        Rotational part of the tensor.
 
     Notes
     -----
