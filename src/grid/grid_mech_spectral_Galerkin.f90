@@ -179,9 +179,6 @@ subroutine grid_mechanical_spectral_Galerkin_init(num_grid)
     extmsg, &
     petsc_options
 
-  KSP :: ksp
-  PC  :: pc
-
 
   print'(/,1x,a)', '<<<+-  grid_mechanical_spectral_Galerkin init  -+>>>'; flush(IO_STDOUT)
 

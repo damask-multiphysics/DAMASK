@@ -548,20 +548,10 @@ function utilities_G_Convolution(field,stress_mask,fieldAim) result(G_Field)
     i, j, k, &
     l, m
 
-  complex(pREAL), dimension(3,3) :: field_zero_freq                                                 !< zero freq of field
-
-  ! print'(/,1x,a)', '... doing G convolution ...............................................'
-  ! flush(IO_STDOUT)
 
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL
   tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
-
-  if (present(fieldAim)) then
-    field_zero_freq = cmplx(fieldAim/wgt,0.0_pREAL,pREAL)
-  else
-    field_zero_freq = tensorField_fourier(1:3,1:3,1,1,1) ! f_hat(k=0) = f_ave * vol = f_ave / wgt
-  endif
 
   !$OMP PARALLEL DO PRIVATE(l,m,temp33_cmplx)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
@@ -581,9 +571,11 @@ function utilities_G_Convolution(field,stress_mask,fieldAim) result(G_Field)
   !$OMP END PARALLEL DO
 
   ! Apply stress bounday conditions
-  if (cells3Offset == 0) &
-    tensorField_fourier(1:3,1:3,1,1,1) = merge(cmplx(0.0_pREAL,0.0_pREAL,pREAL),field_zero_freq,stress_mask)
-
+  if (cells3Offset == 0) then
+    if (present(fieldAim)) &
+      tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim/wgt,0.0_pREAL,pREAL)
+    where (stress_mask) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(0.0_pREAL,0.0_pREAL,pREAL)
+  end if
 
   call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
   G_Field = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)

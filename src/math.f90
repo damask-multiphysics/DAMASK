@@ -353,7 +353,7 @@ end function math_cross
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief outer product of arbitrary sized vectors (A ⊗ B / i,j)
+!> @brief Outer product of arbitrary sized vectors (A ⊗ B / i,j).
 !--------------------------------------------------------------------------------------------------
 pure function math_outer(A,B)
 
@@ -375,7 +375,7 @@ end function math_outer
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief inner product of arbitrary sized vectors (A · B / i,i)
+!> @brief Inner product of arbitrary sized vectors (A · B / i,i).
 !--------------------------------------------------------------------------------------------------
 real(pREAL) pure function math_inner(A,B)
 
@@ -389,7 +389,7 @@ end function math_inner
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief double contraction of 3x3 matrices (A : B / ij,ij)
+!> @brief Double contraction of 3x3 matrices (A : B / ij,ij).
 !--------------------------------------------------------------------------------------------------
 real(pREAL) pure function math_tensordot(A,B)
 
@@ -402,7 +402,7 @@ end function math_tensordot
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief matrix double contraction 3333x33 = 33 (ijkl,kl)
+!> @brief Matrix double contraction 3333x33 = 33 (ijkl,kl).
 !--------------------------------------------------------------------------------------------------
 pure function math_mul3333xx33(A,B)
 
