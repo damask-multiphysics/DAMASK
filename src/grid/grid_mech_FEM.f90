@@ -312,10 +312,9 @@ function grid_mechanical_FEM_solution(incInfoIn) result(solution)
   PetscErrorCode :: err_PETSc
   SNESConvergedReason :: reason
 
+
   incInfo = incInfoIn
 
-!--------------------------------------------------------------------------------------------------
-! update stiffness (and gamma operator)
   S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
 
   call SNESsolve(SNES_mech,PETSC_NULL_VEC,u_PETSc,err_PETSc)
@@ -411,7 +410,7 @@ end subroutine grid_mechanical_FEM_forward
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Update coordinates
+!> @brief Update coordinates.
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mechanical_FEM_updateCoords()
 
@@ -421,7 +420,7 @@ end subroutine grid_mechanical_FEM_updateCoords
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Write current solver and constitutive data for restart to file
+!> @brief Write current solver and constitutive data for restart to file.
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mechanical_FEM_restartWrite()
 
@@ -486,6 +485,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,e
     divTol, &
     BCTol
 
+
   err_div = fnorm*sqrt(wgt)*geomSize(1)/scaledGeomSize(1)/detJ
   divTol = max(maxval(abs(P_av))*num%eps_div_rtol, num%eps_div_atol)
   BCTol  = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
@@ -512,7 +512,7 @@ end subroutine converged
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forms the residual vector
+!> @brief Form the residual vector.
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(da_local,x_local, &
                         f_local,dummy,err_PETSc)
@@ -524,12 +524,11 @@ subroutine formResidual(da_local,x_local, &
 
   real(pREAL), pointer,dimension(:,:,:,:) :: x_scal, r
   real(pREAL), dimension(8,3) :: x_elem,  f_elem
-  PetscInt             :: i, ii, j, jj, k, kk, ctr, ce
-  PetscInt :: &
-    PETScIter, &
-    nfuncs
+  PetscInt :: i, ii, j, jj, k, kk, ctr, ce, &
+    PETScIter, nfuncs
   integer(MPI_INTEGER_KIND) :: err_MPI
   real(pREAL), dimension(3,3,3,3) :: devNull
+
 
   call SNESGetNumberFunctionEvals(SNES_mech,nfuncs,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -537,13 +536,13 @@ subroutine formResidual(da_local,x_local, &
   CHKERRQ(err_PETSc)
 
 
-  if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
+  if (nfuncs == 0 .and. PETScIter == 0) totalIter = 0                                              ! new increment
 
 !--------------------------------------------------------------------------------------------------
 ! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
-    print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter+1, '≤', num%itmax
+    print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
     if (any(dNeq(params%rotation_BC%asQuaternion(), real([1.0, 0.0, 0.0, 0.0],pREAL)))) &
       print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
       'deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
