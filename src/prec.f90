@@ -23,10 +23,10 @@ module prec
   integer,     parameter :: pI32       = selected_int_kind(9)                                       !< number with at least up to +-1e9 (typically 32 bit)
   integer,     parameter :: pI64       = selected_int_kind(18)                                      !< number with at least up to +-1e18 (typically 64 bit)
 #ifdef PETSC
-  PetscInt,    private   :: dummy_int
-  integer,     parameter :: pPETSCINT  = kind(dummy_int)
-  PetscScalar, private   :: dummy_scalar
-  real(pREAL), parameter, private :: pPETSCSCALAR = kind(dummy_scalar)
+  PetscInt,        private   :: dummy_int
+  PetscErrorCode,  private   :: dummy_error_code
+  integer,         parameter :: pPETSCINT = kind(dummy_int)
+  integer,         parameter :: pPETSCERRORCODE = kind(dummy_error_code)
 #endif
   integer,     parameter :: pSTRLEN = 256                                                           !< default string length
   integer,     parameter :: pPATHLEN   = 4096                                                       !< maximum length of a path name on linux
@@ -251,10 +251,11 @@ subroutine prec_selfTest()
   real(pREAL),   dimension(1) :: f
   integer(pI64), dimension(1) :: i
   real(pREAL),   dimension(2) :: r
-
-
 #ifdef PETSC
-  if (pREAL /= pPETSCSCALAR)                error stop 'PETSc and DAMASK scalar datatypes do not match'
+  PetscScalar :: dummy_scalar
+
+
+  if (pREAL /= kind(dummy_scalar))          error stop 'PETSc and DAMASK scalar datatypes do not match'
 #endif
   realloc_lhs_test = [1,2]
   if (any(realloc_lhs_test/=[1,2]))         error stop 'LHS allocation'

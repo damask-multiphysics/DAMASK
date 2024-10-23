@@ -135,6 +135,7 @@ module grid_mechanical_spectral_Galerkin
     end subroutine MatShellSetOperation
   end interface MatShellSetOperation
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<22)
   interface SNESSetJacobian
     subroutine SNESSetJacobian(snes_mech,A,P,jac_callback,ctx,ierr)
       use petscsnes
@@ -145,6 +146,7 @@ module grid_mechanical_spectral_Galerkin
       PetscErrorCode :: ierr
     end subroutine SNESSetJacobian
   end interface SNESSetJacobian
+#endif
 
   interface SNESSetUpdate
     subroutine SNESSetUpdate(snes_mech,upd_callback,ierr)
@@ -678,13 +680,16 @@ end subroutine GK_op
 subroutine set_F_aim(snes, step, ierr)
   SNES      :: snes
   PetscInt  :: step ! curr completed petsc iter
-  PetscErrorCode :: ierr
+  PetscErrorCode, intent(out) :: ierr
+
 
   real(pREAL), dimension(3,3) :: &
     deltaF_aim
 
   deltaF_aim = math_mul3333xx33(S, P_av - P_aim)
   F_aim = F_aim - deltaF_aim
+
+  ierr = 0_pPETSCERRORCODE
 
 end subroutine set_F_aim
 
