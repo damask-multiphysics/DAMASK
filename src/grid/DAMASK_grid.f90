@@ -25,7 +25,7 @@ program DAMASK_grid
   use spectral_utilities
   use grid_utilities
   use grid_mechanical_spectral_basic
-  use grid_mechanical_spectral_polarization
+  use grid_mech_spectral_polarization
   use grid_mechanical_spectral_Galerkin
   use grid_mechanical_FEM
   use grid_damage_spectral
@@ -168,11 +168,11 @@ program DAMASK_grid
       active_Gamma = .true.
 
     case ('spectral_polarization')
-      grid_mechanical_init         => grid_mechanical_spectral_polarization_init
-      grid_mechanical_forward      => grid_mechanical_spectral_polarization_forward
-      grid_mechanical_solution     => grid_mechanical_spectral_polarization_solution
-      grid_mechanical_updateCoords => grid_mechanical_spectral_polarization_updateCoords
-      grid_mechanical_restartWrite => grid_mechanical_spectral_polarization_restartWrite
+      grid_mechanical_init         => grid_mech_spectral_polarization_init
+      grid_mechanical_forward      => grid_mech_spectral_polarization_forward
+      grid_mechanical_solution     => grid_mech_spectral_polarization_solution
+      grid_mechanical_updateCoords => grid_mech_spectral_polarization_updateCoords
+      grid_mechanical_restartWrite => grid_mech_spectral_polarization_restartWrite
       active_Gamma = .true.
 
     case ('spectral_Galerkin')
