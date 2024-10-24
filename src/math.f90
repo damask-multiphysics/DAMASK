@@ -1038,7 +1038,7 @@ pure subroutine math_eigh33(w,v,m)
 
   T = maxval(abs(w))
   U = max(T, T**2)
-  threshold = sqrt(5.68e-14_pREAL * U**2)
+  threshold = max(sqrt(5.68e-14_pREAL * U**2),PREAL_MIN)
 
   v(1:3,1) = [m(1,3)*w(1) + v(1,2), &
               m(2,3)*w(1) + v(2,2), &
@@ -1467,6 +1467,23 @@ subroutine math_selfTest()
     if (abs(sigma**2 -1.0_pREAL/real(N-1,pREAL) * sum((r-mu)**2))/sigma > 5.0e-2_pREAL) &
       error stop 'math_normal(sigma)'
   end block normal_distribution
+
+  t33 = 0.0_pREAL
+  call math_eigh33(v3_1,t33_2,t33)
+  if (any(dNeq0(v3_1)))         error stop 'math_eigh33/zero eigenvalues (values)'
+  if (any(dNeq(t33_2,math_I3))) error stop 'math_eigh33/zero eigenvalues (vectors)'
+
+  t33 = math_I3
+  call random_number(r)
+  d = nint(r*2.0_pREAL) + 1
+  t33(d,d) = 5.0_pREAL + r*10.0_pREAL
+  t33(mod(d,3)+1,mod(d,3)+1) = 20.0_pREAL + r*10.0_pREAL
+  call math_eigh33(v3_1,t33_2,t33)
+  if (any(dNeq(v3_1,[1.0_pREAL,t33(d,d),t33(mod(d,3)+1,mod(d,3)+1)]))) &
+                                error stop 'math_eigh33/non-zero eigenvalues (values)'
+  if (any(dNeq(math_I3(1:3,mod(d+1,3)+1),t33_2(1:3,1)))) error stop 'math_eigh33/min eigenvector'
+  if (any(dNeq(math_I3(1:3,d           ),t33_2(1:3,2)))) error stop 'math_eigh33/mid eigenvector'
+  if (any(dNeq(math_I3(1:3,mod(d,3)+1  ),t33_2(1:3,3)))) error stop 'math_eigh33/max eigenvector'
 
 end subroutine math_selfTest
 

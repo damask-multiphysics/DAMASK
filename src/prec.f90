@@ -35,7 +35,7 @@ module prec
 
 
   real(pREAL), private, parameter :: PREAL_EPSILON = epsilon(0.0_pREAL)                             !< minimum positive number such that 1.0 + EPSILON /= 1.0.
-  real(pREAL), private, parameter :: PREAL_MIN     = tiny(0.0_pREAL)                                !< smallest normalized floating point number
+  real(pREAL), public,  parameter :: PREAL_MIN     = tiny(0.0_pREAL)                                !< smallest normalized floating point number
 
   integer,                dimension(0), parameter :: emptyIntArray  = [integer::]
   real(pREAL),            dimension(0), parameter :: emptyRealArray = [real(pREAL)::]
