@@ -237,7 +237,7 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
 
   if (solution%converged) &
     print'(/,1x,a)', '... thermal conduction converged ..................................'
-  print'(/,1x,a,f8.4,2x,f8.4,2x,f8.4)', 'Minimum|Maximum|Delta Temperature / K = ', T_min, T_max, stagNorm
+  print'(/,1x,a,f8.3,2x,f8.3,2x,f8.4)', 'Minimum|Maximum|Delta Temperature / K = ', T_min, T_max, stagNorm
   print'(/,1x,a)', '==========================================================================='
   flush(IO_STDOUT)
 

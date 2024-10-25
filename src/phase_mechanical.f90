@@ -449,7 +449,7 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
 
   jacoCounterLi  = 0
   steplengthLi   = 1.0_pREAL
-  residuumLi_old = 0.0_pREAL
+  residuumLi_old = huge(1.0_pREAL)
   Liguess_old    = Liguess
 
   NiterationStressLi = 0
@@ -462,21 +462,23 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
 
     jacoCounterLp  = 0
     steplengthLp   = 1.0_pREAL
-    residuumLp_old = 0.0_pREAL
+    residuumLp_old = huge(1.0_pREAL)
     Lpguess_old    = Lpguess
 
     NiterationStressLp = 0
     LpLoop: do
       NiterationStressLp = NiterationStressLp + 1
-      if (NiterationStressLp>num%nStress_Lp) return ! error
-
+      if (NiterationStressLp>num%nStress_Lp) then
+        status = STATUS_FAIL_PHASE_MECHANICAL_STRESS_LP_MAXIT
+        return
+      endif
       B  = math_I3 - Delta_t*Lpguess
       Fe = matmul(matmul(A,B), invFi_new)
       call phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
-                                        Fe, Fi_new, ph, en)
+                                       Fe, Fi_new, ph, en)
 
       call plastic_LpAndItsTangents(Lp_constitutive, dLp_dS, dLp_dFi, &
-                                         S, Fi_new, ph,en)
+                                    S, Fi_new, ph,en)
 
       !* update current residuum and check for convergence of loop
       atol_Lp = max(num%rtol_Lp * max(norm2(Lpguess),norm2(Lp_constitutive)), &                     ! absolute tolerance from largest acceptable relative error
@@ -484,10 +486,11 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
       residuumLp = Lpguess - Lp_constitutive
 
       if (any(IEEE_is_NaN(residuumLp))) then
-        return ! error
+        status = STATUS_FAIL_PHASE_MECHANICAL_STRESS_LP_NAN
+        return
       elseif (norm2(residuumLp) < atol_Lp) then                                                     ! converged if below absolute tolerance
         exit LpLoop
-      elseif (NiterationStressLp == 1 .or. norm2(residuumLp) < norm2(residuumLp_old)) then          ! not converged, but improved norm of residuum (always proceed in first iteration)...
+      elseif (norm2(residuumLp) < norm2(residuumLp_old)) then                                       ! not converged, but improved norm of residuum...
         residuumLp_old = residuumLp                                                                 ! ...remember old values and...
         Lpguess_old    = Lpguess
         steplengthLp   = 1.0_pREAL                                                                  ! ...proceed with normal step length (calculate new search direction)
@@ -508,7 +511,10 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
                  - math_3333to99(math_mul3333xx3333(math_mul3333xx3333(dLp_dS,dS_dFe),dFe_dLp))
         temp_9 = math_33to9(residuumLp)
         call dgesv(9,1,dRLp_dLp,9,devNull_9,temp_9,9,ierr)                                          ! solve dRLp/dLp * delta Lp = -res for delta Lp
-        if (ierr /= 0) return ! error
+        if (ierr /= 0) then
+          status = STATUS_FAIL_PHASE_MECHANICAL_STRESS_LP_DGESV
+          return
+        end if
         deltaLp = - math_9to33(temp_9)
       end if calculateJacobiLp
 
@@ -527,7 +533,7 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
       return ! error
     elseif (norm2(residuumLi) < atol_Li) then                                                       ! converged if below absolute tolerance
       exit LiLoop
-    elseif (NiterationStressLi == 1 .or. norm2(residuumLi) < norm2(residuumLi_old)) then            ! not converged, but improved norm of residuum (always proceed in first iteration)...
+    elseif (norm2(residuumLi) < norm2(residuumLi_old)) then                                         ! not converged, but improved norm of residuum ...
       residuumLi_old = residuumLi                                                                   ! ...remember old values and...
       Liguess_old    = Liguess
       steplengthLi   = 1.0_pREAL                                                                    ! ...proceed with normal step length (calculate new search direction)
