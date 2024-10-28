@@ -4,7 +4,7 @@ tags:
   - Crystal Plasticity
   - Python
 authors:
-- name: Daniel Otto De Mentock
+- name: Daniel Otto de Mentock
   affiliation: 1
 - name: Sharan Roongta
   orcid: 0000-0001-5754-068X
