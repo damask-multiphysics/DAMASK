@@ -1406,7 +1406,7 @@ class Rotation:
 
         Examples
         --------
-        Create an ideal α-fiber texture ([1 0 1] ǀǀ x=RD) consisting of 600 orientations:
+        Create an ideal bcc α-fiber texture ([1 0 1] ǀǀ x=RD) consisting of 600 orientations:
 
         >>> import damask
         >>> import numpy as np
