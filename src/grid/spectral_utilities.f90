@@ -183,7 +183,7 @@ subroutine spectral_utilities_init(active_Gamma, active_G, active_parabolic)
          scaledGeomSize = geomSize/geomSize(j)*real(cells(j),pREAL)
       end do
     case ('size')
-
+      scaledGeomSize = geomSize
     case default
       call IO_error(301,ext_msg=trim(num_grid_fft%get_asStr('divergence_correction')))
   end select
