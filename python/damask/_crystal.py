@@ -1,4 +1,4 @@
-from typing import Optional, Union, Dict, List, Tuple
+from typing import Optional, Union, Dict, List, Tuple, Literal
 
 import numpy as np
 
@@ -1161,22 +1161,52 @@ class Crystal():
                       'plane':    [util.Bravais_to_Miller(hkil=m[:,4:8]) if self.lattice == 'hP'
                                                     else m[:,3:6] for m in master]}
         if mode == 'twin':
-            gamma_char_direction = np.sign(self.characteristic_shear_twin()).astype('int')
-            kinematics['plane'] = [k*gamma_char_direction[i] for i,k in enumerate(kinematics['plane'])]
+            gamma_char = self.characteristic_shear_twin()
+            kinematics['plane'] = [np.sign(gamma_char[i]).astype(int).reshape(-1,1)*k
+                                                         for i,k in enumerate(kinematics['plane'])]
 
         return kinematics
 
 
-    def characteristic_shear_twin(self):
+    def characteristic_shear_twin(self,
+                                  N_twin: Optional[Union[IntSequence,Literal['*']]] = '*') -> Optional[np.ndarray]:
+        """
+        Return characteristic shear for twinning.
+
+        A positive value indicates a tension twin, a negative value a
+        compression twin.
+
+        Parameters
+        ----------
+        N_twin : '*' or sequence of int
+            Number of twin systems per twin family.
+            Use '*' to select all.
+
+        Returns
+        -------
+        s : numpy.ndarray, shape (...)
+            Characteristic shear for twinning.
+
+        References
+        ----------
+        J.W. Christian and S. Mahajan, Progress in Materials Science 39(1-2):1-157, 1995
+        https://doi.org/10.1016/0079-6425(94)00007-7
+
+        """
+        if self.lattice not in ['cI', 'cF', 'hP']:
+            return None
+        N_twin_ = [len(a) for a in _kinematics[self.lattice]['twin']] if N_twin == '*' else N_twin
+
         if self.lattice in ['cI', 'cF']:
-            return np.array([0.5*np.sqrt(2.0)])
+            return np.array([[0.5*np.sqrt(2.0)]*N_twin_[0]])
         elif self.lattice == 'hP':
             c_a = self.c/self.a
-            return np.array([(3.0-c_a**2)/np.sqrt(3.0)/c_a,
-                              1.0/c_a,
-                              (9.0-4.0*c_a**2)/np.sqrt(48.0)/c_a,
-                              2.0*(2.0-c_a**2)/3.0/c_a])
-        else: raise TypeError
+            return np.array([[(3.0-c_a**2)/np.sqrt(3.0)/c_a]*N_twin_[0],
+                             [1.0/c_a]*N_twin_[1],
+                             [(9.0-4.0*c_a**2)/np.sqrt(48.0)/c_a]*N_twin_[2],
+                             [2.0*(2.0-c_a**2)/3.0/c_a]*N_twin_[3]]
+                           )
+
 
     def relation_operations(self,
                             model: str,

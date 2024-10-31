@@ -126,7 +126,7 @@ class TestCrystal:
                              (np.sqrt(3)*1.01,['t','c','t','t'])])
     def test_characteristic_twin_direction(self,c_a,mode):
         C = Crystal(lattice='hP',c=c_a)
-        assert (np.where(C.characteristic_shear_twin()>0,'c','t')==mode).all()
+        assert (np.where(C.characteristic_shear_twin([1,1,1,1]).flatten()>0,'c','t')==mode).all()
 
     @pytest.mark.parametrize('crystal', [Crystal(lattice='cF'),
                                          Crystal(lattice='cI'),

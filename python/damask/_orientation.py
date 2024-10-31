@@ -1,5 +1,5 @@
 import copy
-from typing import Tuple, Optional, Union, TypeVar
+from typing import Tuple, Optional, Union, TypeVar, Literal
 
 import numpy as np
 
@@ -950,8 +950,8 @@ class Orientation(Rotation,Crystal):
 
 
     def Schmid(self, *,
-               N_slip: Optional[IntSequence] = None,
-               N_twin: Optional[IntSequence] = None) -> np.ndarray:
+               N_slip: Optional[Union[IntSequence, Literal['*']]] = None,
+               N_twin: Optional[Union[IntSequence, Literal['*']]] = None) -> np.ndarray:
         u"""
         Calculate Schmid matrix P = d ⨂ n in the lab frame for selected deformation systems.
 
