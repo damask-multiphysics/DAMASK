@@ -391,7 +391,6 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
                                       Lpguess_old, &                                                ! known last good guess for plastic velocity gradient
                                       Lp_constitutive, &                                            ! plastic velocity gradient resulting from constitutive law
                                       residuumLp, &                                                 ! current residuum of plastic velocity gradient
-                                      residuumLp_old, &                                             ! last residuum of plastic velocity gradient
                                       deltaLp, &                                                    ! direction of next guess
                                       Fi_new, &                                                     ! gradient of intermediate deformation stages
                                       invFi_new, &
@@ -400,7 +399,6 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
                                       Liguess_old, &                                                ! known last good guess for intermediate velocity gradient
                                       Li_constitutive, &                                            ! intermediate velocity gradient resulting from constitutive law
                                       residuumLi, &                                                 ! current residuum of intermediate velocity gradient
-                                      residuumLi_old, &                                             ! last residuum of intermediate velocity gradient
                                       deltaLi, &                                                    ! direction of next guess
                                       Fe, &                                                         ! elastic deformation gradient
                                       S, &                                                          ! 2nd Piola-Kirchhoff Stress in plastic (lattice) configuration
@@ -422,6 +420,8 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
                                       dLi_dS
   real(pREAL)                         steplengthLp, &
                                       steplengthLi, &
+                                      residuumLi_old_norm, &                                        ! last residuum of intermediate velocity gradient
+                                      residuumLp_old_norm, &                                        ! last residuum of plastic velocity gradient
                                       atol_Lp, &
                                       atol_Li
   integer                             NiterationStressLp, &                                         ! number of stress integrations
@@ -447,10 +447,10 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
 
   A = matmul(F,invFp_current)                                                                       ! intermediate tensor needed later to calculate dFe_dLp
 
-  jacoCounterLi  = 0
-  steplengthLi   = 1.0_pREAL
-  residuumLi_old = huge(1.0_pREAL)
-  Liguess_old    = Liguess
+  jacoCounterLi = 0
+  steplengthLi  = 1.0_pREAL
+  Liguess_old   = Liguess
+  residuumLi_old_norm = huge(1.0_pREAL)
 
   NiterationStressLi = 0
   LiLoop: do
@@ -460,10 +460,10 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
     invFi_new = matmul(invFi_current,math_I3 - Delta_t*Liguess)
     Fi_new    = math_inv33(invFi_new)
 
-    jacoCounterLp  = 0
-    steplengthLp   = 1.0_pREAL
-    residuumLp_old = huge(1.0_pREAL)
-    Lpguess_old    = Lpguess
+    jacoCounterLp = 0
+    steplengthLp  = 1.0_pREAL
+    Lpguess_old   = Lpguess
+    residuumLp_old_norm = huge(1.0_pREAL)
 
     NiterationStressLp = 0
     LpLoop: do
@@ -490,10 +490,10 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
         return
       elseif (norm2(residuumLp) < atol_Lp) then                                                     ! converged if below absolute tolerance
         exit LpLoop
-      elseif (norm2(residuumLp) < norm2(residuumLp_old)) then                                       ! not converged, but improved norm of residuum...
-        residuumLp_old = residuumLp                                                                 ! ...remember old values and...
-        Lpguess_old    = Lpguess
-        steplengthLp   = 1.0_pREAL                                                                  ! ...proceed with normal step length (calculate new search direction)
+      elseif (norm2(residuumLp) < residuumLp_old_norm) then                                         ! not converged, but improved norm of residuum...
+        residuumLp_old_norm = norm2(residuumLp)                                                     ! ...remember old values and...
+        Lpguess_old = Lpguess
+        steplengthLp = 1.0_pREAL                                                                    ! ...proceed with normal step length (calculate new search direction)
       else                                                                                          ! not converged and residuum not improved...
         steplengthLp = num%stepSizeLp * steplengthLp                                                ! ...try with smaller step length in same direction
         Lpguess      = Lpguess_old &
@@ -533,10 +533,10 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
       return ! error
     elseif (norm2(residuumLi) < atol_Li) then                                                       ! converged if below absolute tolerance
       exit LiLoop
-    elseif (norm2(residuumLi) < norm2(residuumLi_old)) then                                         ! not converged, but improved norm of residuum ...
-      residuumLi_old = residuumLi                                                                   ! ...remember old values and...
-      Liguess_old    = Liguess
-      steplengthLi   = 1.0_pREAL                                                                    ! ...proceed with normal step length (calculate new search direction)
+    elseif (norm2(residuumLi) < residuumLi_old_norm) then                                           ! not converged, but improved norm of residuum ...
+      residuumLi_old_norm = norm2(residuumLi)                                                       ! ...remember old values and...
+      Liguess_old = Liguess
+      steplengthLi = 1.0_pREAL                                                                      ! ...proceed with normal step length (calculate new search direction)
     else                                                                                            ! not converged and residuum not improved...
       steplengthLi = num%stepSizeLi * steplengthLi                                                  ! ...try with smaller step length in same direction
       Liguess      = Liguess_old &
