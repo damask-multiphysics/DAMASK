@@ -2,13 +2,17 @@ type: phenopowerlaw
 
 references:
   - N. Prabhu and M. Diehl,
-    Integrating Materials and Manufacturing Innovation 13:xx-yy, 2008,
-    https://doi.org/10.1007/zzz,
+    Integrating Materials and Manufacturing Innovation 13:804-826, 2024,
+    https://doi.org/10.1007/s40192-024-00359-1,
     Table 3(d)
+  - R. Madec and L.P. Kubin,
+    Acta Materialia 126:166-173, 2017,
+    https://doi.org/10.1016/j.actamat.2016.12.040,
+    Table 1 for Ni
   - L.P. Kubin et al.,
     Acta Materialia 56(20):6040-6049, 2008,
     https://doi.org/10.1016/j.actamat.2008.08.012,
-    Table 1
+    Table 1 (self and coplanar)
 
 output: [xi_sl, gamma_sl]
 

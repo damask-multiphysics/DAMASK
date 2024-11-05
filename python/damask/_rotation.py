@@ -231,9 +231,9 @@ class Rotation:
         return np.all(self.isclose(other,rtol,atol,equal_nan))
 
 
-    def __array__(self):
+    def __array__(self,*, copy: bool = None) -> np.ndarray:
         """Initializer for numpy."""
-        return self.quaternion
+        return self.quaternion.copy() if copy is True else self.quaternion                          # noqa: E712
 
 
     @property

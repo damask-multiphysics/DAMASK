@@ -206,8 +206,9 @@ def strain(F: _np.ndarray,
     """
     if t not in ['V', 'U']: raise ValueError('polar decomposition type not in {V, U}')
     w,n = _np.linalg.eigh(deformation_Cauchy_Green_left(F) if t=='V' else deformation_Cauchy_Green_right(F))
+    w = _np.clip(w,1e-16,None)
     return    0.5   *  _np.einsum('...j,...kj,...lj',_np.log(w),n,n) if m == 0.0 \
-        else  0.5/m * (_np.einsum('...j,...kj,...lj',      w**m,n,n) - _np.eye(3))
+        else  0.5/m * (_np.einsum('...j,...kj,...lj',w**m,      n,n) - _np.eye(3))
 
 
 def stress_Cauchy(P: _np.ndarray,

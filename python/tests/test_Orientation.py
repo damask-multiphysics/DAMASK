@@ -596,6 +596,7 @@ class TestOrientation:
         plt.axis('off')
         plt.savefig(tmp_path/fname)
         if update: plt.savefig(res_path/fname)
+        plt.close()
         current = np.array(Image.open(tmp_path/fname))
         reference = np.array(Image.open(res_path/fname))
         assert np.allclose(current,reference)
