@@ -1,5 +1,5 @@
 import copy
-from typing import Tuple, Optional, Union, TypeVar, Literal
+from typing import Tuple, Optional, Union, TypeVar, Literal # mypy 1.11, overload
 
 import numpy as np
 
@@ -675,10 +675,17 @@ class Orientation(Rotation,Crystal):
                 self.copy(Rotation(r).average(weights))
                )
 
-
+    # mypy 1.11
+    #@overload
+    #def to_SST(self, vector: FloatSequence, proper: bool = False,                                   # noqa
+    #           return_operators: Literal[False] = False) -> np.ndarray: ...
+    #@overload
+    #def to_SST(self, vector: FloatSequence, proper: bool = False,                                   # noqa
+    #           return_operators: Literal[True] = True) -> Tuple[np.ndarray,np.ndarray]: ...
     def to_SST(self,
                vector: FloatSequence,
                proper: bool = False,
+    #           return_operators: bool = False) -> Union[np.ndarray,Tuple[np.ndarray,np.ndarray]]:
                return_operators: bool = False) -> np.ndarray:
         """
         Rotate lab frame vector to ensure it falls into (improper or proper) standard stereographic triangle of crystal symmetry.

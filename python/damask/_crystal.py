@@ -7,7 +7,7 @@ from . import util
 from . import Rotation
 
 
-_kinematics: Dict[Optional[BravaisLattice], Dict[CrystalKinematics, List[np.ndarray]]] = {
+_kinematics: Dict[BravaisLattice, Dict[CrystalKinematics, List[np.ndarray]]] = {
     'cF': {
         'slip': [np.array([
                    [ 0,+1,-1, +1,+1,+1],
@@ -806,12 +806,14 @@ class Crystal():
     @property
     def parameters(self) -> Optional[Dict]:
         """Return lattice parameters a, b, c, alpha, beta, gamma."""
+        has_parameters = all([hasattr(self,p) for p in ['a','b','c','alpha','beta','gamma']])
         return dict(a=self.a,b=self.b,c=self.c,
-                    alpha=self.alpha,beta=self.beta,gamma=self.gamma) if hasattr(self,'a') else None
+                    alpha=self.alpha,beta=self.beta,gamma=self.gamma) if has_parameters else None
 
     @property
     def immutable(self) -> Dict[str, float]:
         """Return immutable lattice parameters."""
+        # ToDo: use pattern matching in Python 3.10
         _immutable: Dict[CrystalFamily, Dict[str,float]] = {
             'cubic': {
                          'b': 1.0,
@@ -1022,17 +1024,18 @@ class Crystal():
         https://doi.org/10.1063/1.1661333
 
         """
-        if self.parameters is None:
+        if (p := self.parameters) is not None:
+            return np.array([
+                              [1,0,0],
+                              [np.cos(p['gamma']),np.sin(p['gamma']),0],
+                              [np.cos(p['beta']),
+                               (np.cos(p['alpha'])-np.cos(p['beta'])*np.cos(p['gamma']))                     /np.sin(p['gamma']),
+                               np.sqrt(1 - np.cos(p['alpha'])**2 - np.cos(p['beta'])**2 - np.cos(p['gamma'])**2
+                                     + 2 * np.cos(p['alpha'])    * np.cos(p['beta'])    * np.cos(p['gamma']))/np.sin(p['gamma'])],
+                             ]).T \
+                 * np.array([p['a'],p['b'],p['c']])
+        else:
             raise KeyError('missing crystal lattice parameters')
-        return np.array([
-                          [1,0,0],
-                          [np.cos(self.gamma),np.sin(self.gamma),0],
-                          [np.cos(self.beta),
-                           (np.cos(self.alpha)-np.cos(self.beta)*np.cos(self.gamma))                     /np.sin(self.gamma),
-                           np.sqrt(1 - np.cos(self.alpha)**2 - np.cos(self.beta)**2 - np.cos(self.gamma)**2
-                                 + 2 * np.cos(self.alpha)    * np.cos(self.beta)    * np.cos(self.gamma))/np.sin(self.gamma)],
-                         ]).T \
-             * np.array([self.a,self.b,self.c])
 
 
     @property
@@ -1155,6 +1158,7 @@ class Crystal():
             Directions and planes of deformation mode families.
 
         """
+        if self.lattice is None: raise KeyError('no lattice type specified')
         master = _kinematics[self.lattice][mode]
         kinematics = {'direction':[util.Bravais_to_Miller(uvtw=m[:,0:4]) if self.lattice == 'hP'
                                                     else m[:,0:3] for m in master],
@@ -1169,7 +1173,7 @@ class Crystal():
 
 
     def characteristic_shear_twin(self,
-                                  N_twin: Optional[Union[IntSequence,Literal['*']]] = '*') -> Optional[np.ndarray]:
+                                  N_twin: Union[List[int], Literal['*']] = '*') -> np.ndarray:
         """
         Return characteristic shear for twinning.
 
@@ -1193,19 +1197,19 @@ class Crystal():
         https://doi.org/10.1016/0079-6425(94)00007-7
 
         """
-        if self.lattice not in ['cI', 'cF', 'hP']:
-            return None
-        N_twin_ = [len(a) for a in _kinematics[self.lattice]['twin']] if N_twin == '*' else N_twin
-
         if self.lattice in ['cI', 'cF']:
+            N_twin_ = [len(a) for a in _kinematics[self.lattice]['twin']] if N_twin == '*' else N_twin
             return np.array([[0.5*np.sqrt(2.0)]*N_twin_[0]])
         elif self.lattice == 'hP':
-            c_a = self.c/self.a
+            N_twin_ = [len(a) for a in _kinematics[self.lattice]['twin']] if N_twin == '*' else N_twin
+            c_a = self.c/self.a                                                                     #type: ignore
             return np.array([[(3.0-c_a**2)/np.sqrt(3.0)/c_a]*N_twin_[0],
                              [1.0/c_a]*N_twin_[1],
                              [(9.0-4.0*c_a**2)/np.sqrt(48.0)/c_a]*N_twin_[2],
                              [2.0*(2.0-c_a**2)/3.0/c_a]*N_twin_[3]]
                            )
+        else:
+            raise KeyError(f'twin systems not defined for lattice "{self.lattice}"')
 
 
     def relation_operations(self,
