@@ -233,7 +233,7 @@ class Rotation:
 
     def __array__(self,*, copy: bool = None) -> np.ndarray:
         """Initializer for numpy."""
-        return self.quaternion if copy is not True else self.quaternion.copy()                      # noqa: E712
+        return self.quaternion.copy() if copy is True else self.quaternion                          # noqa: E712
 
 
     @property
