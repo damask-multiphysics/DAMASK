@@ -266,13 +266,13 @@ module subroutine mechanical_init(phases, num_mech)
 
 
   call elastic_init(phases)
-
   allocate(plasticState(phases%length))
   allocate(mechanical_plasticity_type(phases%length),source = UNDEFINED)
   call plastic_init()
   do ph = 1,phases%length
     plasticState(ph)%state0 = plasticState(ph)%state
   end do
+  call eigen_init(phases)
 
   num_mech_plastic => num_mech%get_dict('plastic', defaultVal=emptyDict)
   num_mech_eigen   => num_mech%get_dict('eigen',   defaultVal=emptyDict)
@@ -332,8 +332,6 @@ module subroutine mechanical_init(phases, num_mech)
      call IO_error(301,ext_msg='integrator')
 
   end select
-
-  call eigen_init(phases)
 
 
 end subroutine mechanical_init
