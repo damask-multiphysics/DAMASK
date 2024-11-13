@@ -1157,6 +1157,14 @@ class Crystal():
         direction_plane : dictionary
             Directions and planes of deformation mode families.
 
+        Notes
+        -----
+        Kinematics of slip systems are bidirectional, i.e. the
+        shape change equals the kinematics multiplied by the (signed) shear.
+        In contrast, twin kinematics are unidirectional and already consider
+        the distinction between extension and compression twins such that the
+        shape change equals the kinematics multiplied by (absolute) twin shear.
+
         """
         if self.lattice is None: raise KeyError('no lattice type specified')
         master = _kinematics[self.lattice][mode]
