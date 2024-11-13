@@ -141,8 +141,6 @@ logical function setCWD(path)
 
   setCWD = setCWD_C(f_c_string(path)) /= 0_C_INT
 
-  call system_routines_selfTest()
-
 end function setCWD
 
 
