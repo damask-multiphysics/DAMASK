@@ -283,10 +283,10 @@ module function plastic_dislotwin_init() result(myPlasticity)
     twinActive: if (prm%sum_N_tw > 0) then
       prm%systems_tw    = crystal_labels_twin(prm%N_tw,phase_lattice(ph))
       prm%P_tw          = crystal_SchmidMatrix_twin(prm%N_tw,phase_lattice(ph),phase_cOverA(ph))
-      prm%gamma_char_tw = crystal_characteristicShear_Twin(prm%N_tw,phase_lattice(ph),phase_cOverA(ph))
+      prm%gamma_char_tw = abs(crystal_characteristicShear_Twin(prm%N_tw,phase_lattice(ph),phase_cOverA(ph)))
 
-      prm%L_tw             = pl%get_asReal('L_tw')
-      prm%i_tw             = pl%get_asReal('i_tw')
+      prm%L_tw = pl%get_asReal('L_tw')
+      prm%i_tw = pl%get_asReal('i_tw')
 
       prm%b_tw = math_expand(pl%get_as1dReal('b_tw', requiredSize=size(prm%N_tw)),prm%N_tw)
       prm%t_tw = math_expand(pl%get_as1dReal('t_tw', requiredSize=size(prm%N_tw)),prm%N_tw)

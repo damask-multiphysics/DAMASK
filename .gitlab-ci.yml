@@ -81,9 +81,10 @@ pytest:
   image: git.damask-multiphysics.org:5050/damask/damask:python310_2407
   before_script: []
   script:
-    - PYTHONPATH=$(pwd)/python:$PYTHONPATH
+    - export DAMASK_ROOT=$(pwd)
+    - PYTHONPATH=${DAMASK_ROOT}/python:$PYTHONPATH
     - cd python
-    - python3 -m pytest -v --cov=damask --cov-report=xml
+    - python3 -m pytest -v --cov=damask --cov-report=xml --damaskroot=${DAMASK_ROOT}
     - coverage report --fail-under=90 --show-missing
 
 mypy:

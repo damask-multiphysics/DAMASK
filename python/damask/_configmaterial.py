@@ -174,9 +174,9 @@ class ConfigMaterial(YAML):
         v: (array-like) of float or str, optional
             Constituent volume fraction (per constituent).
             Defaults to 1/N_constituent.
-        O: (array-like) of damask.Rotation or np.array/list of shape(4) or str, optional
+        O: (array-like) of damask.Rotation or np.array/list of shape (4) or str, optional
             Orientation as unit quaternion (per constituent).
-        V_e: (array-like) of np.array/list of shape(3,3) or str, optional
+        V_e: (array-like) of np.array/list of shape (3,3) or str, optional
             Left elastic stretch (per constituent).
 
 
@@ -442,9 +442,9 @@ class ConfigMaterial(YAML):
         v: (array-like) of float, optional
             Constituent volume fraction (per constituent).
             Defaults to 1/N_constituent.
-        O: (array-like) of damask.Rotation or np.array/list of shape(4), optional
+        O: (array-like) of damask.Rotation or np.array/list of shape (4), optional
             Orientation as unit quaternion (per constituent).
-        V_e: (array-like) of np.array/list of shape(3,3), optional
+        V_e: (array-like) of np.array/list of shape (3,3), optional
             Left elastic stretch (per constituent).
 
         Returns

@@ -1,6 +1,6 @@
 import re
 import copy
-from typing import Optional, Union, Tuple, List, Iterable
+from typing import Optional, Union, Tuple, List, Mapping, Iterable
 
 import pandas as pd
 import numpy as np
@@ -12,7 +12,7 @@ class Table:
     """Manipulate multi-dimensional spreadsheet-like data."""
 
     def __init__(self,
-                 shapes: dict = {},
+                 shapes: Mapping[str,Union[Union[int,np.integer],Tuple[Union[int,np.integer],...]]] = {},
                  data: Optional[np.ndarray] = None,
                  comments: Union[None, str, Iterable[str]] = None):
         """
@@ -32,7 +32,7 @@ class Table:
         self.comments = [] if comments is None else  \
                         [comments] if isinstance(comments,str) else \
                         [str(c) for c in comments]
-        self.shapes = { k:(v,) if isinstance(v,(np.int64,np.int32,int)) else v for k,v in shapes.items() }
+        self.shapes = { k:(v,) if isinstance(v,(np.integer,int)) else v for k,v in shapes.items() }
         self.data = pd.DataFrame(data=data)
         self._relabel('uniform')
 
@@ -162,7 +162,7 @@ class Table:
         labels = []
         for label in what:
             shape = self.shapes[label]
-            size = np.prod(shape,dtype=np.int64)
+            size = np.prod(shape,dtype=np.int64)                                                    # type: ignore
             if   how == 'uniform':
                 labels += [label] * size
             elif how == 'shapes':
@@ -602,7 +602,7 @@ class Table:
                               for i in range(self.shapes[l][0])]
                 else:
                     labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
-                              for i in range(np.prod(self.shapes[l]))]
+                            for i in range(np.prod(self.shapes[l],dtype=np.int64))]                 # type: ignore
 
         with util.open_text(fname,'w') as f:
             f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+('\n' if labels else ''))
