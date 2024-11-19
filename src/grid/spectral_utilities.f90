@@ -178,8 +178,8 @@ subroutine spectral_utilities_init(active_Gamma, active_G, active_parabolic)
       end do
     case ('grid+size', 'size+grid')
       do j = 1, 3
-       if (      j /= int(minloc(geomSize/real(cells,pREAL),1)) &
-           .and. j /= int(maxloc(geomSize/real(cells,pREAL),1))) &
+       if (      j /= minloc(geomSize/real(cells,pREAL),1) &
+           .and. j /= maxloc(geomSize/real(cells,pREAL),1)) &
          scaledGeomSize = geomSize/geomSize(j)*real(cells(j),pREAL)
       end do
     case ('size')
