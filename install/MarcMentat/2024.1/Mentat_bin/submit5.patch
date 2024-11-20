@@ -8,8 +8,11 @@
        srcfile="-prog $srcfile"
        ;;
    esac
-@@ -192,12 +193,12 @@
- if [ "$slv" == "pch" ]; then # create pch file
+@@ -190,14 +191,14 @@
+ unset LD_LIBRARY_PATH
+ 
+-if [ "$slv" == "pch" ]; then # create pch file
++if [ "$slv" = "pch" ]; then # create pch file
    "${DIR}/tools/run_marc" -j $job $srcfile -b n -bdf 2
  elif [ "$doe_first" = "-" ]; then # submit of regular Marc job
 -  "${DIR}/tools/run_marc" $slv -j $job -v n -b y $nprocds $nprocd \
