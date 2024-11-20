@@ -615,6 +615,44 @@ def ravel_index(idx: _np.ndarray) -> _np.ndarray:
            + idx[:,:,:,2]*cells[0]*cells[1]
 
 
+def unravel(d_flattened: _np.ndarray,
+            cells: _IntSequence) -> _np.ndarray:
+    """
+    Convert flattened data (1D) to grid representation (3D).
+
+    Parameters
+    ----------
+    d_flattened : numpy.ndarray, shape (:,...)
+        Data on a flattened grid.
+    cells : sequence of int, len (3)
+        Number of cells.
+
+    Returns
+    -------
+    d : numpy.ndarray, shape (:,:,:,...)
+        Data on a 3D grid.
+
+    """
+    return d_flattened.reshape(tuple(cells)+d_flattened.shape[1:],order='F')                        # NumPy > 2.1 has copy arg
+
+def ravel(d: _np.ndarray) -> _np.ndarray:
+    """
+    Convert grid data (3D) to flattend representation (1D).
+
+    Parameters
+    ----------
+    d : numpy.ndarray, shape (:,:,:,...)
+        Data on a 3D grid.
+
+    Returns
+    -------
+    d_flattened : numpy.ndarray, shape (:,...)
+        Data on a flattened grid.
+
+    """
+    return d.reshape((-1,)+d.shape[3:],order='F').copy()                                            # NumPy > 2.1 has copy arg
+
+
 def regrid(size: _FloatSequence,
            F: _np.ndarray,
            cells: _IntSequence) -> _np.ndarray:
