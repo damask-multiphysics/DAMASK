@@ -44,19 +44,19 @@ This library, which is also AGPL-licensed, is introduced here.
 Multi-physics-enriched crystal plasticity simulations are used to establish processing--structure--property relationships of crystalline materials at engineering length and time scales.
 Setting up a simulation requires parameterization of the constitutive models, description of microstructure and geometry, and definition of boundary and initial conditions.
 The interpretation of the resulting data requires tools for statistical analysis, plotting, and 3D visualization.
-Moreover, the design and study of complex materials using various computational techniques requires interoperability between different software packages in ICME worflows [@ShahEtAl2022].
+Moreover, the design and study of complex materials using various computational techniques requires interoperability between different software packages in ICME workflows [@ShahEtAl2022].
 These needs are best addressed by a modular set of routines for pre- and post-processing that integrate seamlessly into an existing ecosystem.
 
 # Features
 
 The materialpoint models implemented in DAMASK can be used in conjunction with different solvers: `DAMASK_grid`, `DAMASK_mesh`, `DAMASK_Marc`.
-The grid solver (`DAMASK_grid`) operates on periodically repeated hexahedral domains discretized by a structured grid, whereas the two other solvers are based on the finite element method and can be used for unstructured meshes and allow for more complex geometries.
-Hence, the definition of the geometry as well as boundary conditions and initial conditions depends on the selected solver and requires different pre-processing tools.
+The grid solver (`DAMASK_grid`) operates on periodically repeated hexahedral domains discretized by a structured grid, whereas the two other solvers are based on the finite element method and can be used for unstructured meshes, thus allowing for more complex geometries.
+Hence, the definition of the geometry together with boundary and initial conditions depends on the selected solver and requires different pre-processing tools.
 In contrast, the configuration of the materialpoint model and the DAMASK-specific HDF5 file format that is used to store the simulation results [@DiehlEtAl2017b] are solver-agnostic.
 
-The DAMASK Python library is a package called `damask` and contains functionality for pre-processing tasks, such as the generation and manipulation of microstructures, load cases, material definition, or numerical parameters, as well as functionality for post-processing that enables analysis and visualization of DAMASK results.
+The DAMASK Python library is a package called `damask` and contains functionality for pre-processing tasks, such as the generation and modification of microstructures, load cases, material definition, or numerical parameters, as well as functionality for post-processing that enables analysis and visualization of DAMASK results.
 A particular focus is laid on finite-strain continuum mechanics and crystallography.
-The routines for conversion between the different kinds of orientation representations, such as Euler angles, rotation matrices, unit quaternions, or axis-angle pairs, are based a consistent set of conventions [@rowenhorst2015consistent].
+The routines for conversion between the different kinds of orientation representations, such as Euler angles, rotation matrices, unit quaternions, or axis-angle pairs, are based on a consistent set of conventions [@rowenhorst2015consistent].
 The provided routines and data tructures interoperate seamlessly with other libraries from the Python ecosystem, such as `NumPy` [@harris2020array], `pandas` [@mckinney-proc-scipy-2010], `Matplotlib` [@hunter2007matplotlib], `SciPy` [@2020SciPy-NMeth], `VTK`/`PyVista` [@ahrens200536] [@Sullivan_PyVista_3D_plotting_2019], `PyYAML`, `h5py` [@collette_python_hdf5_2014] [@FolkEtAl2011], and `orix` [@johnstone2020density] to facilitate the definition of custom ICME workflows.
 
 Apart from its DAMASK-specific processing capabilities, many routines of the library can be used in other material science and continuum mechanics applications.
@@ -71,9 +71,12 @@ In addition to the three mandatory input files, i.e., geometry definition, mater
 ## Post-Processing
 
 The post-processing tools are centered around the HDF5 output file resulting from a DAMASK simulation.
-This flexible file format is called DADF5, short for "DAMASK HDF5", and ensures data storage according to the FAIR principles [@WilkinsonEtAl2016].
-The `Result` class provides custom views on the hierarchical data layout of the DADF5 file and enables the computation of derived quantities that are stored alongside with automatically created metadata in the output file.
+This flexible file format is called DADF5, short for "DAMASK HDF5" [@DiehlEtAl2017b], which allows data storage according to the FAIR principles [@WilkinsonEtAl2016].
+All data in DADF5 is enriched with metadata such as the date of creation, a human-understandable description, and the physical unit to ensure that the data is findable by humans and computers.
+The `Result` class provides custom views on the hierarchical data layout of the DADF5 file for easy accesibility.
+Moreover, it provides routines the computation of derived quantities that are stored alongside with automatically created metadata in the output file.
 The data can be further processed within Python or exported to various file formats for analysis using third-party tools such as `DREAM.3D`, `ParaView`, or `MTEX` [@BachmannEtAl2010].
+This, together with the fact that the complete simulation setup is stored in the DADF5 file, makes it possible to re-use and re-evaluate the data.
 
 
 # Alternatives
