@@ -266,13 +266,13 @@ module subroutine mechanical_init(phases, num_mech)
 
 
   call elastic_init(phases)
-
   allocate(plasticState(phases%length))
   allocate(mechanical_plasticity_type(phases%length),source = UNDEFINED)
   call plastic_init()
   do ph = 1,phases%length
     plasticState(ph)%state0 = plasticState(ph)%state
   end do
+  call eigen_init(phases)
 
   num_mech_plastic => num_mech%get_dict('plastic', defaultVal=emptyDict)
   num_mech_eigen   => num_mech%get_dict('eigen',   defaultVal=emptyDict)
@@ -332,8 +332,6 @@ module subroutine mechanical_init(phases, num_mech)
      call IO_error(301,ext_msg='integrator')
 
   end select
-
-  call eigen_init(phases)
 
 
 end subroutine mechanical_init
@@ -953,7 +951,7 @@ subroutine results(group,ph)
   contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert orientation array to quaternion array
+!> @brief Convert orientation array to quaternion array.
 !--------------------------------------------------------------------------------------------------
   function to_quaternion(dataset)
 
@@ -1073,7 +1071,7 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(status)
     if (todo) then
       sizeDotState = plasticState(ph)%sizeDotState
       F = F0 &
-           + step * (phase_mechanical_F(ph)%data(1:3,1:3,en) - phase_mechanical_F0(ph)%data(1:3,1:3,en))
+        + step * (phase_mechanical_F(ph)%data(1:3,1:3,en) - phase_mechanical_F0(ph)%data(1:3,1:3,en))
       status = integrateState(F0,F,Fp0,Fi0,state0(1:sizeDotState),step * Delta_t,ph,en)
     end if
 
@@ -1186,8 +1184,8 @@ module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
   end if
 
   call plastic_LpAndItsTangents(devNull,dLpdS,dLpdFi, &
-                                             phase_mechanical_S(ph)%data(1:3,1:3,en), &
-                                             phase_mechanical_Fi(ph)%data(1:3,1:3,en),ph,en)
+                                phase_mechanical_S(ph)%data(1:3,1:3,en), &
+                                phase_mechanical_Fi(ph)%data(1:3,1:3,en),ph,en)
   dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
 
 !--------------------------------------------------------------------------------------------------

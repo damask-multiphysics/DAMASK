@@ -1896,8 +1896,8 @@ class Result:
 
         One VTK file per visible increment is created.
         For point data, the VTK format is PolyData (.vtp).
-        For cell data, the file format is either ImageData (.vti)
-        or UnstructuredGrid (.vtu) for grid-based or mesh-based simulations,
+        For cell data, the file format is either ImageData (.vti) or
+        UnstructuredGrid (.vtu) for grid-based or mesh-based simulations,
         respectively.
 
         Parameters
@@ -1983,9 +1983,9 @@ class Result:
                         for label,dataset in outs.items():
                             v = v.set(' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]),dataset)
 
-
                 v.save(out_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
                        parallel=parallel)
+
 
     def export_DREAM3D(self,
                        q: str = 'O',

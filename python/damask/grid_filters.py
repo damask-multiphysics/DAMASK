@@ -7,8 +7,8 @@ This convention is consistent with the layout in grid vti files.
 When converting to/from a plain list (e.g. storage in ASCII table),
 the following operations are required for tensorial data:
 
-    - D3 = D1.reshape(cells+(-1,),order='F').reshape(cells+(3,3))
-    - D1 = D3.reshape(cells+(-1,)).reshape(-1,9,order='F')
+    - D3 = D1.reshape(cells+(-1,),order='F').reshape(cells+(3,3),order='C')
+    - D1 = D3.reshape(cells+(-1,),order='C').reshape(-1,9,order='F')
 
 """
 

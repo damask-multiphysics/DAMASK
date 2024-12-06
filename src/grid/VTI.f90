@@ -69,7 +69,7 @@ end function VTI_readDataset_real
 !> @details https://vtk.org/Wiki/VTK_XML_Formats
 !--------------------------------------------------------------------------------------------------
 subroutine VTI_readDataset_raw(base64Str,dataType,headerType,compressed, &
-                                  fileContent,label)
+                               fileContent,label)
 
   character(len=*), intent(in) :: &
     label, &

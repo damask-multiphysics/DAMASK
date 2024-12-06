@@ -130,22 +130,22 @@ end subroutine math_init
 !  Sorting is done with respect to array(sortDim,:) and keeps array(/=sortDim,:) linked to it.
 !  Default: sortDim=1
 !--------------------------------------------------------------------------------------------------
-pure recursive subroutine math_sort(a, istart, iend, sortDim)
+pure recursive subroutine math_sort(a, iStart, iEnd, sortDim)
 
   integer, dimension(:,:), intent(inout) :: a
-  integer,       optional, intent(in)    :: istart,iend, sortDim
+  integer,       optional, intent(in)    :: iStart,iEnd, sortDim
 
-  integer :: ipivot,s,e,d
+  integer :: iPivot,s,e,d
 
 
-  s = misc_optional(istart,lbound(a,2))
-  e = misc_optional(iend,ubound(a,2))
+  s = misc_optional(iStart,lbound(a,2))
+  e = misc_optional(iEnd,ubound(a,2))
   d = misc_optional(sortDim,1)
 
   if (s < e) then
-    call qsort_partition(a,ipivot, s,e, d)
-    call math_sort(a, s, ipivot-1, d)
-    call math_sort(a, ipivot+1, e, d)
+    call qsort_partition(a,iPivot, s,e, d)
+    call math_sort(a, s, iPivot-1, d)
+    call math_sort(a, iPivot+1, e, d)
   end if
 
 
