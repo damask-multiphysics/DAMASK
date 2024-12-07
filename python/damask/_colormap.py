@@ -170,9 +170,9 @@ class Colormap(mpl.colors.ListedColormap):
         model : {'rgb', 'hsv', 'hsl', 'xyz', 'lab', 'msh'}
             Color model used for input color definitions. Defaults to 'rgb'.
             The available color models are:
-            - 'rgb': Red Green Blue.
-            - 'hsv': Hue Saturation Value.
-            - 'hsl': Hue Saturation Luminance.
+            - 'rgb': Red Green Blue (RGB).
+            - 'hsv': Hue Saturation Value (HSV).
+            - 'hsl': Hue Saturation Luminance (HSL).
             - 'xyz': CIE Xyz.
             - 'lab': CIE Lab.
             - 'msh': Msh (for perceptually uniform interpolation).
@@ -181,6 +181,12 @@ class Colormap(mpl.colors.ListedColormap):
         -------
         new : damask.Colormap
             Colormap spanning given bounds.
+
+        Notes
+        -----
+        RGB values are in the range [0,1].
+        Hue values in the HSL/HSV models are in the range [0,360],
+        Saturation, Value, and Luminance are in the range [0,1].
 
         Examples
         --------
@@ -538,12 +544,12 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         hsv : numpy.ndarray, shape (3)
-            HSV values.
+            HSV values in the range [[0,360],[0,1],[0,1]]
 
         Returns
         -------
         rgb : numpy.ndarray, shape (3)
-            RGB values.
+            RGB values in the range [[0,1],[0,1],[0,1]]
 
         """
         return np.array(colorsys.hsv_to_rgb(hsv[0]/360.,hsv[1],hsv[2]))
@@ -556,12 +562,12 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         rgb : numpy.ndarray, shape (3)
-            RGB values.
+            RGB values in the range [[0,1],[0,1],[0,1]]
 
         Returns
         -------
         hsv : numpy.ndarray, shape (3)
-            HSV values.
+            HSV values in the range [[0,360],[0,1],[0,1]]
 
         """
         h,s,v = colorsys.rgb_to_hsv(rgb[0],rgb[1],rgb[2])
@@ -576,12 +582,12 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         hsl : numpy.ndarray, shape (3)
-            HSL values.
+            HSL values in the range [[0,360],[0,1],[0,1]]
 
         Returns
         -------
         rgb : numpy.ndarray, shape (3)
-            RGB values.
+            RGB values in the range [[0,1],[0,1],[0,1]]
 
         """
         return np.array(colorsys.hls_to_rgb(hsl[0]/360.,hsl[2],hsl[1]))
@@ -594,12 +600,12 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         rgb : numpy.ndarray, shape (3)
-            RGB values.
+            RGB values in the range [[0,1],[0,1],[0,1]]
 
         Returns
         -------
         hsl : numpy.ndarray, shape (3)
-            HSL values.
+            HSL values in the range [[0,360],[0,1],[0,1]]
 
         """
         h,l,s = colorsys.rgb_to_hls(rgb[0],rgb[1],rgb[2])
@@ -619,7 +625,7 @@ class Colormap(mpl.colors.ListedColormap):
         Returns
         -------
         rgb : numpy.ndarray, shape (3)
-            RGB values.
+            RGB values in the range [[0,1],[0,1],[0,1]]
 
         References
         ----------
@@ -644,7 +650,7 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         rgb : numpy.ndarray, shape (3)
-            RGB values.
+            RGB values in the range [[0,1],[0,1],[0,1]]
 
         Returns
         -------
