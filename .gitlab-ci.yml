@@ -280,9 +280,9 @@ update_website_3.0:
   stage: finalize
   trigger:
     project: damask/website
-    branch: 3.0
+    branch: "3.0"
   only:
-    - 3.0
+    - "3.0"
 
 update_revision:
   stage: finalize
