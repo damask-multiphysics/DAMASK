@@ -615,6 +615,28 @@ def ravel_index(idx: _np.ndarray) -> _np.ndarray:
            + idx[:,:,:,2]*cells[0]*cells[1]
 
 
+def ravel(d_unraveled: _np.ndarray,
+          flatten: bool = False) -> _np.ndarray:
+    """
+    Convert unraveled data (3D) to raveled representation (1D).
+
+    Parameters
+    ----------
+    d_unraveled : numpy.ndarray, shape (:,:,:,...)
+        Unraveled data, three-dimensional along leading dimensions.
+    flatten : bool, optional
+        Flatten data, i.e. enforce two-dimensional array
+
+    Returns
+    -------
+    d_raveled : numpy.ndarray, shape (:,...)
+        Raveled data, one-dimensional along leading dimension.
+
+    """
+    d = d_unraveled.reshape((-1,)+d_unraveled.shape[3:],order='F').copy()                           # NumPy > 2.1 has copy arg
+    return (d.reshape(d.shape[:1]+(-1,)) if flatten else d)
+
+
 def unravel(d_raveled: _np.ndarray,
             cells: _IntSequence,
             flatten: bool = False) -> _np.ndarray:
@@ -624,7 +646,7 @@ def unravel(d_raveled: _np.ndarray,
     Parameters
     ----------
     d_raveled : numpy.ndarray, shape (:,...)
-        Raveled data, one-dimensional along first dimension
+        Raveled data, one-dimensional along leading dimension
     cells : sequence of int, len (3)
         Number of cells.
     flatten : bool, optional
@@ -633,32 +655,11 @@ def unravel(d_raveled: _np.ndarray,
     Returns
     -------
     d_unraveled : numpy.ndarray, shape (:,:,:,...)
-        Unraveled data, three-dimensional along first dimension.
+        Unraveled data, three-dimensional along leading dimensions.
 
     """
     d = d_raveled.reshape(tuple(cells)+d_raveled.shape[1:],order='F').copy()                        # NumPy > 2.1 has copy arg
-    return (d.reshape(tuple(cells)+(-1,)) if flatten else d)
-
-def ravel(d_unraveled: _np.ndarray,
-          flatten: bool = False) -> _np.ndarray:
-    """
-    Convert unraveled data (3D) to raveled representation (1D).
-
-    Parameters
-    ----------
-    d_unraveled : numpy.ndarray, shape (:,:,:,...)
-        Unraveled data, three-dimensional along first dimension.
-    flatten : bool, optional
-        Flatten data, i.e. enforce two-dimensional array
-
-    Returns
-    -------
-    d_raveled : numpy.ndarray, shape (:,...)
-        Raveled data, one-dimensional along first dimension.
-
-    """
-    d = d_unraveled.reshape((-1,)+d_unraveled.shape[3:],order='F').copy()                           # NumPy > 2.1 has copy arg
-    return (d.reshape((d.shape[0],-1)) if flatten else d)
+    return (d.reshape(d.shape[:3]+(-1,)) if flatten else d)
 
 
 def regrid(size: _FloatSequence,
