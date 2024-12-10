@@ -539,6 +539,44 @@ def coordinates0_valid(coordinates0: _np.ndarray) -> bool:
         return False
 
 
+def ravel_index(idx: _np.ndarray) -> _np.ndarray:
+    """
+    Convert coordinate indices to flat indices.
+
+    Parameters
+    ----------
+    idx : numpy.ndarray, shape (:,:,:,3)
+        Grid of coordinate indices.
+
+    Returns
+    -------
+    ravelled : numpy.ndarray, shape (:,:,:)
+        Grid of flat indices.
+
+    Examples
+    --------
+    Ravel a reversed sequence of coordinate indices on a 2 × 2 × 1 grid.
+
+    >>> import numpy as np
+    >>> import damask
+    >>> (rev := np.array([[1,1,0],[0,1,0],[1,0,0],[0,0,0]]).reshape((2,2,1,3)))
+    array([[[[1, 1, 0]],
+            [[0, 1, 0]]],
+           [[[1, 0, 0]],
+            [[0, 0, 0]]]])
+    >>> (flat_idx := damask.grid_filters.ravel_index(rev))
+    array([[[3],
+            [2]],
+           [[1],
+            [0]]])
+
+    """
+    cells = idx.shape[:3]
+    return (  idx[:,:,:,0]
+            + idx[:,:,:,1]*cells[0]
+            + idx[:,:,:,2]*cells[0]*cells[1])
+
+
 def unravel_index(idx: _np.ndarray) -> _np.ndarray:
     """
     Convert flat indices to coordinate indices.
@@ -576,43 +614,6 @@ def unravel_index(idx: _np.ndarray) -> _np.ndarray:
     return _np.block([  idx_ %cells[0],
                        (idx_//cells[0]) %cells[1],
                       ((idx_//cells[0])//cells[1])%cells[2]])
-
-def ravel_index(idx: _np.ndarray) -> _np.ndarray:
-    """
-    Convert coordinate indices to flat indices.
-
-    Parameters
-    ----------
-    idx : numpy.ndarray, shape (:,:,:,3)
-        Grid of coordinate indices.
-
-    Returns
-    -------
-    ravelled : numpy.ndarray, shape (:,:,:)
-        Grid of flat indices.
-
-    Examples
-    --------
-    Ravel a reversed sequence of coordinate indices on a 2 × 2 × 1 grid.
-
-    >>> import numpy as np
-    >>> import damask
-    >>> (rev := np.array([[1,1,0],[0,1,0],[1,0,0],[0,0,0]]).reshape((2,2,1,3)))
-    array([[[[1, 1, 0]],
-            [[0, 1, 0]]],
-           [[[1, 0, 0]],
-            [[0, 0, 0]]]])
-    >>> (flat_idx := damask.grid_filters.ravel_index(rev))
-    array([[[3],
-            [2]],
-           [[1],
-            [0]]])
-
-    """
-    cells = idx.shape[:3]
-    return   idx[:,:,:,0] \
-           + idx[:,:,:,1]*cells[0] \
-           + idx[:,:,:,2]*cells[0]*cells[1]
 
 
 def ravel(d_unraveled: _np.ndarray,
