@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12.0)
+cmake_minimum_required(VERSION 3.18.0)
 include(FindPkgConfig REQUIRED)
 
 if(DEFINED ENV{PETSC_DIR})
@@ -26,7 +26,7 @@ else()
 endif()
 add_definitions("-D${DAMASK_SOLVER_UPPER}")
 
-set(CMAKE_Fortran_PREPROCESS "ON") # works only for CMake >= 3.18
+set(CMAKE_Fortran_PREPROCESS "ON")
 
 # EXPERIMENTAL: This might help to detect HDF5 and FFTW3 in the future if PETSc is not aware of them
 set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/externalpackages:$ENV{PKG_CONFIG_PATH}")
@@ -91,7 +91,7 @@ endif()
 
 
 if   (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
-    set(Fortran_COMPILER_VERSION_MIN 9.1)
+    set(Fortran_COMPILER_VERSION_MIN 11.1)
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
     set(Fortran_COMPILER_VERSION_MIN 19)
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "IntelLLVM")
