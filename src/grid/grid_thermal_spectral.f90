@@ -247,9 +247,10 @@ end function grid_thermal_spectral_solution
 !--------------------------------------------------------------------------------------------------
 !> @brief Set DAMASK data to current solver status.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_thermal_spectral_forward(cutBack)
+subroutine grid_thermal_spectral_forward(cutBack, Delta_t)
 
-  logical, intent(in) :: cutBack
+  logical,     intent(in) :: cutBack
+  real(pREAL), intent(in) :: Delta_t
 
   DM :: DM_thermal
   real(pREAL),  dimension(:,:,:), pointer :: T                                                      ! 0-indexed
@@ -267,7 +268,7 @@ subroutine grid_thermal_spectral_forward(cutBack)
     T = T_lastInc
     T_stagInc = T_lastInc
   else
-    dotT_lastInc = (T - T_lastInc)/Delta_t_
+    dotT_lastInc = (T - T_lastInc)/Delta_t
     T_lastInc = T
     call updateReference()
   end if
