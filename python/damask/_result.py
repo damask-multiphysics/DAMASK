@@ -1477,11 +1477,12 @@ class Result:
                     for field in ty[1].items():
                         d: np.ma.MaskedArray = list(field[1].values())[0]
                         if np.any(d.mask): continue
-                        dataset = {'f':{'data':np.reshape(d.data,tuple(self.cells)+d.data.shape[1:]),
+
+                        dataset = {'f':{'data':grid_filters.unravel(d.data,self.cells),
                                         'label':list(datasets.values())[0],
                                         'meta':d.data.dtype.metadata}}
                         r = func(**dataset,**args)
-                        result = r['data'].reshape((-1,)+r['data'].shape[3:])
+                        result = grid_filters.ravel(r['data'])
                         for x in self._visible[ty[0]+'s']:
                             if ty[0] == 'phase':
                                 result1 = result[at_cell_ph[0][x]]

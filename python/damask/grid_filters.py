@@ -539,6 +539,44 @@ def coordinates0_valid(coordinates0: _np.ndarray) -> bool:
         return False
 
 
+def ravel_index(idx: _np.ndarray) -> _np.ndarray:
+    """
+    Convert coordinate indices to flat indices.
+
+    Parameters
+    ----------
+    idx : numpy.ndarray, shape (:,:,:,3)
+        Grid of coordinate indices.
+
+    Returns
+    -------
+    ravelled : numpy.ndarray, shape (:,:,:)
+        Grid of flat indices.
+
+    Examples
+    --------
+    Ravel a reversed sequence of coordinate indices on a 2 × 2 × 1 grid.
+
+    >>> import numpy as np
+    >>> import damask
+    >>> (rev := np.array([[1,1,0],[0,1,0],[1,0,0],[0,0,0]]).reshape((2,2,1,3)))
+    array([[[[1, 1, 0]],
+            [[0, 1, 0]]],
+           [[[1, 0, 0]],
+            [[0, 0, 0]]]])
+    >>> (flat_idx := damask.grid_filters.ravel_index(rev))
+    array([[[3],
+            [2]],
+           [[1],
+            [0]]])
+
+    """
+    cells = idx.shape[:3]
+    return (  idx[:,:,:,0]
+            + idx[:,:,:,1]*cells[0]
+            + idx[:,:,:,2]*cells[0]*cells[1])
+
+
 def unravel_index(idx: _np.ndarray) -> _np.ndarray:
     """
     Convert flat indices to coordinate indices.
@@ -577,42 +615,52 @@ def unravel_index(idx: _np.ndarray) -> _np.ndarray:
                        (idx_//cells[0]) %cells[1],
                       ((idx_//cells[0])//cells[1])%cells[2]])
 
-def ravel_index(idx: _np.ndarray) -> _np.ndarray:
+
+def ravel(d_unraveled: _np.ndarray,
+          flatten: bool = False) -> _np.ndarray:
     """
-    Convert coordinate indices to flat indices.
+    Convert unraveled data (3D) to raveled representation (1D).
 
     Parameters
     ----------
-    idx : numpy.ndarray, shape (:,:,:,3)
-        Grid of coordinate indices.
+    d_unraveled : numpy.ndarray, shape (:,:,:,...)
+        Unraveled data, three-dimensional along leading dimensions.
+    flatten : bool, optional
+        Flatten data, i.e. enforce two-dimensional array
 
     Returns
     -------
-    ravelled : numpy.ndarray, shape (:,:,:)
-        Grid of flat indices.
-
-    Examples
-    --------
-    Ravel a reversed sequence of coordinate indices on a 2 × 2 × 1 grid.
-
-    >>> import numpy as np
-    >>> import damask
-    >>> (rev := np.array([[1,1,0],[0,1,0],[1,0,0],[0,0,0]]).reshape((2,2,1,3)))
-    array([[[[1, 1, 0]],
-            [[0, 1, 0]]],
-           [[[1, 0, 0]],
-            [[0, 0, 0]]]])
-    >>> (flat_idx := damask.grid_filters.ravel_index(rev))
-    array([[[3],
-            [2]],
-           [[1],
-            [0]]])
+    d_raveled : numpy.ndarray, shape (:,...)
+        Raveled data, one-dimensional along leading dimension.
 
     """
-    cells = idx.shape[:3]
-    return   idx[:,:,:,0] \
-           + idx[:,:,:,1]*cells[0] \
-           + idx[:,:,:,2]*cells[0]*cells[1]
+    d = d_unraveled.reshape((-1,)+d_unraveled.shape[3:],order='F').copy()                           # NumPy > 2.1 has copy arg
+    return (d.reshape(d.shape[:1]+(-1,)) if flatten else d)
+
+
+def unravel(d_raveled: _np.ndarray,
+            cells: _IntSequence,
+            flatten: bool = False) -> _np.ndarray:
+    """
+    Convert raveled data (1D) to unraveled representation (3D).
+
+    Parameters
+    ----------
+    d_raveled : numpy.ndarray, shape (:,...)
+        Raveled data, one-dimensional along leading dimension
+    cells : sequence of int, len (3)
+        Number of cells.
+    flatten : bool, optional
+        Flatten data, i.e. enforce four-dimensional array
+
+    Returns
+    -------
+    d_unraveled : numpy.ndarray, shape (:,:,:,...)
+        Unraveled data, three-dimensional along leading dimensions.
+
+    """
+    d = d_raveled.reshape(tuple(cells)+d_raveled.shape[1:],order='F').copy()                        # NumPy > 2.1 has copy arg
+    return (d.reshape(d.shape[:3]+(-1,)) if flatten else d)
 
 
 def regrid(size: _FloatSequence,
