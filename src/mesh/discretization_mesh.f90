@@ -19,6 +19,7 @@ module discretization_mesh
 #endif
 
   use CLI
+  use prec
   use parallelization
   use config
   use discretization
@@ -36,15 +37,17 @@ module discretization_mesh
 #endif
   private
 
-  integer, public, protected :: &
-    mesh_Nboundaries, &
+  PetscInt, public, protected :: &
+    mesh_Nboundaries
+
+  PetscInt, public, protected :: &
     mesh_NcpElemsGlobal
 
-  integer, public, protected :: &
+  PetscInt, public, protected :: &
     mesh_NcpElems                                                                                   !< total number of CP elements in mesh
 
 !!!! BEGIN DEPRECATED !!!!!
-  integer, public, protected :: &
+  PetscInt, public, protected :: &
     mesh_maxNips                                                                                    !< max number of IPs in any CP element
 !!!! END DEPRECATED !!!!!
 
@@ -60,7 +63,7 @@ module discretization_mesh
   real(pREAL), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
-#if defined(PETSC_USE_64BIT_INDICES) || PETSC_VERSION_MINOR < 16
+#if PETSC_VERSION_MINOR < 16
   external :: &
     DMDestroy
 #endif
@@ -95,7 +98,8 @@ subroutine discretization_mesh_init()
   type(tDict), pointer :: &
     num_solver, &
     num_mesh
-  integer :: p_i, dim                                                                               !< integration order (quadrature rule)
+  PetscInt :: p_i
+  integer:: dim                                                                                     !< integration order (quadrature rule)
   type(tvec) :: coords_node0
   real(pREAL), pointer, dimension(:) :: &
     mesh_node0_temp
@@ -158,7 +162,7 @@ subroutine discretization_mesh_init()
     CHKERRQ(err_PETSc)
     call ISRestoreIndicesF90(faceSetIS,pFaceSets,err_PETSc)
   end if
-  call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  call MPI_Bcast(mesh_boundaries,int(mesh_Nboundaries),MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
   call DMDestroy(globalMesh,err_PETSc)
@@ -166,7 +170,7 @@ subroutine discretization_mesh_init()
 
   call DMGetStratumSize(geomMesh,'depth',dimPlex,Nelems,err_PETSc)
   CHKERRQ(err_PETSc)
-  mesh_NcpElems = int(Nelems)
+  mesh_NcpElems = Nelems
   call DMGetStratumSize(geomMesh,'depth',0_pPETSCINT,mesh_Nnodes,err_PETSc)
   CHKERRQ(err_PETSc)
 
@@ -219,10 +223,10 @@ subroutine discretization_mesh_init()
   CHKERRQ(err_PETSc)
 
   call discretization_init(int(materialAt),&
-                           reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
+                           reshape(mesh_ipCoordinates,[3,int(mesh_maxNips*mesh_NcpElems)]), &
                            mesh_node0)
 
-  call writeGeometry(reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]),mesh_node0)
+  call writeGeometry(reshape(mesh_ipCoordinates,[3,int(mesh_maxNips*mesh_NcpElems)]),mesh_node0)
 
 end subroutine discretization_mesh_init
 
