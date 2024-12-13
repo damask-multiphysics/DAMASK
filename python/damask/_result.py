@@ -26,8 +26,6 @@ from . import util
 from ._typehints import FloatSequence, IntSequence, DADF5Dataset
 
 
-h5py3 = h5py.__version__[0] == '3'
-
 chunk_size = 1024**2//8                                                                             # for compression in HDF5
 
 prefix_inc = 'increment_'
@@ -35,7 +33,7 @@ prefix_inc = 'increment_'
 
 def _read(dataset: h5py._hl.dataset.Dataset) -> np.ndarray:
     """Read a dataset and its metadata into a numpy.ndarray."""
-    metadata = {k:(v.decode() if not h5py3 and type(v) is bytes else v) for k,v in dataset.attrs.items()}
+    metadata = {k:v for k,v in dataset.attrs.items()}
     dtype = np.dtype(dataset.dtype,metadata=metadata)                                               # type: ignore
     return np.array(dataset,dtype=dtype)
 
@@ -497,8 +495,7 @@ class Result:
                             path_dst = '/'.join([inc,ty,label,field,name_dst])
                             if path_src in f.keys():
                                 f[path_dst] = f[path_src]
-                                f[path_dst].attrs['renamed'] = f'original name: {name_src}' if h5py3 else \
-                                                               f'original name: {name_src}'.encode()
+                                f[path_dst].attrs['renamed'] = f'original name: {name_src}'
                                 del f[path_src]
 
 
@@ -559,10 +556,8 @@ class Result:
                             msg += [f'      {field}']
                             for d in f['/'.join([inc,ty,label,field])].keys():
                                 dataset = f['/'.join([inc,ty,label,field,d])]
-                                unit = dataset.attrs["unit"] if h5py3 else \
-                                       dataset.attrs["unit"].decode()
-                                description = dataset.attrs['description'] if h5py3 else \
-                                              dataset.attrs['description'].decode()
+                                unit = dataset.attrs["unit"]
+                                description = dataset.attrs['description']
                                 msg += [f'        {d} / {unit}: {description}']
 
         return msg
@@ -634,8 +629,7 @@ class Result:
             with h5py.File(self.fname,'r') as f:
                 return VTK.from_unstructured_grid(f['/geometry/x_n'][()],
                                                   f['/geometry/T_c'][()]-1,
-                                                  f['/geometry/T_c'].attrs['VTK_TYPE'] if h5py3 else \
-                                                  f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
+                                                  f['/geometry/T_c'].attrs['VTK_TYPE'])
 
 
     def add_absolute(self, x: str):
@@ -1492,17 +1486,12 @@ class Result:
                             path = '/'.join(['/',increment[0],ty[0],x,field[0]])
                             h5_dataset = f[path].create_dataset(r['label'],data=result1)
 
-                            h5_dataset.attrs['created'] = util.time_stamp() if h5py3 else \
-                                                          util.time_stamp().encode()
+                            h5_dataset.attrs['created'] = util.time_stamp()
 
                             for l,v in r['meta'].items():
-                                h5_dataset.attrs[l.lower()]=v.encode() if not h5py3 and type(v) is str else v
-                            creator = h5_dataset.attrs['creator'] if h5py3 else \
-                                      h5_dataset.attrs['creator'].decode()
-                            h5_dataset.attrs['creator'] = f'damask.Result.{creator} v{damask.version}' if h5py3 else \
-                                                          f'damask.Result.{creator} v{damask.version}'.encode()
-
-
+                                h5_dataset.attrs[l.lower()] = v
+                            creator = h5_dataset.attrs['creator']
+                            h5_dataset.attrs['creator'] = f'damask.Result.{creator} v{damask.version}'
 
 
     def _add_generic_pointwise(self,
@@ -1536,8 +1525,7 @@ class Result:
                         loc  = f[group+'/'+label]
                         datasets_in[arg]={'data' :loc[()],
                                           'label':label,
-                                          'meta': {k:(v.decode() if not h5py3 and type(v) is bytes else v) \
-                                                   for k,v in loc.attrs.items()}}
+                                          'meta': {k: v for k,v in loc.attrs.items()}}
                 return callback(**datasets_in,**args)
             except Exception as err:
                 print(f'Error during calculation: {err}.')
@@ -1578,15 +1566,12 @@ class Result:
                                                           compression_opts = 6 if compress else None,
                                                           shuffle=True,fletcher32=True)
 
-                    dataset.attrs['created'] = util.time_stamp() if h5py3 else \
-                                               util.time_stamp().encode()
+                    dataset.attrs['created'] = util.time_stamp()
 
                     for l,v in result['meta'].items():
-                        dataset.attrs[l.lower()]=v.encode() if not h5py3 and type(v) is str else v
-                    creator = dataset.attrs['creator'] if h5py3 else \
-                              dataset.attrs['creator'].decode()
-                    dataset.attrs['creator'] = f'damask.Result.{creator} v{damask.version}' if h5py3 else \
-                                               f'damask.Result.{creator} v{damask.version}'.encode()
+                        dataset.attrs[l.lower()] = v
+                    creator = dataset.attrs['creator']
+                    dataset.attrs['creator'] = f'damask.Result.{creator} v{damask.version}'
 
                 except (OSError,RuntimeError) as err:
                     print(f'Could not add dataset: {err}.')
@@ -1864,8 +1849,7 @@ class Result:
                                 shape = f[name].shape[1:]
                                 dtype = f[name].dtype
 
-                                unit = f[name].attrs['unit'] if h5py3 else \
-                                       f[name].attrs['unit'].decode()
+                                unit = f[name].attrs['unit']
 
                                 attributes.append(ET.SubElement(grid, 'Attribute'))
                                 attributes[-1].attrib = {'Name':          '/'.join([ty,field,out])+f' / {unit}',
@@ -1948,8 +1932,8 @@ class Result:
         out_dir.mkdir(parents=True,exist_ok=True)
 
         with h5py.File(self.fname,'r') as f:
-            creator = f.attrs['creator'] if h5py3 else f.attrs['creator'].decode()
-            created = f.attrs['created'] if h5py3 else f.attrs['created'].decode()
+            creator = f.attrs['creator']
+            created = f.attrs['created']
             v.comments += [f'{creator} ({created})']
 
             for inc in util.show_progress(self._visible['increments']):

@@ -216,19 +216,15 @@ class YAML(dict):
             Keyword arguments parsed to yaml.dump.
 
         """
-        if 'width' not in kwargs:
-            kwargs['width'] = 256
-        if 'default_flow_style' not in kwargs:
-            kwargs['default_flow_style'] = None
-        if 'sort_keys' not in kwargs:
-            kwargs['sort_keys'] = False
+        for key,default in [('width',256),
+                            ('default_flow_style',None),
+                            ('sort_keys',False),
+                            ('Dumper',NiceDumper)]:
+            if key not in kwargs:
+                kwargs[key] = default
 
         with util.open_text(fname,'w') as fhandle:
-            try:
-                fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
-            except TypeError:                                                                       # compatibility with old pyyaml
-                del kwargs['sort_keys']
-                fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
+            fhandle.write(yaml.dump(self,**kwargs))
 
 
     @property

@@ -1,11 +1,9 @@
 from typing import Optional, Union, Dict, Any, List
 
 from numpy import ma
-import yaml
 
 from ._typehints import FileHandle
 from ._yaml import NiceDumper
-from . import util
 from . import YAML
 
 
@@ -64,15 +62,7 @@ class LoadcaseGrid(YAML):
             Keyword arguments parsed to yaml.dump.
 
         """
-        for key,default in dict(width=256,
-                                default_flow_style=None,
-                                sort_keys=False).items():
-            if key not in kwargs:
-                kwargs[key] = default
+        if 'Dumper' not in kwargs:
+            kwargs['Dumper'] = MaskedMatrixDumper
 
-        with util.open_text(fname,'w') as fhandle:
-            try:
-                fhandle.write(yaml.dump(self,Dumper=MaskedMatrixDumper,**kwargs))
-            except TypeError:                                                                       # compatibility with old pyyaml
-                del kwargs['sort_keys']
-                fhandle.write(yaml.dump(self,Dumper=MaskedMatrixDumper,**kwargs))
+        super().save(fname=fname,**kwargs)
