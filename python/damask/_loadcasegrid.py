@@ -71,8 +71,4 @@ class LoadcaseGrid(YAML):
                 kwargs[key] = default
 
         with util.open_text(fname,'w') as fhandle:
-            try:
-                fhandle.write(yaml.dump(self,Dumper=MaskedMatrixDumper,**kwargs))
-            except TypeError:                                                                       # compatibility with old pyyaml
-                del kwargs['sort_keys']
-                fhandle.write(yaml.dump(self,Dumper=MaskedMatrixDumper,**kwargs))
+            fhandle.write(yaml.dump(self,Dumper=MaskedMatrixDumper,**kwargs))

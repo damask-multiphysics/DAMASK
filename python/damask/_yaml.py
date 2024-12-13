@@ -224,11 +224,7 @@ class YAML(dict):
             kwargs['sort_keys'] = False
 
         with util.open_text(fname,'w') as fhandle:
-            try:
-                fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
-            except TypeError:                                                                       # compatibility with old pyyaml
-                del kwargs['sort_keys']
-                fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
+            fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
 
 
     @property

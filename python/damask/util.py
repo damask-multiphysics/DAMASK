@@ -316,19 +316,16 @@ def scale_to_coprime(v: _FloatSequence,
         """Denominator of the square of a number."""
         return _fractions.Fraction(x ** 2).limit_denominator(max_denominator).denominator
 
-    def lcm(a,b):
-        """Least common multiple."""
-        try:
-            return _np.abs(_np.lcm(a,b))                                                            # numpy > 1.18
-        except AttributeError:
-            return _np.abs(a * b // _np.gcd(a, b))
+    def abs_lcm(a,b):
+        """Absolute value of least common multiple."""
+        return _np.abs(_np.lcm(a,b))
 
     max_denominator = int(10**(N_significant-1))
 
     v_ = _np.asarray(v)
     if _np.issubdtype(v_.dtype,_np.inexact):
         v_ = _np.round(_np.asarray(v,_np.float64)/_np.max(_np.abs(v)),N_significant)
-    m = (v_ * _reduce(lcm, map(lambda x: int(get_square_denominator(x,max_denominator)),v_))**0.5).astype(_np.int64)
+    m = (v_ * _reduce(abs_lcm, map(lambda x: int(get_square_denominator(x,max_denominator)),v_))**0.5).astype(_np.int64)
     m = m//_reduce(_np.gcd,m)
 
     if not _np.allclose(m/_np.max(_np.abs(m)),v/_np.max(_np.abs(v)),atol=1e-2,rtol=0):
