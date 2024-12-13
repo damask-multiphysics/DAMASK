@@ -308,7 +308,7 @@ program DAMASK_grid
                         stress_BC      = loadCases(l)%stress, &
                         rotation_BC    = loadCases(l)%rot)
 
-              case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward(cutBack)
+              case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward(cutBack, Delta_t)
               case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward(cutBack)
             end select
           end do

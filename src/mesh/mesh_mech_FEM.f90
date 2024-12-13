@@ -60,7 +60,7 @@ module mesh_mechanical_FEM
   SNES                           :: mechanical_snes
   Vec                            :: solution, solution_rate, solution_local
   PetscInt                       :: dimPlex, cellDof, nBasis
-  integer                        :: nQuadrature
+  PetscInt                       :: nQuadrature
   PetscReal, allocatable, target :: qPoints(:), qWeights(:)
   MatNullSpace                   :: matnull
 
@@ -74,7 +74,7 @@ module mesh_mechanical_FEM
   real(pREAL), parameter :: eps = 1.0e-18_pREAL
 
   external :: &                                                                                     ! ToDo: write interfaces
-#if defined(PETSC_USE_64BIT_INDICES) || PETSC_VERSION_MINOR < 16
+#if PETSC_VERSION_MINOR < 16
     ISDestroy, &
 #endif
 #if PETSC_VERSION_MINOR > 18 && PETSC_VERSION_MINOR < 22
@@ -875,7 +875,7 @@ subroutine FEM_mechanical_updateCoords()
     call DMPlexVecRestoreClosure(dm_local,section,x_local,c,x_scal,err_PETSc)
     CHKERRQ(err_PETSc)
   end do
-  call discretization_setIPcoords(reshape(ipCoords,[3,mesh_NcpElems*nQuadrature]))
+  call discretization_setIPcoords(reshape(ipCoords,[3,int(mesh_NcpElems*nQuadrature)]))
   call DMRestoreLocalVector(dm_local,x_local,err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscDSRestoreTabulation(mechDS,0_pPETSCINT,basisField,dev_null,err_PETSc)

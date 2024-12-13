@@ -101,93 +101,137 @@ mypy:
 ###################################################################################################
 unittest_GNU_DEBUG:
   stage: compile
-  script:
-    - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
-    - TEMPDIR=$(mktemp -d)
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106
+  before_script:
+    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
     - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
     - cmake --build ${TEMPDIR} --target install
+  script:
     - cd ${TEMPDIR}
     - ./bin/DAMASK_test
-    - find -name \*.gcda -not -path "**/test/*" | xargs gcov
+    - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \;
 
 unittest_GNU_RELEASE:
   stage: compile
-  script:
-    - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
-    - TEMPDIR=$(mktemp -d)
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106
+  before_script:
+    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
     - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
     - cmake --build ${TEMPDIR} --target install
+  script:
     - cd ${TEMPDIR}
     - ./bin/DAMASK_test
-    - find -name \*.gcda -not -path "**/test/*" | xargs gcov
+    - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \;
 
 unittest_GNU_PERFORMANCE:
   stage: compile
-  script:
-    - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
-    - TEMPDIR=$(mktemp -d)
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106
+  before_script:
+    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
     - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=PERFORMANCE -DBUILDCMD_POST=-coverage
     - cmake --build ${TEMPDIR} --target install
+  script:
     - cd ${TEMPDIR}
     - ./bin/DAMASK_test
-    - find -name \*.gcda -not -path "**/test/*" | xargs gcov
-
+    - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \;
 
 grid_GNU:
   stage: compile
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106
+  before_script:
+    - source env/DAMASK.sh
   script:
-    - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
     - cd PRIVATE/testing
-    - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_GNU
+    - pytest -k 'compile and grid'
 
 mesh_GNU:
   stage: compile
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106
+  before_script:
+    - source env/DAMASK.sh
   script:
-    - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
     - cd PRIVATE/testing
-    - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU
+    - pytest -k 'compile and mesh'
 
 grid_GNU-64bit:
   stage: compile
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_64bit
+  before_script:
+    - source env/DAMASK.sh
   script:
-    - module load Compiler/GNU/10 Libraries/PETSc/3.16.4/64bit
     - cd PRIVATE/testing
-    - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_GNU-64bit
+    - pytest -k 'compile and grid'
 
 mesh_GNU-64bit:
   stage: compile
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_64bit
+  before_script:
+    - source env/DAMASK.sh
   script:
-    - module load Compiler/GNU/10 Libraries/PETSc/3.16.4/64bit
     - cd PRIVATE/testing
-    - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU-64bit
+    - pytest -k 'compile and mesh'
+
+grid_intel:
+  stage: compile
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intel20232_petsc2106
+  before_script:
+    - source /opt/intel/oneapi/setvars.sh
+    - source env/DAMASK.sh
+  script:
+    - cd PRIVATE/testing
+    - pytest -k 'compile and grid'
+
+mesh_intel:
+  stage: compile
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intel20232_petsc2106
+  before_script:
+    - source /opt/intel/oneapi/setvars.sh
+    - source env/DAMASK.sh
+  script:
+    - cd PRIVATE/testing
+    - pytest -k 'compile and mesh'
 
 grid_IntelLLVM:
   stage: compile
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intel_llvm20242_petsc2106
+  before_script:
+    - source /opt/intel/oneapi/setvars.sh
+    - source env/DAMASK.sh
   script:
-    - module load ${COMPILER_INTELLLVM} ${MPI_INTELLLVM} ${PETSC_INTELLLVM}
     - cd PRIVATE/testing
-    - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_IntelLLVM
+    - pytest -k 'compile and grid'
 
 mesh_IntelLLVM:
   stage: compile
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intel_llvm20242_petsc2106
+  before_script:
+    - source /opt/intel/oneapi/setvars.sh
+    - source env/DAMASK.sh
   script:
-    - module load ${COMPILER_INTELLLVM} ${MPI_INTELLLVM} ${PETSC_INTELLLVM}
     - cd PRIVATE/testing
-    - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_IntelLLVM
-
-grid_Intel:
-  stage: compile
-  script:
-    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
-    - cd PRIVATE/testing
-    - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_Intel
-
-mesh_Intel:
-  stage: compile
-  script:
-    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
-    - cd PRIVATE/testing
-    - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_Intel
+    - pytest -k 'compile and mesh'
 
 Marc_Intel:
   stage: compile
@@ -195,22 +239,6 @@ Marc_Intel:
     - module load $IntelMarc $HDF5Marc $MSC
     - cd PRIVATE/testing
     - pytest -k 'compile and Marc' --basetemp ${TESTROOT}/compile_Marc
-
-setup_grid:
-  stage: compile
-  script:
-    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
-    - cd $(mktemp -d)
-    - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
-    - make -j2 all install
-
-setup_mesh:
-  stage: compile
-  script:
-    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
-    - cd $(mktemp -d)
-    - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
-    - make -j2 all install
 
 setup_Marc:
   stage: compile
@@ -224,12 +252,46 @@ setup_Marc:
 
 
 ###################################################################################################
-open-source:
+open-source_grid_GNU:
   stage: fortran
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2204_gnu11_petsc2106_ml
+  before_script:
+    - cmake -DDAMASK_SOLVER=GRID && make -j2 all install
+    - source env/DAMASK.sh
   script:
-    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
     - cd PRIVATE/testing
-    - pytest -k 'not compile and not Marc' -m 'not cifail' --basetemp ${TESTROOT}/open-source -v
+    - pytest -k 'not compile and grid and not signal and not restart'
+
+open-source_grid_GNU_signal_restart:
+  stage: fortran
+  before_script:
+    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
+    - cd $(mktemp -d)
+    - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
+    - make -j2 all install
+    - export PATH=${TESTROOT}/bin:${PATH}
+    - cd ${CI_PROJECT_DIR}
+    - source env/DAMASK.sh
+    - echo Job start:" $(date)"
+  script:
+    - cd PRIVATE/testing
+    - pytest -k 'not compile and grid and (signal or restart)' -m 'not cifail' --basetemp ${TESTROOT}/open-source -v
+  after_script:
+    - echo Job end:" $(date)"
+
+open-source_mesh_GNU:
+  tags:
+    - matesting2-container-runner
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2204_gnu13_petsc2106_ml
+  stage: fortran
+  before_script:
+    - make mesh
+    - source env/DAMASK.sh
+  script:
+    - cd PRIVATE/testing
+    - pytest -k 'not compile and mesh'
 
 Marc:
   stage: fortran

@@ -3,6 +3,7 @@
 !> @brief Interpolation data used by the FEM solver
 !--------------------------------------------------------------------------------------------------
 module FEM_quadrature
+#include <petsc/finclude/petsc.h>
   use prec
 
   implicit none(type,external)
@@ -24,7 +25,7 @@ module FEM_quadrature
     real(pREAL), dimension(:), allocatable :: p
   end type group_real
 
-  integer,          dimension(2:3,maxOrder), public, protected :: &
+  PetscInt,         dimension(2:3,maxOrder), public, protected :: &
     FEM_nQuadrature                                                                                 !< number of quadrature points for spatial dimension(2-3) and interpolation order (1-maxOrder)
   type(group_real), dimension(2:3,maxOrder), public, protected :: &
     FEM_quadrature_weights, &                                                                       !< quadrature weights for each quadrature rule

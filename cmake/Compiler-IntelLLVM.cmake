@@ -88,7 +88,7 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS},output_conversion")
 #   ... for the fit of data items within a designated format descriptor field.
 set (DEBUG_FLAGS "${DEBUG_FLAGS},pointers")
 #   ... for certain disassociated or uninitialized pointers or unallocated allocatable objects.
-set (DEBUG_FLAGS "${DEBUG_FLAGS},uninit")
+set (DEBUG_FLAGS "${DEBUG_FLAGS},nouninit") # https://fortran-lang.discourse.group/t/issue-with-stdlib-and-intel-oneapi-fortran-compiler-ifx-2024-0/7049/4
 #   ... for uninitialized variables.
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0 -ftz")
 #   ... capture all floating-point exceptions, need to overwrite -no-ftz

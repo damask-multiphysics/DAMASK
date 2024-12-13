@@ -406,14 +406,34 @@ class TestGridFilters:
         x,y,z = map(np.random.randint,cells)
         assert np.all(grid_filters.unravel_index(indices)[x,y,z] == [x,y,z])
 
-    def test_ravel_unravel_index(self):
+    def test_unravel_ravel_index(self):
         cells = np.random.randint(8,32,(3))
         indices = np.random.randint(0,np.prod(cells),cells).reshape(cells)
         assert np.all(indices==grid_filters.ravel_index(grid_filters.unravel_index(indices)))
 
-    def test_unravel_ravel_index(self):
+    def test_ravel_unravel_index(self):
         cells = np.hstack([np.random.randint(8,32,(3)),1])
         indices = np.block([np.random.randint(0,cells[0],cells),
                             np.random.randint(0,cells[1],cells),
                             np.random.randint(0,cells[2],cells)])
         assert np.all(indices==grid_filters.unravel_index(grid_filters.ravel_index(indices)))
+
+
+    def test_unravel_ravel(self):
+        shape = tuple(np.random.randint(1,32,(np.random.randint(3,6))))
+        f = np.random.random(shape).reshape((np.prod(shape[:3]),)+shape[3:])
+        assert np.all(f == grid_filters.ravel(grid_filters.unravel(f,shape[:3])))
+
+    def test_ravel_unravel(self):
+        shape = np.random.randint(1,32,(np.random.randint(3,6)))
+        f = np.random.random(shape)
+        assert np.all(f == grid_filters.unravel(grid_filters.ravel(f),shape[:3]))
+
+    def test_ravel_unravel_consistency(self):
+        cells = tuple(np.random.randint(8,32,(3)))
+        data_3D = np.random.random(cells+tuple([np.random.randint(2,4)] * np.random.randint(3)))
+        data_1D = grid_filters.ravel(data_3D)
+        indices_1D = np.random.randint(0,np.prod(cells),cells).reshape(cells)
+        indices_3D = grid_filters.unravel_index(indices_1D)
+        random_cell = (np.random.randint(cells[0]),np.random.randint(cells[1]),np.random.randint(cells[2]))
+        assert np.all(data_1D[indices_1D[random_cell]]==data_3D[tuple(indices_3D[random_cell])])

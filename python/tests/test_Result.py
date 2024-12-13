@@ -339,7 +339,7 @@ class TestResult:
         x = default.place('x')
         default.add_curl('x')
         in_file   = default.place('curl(x)')
-        in_memory = grid_filters.curl(default.size,x.reshape(tuple(default.cells)+x.shape[1:])).reshape(in_file.shape)
+        in_memory = grid_filters.ravel(grid_filters.curl(default.size,grid_filters.unravel(x,default.cells)))
         assert (in_file == in_memory).all()
 
     @pytest.mark.parametrize('shape',['vector','tensor'])
@@ -349,7 +349,7 @@ class TestResult:
         x = default.place('x')
         default.add_divergence('x')
         in_file   = default.place('divergence(x)')
-        in_memory = grid_filters.divergence(default.size,x.reshape(tuple(default.cells)+x.shape[1:])).reshape(in_file.shape)
+        in_memory = grid_filters.ravel(grid_filters.divergence(default.size,grid_filters.unravel(x,default.cells)))
         assert (in_file == in_memory).all()
 
     @pytest.mark.parametrize('shape',['scalar','pseudo_scalar','vector'])
@@ -360,7 +360,7 @@ class TestResult:
         x = default.place('x').reshape((np.prod(default.cells),-1))
         default.add_gradient('x')
         in_file   = default.place('gradient(x)')
-        in_memory = grid_filters.gradient(default.size,x.reshape(tuple(default.cells)+x.shape[1:])).reshape(in_file.shape)
+        in_memory = grid_filters.ravel(grid_filters.gradient(default.size,grid_filters.unravel(x,default.cells)))
         assert (in_file == in_memory).all()
 
     @pytest.mark.parametrize('overwrite',['off','on'])
