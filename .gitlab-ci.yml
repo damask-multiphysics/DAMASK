@@ -40,8 +40,8 @@ variables:
   PETSC_INTEL: "Libraries/PETSc/3.16.5/Intel-2022.0.1-IntelMPI-2021.5.0"
   # ++++++++++++ MSC Marc +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   MSC: "FEM/MSC/2024.1"
-  IntelMarc: "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
-  HDF5Marc: "HDF5/1.12.2/Intel-19.1.2"
+  IntelMarc: "Compiler/Intel/2022.0.1 Libraries/IMKL/2022.0.1"
+  HDF5Marc: "HDF5/1.12.1/Intel-2022.0.1"
 
 
 ###################################################################################################
