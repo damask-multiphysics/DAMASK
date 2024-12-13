@@ -544,12 +544,12 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         hsv : numpy.ndarray, shape (3)
-            HSV values in the range [[0,360],[0,1],[0,1]]
+            HSV values in the range [[0,360],[0,1],[0,1]].
 
         Returns
         -------
         rgb : numpy.ndarray, shape (3)
-            RGB values in the range [[0,1],[0,1],[0,1]]
+            RGB values in the range [[0,1],[0,1],[0,1]].
 
         """
         return np.array(colorsys.hsv_to_rgb(hsv[0]/360.,hsv[1],hsv[2]))
@@ -562,12 +562,12 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         rgb : numpy.ndarray, shape (3)
-            RGB values in the range [[0,1],[0,1],[0,1]]
+            RGB values in the range [[0,1],[0,1],[0,1]].
 
         Returns
         -------
         hsv : numpy.ndarray, shape (3)
-            HSV values in the range [[0,360],[0,1],[0,1]]
+            HSV values in the range [[0,360],[0,1],[0,1]].
 
         """
         h,s,v = colorsys.rgb_to_hsv(rgb[0],rgb[1],rgb[2])
@@ -582,12 +582,12 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         hsl : numpy.ndarray, shape (3)
-            HSL values in the range [[0,360],[0,1],[0,1]]
+            HSL values in the range [[0,360],[0,1],[0,1]].
 
         Returns
         -------
         rgb : numpy.ndarray, shape (3)
-            RGB values in the range [[0,1],[0,1],[0,1]]
+            RGB values in the range [[0,1],[0,1],[0,1]].
 
         """
         return np.array(colorsys.hls_to_rgb(hsl[0]/360.,hsl[2],hsl[1]))
@@ -600,12 +600,12 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         rgb : numpy.ndarray, shape (3)
-            RGB values in the range [[0,1],[0,1],[0,1]]
+            RGB values in the range [[0,1],[0,1],[0,1]].
 
         Returns
         -------
         hsl : numpy.ndarray, shape (3)
-            HSL values in the range [[0,360],[0,1],[0,1]]
+            HSL values in the range [[0,360],[0,1],[0,1]].
 
         """
         h,l,s = colorsys.rgb_to_hls(rgb[0],rgb[1],rgb[2])
@@ -625,7 +625,7 @@ class Colormap(mpl.colors.ListedColormap):
         Returns
         -------
         rgb : numpy.ndarray, shape (3)
-            RGB values in the range [[0,1],[0,1],[0,1]]
+            RGB values in the range [[0,1],[0,1],[0,1]].
 
         References
         ----------
@@ -650,7 +650,7 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         rgb : numpy.ndarray, shape (3)
-            RGB values in the range [[0,1],[0,1],[0,1]]
+            RGB values in the range [[0,1],[0,1],[0,1]].
 
         Returns
         -------
