@@ -155,9 +155,9 @@ def from_grid(grid,
     # materials: 29
     >>> COG,matID = damask.seeds.from_grid(g,average=True)
     >>> distance,ID = scipy.spatial.KDTree(COG,boxsize=g.size).query(seeds)
-    >>> np.max(distance) / np.linalg.norm(g.size/g.cells)
+    >>> print(np.max(distance) / np.linalg.norm(g.size/g.cells))
     10.1
-    >>> (ID == matID).all()
+    >>> print((ID == matID).all())
     True
 
     """
