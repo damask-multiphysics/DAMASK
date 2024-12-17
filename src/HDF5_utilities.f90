@@ -184,42 +184,49 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
   logical,          intent(in), optional :: parallel
 
   character      :: m
-  integer(HID_T) :: plist_id
+  integer(HID_T) :: p_access,p_create
   integer :: hdferr
   logical :: exist
 
 
   m = misc_optional(mode,'r')
 
-  call H5Pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
+  call H5Pcreate_f(H5P_FILE_CREATE_F, p_create, hdferr)
+  call HDF5_chkerr(hdferr)
+  call H5Pset_link_creation_order_f(p_create, ior(H5P_CRT_ORDER_INDEXED_F,H5P_CRT_ORDER_TRACKED_F), hdferr)
   call HDF5_chkerr(hdferr)
 
+  call H5Pcreate_f(H5P_FILE_ACCESS_F, p_access, hdferr)
+  call HDF5_chkerr(hdferr)
 #ifdef PETSC
   if (misc_optional(parallel,.true.)) &
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
-    call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL_F90, hdferr)
+    call H5Pset_fapl_mpio_f(p_access, PETSC_COMM_WORLD, MPI_INFO_NULL_F90, hdferr)
 #else
-    call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL,     hdferr)
+    call H5Pset_fapl_mpio_f(p_access, PETSC_COMM_WORLD, MPI_INFO_NULL,     hdferr)
 #endif
   call HDF5_chkerr(hdferr)
 #endif
 
   if     (m == 'w') then
-    call H5Fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr,access_prp = plist_id)
+    call H5Fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr,&
+                     access_prp=p_access,creation_prp=p_create)
     call HDF5_chkerr(hdferr)
   elseif (m == 'a') then
-    call H5Fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr,access_prp = plist_id)
+    call H5Fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr,access_prp=p_access)
     call HDF5_chkerr(hdferr)
   elseif (m == 'r') then
     inquire(file=fileName,exist=exist)
     if (.not. exist) call IO_error(100,trim(fileName))
-    call H5Fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr,access_prp = plist_id)
+    call H5Fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr,access_prp=p_access)
     call HDF5_chkerr(hdferr)
   else
     error stop 'unknown access mode'
   end if
 
-  call H5Pclose_f(plist_id, hdferr)
+  call H5Pclose_f(p_access, hdferr)
+  call HDF5_chkerr(hdferr)
+  call H5Pclose_f(p_create, hdferr)
   call HDF5_chkerr(hdferr)
 
 end function HDF5_openFile

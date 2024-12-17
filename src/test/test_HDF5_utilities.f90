@@ -19,7 +19,8 @@ end subroutine test_HDF5_utilities_run
 
 subroutine read_write()
 
-  integer(HID_T) :: f
+  integer(HID_T) :: f, create_list
+  integer :: hdferr, order
 
   real(pREAL), dimension(3) :: real_d1_in,real_d1_out
   real(pREAL), dimension(3,3) :: real_d2_in,real_d2_out
@@ -92,7 +93,15 @@ subroutine read_write()
   call HDF5_closeFile(f)
 
   f = HDF5_openFile('test.hdf5','r')
-
+  call H5Fget_create_plist_f(f,create_list,hdferr)
+  call HDF5_chkerr(hdferr)
+  call H5Pget_link_creation_order_f(create_list,order,hdferr)
+  call HDF5_chkerr(hdferr)
+  ! https://github.com/HDFGroup/hdf5/issues/5183
+  !if (iand(order,H5P_CRT_ORDER_INDEXED_F) /= H5P_CRT_ORDER_INDEXED_F) error stop 'CRT_ORDER_INDEXED'
+  !if (iand(order,H5P_CRT_ORDER_TRACKED_F) /= H5P_CRT_ORDER_TRACKED_F) error stop 'CRT_ORDER_TRACKED'
+  call H5Pclose_f(create_list,hdferr)
+  call HDF5_chkerr(hdferr)
 
   call HDF5_read(real_d1_out,f,'real_d1')
   call HDF5_read(real_d2_out,f,'real_d2')
