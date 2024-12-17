@@ -59,7 +59,7 @@ def eigenvectors(T_sym: _np.ndarray,
 
     Returns
     -------
-    x : numpy.ndarray, shape (...,3,3)
+    v : numpy.ndarray, shape (...,3,3)
         Eigenvectors of T_sym sorted in ascending order of their
         associated eigenvalues.
 

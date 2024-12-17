@@ -170,17 +170,23 @@ class Colormap(mpl.colors.ListedColormap):
         model : {'rgb', 'hsv', 'hsl', 'xyz', 'lab', 'msh'}
             Color model used for input color definitions. Defaults to 'rgb'.
             The available color models are:
-            - 'rgb': Red Green Blue.
-            - 'hsv': Hue Saturation Value.
-            - 'hsl': Hue Saturation Luminance.
-            - 'xyz': CIE Xyz.
-            - 'lab': CIE Lab.
+            - 'rgb': Red Green Blue (RGB).
+            - 'hsv': Hue Saturation Value (HSV).
+            - 'hsl': Hue Saturation Luminance (HSL).
+            - 'xyz': CIEXYZ.
+            - 'lab': CIELAB.
             - 'msh': Msh (for perceptually uniform interpolation).
 
         Returns
         -------
         new : damask.Colormap
             Colormap spanning given bounds.
+
+        Notes
+        -----
+        RGB values are in the range [[0,1],  [0,1],[0,1]].
+        HSV values are in the range [[0,360],[0,1],[0,1]].
+        HSL values are in the range [[0,360],[0,1],[0,1]].
 
         Examples
         --------
@@ -538,12 +544,12 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         hsv : numpy.ndarray, shape (3)
-            HSV values.
+            HSV values in the range [[0,360],[0,1],[0,1]].
 
         Returns
         -------
         rgb : numpy.ndarray, shape (3)
-            RGB values.
+            RGB values in the range [[0,1],[0,1],[0,1]].
 
         """
         return np.array(colorsys.hsv_to_rgb(hsv[0]/360.,hsv[1],hsv[2]))
@@ -556,12 +562,12 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         rgb : numpy.ndarray, shape (3)
-            RGB values.
+            RGB values in the range [[0,1],[0,1],[0,1]].
 
         Returns
         -------
         hsv : numpy.ndarray, shape (3)
-            HSV values.
+            HSV values in the range [[0,360],[0,1],[0,1]].
 
         """
         h,s,v = colorsys.rgb_to_hsv(rgb[0],rgb[1],rgb[2])
@@ -576,12 +582,12 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         hsl : numpy.ndarray, shape (3)
-            HSL values.
+            HSL values in the range [[0,360],[0,1],[0,1]].
 
         Returns
         -------
         rgb : numpy.ndarray, shape (3)
-            RGB values.
+            RGB values in the range [[0,1],[0,1],[0,1]].
 
         """
         return np.array(colorsys.hls_to_rgb(hsl[0]/360.,hsl[2],hsl[1]))
@@ -594,12 +600,12 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         rgb : numpy.ndarray, shape (3)
-            RGB values.
+            RGB values in the range [[0,1],[0,1],[0,1]].
 
         Returns
         -------
         hsl : numpy.ndarray, shape (3)
-            HSL values.
+            HSL values in the range [[0,360],[0,1],[0,1]].
 
         """
         h,l,s = colorsys.rgb_to_hls(rgb[0],rgb[1],rgb[2])
@@ -609,17 +615,17 @@ class Colormap(mpl.colors.ListedColormap):
     @staticmethod
     def _xyz2rgb(xyz: np.ndarray) -> np.ndarray:
         """
-        CIE Xyz to Red Green Blue.
+        CIEXYZ to Red Green Blue.
 
         Parameters
         ----------
         xyz : numpy.ndarray, shape (3)
-            CIE Xyz values.
+            CIEXYZ values.
 
         Returns
         -------
         rgb : numpy.ndarray, shape (3)
-            RGB values.
+            RGB values in the range [[0,1],[0,1],[0,1]].
 
         References
         ----------
@@ -639,17 +645,17 @@ class Colormap(mpl.colors.ListedColormap):
     @staticmethod
     def _rgb2xyz(rgb: np.ndarray) -> np.ndarray:
         """
-        Red Green Blue to CIE Xyz.
+        Red Green Blue to CIEXYZ.
 
         Parameters
         ----------
         rgb : numpy.ndarray, shape (3)
-            RGB values.
+            RGB values in the range [[0,1],[0,1],[0,1]].
 
         Returns
         -------
         xyz : numpy.ndarray, shape (3)
-            CIE Xyz values.
+            CIEXYZ values.
 
         References
         ----------
@@ -668,22 +674,23 @@ class Colormap(mpl.colors.ListedColormap):
     def _lab2xyz(lab: np.ndarray,
                  ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
         """
-        CIE Lab to CIE Xyz.
+        CIELAB to CIEXYZ.
 
         Parameters
         ----------
         lab : numpy.ndarray, shape (3)
-            CIE lab values.
+            CIELAB values.
         ref_white : numpy.ndarray, shape (3)
             Reference white, default value is the standard 2° observer for D65.
 
         Returns
         -------
         xyz : numpy.ndarray, shape (3)
-            CIE Xyz values.
+            CIEXYZ values.
 
         References
         ----------
+        https://en.wikipedia.org/wiki/CIELAB_color_space
         http://www.brucelindbloom.com/index.html?Eqn_Lab_to_XYZ.html
 
         """
@@ -700,26 +707,29 @@ class Colormap(mpl.colors.ListedColormap):
     def _xyz2lab(xyz: np.ndarray,
                  ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
         """
-        CIE Xyz to CIE Lab.
+        CIEXYZ to CIELAB.
 
         Parameters
         ----------
         xyz : numpy.ndarray, shape (3)
-            CIE Xyz values.
+            CIEXYZ values.
         ref_white : numpy.ndarray, shape (3)
             Reference white, default value is the standard 2° observer for D65.
 
         Returns
         -------
         lab : numpy.ndarray, shape (3)
-            CIE lab values.
+            CIELAB values.
 
         References
         ----------
+        https://en.wikipedia.org/wiki/CIELAB_color_space
         http://www.brucelindbloom.com/index.html?Eqn_Lab_to_XYZ.html
 
         """
-        f = np.where(xyz/ref_white > _EPS,(xyz/ref_white)**(1./3.),(_KAPPA*xyz/ref_white+16.)/116.)
+        f = np.where(xyz/ref_white > _EPS,
+                     (xyz/ref_white)**(1./3.),
+                     (_KAPPA*xyz/ref_white+16.)/116.)
 
         return np.array([
                          116.0 *  f[1] - 16.0,
@@ -731,12 +741,12 @@ class Colormap(mpl.colors.ListedColormap):
     @staticmethod
     def _lab2msh(lab: np.ndarray) -> np.ndarray:
         """
-        CIE Lab to Msh.
+        CIELAB to Msh.
 
         Parameters
         ----------
         lab : numpy.ndarray, shape (3)
-            CIE lab values.
+            CIELAB values.
 
         Returns
         -------
@@ -759,7 +769,7 @@ class Colormap(mpl.colors.ListedColormap):
     @staticmethod
     def _msh2lab(msh: np.ndarray) -> np.ndarray:
         """
-        Msh to CIE Lab.
+        Msh to CIELAB.
 
         Parameters
         ----------
@@ -769,7 +779,7 @@ class Colormap(mpl.colors.ListedColormap):
         Returns
         -------
         lab : numpy.ndarray, shape (3)
-            CIE lab values.
+            CIELAB values.
 
         References
         ----------
