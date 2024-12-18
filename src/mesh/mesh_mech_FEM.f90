@@ -12,7 +12,7 @@ module mesh_mechanical_FEM
   use PETScDM
   use PETScDMplex
   use PETScDT
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08
 #endif
 
@@ -27,7 +27,7 @@ module mesh_mechanical_FEM
   use math
   use constants
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   implicit none(type,external)
 #else
   implicit none

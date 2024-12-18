@@ -9,7 +9,7 @@ module grid_mechanical_FEM
 #include <petsc/finclude/petscdmda.h>
   use PETScDMDA
   use PETScSNES
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08
 #endif
 
@@ -30,7 +30,7 @@ module grid_mechanical_FEM
   use discretization_grid
   use constants
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   implicit none(type,external)
 #else
   implicit none
