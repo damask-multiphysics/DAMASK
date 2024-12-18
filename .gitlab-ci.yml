@@ -34,22 +34,14 @@ variables:
   # ===============================================================================================
   # Names of module files to load
   # ===============================================================================================
-  # ++++++++++++ Compiler +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  COMPILER_GNU: "Compiler/GNU/10"
-  COMPILER_INTELLLVM: "Compiler/oneAPI/2022.0.1 Libraries/IMKL/2022.0.1"
+  # ++++++++++++ Compiler/MPI/PETSc +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   COMPILER_INTEL: "Compiler/Intel/2022.0.1 Libraries/IMKL/2022.0.1"
-  # ++++++++++++ MPI ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  MPI_GNU: "MPI/GNU/10/OpenMPI/4.1.2"
-  MPI_INTELLLVM: "MPI/oneAPI/2022.0.1/IntelMPI/2021.5.0"
   MPI_INTEL: "MPI/Intel/2022.0.1/IntelMPI/2021.5.0"
-  # ++++++++++++ PETSc ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  PETSC_GNU: "Libraries/PETSc/3.16.4/GNU-10-OpenMPI-4.1.2"
-  PETSC_INTELLLVM: "Libraries/PETSc/3.16.3/oneAPI-2022.0.1-IntelMPI-2021.5.0"
   PETSC_INTEL: "Libraries/PETSc/3.16.5/Intel-2022.0.1-IntelMPI-2021.5.0"
   # ++++++++++++ MSC Marc +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   MSC: "FEM/MSC/2024.1"
-  IntelMarc: "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
-  HDF5Marc: "HDF5/1.12.2/Intel-19.1.2"
+  IntelMarc: "Compiler/Intel/2022.0.1 Libraries/IMKL/2022.0.1"
+  HDF5Marc: "HDF5/1.12.1/Intel-2022.0.1"
 
 
 ###################################################################################################
@@ -342,13 +334,21 @@ grid_performance:
 
 
 ###################################################################################################
-update_website:
+update_website_master:
   stage: finalize
   trigger:
     project: damask/website
     branch: master
   only:
     - development
+
+update_website_3.0:
+  stage: finalize
+  trigger:
+    project: damask/website
+    branch: "3.0"
+  only:
+    - "3.0"
 
 update_revision:
   stage: finalize

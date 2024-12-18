@@ -423,7 +423,7 @@ class Rotation:
         >>> import damask
         >>> r = damask.Rotation.from_random(shape=(12))
         >>> o = np.ones((5,3))
-        >>> (r@o).shape                                    # (12) @ (5, 3)
+        >>> (r@o).shape                                                                             # (12) @ (5, 3)
         (12, 5, 3)
 
         Application of a (random) rotation to all twelve second-rank tensors.
@@ -432,7 +432,7 @@ class Rotation:
         >>> import damask
         >>> r = damask.Rotation.from_random()
         >>> o = np.ones((12,3,3))
-        >>> (r@o).shape                                    # (1) @ (12, 3,3)
+        >>> (r@o).shape                                                                             # (1) @ (12, 3,3)
         (12, 3, 3)
 
         Application of twelve (random) rotations to the corresponding twelve second-rank tensors.
@@ -441,7 +441,7 @@ class Rotation:
         >>> import damask
         >>> r = damask.Rotation.from_random(shape=(12))
         >>> o = np.ones((12,3,3))
-        >>> (r@o).shape                                    # (12) @ (3,3)
+        >>> (r@o).shape                                                                             # (12) @ (3,3)
         (12, 3, 3)
 
         Application of each of three (random) rotations to all three vectors.
@@ -450,7 +450,7 @@ class Rotation:
         >>> import damask
         >>> r = damask.Rotation.from_random(shape=(3))
         >>> o = np.ones((3,3))
-        >>> (r[...,np.newaxis]@o[np.newaxis,...]).shape    # (3,1) @ (1,3, 3)
+        >>> (r[...,np.newaxis]@o[np.newaxis,...]).shape                                             # (3,1) @ (1,3, 3)
         (3, 3, 3)
 
         Application of twelve (random) rotations to all twelve second-rank tensors.
@@ -611,14 +611,14 @@ class Rotation:
         https://doi.org/10.2514/1.28949
 
         """
-        def _M(quat):
+        def M(quat):
             """Intermediate representation supporting quaternion averaging."""
             return np.einsum('...i,...j',quat,quat)
 
         weights_ = np.ones(self.shape,dtype=float) if weights is None else np.array(weights,float)
 
-        eig, vec = np.linalg.eig(np.sum(_M(self.quaternion) * weights_[...,np.newaxis,np.newaxis],axis=-3)
-                                /np.sum(                      weights_[...,np.newaxis,np.newaxis],axis=-3))
+        eig, vec = np.linalg.eig(np.sum(M(self.quaternion) * weights_[...,np.newaxis,np.newaxis],axis=-3)
+                                /np.sum(                     weights_[...,np.newaxis,np.newaxis],axis=-3))
 
         return self.copy(Rotation.from_quaternion(np.real(
                                                   np.squeeze(
