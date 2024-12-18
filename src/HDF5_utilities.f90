@@ -190,49 +190,49 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
   logical,          intent(in), optional :: parallel
 
   character      :: m
-  integer(HID_T) :: p_access,p_create
+  integer(HID_T) :: plist_access_id,plist_create_id
   integer :: hdferr
   logical :: exist
 
 
   m = misc_optional(mode,'r')
 
-  call H5Pcreate_f(H5P_FILE_CREATE_F, p_create, hdferr)
+  call H5Pcreate_f(H5P_FILE_CREATE_F,plist_create_id,hdferr)
   call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
-  call H5Pset_link_creation_order_f(p_create, ior(H5P_CRT_ORDER_INDEXED_F,H5P_CRT_ORDER_TRACKED_F), hdferr)
+  call H5Pset_link_creation_order_f(plist_create_id,ior(H5P_CRT_ORDER_INDEXED_F,H5P_CRT_ORDER_TRACKED_F),hdferr)
   call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
-  call H5Pcreate_f(H5P_FILE_ACCESS_F, p_access, hdferr)
+  call H5Pcreate_f(H5P_FILE_ACCESS_F, plist_access_id,hdferr)
   call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 #ifdef PETSC
   if (misc_optional(parallel,.true.)) &
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
-    call H5Pset_fapl_mpio_f(p_access, PETSC_COMM_WORLD, MPI_INFO_NULL_F90, hdferr)
+    call H5Pset_fapl_mpio_f(plist_access_id, PETSC_COMM_WORLD, MPI_INFO_NULL_F90, hdferr)
 #else
-    call H5Pset_fapl_mpio_f(p_access, PETSC_COMM_WORLD, MPI_INFO_NULL,     hdferr)
+    call H5Pset_fapl_mpio_f(plist_access_id, PETSC_COMM_WORLD, MPI_INFO_NULL,     hdferr)
 #endif
   call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 #endif
 
   if     (m == 'w') then
     call H5Fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr,&
-                     access_prp=p_access,creation_prp=p_create)
+                     access_prp=plist_access_id,creation_prp=plist_create_id)
     call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   elseif (m == 'a') then
-    call H5Fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr,access_prp=p_access)
+    call H5Fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr,access_prp=plist_access_id)
     call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   elseif (m == 'r') then
     inquire(file=fileName,exist=exist)
     if (.not. exist) call IO_error(100,trim(fileName))
-    call H5Fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr,access_prp=p_access)
+    call H5Fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr,access_prp=plist_access_id)
     call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   else
     error stop 'unknown access mode'
   end if
 
-  call H5Pclose_f(p_access, hdferr)
+  call H5Pclose_f(plist_access_id, hdferr)
   call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
-  call H5Pclose_f(p_create, hdferr)
+  call H5Pclose_f(plist_create_id, hdferr)
   call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end function HDF5_openFile
@@ -246,6 +246,7 @@ subroutine HDF5_closeFile(fileHandle)
   integer(HID_T), intent(in) :: fileHandle
 
   integer     :: hdferr
+
 
   call H5Fclose_f(fileHandle,hdferr)
   call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
@@ -262,26 +263,35 @@ integer(HID_T) function HDF5_addGroup(fileHandle,groupName)
   character(len=*), intent(in) :: groupName
 
   integer        :: hdferr
-  integer(HID_T) :: aplist_id
+  integer(HID_T) :: gapl_id, gcpl_id
+
 
 !-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
-  call H5Pcreate_f(H5P_GROUP_ACCESS_F, aplist_id, hdferr)
+! set I/O mode to collective (for MPI parallel simulations)
+  call H5Pcreate_f(H5P_GROUP_ACCESS_F,gapl_id,hdferr)
   call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
-
-!-------------------------------------------------------------------------------------------------
-! setting I/O mode to collective
 #ifdef PETSC
-  call H5Pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
+  call H5Pset_all_coll_metadata_ops_f(gapl_id,.true.,hdferr)
   call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 #endif
 
 !-------------------------------------------------------------------------------------------------
-! Create group
-  call H5Gcreate_f(fileHandle, trim(groupName), HDF5_addGroup, hdferr, OBJECT_NAMELEN_DEFAULT_F,gapl_id = aplist_id)
+! keep creation order in group
+  call H5Pcreate_f(H5P_GROUP_CREATE_F,gcpl_id,hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
+  call H5Pset_link_creation_order_f(gcpl_id,ior(H5P_CRT_ORDER_INDEXED_F,H5P_CRT_ORDER_TRACKED_F),hdferr)
   call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
-  call H5Pclose_f(aplist_id,hdferr)
+!-------------------------------------------------------------------------------------------------
+! Create group
+  call H5Gcreate_f(fileHandle,trim(groupName),HDF5_addGroup,hdferr, &
+                   OBJECT_NAMELEN_DEFAULT_F,gcpl_id=gcpl_id,gapl_id=gapl_id)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
+
+  call H5Pclose_f(gcpl_id,hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
+  call H5Pclose_f(gapl_id,hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end function HDF5_addGroup
 
@@ -330,6 +340,7 @@ subroutine HDF5_closeGroup(group_id)
   integer(HID_T), intent(in) :: group_id
 
   integer :: hdferr
+
 
   call H5Gclose_f(group_id, hdferr)
   call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))

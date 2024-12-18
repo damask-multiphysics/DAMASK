@@ -19,7 +19,7 @@ end subroutine test_HDF5_utilities_run
 
 subroutine read_write()
 
-  integer(HID_T) :: f, create_list
+  integer(HID_T) :: f,g, plist_create_id
   integer :: hdferr, order
 
   real(pREAL), dimension(3) :: real_d1_in,real_d1_out
@@ -89,19 +89,34 @@ subroutine read_write()
   if (any(int_d4_in /= int_d4_out)) error stop 'test_read_write(w)/int_d4'
   if (any(int_d5_in /= int_d5_out)) error stop 'test_read_write(w)/int_d5'
 
+  call HDF5_closeGroup(HDF5_addGroup(f,'grp'))
 
   call HDF5_closeFile(f)
 
+
   f = HDF5_openFile('test.hdf5','r')
-  call H5Fget_create_plist_f(f,create_list,hdferr)
+
+  call H5Fget_create_plist_f(f,plist_create_id,hdferr)
   call HDF5_chkerr(hdferr)
-  call H5Pget_link_creation_order_f(create_list,order,hdferr)
+  call H5Pget_link_creation_order_f(plist_create_id,order,hdferr)
   call HDF5_chkerr(hdferr)
   ! https://github.com/HDFGroup/hdf5/issues/5183
-  !if (iand(order,H5P_CRT_ORDER_INDEXED_F) /= H5P_CRT_ORDER_INDEXED_F) error stop 'CRT_ORDER_INDEXED'
-  !if (iand(order,H5P_CRT_ORDER_TRACKED_F) /= H5P_CRT_ORDER_TRACKED_F) error stop 'CRT_ORDER_TRACKED'
-  call H5Pclose_f(create_list,hdferr)
+  !if (iand(order,H5P_CRT_ORDER_INDEXED_F) /= H5P_CRT_ORDER_INDEXED_F) error stop 'CRT_ORDER_INDEXED/file'
+  !if (iand(order,H5P_CRT_ORDER_TRACKED_F) /= H5P_CRT_ORDER_TRACKED_F) error stop 'CRT_ORDER_TRACKED/file'
+  call H5Pclose_f(plist_create_id,hdferr)
   call HDF5_chkerr(hdferr)
+
+  g = HDF5_openGroup(f,'grp')
+  call H5Gget_create_plist_f(g,plist_create_id,hdferr)
+  call HDF5_chkerr(hdferr,'H5Gget_create_plist_f')
+  call H5Pget_link_creation_order_f(plist_create_id,order,hdferr)
+  call HDF5_chkerr(hdferr,'H5Pget_link_creation_order_f')
+  if (iand(order,H5P_CRT_ORDER_INDEXED_F) /= H5P_CRT_ORDER_INDEXED_F) error stop 'CRT_ORDER_INDEXED/group'
+  if (iand(order,H5P_CRT_ORDER_TRACKED_F) /= H5P_CRT_ORDER_TRACKED_F) error stop 'CRT_ORDER_TRACKED/group'
+  call H5Pclose_f(plist_create_id,hdferr)
+  call HDF5_chkerr(hdferr,'H5Pclose_f')
+  call HDF5_closeGroup(g)
+
 
   call HDF5_read(real_d1_out,f,'real_d1')
   call HDF5_read(real_d2_out,f,'real_d2')
