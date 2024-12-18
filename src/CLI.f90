@@ -111,17 +111,16 @@ subroutine CLI_init()
 #endif
   print'(/,1x,a)', 'Version: '//DAMASKVERSION
 
-  print'(/,1x,a)', 'Compiled with: '//compiler_version()
-  print'(1x,a)',   'Compiled on: '//CMAKE_SYSTEM
-  print'(1x,a)',   'Compiler options: '//compiler_options()
-
   ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
-  print'(/,1x,a)', 'Compiled on: '//__DATE__//' at '//__TIME__
+  print'(/,1x,a)', 'Compiled with: '//compiler_version()
+  print'(1x,a)',   'Compiler options: '//compiler_options()
+  print'(1x,a)',   'Compiled on: '//CMAKE_SYSTEM
+  print'(1x,a,1x,i0,a,i0,a,i0)', &
+                   'PETSc version:',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.',PETSC_VERSION_SUBMINOR
 
-  print'(/,1x,a,1x,i0,a,i0,a,i0)', &
-                'PETSc version:',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.',PETSC_VERSION_SUBMINOR
+  print'(/,1x,a)', 'Compiled at: '//__DATE__//' at '//__TIME__
 
-  call date_and_time(values = dateAndTime)
+   call date_and_time(values = dateAndTime)
   print'(/,1x,a,1x,2(i2.2,a),i4.4)', 'Date:',dateAndTime(3),'/',dateAndTime(2),'/',dateAndTime(1)
   print'(1x,a,1x,2(i2.2,a),i2.2)',   'Time:',dateAndTime(5),':',dateAndTime(6),':',dateAndTime(7)
 
