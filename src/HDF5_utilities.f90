@@ -122,39 +122,39 @@ subroutine HDF5_utilities_init()
 
 
   call H5Open_f(hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Tget_size_f(H5T_NATIVE_INTEGER,typeSize, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   if (int(bit_size(0),SIZE_T)/=typeSize*8) &
     error stop 'Default integer size does not match H5T_NATIVE_INTEGER'
 
   call H5Tget_size_f(H5T_NATIVE_DOUBLE,typeSize, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   if (int(storage_size(0.0_pREAL),SIZE_T)/=typeSize*8) &
     error stop 'pREAL does not match H5T_NATIVE_DOUBLE'
 
   call H5get_libversion_f(HDF5_major,HDF5_minor,HDF5_release,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   compression_possible = (HDF5_major == 1 .and. HDF5_minor >= 12)                                   ! https://forum.hdfgroup.org/t/6186
 
   call H5Zfilter_avail_f(H5Z_FILTER_DEFLATE_F,avail,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   compression_possible = compression_possible .and. avail
 
   if (avail) then
     call H5Zget_filter_info_f(H5Z_FILTER_DEFLATE_F,configFlags,hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
     compression_possible = compression_possible .and. iand(H5Z_FILTER_ENCODE_ENABLED_F,configFlags) > 0
   end if
 
   call H5Zfilter_avail_f(H5Z_FILTER_SHUFFLE_F,avail,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   compression_possible = compression_possible .and. avail
 
   if (avail) then
     call H5Zget_filter_info_f(H5Z_FILTER_SHUFFLE_F,configFlags,hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
     compression_possible = compression_possible .and. iand(H5Z_FILTER_ENCODE_ENABLED_F,configFlags) > 0
   end if
 
@@ -164,12 +164,18 @@ end subroutine HDF5_utilities_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Check for HDF5 error.
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_chkerr(e)
+subroutine HDF5_chkerr(e,msg)
 
-  integer, intent(in) :: e
+  integer, intent(in) :: e                                                                         !< error code (negative for failure)
+
+  character(len=*), intent(in), optional :: msg                                                    !< error message
 
 
-  if (e<0) error stop 'HDF5 error'
+  if (present(msg)) then
+    if (e<0) error stop 'HDF5 error ('//msg//')'
+  else
+    if (e<0) error stop 'HDF5 error'
+  end if
 
 end subroutine HDF5_chkerr
 
@@ -184,43 +190,50 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
   logical,          intent(in), optional :: parallel
 
   character      :: m
-  integer(HID_T) :: plist_id
+  integer(HID_T) :: plist_access_id,plist_create_id
   integer :: hdferr
   logical :: exist
 
 
   m = misc_optional(mode,'r')
 
-  call H5Pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call H5Pcreate_f(H5P_FILE_CREATE_F,plist_create_id,hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
+  call H5Pset_link_creation_order_f(plist_create_id,ior(H5P_CRT_ORDER_INDEXED_F,H5P_CRT_ORDER_TRACKED_F),hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
+  call H5Pcreate_f(H5P_FILE_ACCESS_F, plist_access_id,hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 #ifdef PETSC
   if (misc_optional(parallel,.true.)) &
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
-    call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL_F90, hdferr)
+    call H5Pset_fapl_mpio_f(plist_access_id, PETSC_COMM_WORLD, MPI_INFO_NULL_F90, hdferr)
 #else
-    call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL,     hdferr)
+    call H5Pset_fapl_mpio_f(plist_access_id, PETSC_COMM_WORLD, MPI_INFO_NULL,     hdferr)
 #endif
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 #endif
 
   if     (m == 'w') then
-    call H5Fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr,access_prp = plist_id)
-    call HDF5_chkerr(hdferr)
+    call H5Fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr,&
+                     access_prp=plist_access_id,creation_prp=plist_create_id)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   elseif (m == 'a') then
-    call H5Fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr,access_prp = plist_id)
-    call HDF5_chkerr(hdferr)
+    call H5Fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr,access_prp=plist_access_id)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   elseif (m == 'r') then
     inquire(file=fileName,exist=exist)
     if (.not. exist) call IO_error(100,trim(fileName))
-    call H5Fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr,access_prp = plist_id)
-    call HDF5_chkerr(hdferr)
+    call H5Fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr,access_prp=plist_access_id)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   else
     error stop 'unknown access mode'
   end if
 
-  call H5Pclose_f(plist_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call H5Pclose_f(plist_access_id, hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
+  call H5Pclose_f(plist_create_id, hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end function HDF5_openFile
 
@@ -234,8 +247,9 @@ subroutine HDF5_closeFile(fileHandle)
 
   integer     :: hdferr
 
+
   call H5Fclose_f(fileHandle,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end subroutine HDF5_closeFile
 
@@ -249,26 +263,35 @@ integer(HID_T) function HDF5_addGroup(fileHandle,groupName)
   character(len=*), intent(in) :: groupName
 
   integer        :: hdferr
-  integer(HID_T) :: aplist_id
+  integer(HID_T) :: gapl_id, gcpl_id
+
 
 !-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
-  call H5Pcreate_f(H5P_GROUP_ACCESS_F, aplist_id, hdferr)
-  call HDF5_chkerr(hdferr)
-
-!-------------------------------------------------------------------------------------------------
-! setting I/O mode to collective
+! set I/O mode to collective (for MPI parallel simulations)
+  call H5Pcreate_f(H5P_GROUP_ACCESS_F,gapl_id,hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 #ifdef PETSC
-  call H5Pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
-  call HDF5_chkerr(hdferr)
+  call H5Pset_all_coll_metadata_ops_f(gapl_id,.true.,hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 #endif
 
 !-------------------------------------------------------------------------------------------------
-! Create group
-  call H5Gcreate_f(fileHandle, trim(groupName), HDF5_addGroup, hdferr, OBJECT_NAMELEN_DEFAULT_F,gapl_id = aplist_id)
-  call HDF5_chkerr(hdferr)
+! keep creation order in group
+  call H5Pcreate_f(H5P_GROUP_CREATE_F,gcpl_id,hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
+  call H5Pset_link_creation_order_f(gcpl_id,ior(H5P_CRT_ORDER_INDEXED_F,H5P_CRT_ORDER_TRACKED_F),hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
-  call H5Pclose_f(aplist_id,hdferr)
+!-------------------------------------------------------------------------------------------------
+! Create group
+  call H5Gcreate_f(fileHandle,trim(groupName),HDF5_addGroup,hdferr, &
+                   OBJECT_NAMELEN_DEFAULT_F,gcpl_id=gcpl_id,gapl_id=gapl_id)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
+
+  call H5Pclose_f(gcpl_id,hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
+  call H5Pclose_f(gapl_id,hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end function HDF5_addGroup
 
@@ -290,19 +313,19 @@ integer(HID_T) function HDF5_openGroup(fileHandle,groupName)
  !-------------------------------------------------------------------------------------------------
  ! creating a property list for data access properties
   call H5Pcreate_f(H5P_GROUP_ACCESS_F, aplist_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
  !-------------------------------------------------------------------------------------------------
  ! setting I/O mode to collective
 #ifdef PETSC
   call H5Pget_all_coll_metadata_ops_f(aplist_id, is_collective, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 #endif
 
  !-------------------------------------------------------------------------------------------------
  ! opening the group
   call H5Gopen_f(fileHandle, trim(groupName), HDF5_openGroup, hdferr, gapl_id = aplist_id)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Pclose_f(aplist_id,hdferr)
 
@@ -318,8 +341,9 @@ subroutine HDF5_closeGroup(group_id)
 
   integer :: hdferr
 
+
   call H5Gclose_f(group_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end subroutine HDF5_closeGroup
 
@@ -339,11 +363,11 @@ logical function HDF5_objectExists(loc_id,path)
   p = trim(misc_optional(path,'.'))
 
   call H5Lexists_f(loc_id, p, HDF5_objectExists, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   if (HDF5_objectExists) then
     call H5Oexists_by_name_f(loc_id, p, HDF5_objectExists, hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
 end function HDF5_objectExists
@@ -372,24 +396,24 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
   ptr(1) = c_loc(attrValue_(1))
 
   call H5Screate_f(H5S_SCALAR_F,space_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Aexists_by_name_f(loc_id,p,attrLabel,attrExists,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   if (attrExists) then
     call H5Adelete_by_name_f(loc_id,p,attrLabel,hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call H5Acreate_by_name_f(loc_id,p,trim(attrLabel),H5T_STRING,space_id,attr_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Awrite_f(attr_id, H5T_STRING, c_loc(ptr), hdferr)                                          ! ptr instead of c_loc(ptr) works on gfortran, not on ifort
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Aclose_f(attr_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Sclose_f(space_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end subroutine HDF5_addAttribute_str
 
@@ -413,24 +437,24 @@ subroutine HDF5_addAttribute_int(loc_id,attrLabel,attrValue,path)
   p = trim(misc_optional(path,'.'))
 
   call H5Screate_f(H5S_SCALAR_F,space_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Aexists_by_name_f(loc_id,p,attrLabel,attrExists,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   if (attrExists) then
     call H5Adelete_by_name_f(loc_id,p,attrLabel,hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call H5Acreate_by_name_f(loc_id,p,trim(attrLabel),H5T_NATIVE_INTEGER,space_id,attr_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Awrite_f(attr_id, H5T_NATIVE_INTEGER, attrValue, int([1],HSIZE_T), hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Aclose_f(attr_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Sclose_f(space_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end subroutine HDF5_addAttribute_int
 
@@ -454,24 +478,24 @@ subroutine HDF5_addAttribute_real(loc_id,attrLabel,attrValue,path)
   p = trim(misc_optional(path,'.'))
 
   call H5Screate_f(H5S_SCALAR_F,space_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Aexists_by_name_f(loc_id,p,attrLabel,attrExists,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   if (attrExists) then
     call H5Adelete_by_name_f(loc_id,p,attrLabel,hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call H5Acreate_by_name_f(loc_id,p,trim(attrLabel),H5T_NATIVE_DOUBLE,space_id,attr_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Awrite_f(attr_id, H5T_NATIVE_DOUBLE, attrValue, int([1],HSIZE_T), hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Aclose_f(attr_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Sclose_f(space_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end subroutine HDF5_addAttribute_real
 
@@ -502,24 +526,24 @@ subroutine HDF5_addAttribute_str_array(loc_id,attrLabel,attrValue,path)
   end do
 
   call H5Screate_simple_f(1,shape(attrValue_,kind=HSIZE_T),space_id,hdferr,shape(attrValue_,kind=HSIZE_T))
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Aexists_by_name_f(loc_id,p,attrLabel,attrExists,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   if (attrExists) then
     call H5Adelete_by_name_f(loc_id,p,attrLabel,hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call H5Acreate_by_name_f(loc_id,p,trim(attrLabel),H5T_STRING,space_id,attr_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Awrite_f(attr_id, H5T_STRING, c_loc(ptr), hdferr)                                          ! ptr instead of c_loc(ptr) works on gfortran, not on ifort
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Aclose_f(attr_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Sclose_f(space_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end subroutine HDF5_addAttribute_str_array
 
@@ -546,24 +570,24 @@ subroutine HDF5_addAttribute_int_array(loc_id,attrLabel,attrValue,path)
   array_size = size(attrValue,kind=HSIZE_T)
 
   call H5Screate_simple_f(1, array_size, space_id, hdferr, array_size)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Aexists_by_name_f(loc_id,p,attrLabel,attrExists,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   if (attrExists) then
     call H5Adelete_by_name_f(loc_id,p,attrLabel,hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call H5Acreate_by_name_f(loc_id,p,trim(attrLabel),H5T_NATIVE_INTEGER,space_id,attr_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Awrite_f(attr_id, H5T_NATIVE_INTEGER, attrValue, array_size, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Aclose_f(attr_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Sclose_f(space_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end subroutine HDF5_addAttribute_int_array
 
@@ -590,24 +614,24 @@ subroutine HDF5_addAttribute_real_array(loc_id,attrLabel,attrValue,path)
   array_size = size(attrValue,kind=HSIZE_T)
 
   call H5Screate_simple_f(1, array_size, space_id, hdferr, array_size)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Aexists_by_name_f(loc_id,p,attrLabel,attrExists,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   if (attrExists) then
     call H5Adelete_by_name_f(loc_id,p,attrLabel,hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call H5Acreate_by_name_f(loc_id,p,trim(attrLabel),H5T_NATIVE_DOUBLE,space_id,attr_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Awrite_f(attr_id, H5T_NATIVE_DOUBLE, attrValue, array_size, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Aclose_f(attr_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Sclose_f(space_id,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end subroutine HDF5_addAttribute_real_array
 
@@ -623,13 +647,13 @@ subroutine HDF5_setLink(loc_id,target_name,link_name)
   logical                      :: linkExists
 
   call H5Lexists_f(loc_id, link_name,linkExists, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   if (linkExists) then
     call H5Ldelete_f(loc_id,link_name, hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
   call H5Lcreate_soft_f(target_name, loc_id, link_name, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end subroutine HDF5_setLink
 
@@ -662,7 +686,7 @@ subroutine HDF5_read_real1(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -696,7 +720,7 @@ subroutine HDF5_read_real2(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -730,7 +754,7 @@ subroutine HDF5_read_real3(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -765,7 +789,7 @@ subroutine HDF5_read_real4(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -800,7 +824,7 @@ subroutine HDF5_read_real5(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -835,7 +859,7 @@ if (any(totalShape == 0)) return
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -870,7 +894,7 @@ subroutine HDF5_read_int2(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -904,7 +928,7 @@ subroutine HDF5_read_int3(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -938,7 +962,7 @@ subroutine HDF5_read_int4(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -972,7 +996,7 @@ subroutine HDF5_read_int5(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -1010,7 +1034,7 @@ subroutine HDF5_write_real1(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1047,7 +1071,7 @@ subroutine HDF5_write_real2(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1084,7 +1108,7 @@ subroutine HDF5_write_real3(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1121,7 +1145,7 @@ subroutine HDF5_write_real4(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1159,7 +1183,7 @@ subroutine HDF5_write_real5(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1213,7 +1237,7 @@ subroutine HDF5_write_real(dataset,loc_id,datasetName,parallel)
         call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                         file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
     end select
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1240,46 +1264,46 @@ subroutine HDF5_write_str(dataset,loc_id,datasetName)
   dataset_ = trim(dataset)
 
   call H5Tcopy_f(H5T_C_S1, filetype_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Tset_size_f(filetype_id, len(dataset_,SIZE_T)+1_SIZE_T, hdferr)                            ! +1 for NULL
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Tcopy_f(H5T_FORTRAN_S1, memtype_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Tset_size_f(memtype_id, len(dataset_,SIZE_T), hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Pcreate_f(H5P_DATASET_CREATE_F, dcpl, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Pset_chunk_f(dcpl, 1, [1_HSIZE_T], hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Pset_Fletcher32_f(dcpl,hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   if (compression_possible .and. len(dataset,pI64) > 1024_pI64*256_pI64) then
     call H5Pset_shuffle_f(dcpl, hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
     call H5Pset_deflate_f(dcpl, 6, hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call H5Screate_simple_f(1, [1_HSIZE_T], space_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   CALL H5Dcreate_f(loc_id, datasetName, filetype_id, space_id, dataset_id, hdferr, dcpl)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Dwrite_f(dataset_id, memtype_id, c_loc(dataset_(1:1)), hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Pclose_f(dcpl, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Dclose_f(dataset_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Sclose_f(space_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Tclose_f(memtype_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Tclose_f(filetype_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end subroutine HDF5_write_str
 
@@ -1315,7 +1339,7 @@ subroutine HDF5_write_int1(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1352,7 +1376,7 @@ subroutine HDF5_write_int2(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1389,7 +1413,7 @@ subroutine HDF5_write_int3(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1426,7 +1450,7 @@ subroutine HDF5_write_int4(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1463,7 +1487,7 @@ subroutine HDF5_write_int5(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-   call HDF5_chkerr(hdferr)
+   call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1517,7 +1541,7 @@ subroutine HDF5_write_int(dataset,loc_id,datasetName,parallel)
         call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                        file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
     end select
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1549,7 +1573,7 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties (is collective for MPI)
   call H5Pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 !--------------------------------------------------------------------------------------------------
   readSize = 0_MPI_INTEGER_KIND
@@ -1557,7 +1581,7 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
 #ifdef PETSC
   if (parallel) then
     call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
     call MPI_Allgather(int(localShape(ubound(localShape,1)),MPI_INTEGER_KIND),1_MPI_INTEGER_KIND,MPI_INTEGER,&
                        readSize,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
     call parallelization_chkerr(err_MPI)
@@ -1569,35 +1593,35 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
 
   if (any(globalShape == 0)) then
     call H5Pclose_f(plist_id, hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
     return
   end if
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
   call H5Screate_simple_f(size(localShape), localShape, memspace_id, hdferr, localShape)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 !--------------------------------------------------------------------------------------------------
 ! creating a property list for IO and set it to collective
   call H5Pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 #ifdef PETSC
   call H5Pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 #endif
 
 !--------------------------------------------------------------------------------------------------
 ! open the dataset in the file and get the space ID
   call H5Dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Dget_space_f(dset_id, filespace_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 !--------------------------------------------------------------------------------------------------
 ! select a hyperslab (the portion of the current process) in the file
   call H5Sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, localShape, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end subroutine initialize_read
 
@@ -1611,15 +1635,15 @@ subroutine finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer :: hdferr
 
   call H5Pclose_f(plist_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Pclose_f(aplist_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Dclose_f(dset_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Sclose_f(filespace_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Sclose_f(memspace_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end subroutine finalize_read
 
@@ -1651,11 +1675,11 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties (is collective when writing in parallel)
   call H5Pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 #ifdef PETSC
   if (parallel) then
     call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   end if
 #endif
 
@@ -1677,43 +1701,43 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 !--------------------------------------------------------------------------------------------------
 ! chunk dataset, enable compression for larger datasets
   call H5Pcreate_f(H5P_DATASET_CREATE_F, dcpl, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   if (product(totalShape) > 0) then
     call H5Pset_Fletcher32_f(dcpl,hdferr)
-    call HDF5_chkerr(hdferr)
+    call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
     if (product(totalShape) >= chunkSize*2_HSIZE_T) then
       call H5Pset_chunk_f(dcpl, size(totalShape), getChunks(totalShape,chunkSize), hdferr)
-      call HDF5_chkerr(hdferr)
+      call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
       if (compression_possible) then
         call H5Pset_shuffle_f(dcpl, hdferr)
-        call HDF5_chkerr(hdferr)
+        call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
         call H5Pset_deflate_f(dcpl, 6, hdferr)
-        call HDF5_chkerr(hdferr)
+        call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
       end if
     else
       call H5Pset_chunk_f(dcpl, size(totalShape), totalShape, hdferr)
-      call HDF5_chkerr(hdferr)
+      call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
     end if
   end if
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape) and in file (global shape)
   call H5Screate_simple_f(size(localShape), localShape, memspace_id, hdferr, localShape)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Screate_simple_f(size(totalShape), totalShape, filespace_id, hdferr, totalShape)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 !--------------------------------------------------------------------------------------------------
 ! create dataset in the file and select a hyperslab from it (the portion of the current process)
   call H5Dcreate_f(loc_id, trim(datasetName), datatype, filespace_id, dset_id, hdferr, dcpl)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, localShape, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   call H5Pclose_f(dcpl , hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
   contains
   !------------------------------------------------------------------------------------------------
@@ -1742,13 +1766,13 @@ subroutine finalize_write(plist_id, dset_id, filespace_id, memspace_id)
   integer :: hdferr
 
   call H5Pclose_f(plist_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Dclose_f(dset_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Sclose_f(filespace_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   call H5Sclose_f(memspace_id, hdferr)
-  call HDF5_chkerr(hdferr)
+  call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 
 end subroutine finalize_write
 
