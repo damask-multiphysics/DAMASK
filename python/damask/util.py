@@ -804,6 +804,49 @@ def DREAM3D_cell_data_group(fname: _Union[str, _Path, _h5py.File]) -> str:
         return get_cell_data_group(f)
 
 
+def _standardize_MillerBravais(idx: _IntSequence) -> _np.ndarray:
+    """
+    Convert Miller-Bravais indices with missing component to standard (full) form.
+
+    Parameters
+    ----------
+    idx : numpy.ndarray, shape (...,4) or (...,3)
+        Miller–Bravais indices of crystallographic direction [uvtw] or plane normal (hkil).
+        The third index (t/i) can be ommitted completly or given as "..." (Ellipsis).
+
+    Returns
+    -------
+    uvtw|hkil : numpy.ndarray, shape (...,4)
+        Miller-Bravais indices of [uvtw] direction or (hkil) plane normal.
+
+    """
+    def expand(v: _np.ndarray) -> _np.ndarray:
+        """Expand from 3 to 4 indices."""
+        return _np.block([v[...,:2], -_np.sum(v[...,:2],axis=-1,keepdims=True), v[...,2:]])
+
+    a = _np.asarray(idx)
+    if _np.issubdtype(a.dtype,_np.signedinteger):
+        if a.shape[-1] == 4:
+            if (_np.sum(a[...,:3],axis=-1) != 0).any(): raise ValueError(rf'u+v+t≠0/h+k+i≠0: {a}')
+            return a
+        elif a.shape[-1] == 3:
+            return expand(a)
+    else:
+        if a.shape[-1] == 4:
+            b = (_np.block([a[...,:2],
+                            _np.where(a[...,2:3] == ..., -_np.sum(a[...,:2],axis=-1,keepdims=True),a[...,2:3]),
+                           a[...,3:]]))
+            if (_np.sum(b[...,:3],axis=-1) != 0).any(): raise ValueError(rf'u+v+t≠0/h+k+i≠0: {b}')
+        elif a.shape[-1] == 3:
+            b = expand(a)
+
+        if (b != (c := b.astype(int))).any():
+            raise ValueError(f'"uvtw"/"hkil" are not (casteable to) signed integers: {a}')
+        return c
+
+    raise ValueError(f'invalid Miller-Bravais indices {a}')
+
+
 def Bravais_to_Miller(*,
                       uvtw: _Optional[_IntSequence] = None,
                       hkil: _Optional[_IntSequence] = None) -> _np.ndarray:
@@ -812,8 +855,9 @@ def Bravais_to_Miller(*,
 
     Parameters
     ----------
-    uvtw|hkil : numpy.ndarray, shape (...,4)
+    uvtw|hkil : numpy.ndarray, shape (...,4) or (...,3)
         Miller–Bravais indices of crystallographic direction [uvtw] or plane normal (hkil).
+        The third index (t or i) can be ommitted completly or given as "..." (Ellipsis).
 
     Returns
     -------
@@ -823,22 +867,21 @@ def Bravais_to_Miller(*,
     """
     if (uvtw is not None) ^ (hkil is None):
         raise KeyError('specify either "uvtw" or "hkil"')
-    if uvtw is not None and (_np.sum(_np.asarray(uvtw)[...,:3],axis=-1) != 0).any():
-        raise ValueError(rf'u+v+t≠0: {uvtw}')
-    if hkil is not None and (_np.sum(_np.asarray(hkil)[...,:3],axis=-1) != 0).any():
-        raise ValueError(rf'h+k+i≠0: {hkil}')
-
-    axis,basis = (_np.array(uvtw),_np.array([[2,1,0,0],
-                                             [1,2,0,0],
-                                             [0,0,0,1]])) \
-                 if hkil is None else \
-                 (_np.array(hkil),_np.array([[1,0,0,0],
-                                             [0,1,0,0],
-                                             [0,0,0,1]]))
+    elif uvtw is not None:
+        axis,basis = _standardize_MillerBravais(uvtw),_np.array([[2,1,0,0],
+                                                                 [1,2,0,0],
+                                                                 [0,0,0,1]])
+    elif hkil is not None:
+        axis,basis = _standardize_MillerBravais(hkil),_np.array([[1,0,0,0],
+                                                                 [0,1,0,0],
+                                                                 [0,0,0,1]])
     uvw_hkl = _np.einsum('il,...l',basis,axis)
-    if not _np.issubdtype(uvw_hkl.dtype,_np.signedinteger):
-        raise TypeError('"uvtw"/"hkil" are not (signed) integers')
+
     return uvw_hkl//_np.gcd.reduce(uvw_hkl,axis=-1,keepdims=True)
+
+
+MillerBravais_to_Miller = Bravais_to_Miller
+
 
 def Miller_to_Bravais(*,
                       uvw: _Optional[_IntSequence] = None,
@@ -868,10 +911,14 @@ def Miller_to_Bravais(*,
                                               [ 0, 1, 0],
                                               [-1,-1, 0],
                                               [ 0, 0, 1]]))
-    uvtw_hkil = _np.einsum('il,...l',basis,axis)
-    if not _np.issubdtype(uvtw_hkil.dtype,_np.signedinteger):
-        raise TypeError('"uvw"/"hkl" are not (signed) integers')
+    if (axis != axis.astype(int)).any():
+        raise ValueError(f'"uvt"/"hki" are not (casteable to) signed integers: {axis}')
+    uvtw_hkil = _np.einsum('il,...l',basis,axis.astype(int))
+
     return uvtw_hkil//_np.gcd.reduce(uvtw_hkil,axis=-1,keepdims=True)
+
+
+Miller_to_MillerBravais = Miller_to_Bravais
 
 
 def dict_prune(d: _Dict) -> _Dict:

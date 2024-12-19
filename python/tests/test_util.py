@@ -221,16 +221,16 @@ class TestUtil:
         with pytest.raises(KeyError):
             util.Miller_to_Bravais(uvw=np.ones(4),hkl=np.ones(4))
 
-    @pytest.mark.parametrize('key_value',[{'uvtw':[1.,0.,-1.,0.]},
-                                          {'hkil':[1.,0.,-1.,0.]}])
+    @pytest.mark.parametrize('key_value',[{'uvtw':[1.,0.,-1.,1.1]},
+                                          {'hkil':[1.,0.,-1.,1.1]}])
     def test_float_Bravais_to_Miller(self,key_value):
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             util.Bravais_to_Miller(**key_value)
 
-    @pytest.mark.parametrize('key_value',[{'uvw':[1.,0.,-1.]},
-                                          {'hkl':[1.,0.,-1.]}])
+    @pytest.mark.parametrize('key_value',[{'uvw':[1.,0.,-1.1]},
+                                          {'hkl':[1.,0.,-9.4]}])
     def test_float_Miller_to_Bravais(self,key_value):
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             util.Miller_to_Bravais(**key_value)
 
 
