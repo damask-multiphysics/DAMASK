@@ -594,7 +594,7 @@ def _docstringer(docstring: _Union[str, _Callable],
     docstring : str or callable, optional
        Docstring (of callable) to extend.
     adopted_* : str or callable, optional
-       Additional information to insert into/append to respective section.
+       Additional information to insert into or append to respective section.
 
     Notes
     -----
@@ -680,7 +680,7 @@ def extend_docstring(docstring: _Union[None, str, _Callable] = None,
     docstring : str or callable, optional
        Docstring to extend. Defaults to that of decorated function.
     adopted_* : str or callable, optional
-       Additional information to insert into/append to respective section.
+       Additional information to insert into or append to respective section.
 
     Notes
     -----
@@ -812,7 +812,7 @@ def _standardize_MillerBravais(idx: _IntSequence) -> _np.ndarray:
     ----------
     idx : numpy.ndarray, shape (...,4) or (...,3)
         Miller–Bravais indices of crystallographic direction [uvtw] or plane normal (hkil).
-        The third index (t/i) can be ommitted completly or given as "..." (Ellipsis).
+        The third index (t or i) can be omitted completely or given as "..." (Ellipsis).
 
     Returns
     -------
@@ -827,7 +827,7 @@ def _standardize_MillerBravais(idx: _IntSequence) -> _np.ndarray:
     a = _np.asarray(idx)
     if _np.issubdtype(a.dtype,_np.signedinteger):
         if a.shape[-1] == 4:
-            if (_np.sum(a[...,:3],axis=-1) != 0).any(): raise ValueError(rf'u+v+t≠0/h+k+i≠0: {a}')
+            if (_np.sum(a[...,:3],axis=-1) != 0).any(): raise ValueError(rf'u+v+t≠0 | h+k+i≠0: {a}')
             return a
         elif a.shape[-1] == 3:
             return expand(a)
@@ -835,13 +835,13 @@ def _standardize_MillerBravais(idx: _IntSequence) -> _np.ndarray:
         if a.shape[-1] == 4:
             b = (_np.block([a[...,:2],
                             _np.where(a[...,2:3] == ..., -_np.sum(a[...,:2],axis=-1,keepdims=True),a[...,2:3]),
-                           a[...,3:]]))
-            if (_np.sum(b[...,:3],axis=-1) != 0).any(): raise ValueError(rf'u+v+t≠0/h+k+i≠0: {b}')
+                            a[...,3:]]))
+            if (_np.sum(b[...,:3],axis=-1,keepdims=True) != 0).any(): raise ValueError(rf'u+v+t≠0 | h+k+i≠0: {b}')
         elif a.shape[-1] == 3:
             b = expand(a)
 
         if (b != (c := b.astype(int))).any():
-            raise ValueError(f'"uvtw"/"hkil" are not (casteable to) signed integers: {a}')
+            raise ValueError(f'"uvtw" | "hkil" are not (castable to) signed integers: {a}')
         return c
 
     raise ValueError(f'invalid Miller-Bravais indices {a}')
@@ -912,7 +912,7 @@ def Miller_to_Bravais(*,
                                               [-1,-1, 0],
                                               [ 0, 0, 1]]))
     if (axis != axis.astype(int)).any():
-        raise ValueError(f'"uvt"/"hki" are not (casteable to) signed integers: {axis}')
+        raise ValueError(f'"uvt" | "hki" are not (castable to) signed integers: {axis}')
     uvtw_hkil = _np.einsum('il,...l',basis,axis.astype(int))
 
     return uvtw_hkil//_np.gcd.reduce(uvtw_hkil,axis=-1,keepdims=True)
