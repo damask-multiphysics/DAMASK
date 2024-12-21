@@ -267,6 +267,17 @@ class TestUtil:
     def test_Bravais_Miller_Bravais(self,vector,kw_Miller,kw_Bravais):
         assert np.all(vector == util.Miller_to_Bravais(**{kw_Miller:util.Bravais_to_Miller(**{kw_Bravais:vector})}))
 
+    @pytest.mark.parametrize('dim',(None,1,4))
+    def test_standardize_MillerBravais(self,dim):
+        shape = tuple(np.random.randint(1,6,dim))+(3,) if dim is not None else (3,)
+        idx_red = np.random.randint(-10,11,shape)
+        idx_full = np.block([idx_red[...,:2], -np.sum(idx_red[...,:2],axis=-1,keepdims=True), idx_red[...,2:]])
+        idx_missing = idx_full.astype(object)
+        idx_missing[...,2][idx_full[...,3]>0] = ...
+        assert np.equal(idx_full,util._standardize_MillerBravais(idx_red)).all() and \
+               np.equal(idx_full,util._standardize_MillerBravais(idx_missing)).all()
+
+
     @pytest.mark.parametrize('adopted_parameters',[
             pytest.param("""
             p2 : str, optional

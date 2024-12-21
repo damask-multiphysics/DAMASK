@@ -836,7 +836,7 @@ def _standardize_MillerBravais(idx: _IntSequence) -> _np.ndarray:
             b = (_np.block([a[...,:2],
                             _np.where(a[...,2:3] == ..., -_np.sum(a[...,:2],axis=-1,keepdims=True),a[...,2:3]),
                             a[...,3:]]))
-            if (_np.sum(b[...,:3],axis=-1,keepdims=True) != 0).any(): raise ValueError(rf'u+v+t≠0 | h+k+i≠0: {b}')
+            if (_np.sum(b[...,:3].astype(int),axis=-1) != 0).any(): raise ValueError(rf'u+v+t≠0 | h+k+i≠0: {b}')
         elif a.shape[-1] == 3:
             b = expand(a)
 
