@@ -857,7 +857,7 @@ def Bravais_to_Miller(*,
     ----------
     uvtw|hkil : numpy.ndarray, shape (...,4) or (...,3)
         Miller–Bravais indices of crystallographic direction [uvtw] or plane normal (hkil).
-        The third index (t or i) can be ommitted completly or given as "..." (Ellipsis).
+        The third index (t or i) can be omitted completely or given as "..." (Ellipsis).
 
     Returns
     -------
