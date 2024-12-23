@@ -264,8 +264,7 @@ subroutine grid_mechanical_FEM_init(num_grid)
     u = reshape(temp3n,[3,cells(1),cells(2),cells3])
     call HDF5_read(temp3n,groupHandle,'u_lastInc')
     u_lastInc = reshape(temp3n,[3,cells(1),cells(2),cells3])
-
-  elseif (CLI_restartInc == 0) then restartRead
+  else restartRead
     F_lastInc = spread(spread(spread(math_I3,3,cells(1)),4,cells(2)),5,cells3)                      ! initialize to identity
     F         = spread(spread(spread(math_I3,3,cells(1)),4,cells(2)),5,cells3)
   end if restartRead

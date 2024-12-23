@@ -247,8 +247,7 @@ subroutine grid_mech_spectral_polarization_init(num_grid)
     F_tau = reshape(temp33n,[9,cells(1),cells(2),cells3])
     call HDF5_read(temp33n,groupHandle,'F_tau_lastInc')
     F_tau_lastInc = reshape(temp33n,[3,3,cells(1),cells(2),cells3])
-
-  elseif (CLI_restartInc == 0) then restartRead
+  else restartRead
     F_lastInc = spread(spread(spread(math_I3,3,cells(1)),4,cells(2)),5,cells3)                      ! initialize to identity
     F = reshape(F_lastInc,[9,cells(1),cells(2),cells3])
     F_tau = 2.0_pREAL*F
@@ -276,7 +275,6 @@ subroutine grid_mech_spectral_polarization_init(num_grid)
 
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
-
   end if restartRead2
 
   call utilities_updateGamma(C_minMaxAvg)
