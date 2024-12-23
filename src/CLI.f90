@@ -109,12 +109,12 @@ subroutine CLI_init()
   print'(1x,a)', 'https://doi.org/'//PETSc_DOI
 #endif
 #endif
-  print'(/,1x,a)', 'Version: '//DAMASKVERSION
+  print'(/,1x,a)', 'Version: '//DAMASK_VERSION
 
   ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
   print'(/,1x,a)', 'Compiled with: '//compiler_version()
   print'(1x,a)',   'Compiler options: '//compiler_options()
-  print'(1x,a)',   'Compiled on: '//CMAKE_SYSTEM
+  print'(1x,a)',   'Compiled for: '//CMAKE_SYSTEM_NAME//' on '//CMAKE_SYSTEM_PROCESSOR
   print'(1x,a,1x,i0,a,i0,a,i0)', &
                    'PETSc version:',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.',PETSC_VERSION_SUBMINOR
 

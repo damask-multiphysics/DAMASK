@@ -92,7 +92,7 @@ subroutine result_init(restart)
     call result_addAttribute('DADF5_version_major',1)
     call result_addAttribute('DADF5_version_minor',1)
     call get_command_argument(0,commandLine)
-    call result_addAttribute('creator',trim(commandLine)//' '//DAMASKVERSION)
+    call result_addAttribute('creator',trim(commandLine)//' '//DAMASK_VERSION)
     call result_addAttribute('created',now())
     call get_command(commandLine)
     call result_addAttribute('call',trim(commandLine))
@@ -799,7 +799,7 @@ subroutine executionStamp(path,description,SIunit)
 
 
   if (HDF5_objectExists(resultFile,path)) &
-    call HDF5_addAttribute(resultFile,'creator','DAMASK '//DAMASKVERSION,path)
+    call HDF5_addAttribute(resultFile,'creator','DAMASK '//DAMASK_VERSION,path)
   if (HDF5_objectExists(resultFile,path)) &
     call HDF5_addAttribute(resultFile,'created',now(),path)
   if (HDF5_objectExists(resultFile,path)) &

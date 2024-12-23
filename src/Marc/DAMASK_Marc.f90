@@ -15,6 +15,10 @@
 #define MARC4DAMASK Marc4DAMASK
 #endif
 
+#ifdef DAMASKVERSION
+#define DAMASK_VERSION DAMASKVERSION
+#endif
+
 #include "../prec.f90"
 #include "../constants.f90"
 #include "../parallelization.f90"
