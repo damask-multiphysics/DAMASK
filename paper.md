@@ -5,6 +5,7 @@ tags:
   - Python
 authors:
 - name: Daniel Otto de Mentock
+  orcid: 0009-0005-8363-6112
   affiliation: 1
 - name: Sharan Roongta
   orcid: 0000-0001-5754-068X
