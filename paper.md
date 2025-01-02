@@ -37,7 +37,7 @@ bibliography: paper.bib
 # Summary
 
 DAMASK, the Düsseldorf Advanced Material Simulation Kit, is a modular multi-physics crystal plasticity simulation package distributed as free and open-source software under the GNU Affero General Public License (AGPL) [@roters2019damask].
-To facilitate easy pre- and post- processing of DAMASK simulations and simplify the creation of custom workflows for Integrated Computational Materials Engineering (ICME), an accompanying Python library has been developed.
+To facilitate easy pre- and post-processing of DAMASK simulations and simplify the creation of custom workflows for Integrated Computational Materials Engineering (ICME), an accompanying Python library has been developed.
 This library, which is also AGPL-licensed, is introduced here.
 
 # Statement of need
@@ -58,13 +58,13 @@ In contrast, the configuration of the materialpoint model and the DAMASK-specifi
 The DAMASK Python library is a package called `damask` and contains functionality for pre-processing tasks, such as the generation and modification of microstructures, load cases, material definition, or numerical parameters, as well as functionality for post-processing that enables analysis and visualization of DAMASK results.
 A particular focus is laid on finite-strain continuum mechanics and crystallography.
 The routines for conversion between the different kinds of orientation representations, such as Euler angles, rotation matrices, unit quaternions, or axis-angle pairs, are based on a consistent set of conventions [@rowenhorst2015consistent].
-The provided routines and data tructures interoperate seamlessly with other libraries from the Python ecosystem, such as `NumPy` [@harris2020array], `pandas` [@mckinney-proc-scipy-2010], `Matplotlib` [@hunter2007matplotlib], `SciPy` [@2020SciPy-NMeth], `VTK`/`PyVista` [@ahrens200536] [@Sullivan_PyVista_3D_plotting_2019], `PyYAML`, `h5py` [@collette_python_hdf5_2014] [@FolkEtAl2011], and `orix` [@johnstone2020density] to facilitate the definition of custom ICME workflows.
+The provided routines and data structures interoperate seamlessly with other libraries from the Python ecosystem, such as `NumPy` [@harris2020array], `pandas` [@mckinney-proc-scipy-2010], `Matplotlib` [@hunter2007matplotlib], `SciPy` [@2020SciPy-NMeth], `VTK`/`PyVista` [@ahrens200536] [@Sullivan_PyVista_3D_plotting_2019], `PyYAML`, `h5py` [@collette_python_hdf5_2014] [@FolkEtAl2011], and `orix` [@johnstone2020density] to facilitate the definition of custom ICME workflows.
 
 Apart from its DAMASK-specific processing capabilities, many routines of the library can be used in other material science and continuum mechanics applications.
 
 ## Pre-Processing
 
-The main goal of the pre-processing tools is to provide users with the possibility to incorporate data from various sources into their simulation setup.
+The main goal of the pre-processing tools is to enable users to incorporate data from various sources into their simulation setup.
 For example, the users can integrate domain-specific software such as `Neper` [@quey2011large], `DREAM.3D` [@groeber2014dream], and `Gmsh` [@geuzaine2009gmsh] to define microstructures and employ the provided Python routines to convert them into DAMASK-compatible input files.
 Similarly, the materialpoint configuration and load case definition are internally represented as particular Python classes that simplify the creation, modification, and export to YAML files.
 In addition to the three mandatory input files, i.e., geometry definition, material configuration, and the load case description, the creation and modification of an optional YAML file to fine-tune numerical parameters is also supported.
@@ -73,9 +73,9 @@ In addition to the three mandatory input files, i.e., geometry definition, mater
 
 The post-processing tools are centered around the HDF5 output file resulting from a DAMASK simulation.
 This flexible file format is called DADF5, short for "DAMASK HDF5" [@DiehlEtAl2017b], which allows data storage according to the FAIR principles [@WilkinsonEtAl2016].
-All data in DADF5 is enriched with metadata such as the date of creation, a human-understandable description, and the physical unit to ensure that the data is findable by humans and computers.
+All data in DADF5 is enriched with metadata, such as the date of creation, a human-understandable description, and the physical unit, to ensure that the data is findable by humans and computers.
 The `Result` class provides custom views on the hierarchical data layout of the DADF5 file for easy accesibility.
-Moreover, it provides routines the computation of derived quantities that are stored alongside with automatically created metadata in the output file.
+Moreover, it provides routines for the computation of derived quantities that are stored alongside with automatically created metadata in the output file.
 The data can be further processed within Python or exported to various file formats for analysis using third-party tools such as `DREAM.3D`, `ParaView`, or `MTEX` [@BachmannEtAl2010].
 This, together with the fact that the complete simulation setup is stored in the DADF5 file, makes it possible to re-use and re-evaluate the data.
 
