@@ -71,18 +71,18 @@ void signalusr2_c(void (*handler)(int)){
 }
 
 
-void inflate_c(const uLong *s_deflated, const uLong *s_inflated, const Byte deflated[], Byte inflated[]){
+void inflate_c(const uLong *s_deflated, const uLong *s_inflated, const Byte deflated[], Byte inflated[], int *stat){
   /* make writable copy, uncompress will write to it */
   uLong s_inflated_,i;
   s_inflated_ = *s_inflated;
 
-  if(uncompress((Bytef *)inflated, &s_inflated_, (Bytef *)deflated, *s_deflated) == Z_OK)
+  *stat = 1;
+  // https://stackoverflow.com/questions/51334741
+  if(uncompress((Bytef *)inflated, &s_inflated_, (Bytef *)deflated, *s_deflated) == Z_OK){
+    if (*s_inflated == s_inflated_) *stat = 0;
     return;
-  else{
-    for(i=0;i<*s_inflated;i++){
-      inflated[i] = 0;
-    }
   }
+  else memset(inflated,0,(size_t)*s_inflated);
 }
 
 

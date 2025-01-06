@@ -221,16 +221,16 @@ class TestUtil:
         with pytest.raises(KeyError):
             util.Miller_to_Bravais(uvw=np.ones(4),hkl=np.ones(4))
 
-    @pytest.mark.parametrize('key_value',[{'uvtw':[1.,0.,-1.,0.]},
-                                          {'hkil':[1.,0.,-1.,0.]}])
+    @pytest.mark.parametrize('key_value',[{'uvtw':[1.,0.,-1.,1.1]},
+                                          {'hkil':[1.,0.,-1.,1.1]}])
     def test_float_Bravais_to_Miller(self,key_value):
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             util.Bravais_to_Miller(**key_value)
 
-    @pytest.mark.parametrize('key_value',[{'uvw':[1.,0.,-1.]},
-                                          {'hkl':[1.,0.,-1.]}])
+    @pytest.mark.parametrize('key_value',[{'uvw':[1.,0.,-1.1]},
+                                          {'hkl':[1.,0.,-9.4]}])
     def test_float_Miller_to_Bravais(self,key_value):
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             util.Miller_to_Bravais(**key_value)
 
 
@@ -266,6 +266,17 @@ class TestUtil:
     @pytest.mark.parametrize('kw_Miller,kw_Bravais',[('uvw','uvtw'),('hkl','hkil')])
     def test_Bravais_Miller_Bravais(self,vector,kw_Miller,kw_Bravais):
         assert np.all(vector == util.Miller_to_Bravais(**{kw_Miller:util.Bravais_to_Miller(**{kw_Bravais:vector})}))
+
+    @pytest.mark.parametrize('dim',(None,1,4))
+    def test_standardize_MillerBravais(self,dim):
+        shape = tuple(np.random.randint(1,6,dim))+(3,) if dim is not None else (3,)
+        idx_red = np.random.randint(-10,11,shape)
+        idx_full = np.block([idx_red[...,:2], -np.sum(idx_red[...,:2],axis=-1,keepdims=True), idx_red[...,2:]])
+        idx_missing = idx_full.astype(object)
+        idx_missing[...,2][idx_full[...,3]>0] = ...
+        assert np.equal(idx_full,util._standardize_MillerBravais(idx_red)).all() and \
+               np.equal(idx_full,util._standardize_MillerBravais(idx_missing)).all()
+
 
     @pytest.mark.parametrize('adopted_parameters',[
             pytest.param("""
