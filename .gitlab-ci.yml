@@ -59,7 +59,7 @@ setuptools:
   stage: python
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:python310_2407
+  image: git.damask-multiphysics.org:5050/damask/damask:python310_2412
   before_script: []
   script:
     - sed -i 's/-[[:digit:]]*-.*//' VERSION
@@ -70,7 +70,7 @@ pytest:
   stage: python
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:python310_2407
+  image: git.damask-multiphysics.org:5050/damask/damask:python310_2412
   before_script: []
   script:
     - export DAMASK_ROOT=$(pwd)
@@ -83,7 +83,7 @@ mypy:
   stage: python
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:python310_2407
+  image: git.damask-multiphysics.org:5050/damask/damask:python310_2412
   before_script: []
   script:
     - cd python
@@ -95,7 +95,7 @@ unittest_GNU_DEBUG:
   stage: compile
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
   before_script:
     - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
     - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
@@ -109,7 +109,7 @@ unittest_GNU_RELEASE:
   stage: compile
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
   before_script:
     - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
     - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
@@ -123,7 +123,7 @@ unittest_GNU_PERFORMANCE:
   stage: compile
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
   before_script:
     - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
     - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=PERFORMANCE -DBUILDCMD_POST=-coverage
@@ -137,7 +137,7 @@ grid_GNU:
   stage: compile
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
   before_script:
     - source env/DAMASK.sh
   script:
@@ -148,7 +148,7 @@ mesh_GNU:
   stage: compile
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
   before_script:
     - source env/DAMASK.sh
   script:
@@ -159,7 +159,7 @@ grid_GNU-64bit:
   stage: compile
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_64bit
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_int64
   before_script:
     - source env/DAMASK.sh
   script:
@@ -170,32 +170,8 @@ mesh_GNU-64bit:
   stage: compile
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_64bit
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_int64
   before_script:
-    - source env/DAMASK.sh
-  script:
-    - cd PRIVATE/testing
-    - pytest -k 'compile and mesh'
-
-grid_intel:
-  stage: compile
-  tags:
-    - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intel20232_petsc2106
-  before_script:
-    - source /opt/intel/oneapi/setvars.sh
-    - source env/DAMASK.sh
-  script:
-    - cd PRIVATE/testing
-    - pytest -k 'compile and grid'
-
-mesh_intel:
-  stage: compile
-  tags:
-    - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intel20232_petsc2106
-  before_script:
-    - source /opt/intel/oneapi/setvars.sh
     - source env/DAMASK.sh
   script:
     - cd PRIVATE/testing
@@ -205,7 +181,7 @@ grid_IntelLLVM:
   stage: compile
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intel_llvm20242_petsc2106
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intelllvm20250_petsc2106_ml
   before_script:
     - source /opt/intel/oneapi/setvars.sh
     - source env/DAMASK.sh
@@ -217,7 +193,7 @@ mesh_IntelLLVM:
   stage: compile
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intel_llvm20242_petsc2106
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intelllvm20250_petsc2106_ml
   before_script:
     - source /opt/intel/oneapi/setvars.sh
     - source env/DAMASK.sh
@@ -248,7 +224,7 @@ open-source_grid_GNU:
   stage: fortran
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2204_gnu11_petsc2106_ml
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
   before_script:
     - cmake -DDAMASK_SOLVER=GRID && make -j2 all install
     - source env/DAMASK.sh
@@ -276,7 +252,7 @@ open-source_grid_GNU_signal_restart:
 open-source_mesh_GNU:
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2204_gnu13_petsc2106_ml
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
   stage: fortran
   before_script:
     - make mesh
