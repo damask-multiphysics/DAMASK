@@ -45,6 +45,7 @@ variables:
 
 
 ###################################################################################################
+
 create_testroot:
   stage: prepare
   before_script:
@@ -53,25 +54,25 @@ create_testroot:
   script:
     - mkdir -p ${TESTROOT}
 
-
 ###################################################################################################
-setuptools:
+
+.python:
   stage: python
   tags:
     - matesting2-container-runner
   image: git.damask-multiphysics.org:5050/damask/damask:python310_2412
-  before_script: []
+  before_script:
+    - pip list
+
+create_package:
+  extends: .python
   script:
     - sed -i 's/-[[:digit:]]*-.*//' VERSION
     - cd python
     - python3 -m build --wheel --no-isolation
 
 pytest:
-  stage: python
-  tags:
-    - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:python310_2412
-  before_script: []
+  extends: .python
   script:
     - export DAMASK_ROOT=$(pwd)
     - PYTHONPATH=${DAMASK_ROOT}/python:$PYTHONPATH
@@ -92,58 +93,83 @@ doctest:
     - python3 -m pytest -v --doctest-modules -k 'not result and not configmaterial and not orientation and not rotation and not geomgrid' damask
 
 mypy:
-  stage: python
-  tags:
-    - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:python310_2412
-  before_script: []
+  extends: .python
   script:
     - cd python
     - mypy damask
 
-
 ###################################################################################################
-unittest_GNU_DEBUG:
+
+.unittest:
   stage: compile
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
-  before_script:
-    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
-    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
-    - cmake --build ${TEMPDIR} --target install
   script:
     - cd ${TEMPDIR}
     - ./bin/DAMASK_test
     - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \;
+
+#--------------------------------------------------------------------------------------------------
+
+.unittest_GNU:
+  extends: .unittest
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
+
+unittest_GNU_DEBUG:
+  extends: .unittest_GNU
+  before_script:
+    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
+    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
+    - cmake --build ${TEMPDIR} --target install
 
 unittest_GNU_RELEASE:
-  stage: compile
-  tags:
-    - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
+  extends: .unittest_GNU
   before_script:
     - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
     - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
     - cmake --build ${TEMPDIR} --target install
-  script:
-    - cd ${TEMPDIR}
-    - ./bin/DAMASK_test
-    - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \;
 
 unittest_GNU_PERFORMANCE:
-  stage: compile
-  tags:
-    - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
+  extends: .unittest_GNU
   before_script:
     - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
     - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=PERFORMANCE -DBUILDCMD_POST=-coverage
     - cmake --build ${TEMPDIR} --target install
-  script:
-    - cd ${TEMPDIR}
-    - ./bin/DAMASK_test
-    - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \;
+
+#--------------------------------------------------------------------------------------------------
+
+.unittest_Intel:
+  extends: .unittest
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intelllvm20250_petsc2106_ml
+
+unittest_Intel_DEBUG:
+  extends: .unittest_Intel
+  before_script:
+    - source /opt/intel/oneapi/setvars.sh
+    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
+    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
+    - cmake --build ${TEMPDIR} --target install
+    - source env/DAMASK.sh
+
+unittest_Intel_RELEASE:
+  extends: .unittest_Intel
+  before_script:
+    - source /opt/intel/oneapi/setvars.sh
+    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
+    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
+    - cmake --build ${TEMPDIR} --target install
+    - source env/DAMASK.sh
+
+unittest_Intel_PERFORMANCE:
+  extends: .unittest_Intel
+  before_script:
+    - source /opt/intel/oneapi/setvars.sh
+    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
+    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=PERFORMANCE -DBUILDCMD_POST=-coverage
+    - cmake --build ${TEMPDIR} --target install
+    - source env/DAMASK.sh
+
+###################################################################################################
 
 grid_GNU:
   stage: compile
