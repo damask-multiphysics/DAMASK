@@ -44,38 +44,49 @@
  fi
 
  FORTLOW="$FCOMP $FORT_OPT $PROFILE -O0 $I8FFLAGS -I$MARC_SOURCE/common \
-@@ -583,6 +592,30 @@ FORTNA="$FCOMP $FORT_OPT -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
+@@ -583,6 +592,41 @@ FORTNA="$FCOMP $FORT_OPT -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
  #  for compiling free form f90 files. high opt, integer(4)
  FORTF90="$FCOMP -c -O3"
 
 +# determine DAMASK version
 +if test -n "$DAMASK_USER"; then
 +  DAMASKROOT=`dirname $DAMASK_USER`/../..
-+  read DAMASKVERSION < $DAMASKROOT/VERSION
-+  DAMASKVERSION="'"$DAMASKVERSION"'"
++  read DAMASK_VERSION < $DAMASKROOT/VERSION
++  DAMASK_VERSION_MAJOR="'`echo $DAMASK_VERSION | cut -d. -f1`'"
++  DAMASK_VERSION_MINOR="'`echo $DAMASK_VERSION | cut -d. -f2`'"
++  DAMASK_VERSION_PATCH=`echo $DAMASK_VERSION | cut -d. -f3`
++  if [[ $DAMASK_VERSION_PATCH == *"-"* ]]; then
++   DAMASK_VERSION_HASH="'`echo $DAMASK_VERSION_PATCH | cut -d- -f3`'"
++  fi
++  DAMASK_VERSION_PATCH="'`echo $DAMASK_VERSION_PATCH | cut -d- -f1`'"
++  DAMASK_VERSION="'"$DAMASK_VERSION"'"
 +else
-+  DAMASKVERSION="'N/A'"
++  DAMASK_VERSION="'N/A'"
 +fi
-+
++if [[ -n $DAMASK_VERSION_HASH ]]; then
++  DAMASK_INFO="-DDAMASKVERSION=$DAMASK_VERSION -DDAMASK_VERSION_MAJOR=$DAMASK_VERSION_MAJOR -DDAMASK_VERSION_MINOR=$DAMASK_VERSION_MINOR -DDAMASK_VERSION_PATCH=$DAMASK_VERSION_PATCH -DDAMASK_VERSION_HASH=$DAMASK_VERSION_HASH"
++else
++  DAMASK_INFO="-DDAMASKVERSION=$DAMASK_VERSION -DDAMASK_VERSION_MAJOR=$DAMASK_VERSION_MAJOR -DDAMASK_VERSION_MINOR=$DAMASK_VERSION_MINOR -DDAMASK_VERSION_PATCH=$DAMASK_VERSION_PATCH"
++fi
 +
 +# DAMASK compiler calls
 +DFORTLOWMP="$FCOMP -c -O0 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2021.3.1 -DDAMASKVERSION=$DAMASKVERSION \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2021.3.1 $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
 +DFORTRANMP="$FCOMP -c -O1 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2021.3.1 -DDAMASKVERSION=$DAMASKVERSION \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2021.3.1 $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
 +DFORTHIGHMP="$FCOMP -c -O3 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2021.3.1 -DDAMASKVERSION=$DAMASKVERSION \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2021.3.1 $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
 +
  if test "$MARCDEBUG" = "ON"
  then
    FORTLOW="$FCOMP $FORT_OPT $PROFILE $I8FFLAGS -I$MARC_SOURCE/common \
-@@ -739,7 +772,7 @@ SECLIBS="-L$MARC_LIB -llapi"
+@@ -739,7 +783,7 @@ SECLIBS="-L$MARC_LIB -llapi"
 
  SOLVERLIBS="${BCSSOLVERLIBS} ${VKISOLVERLIBS} ${CASISOLVERLIBS} ${MF2SOLVERLIBS} \
    -L$MARC_MKL \
@@ -84,7 +95,7 @@
 
  SOLVERLIBS_DLL=${SOLVERLIBS}
  if test "$AEM_DLL" -eq 1
-@@ -762,7 +795,7 @@ then
+@@ -762,7 +806,7 @@ then
   OPENSSL=NONE
  fi
 
@@ -93,7 +104,7 @@
 
  # Uncomment the following lines to turn on the trace and comment out the next 4 lines
  # if test $MPITYPE = intelmpi
-@@ -772,7 +805,7 @@ SYSLIBS=" $OPENMP -lpthread -shared-intel -cxxlib"
+@@ -772,7 +816,7 @@ SYSLIBS=" $OPENMP -lpthread -shared-intel -cxxlib"
  # fi
  if test $MPITYPE = intelmpi
  then

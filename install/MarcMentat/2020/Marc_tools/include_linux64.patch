@@ -39,7 +39,7 @@
  fi
  
  FORTLOW="$FCOMP $FORT_OPT $PROFILE -O0 $I8FFLAGS -I$MARC_SOURCE/common \
-@@ -524,6 +529,30 @@
+@@ -524,6 +529,41 @@
    $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"
  #  for compiling free form f90 files. high opt, integer(4)
  FORTF90="$FCOMP -c -O3"
@@ -47,30 +47,41 @@
 +# determine DAMASK version
 +if test -n "$DAMASK_USER"; then
 +  DAMASKROOT=`dirname $DAMASK_USER`/../..
-+  read DAMASKVERSION < $DAMASKROOT/VERSION
-+  DAMASKVERSION="'"$DAMASKVERSION"'"
++  read DAMASK_VERSION < $DAMASKROOT/VERSION
++  DAMASK_VERSION_MAJOR="'`echo $DAMASK_VERSION | cut -d. -f1`'"
++  DAMASK_VERSION_MINOR="'`echo $DAMASK_VERSION | cut -d. -f2`'"
++  DAMASK_VERSION_PATCH=`echo $DAMASK_VERSION | cut -d. -f3`
++  if [[ $DAMASK_VERSION_PATCH == *"-"* ]]; then
++   DAMASK_VERSION_HASH="'`echo $DAMASK_VERSION_PATCH | cut -d- -f3`'"
++  fi
++  DAMASK_VERSION_PATCH="'`echo $DAMASK_VERSION_PATCH | cut -d- -f1`'"
++  DAMASK_VERSION="'"$DAMASK_VERSION"'"
 +else
-+  DAMASKVERSION="'N/A'"
++  DAMASK_VERSION="'N/A'"
 +fi
-+
++if [[ -n $DAMASK_VERSION_HASH ]]; then
++  DAMASK_INFO="-DDAMASKVERSION=$DAMASK_VERSION -DDAMASK_VERSION_MAJOR=$DAMASK_VERSION_MAJOR -DDAMASK_VERSION_MINOR=$DAMASK_VERSION_MINOR -DDAMASK_VERSION_PATCH=$DAMASK_VERSION_PATCH -DDAMASK_VERSION_HASH=$DAMASK_VERSION_HASH"
++else
++  DAMASK_INFO="-DDAMASKVERSION=$DAMASK_VERSION -DDAMASK_VERSION_MAJOR=$DAMASK_VERSION_MAJOR -DDAMASK_VERSION_MINOR=$DAMASK_VERSION_MINOR -DDAMASK_VERSION_PATCH=$DAMASK_VERSION_PATCH"
++fi
 +
 +# DAMASK compiler calls: additional flags are in line 2 OpenMP flags in line 3
 +DFORTLOWMP="$FCOMP -c -O0 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2020 -DDAMASKVERSION=$DAMASKVERSION \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2020 $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
 +DFORTRANMP="$FCOMP -c -O1 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2020 -DDAMASKVERSION=$DAMASKVERSION \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2020 $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
 +DFORTHIGHMP="$FCOMP -c -O3 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2020 -DDAMASKVERSION=$DAMASKVERSION \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2020 $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
  
  if test "$MARCDEBUG" = "ON"
  then
-@@ -697,16 +726,16 @@
+@@ -697,16 +737,16 @@
  fi
  
  if test "$MARC_INTEGER_SIZE" = "i4" ; then
@@ -91,7 +102,7 @@
  
  SOLVERLIBS_DLL=${SOLVERLIBS}
  if test "$AEM_DLL" -eq 1
-@@ -734,7 +763,7 @@
+@@ -734,7 +774,7 @@
   OPENSSL=NONE
  fi
  
@@ -100,7 +111,7 @@
  
  # Uncomment the following lines to turn on the trace and comment out the next 4 lines
  # if test $MPITYPE = intelmpi
-@@ -744,7 +773,7 @@
+@@ -744,7 +784,7 @@
  # fi
  if test $MPITYPE = intelmpi
  then

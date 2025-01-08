@@ -110,13 +110,15 @@ subroutine result_init(restart)
 #endif
     call result_addAttribute('compiler',compiler_version())
     call result_addAttribute('compiler_options',compiler_options())
-#ifdef PETSC
-    call result_addAttribute('DAMASK_version_major',IO_strAsInt(DAMASK_VERSION_MAJOR))
-    call result_addAttribute('DAMASK_version_minor',IO_strAsInt(DAMASK_VERSION_MINOR))
-    call result_addAttribute('DAMASK_version_patch',IO_strAsInt(DAMASK_VERSION_PATCH))
+
+    call result_addAttribute('DAMASK_version_major',DAMASK_VERSION_MAJOR)
+    call result_addAttribute('DAMASK_version_minor',DAMASK_VERSION_MINOR)
+    call result_addAttribute('DAMASK_version_patch',DAMASK_VERSION_PATCH)
 #ifdef DAMASK_VERSION_HASH
     call result_addAttribute('DAMASK_version_hash',DAMASK_VERSION_HASH)
 #endif
+
+#ifdef PETSC
     call result_addAttribute('PETSc_version_major',PETSC_VERSION_MAJOR)
     call result_addAttribute('PETSc_version_minor',PETSC_VERSION_MINOR)
     call result_addAttribute('PETSc_version_subminor',PETSC_VERSION_SUBMINOR)
