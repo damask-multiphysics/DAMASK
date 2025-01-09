@@ -109,7 +109,7 @@ mypy:
     - ./bin/DAMASK_test
     - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \;
 
-#--------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------------
 
 .unittest_GNU:
   extends: .unittest
@@ -136,7 +136,7 @@ unittest_GNU_PERFORMANCE:
     - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=PERFORMANCE -DBUILDCMD_POST=-coverage
     - cmake --build ${TEMPDIR} --target install
 
-#--------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------------
 
 .unittest_Intel:
   extends: .unittest
@@ -171,76 +171,66 @@ unittest_Intel_PERFORMANCE:
 
 ###################################################################################################
 
-grid_GNU:
+.compile_grid:
   stage: compile
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
-  before_script:
-    - source env/DAMASK.sh
   script:
     - cd PRIVATE/testing
     - pytest -k 'compile and grid'
+
+.compile_mesh:
+  stage: compile
+  tags:
+    - matesting2-container-runner
+  script:
+    - cd PRIVATE/testing
+    - pytest -k 'compile and mesh'
+
+grid_GNU:
+  extends: .compile_grid
+  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
+  before_script:
+    - source env/DAMASK.sh
 
 mesh_GNU:
-  stage: compile
-  tags:
-    - matesting2-container-runner
+  extends: .compile_mesh
   image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
   before_script:
     - source env/DAMASK.sh
-  script:
-    - cd PRIVATE/testing
-    - pytest -k 'compile and mesh'
 
 grid_GNU-64bit:
-  stage: compile
-  tags:
-    - matesting2-container-runner
+  extends: .compile_grid
   image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_int64
   before_script:
     - source env/DAMASK.sh
-  script:
-    - cd PRIVATE/testing
-    - pytest -k 'compile and grid'
 
 mesh_GNU-64bit:
-  stage: compile
+  extends: .compile_mesh
   tags:
     - matesting2-container-runner
   image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_int64
   before_script:
     - source env/DAMASK.sh
-  script:
-    - cd PRIVATE/testing
-    - pytest -k 'compile and mesh'
 
-grid_IntelLLVM:
-  stage: compile
-  tags:
-    - matesting2-container-runner
+grid_Intel:
+  extends: .compile_grid
   image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intelllvm20250_petsc2106_ml
   before_script:
     - source /opt/intel/oneapi/setvars.sh
     - source env/DAMASK.sh
-  script:
-    - cd PRIVATE/testing
-    - pytest -k 'compile and grid'
 
-mesh_IntelLLVM:
-  stage: compile
-  tags:
-    - matesting2-container-runner
+mesh_Intel:
+  extends: .compile_mesh
   image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intelllvm20250_petsc2106_ml
   before_script:
     - source /opt/intel/oneapi/setvars.sh
     - source env/DAMASK.sh
-  script:
-    - cd PRIVATE/testing
-    - pytest -k 'compile and mesh'
 
 Marc_Intel:
   stage: compile
+  tags:
+    - bare-metal
   script:
     - module load $IntelMarc $HDF5Marc $MSC
     - cd PRIVATE/testing
@@ -248,6 +238,8 @@ Marc_Intel:
 
 setup_Marc:
   stage: compile
+  tags:
+    - bare-metal
   script:
     - module load $IntelMarc $HDF5Marc $MSC
     - cd $(mktemp -d)
@@ -270,8 +262,10 @@ open-source_grid_GNU:
     - cd PRIVATE/testing
     - pytest -k 'not compile and grid and not signal and not restart'
 
-open-source_grid_GNU_signal_restart:
+open-source_grid_signal_restart:
   stage: fortran
+  tags:
+    - bare-metal
   before_script:
     - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
     - cd $(mktemp -d)
@@ -301,6 +295,8 @@ open-source_mesh_GNU:
 
 Marc:
   stage: fortran
+  tags:
+    - bare-metal
   script:
     - cd PRIVATE/testing
     - pytest -k 'not compile and Marc' -m 'not cifail' --damask-root=${TESTROOT} --basetemp ${TESTROOT}/Marc -v
@@ -314,6 +310,8 @@ Marc:
 ###################################################################################################
 grid_performance:
   stage: statistics
+  tags:
+    - bare-metal
   before_script:
     - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN} --blocking
     - source env/DAMASK.sh
@@ -354,6 +352,8 @@ update_website_3.0:
 
 update_revision:
   stage: finalize
+  tags:
+    - bare-metal
   before_script:
     - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN}
     - echo Job start:" $(date)"
