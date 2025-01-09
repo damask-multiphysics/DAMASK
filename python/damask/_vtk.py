@@ -451,7 +451,6 @@ class VTK:
             writer.Write()
 
 
-    # Check https://blog.kitware.com/ghost-and-blanking-visibility-changes/ for missing data
     def set(self,
             label: Optional[str] = None,
             data: Union[None, np.ndarray, np.ma.MaskedArray] = None,

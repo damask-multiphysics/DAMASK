@@ -11,7 +11,7 @@ module HDF5_utilities
 #ifdef PETSC
 #include <petsc/finclude/petscsys.h>
   use PETScSys
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08
   use MPI, only: MPI_INFO_NULL_F90 => MPI_INFO_NULL
 #endif
@@ -21,7 +21,7 @@ module HDF5_utilities
   use parallelization
   use misc
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   implicit none(type,external)
 #else
   implicit none
@@ -206,7 +206,7 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
   call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
 #ifdef PETSC
   if (misc_optional(parallel,.true.)) &
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
     call H5Pset_fapl_mpio_f(plist_access_id, PETSC_COMM_WORLD, MPI_INFO_NULL_F90, hdferr)
 #else
     call H5Pset_fapl_mpio_f(plist_access_id, PETSC_COMM_WORLD, MPI_INFO_NULL,     hdferr)

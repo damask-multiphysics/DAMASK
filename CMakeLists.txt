@@ -10,7 +10,7 @@ endif()
 # Dummy project to determine compiler names and version
 project(Prerequisites LANGUAGES)
 set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
-pkg_check_modules(PETSC_MIN REQUIRED PETSc>=3.12.0 QUIET) #CMake does not support version range
+pkg_check_modules(PETSC_MIN REQUIRED PETSc>=3.15.0 QUIET) #CMake does not support version range
 pkg_check_modules(PETSC REQUIRED PETSc<3.23.0)
 
 pkg_get_variable(CMAKE_Fortran_COMPILER PETSc fcompiler)
@@ -20,7 +20,7 @@ pkg_get_variable(CMAKE_C_COMPILER PETSc ccompiler)
 string(TOUPPER "${DAMASK_SOLVER}" DAMASK_SOLVER_UPPER)
 string(TOLOWER "${DAMASK_SOLVER}" DAMASK_SOLVER_LOWER)
 if("${DAMASK_SOLVER_UPPER}" MATCHES "^(GRID|MESH|TEST)$")
-    project("damask-${DAMASK_SOLVER_LOWER}" HOMEPAGE_URL https://damask.mpie.de LANGUAGES Fortran C)
+    project("damask-${DAMASK_SOLVER_LOWER}" HOMEPAGE_URL https://damask-multiphysics.org LANGUAGES Fortran C)
 else()
     message(FATAL_ERROR "Invalid solver: DAMASK_SOLVER=${DAMASK_SOLVER}")
 endif()
@@ -33,15 +33,18 @@ set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/externalpackages:$ENV
 pkg_check_modules(HDF5 hdf5)
 pkg_check_modules(FFTW3 fftw3)
 pkg_check_modules(fYAML libfyaml)
-pkg_check_modules(zlib zlib)
+if(DAMASK_SOLVER_UPPER STREQUAL "GRID")
+    pkg_check_modules(zlib zlib)
+endif()
 
 file(STRINGS ${PROJECT_SOURCE_DIR}/VERSION DAMASK_VERSION)
 
 message("\nBuilding ${CMAKE_PROJECT_NAME} ${DAMASK_VERSION}\n")
 
 add_definitions(-DPETSC)
-add_definitions(-DDAMASKVERSION="${DAMASK_VERSION}")
-add_definitions(-DCMAKE_SYSTEM="${CMAKE_SYSTEM}")
+add_definitions(-DDAMASK_VERSION="${DAMASK_VERSION}")
+add_definitions(-DCMAKE_SYSTEM_NAME="${CMAKE_SYSTEM_NAME}")
+add_definitions(-DCMAKE_SYSTEM_PROCESSOR="${CMAKE_SYSTEM_PROCESSOR}")
 if(PETSC_VERSION VERSION_EQUAL 3.17.0)
    add_definitions("-DCHKERRQ=PetscCall")
 endif()
@@ -126,7 +129,10 @@ endif()
 
 set(CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${PETSC_INCLUDES} ${BUILDCMD_POST}")
 
-set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> -L${PETSC_LIBRARY_DIRS} -lpetsc ${PETSC_EXTERNAL_LIB} -lz")
+set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> -L${PETSC_LIBRARY_DIRS} -lpetsc ${PETSC_EXTERNAL_LIB}")
+if(DAMASK_SOLVER_UPPER STREQUAL "GRID")
+    set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} -lz")
+endif()
 
 if(fYAML_FOUND STREQUAL "1")
     set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} -L${fYAML_LIBRARY_DIRS}")

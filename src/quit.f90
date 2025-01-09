@@ -8,12 +8,12 @@ subroutine quit(stop_id)
   use, intrinsic :: ISO_fortran_env, only: ERROR_UNIT
 #include <petsc/finclude/petscsys.h>
   use PETScSys
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08
 #endif
   use HDF5
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   implicit none(type,external)
 #else
   implicit none

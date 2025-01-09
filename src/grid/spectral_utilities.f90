@@ -7,7 +7,7 @@
 module spectral_utilities
 #include <petsc/finclude/petscsys.h>
   use PETScSys
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08
 #endif
   use FFTW3
@@ -24,7 +24,7 @@ module spectral_utilities
   use homogenization
 
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   implicit none(type,external)
 #else
   implicit none
@@ -839,7 +839,7 @@ subroutine utilities_updateCoords(F)
   integer(MPI_INTEGER_KIND) :: &
     rank_t, rank_b
   integer(MPI_INTEGER_KIND) :: err_MPI
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   type(MPI_Request), dimension(4) :: request
   type(MPI_Status),  dimension(4) :: status
 #else
@@ -909,7 +909,7 @@ subroutine utilities_updateCoords(F)
 
   call MPI_Waitall(4,request,status,err_MPI)
   call parallelization_chkerr(err_MPI)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   ! ToDo
 #else
   if (any(status(MPI_ERROR,:) /= 0)) error stop 'MPI error'
