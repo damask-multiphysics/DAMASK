@@ -23,7 +23,7 @@ class TestColormap:
     def test_repr(self,patch_plt_show):
         print(Colormap.from_predefined('stress'))
 
-    def test_conversion(self):
+    def test_conversion(self,np_rng):
         specials = np.array([[0.,0.,0.],
                              [1.,0.,0.],
                              [0.,1.,0.],
@@ -33,7 +33,7 @@ class TestColormap:
                              [1.,0.,1.],
                              [1.,1.,1.]
                              ])
-        rgbs = np.vstack((specials,np.random.rand(100,3)))
+        rgbs = np.vstack((specials,np_rng.random((100,3))))
         for rgb in rgbs:
             print('rgb',rgb)
 
@@ -90,16 +90,16 @@ class TestColormap:
 
     @pytest.mark.parametrize('format',['ASCII','paraview','GOM','gmsh'])
     @pytest.mark.parametrize('model',['rgb','hsv','hsl','xyz','lab','msh'])
-    def test_from_range(self,model,format,tmp_path):
-        N = np.random.randint(2,256)
-        c = Colormap.from_range(np.random.rand(3),np.random.rand(3),model=model,N=N)    # noqa
+    def test_from_range(self,np_rng,model,format,tmp_path):
+        N = np_rng.integers(2,256)
+        c = Colormap.from_range(np_rng.random(3),np_rng.random(3),model=model,N=N)                  # noqa
         eval(f'c.save_{format}(tmp_path/"color_out")')
 
     @pytest.mark.parametrize('format',['ASCII','paraview','GOM','gmsh'])
     @pytest.mark.parametrize('name',['strain','gnuplot','Greys','PRGn','viridis'])
-    def test_from_predefined(self,name,format,tmp_path):
-        N = np.random.randint(2,256)
-        c = Colormap.from_predefined(name,N)                                            # noqa
+    def test_from_predefined(self,np_rng,name,format,tmp_path):
+        N = np_rng.integers(2,256)
+        c = Colormap.from_predefined(name,N)                                                        # noqa
         os.chdir(tmp_path)
         eval(f'c.save_{format}()')
 
@@ -109,9 +109,9 @@ class TestColormap:
                                             ('gmsh','test.msh')
                                            ])
     def test_write_filehandle(self,format,name,tmp_path):
-        c = Colormap.from_predefined('Dark2')                                           # noqa
+        c = Colormap.from_predefined('Dark2')                                                       # noqa
         fname = tmp_path/name
-        with open(fname,'w') as f:                                                      # noqa
+        with open(fname,'w') as f:                                                                  # noqa
             eval(f'c.save_{format}(f)')
         for i in range(10):
             if fname.exists(): return
@@ -119,9 +119,9 @@ class TestColormap:
         assert False
 
     @pytest.mark.parametrize('model',['rgb','hsv','hsl','lab','invalid'])
-    def test_invalid_color(self,model):
+    def test_invalid_color(self,np_rng,model):
         with pytest.raises(ValueError):
-            c = Colormap.from_range(-2.+np.random.rand(3),np.random.rand(3),N=10,model=model)      # noqa
+            c = Colormap.from_range(-2.+np_rng.random(3),np_rng.random(3),N=10,model=model)         # noqa
 
     def test_reversed(self):
         c_1 = Colormap.from_predefined('stress')

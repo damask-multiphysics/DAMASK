@@ -93,7 +93,6 @@ def deviatoric(T):
 class TestMechanics:
 
     n = 1000
-    c = np.random.randint(n)
 
     @pytest.mark.parametrize('vectorized,single',[(mechanics.maximum_shear,           maximum_shear),
                                                   (mechanics.equivalent_stress_Mises, equivalent_stress_Mises),
@@ -101,14 +100,14 @@ class TestMechanics:
                                                   (mechanics.stretch_left,            stretch_left),
                                                   (mechanics.stretch_right,           stretch_right),
                                                  ])
-    def test_vectorize_1_arg(self,vectorized,single):
-        epsilon     = np.random.rand(self.n,3,3)
+    def test_vectorize_1_arg(self,np_rng,vectorized,single):
+        epsilon     = np_rng.random((self.n,3,3))
         epsilon_vec = np.reshape(epsilon,(self.n//10,10,3,3))
         for i,v in enumerate(np.reshape(vectorized(epsilon_vec),vectorized(epsilon).shape)):
             assert np.allclose(single(epsilon[i]),v)
 
-    def test_vectorize_rotation(self):
-        epsilon     = Rotation.from_random(self.n).as_matrix()
+    def test_vectorize_rotation(self,np_rng):
+        epsilon     = Rotation.from_random(self.n,rng_seed=np_rng).as_matrix()
         epsilon_vec = np.reshape(epsilon,(self.n//10,10,3,3))
         for i,v in enumerate(np.reshape(mechanics.rotation(epsilon_vec).as_matrix(),
                                         mechanics.rotation(epsilon).as_matrix().shape)):
@@ -118,9 +117,9 @@ class TestMechanics:
     @pytest.mark.parametrize('vectorized,single',[(mechanics.stress_Cauchy,                 stress_Cauchy),
                                                   (mechanics.stress_second_Piola_Kirchhoff, stress_second_Piola_Kirchhoff)
                                                  ])
-    def test_vectorize_2_arg(self,vectorized,single):
-        P     = np.random.rand(self.n,3,3)
-        F     = np.random.rand(self.n,3,3)
+    def test_vectorize_2_arg(self,np_rng,vectorized,single):
+        P     = np_rng.random((self.n,3,3))
+        F     = np_rng.random((self.n,3,3))
         P_vec = np.reshape(P,(self.n//10,10,3,3))
         F_vec = np.reshape(F,(self.n//10,10,3,3))
         for i,v in enumerate(np.reshape(vectorized(P_vec,F_vec),vectorized(P,F).shape)):
@@ -128,12 +127,12 @@ class TestMechanics:
 
 
     @pytest.mark.parametrize('vectorized,single',[(mechanics.strain,strain)])
-    def test_vectorize_strain(self,vectorized,single):
-        F     = np.random.rand(self.n,3,3)
+    def test_vectorize_strain(self,np_rng,vectorized,single):
+        F     = np_rng.random((self.n,3,3))
         F     = np.einsum('...ij,...jk',F,F) # positive determinant
         F_vec = np.reshape(F,(self.n//10,10,3,3))
-        t     = ['V','U'][np.random.randint(0,2)]
-        m     = np.random.random()*10.0 -5.0
+        t     = ['V','U'][np_rng.integers(0,2)]
+        m     = np_rng.random()*10.0 -5.0
         for i,v in enumerate(np.reshape(vectorized(F_vec,t,m),vectorized(F,t,m).shape)):
             if np.linalg.det(F[i]) < 1.e-7: continue
             assert np.allclose(single(F[i],t,m),v)
@@ -141,14 +140,14 @@ class TestMechanics:
     @pytest.mark.parametrize('function',[mechanics.stress_Cauchy,
                                          mechanics.stress_second_Piola_Kirchhoff,
                                         ])
-    def test_stress_measures(self,function):
+    def test_stress_measures(self,np_rng,function):
         """Ensure that all stress measures are equivalent for no deformation."""
-        P = np.random.rand(self.n,3,3)
+        P = np_rng.random((self.n,3,3))
         assert np.allclose(function(P,np.broadcast_to(np.eye(3),(self.n,3,3))),tensor.symmetric(P))
 
-    def test_polar_decomposition_identity(self):
+    def test_polar_decomposition_identity(self,np_rng):
         """F = RU = VR."""
-        F = np.broadcast_to(np.eye(3),[self.n,3,3])*np.random.rand(self.n,3,3)
+        F = np.broadcast_to(np.eye(3),[self.n,3,3])*np_rng.random((self.n,3,3))
         R = mechanics.rotation(F).as_matrix()
         V = mechanics.stretch_left(F)
         U = mechanics.stretch_right(F)
@@ -156,8 +155,8 @@ class TestMechanics:
                            np.matmul(V,R))
 
     @pytest.mark.parametrize('side',[('left','V'),('right','U')])
-    def test_polar_decomposition(self,side):
-        F     = np.random.rand(self.n,3,3)
+    def test_polar_decomposition(self,np_rng,side):
+        F     = np_rng.random((self.n,3,3))
         F     = F @ F # positive determinant
         F_vec = np.reshape(F,(self.n//10,10,3,3))
         p = mechanics._polar_decomposition(F_vec,side[1])
@@ -165,41 +164,44 @@ class TestMechanics:
             if np.linalg.det(F_) < 1.e-7: continue
             assert np.allclose(p_,linalg.polar(F_,side[0])[1])
 
-    @pytest.mark.parametrize('m',[0.0,np.random.random()*10.,np.random.random()*-10.])
-    def test_strain_no_rotation(self,m):
+    @pytest.mark.parametrize('m_factor',[0.0,10.,-10.])
+    def test_strain_no_rotation(self,np_rng,m_factor):
         """Ensure that left and right stretch give same results for no rotation."""
-        F = np.broadcast_to(np.eye(3),[self.n,3,3])*np.random.rand(self.n,3,3)
+        m = np_rng.random()*m_factor
+        F = np.broadcast_to(np.eye(3),[self.n,3,3])*np_rng.random((self.n,3,3))
         assert np.allclose(mechanics.strain(F,'U',m),
                            mechanics.strain(F,'V',m))
 
-    @pytest.mark.parametrize('m',[0.0,np.random.random()*2.5,np.random.random()*-2.5])
-    def test_strain_rotation_equivalence(self,m):
+    @pytest.mark.parametrize('m_factor',[0.0,2.5,-2.5])
+    def test_strain_rotation_equivalence(self,np_rng,m_factor):
         """Ensure that left and right strain differ only by a rotation."""
-        F = np.broadcast_to(np.eye(3),[self.n,3,3]) + (np.random.rand(self.n,3,3)*0.5 - 0.25)
+        m = np_rng.random()*m_factor
+        F = np.broadcast_to(np.eye(3),[self.n,3,3]) + (np_rng.random((self.n,3,3))*0.5 - 0.25)
         assert np.allclose(np.linalg.det(mechanics.strain(F,'U',m)),
                            np.linalg.det(mechanics.strain(F,'V',m)))
 
-    @pytest.mark.parametrize('m',[0.0,np.random.random(),np.random.random()*-1.])
+    @pytest.mark.parametrize('m_factor',[0.0,1.,-1.])
     @pytest.mark.parametrize('t',['V','U'])
-    def test_strain_rotation(self,m,t):
+    def test_strain_rotation(self,np_rng,m_factor,t):
         """Ensure that pure rotation results in no strain."""
-        F = Rotation.from_random(self.n).as_matrix()
+        m = np_rng.random()*m_factor
+        F = Rotation.from_random(self.n,rng_seed=np_rng).as_matrix()
         assert np.allclose(mechanics.strain(F,t,m),
                            0.0)
 
-    def test_rotation_determinant(self):
+    def test_rotation_determinant(self,np_rng):
         """
         Ensure that the determinant of the rotational part is +- 1.
 
         Should be +1, but random F might contain a reflection.
         """
-        x = np.random.rand(self.n,3,3)
+        x = np_rng.random((self.n,3,3))
         assert np.allclose(np.abs(np.linalg.det(mechanics._polar_decomposition(x,'R')[0])),
                            1.0)
 
-    def test_deviatoric_Mises(self):
+    def test_deviatoric_Mises(self,np_rng):
         """Ensure that Mises equivalent stress depends only on deviatoric part."""
-        x = np.random.rand(self.n,3,3)
+        x = np_rng.random((self.n,3,3))
         full = mechanics.equivalent_stress_Mises(x)
         dev  = mechanics.equivalent_stress_Mises(tensor.deviatoric(x))
         assert np.allclose(full,
@@ -207,29 +209,29 @@ class TestMechanics:
 
     @pytest.mark.parametrize('Mises_equivalent',[mechanics.equivalent_strain_Mises,
                                                  mechanics.equivalent_stress_Mises])
-    def test_spherical_Mises(self,Mises_equivalent):
+    def test_spherical_Mises(self,np_rng,Mises_equivalent):
         """Ensure that Mises equivalent strain/stress of spherical strain is 0."""
-        x = np.random.rand(self.n,3,3)
+        x = np_rng.random((self.n,3,3))
         assert np.allclose(Mises_equivalent(tensor.spherical(x,True)),
                            0.0)
 
 
-    def test_Mises(self):
+    def test_Mises(self,np_rng):
         """Ensure that equivalent stress is 3/2 of equivalent strain."""
-        x = np.random.rand(self.n,3,3)
+        x = np_rng.random((self.n,3,3))
         assert np.allclose(mechanics.equivalent_stress_Mises(x)/mechanics.equivalent_strain_Mises(x),
                            1.5)
 
-    def test_spherical_no_shear(self):
+    def test_spherical_no_shear(self,np_rng):
         """Ensure that sherical stress has max shear of 0.0."""
-        A = tensor.spherical(tensor.symmetric(np.random.rand(self.n,3,3)),True)
+        A = tensor.spherical(tensor.symmetric(np_rng.random((self.n,3,3))),True)
         assert np.allclose(mechanics.maximum_shear(A),0.0)
 
     @pytest.mark.parametrize('invalid',['A',['R','x']])
-    def test_invalid_decomposition(self,invalid):
+    def test_invalid_decomposition(self,np_rng,invalid):
         with pytest.raises(ValueError):
-            mechanics._polar_decomposition(np.random.rand(10,3,3),invalid)
+            mechanics._polar_decomposition(np_rng.random((10,3,3)),invalid)
 
-    def test_invalid_strain(self):
+    def test_invalid_strain(self,np_rng):
         with pytest.raises(ValueError):
-            mechanics.strain(np.random.rand(10,3,3),'A',0)
+            mechanics.strain(np_rng.random((10,3,3)),'A',0)
