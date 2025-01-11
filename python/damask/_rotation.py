@@ -459,7 +459,7 @@ class Rotation:
         >>> import damask
         >>> r = damask.Rotation.from_random(shape=(12))
         >>> o = np.ones((12,3,3))
-        >>> (r@o[np.newaxis,...]).shape                    # (12) @ (1,12, 3,3)
+        >>> (r@o[np.newaxis,...]).shape                                                             # (12) @ (1,12, 3,3)
         (12, 12, 3, 3)
 
         """

@@ -3,8 +3,15 @@ import numpy as np
 from pathlib import Path
 
 import damask
+from damask import Table
 from damask import Crystal
 from damask import util
+
+
+@pytest.fixture
+def res_path(res_path_base):
+    """Directory containing testing resources."""
+    return res_path_base/'Crystal'
 
 class TestCrystal:
 
@@ -117,6 +124,21 @@ class TestCrystal:
         assert [len(s) for s in crystal.kinematics('twin')['direction']] == length
         assert [len(s) for s in crystal.kinematics('twin')['plane']] == length
 
+    @pytest.mark.parametrize('lattice',['hP','cI','cF','tI'])
+    def test_Schmid(self,update,res_path,lattice):
+        C = Crystal(lattice=lattice,c=(1.2 if lattice == 'tI' else None))                           # noqa
+        for mode in ['slip']+([] if lattice == 'tI' else ['twin']):
+            reference = res_path/f'{lattice}_{mode}.txt'
+            P = C.Schmid(N_slip='*') if mode == 'slip' else C.Schmid(N_twin='*')
+            if update:
+                Table({'Schmid':(3,3,)},P.reshape(-1,9)).save(reference)
+            assert np.allclose(P,Table.load(reference).get('Schmid'))
+
+    def test_Schmid_invalid(self):
+        with pytest.raises(KeyError):
+            Crystal(lattice='fcc').Schmid()
+
+    # https://doi.org/10.1016/0079-6425(94)00007-7, Fig. 22
     @pytest.mark.parametrize('c_a,mode',
                             [(np.sqrt(2)*0.99,['c','c','c','c']),
                              (np.sqrt(2)*1.01,['c','c','c','t']),

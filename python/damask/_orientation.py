@@ -987,24 +987,10 @@ class Orientation(Rotation,Crystal):
                [ 0.000,  0.000,  0.000]])
 
         """
-        if (N_slip is not None) ^ (N_twin is None):
-            raise KeyError('specify either "N_slip" or "N_twin"')
-
-        kinematics,active = (self.kinematics('slip'),N_slip) if N_twin is None else \
-                            (self.kinematics('twin'),N_twin)
-        if active == '*': active = [len(a) for a in kinematics['direction']]
-
-        if not active:
-            raise ValueError('Schmid matrix not defined')
-        d = super().to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
-        p = super().to_frame(hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
-        P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=1,keepdims=True),
-                                  p/np.linalg.norm(p,axis=1,keepdims=True))
-
-        shape = P.shape[0:1]+self.shape+(3,3)
-
-        return ~self.broadcast_to(shape[:-2]) \
-               @ np.broadcast_to(P.reshape(util.shapeshifter(P.shape,shape)),shape)
+        if len(self.shape) == 0:
+            return self @ super().Schmid(N_slip=N_slip, N_twin=N_twin)
+        P = np.moveaxis(self @ super().Schmid(N_slip=N_slip, N_twin=N_twin),-3,0)
+        return P.reshape((P.shape[0],)+self.shape+(3,3))
 
 
     def related(self: MyType,

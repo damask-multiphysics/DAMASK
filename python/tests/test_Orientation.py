@@ -408,20 +408,6 @@ class TestOrientation:
         assert shape_full//N_sym == shape_reduced
 
 
-    @pytest.mark.parametrize('lattice',['hP','cI','cF','tI'])
-    def test_Schmid(self,update,res_path,lattice):
-        O = Orientation(lattice=lattice,c=(1.2 if lattice == 'tI' else None))                       # noqa
-        for mode in ['slip']+([] if lattice == 'tI' else ['twin']):
-            reference = res_path/f'{lattice}_{mode}.txt'
-            P = O.Schmid(N_slip='*') if mode == 'slip' else O.Schmid(N_twin='*')
-            if update:
-                Table({'Schmid':(3,3,)},P.reshape(-1,9)).save(reference)
-            assert np.allclose(P,Table.load(reference).get('Schmid'))
-
-    def test_Schmid_invalid(self):
-        with pytest.raises(KeyError):
-            Orientation(lattice='fcc').Schmid()
-
     # https://doi.org/10.1016/0079-6425(94)00007-7, Fig. 22
     @pytest.mark.parametrize('c_a,mode',
                             [(np.sqrt(2)*0.99,['c','c','c','c']),
