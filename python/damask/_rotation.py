@@ -1246,7 +1246,7 @@ class Rotation:
                       np.cos(2.*np.pi*r[...,1])*B,
                       np.sin(2.*np.pi*r[...,0])*A],axis=-1)
 
-        return Rotation(q if shape is None else q.reshape(r.shape[:-1]+(4,)))._standardize()
+        return Rotation(q[:] if shape is None else q.reshape(r.shape[:-1]+(4,)))._standardize()
 
 
     @staticmethod
