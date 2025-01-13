@@ -226,7 +226,7 @@ module subroutine plastic_init
   where(plastic_dislotungsten_init())     mechanical_plasticity_type = MECHANICAL_PLASTICITY_DISLOTUNGSTEN
   where(plastic_nonlocal_init())          mechanical_plasticity_type = MECHANICAL_PLASTICITY_NONLOCAL
 
-  if (any(mechanical_plasticity_type == UNDEFINED)) call IO_error(201)
+  if (any(mechanical_plasticity_type == UNDEFINED)) call IO_error(200, label1='plasticity')
 
 end subroutine plastic_init
 

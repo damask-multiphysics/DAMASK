@@ -124,8 +124,16 @@ module subroutine damage_init()
 
   where(isobrittle_init()  ) damage_type = DAMAGE_ISOBRITTLE
   where(anisobrittle_init()) damage_type = DAMAGE_ANISOBRITTLE
-
   phase_damage_maxSizeDotState = maxval(damageState%sizeDotState)
+
+  if (damage_active) then
+    do ph = 1,phases%length
+      phase => phases%get_dict(ph)
+      damage => phase%get_dict('damage')
+      if (any(damage%keys() == 'type') .and. damage_type(ph) == UNDEFINED) &
+        call IO_error(200,label1='damage',ext_msg=damage%get_asStr('type'))
+    end do
+  end if
 
 end subroutine damage_init
 
