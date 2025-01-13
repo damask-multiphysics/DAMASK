@@ -37,7 +37,7 @@ class Rotation:
     Examples
     --------
     Rotate vector 'a' (defined in coordinate system 'A') to
-    coordinates 'b' expressed in system 'B':
+    coordinates 'b' expressed in system 'B', where 'Q' represents the conversion from 'A' to 'B':
 
     >>> import numpy as np
     >>> import damask
@@ -135,9 +135,14 @@ class Rotation:
         Return slice according to item.
 
         """
-        return self.copy() if self.shape == () else \
-               self.copy(self.quaternion[item+(slice(None),)] if isinstance(item,tuple) else self.quaternion[item])
-
+        if self.shape == ():
+            if item == 0:
+                return self.copy()
+            else:
+                raise IndexError("Only index 0 is valid for a scalar object.")
+        else:
+            return self.copy(self.quaternion[item + (slice(None),)]) \
+                if isinstance(item, tuple) else self.copy(self.quaternion[item])
 
     def __eq__(self,
                other: object) -> bool:
