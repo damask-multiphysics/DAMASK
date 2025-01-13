@@ -135,14 +135,9 @@ class Rotation:
         Return slice according to item.
 
         """
-        if self.shape == ():
-            if item == 0:
-                return self.copy()
-            else:
-                raise IndexError("Only index 0 is valid for a scalar object.")
-        else:
-            return self.copy(self.quaternion[item + (slice(None),)]) \
-                if isinstance(item, tuple) else self.copy(self.quaternion[item])
+        c = [self.quaternion[...,i] for i in range(4)]
+        return self.copy(np.stack([c[i][item] for i in range(4)],axis=-1))
+
 
     def __eq__(self,
                other: object) -> bool:
