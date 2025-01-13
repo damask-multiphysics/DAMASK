@@ -72,8 +72,10 @@ module subroutine damage_init()
   type(tDict), pointer :: &
     phases, &
     phase, &
-    source
-  character(len=:), allocatable :: refs
+    damage
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
   logical:: damage_active
 
 
@@ -85,32 +87,43 @@ module subroutine damage_init()
   allocate(damageState(phases%length))
   allocate(param(phases%length))
 
+  extmsg = ''
   damage_active = .false.
   do ph = 1,phases%length
 
     Nmembers = count(material_ID_phase == ph)
-
     allocate(current(ph)%phi(Nmembers),source=1.0_pREAL)
 
     phase => phases%get_dict(ph)
-    source => phase%get_dict('damage',defaultVal=emptyDict)
-    if (source%length > 0) then
-      print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
-      refs = config_listReferences(source,indent=3)
-      if (len(refs) > 0) print'(/,1x,a)', refs
+    if (damage_active) then
+      damage => phase%get_dict('damage')
+    else
+      damage => phase%get_dict('damage',defaultVal=emptyDict)
+    end if
+
+    if (damage%length > 0) then
       damage_active = .true.
-      param(ph)%mu = source%get_asReal('mu')
-      param(ph)%l_c = source%get_asReal('l_c')
+
+      print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+      refs = config_listReferences(damage,indent=3)
+      if (len(refs) > 0) print'(/,1x,a)', refs
+
+      param(ph)%mu = damage%get_asReal('mu')
+      param(ph)%l_c = damage%get_asReal('l_c')
+
+      ! sanity checks
+      if (param(ph)%mu  < 0.0_pREAL)  extmsg = trim(extmsg)//' mu'
+      if (param(ph)%l_c < 0.0_pREAL)  extmsg = trim(extmsg)//' l_c'
+      if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg))
+
     end if
 
   end do
 
   allocate(damage_type(phases%length), source = UNDEFINED)
 
-  if (damage_active) then
-    where(isobrittle_init()  ) damage_type = DAMAGE_ISOBRITTLE
-    where(anisobrittle_init()) damage_type = DAMAGE_ANISOBRITTLE
-  end if
+  where(isobrittle_init()  ) damage_type = DAMAGE_ISOBRITTLE
+  where(anisobrittle_init()) damage_type = DAMAGE_ANISOBRITTLE
 
   phase_damage_maxSizeDotState = maxval(damageState%sizeDotState)
 
@@ -118,7 +131,7 @@ end subroutine damage_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate stress (P)
+!> @brief t.b.d.
 !--------------------------------------------------------------------------------------------------
 module function phase_damage_constitutive(Delta_t,co,ce) result(status)
 
@@ -141,7 +154,7 @@ end function phase_damage_constitutive
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns the degraded/modified elasticity matrix
+!> @brief Return the degraded/modified elasticity matrix.
 !--------------------------------------------------------------------------------------------------
 module function phase_damage_C66(C66,ph,en) result(C66_degraded)
 
