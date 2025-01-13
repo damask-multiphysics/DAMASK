@@ -63,19 +63,19 @@ class TestUtil:
         dist_sampled = np.histogram(centers[selected],bins)[0]/N_samples*np.sum(dist)
         assert np.sqrt(((dist - dist_sampled) ** 2).mean()) < .025 and selected.shape[0]==N_samples
 
-    def test_hybridIA_constant(self):
-       N_bins = np.random.randint(20,400)
-       m = np.random.randint(1,20)
+    def test_hybridIA_constant(self,np_rng):
+       N_bins = np_rng.integers(20,400)
+       m = np_rng.integers(1,20)
        N_samples = m * N_bins
-       dist = np.ones(N_bins)*np.random.rand()
+       dist = np.ones(N_bins)*np_rng.random()
        assert np.all(np.sort(util.hybrid_IA(dist,N_samples))==np.arange(N_samples).astype(int)//m)
 
-    def test_hybridIA_linear(self):
-       N_points = np.random.randint(10,200)
-       m = np.random.randint(1,20)
+    def test_hybridIA_linear(self,np_rng):
+       N_points = np_rng.integers(10,200)
+       m = np_rng.integers(1,20)
        dist = np.arange(N_points)
        N_samples = m * np.sum(dist)
-       assert np.all(np.bincount(util.hybrid_IA(dist*np.random.rand(),N_samples)) == dist*m)
+       assert np.all(np.bincount(util.hybrid_IA(dist*np_rng.random(),N_samples)) == dist*m)
 
 
     @pytest.mark.parametrize('point,direction,normalize,keepdims,answer',
@@ -153,7 +153,8 @@ class TestUtil:
 
     @pytest.mark.parametrize('complete',[True,False])
     @pytest.mark.parametrize('fhandle',[True,False])
-    def test_D3D_base_group(self,tmp_path,complete,fhandle):
+    def test_D3D_base_group(self,np_rng,tmp_path,complete,fhandle):
+        random.seed(int(np_rng.integers(np.iinfo(int).max)))
         base_group = ''.join(random.choices('DAMASK', k=10))
         with h5py.File(tmp_path/'base_group.dream3d','w') as f:
             f.create_group('/'.join((base_group,'_SIMPL_GEOMETRY')))
@@ -170,10 +171,11 @@ class TestUtil:
 
     @pytest.mark.parametrize('complete',[True,False])
     @pytest.mark.parametrize('fhandle',[True,False])
-    def test_D3D_cell_data_group(self,tmp_path,complete,fhandle):
+    def test_D3D_cell_data_group(self,np_rng,tmp_path,complete,fhandle):
+        random.seed(int(np_rng.integers(np.iinfo(int).max)))
         base_group = ''.join(random.choices('DAMASK', k=10))
         cell_data_group = ''.join(random.choices('KULeuven', k=10))
-        cells = np.random.randint(1,50,3)
+        cells = np_rng.integers(1,50,3)
         with h5py.File(tmp_path/'cell_data_group.dream3d','w') as f:
             f.create_group('/'.join((base_group,'_SIMPL_GEOMETRY')))
             f['/'.join((base_group,'_SIMPL_GEOMETRY'))].create_dataset('SPACING',data=np.ones(3))
@@ -251,8 +253,8 @@ class TestUtil:
         assert np.all(vector == util.Bravais_to_Miller(**{kw_Bravais:util.Miller_to_Bravais(**{kw_Miller:vector})}))
 
     @pytest.mark.parametrize('kw_Miller,kw_Bravais',[('uvw','uvtw'),('hkl','hkil')])
-    def test_Miller_Bravais_Miller_random(self,kw_Miller,kw_Bravais):
-        vector = np.random.randint(-25,26,size=(5,6,3))
+    def test_Miller_Bravais_Miller_random(self,np_rng,kw_Miller,kw_Bravais):
+        vector = np_rng.integers(-25,26,size=(5,6,3))
         vector //= np.gcd.reduce(vector,axis=-1,keepdims=True)
         assert np.all(vector == util.Bravais_to_Miller(**{kw_Bravais:util.Miller_to_Bravais(**{kw_Miller:vector})}))
 
@@ -268,9 +270,9 @@ class TestUtil:
         assert np.all(vector == util.Miller_to_Bravais(**{kw_Miller:util.Bravais_to_Miller(**{kw_Bravais:vector})}))
 
     @pytest.mark.parametrize('dim',(None,1,4))
-    def test_standardize_MillerBravais(self,dim):
-        shape = tuple(np.random.randint(1,6,dim))+(3,) if dim is not None else (3,)
-        idx_red = np.random.randint(-10,11,shape)
+    def test_standardize_MillerBravais(self,np_rng,dim):
+        shape = tuple(np_rng.integers(1,6,dim))+(3,) if dim is not None else (3,)
+        idx_red = np_rng.integers(-10,11,shape)
         idx_full = np.block([idx_red[...,:2], -np.sum(idx_red[...,:2],axis=-1,keepdims=True), idx_red[...,2:]])
         idx_missing = idx_full.astype(object)
         idx_missing[...,2][idx_full[...,3]>0] = ...

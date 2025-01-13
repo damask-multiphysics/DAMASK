@@ -37,10 +37,10 @@ class TestVTK:
         monkeypatch.delenv('DISPLAY',raising=False)
         default.show(colormap=cmap)
 
-    def test_imageData(self,tmp_path):
-        cells = np.random.randint(5,10,3)
-        size = np.random.random(3) + 0.1
-        origin = np.random.random(3) - 0.5
+    def test_imageData(self,np_rng,tmp_path):
+        cells = np_rng.integers(5,10,3)
+        size = np_rng.random(3) + 0.1
+        origin = np_rng.random(3) - 0.5
         v = VTK.from_image_data(cells,size,origin)
         string = str(v)
         string = v.as_ASCII()
@@ -51,8 +51,8 @@ class TestVTK:
         vtk = VTK.load(tmp_path/'imageData.vtk','VTK_imageData')
         assert (string == vtr.as_ASCII() == vtk.as_ASCII())
 
-    def test_rectilinearGrid(self,tmp_path):
-        grid  = np.sort(np.random.random((3,10)))
+    def test_rectilinearGrid(self,np_rng,tmp_path):
+        grid = np.sort(np_rng.random((3,10)))
         v = VTK.from_rectilinear_grid(grid)
         string = str(v)
         string = v.as_ASCII()
@@ -63,8 +63,8 @@ class TestVTK:
         vtk = VTK.load(tmp_path/'rectilinearGrid.vtk','VTK_rectilinearGrid')
         assert (string == vtr.as_ASCII() == vtk.as_ASCII())
 
-    def test_polyData(self,tmp_path):
-        points = np.random.rand(100,3)
+    def test_polyData(self,np_rng,tmp_path):
+        points = np_rng.random((100,3))
         v = VTK.from_poly_data(points)
         string = str(v)
         string = v.as_ASCII()
@@ -82,9 +82,9 @@ class TestVTK:
                                             ('VTK_TRIANGLE',3)
                                             ]
                             )
-    def test_unstructuredGrid(self,tmp_path,cell_type,n):
-        nodes = np.random.rand(n,3)
-        connectivity = np.random.choice(np.arange(n),n,False).reshape(-1,n)
+    def test_unstructuredGrid(self,np_rng,tmp_path,cell_type,n):
+        nodes = np_rng.random((n,3))
+        connectivity = np_rng.choice(np.arange(n),n,False).reshape(-1,n)
         v = VTK.from_unstructured_grid(nodes,connectivity,cell_type)
         string = str(v)
         string = v.as_ASCII()
@@ -96,8 +96,8 @@ class TestVTK:
         assert(string == vtu.as_ASCII() == vtk.as_ASCII())
 
 
-    def test_parallel_out(self,tmp_path):
-        points = np.random.rand(102,3)
+    def test_parallel_out(self,np_rng,tmp_path):
+        points = np_rng.random((102,3))
         v = VTK.from_poly_data(points)
         fname_s = tmp_path/'single.vtp'
         fname_p = tmp_path/'parallel.vtp'
@@ -110,8 +110,8 @@ class TestVTK:
             time.sleep(.5)
         assert(False)
 
-    def test_compress(self,tmp_path):
-        points = np.random.rand(102,3)
+    def test_compress(self,np_rng,tmp_path):
+        points = np_rng.random((102,3))
         v = VTK.from_poly_data(points)
         fname_c = tmp_path/'compressed.vtp'
         fname_p = tmp_path/'plain.vtp'
@@ -121,8 +121,8 @@ class TestVTK:
 
 
     @pytest.mark.parametrize('fname',['a','a.vtp','a.b','a.b.vtp'])
-    def test_filename_variations(self,tmp_path,fname):
-        points = np.random.rand(102,3)
+    def test_filename_variations(self,np_rng,tmp_path,fname):
+        points = np_rng.random((102,3))
         v = VTK.from_poly_data(points)
         v.save(tmp_path/fname)
 
@@ -151,8 +151,8 @@ class TestVTK:
         with pytest.raises(ValueError):
             default.set('valid',np.ones(3))
 
-    def test_invalid_set_missing_label(self,default):
-        data = np.random.randint(9,size=np.prod(np.array(default.vtk_data.GetDimensions())-1))
+    def test_invalid_set_missing_label(self,np_rng,default):
+        data = np_rng.integers(9,size=np.prod(np.array(default.vtk_data.GetDimensions())-1))
         with pytest.raises(ValueError):
             default.set(data=data)
 
@@ -172,8 +172,8 @@ class TestVTK:
                                                 (int,(4,)),
                                                 (str,(1,))])
     @pytest.mark.parametrize('N_values',[5*6*7,6*7*8])
-    def test_set_get(self,default,data_type,shape,N_values):
-        data = np.squeeze(np.random.randint(0,100,(N_values,)+shape)).astype(data_type)
+    def test_set_get(self,np_rng,default,data_type,shape,N_values):
+        data = np.squeeze(np_rng.integers(0,100,(N_values,)+shape)).astype(data_type)
         new = default.set('data',data)
         assert (np.squeeze(data.reshape(N_values,-1)) == new.get('data')).all()
 
@@ -181,27 +181,27 @@ class TestVTK:
     @pytest.mark.parametrize('shapes',[{'scalar':(1,),'vector':(3,),'tensor':(3,3)},
                                        {'vector':(6,),'tensor':(3,3)},
                                        {'tensor':(3,3),'scalar':(1,)}])
-    def test_set_table(self,default,shapes):
-        N = np.random.choice([default.N_points,default.N_cells])
+    def test_set_table(self,np_rng,default,shapes):
+        N = np_rng.choice([default.N_points,default.N_cells])
         d = dict()
         for k,s in shapes.items():
             d[k] = dict(shape = s,
-                        data = np.random.random(N*np.prod(s)).reshape((N,-1)))
+                        data = np_rng.random(N*np.prod(s)).reshape((N,-1)))
         new = default.set(table=Table(shapes,np.column_stack([d[k]['data'] for k in shapes.keys()])))
         for k,s in shapes.items():
             assert np.allclose(np.squeeze(d[k]['data']),new.get(k),rtol=1e-7)
 
 
-    def test_set_masked(self,default):
-        data = np.random.rand(5*6*7,3)
+    def test_set_masked(self,np_rng,default):
+        data = np_rng.random((5*6*7,3))
         masked = ma.MaskedArray(data,mask=data<.4,fill_value=42.)
         mask_auto = default.set('D',masked)
         mask_manual = default.set('D',np.where(masked.mask,masked.fill_value,masked))
         assert mask_manual == mask_auto
 
     @pytest.mark.parametrize('mode',['cells','points'])
-    def test_delete(self,default,mode):
-        data = np.random.rand(default.N_cells if mode == 'cells' else default.N_points).astype(np.float32)
+    def test_delete(self,np_rng,default,mode):
+        data = np_rng.random(default.N_cells if mode == 'cells' else default.N_points).astype(np.float32)
         v = default.set('D',data)
         assert (v.get('D') == data).all()
         assert v.delete('D') == default
@@ -212,10 +212,10 @@ class TestVTK:
                                                 (int,(4,)),
                                                 (str,(1,))])
     @pytest.mark.parametrize('N_values',[5*6*7,6*7*8])
-    def test_labels(self,default,data_type,shape,N_values):
-        data = np.squeeze(np.random.randint(0,100,(N_values,)+shape)).astype(data_type)
+    def test_labels(self,np_rng,default,data_type,shape,N_values):
+        data = np.squeeze(np_rng.integers(0,100,(N_values,)+shape)).astype(data_type)
         ALPHABET = np.array(list(string.ascii_lowercase + ' '))
-        label = ''.join(np.random.choice(ALPHABET, size=10))
+        label = ''.join(np_rng.choice(ALPHABET, size=10))
         new = default.set(label,data)
         if N_values == default.N_points: assert label in new.labels['Point Data']
         if N_values == default.N_cells:  assert label in new.labels['Cell Data']

@@ -23,8 +23,8 @@ class TestTable:
         print(default)
 
     @pytest.mark.parametrize('N',[10,40])
-    def test_len(self,N):
-        assert len(Table({'X':3},np.random.rand(N,3))) == N
+    def test_len(self,np_rng,N):
+        assert len(Table({'X':3},np_rng.random((N,3)))) == N
 
     def test_get_scalar(self,default):
         d = default.get('s')
@@ -60,8 +60,8 @@ class TestTable:
     def test_labels(self,default):
         assert default.labels == ['F','v','s']
 
-    def test_add(self,default):
-        d = np.random.random((5,9))
+    def test_add(self,np_rng,default):
+        d = np_rng.random((5,9))
         assert np.allclose(d,default.set('nine',d,'random data').get('nine'))
 
     def test_isclose(self,default):
@@ -71,8 +71,8 @@ class TestTable:
         assert default.allclose(default)
 
     @pytest.mark.parametrize('N',[1,3,4])
-    def test_slice(self,default,N):
-        mask = np.random.choice([True,False],len(default))
+    def test_slice(self,np_rng,default,N):
+        mask = np_rng.choice([True,False],len(default))
         assert len(default[:N]) == 1+N
         assert len(default[:N,['F','s']]) == 1+N
         assert len(default[mask,['F','s']]) == np.count_nonzero(mask)
@@ -137,8 +137,8 @@ class TestTable:
         with open(res_path/fname) as f:
             Table.load(f)
 
-    def test_rename_equivalent(self):
-        x = np.random.random((5,13))
+    def test_rename_equivalent(self,np_rng):
+        x = np_rng.random((5,13))
         t = Table({'F':(3,3),'v':(3,),'s':(1,)},x,['random test data'])
         s = t.get('s')
         u = t.rename('s','u').get('u')
@@ -156,35 +156,35 @@ class TestTable:
         with pytest.raises(KeyError):
             delete.get('v')
 
-    def test_join(self):
-        x = np.random.random((5,13))
+    def test_join(self,np_rng):
+        x = np_rng.random((5,13))
         a = Table({'F':(3,3),'v':(3,),'s':(1,)},x,['random test data'])
-        y = np.random.random((5,3))
+        y = np_rng.random((5,3))
         b = Table({'u':(3,)},y,['random test data'])
         c = a.join(b)
         assert np.array_equal(c.get('u'), b.get('u'))
 
-    def test_join_invalid(self):
-        x = np.random.random((5,13))
+    def test_join_invalid(self,np_rng):
+        x = np_rng.random((5,13))
         a = Table({'F':(3,3),'v':(3,),'s':(1,)},x,['random test data'])
         with pytest.raises(KeyError):
             a.join(a)
 
-    def test_append(self):
-        x = np.random.random((5,13))
+    def test_append(self,np_rng):
+        x = np_rng.random((5,13))
         a = Table({'F':(3,3),'v':(3,),'s':(1,)},x,['random test data'])
         b = a.append(a)
         assert np.array_equal(b.data[:5].to_numpy(),b.data[5:].to_numpy())
 
-    def test_append_invalid(self):
-        x = np.random.random((5,13))
+    def test_append_invalid(self,np_rng):
+        x = np_rng.random((5,13))
         a = Table({'F':(3,3),'v':(3,),'s':(1,)},x,['random test data'])
         b = Table({'F':(3,3),'u':(3,),'s':(1,)},x,['random test data'])
         with pytest.raises(KeyError):
             a.append(b)
 
-    def test_invalid_initialization(self):
-        x = np.random.random((5,10))
+    def test_invalid_initialization(self,np_rng):
+        x = np_rng.random((5,10))
         with pytest.raises(ValueError):
             Table({'F':(3,3)},x)
 
@@ -197,22 +197,22 @@ class TestTable:
         with pytest.raises(KeyError):
             default.get('n')
 
-    def test_sort_scalar(self):
-        x = np.random.random((5,13))
+    def test_sort_scalar(self,np_rng):
+        x = np_rng.random((5,13))
         t = Table({'F':(3,3),'v':(3,),'s':(1,)},x,['random test data'])
         unsort = t.get('s')
         sort   = t.sort_by('s').get('s')
         assert np.all(np.sort(unsort,0)==sort)
 
-    def test_sort_component(self):
-        x = np.random.random((5,12))
+    def test_sort_component(self,np_rng):
+        x = np_rng.random((5,12))
         t = Table({'F':(3,3),'v':(3,)},x,['random test data'])
         unsort = t.get('F')[:,1,0]
         sort   = t.sort_by('F[1,0]').get('F')[:,1,0]
         assert np.all(np.sort(unsort,0)==sort)
 
-    def test_sort_revert(self):
-        x = np.random.random((5,12))
+    def test_sort_revert(self,np_rng):
+        x = np_rng.random((5,12))
         t = Table({'F':(3,3),'v':(3,)},x,['random test data'])
         sort = t.sort_by('F[1,0]',ascending=False).get('F')[:,1,0]
         assert np.all(np.sort(sort,0)==sort[::-1])

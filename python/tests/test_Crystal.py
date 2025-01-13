@@ -13,8 +13,8 @@ class TestCrystal:
         with pytest.raises(KeyError):
             Crystal(family=family,lattice=lattice)
 
-    def test_eq(self):
-        family = np.random.choice(list(damask._crystal.lattice_symmetries.values()))
+    def test_eq(self,np_rng):
+        family = np_rng.choice(list(damask._crystal.lattice_symmetries.values()))
         assert Crystal(family=family) == Crystal(family=family)
 
     def test_double_to_lattice(self):
@@ -46,9 +46,9 @@ class TestCrystal:
         with pytest.raises(KeyError):
             Crystal(family='cubic').basis_real
 
-    def test_basis_real(self):
-        for gamma in np.random.random(2**8)*np.pi:
-            basis = np.tril(np.random.random((3,3))+1e-6)
+    def test_basis_real(self,np_rng):
+        for gamma in np_rng.random(2**8)*np.pi:
+            basis = np.tril(np_rng.random((3,3))+1e-6)
             basis[1,:2] = basis[1,1]*np.array([np.cos(gamma),np.sin(gamma)])
             basis[2,:2] = basis[2,:2]*2-1
             lengths = np.linalg.norm(basis,axis=-1)
@@ -139,8 +139,8 @@ class TestCrystal:
     @pytest.mark.parametrize('crystal', [Crystal(lattice='cF'),
                                          Crystal(lattice='cI'),
                                          Crystal(lattice='hP')])
-    def test_related_invalid_target(self,crystal):
-        relationship = np.random.choice(crystal.orientation_relationships)
+    def test_related_invalid_target(self,np_rng,crystal):
+        relationship = np_rng.choice(crystal.orientation_relationships)
         with pytest.raises(ValueError):
             crystal.relation_operations(relationship,crystal)
 

@@ -30,8 +30,6 @@ def spherical(T,tensor=True):
 class TestTensor:
 
     n = 1000
-    c = np.random.randint(n)
-
 
     @pytest.mark.parametrize('vectorized,single',[(tensor.deviatoric,   deviatoric),
                                                   (tensor.eigenvalues,  eigenvalues),
@@ -40,60 +38,60 @@ class TestTensor:
                                                   (tensor.transpose,    transpose),
                                                   (tensor.spherical,    spherical),
                                         ])
-    def test_vectorize_1_arg(self,vectorized,single):
-        epsilon     = np.random.rand(self.n,3,3)
+    def test_vectorize_1_arg(self,np_rng,vectorized,single):
+        epsilon     = np_rng.random((self.n,3,3))
         epsilon_vec = np.reshape(epsilon,(self.n//10,10,3,3))
         for i,v in enumerate(np.reshape(vectorized(epsilon_vec),vectorized(epsilon).shape)):
             assert np.allclose(single(epsilon[i]),v)
 
-    def test_symmetric(self):
+    def test_symmetric(self,np_rng):
         """Ensure that a symmetric tensor is half of the sum of a tensor and its transpose."""
-        x = np.random.rand(self.n,3,3)
+        x = np_rng.random((self.n,3,3))
         assert np.allclose(tensor.symmetric(x)*2.0,tensor.transpose(x)+x)
 
-    def test_transpose(self):
+    def test_transpose(self,np_rng):
         """Ensure that a symmetric tensor equals its transpose."""
-        x = tensor.symmetric(np.random.rand(self.n,3,3))
+        x = tensor.symmetric(np_rng.random((self.n,3,3)))
         assert np.allclose(tensor.transpose(x),x)
 
-    def test_eigenvalues(self):
+    def test_eigenvalues(self,np_rng):
         """Ensure that the characteristic polynomial can be solved."""
-        A = tensor.symmetric(np.random.rand(self.n,3,3))
+        A = tensor.symmetric(np_rng.random((self.n,3,3)))
         lambd = tensor.eigenvalues(A)
-        s = np.random.randint(self.n)
+        s = np_rng.integers(self.n)
         for i in range(3):
            assert np.allclose(np.linalg.det(A[s]-lambd[s,i]*np.eye(3)),.0)
 
-    def test_eigenvalues_and_vectors(self):
+    def test_eigenvalues_and_vectors(self,np_rng):
         """Ensure that eigenvalues and -vectors are the solution to the characteristic polynomial."""
-        A = tensor.symmetric(np.random.rand(self.n,3,3))
+        A = tensor.symmetric(np_rng.random((self.n,3,3)))
         lambd = tensor.eigenvalues(A)
         x     = tensor.eigenvectors(A)
-        s = np.random.randint(self.n)
+        s = np_rng.integers(self.n)
         for i in range(3):
            assert np.allclose(np.dot(A[s]-lambd[s,i]*np.eye(3),x[s,:,i]),.0)
 
-    def test_eigenvectors_RHS(self):
+    def test_eigenvectors_RHS(self,np_rng):
         """Ensure that RHS coordinate system does only change sign of determinant."""
-        A = tensor.symmetric(np.random.rand(self.n,3,3))
+        A = tensor.symmetric(np_rng.random((self.n,3,3)))
         LRHS = np.linalg.det(tensor.eigenvectors(A,RHS=False))
         RHS  = np.linalg.det(tensor.eigenvectors(A,RHS=True))
         assert np.allclose(np.abs(LRHS),RHS)
 
-    def test_spherical_deviatoric_part(self):
+    def test_spherical_deviatoric_part(self,np_rng):
         """Ensure that full tensor is sum of spherical and deviatoric part."""
-        x = np.random.rand(self.n,3,3)
+        x = np_rng.random((self.n,3,3))
         assert np.allclose(tensor.spherical(x,True) + tensor.deviatoric(x),
                            x)
-    def test_spherical_mapping(self):
+    def test_spherical_mapping(self,np_rng):
         """Ensure that mapping to tensor is correct."""
-        x = np.random.rand(self.n,3,3)
+        x = np_rng.random((self.n,3,3))
         tnsr   = tensor.spherical(x,True)
         scalar = tensor.spherical(x,False)
         assert np.allclose(np.linalg.det(tnsr),
                            scalar**3.0)
 
-    def test_deviatoric(self):
+    def test_deviatoric(self,np_rng):
         I_n = np.broadcast_to(np.eye(3),(self.n,3,3))
-        r   = np.logical_not(I_n)*np.random.rand(self.n,3,3)
+        r   = np.logical_not(I_n)*np_rng.random((self.n,3,3))
         assert np.allclose(tensor.deviatoric(I_n+r),r)

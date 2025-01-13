@@ -94,8 +94,8 @@ class TestConfigMaterial:
         material_config['homogenization'] = None
         assert not material_config.is_complete
 
-    def test_from_table(self):
-        N = np.random.randint(3,10)
+    def test_from_table(self,np_rng):
+        N = np_rng.integers(3,10)
         a = np.vstack((np.hstack((np.arange(N),np.arange(N)[::-1])),
                        np.zeros(N*2),np.ones(N*2),np.zeros(N*2),np.zeros(N*2),
                        np.ones(N*2),
@@ -115,8 +115,8 @@ class TestConfigMaterial:
         assert m1['phase'].get('Aluminum') is None
         assert m1['homogenization'].get('SX') is None
 
-    def test_from_table_with_constant(self):
-        N = np.random.randint(3,10)
+    def test_from_table_with_constant(self,np_rng):
+        N = np_rng.integers(3,10)
         a = np.vstack((np.hstack((np.arange(N),np.arange(N)[::-1])),
                        np.zeros(N*2),np.ones(N*2),np.zeros(N*2),np.zeros(N*2),
                        np.ones(N*2),
@@ -129,28 +129,30 @@ class TestConfigMaterial:
 
     @pytest.mark.parametrize('N,n,kw',[
                                         (1,1,{'phase':'Gold',
-                                              'O':[1,0,0,0],
+                                              'O':None,
                                               'V_e':np.eye(3),
                                               'homogenization':'SX'}),
                                         (3,1,{'phase':'Gold',
-                                              'O':Rotation.from_random(3),
+                                              'O':3,
                                               'V_e':np.broadcast_to(np.eye(3),(3,3,3)),
                                               'homogenization':'SX'}),
                                         (2,3,{'phase':np.broadcast_to(['a','b','c'],(2,3)),
-                                              'O':Rotation.from_random((2,3)),
+                                              'O':(2,3),
                                               'V_e':np.broadcast_to(np.eye(3),(2,3,3,3)),
                                               'homogenization':['SX','PX']}),
                                         ])
     def test_material_add(self,kw,N,n):
+        kw['O'] = Rotation.from_random(kw['O'])
         m = ConfigMaterial().material_add(**kw)
         assert len(m['material']) == N
         assert len(m['material'][0]['constituents']) == n
 
     @pytest.mark.parametrize('shape',[(),(4,),(5,2)])
-    @pytest.mark.parametrize('kw',[{'V_e':np.random.rand(3,3)},
-                                   {'O':np.random.rand(4)},
-                                   {'v':np.array(2)}])
-    def test_material_add_invalid(self,kw,shape):
+    @pytest.mark.parametrize('kw',[{'V_e':(3,3)},
+                                   {'O':4},
+                                   {'v':np.array([2])}])
+    def test_material_add_invalid(self,np_rng,kw,shape):
+        kw = {arg:(np_rng.random(val) if not type(val) is np.ndarray else val) for arg,val in kw.items()}
         kw = {arg:np.broadcast_to(val,shape+val.shape) for arg,val in kw.items()}
         with pytest.raises(ValueError):
             ConfigMaterial().material_add(**kw)

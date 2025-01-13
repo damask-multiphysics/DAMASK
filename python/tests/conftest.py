@@ -53,6 +53,8 @@ def pytest_addoption(parser):
                      help='Update reference results.')
     parser.addoption('--damaskroot',
                      help='DAMASK root directory.')
+    parser.addoption('--rng_entropy',
+                     help='Entropy for random seed generator.')
 
 @pytest.fixture
 def update(pytestconfig):
@@ -81,12 +83,18 @@ def res_path_base():
     """Directory containing testing resources."""
     return Path(__file__).parent/'resources'
 
+@pytest.fixture
+def np_rng(pytestconfig):
+    """Instance of numpy.random.Generator."""
+    e = pytestconfig.getoption('--rng_entropy')
+    print('\nrng entropy: ',sq := np.random.SeedSequence(e if e is None else int(e)).entropy)
+    return np.random.default_rng(seed=sq)
 
 @pytest.fixture
-def set_of_quaternions():
+def set_of_quaternions(np_rng):
     """A set of n random rotations."""
-    def random_quaternions(N):
-        r = np.random.rand(N,3)
+    def random_quaternions(N,rng):
+        r = np_rng.random((N,3))
 
         A = np.sqrt(r[:,2])
         B = np.sqrt(1.0-r[:,2])
@@ -163,11 +171,11 @@ def set_of_quaternions():
                          [1.0,-1.0,-1.0,-1.0],
                         ])
     specials /= np.linalg.norm(specials,axis=1).reshape(-1,1)
-    specials_scatter = specials + np.broadcast_to((np.random.rand(4)*2.-1.)*scatter,specials.shape)
+    specials_scatter = specials + np.broadcast_to((np_rng.random(4)*2.-1.)*scatter,specials.shape)
     specials_scatter /= np.linalg.norm(specials_scatter,axis=1).reshape(-1,1)
     specials_scatter[specials_scatter[:,0]<0]*=-1
 
     return np.vstack((specials,
                       specials_scatter,
-                      random_quaternions(n-2*len(specials)),
+                      random_quaternions(n-2*len(specials),np_rng),
                       ))

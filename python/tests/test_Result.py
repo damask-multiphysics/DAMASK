@@ -227,9 +227,9 @@ class TestResult:
         in_file   = default.place('max_shear(sigma)')
         assert np.allclose(in_memory,in_file)
 
-    def test_add_Mises_strain(self,default):
-        t = ['V','U'][np.random.randint(0,2)]
-        m = np.random.random()*2.0 - 1.0
+    def test_add_Mises_strain(self,np_rng,default):
+        t = ['V','U'][np_rng.integers(0,2)]
+        m = np_rng.random()*2.0 - 1.0
         default.add_strain('F',t,m)
         label = f'epsilon_{t}^{m}(F)'
         default.add_equivalent_Mises(label)
@@ -301,9 +301,9 @@ class TestResult:
         in_file   = default.place('p_P')
         assert np.allclose(in_memory,in_file)
 
-    def test_add_strain(self,default):
-        t = ['V','U'][np.random.randint(0,2)]
-        m = np.random.random()*2.0 - 1.0
+    def test_add_strain(self,np_rng,default):
+        t = ['V','U'][np_rng.integers(0,2)]
+        m = np_rng.random()*2.0 - 1.0
         default.add_strain('F',t,m)
         label = f'epsilon_{t}^{m}(F)'
         in_memory = mechanics.strain(default.place('F'),t,m)
@@ -670,10 +670,11 @@ class TestResult:
                                       '6grains6x7x8_single_phase_tensionY.hdf5',
                                       '12grains6x7x8_tensionY.hdf5',
                                       'check_compile_job1.hdf5',])
-    def test_export_DADF5(self,res_path,tmp_path,fname):
+    def test_export_DADF5(self,np_rng,res_path,tmp_path,fname):
         r = Result(res_path/fname)
+        random.seed(int(np_rng.integers(np.iinfo(int).max)))
         r = r.view(phases = random.sample(r._phases,1))
-        r = r.view(increments = random.sample(r._increments,np.random.randint(1,len(r._increments))))
+        r = r.view(increments = random.sample(r._increments,np_rng.integers(1,len(r._increments))))
         r.export_DADF5(tmp_path/fname)
         r_exp = Result(tmp_path/fname)
         assert str(r.get()) == str(r_exp.get())
