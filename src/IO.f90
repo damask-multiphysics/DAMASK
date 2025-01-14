@@ -373,9 +373,7 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
 !--------------------------------------------------------------------------------------------------
 ! plasticity error messages
     case (200)
-      msg = 'unknown elasticity specified:'
-    case (201)
-      msg = 'unknown plasticity specified:'
+      msg = 'unknown type specified:'
 
     case (211)
       msg = 'material parameter out of bounds:'

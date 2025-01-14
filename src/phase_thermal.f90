@@ -82,7 +82,7 @@ module subroutine thermal_init(phases)
   integer :: &
     ph, so, &
     Nmembers
-
+  logical :: thermal_active
 
   print'(/,1x,a)', '<<<+-  phase:thermal init  -+>>>'
 
@@ -90,20 +90,29 @@ module subroutine thermal_init(phases)
   allocate(thermalState(phases%length))
   allocate(thermal_Nsources(phases%length),source = 0)
   allocate(param(phases%length))
-  extmsg = ''
 
+  extmsg = ''
+  thermal_active = .false.
   do ph = 1, phases%length
     Nmembers = count(material_ID_phase == ph)
     allocate(current(ph)%T(Nmembers),source=T_ROOM)
     allocate(current(ph)%dot_T(Nmembers),source=0.0_pREAL)
+
     phase => phases%get_dict(ph)
-    thermal => phase%get_dict('thermal',defaultVal=emptyDict)
+    if (thermal_active) then
+      thermal => phase%get_dict('thermal')
+    else
+      thermal => phase%get_dict('thermal',defaultVal=emptyDict)
+    end if
 
     ! ToDo: temperature dependency of K and C_p
     if (thermal%length > 0) then
+      thermal_active = .true.
+
       print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
       refs = config_listReferences(thermal,indent=3)
       if (len(refs) > 0) print'(/,1x,a)', refs
+
       param(ph)%C_p = thermal%get_asReal('C_p')
       param(ph)%K(1,1) = thermal%get_asReal('K_11')
       if (any(phase_lattice(ph) == ['hP','tI'])) param(ph)%K(3,3) = thermal%get_asReal('K_33')
@@ -113,9 +122,6 @@ module subroutine thermal_init(phases)
       if (    param(ph)%C_p <= 0.0_pREAL )  extmsg = trim(extmsg)//' C_p'
       if (any(param(ph)%K   <  0.0_pREAL))  extmsg = trim(extmsg)//' K'
       if (    phase_rho(ph) <= 0.0_pREAL )  extmsg = trim(extmsg)//' rho'
-
-!--------------------------------------------------------------------------------------------------
-!  exit if any parameter is out of range
       if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg))
 
 #if defined(__GFORTRAN__)
