@@ -37,7 +37,7 @@ class Rotation:
     Examples
     --------
     Rotate vector 'a' (defined in coordinate system 'A') to
-    coordinates 'b' expressed in system 'B':
+    coordinates 'b' expressed in system 'B', where 'Q' represents the conversion from 'A' to 'B':
 
     >>> import numpy as np
     >>> import damask
@@ -135,8 +135,8 @@ class Rotation:
         Return slice according to item.
 
         """
-        return self.copy() if self.shape == () else \
-               self.copy(self.quaternion[item+(slice(None),)] if isinstance(item,tuple) else self.quaternion[item])
+        c = [self.quaternion[...,i] for i in range(4)]
+        return self.copy(np.stack([c[i][item] for i in range(4)],axis=-1))
 
 
     def __eq__(self,
@@ -534,7 +534,8 @@ class Rotation:
             Rotation flattened to single dimension.
 
         """
-        return self.copy(self.quaternion.reshape((-1,4),order=order))
+        return self.copy() if self.shape == () else \
+               self.copy(self.quaternion.reshape((-1,4),order=order))
 
 
     def reshape(self: MyType,
@@ -1246,7 +1247,7 @@ class Rotation:
                       np.cos(2.*np.pi*r[...,1])*B,
                       np.sin(2.*np.pi*r[...,0])*A],axis=-1)
 
-        return Rotation(q if shape is None else q.reshape(r.shape[:-1]+(4,)))._standardize()
+        return Rotation(q[:] if shape is None else q.reshape(r.shape[:-1]+(4,)))._standardize()
 
 
     @staticmethod

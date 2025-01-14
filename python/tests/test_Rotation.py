@@ -903,7 +903,10 @@ class TestRotation:
         p = Rotation.from_random(shape=shape,rng_seed=np_rng)
         s = r.append(p)
         print(f'append 2x {shape} --> {s.shape}')
-        assert np.logical_and(s[0,...] == r[0,...], s[-1,...] == p[-1,...]).all()
+        if shape is None:
+            assert np.logical_and(s[0] == r, s[-1] == p).all()
+        else:
+            assert np.logical_and(s[0,...] == r[0,...], s[-1,...] == p[-1,...]).all()
 
     @pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(3,3,2)])
     def test_append_list(self,np_rng,shape):
@@ -911,7 +914,10 @@ class TestRotation:
         p = Rotation.from_random(shape=shape,rng_seed=np_rng)
         s = r.append([r,p])
         print(f'append 3x {shape} --> {s.shape}')
-        assert np.logical_and(s[0,...] == r[0,...], s[-1,...] == p[-1,...]).all()
+        if shape is None:
+            assert np.logical_and(s[0] == s[1] == r, s[-1] == p).all()
+        else:
+            assert np.logical_and(s[0,...] == r[0,...], s[-1,...] == p[-1,...]).all()
 
     @pytest.mark.parametrize('quat,standardized',[
                                                   ([-1,0,0,0],[1,0,0,0]),
@@ -1112,10 +1118,10 @@ class TestRotation:
         R_2 = Rotation.from_Euler_angles([360,0,0],degrees=True)
         assert np.allclose(R_1.misorientation(R_2).as_matrix(),np.eye(3))
 
-    def test_misorientation_zero(self,set_of_quaternions):
+    def test_misorientation_zero(self,set_of_quaternions,assert_allclose):
         r = Rotation.from_quaternion(set_of_quaternions)
-        assert np.allclose(r.misorientation_angle(r),0.0,atol=1e-15,rtol=0.)
-        assert np.allclose(r.misorientation(r).as_axis_angle(pair=True)[1],0.,atol=1e-15,rtol=0.)
+        assert_allclose(r.misorientation_angle(r),0.,atol=1.e-15,rtol=0.)
+        assert_allclose(r.misorientation(r).as_axis_angle(pair=True)[1],0.,atol=1.e-15,rtol=0.)
 
     @pytest.mark.parametrize('shapes',[[None,None],
                                        [[2,3,4],[2,3,4]],
@@ -1126,7 +1132,7 @@ class TestRotation:
         r_2 = Rotation.from_random(shape=shapes[1])
         angle = r_1.misorientation_angle(r_2)
         full = r_1.misorientation(r_2).as_axis_angle(pair=True)[1]
-        assert np.allclose(angle,full,atol=1e-13,rtol=0)
+        assert np.allclose(angle,full,atol=1.e-13,rtol=0.)
 
     def test_composition(self):
         a,b = (Rotation.from_random(),Rotation.from_random())

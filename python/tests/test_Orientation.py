@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from itertools import permutations
+import itertools
 from matplotlib import pyplot as plt
 from PIL import Image
 
@@ -305,7 +305,7 @@ class TestOrientation:
     @pytest.mark.parametrize('proper',[True,False])
     def test_IPF_cubic(self,color,proper):
         cube = Orientation(family='cubic')
-        for direction in set(permutations(np.array(color['direction']))):
+        for direction in set(itertools.permutations(np.array(color['direction']))):
             assert np.allclose(np.array(color['RGB']),
                                cube.IPF_color(vector=np.array(direction),proper=proper))
 
@@ -439,13 +439,16 @@ class TestOrientation:
 ### vectorization tests ###
 
     @pytest.mark.parametrize('lattice',['hP','cI','cF','tI'])
-    def test_Schmid_vectorization(self,np_rng,lattice):
-        O = Orientation.from_random(shape=4,lattice=lattice,c=(1.2 if lattice == 'tI' else None),rng_seed=np_rng)   # noqa
+    def test_Schmid_vectorization(self,np_rng,assert_allclose,lattice):
+        shape = np_rng.integers(1,4,np_rng.integers(1,4))
+        O = Orientation.from_random(shape=shape,lattice=lattice,c=(1.2 if lattice == 'tI' else None),rng_seed=np_rng)  # noqa
         for mode in ['slip']+([] if lattice == 'tI' else ['twin']):
             Ps = O.Schmid(N_slip='*') if mode == 'slip' else O.Schmid(N_twin='*')
-            for i in range(4):
+            for i in itertools.product(*map(range,tuple(shape))):
                 P = O[i].Schmid(N_slip='*') if mode == 'slip' else O[i].Schmid(N_twin='*')
-                assert np.allclose(P,Ps[:,i])
+                idx = (slice(None),)+i+(slice(None),slice(None))
+                assert_allclose(P,Ps[idx])
+                #assert_allclose(P,Ps[:,*i,:,:])                                                    # ok for Python >= 3.13
 
     @pytest.mark.parametrize('family',crystal_families)
     @pytest.mark.parametrize('shape',[(1),(2,3),(4,3,2)])

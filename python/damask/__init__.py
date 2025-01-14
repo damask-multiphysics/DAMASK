@@ -1,4 +1,12 @@
-"""Tools for managing DAMASK simulations."""
+"""
+Pre- and Post-Processing of DAMASK Simulations.
+
+References
+----------
+D. Otto de Mentock et al., Journal of Open Source Software, 10(105):7164, 2025
+https://doi.org/10.21105/joss.07164
+
+"""
 
 from pathlib import Path as _Path
 import re as _re

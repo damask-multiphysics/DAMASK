@@ -179,3 +179,88 @@ def set_of_quaternions(np_rng):
                       specials_scatter,
                       random_quaternions(n-2*len(specials),np_rng),
                       ))
+
+@pytest.fixture
+def assert_allclose():
+    """
+    Asserts the element-wise equality of two arrays within relative+absolute tolerance.
+
+    Parameters
+    ----------
+    a : np.ndarray or h5py Dataset
+        Array to compare.
+    b : np.ndarray or h5py Dataset
+        Array to compare.
+    rtol : float
+        Relative tolerance.
+    atol : float
+        Absolute tolerance.
+    N : int
+        Maximum number of reported deviating values.
+        Defaults to 16. N=None outputs all values.
+    msg : str
+        Informative message.
+
+    """
+    def _assert_allclose(a,b,
+                         rtol: float = 1e-05,
+                         atol: float = 1e-08,
+                         N = 16,
+                         msg = '',
+                         ):
+        assert np.logical_or(np.isclose(a,b, rtol=rtol,atol=atol),
+                             np.isclose(b,a, rtol=rtol,atol=atol)).all(), \
+               report_nonclose(a,b, rtol=rtol,atol=atol, N=N, msg=msg)
+
+    return _assert_allclose
+
+
+def report_nonclose(a, b, rtol, atol, N, msg):
+    """
+    Report where values of two arrays deviate from each other.
+
+    Output is sorted from large to small magnitude of absolute difference.
+
+    Parameters
+    ----------
+    a : np.ndarray or h5py Dataset
+        Array to compare.
+    b : np.ndarray or h5py Dataset
+        Array to compare.
+    rtol : float
+        Relative tolerance.
+    atol : float
+        Absolute tolerance.
+    N : int
+        Maximum number of reported deviating values.
+        Defaults to all.
+    msg : str
+        Informative message added to output.
+        Defaults to None.
+
+    Returns
+    -------
+    description : str
+        Description of differences.
+
+    """
+    a_ = np.array(a)
+    b_ = np.array(b)
+
+    absdiff = np.abs(a_ - b_)
+    absmax  = np.max(np.abs(np.stack((a_, b_))), axis=0)
+
+    idx = (absdiff > atol + rtol * absmax).nonzero()
+    ids = np.argsort(absdiff[idx])[::-1]
+    n = len(idx[0])
+    split = N is not None and N<n
+    head,tail = (slice(0,(N+1)//2),slice(n-N//2,n)) if split else (slice(0,n),slice(n,n))
+    diffs = [ f'abs / rel diff {absdiff[idx][i]:>16.10g} / {absdiff[idx][i]/absmax[idx][i]:<16.10g}'
+             +f' between {a_[idx][i]:>16.10g} and {b_[idx][i]:<16.10g}'
+             +f' at {np.transpose(idx)[i]}' for i in list(ids[head])+list(ids[tail])]
+    if split: diffs.insert(head.stop,'...')
+
+    return '\n'.join(['']+diffs
+                     +['',f'fraction {n}/{a_.size} outside tolerance']
+                     +(['',msg] if msg is not None else [])
+                     )
