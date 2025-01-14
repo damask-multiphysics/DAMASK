@@ -534,7 +534,8 @@ class Rotation:
             Rotation flattened to single dimension.
 
         """
-        return self.copy(self.quaternion.reshape((-1,4),order=order))
+        return self.copy() if self.shape == () else \
+               self.copy(self.quaternion.reshape((-1,4),order=order))
 
 
     def reshape(self: MyType,
