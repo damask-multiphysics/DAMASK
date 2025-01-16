@@ -121,7 +121,6 @@ class Orientation(Rotation,Crystal):
     copy = __copy__
 
 
-
     def __eq__(self,
                other: object) -> bool:
         """
@@ -155,14 +154,14 @@ class Orientation(Rotation,Crystal):
             Orientation to check for equality.
 
         """
-        return np.logical_not(self==other) if isinstance(other, Orientation) else NotImplemented
+        return np.logical_not(self==other)
 
 
     def isclose(self: MyType,
                 other: MyType,
                 rtol: float = 1e-5,
                 atol: float = 1e-8,
-                equal_nan: bool = True) -> bool:
+                equal_nan: bool = True) -> np.ndarray:
         """
         Report where values are approximately equal to corresponding ones of other Orientation.
 
@@ -188,13 +187,11 @@ class Orientation(Rotation,Crystal):
                         self.parameters == other.parameters
         return np.logical_and(matching_type,super(self.__class__,self.reduced).isclose(other.reduced))
 
-
-
     def allclose(self: MyType,
                  other: MyType,
                  rtol: float = 1e-5,
                  atol: float = 1e-8,
-                 equal_nan: bool = True) -> bool:
+                 equal_nan: bool = True) -> np.bool_:
         """
         Test whether all values are approximately equal to corresponding ones of other Orientation.
 
@@ -215,7 +212,7 @@ class Orientation(Rotation,Crystal):
             Whether all values are close between both orientations.
 
         """
-        return bool(np.all(self.isclose(other,rtol,atol,equal_nan)))
+        return np.all(self.isclose(other,rtol,atol,equal_nan))
 
 
     def __mul__(self: MyType,
