@@ -313,7 +313,7 @@ grid_performance:
   tags:
     - bare-metal
   before_script:
-    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN} --blocking
+    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} ${TOKEN} --blocking
     - source env/DAMASK.sh
     - echo Job start:" $(date)"
   script:
@@ -355,7 +355,7 @@ update_revision:
   tags:
     - bare-metal
   before_script:
-    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN}
+    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} ${TOKEN}
     - echo Job start:" $(date)"
   script:
     - cd $(mktemp -d)
