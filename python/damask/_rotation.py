@@ -5,6 +5,7 @@ import builtins
 from typing import Optional, Union, Sequence, Tuple, Literal, List, TypeVar
 
 import numpy as np
+import numpy.typing as npt
 
 from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
 from . import tensor
@@ -139,8 +140,8 @@ class Rotation:
         return self.copy(np.stack([c[i][item] for i in range(4)],axis=-1))
 
 
-    def __eq__(self,
-               other: object) -> bool:
+    def __eq__(self,                                                                                # type: ignore[override]
+               other: object) -> npt.NDArray[np.bool_]:
         """
         Return self==other.
 
@@ -156,8 +157,8 @@ class Rotation:
                np.logical_or(np.all(self.quaternion ==     other.quaternion,axis=-1),
                              np.all(self.quaternion == -1.*other.quaternion,axis=-1))
 
-    def __ne__(self,
-               other: object) -> bool:
+    def __ne__(self,                                                                                # type: ignore[override]
+               other: object) -> npt.NDArray[np.bool_]:
         """
         Return self!=other.
 

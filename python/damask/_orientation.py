@@ -2,6 +2,7 @@ import copy
 from typing import Tuple, Optional, Union, TypeVar, Literal # mypy 1.11, overload
 
 import numpy as np
+import numpy.typing as npt
 
 from ._typehints import FloatSequence, IntSequence, CrystalFamily, BravaisLattice
 from . import Rotation
@@ -121,8 +122,8 @@ class Orientation(Rotation,Crystal):
     copy = __copy__
 
 
-    def __eq__(self,
-               other: object) -> bool:
+    def __eq__(self,                                                                                # type: ignore[override]
+               other: object) -> npt.NDArray[np.bool_]:
         """
         Return self==other.
 
@@ -141,8 +142,8 @@ class Orientation(Rotation,Crystal):
                         self.parameters == other.parameters
         return np.logical_and(matching_type,super(self.__class__,self.reduced).__eq__(other.reduced))
 
-    def __ne__(self,
-               other: object) -> bool:
+    def __ne__(self,                                                                                # type: ignore[override]
+               other: object) -> npt.NDArray[np.bool_]:
         """
         Return self!=other.
 
