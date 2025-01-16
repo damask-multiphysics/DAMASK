@@ -838,9 +838,9 @@ class Orientation(Rotation,Crystal):
             components_improper = np.around(np.einsum('...ji,...i',
                                                       np.broadcast_to(self.standard_triangle['improper'], vector_.shape+(3,)),
                                                       vector_), 12)
-            in_SST_ = np.all(components_proper   >= 0.0,axis=-1) \
-                    | np.all(components_improper >= 0.0,axis=-1)
-            components = np.where((in_SST_ & np.all(components_proper   >= 0.0,axis=-1))[...,np.newaxis],
+            in_SST_ = np.logical_or(np.all(components_proper   >= 0.0,axis=-1),
+                                    np.all(components_improper >= 0.0,axis=-1))
+            components = np.where((np.logical_and(in_SST_,np.all(components_proper>= 0.0,axis=-1)))[...,np.newaxis],
                                   components_proper,components_improper)
         else:
             components = np.around(np.einsum('...ji,...i',
