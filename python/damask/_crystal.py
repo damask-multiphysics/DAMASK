@@ -1302,3 +1302,51 @@ class Crystal():
                         o.to_frame(hkl=o_p[:,1] if o_l != 'hP' else util.Bravais_to_Miller(hkil=o_p[:,1]))),
                         axis=-2)
         return (o_l,Rotation.from_parallel(a=m_p,b=o_p,active=True))
+
+
+    def Schmid(self, *,
+               N_slip: Optional[Union[IntSequence, Literal['*']]] = None,
+               N_twin: Optional[Union[IntSequence, Literal['*']]] = None) -> np.ndarray:
+        u"""
+        Calculate Schmid matrix P = d ⨂ n for selected deformation systems.
+
+        Parameters
+        ----------
+        N_slip|N_twin : '*' or sequence of int
+            Number of deformation systems per family of the deformation system.
+            Use '*' to select all.
+
+        Returns
+        -------
+        P : numpy.ndarray, shape (N,3,3)
+            Schmid matrix for each of the N deformation systems.
+
+        Examples
+        --------
+        Schmid matrix of first octahedral slip system of a face-centered
+        cubic crystal.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> C = damask.Crystal(lattice='cF')
+        >>> C.Schmid(N_slip=[12])[0]
+        array([[ 0.    ,  0.    ,  0.    ],
+               [ 0.4082,  0.4082,  0.4082],
+               [-0.4082, -0.4082, -0.4082]])
+
+        """
+        if (N_slip is not None) ^ (N_twin is None):
+            raise KeyError('specify either "N_slip" or "N_twin"')
+
+        kinematics,active = (self.kinematics('slip'),N_slip) if N_twin is None else \
+                            (self.kinematics('twin'),N_twin)
+        everylen = list(map(len,kinematics['direction']))
+
+        if active == '*': active = everylen
+        if not active or (np.array(active) > everylen[:len(active)]).any():
+            raise ValueError('Invalid number of slip/twin systems')
+
+        d = self.to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
+        p = self.to_frame(hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
+        return np.einsum('...i,...j',d/np.linalg.norm(d,axis=-1,keepdims=True),
+                                     p/np.linalg.norm(p,axis=-1,keepdims=True))
