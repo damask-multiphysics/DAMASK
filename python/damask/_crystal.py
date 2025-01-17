@@ -1328,8 +1328,8 @@ class Crystal():
 
         >>> import numpy as np
         >>> import damask
-        >>> O = damask.Crystal(lattice='cF')
-        >>> O.Schmid(N_slip=[12])[0]
+        >>> C = damask.Crystal(lattice='cF')
+        >>> C.Schmid(N_slip=[12])[0]
         array([[ 0.    ,  0.    ,  0.    ],
                [ 0.4082,  0.4082,  0.4082],
                [-0.4082, -0.4082, -0.4082]])
@@ -1340,9 +1340,10 @@ class Crystal():
 
         kinematics,active = (self.kinematics('slip'),N_slip) if N_twin is None else \
                             (self.kinematics('twin'),N_twin)
-        if active == '*': active = [len(a) for a in kinematics['direction']]
+        everylen = list(map(len,kinematics['direction']))
 
-        if not active or (np.array(active) > list(map(len,kinematics['direction']))[:len(active)]).any():
+        if active == '*': active = everylen
+        if not active or (np.array(active) > everylen[:len(active)]).any():
             raise ValueError('Invalid number of slip/twin systems')
 
         d = self.to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
