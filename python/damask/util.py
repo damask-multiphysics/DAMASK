@@ -9,10 +9,9 @@ import re as _re
 import signal as _signal
 import fractions as _fractions
 import contextlib as _contextlib
-from collections import abc as _abc, OrderedDict as _OrderedDict
-from functools import reduce as _reduce, partial as _partial, wraps as _wraps
-import inspect
-from typing import Optional as _Optional, Callable as _Callable, Union as _Union, Iterable as _Iterable, \
+from collections import abc as _abc
+from functools import reduce as _reduce, partial as _partial
+from typing import Optional as _Optional, Union as _Union, Iterable as _Iterable, \
                    Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, \
                    Any as _Any, TextIO as _TextIO, Generator as _Generator
 from pathlib import Path as _Path
@@ -455,7 +454,7 @@ def hybrid_IA(dist: _FloatSequence,
 
     """
     N_opt_samples = max(_np.count_nonzero(dist),N)                                                  # random subsampling if too little samples requested
-    N_inv_samples = 0
+    N_inv_samples = _np.int_(0)
 
     scale_,scale,inc_factor = (0.0,float(N_opt_samples),1.0)
     while (not _np.isclose(scale, scale_)) and (N_inv_samples != N_opt_samples):
@@ -579,164 +578,6 @@ def shapeblender(a: _Tuple[int, ...],
             _b = ((1,) if len(_b)<len(a_) else ()) + _b
         return _np.broadcast_shapes(a_,_b)
 
-
-def _docstringer(docstring: _Union[str, _Callable],
-                 adopted_parameters: _Union[None, str, _Callable] = None,
-                 adopted_return: _Union[None, str, _Callable] = None,
-                 adopted_notes: _Union[None, str, _Callable] = None,
-                 adopted_examples: _Union[None, str, _Callable] = None,
-                 adopted_references: _Union[None, str, _Callable] = None) -> str:
-    """
-    Extend a docstring.
-
-    Parameters
-    ----------
-    docstring : str or callable, optional
-       Docstring (of callable) to extend.
-    adopted_* : str or callable, optional
-       Additional information to insert into or append to respective section.
-
-    Notes
-    -----
-    adopted_return fetches the typehint of a passed function instead of the docstring
-
-    """
-    docstring_: str = str(     docstring if isinstance(docstring,str)
-                          else docstring.__doc__ if callable(docstring) and docstring.__doc__
-                          else '').rstrip()+'\n'
-    sections = _OrderedDict(
-        Parameters=adopted_parameters,
-        Returns=adopted_return,
-        Examples=adopted_examples,
-        Notes=adopted_notes,
-        References=adopted_references)
-
-    for i, (key, adopted) in [(i,(k,v)) for (i,(k,v)) in enumerate(sections.items()) if v is not None]:
-        section_regex = fr'^([ ]*){key}\s*\n\1*{"-"*len(key)}\s*\n'
-        if key=='Returns':
-            if callable(adopted):
-                return_class = adopted.__annotations__.get('return','')
-                return_type_ = (_sys.modules[adopted.__module__].__name__.split('.')[0]
-                                +'.'
-                                +(return_class.__name__ if not isinstance(return_class,str) else return_class))
-            else:
-                return_type_ = adopted
-            docstring_ = _re.sub(fr'(^[ ]*{key}\s*\n\s*{"-"*len(key)}\s*\n[ ]*[A-Za-z0-9_ ]*: )(.*)\n',
-                                 fr'\1{return_type_}\n',
-                                 docstring_,flags=_re.MULTILINE)
-        else:
-            section_content_regex = fr'{section_regex}(?P<content>.*?)\n *(\n|\Z)'
-            adopted_: str = adopted.__doc__ if callable(adopted) else adopted                       #type: ignore
-            try:
-                if _re.search(fr'{section_regex}', adopted_, flags=_re.MULTILINE):
-                    adopted_ = _re.search(section_content_regex,                                    #type: ignore
-                                          adopted_,
-                                          flags=_re.MULTILINE|_re.DOTALL).group('content')
-            except AttributeError:
-                raise RuntimeError(f"function docstring passed for docstring section '{key}' is invalid:\n{docstring}")
-
-            docstring_indent, adopted_indent = (min([len(line)-len(line.lstrip()) for line in section.split('\n') if line.strip()])
-                                                for section in [docstring_, adopted_])
-            shift = adopted_indent - docstring_indent
-            adopted_content = '\n'.join([(line[shift:] if shift > 0 else
-                f'{" "*-shift}{line}') for line in adopted_.split('\n') if line.strip()])
-
-            if _re.search(section_regex, docstring_, flags=_re.MULTILINE):
-                docstring_section_content = _re.search(section_content_regex,                       # type: ignore
-                                                       docstring_,
-                                                       flags=_re.MULTILINE|_re.DOTALL).group('content')
-                a_items, d_items = (_re.findall('^[ ]*([A-Za-z0-9_ ]*?)[ ]*:',content,flags=_re.MULTILINE)
-                                    for content in [adopted_content,docstring_section_content])
-                for item in a_items:
-                    if item in d_items:
-                        adopted_content = _re.sub(fr'^([ ]*){item}.*?(?:(\n)\1([A-Za-z0-9_])|([ ]*\Z))',
-                                                  r'\1\3',
-                                                  adopted_content,
-                                                  flags=_re.MULTILINE|_re.DOTALL).rstrip(' \n')
-                docstring_ = _re.sub(fr'(^[ ]*{key}\s*\n\s*{"-"*len(key)}\s*\n.*?)\n *(\Z|\n)',
-                                     fr'\1\n{adopted_content}\n\2',
-                                     docstring_,
-                                     flags=_re.MULTILINE|_re.DOTALL)
-            else:
-                section_title = f'{" "*(shift+docstring_indent)}{key}\n{" "*(shift+docstring_indent)}{"-"*len(key)}\n'
-                section_matches = [_re.search(
-                    fr'[ ]*{list(sections.keys())[index]}\s*\n\s*{"-"*len(list(sections.keys())[index])}\s*', docstring_)
-                    for index in range(i,len(sections))]
-                subsequent_section = '\\Z' if not any(section_matches) else \
-                                        '\n'+next(item for item in section_matches if item is not None).group(0)
-                docstring_ = _re.sub(fr'({subsequent_section})',
-                                        fr'\n{section_title}{adopted_content}\n\1',
-                                        docstring_)
-    return docstring_
-
-
-def extend_docstring(docstring: _Union[None, str, _Callable] = None,
-                     **kwargs) -> _Callable:
-    """
-    Decorator: Extend the function's docstring.
-
-    Parameters
-    ----------
-    docstring : str or callable, optional
-       Docstring to extend. Defaults to that of decorated function.
-    adopted_* : str or callable, optional
-       Additional information to insert into or append to respective section.
-
-    Notes
-    -----
-    Return type will become own type if docstring is callable.
-
-    """
-    def _decorator(func):
-        if 'adopted_return' not in kwargs: kwargs['adopted_return'] = func
-        func.__doc__ = _docstringer(func.__doc__ if docstring is None else docstring,
-                                    **kwargs)
-        return func
-    return _decorator
-
-def pass_on(keyword: str,
-            target: _Callable,
-            wrapped: _Callable = None) -> _Callable:                                                # type: ignore
-    """
-    Decorator: Combine signatures of 'wrapped' and 'target' functions and pass on output of 'target' as 'keyword' argument.
-
-    Parameters
-    ----------
-    keyword : str
-       Keyword added to **kwargs of the decorated function
-       passing on the result of 'target'.
-    target : callable
-       The output of this function is passed to the
-       decorated function as 'keyword' argument.
-    wrapped: callable, optional
-        Signature of 'wrapped' function combined with
-        that of 'target' yields the overall signature of decorated function.
-
-    Notes
-    -----
-    The keywords used by 'target' will be prioritized
-    if they overlap with those of the decorated function.
-    Functions 'target' and 'wrapped' are assumed to only have keyword arguments.
-
-    """
-
-    def decorator(func):
-        @_wraps(func)
-        def wrapper(*args, **kwargs):
-            kw_wrapped     = set(kwargs.keys()) - set(inspect.getfullargspec(target).args)
-            kwargs_wrapped = {kw: kwargs.pop(kw) for kw in kw_wrapped}
-            kwargs_wrapped[keyword] = target(**kwargs)
-            return func(*args, **kwargs_wrapped)
-        args_ = [] if wrapped is None or 'self' not in inspect.signature(wrapped).parameters \
-                else [inspect.signature(wrapped).parameters['self']]
-        for f in [target] if wrapped is None else [target,wrapped]:
-            for param in inspect.signature(f).parameters.values():
-                if      param.name != keyword \
-                    and param.name not in [p.name for p in args_]+['self','cls', 'args', 'kwargs']:
-                    args_.append(param.replace(kind=inspect._ParameterKind.KEYWORD_ONLY))
-        wrapper.__signature__ = inspect.Signature(parameters=args_,return_annotation=inspect.signature(func).return_annotation)
-        return wrapper
-    return decorator
 
 def DREAM3D_base_group(fname: _Union[str, _Path, _h5py.File]) -> str:
     """

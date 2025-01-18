@@ -1062,17 +1062,17 @@ class Rotation:
                                    R)
 
     @staticmethod
-    def from_parallel(a: np.ndarray,
-                      b: np.ndarray,
+    def from_parallel(d: np.ndarray,
+                      e: np.ndarray,
                       active: bool = False ) -> 'Rotation':
         """
         Initialize from pairs of two orthogonal basis vectors.
 
         Parameters
         ----------
-        a : numpy.ndarray, shape (...,2,3)
+        d : numpy.ndarray, shape (...,2,3)
             Two three-dimensional vectors of first orthogonal basis.
-        b : numpy.ndarray, shape (...,2,3)
+        e : numpy.ndarray, shape (...,2,3)
             Corresponding three-dimensional vectors of second basis.
         active : bool, optional
             Consider rotations as active, i.e. return (B^-1⋅A) instead of (B⋅A^-1).
@@ -1084,9 +1084,9 @@ class Rotation:
 
         Notes
         -----
-        If rotations $A = [a_1,a_2,a_1 × a_2]^T$ and B = $[b_1,b_2,b_1 × b_2]^T$
-        are considered "active", the resulting rotation will be $B^{-1}⋅A$ instead
-        of the default result $B⋅A^{-1}$.
+        If rotations $D = [d_1,d_2,d_1 × d_2]^T$ and E = $[e_1,e_2,e_1 × e_2]^T$
+        are considered "active", the resulting rotation will be $E^{-1}⋅d$ instead
+        of the default result $E⋅D^{-1}$.
 
         Examples
         --------
@@ -1095,23 +1095,23 @@ class Rotation:
         Quaternion [1. 0. 0. 0.]
 
         """
-        a_ = np.array(a,dtype=float)
-        b_ = np.array(b,dtype=float)
+        d_ = np.array(d,dtype=float)
+        e_ = np.array(e,dtype=float)
 
-        if a_.shape[-2:] != (2,3) or b_.shape[-2:] != (2,3):
-            raise ValueError(f'invalid shape: {a_.shape}/{b_.shape}')
+        if d_.shape[-2:] != (2,3) or e_.shape[-2:] != (2,3):
+            raise ValueError(f'invalid shape: {d_.shape}/{e_.shape}')
 
-        a_ /= np.linalg.norm(a_,axis=-1,keepdims=True)
-        b_ /= np.linalg.norm(b_,axis=-1,keepdims=True)
+        d_ /= np.linalg.norm(d_,axis=-1,keepdims=True)
+        e_ /= np.linalg.norm(e_,axis=-1,keepdims=True)
 
-        am = np.stack([          a_[...,0,:],
-                                             a_[...,1,:],
-                        np.cross(a_[...,0,:],a_[...,1,:]) ],axis=-1 if active else -2)
-        bm = np.stack([          b_[...,0,:],
-                                             b_[...,1,:],
-                        np.cross(b_[...,0,:],b_[...,1,:]) ],axis=-1 if active else -2)
+        dm = np.stack([          d_[...,0,:],
+                                             d_[...,1,:],
+                        np.cross(d_[...,0,:],d_[...,1,:]) ],axis=-1 if active else -2)
+        em = np.stack([          e_[...,0,:],
+                                             e_[...,1,:],
+                        np.cross(e_[...,0,:],e_[...,1,:]) ],axis=-1 if active else -2)
 
-        return Rotation.from_basis(am).misorientation(Rotation.from_basis(bm))
+        return Rotation.from_basis(dm).misorientation(Rotation.from_basis(em))
 
 
     @staticmethod
