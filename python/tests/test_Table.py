@@ -49,9 +49,18 @@ class TestTable:
             t = t.set(label,data)
         assert np.allclose(t.get('scal').flatten()*3,t.get('vctr')[:,0])
 
-    def test_set(self,default):
+    def test_set_tensor(self,default):
         d = default.set('F',np.zeros((5,3,3)),'set to zero').get('F')
         assert np.allclose(d,0.0) and d.shape[1:] == (3,3)
+
+    def test_set_scalar(self,np_rng,default):
+        d = np_rng.random((5,9))
+        assert np.allclose(d,default.set('nine',d,'random data').get('nine'))
+
+    def test_set_overwrite(self,np_rng,default):
+        d = np_rng.random((5,9))
+        t = default.set('nine',np.ones((5,9)),'zeros')
+        assert np.allclose(d,default.set('nine',d,'random data').get('nine'))
 
     def test_set_component(self,default):
         d = default.set('F[0,0]',np.zeros((5)),'set to zero').get('F')
@@ -59,10 +68,6 @@ class TestTable:
 
     def test_labels(self,default):
         assert default.labels == ['F','v','s']
-
-    def test_add(self,np_rng,default):
-        d = np_rng.random((5,9))
-        assert np.allclose(d,default.set('nine',d,'random data').get('nine'))
 
     def test_isclose(self,default):
         assert default.isclose(default).all()

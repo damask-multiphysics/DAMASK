@@ -36,7 +36,7 @@ dependencies = [
     'pyyaml>=5.3',
 ]
 
-readme = 'Readme.md'
+readme = 'README.md'
 dynamic = ['version']
 
 [project.urls]
