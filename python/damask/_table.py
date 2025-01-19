@@ -13,7 +13,7 @@ class Table:
 
     def __init__(self,
                  shapes: Mapping[str,Union[Union[int,np.integer],Tuple[Union[int,np.integer],...]]] = {},
-                 data: Optional[np.ndarray] = None,
+                 data: Optional[Union[np.ndarray,pd.DataFrame]] = None,
                  comments: Union[None, str, Iterable[str]] = None):
         """
         New spreadsheet.
@@ -606,7 +606,7 @@ class Table:
 
         with util.open_text(fname,'w') as f:
             f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+('\n' if labels else ''))
-            try:                                                                                    # backward compatibility
+            try:                                                                                    # backward compatibility (<1.5)
                 self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,lineterminator='\n')
             except TypeError:
-                self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,line_terminator='\n')
+                self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,line_terminator='\n') # type: ignore
