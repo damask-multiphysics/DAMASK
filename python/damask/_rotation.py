@@ -95,8 +95,8 @@ class Rotation:
         Give short, human-readable summary.
 
         """
-        return re.sub(r'\[(\+|-| )([^\s]+)\s*(\+|-| )([^\s]+)\s*(\+|-| )([^\s]+)\s*(\+|-| )(.+?)\]',
-                      r'\1\2    \3\4 \5\6 \7\8',self.quaternion.__str__())
+        return re.sub(r'\[([ +-]*[0-9.eE+-]+)(\s*)([ +-]*[0-9.eE+-]+)(\s*)([ +-]*[0-9.eE+-]+)(\s*)([ +-]*[0-9.eE+-]+)(\s*)\]',
+                      r'\1\2    \3\4\5\6\7\8',self.quaternion.__str__())
 
 
     def __repr__(self) -> str:
@@ -106,7 +106,7 @@ class Rotation:
         Give unambiguous representation.
 
         """
-        return re.sub(r'\[(\+|-| )([^,]+,)\s*(\+|-| )([^,]+,)\s*(\+|-| )([^,]+,)\s*(\+|-| )(.+?)\]',
+        return re.sub(r'\[(\+|-| )*(?=\d)([^,]+,)\s*?(\+|-| )*(?=\d)([^,]+,)\s*?(\+|-| )*(?=\d)([^,]+,)\s*?(\+|-| )*(?=\d)(.+?)\]',
                       r'(\1\2    \3\4 \5\6 \7\8)',self.quaternion.__repr__())
 
 
