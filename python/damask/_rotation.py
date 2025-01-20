@@ -95,7 +95,7 @@ class Rotation:
         Give short, human-readable summary.
 
         """
-        return re.sub(r'\[([ +-]*[0-9.]+)(\s*)([ +-]*[0-9.]+)(\s*)([ +-]*[0-9.]+)(\s*)([ +-]*[0-9.]+)(\s*)\]',
+        return re.sub(r'\[([ +-]*[0-9.eE+-]+)(\s*)([ +-]*[0-9.eE+-]+)(\s*)([ +-]*[0-9.eE+-]+)(\s*)([ +-]*[0-9.eE+-]+)(\s*)\]',
                       r'\1\2    \3\4\5\6\7\8',self.quaternion.__str__())
 
 
