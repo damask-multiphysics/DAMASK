@@ -24,8 +24,6 @@ set (LINKER_FLAGS   "${LINKER_FLAGS} -fc=ifx")
 
 #------------------------------------------------------------------------------------------------
 # Fine tuning compilation options
-set (COMPILE_FLAGS "${COMPILE_FLAGS} -fpp") # preprocessor, needed for CMake < 3.18
-
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -no-ftz")
 # disable flush underflow to zero, will be set if -O[1,2,3]
 
