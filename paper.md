@@ -4,19 +4,24 @@ tags:
   - Crystal Plasticity
   - Python
 authors:
-- name: Daniel Otto de Mentock
+- surname: Otto de Mentock
+  firstname: Daniel
   orcid: 0009-0005-8363-6112
   affiliation: 1
-- name: Sharan Roongta
+- surname: Roongta
+  firstname: Sharan
   orcid: 0000-0001-5754-068X
   affiliation: 1
-- name: Franz Roters
+- surname: Roters
+  firstname: Franz
   orcid: 0000-0002-9098-9566
   affiliation: 1
-- name: Philip Eisenlohr
+- surname: Eisenlohr
+  firstname: Philip
   orcid: 0000-0002-8220-5995
   affiliation: 2
-- name: Martin Diehl
+- surname: Diehl
+  firstname: Martin
   orcid: 0000-0002-3738-7363
   affiliation: "3, 4"
   corresponding: true
