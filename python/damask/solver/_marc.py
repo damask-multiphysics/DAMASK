@@ -2,7 +2,11 @@ import subprocess
 import shlex
 import re
 from pathlib import Path
+import logging
 from typing import Literal
+
+
+logger = logging.getLogger(__name__)
 
 _marc_version = '2024.1'
 _marc_root = '/opt/msc'
@@ -85,7 +89,7 @@ class Marc:
 
         cmd = f'{self.tools_path/script} -jid {model}_{job} -nprocd 1 -autorst 0 -ci n -cr n -dcoup 0 -b no -v no ' \
             + (f'-u {usersub} -save y' if compile else f'-prog {usersub.with_suffix("")}')
-        print(cmd)
+        logger.info(cmd)
 
         ret = subprocess.run(shlex.split(cmd),capture_output=True,env=env)
 

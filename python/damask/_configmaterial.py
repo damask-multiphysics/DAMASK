@@ -2,15 +2,18 @@ from typing import Optional, Union, Sequence, Dict, Any, List
 
 import numpy as np
 import h5py
+import logging
 
-from ._typehints import FloatSequence, StrSequence
 from . import YAML
 from . import Rotation
 from . import Orientation
 from . import util
 from . import tensor
 from . import Table
+from ._typehints import FloatSequence, StrSequence
 
+
+logger = logging.getLogger(__name__)
 
 class ConfigMaterial(YAML):
     """
@@ -312,7 +315,7 @@ class ConfigMaterial(YAML):
                     msg.append(f'{LabeledList(v,_empty)} undefined')
                     ok = False
 
-        print(util.srepr(msg))
+        logger.info(util.srepr(msg))
         return ok
 
 
@@ -339,7 +342,7 @@ class ConfigMaterial(YAML):
                     try:
                         Orientation(lattice=v['lattice'])
                     except KeyError:
-                        print(f"Invalid lattice '{v['lattice']}' in phase '{k}'")
+                        logger.warning(f"Invalid lattice '{v['lattice']}' in phase '{k}'")
                         ok = False
 
         if 'material' in self:
@@ -352,10 +355,10 @@ class ConfigMaterial(YAML):
                             try:
                                 Rotation.from_quaternion(c['O'])
                             except ValueError:
-                                print(f"Invalid orientation '{c['O']}' in material '{i}'")
+                                logger.warning(f"Invalid orientation '{c['O']}' in material '{i}'")
                                 ok = False
                     if not np.isclose(v,1.0):
-                        print(f"Total fraction v = {v} ≠ 1 in material '{i}'")
+                        logger.warning(f"Total fraction v = {v} ≠ 1 in material '{i}'")
                         ok = False
 
         return ok
