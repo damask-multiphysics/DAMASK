@@ -427,7 +427,8 @@ class TestOrientation:
     @pytest.mark.parametrize('lattice',['hP','cI','cF','tI'])
     def test_Schmid_vectorization(self,np_rng,assert_allclose,lattice):
         shape = np_rng.integers(1,4,np_rng.integers(1,4))
-        O = Orientation.from_random(shape=shape,lattice=lattice,c=(1.2 if lattice == 'tI' else None),rng_seed=np_rng)  # noqa
+        O = Orientation.from_random(shape=shape,lattice=lattice,
+                                    c=(1.2 if lattice == 'tI' else None),rng_seed=np_rng)           # noqa
         for mode in ['slip']+([] if lattice == 'tI' else ['twin']):
             Ps = O.Schmid(N_slip='*') if mode == 'slip' else O.Schmid(N_twin='*')
             for i in itertools.product(*map(range,tuple(shape))):
@@ -437,11 +438,11 @@ class TestOrientation:
                 #assert_allclose(P,Ps[:,*i,:,:])                                                    # ok for Python >= 3.13
 
     @pytest.mark.parametrize('family',crystal_families)
-    @pytest.mark.parametrize('shape',[(1),(2,3),(4,3,2)])
+    @pytest.mark.parametrize('shape',[(1,),(2,3),(4,3,2)])
     def test_reduced_vectorization(self,np_rng,family,shape):
         o = Orientation.from_random(family=family,shape=shape,rng_seed=np_rng)
-        for r, theO in zip(o.reduced.flatten(),o.flatten()):
-            assert r == theO.reduced
+        for i in itertools.product(*map(range,tuple(shape))):
+            assert o[i].reduced == o[i]
 
 
     @pytest.mark.parametrize('family',crystal_families)
