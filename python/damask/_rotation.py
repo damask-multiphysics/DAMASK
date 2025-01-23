@@ -1062,18 +1062,18 @@ class Rotation:
                                    R)
 
     @staticmethod
-    def from_parallel(d: np.ndarray,
-                      e: np.ndarray,
+    def from_parallel(source: np.ndarray,
+                      target: np.ndarray,
                       active: bool = False ) -> 'Rotation':
         """
         Initialize from pairs of two orthogonal basis vectors.
 
         Parameters
         ----------
-        d : numpy.ndarray, shape (...,2,3)
-            Two three-dimensional vectors of first orthogonal basis.
-        e : numpy.ndarray, shape (...,2,3)
-            Corresponding three-dimensional vectors of second basis.
+        source : numpy.ndarray, shape (...,2,3)
+            First and second three-dimensional vector of orthogonal source basis.
+        target : numpy.ndarray, shape (...,2,3)
+            Corresponding three-dimensional vectors of target basis.
         active : bool, optional
             Consider rotations as active, i.e. return (B^-1⋅A) instead of (B⋅A^-1).
             Defaults to False.
@@ -1084,9 +1084,9 @@ class Rotation:
 
         Notes
         -----
-        If rotations $D = [d_1,d_2,d_1 × d_2]^T$ and E = $[e_1,e_2,e_1 × e_2]^T$
-        are considered "active", the resulting rotation will be $E^{-1}⋅d$ instead
-        of the default result $E⋅D^{-1}$.
+        If rotations $A = [s_1,s_2,s_1 × s_2]^T$ and B = $[t_1,t_2,t_1 × t_2]^T$
+        are considered "active", the resulting rotation will be $B^{-1}⋅A$ instead
+        of the default result $B⋅A^{-1}$.
 
         Examples
         --------
@@ -1095,23 +1095,23 @@ class Rotation:
         Quaternion [1. 0. 0. 0.]
 
         """
-        d_ = np.array(d,dtype=float)
-        e_ = np.array(e,dtype=float)
+        s_ = np.array(source,dtype=float)
+        t_ = np.array(target,dtype=float)
 
-        if d_.shape[-2:] != (2,3) or e_.shape[-2:] != (2,3):
-            raise ValueError(f'invalid shape: {d_.shape}/{e_.shape}')
+        if s_.shape[-2:] != (2,3) or t_.shape[-2:] != (2,3):
+            raise ValueError(f'invalid shape: {s_.shape}/{t_.shape}')
 
-        d_ /= np.linalg.norm(d_,axis=-1,keepdims=True)
-        e_ /= np.linalg.norm(e_,axis=-1,keepdims=True)
+        s_ /= np.linalg.norm(s_,axis=-1,keepdims=True)
+        t_ /= np.linalg.norm(t_,axis=-1,keepdims=True)
 
-        dm = np.stack([          d_[...,0,:],
-                                             d_[...,1,:],
-                        np.cross(d_[...,0,:],d_[...,1,:]) ],axis=-1 if active else -2)
-        em = np.stack([          e_[...,0,:],
-                                             e_[...,1,:],
-                        np.cross(e_[...,0,:],e_[...,1,:]) ],axis=-1 if active else -2)
+        sm = np.stack([          s_[...,0,:],
+                                             s_[...,1,:],
+                        np.cross(s_[...,0,:],s_[...,1,:]) ],axis=-1 if active else -2)
+        tm = np.stack([          t_[...,0,:],
+                                             t_[...,1,:],
+                        np.cross(t_[...,0,:],t_[...,1,:]) ],axis=-1 if active else -2)
 
-        return Rotation.from_basis(dm).misorientation(Rotation.from_basis(em))
+        return Rotation.from_basis(sm).misorientation(Rotation.from_basis(tm))
 
 
     @staticmethod
