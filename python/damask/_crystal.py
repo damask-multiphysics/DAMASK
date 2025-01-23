@@ -1301,7 +1301,7 @@ class Crystal():
         o_p = np.stack((o.to_frame(uvw=o_p[:,0] if o_l != 'hP' else util.Bravais_to_Miller(uvtw=o_p[:,0])),
                         o.to_frame(hkl=o_p[:,1] if o_l != 'hP' else util.Bravais_to_Miller(hkil=o_p[:,1]))),
                         axis=-2)
-        return (o_l,Rotation.from_parallel(d=m_p,e=o_p,active=True))
+        return (o_l,Rotation.from_parallel(source=m_p,target=o_p,active=True))
 
 
     def Schmid(self, *,

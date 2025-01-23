@@ -520,8 +520,8 @@ class Orientation(Rotation,Crystal):
                            degrees=degrees)
 
     @staticmethod
-    def from_parallel(d: np.ndarray,
-                      e: np.ndarray,
+    def from_parallel(source: np.ndarray,
+                      target: np.ndarray,
                       active: bool = False,
                       *,
                       family: Optional[CrystalFamily] = None,
@@ -534,12 +534,12 @@ class Orientation(Rotation,Crystal):
 
         Parameters
         ----------
-        d : numpy.ndarray, shape (...,2,3)
-            Two three-dimensional vectors of first orthogonal basis.
-        e : numpy.ndarray, shape (...,2,3)
-            Corresponding three-dimensional vectors of second basis.
+        source : numpy.ndarray, shape (...,2,3)
+            First and second three-dimensional vector of orthogonal source basis.
+        target : numpy.ndarray, shape (...,2,3)
+            Corresponding three-dimensional vectors of target basis.
         active : bool, optional
-            Consider rotations as active, i.e. return (E^-1⋅D) instead of (E⋅D^-1).
+            Consider rotations as active, i.e. return (B^-1⋅A) instead of (B⋅A^-1).
             Defaults to False.
         family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
             Name of the crystal family.
@@ -567,12 +567,12 @@ class Orientation(Rotation,Crystal):
 
         Notes
         -----
-        If rotations $D = [d_1,d_2,d_1 × d_2]^T$ and E = $[e_1,e_2,e_1 × e_2]^T$
-        are considered "active", the resulting rotation will be $E^{-1}⋅d$ instead
-        of the default result $E⋅D^{-1}$.
+        If rotations $A = [s_1,s_2,s_1 × s_2]^T$ and B = $[t_1,t_2,t_1 × t_2]^T$
+        are considered "active", the resulting rotation will be $B^{-1}⋅A$ instead
+        of the default result $B⋅A^{-1}$.
 
         """
-        return Orientation(Rotation.from_parallel(d,e,active),
+        return Orientation(Rotation.from_parallel(source,target,active),
                            family=family,lattice=lattice,
                            a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
                            degrees=degrees)
