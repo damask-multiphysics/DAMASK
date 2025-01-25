@@ -2,7 +2,7 @@ import sys
 import copy
 import re
 import builtins
-from typing import Optional, Union, Sequence, Tuple, Literal, List, TypeVar
+from typing import Optional, Union, Sequence, Tuple, Literal, List, TypeVar, NamedTuple
 
 import numpy as np
 
@@ -10,6 +10,11 @@ from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
 from . import tensor
 from . import util
 from . import grid_filters
+
+
+class AxisAngleTuple(NamedTuple):
+    axis: np.ndarray
+    angle: np.ndarray
 
 
 _P = -1
@@ -720,7 +725,7 @@ class Rotation:
 
     def as_axis_angle(self,
                       degrees: bool = False,
-                      pair: bool = False) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
+                      pair: bool = False) -> Union[AxisAngleTuple, np.ndarray]:
         """
         Represent as axis–angle pair.
 
@@ -748,7 +753,10 @@ class Rotation:
         """
         ax: np.ndarray = Rotation._qu2ax(self.quaternion)
         if degrees: ax[...,3] = np.degrees(ax[...,3])
-        return (ax[...,:3],ax[...,3]) if pair else ax
+        if pair:
+            return AxisAngleTuple(ax[...,:3],ax[...,3])
+        else:
+            return ax
 
     def as_matrix(self) -> np.ndarray:
         """
