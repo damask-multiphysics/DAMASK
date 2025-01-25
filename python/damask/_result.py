@@ -8,7 +8,7 @@ import functools
 from pathlib import Path
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Optional, Union, Callable, Any, Sequence, Literal, Dict, List, Tuple
+from typing import Optional, Union, Callable, Any, Sequence, Literal, Dict, List, Tuple, NamedTuple
 
 import h5py
 import numpy as np
@@ -29,6 +29,12 @@ from ._typehints import FloatSequence, IntSequence, DADF5Dataset
 chunk_size = 1024**2//8                                                                             # for compression in HDF5
 
 prefix_inc = 'increment_'
+
+class MappingsTuple(NamedTuple):
+    at_cell_ph: List[Dict[str, np.ndarray]]
+    in_data_ph: List[Dict[str, np.ndarray]]
+    at_cell_ho: Dict[str, np.ndarray]
+    in_data_ho: Dict[str, np.ndarray]
 
 
 def _read(dataset: h5py._hl.dataset.Dataset) -> np.ndarray:
@@ -1577,7 +1583,7 @@ class Result:
                     print(f'Could not add dataset: {err}.')
 
 
-    def _mappings(self):
+    def _mappings(self) -> MappingsTuple:
         """Mappings to place data spatially."""
         with h5py.File(self.fname,'r') as f:
 
@@ -1594,7 +1600,7 @@ class Result:
             in_data_ho = {label: f['/'.join(['cell_to','homogenization'])]['entry'][at_cell_ho[label]] \
                                  for label in self._visible['homogenizations']}
 
-        return at_cell_ph,in_data_ph,at_cell_ho,in_data_ho
+        return MappingsTuple(at_cell_ph, in_data_ph, at_cell_ho, in_data_ho)
 
 
     def get(self,
@@ -1694,7 +1700,7 @@ class Result:
                       (range(self.N_constituents) if constituents is None else [constituents])      # type: ignore
 
         suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
-                   [f'#{c}' for c in constituents_]
+                   [f'#{c}' for c in constituents_]                                                 # type: ignore
 
         at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
 
@@ -1722,7 +1728,7 @@ class Result:
                                                 _empty_like(data,self.N_materialpoints,fill_float,fill_int)
 
                                     for c,suffix in zip(constituents_,suffixes):
-                                        r[inc][ty][field][out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
+                                        r[inc][ty][field][out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]] # type: ignore
 
                                 if ty == 'homogenization':
                                     if out not in r[inc][ty][field].keys():
