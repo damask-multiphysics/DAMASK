@@ -81,11 +81,7 @@ pytest:
     - coverage report --fail-under=90 --show-missing
 
 doctest:
-  stage: python
-  tags:
-    - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:python310_2407
-  before_script: []
+  extends: .python
   script:
     - export DAMASK_ROOT=$(pwd)
     - PYTHONPATH=${DAMASK_ROOT}/python:$PYTHONPATH
