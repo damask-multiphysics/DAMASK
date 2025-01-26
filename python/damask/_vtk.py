@@ -652,7 +652,7 @@ class VTK:
                     colormap
         lut.SetNumberOfTableValues(len(colormap_.colors))
         for i,c in enumerate(colormap_.colors):
-            lut.SetTableValue(i,c if len(c)==4 else np.append(c,1.0))
+            lut.SetTableValue(i,c if len(c)==4 else np.append(c,1.0))                               # type: ignore
         lut.Build()
         if label is not None:
             self.vtk_data.GetCellData().SetActiveScalars(label)
