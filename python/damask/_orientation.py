@@ -1,5 +1,6 @@
 import copy
 from typing import Optional, Union, TypeVar, Literal, NamedTuple # mypy 1.11, overload
+import warnings
 
 import numpy as np
 import numpy.typing as npt
@@ -700,8 +701,9 @@ class Orientation(Rotation,Crystal):
     def to_SST(self,
                vector: FloatSequence,
                proper: bool = False,
+               return_operator: bool = False,
     #           return_operators: bool = False) -> Union[np.ndarray,Tuple[np.ndarray,np.ndarray]]:
-               return_operator: bool = False) -> Union[np.ndarray, ToSSTTuple]:
+               return_operators: bool = False) -> Union[np.ndarray, ToSSTTuple]:
         """
         Rotate lab frame vector to ensure it falls into (improper or proper) standard stereographic triangle of crystal symmetry.
 
@@ -726,6 +728,8 @@ class Orientation(Rotation,Crystal):
             Index of the symmetrically equivalent orientation that rotated vector to SST.
 
         """
+        if return_operators:
+            warnings.warn('"return_operators" is depreacted, use "return_operator".',DeprecationWarning,stacklevel=2)
         vector_ = np.array(vector,float)
         if vector_.shape[-1] != 3:
             raise ValueError('input is not a field of three-dimensional vectors')
