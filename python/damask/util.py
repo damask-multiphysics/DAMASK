@@ -13,7 +13,7 @@ from collections import abc as _abc, OrderedDict as _OrderedDict
 from functools import reduce as _reduce, partial as _partial, wraps as _wraps
 import inspect
 from typing import Optional as _Optional, Callable as _Callable, Union as _Union, Iterable as _Iterable, \
-                   Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, \
+                   Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, NamedTuple as _NamedTuple,\
                    Any as _Any, TextIO as _TextIO, Generator as _Generator
 from pathlib import Path as _Path
 
@@ -23,6 +23,10 @@ import h5py as _h5py
 from . import version as _version
 from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence, \
                         NumpyRngSeed as _NumpyRngSeed, FileHandle as _FileHandle
+
+class stdioTuple(_NamedTuple):
+    stdin: str
+    stdout: str
 
 
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
@@ -145,7 +149,7 @@ def strikeout(msg) -> str:
 def run(cmd: str,
         wd: str = './',
         env: _Optional[_Dict[str, str]] = None,
-        timeout: _Optional[int] = None) -> _Tuple[str, str]:
+        timeout: _Optional[int] = None) -> stdioTuple:
     """
     Run a command.
 
@@ -194,7 +198,7 @@ def run(cmd: str,
         print(stderr)
         raise RuntimeError(f"'{cmd}' failed with returncode {process.returncode}")
 
-    return stdout, stderr
+    return stdioTuple(stdout, stderr)
 
 @_contextlib.contextmanager
 def open_text(fname: _FileHandle,

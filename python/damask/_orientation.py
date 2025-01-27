@@ -1,5 +1,5 @@
 import copy
-from typing import Tuple, Optional, Union, TypeVar, Literal # mypy 1.11, overload
+from typing import Optional, Union, TypeVar, Literal, NamedTuple # mypy 1.11, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -12,6 +12,21 @@ from . import tensor
 
 
 MyType = TypeVar('MyType', bound='Orientation')
+
+class DisorientationTuple(NamedTuple):
+    disorientation: 'Orientation'
+    operators: np.ndarray
+
+
+class AverageTuple(NamedTuple):
+    average: 'Orientation'
+    cloud: 'Orientation'
+
+
+class ToSSTTuple(NamedTuple):
+    vector_sst: np.ndarray
+    operator: np.ndarray
+
 
 class Orientation(Rotation,Crystal):
     """
@@ -464,7 +479,7 @@ class Orientation(Rotation,Crystal):
 
     def disorientation(self: MyType,
                        other: MyType,
-                       return_operators: bool = False) -> Union[Tuple[MyType, np.ndarray], MyType]:
+                       return_operators: bool = False) -> Union[MyType, DisorientationTuple]:
         """
         Calculate disorientation between self and given other orientation.
 
@@ -475,7 +490,7 @@ class Orientation(Rotation,Crystal):
             Compatible innermost dimensions will blend.
         return_operators : bool, optional
             Return index pair of symmetrically equivalent orientations
-            that result in disorientation axis falling into FZ.
+            that result in misorientation falling into disorientation FZ.
             Defaults to False.
 
         Returns
@@ -483,7 +498,8 @@ class Orientation(Rotation,Crystal):
         disorientation : Orientation
             Disorientation between self and other.
         operators : numpy.ndarray of int, shape (...,2), conditional
-            Index of symmetrically equivalent orientation that rotated vector to the SST.
+            Index pair of symmetrically equivalent orientations
+            that result in misorientation falling into disorientation FZ.
 
         Notes
         -----
@@ -541,11 +557,11 @@ class Orientation(Rotation,Crystal):
 
         quat = r[ok][sort].reshape((*shp,4))
 
-        return (
-                (self.copy(rotation=quat), (np.vstack(loc[:2]).T)[sort].reshape((*shp,2)))
-                if return_operators else
-                self.copy(rotation=quat)
-               )
+        if return_operators:
+            operators = (np.vstack(loc[:2]).T)[sort].reshape((*shp, 2))
+            return DisorientationTuple(self.copy(rotation=quat), operators)
+        else:
+            return self.copy(rotation=quat)
 
 
     def disorientation_angle(self: MyType,
@@ -635,7 +651,7 @@ class Orientation(Rotation,Crystal):
 
     def average(self: MyType,                                                                       # type: ignore[override]
                 weights: Optional[FloatSequence] = None,
-                return_cloud: bool = False) -> Union[Tuple[MyType, MyType], MyType]:
+                return_cloud: bool = False) -> Union[MyType, AverageTuple]:
         """
         Return orientation average over last dimension.
 
@@ -669,9 +685,10 @@ class Orientation(Rotation,Crystal):
                                                    axis=0),
                                 axis=0))
 
-        return ((self.copy(Rotation(r).average(weights)),self.copy(Rotation(r))) if return_cloud else
-                self.copy(Rotation(r).average(weights))
-               )
+        if return_cloud:
+            return AverageTuple(self.copy(Rotation(r).average(weights)),self.copy(Rotation(r)))
+        else:
+            return self.copy(Rotation(r).average(weights))
 
     # mypy 1.11
     #@overload
@@ -684,7 +701,7 @@ class Orientation(Rotation,Crystal):
                vector: FloatSequence,
                proper: bool = False,
     #           return_operators: bool = False) -> Union[np.ndarray,Tuple[np.ndarray,np.ndarray]]:
-               return_operators: bool = False) -> np.ndarray:
+               return_operator: bool = False) -> Union[np.ndarray, ToSSTTuple]:
         """
         Rotate lab frame vector to ensure it falls into (improper or proper) standard stereographic triangle of crystal symmetry.
 
@@ -697,8 +714,8 @@ class Orientation(Rotation,Crystal):
         proper : bool, optional
             Consider only vectors with z >= 0, hence combine two neighboring SSTs.
             Defaults to False.
-        return_operators : bool, optional
-            Return the symmetrically equivalent orientation that rotated vector to SST.
+        return_operator : bool, optional
+            Return the index of the symmetrically equivalent orientation that rotated vector to SST.
             Defaults to False.
 
         Returns
@@ -706,7 +723,7 @@ class Orientation(Rotation,Crystal):
         vector_SST : numpy.ndarray, shape (...,3)
             Rotated vector falling into SST.
         operator : numpy.ndarray of int, shape (...), conditional
-            Index of symmetrically equivalent orientation that rotated vector to SST.
+            Index of the symmetrically equivalent orientation that rotated vector to SST.
 
         """
         vector_ = np.array(vector,float)
@@ -721,11 +738,10 @@ class Orientation(Rotation,Crystal):
         loc   = np.where(ok)
         sort  = 0 if len(loc) == 1 else np.lexsort(loc[:0:-1])
 
-        return (
-                (poles[ok][sort].reshape(blend+(3,)), (np.vstack(loc[:1]).T)[sort].reshape(blend))
-                if return_operators else
-                poles[ok][sort].reshape(blend+(3,))
-               )
+        if return_operator:
+            return ToSSTTuple(poles[ok][sort].reshape(blend+(3,)), (np.vstack(loc[:1]).T)[sort].reshape(blend))
+        else:
+            return poles[ok][sort].reshape(blend+(3,))
 
 
     def in_SST(self,
@@ -825,8 +841,8 @@ class Orientation(Rotation,Crystal):
         if np.array(vector).shape[-1] != 3:
             raise ValueError('input is not a field of three-dimensional vectors')
 
-        vector_ = self.to_SST(vector,proper) if in_SST else \
-                  self @ np.broadcast_to(vector,self.shape+(3,))
+        vector_:np.ndarray = self.to_SST(vector,proper) if in_SST else \
+                             self @ np.broadcast_to(vector,self.shape+(3,))                         #type: ignore
 
         if self.standard_triangle is None:                                                          # direct exit for no symmetry
             return np.zeros_like(vector_)
