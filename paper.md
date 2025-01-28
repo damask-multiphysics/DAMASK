@@ -65,7 +65,7 @@ A particular focus is laid on finite-strain continuum mechanics and crystallogra
 The routines for conversion between the different kinds of orientation representations, such as Euler angles, rotation matrices, unit quaternions, or axis-angle pairs, are based on a consistent set of conventions [@rowenhorst2015consistent].
 The provided routines and data structures interoperate seamlessly with other libraries from the Python ecosystem, such as `NumPy` [@harris2020array], `pandas` [@mckinney-proc-scipy-2010], `Matplotlib` [@hunter2007matplotlib], `SciPy` [@2020SciPy-NMeth], `VTK`/`PyVista` [@ahrens200536] [@Sullivan_PyVista_3D_plotting_2019], `PyYAML`, `h5py` [@collette_python_hdf5_2014] [@FolkEtAl2011], and `orix` [@johnstone2020density] to facilitate the definition of custom ICME workflows.
 
-Apart from its DAMASK-specific processing capabilities, many routines of the library can be used in other material science and continuum mechanics applications.
+Apart from its DAMASK-specific processing capabilities, many routines of the library can be used in other materials science and continuum mechanics applications.
 
 ## Pre-Processing
 
