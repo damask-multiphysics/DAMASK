@@ -29,7 +29,7 @@ authors:
 affiliations:
 - name: Max Planck Institute for Sustainable Materials, 40237 Düsseldorf, Germany
   index: 1
-- name: Chemical Engineering and Materials Science, Michigan State University, East Lansing, MI 48824, USA
+- name: Chemical Engineering and Materials Science, Michigan State University, East Lansing, MI 48824, United States of America
   index: 2
 - name: Department of Materials Engineering, KU Leuven, Kasteelpark Arenberg 44, 3001 Leuven, Belgium
   index: 3
