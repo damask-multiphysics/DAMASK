@@ -11,6 +11,6 @@ K_11: 12.86
 K_11,T: 1.618e-2
 
 C_p: 508.7
-C_p,T: 1.347e-1 # not implemented
+C_p,T: 1.347e-1
 
 T_ref: 293.15
