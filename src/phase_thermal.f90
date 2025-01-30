@@ -105,7 +105,6 @@ module subroutine thermal_init(phases)
       thermal => phase%get_dict('thermal',defaultVal=emptyDict)
     end if
 
-    ! ToDo: temperature dependency of K and C_p
     if (thermal%length > 0) then
       thermal_active = .true.
 
@@ -223,19 +222,19 @@ end function phase_thermal_collectDotState
 module function phase_mu_T(co,ce) result(mu)
 
   integer, intent(in) :: co, ce
-  real(pREAL) :: mu, Cp, T
+  real(pREAL) :: mu
 
-  associate(prm => param(co))
+  real(pREAL) :: T
 
-    Cp = 0.0_pREAL
-    T = thermal_T(co,ce)
-    Cp = prm%C_p%at(T)
+
+  associate(ph => material_ID_phase(co,ce), &
+            en => material_entry_phase(co,ce))
+
+    T = current(ph)%T(en)
+    mu = phase_rho(ph) &
+       * param(ph)%C_p%at(T)
 
   end associate
-
-
-  mu = phase_rho(material_ID_phase(co,ce)) &
-     * Cp
 
 end function phase_mu_T
 
@@ -246,25 +245,25 @@ end function phase_mu_T
 module function phase_K_T(co,ce) result(K)
 
   integer, intent(in) :: co, ce
-  real(pREAL), dimension(3,3) :: K, K33
+  real(pREAL), dimension(3,3) :: K
+
   real(pREAL) :: T
 
-  associate(prm => param(co))
 
-    K33 = 0.0_pREAL
-    T = thermal_T(co,ce)
+  associate( ph => material_ID_phase(co,ce), &
+            en => material_entry_phase(co,ce))
 
-    K33(1,1) = prm%K_11%at(T)
+    T = current(ph)%T(en)
 
-    if (any(phase_lattice(co) == ['hP','tI'])) then
-      K33(3,3) = prm%K_33%at(T)
-    end if
+    K = 0.0_pREAL
+    K(1,1) = param(ph)%K_11%at(T)
+    if (any(phase_lattice(ph) == ['hP','tI'])) K(3,3) = param(ph)%K_33%at(T)
 
-    K33 = crystal_symmetrize_33(K33,phase_lattice(co))
+    K = crystal_symmetrize_33(K,phase_lattice(ph))
+    K = crystallite_push33ToRef(co,ce,K)
 
   end associate
 
-  K = crystallite_push33ToRef(co,ce,K33)
 
 end function phase_K_T
 
