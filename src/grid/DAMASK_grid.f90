@@ -389,7 +389,7 @@ program DAMASK_grid
         call parallelization_chkerr(err_MPI)
         if (mod(inc,loadCases(l)%f_restart) == 0 .or. sig) then
           fileHandle = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
-          call HDF5_addAttribute(fileHandle,'increment',inc)
+          call HDF5_addAttribute(fileHandle,'increment',totalIncsCounter)
           call HDF5_closeFile(fileHandle)
           do field = 1, nActiveFields
             select case (ID(field))
