@@ -145,6 +145,29 @@ class TestResult:
                     fields.append(homogenization[f])
             assert len(fields) > 0
 
+    @pytest.mark.parametrize('protected', [True, False])
+    @pytest.mark.parametrize('func', [lambda default: default._add_generic_grid,
+                                      lambda default: default._add_generic_pointwise])
+    def test_add_generic_dataset_overwrite(self, default, protected, func):
+        def add_test_dataset(f,dummy):
+            return {
+                'data':  f['data'],
+                'label': f'|{f["label"]}|',
+                'meta':  {
+                    'unit':        0,
+                    'description': 'test data',
+                    'creator':     'add_test_dataset'
+                }
+            }
+
+        default._protected = protected
+        func(default)(add_test_dataset, {'f': 'F_e'},{'dummy':'test'})
+        if protected:
+            with pytest.raises(ValueError):
+                func(default)(add_test_dataset, {'f': 'F_e'},{'dummy':'test'})
+        else:
+            func(default)(add_test_dataset, {'f': 'F_e'},{'dummy':'test'})
+
     def test_add_invalid(self,default):
         default.add_absolute('xxxx')
 
@@ -162,7 +185,7 @@ class TestResult:
             default.add_calculation('2.0*np.abs(#F#)-1.0','x','-','my notes')
         else:
             with open(tmp_path/'f.py','w') as f:
-                f.write("import numpy as np\ndef my_func(field):\n  return 2.0*np.abs(field)-1.0\n")
+                f.write('import numpy as np\ndef my_func(field):\n  return 2.0*np.abs(field)-1.0\n')
             sys.path.insert(0,str(tmp_path))
             import f
             default.enable_user_function(f.my_func)
