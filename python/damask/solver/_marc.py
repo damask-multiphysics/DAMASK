@@ -88,7 +88,7 @@ class Marc:
         script = f'run_damask_{optimization}mp'
 
         cmd = f'{self.tools_path/script} -jid {model}_{job} '\
-            + (f'-nprocd 1 ' if (domains == 1) else\
+            + ('-nprocd 1 ' if (domains == 1) else\
                f'-nprocd {domains} -nsolver {domains} -nthread_elem {domains} -nthread_solver {domains} ')\
             + '-autorst 0 -ci n -cr n -dcoup 0 -b no -v no '\
             + (f'-u {usersub} -save y' if compile else f'-prog {usersub.with_suffix("")}')
