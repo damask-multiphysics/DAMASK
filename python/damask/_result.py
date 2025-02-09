@@ -23,7 +23,7 @@ from . import grid_filters
 from . import mechanics
 from . import tensor
 from . import util
-from ._typehints import FloatSequence, IntSequence, DADF5Dataset
+from ._typehints import FloatSequence, IntSequence, DADF5Dataset, BravaisLattice
 
 
 chunk_size = 1024**2//8                                                                             # for compression in HDF5
@@ -954,7 +954,7 @@ class Result:
 
         def IPF_color(l: FloatSequence, q: DADF5Dataset) -> DADF5Dataset:
             m = util.scale_to_coprime(np.array(l))
-            lattice =  q['meta']['lattice']
+            lattice: BravaisLattice = q['meta']['lattice']                                          # type: ignore[assignment]
             o = Orientation(rotation = q['data'],lattice=lattice)
 
             return {
@@ -962,7 +962,7 @@ class Result:
                     'label': 'IPFcolor_({} {} {})'.format(*m),
                     'meta' : {
                               'unit':        '8-bit RGB',
-                              'lattice':     q['meta']['lattice'],
+                              'lattice':     lattice,
                               'description': 'Inverse Pole Figure (IPF) colors along sample direction ({} {} {})'.format(*m),
                               'creator':     'add_IPF_color'
                              }
@@ -1132,8 +1132,8 @@ class Result:
     def add_pole(self,
                  q: str = 'O',
                  *,
-                 uvw: Optional[FloatSequence] = None,
-                 hkl: Optional[FloatSequence] = None,
+                 uvw: Optional[IntSequence] = None,
+                 hkl: Optional[IntSequence] = None,
                  with_symmetry: bool = False,
                  normalize: bool = True):
         """
@@ -1155,7 +1155,7 @@ class Result:
 
         """
         def pole(q: DADF5Dataset,
-                 uvw: FloatSequence, hkl: FloatSequence,
+                 uvw: IntSequence, hkl: IntSequence,
                  with_symmetry: bool,
                  normalize: bool) -> DADF5Dataset:
             c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1.0
@@ -1163,7 +1163,8 @@ class Result:
             label = 'p^' + '{}{} {} {}{}'.format(brackets[0],
                                                  *(uvw if uvw else hkl),
                                                  brackets[-1],)
-            ori = Orientation(q['data'],lattice=q['meta']['lattice'],a=1,c=c)
+            lattice: BravaisLattice = q['meta']['lattice']                                          # type: ignore[assignment]
+            ori = Orientation(q['data'],lattice=lattice,a=1,c=c)
 
             return {
                     'data': np.moveaxis(ori.to_frame(uvw=uvw,hkl=hkl,
