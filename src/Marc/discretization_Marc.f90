@@ -438,9 +438,10 @@ subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
     if (chunkPos(1) < 2) cycle
     if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'define' .and. &
        IO_lc(strValue(fileContent(l),chunkPos,2)) == 'element') then
+      chunkPos = strPos(fileContent(l+1))
+      if (chunkPos(1) == 0) cycle
       nElemSets = nElemSets + 1
 
-      chunkPos = strPos(fileContent(l+1))
       if (containsRange(fileContent(l+1),chunkPos)) then
         elemInCurrentSet = 1 + abs( intValue(fileContent(l+1),chunkPos,3) &
                                    -intValue(fileContent(l+1),chunkPos,1))
@@ -488,9 +489,12 @@ subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,&
     if (chunkPos(1) < 2) cycle
     if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'define' .and. &
        IO_lc(strValue(fileContent(l),chunkPos,2)) == 'element') then
-       elemSet = elemSet+1
-       nameElemSet(elemSet)  = trim(strValue(fileContent(l),chunkPos,4))
-       mapElemSet(:,elemSet) = continuousIntValues(fileContent(l+1:),size(mapElemSet,1)-1,nameElemSet,mapElemSet,size(nameElemSet))
+      chunkPos = strPos(fileContent(l+1))
+      if (chunkPos(1) == 0) cycle
+      chunkPos = strPos(fileContent(l))
+      elemSet = elemSet+1
+      nameElemSet(elemSet)  = trim(strValue(fileContent(l),chunkPos,4))
+      mapElemSet(:,elemSet) = continuousIntValues(fileContent(l+1:),size(mapElemSet,1)-1,nameElemSet,mapElemSet,size(nameElemSet))
     end if
   end do
 

@@ -8,8 +8,7 @@ import functools
 from pathlib import Path
 from collections import defaultdict
 from collections.abc import Iterable
-import logging
-from typing import Optional, Union, Callable, Any, Sequence, Literal, Dict, List, Tuple
+from typing import Optional, Union, Callable, Any, Sequence, Literal, Dict, List, Tuple, NamedTuple
 
 import h5py
 import numpy as np
@@ -24,7 +23,7 @@ from . import grid_filters
 from . import mechanics
 from . import tensor
 from . import util
-from ._typehints import FloatSequence, IntSequence, DADF5Dataset
+from ._typehints import FloatSequence, IntSequence, DADF5Dataset, BravaisLattice
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +31,13 @@ logger = logging.getLogger(__name__)
 chunk_size = 1024**2//8                                                                             # for compression in HDF5
 
 prefix_inc = 'increment_'
+
+class MappingsTuple(NamedTuple):
+    at_cell_ph: List[Dict[str, np.ndarray]]
+    in_data_ph: List[Dict[str, np.ndarray]]
+    at_cell_ho: Dict[str, np.ndarray]
+    in_data_ho: Dict[str, np.ndarray]
+
 
 def _read(dataset: h5py._hl.dataset.Dataset) -> np.ndarray:
     """Read a dataset and its metadata into a numpy.ndarray."""
@@ -950,7 +956,7 @@ class Result:
 
         def IPF_color(l: FloatSequence, q: DADF5Dataset) -> DADF5Dataset:
             m = util.scale_to_coprime(np.array(l))
-            lattice =  q['meta']['lattice']
+            lattice: BravaisLattice = q['meta']['lattice']                                          # type: ignore[assignment]
             o = Orientation(rotation = q['data'],lattice=lattice)
 
             return {
@@ -958,7 +964,7 @@ class Result:
                     'label': 'IPFcolor_({} {} {})'.format(*m),
                     'meta' : {
                               'unit':        '8-bit RGB',
-                              'lattice':     q['meta']['lattice'],
+                              'lattice':     lattice,
                               'description': 'Inverse Pole Figure (IPF) colors along sample direction ({} {} {})'.format(*m),
                               'creator':     'add_IPF_color'
                              }
@@ -1128,8 +1134,8 @@ class Result:
     def add_pole(self,
                  q: str = 'O',
                  *,
-                 uvw: Optional[FloatSequence] = None,
-                 hkl: Optional[FloatSequence] = None,
+                 uvw: Optional[IntSequence] = None,
+                 hkl: Optional[IntSequence] = None,
                  with_symmetry: bool = False,
                  normalize: bool = True):
         """
@@ -1151,7 +1157,7 @@ class Result:
 
         """
         def pole(q: DADF5Dataset,
-                 uvw: FloatSequence, hkl: FloatSequence,
+                 uvw: IntSequence, hkl: IntSequence,
                  with_symmetry: bool,
                  normalize: bool) -> DADF5Dataset:
             c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1.0
@@ -1159,7 +1165,8 @@ class Result:
             label = 'p^' + '{}{} {} {}{}'.format(brackets[0],
                                                  *(uvw if uvw else hkl),
                                                  brackets[-1],)
-            ori = Orientation(q['data'],lattice=q['meta']['lattice'],a=1,c=c)
+            lattice: BravaisLattice = q['meta']['lattice']                                          # type: ignore[assignment]
+            ori = Orientation(q['data'],lattice=lattice,a=1,c=c)
 
             return {
                     'data': np.moveaxis(ori.to_frame(uvw=uvw,hkl=hkl,
@@ -1443,8 +1450,7 @@ class Result:
     def _add_generic_grid(self,
                           func: Callable[..., DADF5Dataset],
                           datasets: Dict[str, str],
-                          args: Dict[str, str] = {},
-                          constituents = None):
+                          args: Dict[str,Any]):
         """
         General function to add data on a regular grid.
 
@@ -1456,7 +1462,7 @@ class Result:
         datasets : dictionary
             Details of the datasets to be used:
             {arg (name to which the data is passed in func): label (in DADF5 file)}.
-        args : dictionary, optional
+        args : dictionary
             Arguments parsed to func.
 
         """
@@ -1480,13 +1486,17 @@ class Result:
                         r = func(**dataset,**args)
                         result = grid_filters.ravel(r['data'])
                         for x in self._visible[ty[0]+'s']:
+                            path = '/'.join(['/',increment[0],ty[0],x,field[0]])
                             if ty[0] == 'phase':
                                 result1 = result[at_cell_ph[0][x]]
                             if ty[0] == 'homogenization':
                                 result1 = result[at_cell_ho[x]]
-
-                            path = '/'.join(['/',increment[0],ty[0],x,field[0]])
-                            h5_dataset = f[path].create_dataset(r['label'],data=result1)
+                            if not self._protected and '/'.join([path,r['label']]) in f:
+                                h5_dataset = f['/'.join([path,r['label']])]
+                                h5_dataset[...] = result1
+                                h5_dataset.attrs['overwritten'] = True
+                            else:
+                                h5_dataset = f[path].create_dataset(r['label'],data=result1)
 
                             h5_dataset.attrs['created'] = util.time_stamp()
 
@@ -1499,7 +1509,7 @@ class Result:
     def _add_generic_pointwise(self,
                                func: Callable[..., DADF5Dataset],
                                datasets: Dict[str, str],
-                               args: Dict[str, Any] = {}):
+                               args: Optional[Dict[str, Any]] = None):
         """
         General function to add pointwise data.
 
@@ -1515,6 +1525,7 @@ class Result:
             Arguments parsed to func.
 
         """
+        args = args if args else {}
 
         def job_pointwise(group: str,
                           callback: Callable[..., DADF5Dataset],
@@ -1579,7 +1590,7 @@ class Result:
                     logger.error(f'Could not add dataset: {err}.')
 
 
-    def _mappings(self):
+    def _mappings(self) -> MappingsTuple:
         """Mappings to place data spatially."""
         with h5py.File(self.fname,'r') as f:
 
@@ -1596,7 +1607,7 @@ class Result:
             in_data_ho = {label: f['/'.join(['cell_to','homogenization'])]['entry'][at_cell_ho[label]] \
                                  for label in self._visible['homogenizations']}
 
-        return at_cell_ph,in_data_ph,at_cell_ho,in_data_ho
+        return MappingsTuple(at_cell_ph, in_data_ph, at_cell_ho, in_data_ho)
 
 
     def get(self,
@@ -1696,7 +1707,7 @@ class Result:
                       (range(self.N_constituents) if constituents is None else [constituents])      # type: ignore
 
         suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
-                   [f'#{c}' for c in constituents_]
+                   [f'#{c}' for c in constituents_]                                                 # type: ignore
 
         at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
 
@@ -1724,7 +1735,7 @@ class Result:
                                                 _empty_like(data,self.N_materialpoints,fill_float,fill_int)
 
                                     for c,suffix in zip(constituents_,suffixes):
-                                        r[inc][ty][field][out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
+                                        r[inc][ty][field][out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]] # type: ignore
 
                                 if ty == 'homogenization':
                                     if out not in r[inc][ty][field].keys():

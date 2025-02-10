@@ -15,7 +15,7 @@ import inspect
 from pathlib import Path as _Path
 import logging
 from typing import Optional as _Optional, Callable as _Callable, Union as _Union, Iterable as _Iterable, \
-                   Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, \
+                   Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, NamedTuple as _NamedTuple, \
                    Any as _Any, TextIO as _TextIO, Generator as _Generator
 
 import numpy as _np
@@ -24,6 +24,10 @@ import h5py as _h5py
 from . import version as _version
 from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence, \
                         NumpyRngSeed as _NumpyRngSeed, FileHandle as _FileHandle
+
+class stdioTuple(_NamedTuple):
+    stdin: str
+    stdout: str
 
 
 logger = logging.getLogger(__name__)
@@ -148,7 +152,7 @@ def strikeout(msg) -> str:
 def run(cmd: str,
         wd: str = './',
         env: _Optional[_Dict[str, str]] = None,
-        timeout: _Optional[int] = None) -> _Tuple[str, str]:
+        timeout: _Optional[int] = None) -> stdioTuple:
     """
     Run a command.
 
@@ -197,7 +201,7 @@ def run(cmd: str,
         logger.error(stderr)
         raise RuntimeError(f"'{cmd}' failed with returncode {process.returncode}")
 
-    return stdout, stderr
+    return stdioTuple(stdout, stderr)
 
 @_contextlib.contextmanager
 def open_text(fname: _FileHandle,
