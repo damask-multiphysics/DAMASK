@@ -14,6 +14,7 @@ import h5py
 import numpy as np
 from numpy import ma
 from scipy import interpolate
+import logging
 
 import damask
 from . import VTK
