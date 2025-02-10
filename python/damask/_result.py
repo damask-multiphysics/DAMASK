@@ -1447,8 +1447,7 @@ class Result:
     def _add_generic_grid(self,
                           func: Callable[..., DADF5Dataset],
                           datasets: Dict[str, str],
-                          args: Dict[str, str] = {},
-                          constituents = None):
+                          args: Dict[str,Any]):
         """
         General function to add data on a regular grid.
 
@@ -1460,7 +1459,7 @@ class Result:
         datasets : dictionary
             Details of the datasets to be used:
             {arg (name to which the data is passed in func): label (in DADF5 file)}.
-        args : dictionary, optional
+        args : dictionary
             Arguments parsed to func.
 
         """
@@ -1484,13 +1483,17 @@ class Result:
                         r = func(**dataset,**args)
                         result = grid_filters.ravel(r['data'])
                         for x in self._visible[ty[0]+'s']:
+                            path = '/'.join(['/',increment[0],ty[0],x,field[0]])
                             if ty[0] == 'phase':
                                 result1 = result[at_cell_ph[0][x]]
                             if ty[0] == 'homogenization':
                                 result1 = result[at_cell_ho[x]]
-
-                            path = '/'.join(['/',increment[0],ty[0],x,field[0]])
-                            h5_dataset = f[path].create_dataset(r['label'],data=result1)
+                            if not self._protected and '/'.join([path,r['label']]) in f:
+                                h5_dataset = f['/'.join([path,r['label']])]
+                                h5_dataset[...] = result1
+                                h5_dataset.attrs['overwritten'] = True
+                            else:
+                                h5_dataset = f[path].create_dataset(r['label'],data=result1)
 
                             h5_dataset.attrs['created'] = util.time_stamp()
 
@@ -1503,7 +1506,7 @@ class Result:
     def _add_generic_pointwise(self,
                                func: Callable[..., DADF5Dataset],
                                datasets: Dict[str, str],
-                               args: Dict[str, Any] = {}):
+                               args: Optional[Dict[str, Any]] = None):
         """
         General function to add pointwise data.
 
@@ -1519,6 +1522,7 @@ class Result:
             Arguments parsed to func.
 
         """
+        args = args if args else {}
 
         def job_pointwise(group: str,
                           callback: Callable[..., DADF5Dataset],
