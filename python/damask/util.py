@@ -193,8 +193,8 @@ def run(cmd: str,
             _signal.signal(sig,state)
 
     if process.returncode != 0:
-        print(stdout)
-        print(stderr)
+        logger.error(stdout)
+        logger.error(stderr)
         raise RuntimeError(f"'{cmd}' failed with returncode {process.returncode}")
 
     return stdout, stderr
