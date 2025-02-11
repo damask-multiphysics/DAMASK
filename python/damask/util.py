@@ -13,7 +13,7 @@ from collections import abc as _abc, OrderedDict as _OrderedDict
 from functools import reduce as _reduce, partial as _partial, wraps as _wraps
 import inspect
 from typing import Optional as _Optional, Callable as _Callable, Union as _Union, Iterable as _Iterable, \
-                   Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, NamedTuple as _NamedTuple,\
+                   Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, NamedTuple as _NamedTuple, \
                    Any as _Any, TextIO as _TextIO, Generator as _Generator
 from pathlib import Path as _Path
 

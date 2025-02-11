@@ -1,11 +1,11 @@
 import copy
-from typing import Optional, Union, TypeVar, Literal, NamedTuple # mypy 1.11, overload
 import warnings
+from typing import Optional, Union, TypeVar, Literal, Sequence, NamedTuple # mypy 1.11, overload
 
 import numpy as np
 import numpy.typing as npt
 
-from ._typehints import FloatSequence, IntSequence, CrystalFamily, BravaisLattice
+from ._typehints import FloatSequence, IntSequence, CrystalFamily, BravaisLattice, NumpyRngSeed
 from . import Rotation
 from . import Crystal
 from . import util
@@ -86,7 +86,6 @@ class Orientation(Rotation,Crystal):
 
     """
 
-    @util.extend_docstring(adopted_parameters=Crystal.__init__)
     def __init__(self,
                  rotation: Union[FloatSequence, Rotation] = np.array([1.,0.,0.,0.]),
                  *,
@@ -104,11 +103,32 @@ class Orientation(Rotation,Crystal):
             Unit quaternion in positive real hemisphere.
             Use .from_quaternion to perform a sanity check.
             Defaults to no rotation.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be inferred if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
+        a : float, optional
+            Length of lattice parameter 'a'.
+        b : float, optional
+            Length of lattice parameter 'b'.
+        c : float, optional
+            Length of lattice parameter 'c'.
+        alpha : float, optional
+            Angle between b and c lattice basis.
+        beta : float, optional
+            Angle between c and a lattice basis.
+        gamma : float, optional
+            Angle between a and b lattice basis.
+        degrees : bool, optional
+            Angles are given in degrees. Defaults to False.
 
         """
         Rotation.__init__(self,rotation)
-        Crystal.__init__(self,family=family, lattice=lattice,
-                              a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma, degrees=degrees)
+        Crystal.__init__(self,
+                         family=family, lattice=lattice,
+                         a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                         degrees=degrees)
 
 
     def __repr__(self) -> str:
@@ -255,120 +275,764 @@ class Orientation(Rotation,Crystal):
         return self.copy(Rotation(self.quaternion)*Rotation(other.quaternion))
 
 
-    @classmethod
-    @util.extend_docstring(Rotation.from_quaternion,
-                           adopted_parameters=Crystal.__init__)
-    @util.pass_on('rotation', Rotation.from_quaternion, wrapped=__init__)
-    def from_quaternion(cls, **kwargs) -> 'Orientation':
-        return cls(**kwargs)
-
-    @classmethod
-    @util.extend_docstring(Rotation.from_Euler_angles,
-                           adopted_parameters=Crystal.__init__)
-    @util.pass_on('rotation', Rotation.from_Euler_angles, wrapped=__init__)
-    def from_Euler_angles(cls, **kwargs) -> 'Orientation':
-        return cls(**kwargs)
-
-    @classmethod
-    @util.extend_docstring(Rotation.from_axis_angle,
-                           adopted_parameters=Crystal.__init__)
-    @util.pass_on('rotation', Rotation.from_axis_angle, wrapped=__init__)
-    def from_axis_angle(cls, **kwargs) -> 'Orientation':
-        return cls(**kwargs)
-
-    @classmethod
-    @util.extend_docstring(Rotation.from_basis,
-                           adopted_parameters=Crystal.__init__)
-    @util.pass_on('rotation', Rotation.from_basis, wrapped=__init__)
-    def from_basis(cls, **kwargs) -> 'Orientation':
-        return cls(**kwargs)
-
-    @classmethod
-    @util.extend_docstring(Rotation.from_matrix,
-                           adopted_parameters=Crystal.__init__)
-    @util.pass_on('rotation', Rotation.from_matrix, wrapped=__init__)
-    def from_matrix(cls, **kwargs) -> 'Orientation':
-        return cls(**kwargs)
-
-    @classmethod
-    @util.extend_docstring(Rotation.from_parallel,
-                           adopted_parameters=Crystal.__init__)
-    @util.pass_on('rotation', Rotation.from_parallel, wrapped=__init__)
-    def from_parallel(cls, **kwargs) -> 'Orientation':
-        return cls(**kwargs)
-
-    @classmethod
-    @util.extend_docstring(Rotation.from_Rodrigues_vector,
-                           adopted_parameters=Crystal.__init__)
-    @util.pass_on('rotation', Rotation.from_Rodrigues_vector, wrapped=__init__)
-    def from_Rodrigues_vector(cls, **kwargs) -> 'Orientation':
-        return cls(**kwargs)
-
-    @classmethod
-    @util.extend_docstring(Rotation.from_homochoric,
-                           adopted_parameters=Crystal.__init__)
-    @util.pass_on('rotation', Rotation.from_homochoric, wrapped=__init__)
-    def from_homochoric(cls, **kwargs) -> 'Orientation':
-        return cls(**kwargs)
-
-    @classmethod
-    @util.extend_docstring(Rotation.from_cubochoric,
-                           adopted_parameters=Crystal.__init__)
-    @util.pass_on('rotation', Rotation.from_cubochoric, wrapped=__init__)
-    def from_cubochoric(cls, **kwargs) -> 'Orientation':
-        return cls(**kwargs)
-
-    @classmethod
-    @util.extend_docstring(Rotation.from_random,
-                           adopted_parameters=Crystal.__init__)
-    @util.pass_on('rotation', Rotation.from_random, wrapped=__init__)
-    def from_random(cls, **kwargs) -> 'Orientation':
-        return cls(**kwargs)
-
-    @classmethod
-    @util.extend_docstring(Rotation.from_ODF,
-                           adopted_parameters=Crystal.__init__)
-    @util.pass_on('rotation', Rotation.from_ODF, wrapped=__init__)
-    def from_ODF(cls, **kwargs) -> 'Orientation':
-        return cls(**kwargs)
-
-    @classmethod
-    @util.extend_docstring(Rotation.from_spherical_component,
-                           adopted_parameters=Crystal.__init__)
-    @util.pass_on('rotation', Rotation.from_spherical_component, wrapped=__init__)
-    def from_spherical_component(cls, **kwargs) -> 'Orientation':
-        return cls(**kwargs)
-
-    @classmethod
-    @util.extend_docstring(Rotation.from_fiber_component,
-                           adopted_parameters=Crystal.__init__)
-    @util.pass_on('rotation', Rotation.from_fiber_component, wrapped=__init__)
-    def from_fiber_component(cls, **kwargs) -> 'Orientation':
-        return cls(**kwargs)
-
-
-    @classmethod
-    @util.extend_docstring(adopted_parameters=Crystal.__init__)
-    def from_directions(cls,
-                        uvw: FloatSequence,
-                        hkl: FloatSequence,
-                        **kwargs) -> 'Orientation':
+    @staticmethod
+    def from_quaternion(q: Union[Sequence[FloatSequence], np.ndarray],
+                        accept_homomorph: bool = False,
+                        normalize: bool = False,
+                        P: Literal[1, -1] = -1,
+                        *,
+                        family: Optional[CrystalFamily] = None,
+                        lattice: Optional[BravaisLattice] = None,
+                        a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                        alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                        degrees: bool = False) -> 'Orientation':
         """
-        Initialize orientation object from the crystallographic direction and plane parallel to lab x and z, respectively.
+        Initialize from quaternion.
 
         Parameters
         ----------
-        uvw : numpy.ndarray, shape (...,3)
-            Lattice direction aligned with lab frame x-direction.
-        hkl : numpy.ndarray, shape (...,3)
-            Lattice plane normal aligned with lab frame z-direction.
+        q : numpy.ndarray, shape (...,4)
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
+        accept_homomorph : bool, optional
+            Allow homomorphic variants, i.e. q_0 < 0 (negative real hemisphere).
+            Defaults to False.
+        normalize: bool, optional
+            Allow ǀqǀ ≠ 1. Defaults to False.
+        P : int ∈ {-1,1}, optional
+            Sign convention. Defaults to -1.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be inferred if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
+        a : float, optional
+            Length of lattice parameter 'a'.
+        b : float, optional
+            Length of lattice parameter 'b'.
+        c : float, optional
+            Length of lattice parameter 'c'.
+        alpha : float, optional
+            Angle between b and c lattice basis.
+        beta : float, optional
+            Angle between c and a lattice basis.
+        gamma : float, optional
+            Angle between a and b lattice basis.
+        degrees : bool, optional
+            Angles are given in degrees. Defaults to False.
 
         Returns
         -------
         new : damask.Orientation
 
         """
-        o = cls(**kwargs,rotation=[1,0,0,0])
+        return Orientation(Rotation.from_quaternion(q,accept_homomorph,normalize,P),
+                           family=family,lattice=lattice,
+                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                           degrees=degrees)
+
+    @staticmethod
+    def from_Euler_angles(phi: np.ndarray,
+                          degrees: bool = False,
+                          *,
+                          family: Optional[CrystalFamily] = None,
+                          lattice: Optional[BravaisLattice] = None,
+                          a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                          alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                          ) -> 'Orientation':
+        """
+        Initialize from Bunge Euler angles.
+
+        Parameters
+        ----------
+        phi : numpy.ndarray, shape (...,3)
+            Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π])
+            or (φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360]) if degrees == True.
+        degrees : bool, optional
+            Angles are given in degrees. Defaults to False.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be inferred if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
+        a : float, optional
+            Length of lattice parameter 'a'.
+        b : float, optional
+            Length of lattice parameter 'b'.
+        c : float, optional
+            Length of lattice parameter 'c'.
+        alpha : float, optional
+            Angle between b and c lattice basis.
+        beta : float, optional
+            Angle between c and a lattice basis.
+        gamma : float, optional
+            Angle between a and b lattice basis.
+
+        Returns
+        -------
+        new : damask.Orientation
+
+        Notes
+        -----
+        Bunge Euler angles correspond to a rotation axis sequence of z–x'–z''.
+
+        """
+        return Orientation(Rotation.from_Euler_angles(phi,degrees),
+                           family=family,lattice=lattice,
+                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                           degrees=degrees)
+
+    @staticmethod
+    def from_axis_angle(n_omega: np.ndarray,
+                        degrees: bool = False,
+                        normalize: bool = False,
+                        P: Literal[1, -1] = -1,
+                        *,
+                        family: Optional[CrystalFamily] = None,
+                        lattice: Optional[BravaisLattice] = None,
+                        a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                        alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                        ) -> 'Orientation':
+        """
+        Initialize from axis–angle pair.
+
+        Parameters
+        ----------
+        n_omega : numpy.ndarray, shape (...,4)
+            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π]
+            or ω ∈ [0,180] if degrees == True.
+        degrees : bool, optional
+            Angles are given in degrees. Defaults to False.
+        normalize: bool, optional
+            Allow ǀnǀ ≠ 1. Defaults to False.
+        P : int ∈ {-1,1}, optional
+            Sign convention. Defaults to -1.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be inferred if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
+        a : float, optional
+            Length of lattice parameter 'a'.
+        b : float, optional
+            Length of lattice parameter 'b'.
+        c : float, optional
+            Length of lattice parameter 'c'.
+        alpha : float, optional
+            Angle between b and c lattice basis.
+        beta : float, optional
+            Angle between c and a lattice basis.
+        gamma : float, optional
+            Angle between a and b lattice basis.
+
+        Returns
+        -------
+        new : damask.Orientation
+
+        """
+        return Orientation(Rotation.from_axis_angle(n_omega,degrees,normalize,P),
+                           family=family,lattice=lattice,
+                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                           degrees=degrees)
+
+    @staticmethod
+    def from_basis(basis: np.ndarray,
+                   orthonormal: bool = True,
+                   reciprocal: bool = False,
+                   *,
+                   family: Optional[CrystalFamily] = None,
+                   lattice: Optional[BravaisLattice] = None,
+                   a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                   alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                   degrees: bool = False) -> 'Orientation':
+        """
+        Initialize from basis vector triplet.
+
+        Parameters
+        ----------
+        basis : numpy.ndarray, shape (...,3,3)
+            Three three-dimensional basis vectors.
+        orthonormal : bool, optional
+            Basis is strictly orthonormal, i.e. is free of stretch components. Defaults to True.
+        reciprocal : bool, optional
+            Basis vectors are given in reciprocal (instead of real) space. Defaults to False.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be inferred if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
+        a : float, optional
+            Length of lattice parameter 'a'.
+        b : float, optional
+            Length of lattice parameter 'b'.
+        c : float, optional
+            Length of lattice parameter 'c'.
+        alpha : float, optional
+            Angle between b and c lattice basis.
+        beta : float, optional
+            Angle between c and a lattice basis.
+        gamma : float, optional
+            Angle between a and b lattice basis.
+        degrees : bool, optional
+            Angles are given in degrees. Defaults to False.
+
+        Returns
+        -------
+        new : damask.Orientation
+
+        """
+        return Orientation(Rotation.from_basis(basis,orthonormal,reciprocal),
+                           family=family,lattice=lattice,
+                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                           degrees=degrees)
+
+    @staticmethod
+    def from_matrix(R: np.ndarray,
+                    normalize: bool = False,
+                    *,
+                    family: Optional[CrystalFamily] = None,
+                    lattice: Optional[BravaisLattice] = None,
+                    a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                    alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                    degrees: bool = False) -> 'Orientation':
+        """
+        Initialize from rotation matrix.
+
+        Parameters
+        ----------
+        R : numpy.ndarray, shape (...,3,3)
+            Rotation matrix with det(R) = 1 and R.T ∙ R = I.
+        normalize : bool, optional
+            Rescales rotation matrix to unit determinant. Defaults to False.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be inferred if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
+        a : float, optional
+            Length of lattice parameter 'a'.
+        b : float, optional
+            Length of lattice parameter 'b'.
+        c : float, optional
+            Length of lattice parameter 'c'.
+        alpha : float, optional
+            Angle between b and c lattice basis.
+        beta : float, optional
+            Angle between c and a lattice basis.
+        gamma : float, optional
+            Angle between a and b lattice basis.
+        degrees : bool, optional
+            Angles are given in degrees. Defaults to False.
+
+        Returns
+        -------
+        new : damask.Orientation
+
+        """
+        return Orientation(Rotation.from_matrix(R,normalize),
+                           family=family,lattice=lattice,
+                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                           degrees=degrees)
+
+    @staticmethod
+    def from_parallel(source: np.ndarray,
+                      target: np.ndarray,
+                      active: bool = False,
+                      *,
+                      family: Optional[CrystalFamily] = None,
+                      lattice: Optional[BravaisLattice] = None,
+                      a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                      alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                      degrees: bool = False) -> 'Orientation':
+        """
+        Initialize from pairs of two orthogonal basis vectors.
+
+        Parameters
+        ----------
+        source : numpy.ndarray, shape (...,2,3)
+            First and second three-dimensional vector of orthogonal source basis.
+        target : numpy.ndarray, shape (...,2,3)
+            Corresponding three-dimensional vectors of target basis.
+        active : bool, optional
+            Consider rotations as active, i.e. return (B^-1⋅A) instead of (B⋅A^-1).
+            Defaults to False.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be inferred if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
+        a : float, optional
+            Length of lattice parameter 'a'.
+        b : float, optional
+            Length of lattice parameter 'b'.
+        c : float, optional
+            Length of lattice parameter 'c'.
+        alpha : float, optional
+            Angle between b and c lattice basis.
+        beta : float, optional
+            Angle between c and a lattice basis.
+        gamma : float, optional
+            Angle between a and b lattice basis.
+        degrees : bool, optional
+            Angles are given in degrees. Defaults to False.
+
+        Returns
+        -------
+        new : damask.Orientation
+
+        Notes
+        -----
+        If rotations $A = [s_1,s_2,s_1 × s_2]^T$ and B = $[t_1,t_2,t_1 × t_2]^T$
+        are considered "active", the resulting rotation will be $B^{-1}⋅A$ instead
+        of the default result $B⋅A^{-1}$.
+
+        """
+        return Orientation(Rotation.from_parallel(source,target,active),
+                           family=family,lattice=lattice,
+                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                           degrees=degrees)
+
+    @staticmethod
+    def from_Rodrigues_vector(rho: np.ndarray,
+                              normalize: bool = False,
+                              P: Literal[1, -1] = -1,
+                              *,
+                              family: Optional[CrystalFamily] = None,
+                              lattice: Optional[BravaisLattice] = None,
+                              a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                              alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                              degrees: bool = False) -> 'Orientation':
+        """
+        Initialize from Rodrigues–Frank vector (with angle separated from axis).
+
+        Parameters
+        ----------
+        rho : numpy.ndarray, shape (...,4)
+            Rodrigues–Frank vector (n_1, n_2, n_3, tan(ω/2)) with ǀnǀ = 1  and ω ∈ [0,π].
+        normalize : bool, optional
+            Allow ǀnǀ ≠ 1. Defaults to False.
+        P : int ∈ {-1,1}, optional
+            Sign convention. Defaults to -1.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be inferred if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
+        a : float, optional
+            Length of lattice parameter 'a'.
+        b : float, optional
+            Length of lattice parameter 'b'.
+        c : float, optional
+            Length of lattice parameter 'c'.
+        alpha : float, optional
+            Angle between b and c lattice basis.
+        beta : float, optional
+            Angle between c and a lattice basis.
+        gamma : float, optional
+            Angle between a and b lattice basis.
+        degrees : bool, optional
+            Angles are given in degrees. Defaults to False.
+
+        Returns
+        -------
+        new : damask.Orientation
+
+        """
+        return Orientation(Rotation.from_Rodrigues_vector(rho,normalize,P),
+                           family=family,lattice=lattice,
+                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                           degrees=degrees)
+
+    @staticmethod
+    def from_homochoric(h: np.ndarray,
+                        P: Literal[1, -1] = -1,
+                        *,
+                        family: Optional[CrystalFamily] = None,
+                        lattice: Optional[BravaisLattice] = None,
+                        a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                        alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                        degrees: bool = False) -> 'Orientation':
+        """
+        Initialize from homochoric vector.
+
+        Parameters
+        ----------
+        h : numpy.ndarray, shape (...,3)
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
+        P : int ∈ {-1,1}, optional
+            Sign convention. Defaults to -1.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be inferred if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
+        a : float, optional
+            Length of lattice parameter 'a'.
+        b : float, optional
+            Length of lattice parameter 'b'.
+        c : float, optional
+            Length of lattice parameter 'c'.
+        alpha : float, optional
+            Angle between b and c lattice basis.
+        beta : float, optional
+            Angle between c and a lattice basis.
+        gamma : float, optional
+            Angle between a and b lattice basis.
+        degrees : bool, optional
+            Angles are given in degrees. Defaults to False.
+
+        Returns
+        -------
+        new : damask.Orientation
+
+        """
+        return Orientation(Rotation.from_homochoric(h,P),
+                           family=family,lattice=lattice,
+                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                           degrees=degrees)
+
+    @staticmethod
+    def from_cubochoric(x: np.ndarray,
+                        P: Literal[1, -1] = -1,
+                        *,
+                        family: Optional[CrystalFamily] = None,
+                        lattice: Optional[BravaisLattice] = None,
+                        a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                        alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                        degrees: bool = False) -> 'Orientation':
+        """
+        Initialize from cubochoric vector.
+
+        Parameters
+        ----------
+        x : numpy.ndarray, shape (...,3)
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2 π^(2/3).
+        P : int ∈ {-1,1}, optional
+            Sign convention. Defaults to -1.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be inferred if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
+        a : float, optional
+            Length of lattice parameter 'a'.
+        b : float, optional
+            Length of lattice parameter 'b'.
+        c : float, optional
+            Length of lattice parameter 'c'.
+        alpha : float, optional
+            Angle between b and c lattice basis.
+        beta : float, optional
+            Angle between c and a lattice basis.
+        gamma : float, optional
+            Angle between a and b lattice basis.
+        degrees : bool, optional
+            Angles are given in degrees. Defaults to False.
+
+        Returns
+        -------
+        new : damask.Orientation
+
+        """
+        return Orientation(Rotation.from_cubochoric(x,P),
+                           family=family,lattice=lattice,
+                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                           degrees=degrees)
+
+    @staticmethod
+    def from_random(shape: Union[None, int, IntSequence] = None,
+                    rng_seed: Optional[NumpyRngSeed] = None,
+                    *,
+                    family: Optional[CrystalFamily] = None,
+                    lattice: Optional[BravaisLattice] = None,
+                    a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                    alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                    degrees: bool = False) -> 'Orientation':
+        """
+        Initialize with samples from a uniform distribution.
+
+        Parameters
+        ----------
+        shape : (sequence of) int, optional
+            Output shape. Defaults to None, which gives a scalar.
+        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+            A seed to initialize the BitGenerator.
+            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be inferred if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
+        a : float, optional
+            Length of lattice parameter 'a'.
+        b : float, optional
+            Length of lattice parameter 'b'.
+        c : float, optional
+            Length of lattice parameter 'c'.
+        alpha : float, optional
+            Angle between b and c lattice basis.
+        beta : float, optional
+            Angle between c and a lattice basis.
+        gamma : float, optional
+            Angle between a and b lattice basis.
+        degrees : bool, optional
+            Angles are given in degrees. Defaults to False.
+
+        Returns
+        -------
+        new : damask.Orientation
+
+        """
+        return Orientation(Rotation.from_random(shape,rng_seed),
+                           family=family,lattice=lattice,
+                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                           degrees=degrees)
+
+    @staticmethod
+    def from_ODF(weights: np.ndarray,
+                 phi: np.ndarray,
+                 shape: Union[None, int, IntSequence] = None,
+                 degrees: bool = False,
+                 fractions: bool = True,
+                 rng_seed: Optional[NumpyRngSeed] = None,
+                 *,
+                 family: Optional[CrystalFamily] = None,
+                 lattice: Optional[BravaisLattice] = None,
+                 a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                 alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                 ) -> 'Orientation':
+        """
+        Initialize with samples from a binned orientation distribution function (ODF).
+
+        Parameters
+        ----------
+        weights : numpy.ndarray, shape (n)
+            Texture intensity values (probability density or volume fraction) at Euler space grid points.
+        phi : numpy.ndarray, shape (n,3)
+            Grid coordinates in Euler space at which weights are defined.
+        shape : (sequence of) int, optional
+            Output shape. Defaults to None, which gives a scalar.
+        degrees : bool, optional
+            Angles are given in degrees. Defaults to True.
+        fractions : bool, optional
+            ODF values correspond to volume fractions, not probability densities.
+            Defaults to True.
+        rng_seed: {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+            A seed to initialize the BitGenerator.
+            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be inferred if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
+        a : float, optional
+            Length of lattice parameter 'a'.
+        b : float, optional
+            Length of lattice parameter 'b'.
+        c : float, optional
+            Length of lattice parameter 'c'.
+        alpha : float, optional
+            Angle between b and c lattice basis.
+        beta : float, optional
+            Angle between c and a lattice basis.
+        gamma : float, optional
+            Angle between a and b lattice basis.
+
+        Returns
+        -------
+        new : damask.Orientation
+
+        Notes
+        -----
+        Due to the distortion of Euler space in the vicinity of ϕ = 0,
+        probability densities, p, defined on grid points with ϕ = 0 will never
+        result in reconstructed orientations as their dV/V = p dγ = p × 0.
+        Hence, it is recommended to transform any such dataset to a
+        cell-centered version, which avoids grid points at ϕ = 0.
+
+        References
+        ----------
+        P. Eisenlohr and F. Roters, Computational Materials Science 42(4):670-678, 2008
+        https://doi.org/10.1016/j.commatsci.2007.09.015
+
+        """
+        return Orientation(Rotation.from_ODF(weights,phi,shape,degrees,fractions,rng_seed),
+                           family=family,lattice=lattice,
+                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                           degrees=degrees)
+
+    @staticmethod
+    def from_spherical_component(center: Union[Rotation,'Orientation'],
+                                 sigma: float,
+                                 shape: Union[None, int, IntSequence] = None,
+                                 degrees: bool = False,
+                                 rng_seed: Optional[NumpyRngSeed] = None,
+                                 *,
+                                 family: Optional[CrystalFamily] = None,
+                                 lattice: Optional[BravaisLattice] = None,
+                                 a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                                 alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                                 ) -> 'Orientation':
+        """
+        Initialize with samples from a Gaussian distribution around a given center.
+
+        Parameters
+        ----------
+        center : Rotation or Orientation
+            Central rotation.
+        sigma : float
+            Standard deviation of (Gaussian) misorientation distribution.
+        shape : (sequence of) int, optional
+            Output shape. Defaults to None, which gives a scalar.
+        degrees : bool, optional
+            sigma is given in degrees. Defaults to False.
+        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+            A seed to initialize the BitGenerator.
+            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be inferred if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
+        a : float, optional
+            Length of lattice parameter 'a'.
+        b : float, optional
+            Length of lattice parameter 'b'.
+        c : float, optional
+            Length of lattice parameter 'c'.
+        alpha : float, optional
+            Angle between b and c lattice basis.
+        beta : float, optional
+            Angle between c and a lattice basis.
+        gamma : float, optional
+            Angle between a and b lattice basis.
+
+        Returns
+        -------
+        new : damask.Orientation
+
+        """
+        return Orientation(Rotation.from_spherical_component(center,sigma,shape,degrees,rng_seed),
+                           family=family,lattice=lattice,
+                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                           degrees=degrees)
+
+    @staticmethod
+    def from_fiber_component(crystal: IntSequence,
+                             sample: IntSequence,
+                             sigma: float = 0.,
+                             shape: Union[None, int, IntSequence] = None,
+                             degrees: bool = False,
+                             rng_seed: Optional[NumpyRngSeed] = None,
+                             *,
+                             family: Optional[CrystalFamily] = None,
+                             lattice: Optional[BravaisLattice] = None,
+                             a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                             alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                             ) -> 'Orientation':
+        """
+        Initialize with samples from a Gaussian distribution around a given direction.
+
+        Parameters
+        ----------
+        crystal : numpy.ndarray, shape (2)
+            Polar coordinates (polar angle θ from [0 0 1], azimuthal angle φ from [1 0 0])
+            of fiber direction in crystal frame.
+        sample : numpy.ndarray, shape (2)
+            Polar coordinates (polar angle θ from z, azimuthal angle φ from x)
+            of fiber direction in sample frame.
+        sigma : float, optional
+            Standard deviation of (Gaussian) misorientation distribution.
+            Defaults to 0.
+        shape : (sequence of) int, optional
+            Output shape. Defaults to None, which gives a scalar.
+        degrees : bool, optional
+            Angles are given in degrees. Defaults to False.
+        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+            A seed to initialize the BitGenerator.
+            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be inferred if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
+        a : float, optional
+            Length of lattice parameter 'a'.
+        b : float, optional
+            Length of lattice parameter 'b'.
+        c : float, optional
+            Length of lattice parameter 'c'.
+        alpha : float, optional
+            Angle between b and c lattice basis.
+        beta : float, optional
+            Angle between c and a lattice basis.
+        gamma : float, optional
+            Angle between a and b lattice basis.
+
+        Returns
+        -------
+        new : damask.Orientation
+
+        Notes
+        -----
+        The crystal direction for (θ=0,φ=0) is [0 0 1];
+        the sample direction for (θ=0,φ=0) is z.
+
+        Polar coordinates follow the ISO 80000-2:2019 convention
+        typically used in physics.
+        See https://en.wikipedia.org/wiki/Spherical_coordinate_system.
+
+        Ranges 0≤θ≤π and 0≤φ≤2π give a unique set of coordinates.
+
+        """
+        return Orientation(Rotation.from_fiber_component(crystal,sample,sigma,shape,degrees,rng_seed),
+                           family=family,lattice=lattice,
+                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                           degrees=degrees)
+    @staticmethod
+    def from_directions(uvw: IntSequence,
+                        hkl: IntSequence,
+                        *,
+                        family: Optional[CrystalFamily] = None,
+                        lattice: Optional[BravaisLattice] = None,
+                        a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                        alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                        degrees: bool = False) -> 'Orientation':
+        """
+        Initialize orientation object from the crystallographic direction and plane parallel to lab x and z, respectively.
+
+        Parameters
+        ----------
+        uvw : numpy.ndarray, shape (...,3)
+            Lattice direction as Miller indices aligned with lab frame x-direction.
+        hkl : numpy.ndarray, shape (...,3)
+            Lattice plane normal as Miller indices aligned with lab frame z-direction.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be inferred if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
+        a : float, optional
+            Length of lattice parameter 'a'.
+        b : float, optional
+            Length of lattice parameter 'b'.
+        c : float, optional
+            Length of lattice parameter 'c'.
+        alpha : float, optional
+            Angle between b and c lattice basis.
+        beta : float, optional
+            Angle between c and a lattice basis.
+        gamma : float, optional
+            Angle between a and b lattice basis.
+
+        Returns
+        -------
+        new : damask.Orientation
+
+        """
+        o = Orientation(rotation=[1,0,0,0],
+                        family=family,lattice=lattice,
+                        a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                        degrees=degrees)
         x = o.to_frame(uvw=uvw)
         z = o.to_frame(hkl=hkl)
         om = np.stack([x,np.cross(z,x),z],axis=-2)
@@ -694,10 +1358,10 @@ class Orientation(Rotation,Crystal):
     # mypy 1.11
     #@overload
     #def to_SST(self, vector: FloatSequence, proper: bool = False,                                   # noqa
-    #           return_operators: Literal[False] = False) -> np.ndarray: ...
+    #           return_operator: Literal[False] = False) -> np.ndarray: ...
     #@overload
     #def to_SST(self, vector: FloatSequence, proper: bool = False,                                   # noqa
-    #           return_operators: Literal[True] = True) -> Tuple[np.ndarray,np.ndarray]: ...
+    #           return_operator: Literal[True] = True) -> Tuple[np.ndarray,np.ndarray]: ...
     def to_SST(self,
                vector: FloatSequence,
                proper: bool = False,
