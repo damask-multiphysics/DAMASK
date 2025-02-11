@@ -182,7 +182,7 @@ class Rotation:
                 other: MyType,
                 rtol: float = 1.e-5,
                 atol: float = 1.e-8,
-                equal_nan: bool = True) -> np.ndarray:
+                equal_nan: bool = True) -> npt.NDArray[np.bool_]:
         """
         Report where values are approximately equal to corresponding ones of other Rotation.
 
