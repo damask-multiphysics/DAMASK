@@ -1393,7 +1393,7 @@ class Orientation(Rotation,Crystal):
 
         """
         if return_operators:
-            warnings.warn('"return_operators" is depreacted, use "return_operator".',DeprecationWarning,stacklevel=2)
+            warnings.warn('"return_operators" is deprecated, use "return_operator".',DeprecationWarning,stacklevel=2)
         vector_ = np.array(vector,float)
         if vector_.shape[-1] != 3:
             raise ValueError('input is not a field of three-dimensional vectors')
@@ -1524,11 +1524,11 @@ class Orientation(Rotation,Crystal):
                                                       vector_), 12)
             in_SST_ = np.logical_or(np.all(components_proper   >= 0.0,axis=-1),
                                     np.all(components_improper >= 0.0,axis=-1))
-            components = np.where((np.logical_and(in_SST_,np.all(components_proper>= 0.0,axis=-1)))[...,np.newaxis],
+            components = np.where((np.logical_and(in_SST_,np.all(components_proper >= 0.0,axis=-1)))[...,np.newaxis],
                                   components_proper,components_improper)
         else:
             components = np.around(np.einsum('...ji,...i',
-                                             np.broadcast_to(self .standard_triangle['improper'], vector_.shape+(3,)),
+                                             np.broadcast_to(self.standard_triangle['improper'], vector_.shape+(3,)),
                                              np.block([vector_[...,:2],np.abs(vector_[...,2:3])])), 12)
 
             in_SST_ = np.all(components >= 0.0,axis=-1)
