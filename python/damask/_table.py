@@ -598,15 +598,15 @@ class Table:
                 if self.shapes[l] == (1,):
                     labels.append(f'{l}')
                 elif len(self.shapes[l]) == 1:
-                    labels += [f'{i+1}_{l}' \
-                              for i in range(self.shapes[l][0])]
+                    labels += [f'{i+1}_{l}'
+                               for i in range(self.shapes[l][0])]
                 else:
-                    labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
-                            for i in range(np.prod(self.shapes[l],dtype=np.int64))]                 # type: ignore
+                    labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}'
+                               for i in range(np.prod(self.shapes[l],dtype=np.int64))]                 # type: ignore
 
         with util.open_text(fname,'w') as f:
             f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+('\n' if labels else ''))
-            try:                                                                                    # backward compatibility (<1.5)
+            try:                                                                                       # backward compatibility (pandas<1.5)
                 self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,lineterminator='\n')
             except TypeError:
                 self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,line_terminator='\n') # type: ignore
