@@ -1,7 +1,9 @@
 import copy
+import warnings
 from typing import Optional, Union, TypeVar, Literal, Sequence, NamedTuple # mypy 1.11, overload
 
 import numpy as np
+import numpy.typing as npt
 
 from ._typehints import FloatSequence, IntSequence, CrystalFamily, BravaisLattice, NumpyRngSeed
 from . import Rotation
@@ -156,9 +158,8 @@ class Orientation(Rotation,Crystal):
     copy = __copy__
 
 
-
-    def __eq__(self,
-               other: object) -> bool:
+    def __eq__(self,                                                                                # type: ignore[override]
+               other: object) -> npt.NDArray[np.bool_]:
         """
         Return self==other.
 
@@ -177,8 +178,8 @@ class Orientation(Rotation,Crystal):
                         self.parameters == other.parameters
         return np.logical_and(matching_type,super(self.__class__,self.reduced).__eq__(other.reduced))
 
-    def __ne__(self,
-               other: object) -> bool:
+    def __ne__(self,                                                                                # type: ignore[override]
+               other: object) -> npt.NDArray[np.bool_]:
         """
         Return self!=other.
 
@@ -190,14 +191,14 @@ class Orientation(Rotation,Crystal):
             Orientation to check for equality.
 
         """
-        return np.logical_not(self==other) if isinstance(other, Orientation) else NotImplemented
+        return np.logical_not(self==other)
 
 
     def isclose(self: MyType,
                 other: MyType,
                 rtol: float = 1e-5,
                 atol: float = 1e-8,
-                equal_nan: bool = True) -> bool:
+                equal_nan: bool = True) -> np.ndarray:
         """
         Report where values are approximately equal to corresponding ones of other Orientation.
 
@@ -223,13 +224,11 @@ class Orientation(Rotation,Crystal):
                         self.parameters == other.parameters
         return np.logical_and(matching_type,super(self.__class__,self.reduced).isclose(other.reduced))
 
-
-
     def allclose(self: MyType,
                  other: MyType,
                  rtol: float = 1e-5,
                  atol: float = 1e-8,
-                 equal_nan: bool = True) -> bool:
+                 equal_nan: bool = True) -> np.bool_:
         """
         Test whether all values are approximately equal to corresponding ones of other Orientation.
 
@@ -250,7 +249,7 @@ class Orientation(Rotation,Crystal):
             Whether all values are close between both orientations.
 
         """
-        return bool(np.all(self.isclose(other,rtol,atol,equal_nan)))
+        return np.all(self.isclose(other,rtol,atol,equal_nan))
 
 
     def __mul__(self: MyType,
@@ -1359,15 +1358,16 @@ class Orientation(Rotation,Crystal):
     # mypy 1.11
     #@overload
     #def to_SST(self, vector: FloatSequence, proper: bool = False,                                   # noqa
-    #           return_operators: Literal[False] = False) -> np.ndarray: ...
+    #           return_operator: Literal[False] = False) -> np.ndarray: ...
     #@overload
     #def to_SST(self, vector: FloatSequence, proper: bool = False,                                   # noqa
-    #           return_operators: Literal[True] = True) -> Tuple[np.ndarray,np.ndarray]: ...
+    #           return_operator: Literal[True] = True) -> Tuple[np.ndarray,np.ndarray]: ...
     def to_SST(self,
                vector: FloatSequence,
                proper: bool = False,
+               return_operator: bool = False,
     #           return_operators: bool = False) -> Union[np.ndarray,Tuple[np.ndarray,np.ndarray]]:
-               return_operator: bool = False) -> Union[np.ndarray, ToSSTTuple]:
+               return_operators: bool = False) -> Union[np.ndarray, ToSSTTuple]:
         """
         Rotate lab frame vector to ensure it falls into (improper or proper) standard stereographic triangle of crystal symmetry.
 
@@ -1392,6 +1392,8 @@ class Orientation(Rotation,Crystal):
             Index of the symmetrically equivalent orientation that rotated vector to SST.
 
         """
+        if return_operators:
+            warnings.warn('"return_operators" is deprecated, use "return_operator".',DeprecationWarning,stacklevel=2)
         vector_ = np.array(vector,float)
         if vector_.shape[-1] != 3:
             raise ValueError('input is not a field of three-dimensional vectors')
@@ -1520,13 +1522,13 @@ class Orientation(Rotation,Crystal):
             components_improper = np.around(np.einsum('...ji,...i',
                                                       np.broadcast_to(self.standard_triangle['improper'], vector_.shape+(3,)),
                                                       vector_), 12)
-            in_SST_ = np.all(components_proper   >= 0.0,axis=-1) \
-                    | np.all(components_improper >= 0.0,axis=-1)
-            components = np.where((in_SST_ & np.all(components_proper   >= 0.0,axis=-1))[...,np.newaxis],
+            in_SST_ = np.logical_or(np.all(components_proper   >= 0.0,axis=-1),
+                                    np.all(components_improper >= 0.0,axis=-1))
+            components = np.where((np.logical_and(in_SST_,np.all(components_proper >= 0.0,axis=-1)))[...,np.newaxis],
                                   components_proper,components_improper)
         else:
             components = np.around(np.einsum('...ji,...i',
-                                             np.broadcast_to(self .standard_triangle['improper'], vector_.shape+(3,)),
+                                             np.broadcast_to(self.standard_triangle['improper'], vector_.shape+(3,)),
                                              np.block([vector_[...,:2],np.abs(vector_[...,2:3])])), 12)
 
             in_SST_ = np.all(components >= 0.0,axis=-1)

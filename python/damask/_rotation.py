@@ -5,6 +5,7 @@ import builtins
 from typing import Optional, Union, Sequence, Tuple, Literal, List, TypeVar, NamedTuple
 
 import numpy as np
+import numpy.typing as npt
 
 from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
 from . import tensor
@@ -144,8 +145,8 @@ class Rotation:
         return self.copy(np.stack([c[i][item] for i in range(4)],axis=-1))
 
 
-    def __eq__(self,
-               other: object) -> bool:
+    def __eq__(self,                                                                                # type: ignore[override]
+               other: object) -> npt.NDArray[np.bool_]:
         """
         Return self==other.
 
@@ -161,9 +162,8 @@ class Rotation:
                np.logical_or(np.all(self.quaternion ==     other.quaternion,axis=-1),
                              np.all(self.quaternion == -1.*other.quaternion,axis=-1))
 
-
-    def __ne__(self,
-               other: object) -> bool:
+    def __ne__(self,                                                                                # type: ignore[override]
+               other: object) -> npt.NDArray[np.bool_]:
         """
         Return self!=other.
 
@@ -175,13 +175,14 @@ class Rotation:
             Rotation to check for inequality.
 
         """
-        return np.logical_not(self==other) if isinstance(other, Rotation) else NotImplemented
+        return np.logical_not(self==other)
+
 
     def isclose(self: MyType,
                 other: MyType,
                 rtol: float = 1.e-5,
                 atol: float = 1.e-8,
-                equal_nan: bool = True) -> bool:
+                equal_nan: bool = True) -> npt.NDArray[np.bool_]:
         """
         Report where values are approximately equal to corresponding ones of other Rotation.
 
@@ -207,12 +208,11 @@ class Rotation:
         return np.logical_or(np.all(np.isclose(s,    o,rtol,atol,equal_nan),axis=-1),
                              np.all(np.isclose(s,-1.*o,rtol,atol,equal_nan),axis=-1))
 
-
     def allclose(self: MyType,
                  other: MyType,
                  rtol: float = 1.e-5,
                  atol: float = 1.e-8,
-                 equal_nan: bool = True) -> Union[np.bool_, bool]:
+                 equal_nan: bool = True) -> np.bool_:
         """
         Test whether all values are approximately equal to corresponding ones of other Rotation.
 

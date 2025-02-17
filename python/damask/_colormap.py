@@ -208,7 +208,6 @@ class Colormap(mpl.colors.ListedColormap):
             raise ValueError(f'invalid color model "{model}"')
 
         low_high = np.vstack((low,high)).astype(float)
-        out_of_bounds = np.bool_(False)
 
         if   model.lower() == 'rgb':
             out_of_bounds = np.any(low_high<0) or np.any(low_high>1)
@@ -218,6 +217,8 @@ class Colormap(mpl.colors.ListedColormap):
             out_of_bounds = np.any(low_high<0) or np.any(low_high>[360,1,1])
         elif model.lower() == 'lab':
             out_of_bounds = np.any(low_high[:,0]<0)
+        else:
+            out_of_bounds = np.bool_(False)
 
         if out_of_bounds:
             raise ValueError(f'{model.upper()} colors {low_high[0]} | {low_high[1]} are out of bounds')

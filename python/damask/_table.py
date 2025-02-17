@@ -13,7 +13,7 @@ class Table:
 
     def __init__(self,
                  shapes: Mapping[str,Union[Union[int,np.integer],Tuple[Union[int,np.integer],...]]] = {},
-                 data: Optional[np.ndarray] = None,
+                 data: Optional[Union[np.ndarray,pd.DataFrame]] = None,
                  comments: Union[None, str, Iterable[str]] = None):
         """
         New spreadsheet.
@@ -421,7 +421,7 @@ class Table:
             if m:
                 idx = np.ravel_multi_index(tuple(map(int,m.group(2).split(","))),
                                            self.shapes[key])
-                iloc = dup.data.columns.get_loc(key).tolist().index(True) + idx
+                iloc = dup.data.columns.get_loc(key).tolist().index(True) + idx                     # type: ignore
                 dup.data.iloc[:,iloc] = data
             else:
                 dup.data[label]       = data.reshape(dup.data[label].shape)
@@ -598,15 +598,15 @@ class Table:
                 if self.shapes[l] == (1,):
                     labels.append(f'{l}')
                 elif len(self.shapes[l]) == 1:
-                    labels += [f'{i+1}_{l}' \
-                              for i in range(self.shapes[l][0])]
+                    labels += [f'{i+1}_{l}'
+                               for i in range(self.shapes[l][0])]
                 else:
-                    labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
-                            for i in range(np.prod(self.shapes[l],dtype=np.int64))]                 # type: ignore
+                    labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}'
+                               for i in range(np.prod(self.shapes[l],dtype=np.int64))]                 # type: ignore
 
         with util.open_text(fname,'w') as f:
             f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+('\n' if labels else ''))
-            try:                                                                                    # backward compatibility
+            try:                                                                                       # backward compatibility (pandas<1.5)
                 self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,lineterminator='\n')
             except TypeError:
-                self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,line_terminator='\n')
+                self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,line_terminator='\n') # type: ignore
