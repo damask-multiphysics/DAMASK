@@ -1,6 +1,7 @@
 import os
 import multiprocessing as mp
 from pathlib import Path
+import logging
 from typing import Optional, Union, Literal, List, Sequence
 
 import numpy as np
@@ -61,6 +62,8 @@ from . import util
 from . import Table
 from . import Colormap
 
+
+logger = logging.getLogger(__name__)
 
 class VTK:
     """
@@ -685,7 +688,7 @@ class VTK:
         iren = vtkRenderWindowInteractor()
         iren.SetRenderWindow(window)
         if os.name == 'posix' and 'DISPLAY' not in os.environ:
-            print('Found no rendering device')
+            logger.warning('Found no rendering device')
         else:
             window.Render()
             iren.Start()

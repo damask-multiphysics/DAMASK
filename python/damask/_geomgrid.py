@@ -22,9 +22,9 @@ try:
 except ImportError:
     nb = False
 
+
 def numba_njit_wrapper(**kwargs):
     return (lambda function: nb.njit(function) if nb else function)
-
 
 class GeomGrid:
     """

@@ -14,6 +14,7 @@ import h5py
 import numpy as np
 from numpy import ma
 from scipy import interpolate
+import logging
 
 import damask
 from . import VTK
@@ -25,6 +26,8 @@ from . import tensor
 from . import util
 from ._typehints import FloatSequence, IntSequence, DADF5Dataset, BravaisLattice
 
+
+logger = logging.getLogger(__name__)
 
 chunk_size = 1024**2//8                                                                             # for compression in HDF5
 
@@ -358,7 +361,7 @@ class Result:
         dup = self._manage_view('set',increments,times,phases,homogenizations,fields)
         if protected is not None:
             if not protected:
-                print(util.warn('Warning: Modification of existing datasets allowed!'))
+                logger.warning(util.warn('Modification of existing datasets allowed!'))
             dup._protected = protected
 
         return dup
@@ -572,7 +575,7 @@ class Result:
     def enable_user_function(self,
                              func: Callable):
         globals()[func.__name__]=func
-        print(f'Function {func.__name__} enabled in add_calculation.')
+        logger.info(f'Function {func.__name__} enabled in add_calculation.')
 
 
     @property
@@ -1539,7 +1542,7 @@ class Result:
                                           'meta': {k: v for k,v in loc.attrs.items()}}
                 return callback(**datasets_in,**args)
             except Exception as err:
-                print(f'Error during calculation: {err}.')
+                logger.error(f'Error during pointwise calculation: {err}.')
                 return None
 
         groups = []
@@ -1552,7 +1555,7 @@ class Result:
                             if set(datasets.values()).issubset(f[group].keys()): groups.append(group)
 
         if len(groups) == 0:
-            print('No matching dataset found, no data was added.')
+            logger.warning('No matching dataset found, no data was added.')
             return
 
 
@@ -1585,7 +1588,7 @@ class Result:
                     dataset.attrs['creator'] = f'damask.Result.{creator} v{damask.version}'
 
                 except (OSError,RuntimeError) as err:
-                    print(f'Could not add dataset: {err}.')
+                    logger.error(f'Could not add dataset: {err}.')
 
 
     def _mappings(self) -> MappingsTuple:

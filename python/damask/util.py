@@ -12,10 +12,11 @@ import contextlib as _contextlib
 from collections import abc as _abc, OrderedDict as _OrderedDict
 from functools import reduce as _reduce, partial as _partial, wraps as _wraps
 import inspect
+from pathlib import Path as _Path
+import logging
 from typing import Optional as _Optional, Callable as _Callable, Union as _Union, Iterable as _Iterable, \
                    Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, NamedTuple as _NamedTuple, \
                    Any as _Any, TextIO as _TextIO, Generator as _Generator
-from pathlib import Path as _Path
 
 import numpy as _np
 import h5py as _h5py
@@ -28,6 +29,8 @@ class stdioTuple(_NamedTuple):
     stdin: str
     stdout: str
 
+
+logger = logging.getLogger(__name__)
 
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
 # https://stackoverflow.com/questions/287871
@@ -177,7 +180,7 @@ def run(cmd: str,
 
     signals = [_signal.SIGINT,_signal.SIGTERM]
 
-    print(f"running '{cmd}' in '{wd}'")
+    logger.info(f"running '{cmd}' in '{wd}'")
     process = _subprocess.Popen(_shlex.split(cmd),
                                 stdout = _subprocess.PIPE,
                                 stderr = _subprocess.PIPE,
@@ -194,8 +197,8 @@ def run(cmd: str,
             _signal.signal(sig,state)
 
     if process.returncode != 0:
-        print(stdout)
-        print(stderr)
+        logger.error(stdout)
+        logger.error(stderr)
         raise RuntimeError(f"'{cmd}' failed with returncode {process.returncode}")
 
     return stdioTuple(stdout, stderr)

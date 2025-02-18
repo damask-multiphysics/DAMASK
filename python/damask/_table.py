@@ -8,6 +8,7 @@ import numpy as np
 from ._typehints import FileHandle
 from . import util
 
+
 class Table:
     """Manipulate multi-dimensional spreadsheet-like data."""
 
