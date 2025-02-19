@@ -12,10 +12,11 @@ import contextlib as _contextlib
 from collections import abc as _abc, OrderedDict as _OrderedDict
 from functools import reduce as _reduce, partial as _partial, wraps as _wraps
 import inspect
-from typing import Optional as _Optional, Callable as _Callable, Union as _Union, Iterable as _Iterable, \
-                   Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, \
-                   Any as _Any, TextIO as _TextIO, Generator as _Generator
 from pathlib import Path as _Path
+import logging
+from typing import Optional as _Optional, Callable as _Callable, Union as _Union, Iterable as _Iterable, \
+                   Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, NamedTuple as _NamedTuple, \
+                   Any as _Any, TextIO as _TextIO, Generator as _Generator
 
 import numpy as _np
 import h5py as _h5py
@@ -24,6 +25,12 @@ from . import version as _version
 from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence, \
                         NumpyRngSeed as _NumpyRngSeed, FileHandle as _FileHandle
 
+class stdioTuple(_NamedTuple):
+    stdin: str
+    stdout: str
+
+
+logger = logging.getLogger(__name__)
 
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
 # https://stackoverflow.com/questions/287871
@@ -145,7 +152,7 @@ def strikeout(msg) -> str:
 def run(cmd: str,
         wd: str = './',
         env: _Optional[_Dict[str, str]] = None,
-        timeout: _Optional[int] = None) -> _Tuple[str, str]:
+        timeout: _Optional[int] = None) -> stdioTuple:
     """
     Run a command.
 
@@ -173,7 +180,7 @@ def run(cmd: str,
 
     signals = [_signal.SIGINT,_signal.SIGTERM]
 
-    print(f"running '{cmd}' in '{wd}'")
+    logger.info(f"running '{cmd}' in '{wd}'")
     process = _subprocess.Popen(_shlex.split(cmd),
                                 stdout = _subprocess.PIPE,
                                 stderr = _subprocess.PIPE,
@@ -190,11 +197,11 @@ def run(cmd: str,
             _signal.signal(sig,state)
 
     if process.returncode != 0:
-        print(stdout)
-        print(stderr)
+        logger.error(stdout)
+        logger.error(stderr)
         raise RuntimeError(f"'{cmd}' failed with returncode {process.returncode}")
 
-    return stdout, stderr
+    return stdioTuple(stdout, stderr)
 
 @_contextlib.contextmanager
 def open_text(fname: _FileHandle,
@@ -455,7 +462,7 @@ def hybrid_IA(dist: _FloatSequence,
 
     """
     N_opt_samples = max(_np.count_nonzero(dist),N)                                                  # random subsampling if too little samples requested
-    N_inv_samples = 0
+    N_inv_samples = _np.int_(0)
 
     scale_,scale,inc_factor = (0.0,float(N_opt_samples),1.0)
     while (not _np.isclose(scale, scale_)) and (N_inv_samples != N_opt_samples):

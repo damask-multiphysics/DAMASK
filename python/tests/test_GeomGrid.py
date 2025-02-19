@@ -187,7 +187,7 @@ class TestGeomGrid:
     @pytest.mark.parametrize('data_type',['array','list'])
     @pytest.mark.parametrize('invert',[True,False])
     def test_clean_invert(self,np_rng,default,data_type,invert):
-        selection = np_rng.integers(1,20,6) if data_type is 'array' else list(np_rng.integers(1,20,6))
+        selection = np_rng.integers(1,20,6) if data_type == 'array' else list(np_rng.integers(1,20,6))
         selection_inverse = np.setdiff1d(default.material,selection)
         assert default.clean(selection=selection,invert_selection=invert,rng_seed=0) == \
                default.clean(selection=selection_inverse,invert_selection=not invert,rng_seed=0)
@@ -362,7 +362,7 @@ class TestGeomGrid:
     @pytest.mark.parametrize('data_type',['array','list'])
     @pytest.mark.parametrize('invert',[True,False])
     def test_vicinity_offset_invert(self,np_rng,random,data_type,invert):
-        selection = np_rng.integers(1,20,6) if data_type is 'array' else list(np_rng.integers(1,20,6))
+        selection = np_rng.integers(1,20,6) if data_type == 'array' else list(np_rng.integers(1,20,6))
         selection_inverse = np.setdiff1d(random.material,selection)
         assert random.vicinity_offset(selection=selection        ,invert_selection=not invert) == \
                random.vicinity_offset(selection=selection_inverse,invert_selection=    invert)

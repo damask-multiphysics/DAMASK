@@ -81,11 +81,7 @@ pytest:
     - coverage report --fail-under=90 --show-missing
 
 doctest:
-  stage: python
-  tags:
-    - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:python310_2407
-  before_script: []
+  extends: .python
   script:
     - export DAMASK_ROOT=$(pwd)
     - PYTHONPATH=${DAMASK_ROOT}/python:$PYTHONPATH
@@ -313,7 +309,7 @@ grid_performance:
   tags:
     - bare-metal
   before_script:
-    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN} --blocking
+    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} ${TOKEN} --blocking
     - source env/DAMASK.sh
     - echo Job start:" $(date)"
   script:
@@ -355,7 +351,7 @@ update_revision:
   tags:
     - bare-metal
   before_script:
-    - ${LOCAL_HOME}/bin/queue2 ${CI_JOB_ID} ${TOKEN}
+    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} ${TOKEN}
     - echo Job start:" $(date)"
   script:
     - cd $(mktemp -d)
