@@ -54,18 +54,34 @@ create_testroot:
   script:
     - mkdir -p ${TESTROOT}
 
+.on_merge:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+
 ###################################################################################################
 
 .python_base:
   stage: python
+  image: git.damask-multiphysics.org:5050/damask/damask/python:$PYTHON_IMAGE
   tags:
     - matesting2-container-runner
   before_script:
+    - python --version
     - pip list
 
 .python_default:
   extends: .python_base
-  image: git.damask-multiphysics.org:5050/damask/damask:python310_2412
+  variables: {PYTHON_IMAGE: 2025.01.05}
+
+.python_min:
+  extends: .python_base
+  variables: {PYTHON_IMAGE: '310_2412'}
+
+.python_all:
+  extends: .python_base
+  parallel:
+    matrix:
+      - PYTHON_IMAGE: ['310_2412', 2025.01.05]
 
 
 .create_package:
@@ -74,10 +90,17 @@ create_testroot:
     - cd python
     - python3 -m build --wheel --no-isolation
 
-create_package_default:
+create_package:
   extends:
-    - .python_default
     - .create_package
+    - .python_default
+
+create_package_min:
+  extends:
+    - .create_package
+    - .python_min
+    - .on_merge
+
 
 .pytest:
   script:
@@ -87,10 +110,17 @@ create_package_default:
     - python3 -m pytest -v --cov=damask --cov-report=xml --damaskroot=${DAMASK_ROOT}
     - coverage report --fail-under=90 --show-missing
 
-pytest_default:
+pytest:
   extends:
-    - .python_default
     - .pytest
+    - .python_default
+
+pytest_min:
+  extends:
+    - .pytest
+    - .python_min
+    - .on_merge
+
 
 doctest:
   extends: .python_default
