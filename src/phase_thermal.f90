@@ -250,7 +250,7 @@ module function phase_K_T(co,ce) result(K)
   real(pREAL) :: T
 
 
-  associate( ph => material_ID_phase(co,ce), &
+  associate(ph => material_ID_phase(co,ce), &
             en => material_entry_phase(co,ce))
 
     T = current(ph)%T(en)
