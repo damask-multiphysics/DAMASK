@@ -56,23 +56,30 @@ create_testroot:
 
 ###################################################################################################
 
-.python:
+.python_base:
   stage: python
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:python310_2412
   before_script:
     - pip list
 
-create_package:
-  extends: .python
+.python_default:
+  extends: .python_base
+  image: git.damask-multiphysics.org:5050/damask/damask:python310_2412
+
+
+.create_package:
   script:
     - sed -i 's/-[[:digit:]]*-.*//' VERSION
     - cd python
     - python3 -m build --wheel --no-isolation
 
-pytest:
-  extends: .python
+create_package_default:
+  extends:
+    - .python_default
+    - .create_package
+
+.pytest:
   script:
     - export DAMASK_ROOT=$(pwd)
     - PYTHONPATH=${DAMASK_ROOT}/python:$PYTHONPATH
@@ -80,8 +87,13 @@ pytest:
     - python3 -m pytest -v --cov=damask --cov-report=xml --damaskroot=${DAMASK_ROOT}
     - coverage report --fail-under=90 --show-missing
 
+pytest_default:
+  extends:
+    - .python_default
+    - .pytest
+
 doctest:
-  extends: .python
+  extends: .python_default
   script:
     - export DAMASK_ROOT=$(pwd)
     - PYTHONPATH=${DAMASK_ROOT}/python:$PYTHONPATH
@@ -89,7 +101,7 @@ doctest:
     - python3 -m pytest -v --doctest-modules -k 'not result and not configmaterial and not orientation and not rotation and not geomgrid' damask
 
 mypy:
-  extends: .python
+  extends: .python_default
   script:
     - cd python
     - mypy damask
