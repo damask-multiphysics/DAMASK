@@ -4,8 +4,8 @@
 submodule(phase) thermal
 
   type :: tThermalParameters
-    real(pREAL) :: C_p = 0.0_pREAL                                                                  !< heat capacity
-    real(pREAL), dimension(3,3) :: K = 0.0_pREAL                                                    !< thermal conductivity
+    type(tpolynomial) :: C_p                                                                  !< heat capacity
+    type(tpolynomial) :: K_11, K_33                                                           !< thermal conductivity
     character(len=pSTRLEN), allocatable, dimension(:) :: output
   end type tThermalParameters
 
@@ -105,7 +105,6 @@ module subroutine thermal_init(phases)
       thermal => phase%get_dict('thermal',defaultVal=emptyDict)
     end if
 
-    ! ToDo: temperature dependency of K and C_p
     if (thermal%length > 0) then
       thermal_active = .true.
 
@@ -113,14 +112,16 @@ module subroutine thermal_init(phases)
       refs = config_listReferences(thermal,indent=3)
       if (len(refs) > 0) print'(/,1x,a)', refs
 
-      param(ph)%C_p = thermal%get_asReal('C_p')
-      param(ph)%K(1,1) = thermal%get_asReal('K_11')
-      if (any(phase_lattice(ph) == ['hP','tI'])) param(ph)%K(3,3) = thermal%get_asReal('K_33')
-      param(ph)%K = crystal_symmetrize_33(param(ph)%K,phase_lattice(ph))
+      associate(prm => param(ph))
+
+        prm%C_p = polynomial(thermal,'C_p','T')
+        prm%K_11 = polynomial(thermal,'K_11','T')
+
+        if (any(phase_lattice(ph) == ['hP','tI'])) prm%K_33 = polynomial(thermal,'K_33','T')
+
+      end associate
 
       ! sanity checks
-      if (    param(ph)%C_p <= 0.0_pREAL )  extmsg = trim(extmsg)//' C_p'
-      if (any(param(ph)%K   <  0.0_pREAL))  extmsg = trim(extmsg)//' K'
       if (    phase_rho(ph) <= 0.0_pREAL )  extmsg = trim(extmsg)//' rho'
       if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg))
 
@@ -223,9 +224,17 @@ module function phase_mu_T(co,ce) result(mu)
   integer, intent(in) :: co, ce
   real(pREAL) :: mu
 
+  real(pREAL) :: T
 
-  mu = phase_rho(material_ID_phase(co,ce)) &
-     * param(material_ID_phase(co,ce))%C_p
+
+  associate(ph => material_ID_phase(co,ce), &
+            en => material_entry_phase(co,ce))
+
+    T = current(ph)%T(en)
+    mu = phase_rho(ph) &
+       * param(ph)%C_p%at(T)
+
+  end associate
 
 end function phase_mu_T
 
@@ -238,8 +247,23 @@ module function phase_K_T(co,ce) result(K)
   integer, intent(in) :: co, ce
   real(pREAL), dimension(3,3) :: K
 
+  real(pREAL) :: T
 
-  K = crystallite_push33ToRef(co,ce,param(material_ID_phase(co,ce))%K)
+
+  associate(ph => material_ID_phase(co,ce), &
+            en => material_entry_phase(co,ce))
+
+    T = current(ph)%T(en)
+
+    K = 0.0_pREAL
+    K(1,1) = param(ph)%K_11%at(T)
+    if (any(phase_lattice(ph) == ['hP','tI'])) K(3,3) = param(ph)%K_33%at(T)
+
+    K = crystal_symmetrize_33(K,phase_lattice(ph))
+    K = crystallite_push33ToRef(co,ce,K)
+
+  end associate
+
 
 end function phase_K_T
 
