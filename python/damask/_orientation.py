@@ -1311,7 +1311,7 @@ class Orientation(Rotation,Crystal):
         else:
             return self.disorientation(other).as_axis_angle(pair=True)[1]                           # type: ignore
 
-        return 2.*np.arccos(np.clip(np.round(trace_max[...,0],15),None,1.))
+        return 2.*np.arccos(np.clip(trace_max[...,0].round(15),None,1.))
 
 
     def average(self: MyType,                                                                       # type: ignore[override]

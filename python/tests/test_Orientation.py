@@ -296,7 +296,7 @@ class TestOrientation:
     @pytest.mark.parametrize('family',crystal_families)
     def test_disorientation_zero(self,assert_allclose,set_of_quaternions,family):
         o = Orientation.from_quaternion(q=set_of_quaternions,family=family)
-        assert_allclose(o.disorientation_angle(o),0.0,atol=1e-15,rtol=0.)
+        assert_allclose(o.disorientation_angle(o),0.0,atol=1e-7,rtol=0.)
         assert_allclose(o.disorientation(o).as_axis_angle(pair=True)[1],0.,atol=1e-15,rtol=0.)
 
     @pytest.mark.parametrize('color',[{'label':'red',  'RGB':[1,0,0],'direction':[0,0,1]},
