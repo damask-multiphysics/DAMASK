@@ -244,8 +244,9 @@ def report_nonclose(a, b, rtol, atol, N, msg):
         Description of differences.
 
     """
-    a_ = np.array(a)
-    b_ = np.array(b)
+    a_ = np.asarray(a)
+    b_ = np.asarray(b)
+    if a_.shape != b_.shape: b_ = np.broadcast_to(b_,a.shape)
 
     absdiff = np.abs(a_ - b_)
     absmax  = np.max(np.abs(np.stack((a_, b_))), axis=0)
