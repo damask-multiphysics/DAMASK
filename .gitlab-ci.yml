@@ -77,12 +77,6 @@ create_testroot:
   extends: .python_base
   variables: {PYTHON_IMAGE: '310_2412'}
 
-.python_all:
-  extends: .python_base
-  parallel:
-    matrix:
-      - PYTHON_IMAGE: ['310_2412', 2025.01.05]
-
 
 .create_package:
   script:
