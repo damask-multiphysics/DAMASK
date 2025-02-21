@@ -1533,7 +1533,7 @@ class Orientation(Rotation,Crystal):
                                              np.broadcast_to(self.standard_triangle['improper'], vector_.shape+(3,)),
                                              np.block([vector_[...,:2],np.abs(vector_[...,2:3])])), 12)
 
-            in_SST_ = np.all(components >= 0.0,axis=-1)
+            in_SST_ = np.all(components >= 0.0,axis=-1)                                             #type: ignore
 
         with np.errstate(invalid='ignore',divide='ignore'):
             rgb = (components/np.linalg.norm(components,axis=-1,keepdims=True))**(1./3.)            # smoothen color ramps
