@@ -17,6 +17,7 @@ program DAMASK_grid
   use parallelization
   use signal
   use CLI
+  use HDF5_utilities
   use IO
   use config
   use math
@@ -116,6 +117,7 @@ program DAMASK_grid
     solver
   character(len=:), allocatable :: &
     fileContent, fname
+  integer(HID_T) :: fileHandle
 
 
 !--------------------------------------------------------------------------------------------------
@@ -386,6 +388,9 @@ program DAMASK_grid
         call MPI_Allreduce(signal_SIGUSR2,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
         call parallelization_chkerr(err_MPI)
         if (mod(inc,loadCases(l)%f_restart) == 0 .or. sig) then
+          fileHandle = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
+          call HDF5_addAttribute(fileHandle,'increment',totalIncsCounter)
+          call HDF5_closeFile(fileHandle)
           do field = 1, nActiveFields
             select case (ID(field))
               case(FIELD_MECH_ID)

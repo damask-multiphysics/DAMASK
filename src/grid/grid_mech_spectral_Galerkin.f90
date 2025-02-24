@@ -478,12 +478,13 @@ subroutine grid_mechanical_spectral_Galerkin_restartWrite()
   integer(HID_T) :: fileHandle, groupHandle
   real(pREAL), dimension(:,:,:,:), pointer :: F
 
+
   call DMDAVecGetArrayReadF90(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
   print'(1x,a)', 'saving solver data required for restart'; flush(IO_STDOUT)
 
-  fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
+  fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
   call HDF5_write(reshape(F,[3,3,product(cells(1:2))*cells3]),groupHandle,'F')
   call HDF5_write(reshape(F_lastInc,[3,3,product(cells(1:2))*cells3]),groupHandle,'F_lastInc')

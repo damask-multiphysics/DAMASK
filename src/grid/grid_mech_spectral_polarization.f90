@@ -450,6 +450,7 @@ subroutine grid_mech_spectral_polarization_restartWrite()
   integer(HID_T) :: fileHandle, groupHandle
   real(pREAL), dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
 
+
   call DMDAVecGetArrayReadF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
   F     => FandF_tau(0: 8,:,:,:)
@@ -459,7 +460,7 @@ subroutine grid_mech_spectral_polarization_restartWrite()
 
   print '(1x,a)', 'saving solver data required for restart'; flush(IO_STDOUT)
 
-  fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
+  fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
   call HDF5_write(reshape(F,[3,3,product(cells(1:2))*cells3]),groupHandle,'F')
   call HDF5_write(reshape(F_lastInc,[3,3,product(cells(1:2))*cells3]),groupHandle,'F_lastInc')
