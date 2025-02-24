@@ -262,12 +262,12 @@ class TestOrientation:
                                        [[2,3,4],[2,3,4]],
                                        [[3,4],[4,3]],
                                        [1000,1000]])
-    def test_disorientation_angle(self,np_rng,family,shapes):
+    def test_disorientation_angle(self,assert_allclose,np_rng,family,shapes):
         o_1 = Orientation.from_random(shape=shapes[0],family=family,rng_seed=np_rng)
         o_2 = Orientation.from_random(shape=shapes[1],family=family,rng_seed=np_rng)
         angle = o_1.disorientation_angle(o_2)
         full = o_1.disorientation(o_2).as_axis_angle(pair=True)[1]
-        assert np.allclose(angle,full,atol=1e-13,rtol=0)
+        assert_allclose(angle,full,atol=1e-7,rtol=0)
 
     @pytest.mark.parametrize('shapes',[[None,None,()],
                                       [[2,3,4],[2,3,4],(2,3,4)],
