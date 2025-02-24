@@ -54,25 +54,49 @@ create_testroot:
   script:
     - mkdir -p ${TESTROOT}
 
+.on_merge:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+
 ###################################################################################################
 
-.python:
+.python_base:
   stage: python
+  image: git.damask-multiphysics.org:5050/damask/damask/python:$PYTHON_IMAGE
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:python310_2412
   before_script:
+    - python --version
     - pip list
 
-create_package:
-  extends: .python
+.python_default:
+  extends: .python_base
+  variables: {PYTHON_IMAGE: 2025.01.05}
+
+.python_min:
+  extends: .python_base
+  variables: {PYTHON_IMAGE: '310_2412'}
+
+
+.create_package:
   script:
     - sed -i 's/-[[:digit:]]*-.*//' VERSION
     - cd python
     - python3 -m build --wheel --no-isolation
 
-pytest:
-  extends: .python
+create_package:
+  extends:
+    - .create_package
+    - .python_default
+
+create_package_min:
+  extends:
+    - .create_package
+    - .python_min
+    - .on_merge
+
+
+.pytest:
   script:
     - export DAMASK_ROOT=$(pwd)
     - PYTHONPATH=${DAMASK_ROOT}/python:$PYTHONPATH
@@ -80,8 +104,20 @@ pytest:
     - python3 -m pytest -v --cov=damask --cov-report=xml --damaskroot=${DAMASK_ROOT}
     - coverage report --fail-under=90 --show-missing
 
+pytest:
+  extends:
+    - .pytest
+    - .python_default
+
+pytest_min:
+  extends:
+    - .pytest
+    - .python_min
+    - .on_merge
+
+
 doctest:
-  extends: .python
+  extends: .python_default
   script:
     - export DAMASK_ROOT=$(pwd)
     - PYTHONPATH=${DAMASK_ROOT}/python:$PYTHONPATH
@@ -89,7 +125,7 @@ doctest:
     - python3 -m pytest -v --doctest-modules -k 'not result and not configmaterial and not orientation and not rotation and not geomgrid' damask
 
 mypy:
-  extends: .python
+  extends: .python_default
   script:
     - cd python
     - mypy damask

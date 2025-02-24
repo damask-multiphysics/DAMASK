@@ -1,6 +1,6 @@
 import copy
 import warnings
-from typing import Optional, Union, TypeVar, Literal, Sequence, NamedTuple # mypy 1.11, overload
+from typing import Optional, Union, TypeVar, Literal, Sequence, NamedTuple, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -1311,7 +1311,7 @@ class Orientation(Rotation,Crystal):
         else:
             return self.disorientation(other).as_axis_angle(pair=True)[1]                           # type: ignore
 
-        return 2.*np.arccos(np.clip(np.round(trace_max[...,0],15),None,1.))
+        return 2.*np.arccos(np.clip(trace_max[...,0].round(15),None,1.))
 
 
     def average(self: MyType,                                                                       # type: ignore[override]
@@ -1355,18 +1355,20 @@ class Orientation(Rotation,Crystal):
         else:
             return self.copy(Rotation(r).average(weights))
 
-    # mypy 1.11
-    #@overload
-    #def to_SST(self, vector: FloatSequence, proper: bool = False,                                   # noqa
-    #           return_operator: Literal[False] = False) -> np.ndarray: ...
-    #@overload
-    #def to_SST(self, vector: FloatSequence, proper: bool = False,                                   # noqa
-    #           return_operator: Literal[True] = True) -> Tuple[np.ndarray,np.ndarray]: ...
+    @overload
+    def to_SST(self, vector: FloatSequence, proper: bool = False,
+               return_operator: Literal[False] = False,
+               return_operators: bool = False) -> np.ndarray:
+        ...
+    @overload
+    def to_SST(self, vector: FloatSequence, proper: bool = False,
+               return_operator: Literal[True] = True,
+               return_operators: bool = False) -> ToSSTTuple:
+        ...
     def to_SST(self,
                vector: FloatSequence,
                proper: bool = False,
                return_operator: bool = False,
-    #           return_operators: bool = False) -> Union[np.ndarray,Tuple[np.ndarray,np.ndarray]]:
                return_operators: bool = False) -> Union[np.ndarray, ToSSTTuple]:
         """
         Rotate lab frame vector to ensure it falls into (improper or proper) standard stereographic triangle of crystal symmetry.
@@ -1531,7 +1533,7 @@ class Orientation(Rotation,Crystal):
                                              np.broadcast_to(self.standard_triangle['improper'], vector_.shape+(3,)),
                                              np.block([vector_[...,:2],np.abs(vector_[...,2:3])])), 12)
 
-            in_SST_ = np.all(components >= 0.0,axis=-1)
+            in_SST_ = np.all(components >= 0.0,axis=-1)                                             #type: ignore
 
         with np.errstate(invalid='ignore',divide='ignore'):
             rgb = (components/np.linalg.norm(components,axis=-1,keepdims=True))**(1./3.)            # smoothen color ramps
