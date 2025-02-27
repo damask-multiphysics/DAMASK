@@ -564,8 +564,7 @@ class GeomGrid:
 
         """
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
-        tree = spatial.KDTree(seeds,boxsize=size) if periodic else \
-               spatial.KDTree(seeds)
+        tree = spatial.KDTree(seeds,boxsize=np.asarray(size) if periodic else None)
         material_ = tree.query(coords, workers = int(os.environ.get('OMP_NUM_THREADS',4)))[1]
 
         return GeomGrid(material = (material_ if material is None else np.array(material)[material_]).reshape(cells),

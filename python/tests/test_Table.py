@@ -84,6 +84,8 @@ class TestTable:
     @pytest.mark.parametrize('N',[1,3,4])
     def test_slice(self,np_rng,default,N):
         mask = np_rng.choice([True,False],len(default))
+        assert len(default[N]) == 1
+        assert len(default[1:N]) == N
         assert len(default[:N]) == 1+N
         assert len(default[:N,['F','s']]) == 1+N
         assert len(default[mask,['F','s']]) == np.count_nonzero(mask)

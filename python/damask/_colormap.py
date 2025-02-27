@@ -301,7 +301,7 @@ class Colormap(mpl.colors.ListedColormap):
         return interp.interp1d(np.linspace(0,1,self.N),
                                self.colors,
                                axis=0,
-                               assume_sorted=True)(fraction)
+                               assume_sorted=True)(np.asarray(fraction))
 
 
     def shade(self,

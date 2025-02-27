@@ -37,13 +37,13 @@ def from_random(size: _FloatSequence,
         Seed coordinates in 3D space.
 
     """
-    size_ = _np.array(size,float)
+    size_ = _np.asarray(size,float)
     rng = _np.random.default_rng(rng_seed)
     if cells is None:
         coords = rng.random((N_seeds,3)) * size_
     else:
         grid_coords = _grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
-        coords = grid_coords[rng.choice(_np.prod(cells),N_seeds, replace=False)] \
+        coords = grid_coords[rng.choice(_np.prod(cells),N_seeds,replace=False)] \
                + _np.broadcast_to(size_/_np.array(cells,_np.int64),(N_seeds,3))*(rng.random((N_seeds,3))*.5-.25) # wobble w/o leaving grid
 
     return coords
@@ -81,24 +81,23 @@ def from_Poisson_disc(size: _FloatSequence,
         Seed coordinates in 3D space.
 
     """
+    size_ = _np.asarray(size,float)
     rng = _np.random.default_rng(rng_seed)
     coords = _np.empty((N_seeds,3))
-    coords[0] = rng.random(3) * _np.array(size,float)
 
-    s = 1
+    s = 0
     i = 0
-    progress = _util.ProgressBar(N_seeds+1,'',50)
+    progress = _util.ProgressBar(N_seeds,'',50)
     while s < N_seeds:
         i += 1
-        candidates = rng.random((N_candidates,3))*_np.broadcast_to(size,(N_candidates,3))
-        tree = _spatial.cKDTree(coords[:s],boxsize=size) if periodic else \
-               _spatial.cKDTree(coords[:s])
-        distances = tree.query(candidates)[0]
+        candidates = rng.random((N_candidates,3))*_np.broadcast_to(size_,(N_candidates,3))
+        tree = _spatial.cKDTree(coords[:s],boxsize=size_ if periodic else None)
+        distances = _np.asarray(tree.query(candidates)[0])
         if distances.max() > distance:                                                              # require minimum separation
-            i = 0
             coords[s] = candidates[distances.argmax()]                                              # maximum separation to existing point cloud
-            s += 1
             progress.update(s)
+            s += 1
+            i = 0
 
         if i >= 100:
             raise ValueError('seeding not possible')
