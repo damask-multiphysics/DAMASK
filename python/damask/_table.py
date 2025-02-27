@@ -97,6 +97,9 @@ class Table:
         1     3     4
         2     6     7
         3     9    10
+        >>> tbl[3]
+           colA  colB  colC
+        3     9    10    11
         >>> tbl[::2,['colB','colA']]
            colB  colA
         0     1     0
@@ -109,8 +112,9 @@ class Table:
         """
         item_ = (item,slice(None,None,None)) if isinstance(item,(slice,np.ndarray)) else \
                 (np.array(item),slice(None,None,None)) if isinstance(item,list) and np.array(item).dtype == np.bool_ else \
+                (slice(item,item),slice(None,None,None)) if isinstance(item,int) else \
                 (np.array(item[0]),item[1]) if isinstance(item[0],list) else \
-                item if isinstance(item[0],(slice,np.ndarray)) else \
+                (item[0], item[1]) if isinstance(item[0],(slice,np.ndarray)) else \
                 (slice(None,None,None),item)
         sliced = self.data.loc[item_]
         cols = np.array(sliced.columns if isinstance(sliced,pd.core.frame.DataFrame) else [item_[1]])
@@ -423,7 +427,7 @@ class Table:
                 idx = np.ravel_multi_index(tuple(map(int,m.group(2).split(","))),
                                            self.shapes[key])
                 iloc = dup.data.columns.get_loc(key).tolist().index(True) + idx                     # type: ignore
-                dup.data.iloc[:,iloc] = data
+                dup.data.iloc[:,iloc] = data                                                        # type: ignore
             else:
                 dup.data[label]       = data.reshape(dup.data[label].shape)
 

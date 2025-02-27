@@ -12,7 +12,7 @@ the following operations are required for tensorial data:
 
 """
 
-from typing import Tuple as _Tuple
+from typing import Tuple as _Tuple, Union as _Union
 
 from scipy import spatial as _spatial
 import numpy as _np
@@ -665,7 +665,7 @@ def unravel(d_raveled: _np.ndarray,
 
 def regrid(size: _FloatSequence,
            F: _np.ndarray,
-           cells: _IntSequence) -> _np.ndarray:
+           cells: _IntSequence) -> _Union[_np.intp, _np.ndarray]:
     """
     Map a deformed grid A back to a rectilinear grid B.
 

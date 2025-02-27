@@ -71,7 +71,7 @@ create_testroot:
 
 .python_default:
   extends: .python_base
-  variables: {PYTHON_IMAGE: 2025.01.05}
+  variables: {PYTHON_IMAGE: 2025.02.25}
 
 .python_min:
   extends: .python_base
