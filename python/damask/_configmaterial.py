@@ -242,7 +242,7 @@ class ConfigMaterial(YAML):
         kwargs = {}
         for arg,val in zip(['homogenization','phase','v','O','V_e'],[homogenization,phase,v,O,V_e]):
             if val is not None:
-                kwargs[arg] = table.get(val) if val in table.labels else np.atleast_2d([val]*len(table)).T # type: ignore
+                kwargs[arg] = table.get(val) if val in table.labels else np.atleast_2d([val]*len(table)).T # type: ignore[arg-type]
 
         _,idx = np.unique(np.hstack(list(kwargs.values())),return_index=True,axis=0)
         idx = np.sort(idx)
@@ -584,7 +584,7 @@ class ConfigMaterial(YAML):
         for arg,val in zip(['homogenization','phase','v','O','V_e'],[homogenization,phase,v,O,V_e]):
             if val is None: continue
             shape[arg] = np.array(val)
-            s = shape[arg].shape[:ex.get(arg,None)]                                                 # type: ignore
+            s = shape[arg].shape[:ex.get(arg,None)]
             N_materials = max(N_materials,s[0]) if len(s)>0 else N_materials
             N_constituents = max(N_constituents,s[1]) if len(s)>1 else N_constituents
 
@@ -617,7 +617,7 @@ class ConfigMaterial(YAML):
         dup['material'] = dup['material'] + mat if 'material' in dup else mat
 
         for what in [item for item in ['phase','homogenization'] if item in shape]:
-            for k in np.unique(shape[what]):                                                        # type: ignore
+            for k in np.unique(shape[what]):
                 if k not in dup[what]: dup[what][str(k)] = None
 
         return dup

@@ -1142,6 +1142,14 @@ class Orientation(Rotation,Crystal):
                                 else [-np.inf,        -np.inf,   -np.inf]) & self.in_FZ
 
 
+    @overload
+    def disorientation(self: MyType, other: MyType,
+                       return_operators: Literal[False] = False) -> MyType:
+        ...
+    @overload
+    def disorientation(self: MyType, other: MyType,
+                       return_operators: Literal[True] = True) -> DisorientationTuple:
+        ...
     def disorientation(self: MyType,
                        other: MyType,
                        return_operators: bool = False) -> Union[MyType, DisorientationTuple]:
@@ -1206,7 +1214,7 @@ class Orientation(Rotation,Crystal):
         s =  self.broadcast_to(s_m).equivalent
         o = other.broadcast_to(s_o).equivalent
 
-        r_ = s[:,np.newaxis,...].misorientation(o[np.newaxis,:,...])                                # type: ignore[index]
+        r_ = s[:,np.newaxis,...].misorientation(o[np.newaxis,:,...])
         _r = ~r_
         shp = r_.shape[2:]
 
@@ -1309,14 +1317,14 @@ class Orientation(Rotation,Crystal):
             trace_max = np.maximum.reduce([trace_max,m1,(m1+m2)*np.sqrt(2.)/2.])
 
         else:
-            return self.disorientation(other).as_axis_angle(pair=True)[1]                           # type: ignore
+            return self.disorientation(other).as_axis_angle(pair=True)[1]
 
         return 2.*np.arccos(np.clip(trace_max[...,0].round(15),None,1.))
 
 
     def average(self: MyType,                                                                       # type: ignore[override]
                 weights: Optional[FloatSequence] = None,
-                return_cloud: bool = False) -> Union[MyType, AverageTuple]:
+                return_cloud: Optional[bool] = False) -> Union[MyType, AverageTuple]:
         """
         Return orientation average over last dimension.
 
@@ -1512,7 +1520,7 @@ class Orientation(Rotation,Crystal):
             raise ValueError('input is not a field of three-dimensional vectors')
 
         vector_:np.ndarray = self.to_SST(vector,proper) if in_SST else \
-                             self @ np.broadcast_to(vector,self.shape+(3,))                         #type: ignore
+                             self @ np.broadcast_to(vector,self.shape+(3,))
 
         if self.standard_triangle is None:                                                          # direct exit for no symmetry
             return np.zeros_like(vector_)
@@ -1533,7 +1541,7 @@ class Orientation(Rotation,Crystal):
                                              np.broadcast_to(self.standard_triangle['improper'], vector_.shape+(3,)),
                                              np.block([vector_[...,:2],np.abs(vector_[...,2:3])])), 12)
 
-            in_SST_ = np.all(components >= 0.0,axis=-1)                                             #type: ignore
+            in_SST_ = np.all(components >= 0.0,axis=-1)
 
         with np.errstate(invalid='ignore',divide='ignore'):
             rgb = (components/np.linalg.norm(components,axis=-1,keepdims=True))**(1./3.)            # smoothen color ramps
@@ -1719,7 +1727,7 @@ class Orientation(Rotation,Crystal):
         """
         lattice,o = self.relation_operations(model,target)
         target = Crystal(lattice=lattice) if target is None else target
-        return Orientation(rotation=o*Rotation(self.quaternion)[np.newaxis,...],                    # type: ignore
+        return Orientation(rotation=o*Rotation(self.quaternion)[np.newaxis,...],                    # type: ignore[return-value]
                            lattice=target.lattice,
                            a=target.a,
                            b=target.b,

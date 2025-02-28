@@ -18,7 +18,7 @@ from . import Table
 from . import Colormap
 from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
 try:
-    import numba as nb                                                                              # type: ignore
+    import numba as nb                                                                              # type: ignore[import-not-found]
 except ImportError:
     nb = False
 
@@ -61,8 +61,8 @@ class GeomGrid:
 
         """
         self.material = material
-        self.size = size                                                                            # type: ignore
-        self.origin = origin                                                                        # type: ignore
+        self.size = size                                                                            # type: ignore[assignment]
+        self.origin = origin                                                                        # type: ignore[assignment]
         self.initial_conditions = {} if initial_conditions is None else initial_conditions
         self.comments = [] if comments is None else \
                         [comments] if isinstance(comments,str) else \
@@ -169,9 +169,9 @@ class GeomGrid:
     @property
     def initial_conditions(self) -> Dict[str,np.ndarray]:
         """Fields of initial conditions."""
-        self._ic = dict(zip(self._ic.keys(),                                                        # type: ignore
+        self._ic = dict(zip(self._ic.keys(),                                                        # type: ignore[has-type]
                         [v if isinstance(v,np.ndarray) else
-                         np.broadcast_to(v,self.cells) for v in self._ic.values()]))                # type: ignore
+                         np.broadcast_to(v,self.cells) for v in self._ic.values()]))                # type: ignore[has-type]
         return self._ic
 
     @initial_conditions.setter
@@ -214,7 +214,7 @@ class GeomGrid:
 
         """
         v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
-        cells = np.array(v.vtk_data.GetDimensions())-1                                              # type: ignore
+        cells = np.array(v.vtk_data.GetDimensions())-1                                              # type: ignore[attr-defined]
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
         ic = {l:v.get(l).reshape(cells,order='F') for l in set(v.labels['Cell Data']) - {label}}
 
@@ -307,7 +307,7 @@ class GeomGrid:
 
         """
         v = VTK.load(fname,'ImageData')
-        cells = np.array(v.vtk_data.GetDimensions())-1                                              # type: ignore
+        cells = np.array(v.vtk_data.GetDimensions())-1                                              # type: ignore[attr-defined]
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
 
         return GeomGrid(material = v.get('MaterialId').reshape(cells,order='F').astype('int32',casting='unsafe'),

@@ -11,8 +11,8 @@ try:
     from yaml import CSafeLoader as SafeLoader
     from yaml import CSafeDumper as SafeDumper
 except ImportError:
-    from yaml import SafeLoader                                                                     # type: ignore
-    from yaml import SafeDumper                                                                     # type: ignore
+    from yaml import SafeLoader                                                                     # type: ignore[assignment]
+    from yaml import SafeDumper                                                                     # type: ignore[assignment]
 
 from ._typehints import FileHandle
 from . import Rotation
@@ -22,19 +22,7 @@ from . import util
 MyType = TypeVar('MyType', bound='YAML')
 
 class NiceDumper(SafeDumper):
-    """Make YAML readable for humans."""
-
-    def write_line_break(self,
-                         data: Optional[str] = None):
-        super().write_line_break(data)                                                              # type: ignore
-
-        if len(self.indents) == 1:                                                                  # type: ignore
-            super().write_line_break()                                                              # type: ignore
-
-    def increase_indent(self,
-                        flow: bool = False,
-                        indentless: bool = False):
-        return super().increase_indent(flow, False)                                                 # type: ignore
+    """Improve YAML readability for humans."""
 
     def represent_data(self,
                        data: Any):
@@ -54,6 +42,20 @@ class NiceDumper(SafeDumper):
                        data: Any) -> bool:
         """Do not use references to existing objects."""
         return True
+
+    def write_line_break(self,
+                         data: Optional[str] = None):                                               # not for CSafeDumper
+        """From https://github.com/yaml/pyyaml/issues/127."""
+        super().write_line_break(data)                                                              # type: ignore[misc]
+
+        if len(self.indents) == 1:                                                                  # type: ignore[attr-defined]
+            super().write_line_break()                                                              # type: ignore[misc]
+
+    def increase_indent(self,
+                        flow: bool = False,
+                        indentless: bool = False):                                                  # not for CSafeDumper
+        return super().increase_indent(flow, False)                                                 # type: ignore[misc]
+
 
 class YAML(dict):
     """YAML-based configuration."""
@@ -81,7 +83,7 @@ class YAML(dict):
             if isinstance(config,str):
                 kwargs = yaml.load(config, Loader=SafeLoader) | kwargs
             elif isinstance(config,dict):
-                kwargs = config | kwargs                                                            # type: ignore
+                kwargs = config | kwargs
 
             super().__init__(**kwargs)
         else:

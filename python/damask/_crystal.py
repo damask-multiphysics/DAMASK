@@ -801,7 +801,7 @@ class Crystal():
         return (NotImplemented if not isinstance(other, Crystal) else
                 self.lattice == other.lattice and
                 self.parameters == other.parameters and
-                self.family == other.family)                                                        # type: ignore
+                self.family == other.family)
 
     @property
     def parameters(self) -> Optional[Dict]:
@@ -1230,7 +1230,7 @@ class Crystal():
             return np.array([[0.5*np.sqrt(2.0)]*N_twin_[0]])
         elif self.lattice == 'hP':
             N_twin_ = [len(a) for a in _kinematics[self.lattice]['twin']] if N_twin == '*' else N_twin
-            c_a = self.c/self.a                                                                     #type: ignore
+            c_a = self.c/self.a                                                                     # type: ignore[operator]
             return np.array([[(3.0-c_a**2)/np.sqrt(3.0)/c_a]*N_twin_[0],
                              [1.0/c_a]*N_twin_[1],
                              [(9.0-4.0*c_a**2)/np.sqrt(48.0)/c_a]*N_twin_[2],
@@ -1285,15 +1285,15 @@ class Crystal():
             raise KeyError(f'unknown orientation relationship "{model}"')
 
         sep = '-->'
-        search = self.lattice+sep+('' if target is None else target.lattice)                        # type: ignore
-        transform = [t for t in orientation_relationships[model].keys() if t.startswith(search)]    # type: ignore
+        search = self.lattice+sep+('' if target is None else target.lattice)                        # type: ignore[operator]
+        transform = [t for t in orientation_relationships[model].keys() if t.startswith(search)]
 
         if len(transform) != 1:
             raise ValueError(f'invalid target lattice "{search.split(sep)[1]}"')
 
-        m_l,o_l = transform[0].split(sep)                                                           # type: ignore
+        m_l,o_l = transform[0].split(sep)                                                           # type: ignore[assignment]
         m_p,o_p = orientation_relationships[model][m_l+sep+o_l]
-        m = Crystal(lattice=m_l) if self.parameters is None else Crystal(lattice=m_l,**self.parameters) # type: ignore
+        m = Crystal(lattice=m_l) if self.parameters is None else Crystal(lattice=m_l,**self.parameters)
         o = Crystal(lattice=o_l) if target is None else target
         m_p = np.stack((m.to_frame(uvw=m_p[:,0] if m_l != 'hP' else util.Bravais_to_Miller(uvtw=m_p[:,0])),
                         m.to_frame(hkl=m_p[:,1] if m_l != 'hP' else util.Bravais_to_Miller(hkil=m_p[:,1]))),

@@ -11,7 +11,9 @@ class MaskedMatrixDumper(NiceDumper):
     """Format masked matrices."""
 
     def represent_data(self, data: Any):
-        return super().represent_data(data.astype(object).filled('x') if isinstance(data, ma.core.MaskedArray) else data) # type: ignore[attr-defined]
+        return super().represent_data(data.astype(object).filled('x')                               # type: ignore[attr-defined]
+                                      if isinstance(data, ma.core.MaskedArray) else
+                                      data)
 
 
 class LoadcaseGrid(YAML):
