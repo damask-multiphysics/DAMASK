@@ -1393,7 +1393,8 @@ class Rotation:
         shape : (sequence of) int, optional
             Output shape. Defaults to None, which gives a scalar.
         degrees : bool, optional
-            sigma and polar coordinates are given in degrees. Defaults to False.
+            Standard deviation and polar coordinates are given in degrees.
+            Defaults to False.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
@@ -1413,6 +1414,12 @@ class Rotation:
 
         Ranges 0≤θ≤π and 0≤φ≤2π give a unique set of coordinates.
 
+        Notes
+        -----
+        The value for sigma should be small enough to avoid values
+        larger than π when sampling from a normal distribution.
+        A typically safe value is σ = π/5 ≈ 36°.
+
         Examples
         --------
         Create an ideal bcc α-fiber texture ([1 0 1] ǀǀ x=RD) consisting of 600 orientations:
@@ -1429,12 +1436,12 @@ class Rotation:
         Create a relatively strong basal texture ([0 0 0 1] ǀǀ z=ND) consisting of 320 orientations:
 
         >>> import damask
-        >>> basal = damask.Rotation.from_fiber_component([0.,0.],[0.,0.],shape=320,sigma=10)
+        >>> basal = damask.Rotation.from_fiber_component([0.,0.],[0.,0.],shape=320,sigma=.15)
 
         """
         rng = np.random.default_rng(rng_seed)
-        sigma_,alpha,beta = (np.radians(coordinate) for coordinate in (sigma,crystal,sample)) if degrees else \
-                             map(np.array, (sigma,crystal,sample))
+        sigma_,alpha,beta = (np.radians(c) for c in (sigma,crystal,sample)) if degrees else \
+                             map(np.asarray, (sigma,crystal,sample))
 
         d_cr  = np.array([np.sin(alpha[0])*np.cos(alpha[1]), np.sin(alpha[0])*np.sin(alpha[1]), np.cos(alpha[0])])
         d_lab = np.array([np.sin( beta[0])*np.cos( beta[1]), np.sin( beta[0])*np.sin( beta[1]), np.cos( beta[0])])
@@ -1443,8 +1450,8 @@ class Rotation:
         R_align  = Rotation.from_axis_angle(ax_align if ax_align[3] > 0. else -ax_align,normalize=True)
 
         N = 1 if shape is None else np.prod(shape).astype(int)
-        u,Theta  = (rng.random((N,2)) * 2. * np.array([1.,np.pi]) - np.array([1.,0.])).T
-        omega  = abs(rng.normal(scale=sigma_,size=N))
+        u,Theta = (rng.random((N,2)) * 2. * np.array([1.,np.pi]) - np.array([1.,0.])).T
+        omega = abs(rng.normal(scale=sigma_,size=N))
         p = np.column_stack([np.sqrt(1.-u**2)*np.cos(Theta),
                              np.sqrt(1.-u**2)*np.sin(Theta),
                              u, omega])

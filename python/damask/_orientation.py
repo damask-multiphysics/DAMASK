@@ -983,11 +983,27 @@ class Orientation(Rotation,Crystal):
 
         Ranges 0≤θ≤π and 0≤φ≤2π give a unique set of coordinates.
 
+        Notes
+        -----
+        The value for sigma should be small enough to avoid values
+        larger than the maximum disorientation of the crystal family
+        when sampling from a normal distribution.
+        The maximum disorientation angle d_max is 62.80°, 93.84°,
+        98.43°, and 120° for cubic, hexagonal, tetragonal, and
+        orthorhombic crystal families, respectively.
+        A typically safe value is σ = d_max/5.
+
+        References
+        ----------
+        A. Heinz and P. Neumann, Acta Crystallographica Section A 47:780-789, 1991
+        https://doi.org/10.1107/S0108767391006864
+
         """
         return Orientation(Rotation.from_fiber_component(crystal,sample,sigma,shape,degrees,rng_seed),
                            family=family,lattice=lattice,
                            a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
                            degrees=degrees)
+
     @staticmethod
     def from_directions(uvw: IntSequence,
                         hkl: IntSequence,
