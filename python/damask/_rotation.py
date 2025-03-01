@@ -748,7 +748,7 @@ class Rotation:
 
         >>> import damask
         >>> damask.Rotation([1,0,0,0]).as_axis_angle(pair=True)
-        (array([0., 0., 1.]), array(0.))
+        AxisAngleTuple(axis=array([0., 0., 1.]), angle=array(0.))
 
         """
         ax: np.ndarray = Rotation._qu2ax(self.quaternion)
@@ -884,9 +884,8 @@ class Rotation:
         --------
         >>> import damask
         >>> damask.Rotation.from_quaternion([[1,0,0,0],[0,1,0,0]])
-        Quaternions of shape (2,)
-        [[1. 0. 0. 0.]
-         [0. 1. 0. 0.]]
+        array([(1.,     0.,  0.,  0.),
+               (0.,     1.,  0.,  0.)])
 
         """
         qu = np.array(q,dtype=float)
@@ -934,7 +933,7 @@ class Rotation:
         --------
         >>> import damask
         >>> damask.Rotation.from_Euler_angles([180,0,0],degrees=True)
-        Quaternion [0. 0. 0. 1.]
+        array((0.,     0.,  0.,  1.))
 
         """
         eu = np.array(phi,dtype=float)
@@ -975,9 +974,8 @@ class Rotation:
         --------
         >>> import damask
         >>> damask.Rotation.from_axis_angle([[0,0,1,90],[1,0,0,90]],degrees=True)
-        Quaternions of shape (2,)
-        [[0.707 0.    0.    0.707]
-         [0.707 0.707 0.    0.   ]]
+        array([(0.707,   0.   ,  0. , 0.707),
+               (0.707,   0.707,  0. , 0.   )])
 
         """
         ax = np.array(n_omega,dtype=float)
@@ -1062,7 +1060,7 @@ class Rotation:
         --------
         >>> import damask
         >>> damask.Rotation.from_matrix([[1,0,0],[0,0,-1],[0,1,0]])
-        Quaternion [ 0.707 -0.707 0.  0. ]
+        array(( 0.707,    -0.707, -0. , -0. ))
 
         """
         return Rotation.from_basis(np.array(R,dtype=float) * (np.linalg.det(R)**(-1./3.))[...,np.newaxis,np.newaxis]
@@ -1100,7 +1098,7 @@ class Rotation:
         --------
         >>> import damask
         >>> damask.Rotation.from_parallel([[2,0,0],[0,1,0]],[[1,0,0],[0,2,0]])
-        Quaternion [1. 0. 0. 0.]
+        array(( 1.,     0.,  0.,  0.))
 
         """
         s_ = np.array(source,dtype=float)
@@ -1146,7 +1144,7 @@ class Rotation:
         --------
         >>> import damask
         >>> damask.Rotation.from_Rodrigues_vector([0,0,1,1])
-        Quaternion [0.707 0.    0.    0.707]
+        array((0.707,     0. ,  0. ,  0.707))
 
         """
         ro = np.array(rho,dtype=float)
