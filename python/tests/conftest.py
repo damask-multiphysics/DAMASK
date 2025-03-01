@@ -1,6 +1,6 @@
 from pathlib import Path
-import datetime
 import os
+import datetime
 
 import numpy as np
 import pytest
@@ -51,44 +51,49 @@ def patch_plt_show(monkeypatch):
 def pytest_addoption(parser):
     parser.addoption('--update', action='store_true', default=False,
                      help='Update reference results.')
-    parser.addoption('--damaskroot',
+    parser.addoption('--damask-root',default=os.environ.get('DAMASK_ROOT'),
                      help='DAMASK root directory.')
-    parser.addoption('--rng_entropy',
+    parser.addoption('--rng-entropy',
                      help='Entropy for random seed generator.')
 
 @pytest.fixture
-def update(pytestconfig):
-    """Store current results as new reference results."""
-    return pytestconfig.getoption('--update')
+def update(request):
+    """Store current results as new reference data."""
+    return request.config.getoption('--update')
 
 @pytest.fixture
-def damaskroot(pytestconfig):
-    """Specify DAMASK root directory."""
-    return pytestconfig.getoption('--damaskroot')
+def damask_root(request):
+    """DAMASK root directory."""
+    if (damask_root := request.config.getoption('--damask-root')) is not None:
+        return Path(damask_root).expanduser()
+    else:
+        return damask_root
+
+@pytest.fixture
+def np_rng(request):
+    """Instance of numpy.random.Generator."""
+    e = request.config.getoption('--rng-entropy')
+    print('\nrng entropy: ',sq := np.random.SeedSequence(e if e is None else int(e)).entropy)
+    return np.random.default_rng(seed=sq)
 
 # https://stackoverflow.com/questions/51883573
 def pytest_collection_modifyitems(config, items):
-    if config.getoption('--damaskroot') is None:
-        need_damaskroot = pytest.mark.skip(reason='need --damaskroot to run')
+    if config.getoption('--damask-root') is None:
+        need_damask_root = pytest.mark.skip(reason='need --damask-root to run')
         for item in items:
-            if 'need_damaskroot' in item.keywords: item.add_marker(need_damaskroot)
+            if 'need_damask_root' in item.keywords: item.add_marker(need_damask_root)
 
 def pytest_configure(config):
     config.addinivalue_line(
-        'markers', 'need_damaskroot: mark test to run only if DAMASK root is given'
+        'markers', 'need_damask_root: mark test to run only if DAMASK root is given'
     )
+
 
 @pytest.fixture
 def res_path_base():
     """Directory containing testing resources."""
     return Path(__file__).parent/'resources'
 
-@pytest.fixture
-def np_rng(pytestconfig):
-    """Instance of numpy.random.Generator."""
-    e = pytestconfig.getoption('--rng_entropy')
-    print('\nrng entropy: ',sq := np.random.SeedSequence(e if e is None else int(e)).entropy)
-    return np.random.default_rng(seed=sq)
 
 @pytest.fixture
 def set_of_quaternions(np_rng):

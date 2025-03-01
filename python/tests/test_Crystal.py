@@ -171,13 +171,13 @@ class TestCrystal:
                                          Crystal(lattice='hP',c=np.sqrt(2.)*.99),
                                          Crystal(lattice='tI',c=1.2)])
     @pytest.mark.parametrize('mode',['slip','twin'])
-    @pytest.mark.need_damaskroot
-    def test_system_match(self,crystal,mode,damaskroot):
+    @pytest.mark.need_damask_root
+    def test_system_match(self,crystal,mode,damask_root):
         if crystal.lattice == 'tI' and mode == 'twin': return
 
         raw = []
         name = f'{crystal.lattice.upper()}_SYSTEM{mode.upper()}'
-        with open(Path(damaskroot).expanduser()/'src'/'crystal.f90') as f:
+        with open(damask_root/'src'/'crystal.f90') as f:
             in_matrix = False
             for line in [l for l in f if l.split('!')[0].strip()]:
                 if f'shape({name})' in line: break
