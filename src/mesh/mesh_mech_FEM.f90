@@ -431,7 +431,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
   call VecWAXPY(x_local,1.0_pREAL,xx_local,solution_local,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  call needs_name(dm_local,x_local,section,params%mechBC,params%Delta_t,dimPlex)
+  call utilities_projectBCValues(dm_local,x_local,section,params%mechBC,params%Delta_t,dimPlex)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate field derivatives
@@ -575,7 +575,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
   call VecWAXPY(x_local,1.0_pREAL,xx_local,solution_local,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  call needs_name(dm_local,x_local,section,params%mechBC,params%Delta_t,dimPlex)
+  call utilities_projectBCValues(dm_local,x_local,section,params%mechBC,params%Delta_t,dimPlex)
 
   call PetscDSGetTabulation(prob,0_pPETSCINT,dev_null,basisFieldDer,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -711,7 +711,7 @@ subroutine FEM_mechanical_forward(guess,Delta_t,Delta_t_prev,mechBC)
     call VecAXPY(solution_local,1.0_pREAL,x_local,err_PETSc)
     CHKERRQ(err_PETSc)
 
-    call needs_name(dm_local,solution_local,section,mechBC,Delta_t_prev,dimPlex)
+    call utilities_projectBCValues(dm_local,solution_local,section,mechBC,Delta_t_prev,dimPlex)
 
     call DMRestoreLocalVector(dm_local,x_local,err_PETSc)
     CHKERRQ(err_PETSc)

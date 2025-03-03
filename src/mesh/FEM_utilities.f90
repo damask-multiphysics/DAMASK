@@ -60,8 +60,7 @@ module FEM_utilities
   public :: &
     FEM_utilities_init, &
     utilities_constitutiveResponse, &
-    utilities_projectBCValues, &
-    needs_name
+    utilities_projectBCValues
 
 contains
 
@@ -148,10 +147,7 @@ subroutine utilities_constitutiveResponse(status, Delta_t,P_av,forwardData)
 end subroutine utilities_constitutiveResponse
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief Project BC values to local vector
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_projectBCValues(solution_local,section,component,bcPointsIS,BCDotValue,Delta_t)
+subroutine needs_name(solution_local,section,component,bcPointsIS,BCDotValue,Delta_t)
 
   Vec                  :: solution_local
   PetscInt             :: component, nBcPoints, point, dof, numDof, numComp, offset
@@ -175,7 +171,7 @@ subroutine utilities_projectBCValues(solution_local,section,component,bcPointsIS
     CHKERRQ(err_PETSc)
     call PetscSectionGetFieldOffset(section,bcPoints(point),0_pPETSCINT,offset,err_PETSc)
     CHKERRQ(err_PETSc)
-    do dof = offset+component+1, offset+numDof, numComp
+    do dof = offset+component, offset+numDof, numComp
       localArray(dof) = localArray(dof) + BCDotValue*Delta_t
     end do
   end do
@@ -188,9 +184,13 @@ subroutine utilities_projectBCValues(solution_local,section,component,bcPointsIS
   if (nBcPoints > 0) call ISRestoreIndicesF90(bcPointsIS,bcPoints,err_PETSc)
   CHKERRQ(err_PETSc)
 
-end subroutine utilities_projectBCValues
+end subroutine needs_name
 
-subroutine needs_name(dm_local,solution_local,section,mechBC,Delta_t,dimPlex)
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Project BC values to local vector
+!--------------------------------------------------------------------------------------------------
+subroutine utilities_projectBCValues(dm_local,solution_local,section,mechBC,Delta_t,dimPlex)
   DM  :: dm_local
   Vec :: solution_local
   PetscSection   :: section
@@ -209,7 +209,7 @@ subroutine needs_name(dm_local,solution_local,section,mechBC,Delta_t,dimPlex)
      if (bcSize > 0) then
        call DMGetStratumIS(dm_local,'Face Sets',mesh_boundaries(face),bcPointsIS,err_PETSc)
        CHKERRQ(err_PETSc)
-       call utilities_projectBCValues(solution_local,section,component-1,bcPointsIS, &
+       call needs_name(solution_local,section,component,bcPointsIS, &
                                       mechBC(face)%Value(component),Delta_t)
        call ISDestroy(bcPointsIS,err_PETSc)
        CHKERRQ(err_PETSc)
@@ -217,6 +217,6 @@ subroutine needs_name(dm_local,solution_local,section,mechBC,Delta_t,dimPlex)
    end if
   end do; end do
 
-end subroutine needs_name
+end subroutine utilities_projectBCValues
 
 end module FEM_utilities
