@@ -95,6 +95,7 @@ module grid_mechanical_spectral_Galerkin
     grid_mechanical_spectral_Galerkin_updateCoords, &
     grid_mechanical_spectral_Galerkin_restartWrite
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
   ! Missing interfaces for some PETSc versions
   interface MatCreateShell
     subroutine MatCreateShell(comm,mloc,nloc,m,n,ctx,mat,ierr)
@@ -156,6 +157,7 @@ module grid_mechanical_spectral_Galerkin
       PetscErrorCode :: ierr
     end subroutine SNESSetUpdate
   end interface SNESSetUpdate
+#endif
 
 contains
 
@@ -283,7 +285,7 @@ subroutine grid_mechanical_spectral_Galerkin_init(num_grid)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  call DMDAVecGetArrayF90(DM_mech,F_PETSc,F,err_PETSc)                                              ! places pointer on PETSc data
+  call DMDAVecGetArray(DM_mech,F_PETSc,F,err_PETSc)                                                 ! places pointer on PETSc data
   CHKERRQ(err_PETSc)
 
   restartRead: if (CLI_restartInc > 0) then
@@ -317,7 +319,7 @@ subroutine grid_mechanical_spectral_Galerkin_init(num_grid)
   call utilities_constitutiveResponse(status,P,P_av,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
                                       0.0_pREAL)                                                    ! time increment
-  call DMDAVecRestoreArrayF90(DM_mech,F_PETSc,F,err_PETSc)                                          ! deassociate pointer
+  call DMDAVecRestoreArray(DM_mech,F_PETSc,F,err_PETSc)                                             ! deassociate pointer
   CHKERRQ(err_PETSc)
 
   restartRead2: if (CLI_restartInc > 0) then
@@ -367,7 +369,11 @@ function grid_mechanical_spectral_Galerkin_solution(incInfoIn) result(solution)
   call SNESGetConvergedReason(SNES_mech,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  solution%converged = reason > 0
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+  solution%converged = reason > SNES_CONVERGED_ITERATING
+#else
+  solution%converged = reason%v > SNES_CONVERGED_ITERATING%v
+#endif
   solution%iterationsNeeded = totalIter
   P_aim = merge(P_av,P_aim,params%stress_mask)
 
@@ -397,7 +403,7 @@ subroutine grid_mechanical_spectral_Galerkin_forward(cutBack,guess,Delta_t,Delta
   real(pREAL), pointer, dimension(:,:,:,:) :: F
 
 
-  call DMDAVecGetArrayF90(DM_mech,F_PETSc,F,err_PETSc)
+  call DMDAVecGetArray(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (cutBack) then
@@ -440,7 +446,7 @@ subroutine grid_mechanical_spectral_Galerkin_forward(cutBack,guess,Delta_t,Delta
 
   F = reshape(utilities_forwardTensorField(Delta_t,F_lastInc,Fdot, &                                ! estimate of F at end of time+Delta_t that matches rotated F_aim on average
               rotation_BC%rotate(F_aim,active=.true.)),[9,cells(1),cells(2),cells3])
-  call DMDAVecRestoreArrayF90(DM_mech,F_PETSc,F,err_PETSc)
+  call DMDAVecRestoreArray(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -460,10 +466,10 @@ subroutine grid_mechanical_spectral_Galerkin_updateCoords()
   PetscErrorCode :: err_PETSc
   real(pREAL), dimension(:,:,:,:), pointer :: F
 
-  call DMDAVecGetArrayReadF90(DM_mech,F_PETSc,F,err_PETSc)
+  call DMDAVecGetArrayRead(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
   call utilities_updateCoords(reshape(F,[3,3,size(F,2),size(F,3),size(F,4)]))
-  call DMDAVecRestoreArrayReadF90(DM_mech,F_PETSc,F,err_PETSc)
+  call DMDAVecRestoreArrayRead(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_spectral_Galerkin_updateCoords
@@ -479,7 +485,7 @@ subroutine grid_mechanical_spectral_Galerkin_restartWrite()
   real(pREAL), dimension(:,:,:,:), pointer :: F
 
 
-  call DMDAVecGetArrayReadF90(DM_mech,F_PETSc,F,err_PETSc)
+  call DMDAVecGetArrayRead(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
   print'(1x,a)', 'saving solver data required for restart'; flush(IO_STDOUT)
@@ -505,7 +511,7 @@ subroutine grid_mechanical_spectral_Galerkin_restartWrite()
     call HDF5_closeFile(fileHandle)
   end if
 
-  call DMDAVecRestoreArrayReadF90(DM_mech,F_PETSc,F,err_PETSc)
+  call DMDAVecRestoreArrayRead(DM_mech,F_PETSc,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_spectral_Galerkin_restartWrite
@@ -534,11 +540,11 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,rhs_norm,reason,dumm
 
   if (totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL) &
        .and. status == STATUS_OK) then
-    reason = 1
+    reason = SNES_CONVERGED_USER
   elseif (totalIter >= num%itmax) then
-    reason = -1
+    reason = SNES_DIVERGED_USER
   else
-    reason = 0
+    reason = SNES_CONVERGED_ITERATING
   end if
 
   print'(/,1x,a)', '... reporting .............................................................'
@@ -559,8 +565,13 @@ end subroutine converged
 subroutine formResidual(residual_subdomain, F, &
                         r, dummy, err_PETSc)
 
-  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
-    residual_subdomain                                                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<22)
+   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
+#else
+  DMDALocalInfo :: &
+#endif
+    residual_subdomain
+
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: &
     F                                                                                               !< deformation gradient field
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(out) :: &
@@ -644,7 +655,7 @@ subroutine GK_op(Jac,dF_global,output_global,err_PETSc)
   call DMGlobalToLocalEnd(dm_local,dF_global,INSERT_VALUES,dF_local,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  call DMDAVecGetArrayReadF90(dm_local,dF_local,dF_scal,err_PETSc)
+  call DMDAVecGetArrayRead(dm_local,dF_local,dF_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   dF = reshape(dF_scal, [3,3,cells(1),cells(2),cells3])
 
@@ -659,13 +670,13 @@ subroutine GK_op(Jac,dF_global,output_global,err_PETSc)
   ! ===== G* operator =====
   output = utilities_G_Convolution(output,params%stress_mask)
 
-  call DMDAVecGetArrayF90(dm_local,output_global,output_scal,err_PETSc)
+  call DMDAVecGetArray(dm_local,output_global,output_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   output_scal = reshape(output, [9,cells(1),cells(2),cells3])
-  call DMDAVecRestoreArrayF90(dm_local,output_global,output_scal,err_PETSc)
+  call DMDAVecRestoreArray(dm_local,output_global,output_scal,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  call DMDAVecRestoreArrayF90(dm_local,dF_local,dF_scal,err_PETSc)
+  call DMDAVecRestoreArray(dm_local,dF_local,dF_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMRestoreLocalVector(dm_local,dF_local,err_PETSc)
   CHKERRQ(err_PETSc)

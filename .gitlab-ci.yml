@@ -136,7 +136,7 @@ mypy:
 
 .unittest_oneAPI:
   extends: .unittest
-  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-debug:2025.03.27
+  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-debug:2025.04.01
 
 # -------------------------------------------------------------------------------------------------
 
@@ -218,11 +218,11 @@ mesh_GCC-i64:
 
 grid_oneAPI:
   extends: .compile_grid
-  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.03.27
+  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.04.01
 
 mesh_oneAPI:
   extends: .compile_mesh
-  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.03.27
+  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.04.01
 
 Marc_patch:
   stage: compile

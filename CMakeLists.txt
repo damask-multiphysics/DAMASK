@@ -11,7 +11,7 @@ endif()
 project(Prerequisites LANGUAGES)
 set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
 pkg_check_modules(PETSC_MIN REQUIRED PETSc>=3.15.0 QUIET) #CMake does not support version range
-pkg_check_modules(PETSC REQUIRED PETSc<3.23.0)
+pkg_check_modules(PETSC REQUIRED PETSc<3.24.0)
 
 pkg_get_variable(CMAKE_Fortran_COMPILER PETSc fcompiler)
 pkg_get_variable(CMAKE_C_COMPILER PETSc ccompiler)
@@ -65,6 +65,29 @@ add_definitions(-DCMAKE_SYSTEM_PROCESSOR="${CMAKE_SYSTEM_PROCESSOR}")
 
 if(PETSC_VERSION VERSION_EQUAL 3.17.0)
   add_definitions("-DCHKERRQ=PetscCall")
+endif()
+if(PETSC_VERSION VERSION_LESS 3.23.0)
+  add_definitions("-DVecGetArray=VecGetArrayF90")
+  add_definitions("-DVecRestoreArray=VecRestoreArrayF90")
+
+  add_definitions("-DVecGetArrayRead=VecGetArrayReadF90")
+  add_definitions("-DVecRestoreArrayRead=VecRestoreArrayReadF90")
+
+  add_definitions("-DDMDAVecGetArray=DMDAVecGetArrayF90")
+  add_definitions("-DDMDAVecRestoreArray=DMDAVecRestoreArrayF90")
+
+  add_definitions("-DDMDAVecGetArrayRead=DMDAVecGetArrayReadF90")
+  add_definitions("-DDMDAVecRestoreArrayRead=DMDAVecRestoreArrayReadF90")
+
+  add_definitions("-DISGetIndices=ISGetIndicesF90")
+  add_definitions("-DISRestoreIndices=ISRestoreIndicesF90")
+
+  add_definitions("-DSNES_CONVERGED_USER=7")
+  add_definitions("-DSNES_CONVERGED_ITERATING=0")
+  add_definitions("-DSNES_DIVERGED_USER=-12")
+
+  add_definitions("-DPETSCDTSIMPLEXQUAD_DEFAULT=-1")
+  add_definitions("-DINSERT_ALL_VALUES=5")
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "")

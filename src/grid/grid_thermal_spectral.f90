@@ -148,7 +148,7 @@ subroutine grid_thermal_spectral_init(num_grid)
   call SNESSetFromOptions(SNES_thermal,err_PETSc)                                                   ! pull it all together with additional CLI arguments
   CHKERRQ(err_PETSc)
 
-  call DMDAVecGetArrayF90(DM_thermal,T_PETSc,T,err_PETSc)                                           ! returns 0-indexed T
+  call DMDAVecGetArray(DM_thermal,T_PETSc,T,err_PETSc)                                              ! returns 0-indexed T
   CHKERRQ(err_PETSc)
 
   restartRead: if (CLI_restartInc > 0) then
@@ -174,7 +174,7 @@ subroutine grid_thermal_spectral_init(num_grid)
   call homogenization_thermal_setField(reshape(T,[product(cells(1:2))*cells3]), &
                                        [(0.0_pREAL, ce = 1,product(cells(1:2))*cells3)])
 
-  call DMDAVecRestoreArrayF90(DM_thermal,T_PETSc,T,err_PETSc)
+  call DMDAVecRestoreArray(DM_thermal,T_PETSc,T,err_PETSc)
   CHKERRQ(err_PETSc)
 
   call updateReference()
@@ -208,7 +208,11 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   call SNESGetConvergedReason(SNES_thermal,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  solution%converged = reason > 0 .and. status == STATUS_OK
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+  solution%converged = reason > SNES_CONVERGED_ITERATING .and. status == STATUS_OK
+#else
+  solution%converged = reason%v > SNES_CONVERGED_ITERATING%v .and. status == STATUS_OK
+#endif
   solution%iterationsNeeded = merge(totalIter,num%itmax,solution%converged)
 
   call VecMin(T_PETSc,devNull,T_min,err_PETSc)
@@ -218,7 +222,7 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
 
   call SNESGetDM(SNES_thermal,DM_thermal,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayReadF90(DM_thermal,T_PETSc,T,err_PETSc)                                       ! returns 0-indexed T
+  call DMDAVecGetArrayRead(DM_thermal,T_PETSc,T,err_PETSc)                                          ! returns 0-indexed T
   CHKERRQ(err_PETSc)
 
   stagNorm = maxval(abs(T - T_stagInc))
@@ -232,7 +236,7 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   call homogenization_thermal_setField(reshape(T,[product(cells(1:2))*cells3]), &
                                        reshape(T-T_lastInc,[product(cells(1:2))*cells3])/Delta_t_)
 
-  call DMDAVecRestoreArrayReadF90(DM_thermal,T_PETSc,T,err_PETSc)
+  call DMDAVecRestoreArrayRead(DM_thermal,T_PETSc,T,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (solution%converged) &
@@ -259,7 +263,7 @@ subroutine grid_thermal_spectral_forward(cutBack, Delta_t)
 
   call SNESGetDM(SNES_thermal,DM_thermal,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(DM_thermal,T_PETSc,T,err_PETSc)                                           ! returns 0-indexed T
+  call DMDAVecGetArray(DM_thermal,T_PETSc,T,err_PETSc)                                              ! returns 0-indexed T
   CHKERRQ(err_PETSc)
 
   if (cutBack) then
@@ -273,7 +277,7 @@ subroutine grid_thermal_spectral_forward(cutBack, Delta_t)
     call updateReference()
   end if
 
-  call DMDAVecRestoreArrayF90(DM_thermal,T_PETSc,T,err_PETSc)
+  call DMDAVecRestoreArray(DM_thermal,T_PETSc,T,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_thermal_spectral_forward
@@ -292,7 +296,7 @@ subroutine grid_thermal_spectral_restartWrite()
 
   call SNESGetDM(SNES_thermal,DM_thermal,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayReadF90(DM_thermal,T_PETSc,T,err_PETSc)                                       ! returns 0-indexed T
+  call DMDAVecGetArrayRead(DM_thermal,T_PETSc,T,err_PETSc)                                          ! returns 0-indexed T
   CHKERRQ(err_PETSc)
 
   print'(1x,a)', 'saving thermal solver data required for restart'; flush(IO_STDOUT)
@@ -305,7 +309,7 @@ subroutine grid_thermal_spectral_restartWrite()
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 
-  call DMDAVecRestoreArrayReadF90(DM_thermal,T_PETSc,T,err_PETSc);
+  call DMDAVecRestoreArrayRead(DM_thermal,T_PETSc,T,err_PETSc);
   CHKERRQ(err_PETSc)
 
 end subroutine grid_thermal_spectral_restartWrite
@@ -316,7 +320,11 @@ end subroutine grid_thermal_spectral_restartWrite
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<22)
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
+#else
+  DMDALocalInfo :: &
+#endif
     residual_subdomain
   real(pREAL), dimension(cells(1),cells(2),cells3), intent(in) :: &
     x_scal
