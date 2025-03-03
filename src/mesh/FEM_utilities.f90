@@ -60,7 +60,8 @@ module FEM_utilities
   public :: &
     FEM_utilities_init, &
     utilities_constitutiveResponse, &
-    utilities_projectBCValues
+    utilities_projectBCValues, &
+    needs_name
 
 contains
 
@@ -188,5 +189,34 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
   CHKERRQ(err_PETSc)
 
 end subroutine utilities_projectBCValues
+
+subroutine needs_name(dm_local_,solution_local_,section_,mechBC_,Delta_t,dimPlex_)
+  DM             :: dm_local_
+  Vec :: solution_local_
+  PetscSection   :: section_
+  type(tMechBC),  dimension(:), intent(in) :: &
+    mechBC_
+  real(pREAL),    intent(in) :: Delta_t
+  PetscInt, intent(in) :: dimPlex_
+
+  PetscInt       :: component, face, bcSize
+  IS             :: bcPoints
+  PetscErrorCode :: err_PETSc
+
+  do face = 1, mesh_Nboundaries; do component = 1, dimPlex_
+   if (mechBC_(face)%Mask(component)) then
+     call DMGetStratumSize(dm_local_,'Face Sets',mesh_boundaries(face),bcSize,err_PETSc)
+     if (bcSize > 0) then
+       call DMGetStratumIS(dm_local_,'Face Sets',mesh_boundaries(face),bcPoints,err_PETSc)
+       CHKERRQ(err_PETSc)
+       call utilities_projectBCValues(solution_local_,section_,0_pPETSCINT,component-1,bcPoints, &
+                                      0.0_pREAL,mechBC_(face)%Value(component),Delta_t)
+       call ISDestroy(bcPoints,err_PETSc)
+       CHKERRQ(err_PETSc)
+     end if
+   end if
+  end do; end do
+
+end subroutine needs_name
 
 end module FEM_utilities
