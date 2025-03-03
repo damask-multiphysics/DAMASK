@@ -525,11 +525,11 @@ end subroutine FEM_mechanical_formResidual
 !--------------------------------------------------------------------------------------------------
 !> @brief Form the FEM stiffness matrix.
 !--------------------------------------------------------------------------------------------------
-subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_PETSc)
+subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
 
 
   DM                      :: dm_local
-  Mat                     :: Jac_pre, Jac
+  Mat                     :: J, Jp
   PetscObject, intent(in) :: dummy
   PetscErrorCode          :: err_PETSc
 
@@ -557,11 +557,11 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
   allocate(pcellJ(dimPlex**2))
   allocate(pinvcellJ(dimPlex**2))
 
-  call MatSetOption(Jac,MAT_KEEP_NONZERO_PATTERN,PETSC_TRUE,err_PETSc)
+  call MatSetOption(Jp,MAT_KEEP_NONZERO_PATTERN,PETSC_TRUE,err_PETSc)
   CHKERRQ(err_PETSc)
-  call MatSetOption(Jac,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,err_PETSc)
+  call MatSetOption(Jp,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,err_PETSc)
   CHKERRQ(err_PETSc)
-  call MatZeroEntries(Jac,err_PETSc)
+  call MatZeroEntries(Jp,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMGetDS(dm_local,prob,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -637,18 +637,18 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
     ! https://software.intel.com/en-us/forums/intel-fortran-compiler/topic/782230 (bug)
     allocate(pK_e(cellDOF**2),source = reshape(K_e,[cellDOF**2]))
 #endif
-    call DMPlexMatSetClosure(dm_local,section,gSection,Jac,cell,pK_e,ADD_VALUES,err_PETSc)
+    call DMPlexMatSetClosure(dm_local,section,gSection,Jp,cell,pK_e,ADD_VALUES,err_PETSc)
     CHKERRQ(err_PETSc)
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,x_scal,err_PETSc)
     CHKERRQ(err_PETSc)
   end do
-  call MatAssemblyBegin(Jac,MAT_FINAL_ASSEMBLY,err_PETSc)
+  call MatAssemblyBegin(Jp,MAT_FINAL_ASSEMBLY,err_PETSc)
   CHKERRQ(err_PETSc)
-  call MatAssemblyEnd(Jac,MAT_FINAL_ASSEMBLY,err_PETSc)
+  call MatAssemblyEnd(Jp,MAT_FINAL_ASSEMBLY,err_PETSc)
   CHKERRQ(err_PETSc)
-  call MatAssemblyBegin(Jac_pre,MAT_FINAL_ASSEMBLY,err_PETSc)
+  call MatAssemblyBegin(J,MAT_FINAL_ASSEMBLY,err_PETSc)
   CHKERRQ(err_PETSc)
-  call MatAssemblyEnd(Jac_pre,MAT_FINAL_ASSEMBLY,err_PETSc)
+  call MatAssemblyEnd(J,MAT_FINAL_ASSEMBLY,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMRestoreLocalVector(dm_local,x_local,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -664,9 +664,9 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
   call DMPlexCreateRigidBody(dm_local,0_pPETSCINT,matnull,err_PETSc)
   CHKERRQ(err_PETSc)
 #endif
-  call MatSetNullSpace(Jac,matnull,err_PETSc)
+  call MatSetNullSpace(Jp,matnull,err_PETSc)
   CHKERRQ(err_PETSc)
-  call MatSetNearNullSpace(Jac,matnull,err_PETSc)
+  call MatSetNearNullSpace(Jp,matnull,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatNullSpaceDestroy(matnull,err_PETSc)
   CHKERRQ(err_PETSc)
