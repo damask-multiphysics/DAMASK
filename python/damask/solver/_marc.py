@@ -77,7 +77,7 @@ class Marc:
         optimization : {'', 'l', 'h'}, optional
             Optimization level '': -O0, 'l': -O1, or 'h': -O3.
             Defaults to ''.
-        domains: int, optional
+        domains : int, optional
             Number of domains.
             Defaults to 1.
         env : dict, optional

@@ -105,7 +105,7 @@ subroutine result_init(restart)
 #ifdef DAMASK_MESH
     call result_addAttribute('solver','mesh')
 #endif
-#ifdef MARC4DAMASK
+#ifdef MARC_SOURCE
     call result_addAttribute('solver','Marc')
 #endif
     call result_addAttribute('compiler',compiler_version())

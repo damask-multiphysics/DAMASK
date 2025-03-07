@@ -61,15 +61,15 @@
 +
 +# DAMASK compiler calls
 +DFORTLOWMP="$FCOMP -c -O0 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2023.1 $DAMASK_INFO \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
 +DFORTRANMP="$FCOMP -c -O1 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2023.1 $DAMASK_INFO \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
 +DFORTHIGHMP="$FCOMP -c -O3 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2023.1 $DAMASK_INFO \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
 +
