@@ -174,6 +174,9 @@ unittest_oneAPI_DEBUG:
   extends: .unittest
   image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-debug:2025.03.09
   before_script:
+    # https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/Floating-point-exception-in-dgeev/td-p/1665868
+    - sed -i '/set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0/d' cmake/Compiler-IntelLLVM.cmake
+    - sed -i 's/FP_TRAP_ON/FP_TRAP_OFF/g' src/parallelization.f90
     - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
     - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=DEBUG
     - cmake --build ${TEMPDIR} --target install
@@ -232,13 +235,22 @@ mesh_GCC-i64:
   image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-i64:2025.03.10
 
 grid_oneAPI:
-  extends: .compile_grid
+  extends: .compile
   image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.03.09
+  script:
+    # https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/Floating-point-exception-in-dgeev/td-p/1665868
+    - sed -i '/set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0/d' ../../cmake/Compiler-IntelLLVM.cmake
+    - sed -i 's/FP_TRAP_ON/FP_TRAP_OFF/g' ../../src/parallelization.f90
+    - python -m pytest -k 'compile and grid'
 
 mesh_oneAPI:
-  extends: .compile_mesh
+  extends: .compile
   image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.03.09
-
+  script:
+    # https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/Floating-point-exception-in-dgeev/td-p/1665868
+    - sed -i '/set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0/d' ../../cmake/Compiler-IntelLLVM.cmake
+    - sed -i 's/FP_TRAP_ON/FP_TRAP_OFF/g' ../../src/parallelization.f90
+    - python -m pytest -k 'compile and mesh'
 
 Marc_Intel:
   stage: compile
