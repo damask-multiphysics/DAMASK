@@ -47,7 +47,7 @@ def _read(dataset: h5py._hl.dataset.Dataset) -> np.ndarray:
     return np.array(dataset,dtype=dtype)
 
 def _read_dt(dataset: h5py._hl.dataset.Dataset) -> np.dtype:
-    """Only read the metadata of an item without loading the full array"""
+    """Only read the metadata of an item without loading the full array."""
     metadata = {k: v for k, v in dataset.attrs.items()}
     return np.dtype(dataset.dtype, metadata=metadata)
 
