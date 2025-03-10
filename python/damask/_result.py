@@ -1759,7 +1759,8 @@ class Result:
                                     if out+suffixes[0] not in r[inc][ty][field].keys():
                                         for c,suffix in zip(constituents_,suffixes):
                                             r[inc][ty][field][out+suffix] = \
-                                                _empty_like(data.shape,dtypes_by_field[field],self.N_materialpoints,fill_float,fill_int)
+                                                _empty_like(data.shape,dtypes_by_field[field],
+                                                            self.N_materialpoints,fill_float,fill_int)
 
                                     for c,suffix in zip(constituents_,suffixes):
                                         r[inc][ty][field][out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]] # type: ignore
@@ -1767,7 +1768,8 @@ class Result:
                                 if ty == 'homogenization':
                                     if out not in r[inc][ty][field].keys():
                                         r[inc][ty][field][out] = \
-                                            _empty_like(data.shape,dtypes_by_field[field],self.N_materialpoints,fill_float,fill_int)
+                                            _empty_like(data.shape,dtypes_by_field[field],
+                                                        self.N_materialpoints,fill_float,fill_int)
 
                                     r[inc][ty][field][out][at_cell_ho[label]] = data[in_data_ho[label]]
 
