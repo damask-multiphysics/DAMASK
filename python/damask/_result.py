@@ -46,6 +46,24 @@ def _read(dataset: h5py._hl.dataset.Dataset) -> np.ndarray:
     dtype = np.dtype(dataset.dtype,metadata=metadata)                                               # type: ignore
     return np.array(dataset,dtype=dtype)
 
+def _read_dt(dataset: h5py._hl.dataset.Dataset) -> np.dtype:
+    """Only read the metadata of an item without loading the full array"""
+    metadata = {k: v for k, v in dataset.attrs.items()}
+    return np.dtype(dataset.dtype, metadata=metadata)
+
+def get_common_metadata(dtypes: List[np.dtype]) -> np.dtype:
+    metadata_list = [dtype.metadata for dtype in dtypes if dtype.metadata]
+    common_keys = set(metadata_list[0].keys())
+    for meta in metadata_list[1:]:
+        common_keys.intersection_update(meta.keys())
+    common_metadata = {}
+    for key in common_keys:
+        value = metadata_list[0][key]
+        if all(meta[key] == value for meta in metadata_list):
+            common_metadata[key] = value
+    dt = np.dtype(dtypes[0].base.type, metadata=common_metadata)
+    return dt
+
 def _match(requested,
            existing: h5py._hl.base.KeysViewHDF5) -> List[str]:
     """Find matches among two sets of labels."""
@@ -63,15 +81,15 @@ def _match(requested,
     return sorted(set(flatten_list([fnmatch.filter(existing,r) for r in requested_])),
                   key=util.natural_sort)
 
-def _empty_like(dataset: np.ma.core.MaskedArray,
+def _empty_like(dataset_shape: Tuple[int],
+                dtype: np.dtype,
                 N_materialpoints: int,
                 fill_float: float,
                 fill_int: int) -> np.ma.core.MaskedArray:
     """Create empty numpy.ma.MaskedArray."""
-    return ma.array(np.empty((N_materialpoints,)+dataset.shape[1:],dataset.dtype),
-                    fill_value = fill_float if np.issubdtype(dataset.dtype,np.floating) else fill_int,
-                    mask = True)
-
+    arr = np.empty((N_materialpoints,) + dataset_shape[1:], dtype=dtype)
+    fill_value = fill_float if np.issubdtype(dtype, np.floating) else fill_int
+    return ma.array(arr, fill_value=fill_value, mask=True)
 
 class Result:
     r"""
@@ -1721,6 +1739,14 @@ class Result:
                     r[inc]['geometry'][out] = ma.array(_read(f['/'.join([inc,'geometry',out])]),fill_value = fill_float)
 
                 for ty in ['phase','homogenization']:
+
+                    dtypes_by_field = {}
+                    for label in self._visible[ty + 's']:
+                        for field in _match(self._visible['fields'], f['/'.join([inc, ty, label])].keys()):
+                            for out in _match(output, f['/'.join([inc, ty, label, field])].keys()):
+                                dtypes_by_field.setdefault(field, []).append(_read_dt(f['/'.join([inc, ty, label, field, out])]))
+                    dtypes_by_field = {field: get_common_metadata(dtypes) for field, dtypes in dtypes_by_field.items()}
+
                     for label in self._visible[ty+'s']:
                         for field in _match(self._visible['fields'],f['/'.join([inc,ty,label])].keys()):
                             if field not in r[inc][ty].keys():
@@ -1733,7 +1759,7 @@ class Result:
                                     if out+suffixes[0] not in r[inc][ty][field].keys():
                                         for c,suffix in zip(constituents_,suffixes):
                                             r[inc][ty][field][out+suffix] = \
-                                                _empty_like(data,self.N_materialpoints,fill_float,fill_int)
+                                                _empty_like(data.shape,dtypes_by_field[field],self.N_materialpoints,fill_float,fill_int)
 
                                     for c,suffix in zip(constituents_,suffixes):
                                         r[inc][ty][field][out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]] # type: ignore
@@ -1741,7 +1767,7 @@ class Result:
                                 if ty == 'homogenization':
                                     if out not in r[inc][ty][field].keys():
                                         r[inc][ty][field][out] = \
-                                            _empty_like(data,self.N_materialpoints,fill_float,fill_int)
+                                            _empty_like(data.shape,dtypes_by_field[field],self.N_materialpoints,fill_float,fill_int)
 
                                     r[inc][ty][field][out][at_cell_ho[label]] = data[in_data_ho[label]]
 
