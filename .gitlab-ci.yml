@@ -138,7 +138,6 @@ mypy:
     - matesting2-container-runner
   script:
     - source env/DAMASK.sh
-    - cd ${TEMPDIR}
     - ./bin/DAMASK_test
     - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \;
 
@@ -148,25 +147,22 @@ unittest_GCC_DEBUG:
   extends: .unittest
   image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-debug:2025.03.10
   before_script:
-    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
-    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=DEBUG -DBUILDCMD_POST=-coverage
-    - cmake --build ${TEMPDIR} --target install
+    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=DEBUG -DBUILDCMD_POST=-coverage
+    - cmake --build builddir --target install
 
 unittest_GCC_RELEASE:
   extends: .unittest
   image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
   before_script:
-    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
-    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
-    - cmake --build ${TEMPDIR} --target install
+    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
+    - cmake --build builddir --target install
 
 unittest_GCC_PERFORMANCE:
   extends: .unittest
   image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
   before_script:
-    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
-    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=PERFORMANCE -DBUILDCMD_POST=-coverage
-    - cmake --build ${TEMPDIR} --target install
+    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=PERFORMANCE -DBUILDCMD_POST=-coverage
+    - cmake --build builddir --target install
 
 # -------------------------------------------------------------------------------------------------
 
@@ -177,25 +173,22 @@ unittest_oneAPI_DEBUG:
     # https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/Floating-point-exception-in-dgeev/td-p/1665868
     - sed -i '/set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0/d' cmake/Compiler-IntelLLVM.cmake
     - sed -i 's/FP_TRAP_ON/FP_TRAP_OFF/g' src/parallelization.f90
-    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
-    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=DEBUG
-    - cmake --build ${TEMPDIR} --target install
+    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=DEBUG
+    - cmake --build builddir --target install
 
 unittest_oneAPI_RELEASE:
   extends: .unittest
   image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.03.09
   before_script:
-    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
-    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE
-    - cmake --build ${TEMPDIR} --target install
+    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=RELEASE
+    - cmake --build builddir --target install
 
 unittest_oneAPI_PERFORMANCE:
   extends: .unittest
   image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.03.09
   before_script:
-    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
-    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=PERFORMANCE
-    - cmake --build ${TEMPDIR} --target install
+    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=PERFORMANCE
+    - cmake --build builddir --target install
 
 ###################################################################################################
 
@@ -285,7 +278,7 @@ open-source_grid_GCC:
     - source env/DAMASK.sh
   script:
     - cd PRIVATE/testing
-    - pytest -k 'not compile and grid and not signal and not restart'
+    - pytest -k 'grid and not compile and not (signal or restart)'
 
 open-source_grid_signal_restart:
   stage: fortran
@@ -302,7 +295,7 @@ open-source_grid_signal_restart:
     - echo Job start:" $(date)"
   script:
     - cd PRIVATE/testing
-    - pytest -k 'not compile and grid and (signal or restart)' -m 'not cifail' --basetemp ${TESTROOT}/open-source -v
+    - pytest -k 'grid and not compile and (signal or restart)' -m 'not cifail' --basetemp ${TESTROOT}/open-source -v
   after_script:
     - echo Job end:" $(date)"
 
@@ -316,7 +309,7 @@ open-source_mesh_GCC:
     - source env/DAMASK.sh
   script:
     - cd PRIVATE/testing
-    - pytest -k 'not compile and mesh'
+    - pytest -k 'mesh and not compile'
 
 Marc:
   stage: fortran
