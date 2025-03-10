@@ -11,10 +11,6 @@
 #define QUOTE(x) #x
 #define PASTE(x,y) x ## y
 
-#ifdef Marc4DAMASK
-#define MARC4DAMASK Marc4DAMASK
-#endif
-
 #ifdef DAMASKVERSION
 #define DAMASK_VERSION DAMASKVERSION
 #endif
@@ -27,6 +23,7 @@
 #include "../types.f90"
 #include "../YAML.f90"
 #include "../HDF5_utilities.f90"
+#include "IO_Marc.f90"
 
 module DAMASK_interface
   use, intrinsic :: ISO_fortran_env, only: &
@@ -37,21 +34,31 @@ module DAMASK_interface
 
   use prec
   use IO
+  use IO_Marc
 
   implicit none(type,external)
   private
 
-  logical,          protected, public :: symmetricSolver
-  character(len=*), parameter, public :: INPUTFILEEXTENSION = '.dat'
+  type, public :: tLoadcase
+    character(len=32) :: lname
+    integer           :: frequency
+  end type tLoadcase
+
+  type(tLoadcase), allocatable, protected, public :: loadcase(:)
+  logical,          protected, public             :: symmetricSolver
+  character(len=*), parameter, public             :: INPUTFILEEXTENSION = '.dat'
+  integer, save, public                           :: inc_written
+
 
   public :: &
     DAMASK_interface_init, &
-    getSolverJobName
+    getSolverJobName, &
+    getOutputFrequency
 
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reports and sets working directory
+!> @brief Report and set working directory.
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
 
@@ -85,12 +92,13 @@ subroutine DAMASK_interface_init
     call quit(1)
   end if
   symmetricSolver = solverIsSymmetric()
+  call getOutputFrequency
 
 end subroutine DAMASK_interface_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief solver job name (no extension) as combination of geometry and load case name
+!> @brief Return stem of Marc input file as solver job name.
 !--------------------------------------------------------------------------------------------------
 function getSolverJobName()
 
@@ -107,7 +115,7 @@ end function getSolverJobName
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief determines whether a symmetric solver is used
+!> @brief Determine whether a symmetric solver is used.
 !--------------------------------------------------------------------------------------------------
 logical function solverIsSymmetric()
 
@@ -129,6 +137,71 @@ logical function solverIsSymmetric()
 100 close(fileUnit)
 
 end function solverIsSymmetric
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Determine and report output frequency of each loadcase.
+!--------------------------------------------------------------------------------------------------
+subroutine getOutputFrequency
+
+  integer :: mystat, fileunit, number_loadcases, i
+  character(len=pSTRLEN) :: line
+  integer, allocatable, dimension(:) :: chunkPos
+
+  open(newunit=fileUnit, file=getSolverJobName()//INPUTFILEEXTENSION, &
+       status='old', position='rewind', action='read',iostat=myStat)
+  number_loadcases = 0
+  do
+    read (fileUnit,'(A)',END=100) line
+    chunkPos = strPos(line)
+    if (chunkPos(1) < 4) cycle
+    if (IO_lc(strValue(line,chunkPos,1)) == '$....start') then
+      if (IO_lc(strValue(line,chunkPos,2)) == 'of') then
+        if (IO_lc(strValue(line,chunkPos,3)) == 'loadcase') then
+          number_loadcases = number_loadcases + 1
+        end if
+      end if
+    end if
+  end do
+100 rewind(fileUnit)
+  allocate(loadcase(number_loadcases))
+  i=0
+  do
+    read (fileUnit,'(A)',END=200) line
+    chunkPos = strPos(line)
+    if (chunkPos(1) < 1) cycle
+    if (IO_lc(strValue(line,chunkPos,1)) == 'post') then
+      if (chunkPos(1) == 1) then
+        read (fileUnit,'(A)',END=200) line
+        chunkPos = strPos(line)
+        loadcase(1)%frequency = IO_strAsInt(strValue(line,chunkPos,9))
+      elseif (IO_lc(strValue(line,chunkPos,2)) == 'increment') then
+        read (fileUnit,'(A)',END=200) line
+        chunkPos = strPos(line)
+        if (IO_strAsInt(strValue(line,chunkPos,1)) /= 0) then              ! change output frequency only if specified by number of incs
+          loadcase(i)%frequency = IO_strAsInt(strValue(line,chunkPos,1))
+        end if
+      end if
+    end if
+    if (IO_lc(strValue(line,chunkPos,1)) == '$....start') then
+      if (IO_lc(strValue(line,chunkPos,2)) == 'of') then
+        if (IO_lc(strValue(line,chunkPos,3)) == 'loadcase') then
+          i = i + 1
+          loadcase(i)%lname = IO_lc(strValue(line,chunkPos,4))
+          loadcase(i)%frequency = loadcase(max(1,i-1))%frequency
+        end if
+      end if
+    end if
+  end do
+200 close(fileUnit)
+  print *
+  print '(a,i3)', ' number of loadcases: ', number_loadcases
+  print *
+  print '(a33, a)', ' loadcase name                   ', 'write frequency'
+  do i = 1, number_loadcases
+    print '(2a,i3)', ' ', loadcase(i)
+  end do
+
+end subroutine getOutputFrequency
 
 end module DAMASK_interface
 
@@ -177,7 +250,7 @@ end module DAMASK_interface
 #include "materialpoint_Marc.f90"
 
 !--------------------------------------------------------------------------------------------------
-!> @brief This is the MSC.Marc user subroutine for defining material behavior
+!> @brief This is the MSC.Marc user subroutine for defining material behavior.
 !> @details (1) F,R,U are only available for continuum and membrane elements (not for
 !> @details     shells and beams).
 !> @details
@@ -245,11 +318,12 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
     d                                                                                               !< stress-strain law to be formed
 
 !--------------------------------------------------------------------------------------------------
-! Marc common blocks are in fixed format so they have to be reformated to free format (f90)
-! Beware of changes in newer Marc versions
+! Marc common blocks are in fixed format so they have to be interpreted accordingly
 
-#include QUOTE(PASTE(include/concom,MARC4DAMASK))                                                   ! concom is needed for inc, lovl
-#include QUOTE(PASTE(include/creeps,MARC4DAMASK))                                                   ! creeps is needed for timinc (time increment)
+!DIR$ NOFREEFORM
+#include QUOTE(PASTE(MARC_SOURCE,/common/concom))                                                   ! concom is needed for inc, lovl
+#include QUOTE(PASTE(MARC_SOURCE,/common/creeps))                                                   ! creeps is needed for timinc (time increment)
+!DIR$ FREEFORM
 
   logical :: cutBack
   real(pREAL), dimension(6) ::   stress
@@ -258,14 +332,14 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   integer(pI32) :: defaultNumThreadsInt                                                             !< default value set by Marc
 
   integer, save :: &
-    theInc       = -1, &                                                                            !< needs description
+    theInc       = -1, &                                                                            !< last processed increment
     lastLovl     =  0                                                                               !< lovl in previous call to marc hypela2
   real(pREAL), save :: &
-    theTime      = 0.0_pREAL, &                                                                     !< needs description
-    theDelta     = 0.0_pREAL
+    theTime      = 0.0_pREAL, &                                                                     !< last processed time
+    theDelta     = 0.0_pREAL                                                                        !< last processed time increment
   logical, save :: &
-    lastIncConverged  = .false., &                                                                  !< needs description
-    outdatedByNewInc  = .false., &                                                                  !< needs description
+    lastIncConverged  = .false., &                                                                  !< flag indicating convergence of last increment
+    outdatedByNewInc  = .false., &                                                                  !< flag for updating results
     materialpoint_init_done   = .false.                                                             !< remember whether init has been done already
 
 
@@ -341,7 +415,7 @@ end subroutine hypela2
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate internal heat generated due to inelastic energy dissipation
+!> @brief Calculate internal heat generated due to inelastic energy dissipation.
 !--------------------------------------------------------------------------------------------------
 subroutine flux(f,ts,n,time)
   use prec
@@ -366,28 +440,45 @@ subroutine flux(f,ts,n,time)
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief trigger writing of results
+!> @brief Trigger writing of results.
 !> @details uedinc is called before each new increment, not at the end of a converged one.
 !> Therefore, storing the last written inc with an 'save' variable is required to avoid writing the
 ! same increment multiple times.
 !--------------------------------------------------------------------------------------------------
 subroutine uedinc(inc,incsub)
   use prec
+  use IO
   use materialpoint_Marc
   use discretization_Marc
+  use DAMASK_interface
 
   implicit none(type,external)
 
   external :: nodvar
   integer(pI64), intent(in) :: inc, incsub
 
-  integer :: n, nqncomp, nqdatatype
-  integer, save :: inc_written
+  integer :: i, n, nqncomp, nqdatatype
+  integer, save :: write_freq = 1, start_inc
   real(pREAL), allocatable, dimension(:,:) :: d_n
-#include QUOTE(PASTE(include/creeps,MARC4DAMASK))                                                   ! creeps is needed for timinc (time increment)
+  character(len=32), save :: old_loadcase
+
+!DIR$ NOFREEFORM
+#include QUOTE(PASTE(MARC_SOURCE,/common/bclabel))                                                  ! bclabel is needed for ldcasename (load case name)
+#include QUOTE(PASTE(MARC_SOURCE,/common/creeps))                                                   ! creeps is needed for cptim (time at beginning of increment)
+!DIR$ FREEFORM
 
 
-  if (inc > inc_written) then
+  if (ldcasename /= old_loadcase) then
+    do i = 1 , size(loadcase)
+      if (IO_lc(ldcasename) == loadcase(i)%lname) then
+        write_freq = loadcase(i)%frequency
+        exit
+      end if
+    end do
+    old_loadcase = ldcasename
+    start_inc = int(inc) -1
+  end if
+  if (modulo(int(inc) - start_inc, write_freq) == 0 .and. inc > inc_written) then
     allocate(d_n(3,count(discretization_Marc_FEM2DAMASK_node /= -1)))
     do n = lbound(discretization_Marc_FEM2DAMASK_node,1), ubound(discretization_Marc_FEM2DAMASK_node,1)
       if (discretization_Marc_FEM2DAMASK_node(n) /= -1) then
@@ -403,3 +494,46 @@ subroutine uedinc(inc,incsub)
   end if
 
 end subroutine uedinc
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Trigger writing of results.
+!> @details uedjob is called twice at the end of a Marc job.
+!> At this point inc has already been inceased by 1, therefore, (inc-1) needs to be compared with
+! the last written inc to avoid writing the last increment multiple times.
+!--------------------------------------------------------------------------------------------------
+subroutine uedjob(icall,iexit)
+  use prec
+  use materialpoint_Marc
+  use discretization_Marc
+  use DAMASK_interface
+
+  implicit none(type,external)
+
+  external :: nodvar
+  integer(pI64), intent(in) :: icall,iexit
+
+  integer :: n, nqncomp, nqdatatype
+  real(pREAL), allocatable, dimension(:,:) :: d_n
+
+!DIR$ NOFREEFORM
+#include QUOTE(PASTE(MARC_SOURCE,/common/concom))                                                   ! concom is needed for inc
+#include QUOTE(PASTE(MARC_SOURCE,/common/creeps))                                                   ! creeps is needed for cptim (time at beginning of increment)
+!DIR$ FREEFORM
+
+  if (icall == 0 .and. inc - 1 > inc_written) then                                                  ! write results for final inc unless already done
+    allocate(d_n(3,count(discretization_Marc_FEM2DAMASK_node /= -1)))
+    do n = lbound(discretization_Marc_FEM2DAMASK_node,1), ubound(discretization_Marc_FEM2DAMASK_node,1)
+      if (discretization_Marc_FEM2DAMASK_node(n) /= -1) then
+        call nodvar(1,n,d_n(1:3,discretization_Marc_FEM2DAMASK_node(n)),nqncomp,nqdatatype)
+        if (nqncomp == 2) d_n(3,discretization_Marc_FEM2DAMASK_node(n)) = 0.0_pREAL
+      end if
+    end do
+
+    call discretization_Marc_UpdateNodeAndIpCoords(d_n)
+    call materialpoint_result(int(inc - 1),cptim)
+
+    inc_written = int(inc)
+    print *, 'inc',  inc_written
+  end if
+
+end subroutine uedjob
