@@ -42,14 +42,12 @@ class MappingsTuple(NamedTuple):
 
 def _read(dataset: h5py._hl.dataset.Dataset) -> np.ndarray:
     """Read a dataset and its metadata into a numpy.ndarray."""
-    metadata = {k:v for k,v in dataset.attrs.items()}
-    dtype = np.dtype(dataset.dtype,metadata=metadata)                                               # type: ignore
-    return np.array(dataset,dtype=dtype)
+    dtype = np.dtype(dataset.dtype, metadata=dict(dataset.attrs.items()))                           # type: ignore
+    return np.array(dataset, dtype=dtype)
 
 def _read_dt(dataset: h5py._hl.dataset.Dataset) -> np.dtype:
     """Only read the metadata of an item without loading the full array."""
-    metadata = {k: v for k, v in dataset.attrs.items()}
-    return np.dtype(dataset.dtype, metadata=metadata)
+    return np.dtype(dataset.dtype, metadata=dict(dataset.attrs.items()))
 
 def get_common_metadata(dtypes: List[np.dtype]) -> np.dtype:
     metadata_list = [dtype.metadata for dtype in dtypes if dtype.metadata]
@@ -62,8 +60,7 @@ def get_common_metadata(dtypes: List[np.dtype]) -> np.dtype:
         if all(np.array_equal(meta[key], value) if isinstance(meta[key], np.ndarray) else meta[key] == value
                for meta in metadata_list):
             common_metadata[key] = value
-    dt = np.dtype(dtypes[0].base.type, metadata=common_metadata)
-    return dt
+    return np.dtype(dtypes[0].base.type, metadata=common_metadata)
 
 def _match(requested,
            existing: h5py._hl.base.KeysViewHDF5) -> List[str]:
@@ -88,9 +85,9 @@ def _empty_like(dataset_shape: Tuple[int],
                 fill_float: float,
                 fill_int: int) -> np.ma.core.MaskedArray:
     """Create empty numpy.ma.MaskedArray."""
-    arr = np.empty((N_materialpoints,) + dataset_shape[1:], dtype=dtype)
-    fill_value = fill_float if np.issubdtype(dtype, np.floating) else fill_int
-    return ma.array(arr, fill_value=fill_value, mask=True)
+    return ma.array(np.empty((N_materialpoints,) + dataset_shape[1:], dtype=dtype),
+                    fill_value=fill_float if np.issubdtype(dtype, np.floating) else fill_int,
+                    mask=True)
 
 class Result:
     r"""

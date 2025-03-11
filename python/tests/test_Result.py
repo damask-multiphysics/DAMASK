@@ -238,7 +238,7 @@ class TestResult:
         default.add_IPF_color(d,'O')
         qu = default.place('O')
         assert 'lattice' not in qu.dtype.metadata # default result object has both cI and cF phases
-        c = Orientation(rotation=qu, lattice='cF')
+        c = Orientation(rotation=qu, family='cubic')
         in_memory = np.uint8(c.IPF_color(np.array(d))*255)
         in_file = default.place('IPFcolor_({} {} {})'.format(*d))
         assert np.allclose(in_memory,in_file)
