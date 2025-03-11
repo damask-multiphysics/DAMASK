@@ -721,6 +721,8 @@ class Crystal():
             Angles are given in degrees. Defaults to False.
 
         """
+        if not lattice and not family:
+            raise KeyError(f'Crystal initialization requires either lattice or family information')
         if family is not None and family not in list(lattice_symmetries.values()):
             raise KeyError(f'invalid crystal family "{family}"')
         if lattice is not None and family is not None and family != lattice_symmetries[lattice]:
