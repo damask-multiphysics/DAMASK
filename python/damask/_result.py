@@ -59,7 +59,8 @@ def get_common_metadata(dtypes: List[np.dtype]) -> np.dtype:
     common_metadata = {}
     for key in common_keys:
         value = metadata_list[0][key]
-        if all(meta[key] == value for meta in metadata_list):
+        if all(np.array_equal(meta[key], value) if isinstance(meta[key], np.ndarray) else meta[key] == value
+               for meta in metadata_list):
             common_metadata[key] = value
     dt = np.dtype(dtypes[0].base.type, metadata=common_metadata)
     return dt
@@ -1740,12 +1741,12 @@ class Result:
 
                 for ty in ['phase','homogenization']:
 
-                    dtypes_by_field = {}
+                    dtypes_by_out: Dict[str, Any] = {}
                     for label in self._visible[ty + 's']:
                         for field in _match(self._visible['fields'], f['/'.join([inc, ty, label])].keys()):
                             for out in _match(output, f['/'.join([inc, ty, label, field])].keys()):
-                                dtypes_by_field.setdefault(field, []).append(_read_dt(f['/'.join([inc, ty, label, field, out])]))
-                    dtypes_by_field = {field: get_common_metadata(dtypes) for field, dtypes in dtypes_by_field.items()}
+                                dtypes_by_out.setdefault(out, []).append(_read_dt(f['/'.join([inc, ty, label, field, out])]))
+                    dtype_by_out = {out: get_common_metadata(dtypes) for out, dtypes in dtypes_by_out.items()}
 
                     for label in self._visible[ty+'s']:
                         for field in _match(self._visible['fields'],f['/'.join([inc,ty,label])].keys()):
@@ -1759,7 +1760,7 @@ class Result:
                                     if out+suffixes[0] not in r[inc][ty][field].keys():
                                         for c,suffix in zip(constituents_,suffixes):
                                             r[inc][ty][field][out+suffix] = \
-                                                _empty_like(data.shape,dtypes_by_field[field],
+                                                _empty_like(data.shape,dtype_by_out[out],
                                                             self.N_materialpoints,fill_float,fill_int)
 
                                     for c,suffix in zip(constituents_,suffixes):
@@ -1768,7 +1769,7 @@ class Result:
                                 if ty == 'homogenization':
                                     if out not in r[inc][ty][field].keys():
                                         r[inc][ty][field][out] = \
-                                            _empty_like(data.shape,dtypes_by_field[field],
+                                            _empty_like(data.shape,dtype_by_out[out],
                                                         self.N_materialpoints,fill_float,fill_int)
 
                                     r[inc][ty][field][out][at_cell_ho[label]] = data[in_data_ho[label]]
@@ -1984,6 +1985,14 @@ class Result:
                 v = v.set('u',u)
 
                 for ty in ['phase','homogenization']:
+
+                    dtypes_by_out: Dict[str, Any] = {}
+                    for label in self._visible[ty + 's']:
+                        for field in _match(self._visible['fields'], f['/'.join([inc, ty, label])].keys()):
+                            for out in _match(output, f['/'.join([inc, ty, label, field])].keys()):
+                                dtypes_by_out.setdefault(out, []).append(_read_dt(f['/'.join([inc, ty, label, field, out])]))
+                    dtype_by_out = {out: get_common_metadata(dtypes) for out, dtypes in dtypes_by_out.items()}
+
                     for field in self._visible['fields']:
                         outs: Dict[str, np.ma.core.MaskedArray] = {}
                         for label in self._visible[ty+'s']:
@@ -1996,19 +2005,20 @@ class Result:
                                     if out+suffixes[0] not in outs.keys():
                                         for c,suffix in zip(constituents_,suffixes):
                                             outs[out+suffix] = \
-                                                _empty_like(data,self.N_materialpoints,fill_float,fill_int)
+                                                _empty_like(data.shape,dtype_by_out[out],
+                                                            self.N_materialpoints,fill_float,fill_int)
 
                                     for c,suffix in zip(constituents_,suffixes):
                                         outs[out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
 
                                 if ty == 'homogenization':
                                     if out not in outs.keys():
-                                        outs[out] = _empty_like(data,self.N_materialpoints,fill_float,fill_int)
-
+                                        outs[out] = _empty_like(data.shape,dtype_by_out[out],
+                                                                self.N_materialpoints,fill_float,fill_int)
                                     outs[out][at_cell_ho[label]] = data[in_data_ho[label]]
 
                         for label,dataset in outs.items():
-                            v = v.set(' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]),dataset)
+                            v = v.set(' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata.get('unit')]),dataset)
 
                 v.save(out_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
                        parallel=parallel)
