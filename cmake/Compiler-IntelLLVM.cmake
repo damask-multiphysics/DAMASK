@@ -11,7 +11,7 @@ elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
   set (OPTIMIZATION_FLAGS    "-O2")
 elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
   #set (OPTIMIZATION_FLAGS    "-ipo -O3 -fp-model fast=2 -xHost") # ifx 2022.0 has problems with YAML types and IPO
-  set (OPTIMIZATION_FLAGS    "-O3 -fp-model fast=2 -xHost")
+  set (OPTIMIZATION_FLAGS    "-O3 -fp-model strict -xHost")
 endif ()
 
 # -assume std_mod_proc_name (included in -standard-semantics) causes problems if other modules
@@ -70,7 +70,7 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS} -traceback")
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -gen-interfaces")
 # Generate an interface block for each routine. http://software.intel.com/en-us/blogs/2012/01/05/doctor-fortran-gets-explicit-again/
 
-set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-stack-check")
+# set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-stack-check") not available on ifx 2025.0.4
 # Generate extra code after every function call to ensure that the floating-point (FP) stack is in the expected state
 
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-model strict")
