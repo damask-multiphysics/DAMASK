@@ -122,7 +122,7 @@ doctest:
     - export DAMASK_ROOT=$(pwd)
     - PYTHONPATH=${DAMASK_ROOT}/python:$PYTHONPATH
     - cd python
-    - python3 -m pytest -v --doctest-modules -k 'not result and not configmaterial and not orientation and not rotation and not geomgrid' damask
+    - python3 -m pytest -v --doctest-modules -k 'not result and not configmaterial and not orientation and not geomgrid' damask
 
 mypy:
   extends: .python_default

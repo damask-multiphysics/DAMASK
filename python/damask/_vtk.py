@@ -95,7 +95,7 @@ class VTK:
         Give short, human-readable summary.
 
         """
-        info = [self.vtk_data.__vtkname__]                                                          # type: ignore
+        info = [self.vtk_data.__vtkname__]                                                          # type: ignore[attr-defined]
 
         for data in ['Cell Data', 'Point Data']:
             if data == 'Cell Data':  info.append(f'\n# cells: {self.N_cells}')
@@ -655,7 +655,7 @@ class VTK:
                     colormap
         lut.SetNumberOfTableValues(len(colormap_.colors))
         for i,c in enumerate(colormap_.colors):
-            lut.SetTableValue(i,c if len(c)==4 else np.append(c,1.0))                               # type: ignore
+            lut.SetTableValue(i,c if len(c)==4 else np.append(c,1.0))                               # type: ignore[arg-type]
         lut.Build()
         if label is not None:
             self.vtk_data.GetCellData().SetActiveScalars(label)

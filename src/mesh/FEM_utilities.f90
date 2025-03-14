@@ -150,42 +150,59 @@ end subroutine utilities_constitutiveResponse
 !--------------------------------------------------------------------------------------------------
 !> @brief Project BC values to local vector
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCValue,BCDotValue,Delta_t)
+subroutine utilities_projectBCValues(dm_local,solution_local,section,mechBC,Delta_t,dimPlex)
+  DM  :: dm_local
+  Vec :: solution_local
+  PetscSection   :: section
+  type(tMechBC),  dimension(:), intent(in) :: &
+    mechBC
+  real(pREAL),    intent(in) :: Delta_t
+  PetscInt, intent(in) :: dimPlex
 
-  Vec                  :: localVec
-  PetscInt             :: field, comp, nBcPoints, point, dof, numDof, numComp, offset
-  PetscSection         :: section
-  IS                   :: bcPointsIS
+  PetscInt       :: component, face, bcSize, &
+                    nBcPoints, point, dof, numDof, numComp, offset
+  IS             :: bcPointsIS
+  PetscErrorCode :: err_PETSc
   PetscInt,    pointer :: bcPoints(:)
   real(pREAL), pointer :: localArray(:)
-  real(pREAL)          :: BCValue,BCDotValue,Delta_t
-  PetscErrorCode       :: err_PETSc
 
 
-  call PetscSectionGetFieldComponents(section,field,numComp,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call ISGetSize(bcPointsIS,nBcPoints,err_PETSc)
-  CHKERRQ(err_PETSc)
-  if (nBcPoints > 0) call ISGetIndicesF90(bcPointsIS,bcPoints,err_PETSc)
-  call VecGetArrayF90(localVec,localArray,err_PETSc)
-  CHKERRQ(err_PETSc)
-  do point = 1, nBcPoints
-    call PetscSectionGetFieldDof(section,bcPoints(point),field,numDof,err_PETSc)
-    CHKERRQ(err_PETSc)
-    call PetscSectionGetFieldOffset(section,bcPoints(point),field,offset,err_PETSc)
-    CHKERRQ(err_PETSc)
-    do dof = offset+comp+1, offset+numDof, numComp
-      localArray(dof) = localArray(dof) + BCValue + BCDotValue*Delta_t
-    end do
-  end do
-  call VecRestoreArrayF90(localVec,localArray,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call VecAssemblyBegin(localVec, err_PETSc)
-  CHKERRQ(err_PETSc)
-  call VecAssemblyEnd  (localVec, err_PETSc)
-  CHKERRQ(err_PETSc)
-  if (nBcPoints > 0) call ISRestoreIndicesF90(bcPointsIS,bcPoints,err_PETSc)
-  CHKERRQ(err_PETSc)
+
+  do face = 1, mesh_Nboundaries; do component = 1, dimPlex
+   if (mechBC(face)%Mask(component)) then
+     call DMGetStratumSize(dm_local,'Face Sets',mesh_boundaries(face),bcSize,err_PETSc)
+     if (bcSize > 0) then
+       call DMGetStratumIS(dm_local,'Face Sets',mesh_boundaries(face),bcPointsIS,err_PETSc)
+       CHKERRQ(err_PETSc)
+       call PetscSectionGetFieldComponents(section,0_pPETSCINT,numComp,err_PETSc)
+       CHKERRQ(err_PETSc)
+       call ISGetSize(bcPointsIS,nBcPoints,err_PETSc)
+       CHKERRQ(err_PETSc)
+       if (nBcPoints > 0) call ISGetIndicesF90(bcPointsIS,bcPoints,err_PETSc)
+       call VecGetArrayF90(solution_local,localArray,err_PETSc)
+       CHKERRQ(err_PETSc)
+       do point = 1, nBcPoints
+         call PetscSectionGetFieldDof(section,bcPoints(point),0_pPETSCINT,numDof,err_PETSc)
+         CHKERRQ(err_PETSc)
+         call PetscSectionGetFieldOffset(section,bcPoints(point),0_pPETSCINT,offset,err_PETSc)
+         CHKERRQ(err_PETSc)
+         do dof = offset+component, offset+numDof, numComp
+           localArray(dof) = localArray(dof) + mechBC(face)%Value(component)*Delta_t
+         end do
+       end do
+       call VecRestoreArrayF90(solution_local,localArray,err_PETSc)
+       CHKERRQ(err_PETSc)
+       call VecAssemblyBegin(solution_local, err_PETSc)
+       CHKERRQ(err_PETSc)
+       call VecAssemblyEnd(solution_local, err_PETSc)
+       CHKERRQ(err_PETSc)
+       if (nBcPoints > 0) call ISRestoreIndicesF90(bcPointsIS,bcPoints,err_PETSc)
+       CHKERRQ(err_PETSc)
+       call ISDestroy(bcPointsIS,err_PETSc)
+       CHKERRQ(err_PETSc)
+     end if
+   end if
+  end do; end do
 
 end subroutine utilities_projectBCValues
 

@@ -15,7 +15,7 @@ from vtkmodules.vtkCommonCore import vtkVersion
 try:
     from vtkmodules.vtkIOXdmf2 import vtkXdmfReader
 except ImportError:
-    vtkXdmfReader=None                                                                              # noqa type: ignore
+    vtkXdmfReader=None
 import h5py
 import numpy as np
 
