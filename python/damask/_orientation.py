@@ -983,11 +983,9 @@ class Orientation(Rotation,Crystal):
 
         Ranges 0≤θ≤π and 0≤φ≤2π give a unique set of coordinates.
 
-        Notes
-        -----
-        The value for sigma should be small enough to avoid values
-        larger than the maximum disorientation of the crystal family
-        when sampling from a normal distribution.
+        The value for sigma should be selected small enough such that
+        sampling from a normal distribution does not result in values
+        larger than the maximum disorientation of the crystal family.
         The maximum disorientation angle d_max is 62.80°, 93.84°,
         98.43°, and 120° for cubic, hexagonal, tetragonal, and
         orthorhombic crystal families, respectively.
