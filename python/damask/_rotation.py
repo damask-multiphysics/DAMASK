@@ -1412,8 +1412,6 @@ class Rotation:
 
         Ranges 0≤θ≤π and 0≤φ≤2π give a unique set of coordinates.
 
-        Notes
-        -----
         The value for sigma should be small enough to avoid values
         larger than π when sampling from a normal distribution.
         A typically safe value is σ = π/5 ≈ 36°.
