@@ -37,7 +37,6 @@ class LoadcaseGrid(YAML):
         loadstep : list of dict, optional
             Load step configuration.
             Defaults to an empty list if 'config' is not given.
-
         """
         kwargs: Dict[str,Union[Dict[str,str],List[Dict[str,Any]]]] = {}
         default: Union[List,Dict]
@@ -62,7 +61,6 @@ class LoadcaseGrid(YAML):
             Filename or file to write.
         **kwargs : dict
             Keyword arguments parsed to yaml.dump.
-
         """
         if 'Dumper' not in kwargs:
             kwargs['Dumper'] = MaskedMatrixDumper

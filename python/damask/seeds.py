@@ -24,7 +24,7 @@ def from_random(size: _FloatSequence,
         Edge lengths of the seeding domain.
     N_seeds : int
         Number of seeds.
-    cells : sequence of int, len (3), optional.
+    cells : sequence of int, len (3), optional
         If given, ensures that each seed results in a grain when a standard Voronoi
         tessellation is performed using the given grid resolution (i.e. size/cells).
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
@@ -35,7 +35,6 @@ def from_random(size: _FloatSequence,
     -------
     coords : numpy.ndarray, shape (N_seeds,3)
         Seed coordinates in 3D space.
-
     """
     size_ = _np.asarray(size,float)
     rng = _np.random.default_rng(rng_seed)
@@ -79,7 +78,6 @@ def from_Poisson_disc(size: _FloatSequence,
     -------
     coords : numpy.ndarray, shape (N_seeds,3)
         Seed coordinates in 3D space.
-
     """
     size_ = _np.asarray(size,float)
     rng = _np.random.default_rng(rng_seed)
@@ -158,7 +156,6 @@ def from_grid(grid,
     10.1
     >>> print((ID == matID).all())
     True
-
     """
     material = grid.material.reshape((-1,1),order='F')
     mask = _np.full(grid.cells.prod(),True,dtype=bool) if selection is None else \

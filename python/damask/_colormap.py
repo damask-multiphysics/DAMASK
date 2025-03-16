@@ -45,7 +45,6 @@ class Colormap(mpl.colors.ListedColormap):
 
     Matplotlib colormaps overview
     https://matplotlib.org/stable/tutorials/colors/colormaps.html
-
     """
 
     def __init__(self,
@@ -59,7 +58,6 @@ class Colormap(mpl.colors.ListedColormap):
             Color specifications as RGB(A) values.
         name : str
             String to identify the colormap.
-
         """
         super().__init__(colors,name)
         self.colors: np.ndarray = np.asarray(colors)
@@ -71,7 +69,6 @@ class Colormap(mpl.colors.ListedColormap):
         Return self==other.
 
         Test equality of other.
-
         """
         if not isinstance(other, Colormap):
             return NotImplemented
@@ -84,7 +81,6 @@ class Colormap(mpl.colors.ListedColormap):
         Return self+other.
 
         Concatenate.
-
         """
         return Colormap(np.vstack((self.colors,other.colors)),
                         f'{self.name}+{other.name}')
@@ -96,7 +92,6 @@ class Colormap(mpl.colors.ListedColormap):
         Return self+=other.
 
         Concatenate (in-place).
-
         """
         return self.__add__(other)
 
@@ -107,7 +102,6 @@ class Colormap(mpl.colors.ListedColormap):
         Return self*other.
 
         Repeat.
-
         """
         return Colormap(np.vstack([self.colors]*factor),f'{self.name}*{factor}')
 
@@ -117,7 +111,6 @@ class Colormap(mpl.colors.ListedColormap):
         Return self*=other.
 
         Repeat (in-place).
-
         """
         return self.__mul__(factor)
 
@@ -127,7 +120,6 @@ class Colormap(mpl.colors.ListedColormap):
         Return ~self.
 
         Reverse.
-
         """
         return self.reversed()
 
@@ -137,7 +129,6 @@ class Colormap(mpl.colors.ListedColormap):
         Return repr(self).
 
         Show as matplotlib figure.
-
         """
         fig = plt.figure(self.name,figsize=(5,.5))
         ax1 = fig.add_axes((0, 0, 1, 1))
@@ -193,7 +184,6 @@ class Colormap(mpl.colors.ListedColormap):
         >>> import damask
         >>> damask.Colormap.from_range((0,0,1),(0,0,0),'blue_to_black')
         Colormap: blue_to_black
-
         """
         toMsh = dict(
             rgb=Colormap._rgb2msh,
@@ -258,7 +248,6 @@ class Colormap(mpl.colors.ListedColormap):
         >>> import damask
         >>> damask.Colormap.from_predefined('strain')
         Colormap: strain
-
         """
         if name in cm.__dict__:
             # matplotlib presets
@@ -296,7 +285,6 @@ class Colormap(mpl.colors.ListedColormap):
         array([0.5, 0.5, 0.5, 1. ])
         >>> 'rgb({},{},{})'.format(*cmap.at(0.5))
         'rgb(0.5,0.5,0.5)'
-
         """
         return interp.interp1d(np.linspace(0,1,self.N),
                                self.colors,
@@ -325,7 +313,6 @@ class Colormap(mpl.colors.ListedColormap):
         -------
         PIL.Image
             RGBA image of shaded data.
-
         """
         mask = np.logical_not(np.isnan(field) if gap is None else
                               np.logical_or(np.isnan(field), field == gap))                         # mask NaN (and gap if present)
@@ -369,7 +356,6 @@ class Colormap(mpl.colors.ListedColormap):
         >>> import damask
         >>> damask.Colormap.from_predefined('stress').reversed()
         Colormap: stress_r
-
         """
         rev = super().reversed(name)
         return Colormap(np.array(rev.colors),rev.name[:-4] if rev.name.endswith('_r_r') else rev.name)
@@ -384,7 +370,6 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         fname : file, str, or pathlib.Path, optional
             File to store results. Defaults to colormap name + '.json'.
-
         """
         out = [{
                 'Creator':util.execution_stamp('Colormap'),
@@ -408,7 +393,6 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         fname : file, str, or pathlib.Path, optional
             File to store results. Defaults to colormap name + '.txt'.
-
         """
         labels = {'RGBA':4} if self.colors.shape[1] == 4 else {'RGB': 3}
         t = Table(labels,self.colors,[f'Creator: {util.execution_stamp("Colormap")}'])
@@ -425,7 +409,6 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         fname : file, str, or pathlib.Path, optional
             File to store results. Defaults to colormap name + '.legend'.
-
         """
         # ToDo: test in GOM
         GOM_str = '1 1 {name} 9 {name} '.format(name=self.name.replace(" ","_")) \
@@ -447,7 +430,6 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         fname : file, str, or pathlib.Path, optional
             File to store results. Defaults to colormap name + '.msh'.
-
         """
         # ToDo: test in gmsh
         gmsh_str = 'View.ColorTable = {\n' \
@@ -471,7 +453,6 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         | https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
         | https://www.kennethmoreland.com/color-maps/diverging_map.py
-
         """
         def rad_diff(a,b):
             return abs(a[2]-b[2])
@@ -551,7 +532,6 @@ class Colormap(mpl.colors.ListedColormap):
         -------
         rgb : numpy.ndarray, shape (3)
             RGB values in the range [[0,1],[0,1],[0,1]].
-
         """
         return np.array(colorsys.hsv_to_rgb(hsv[0]/360.,hsv[1],hsv[2]))
 
@@ -569,7 +549,6 @@ class Colormap(mpl.colors.ListedColormap):
         -------
         hsv : numpy.ndarray, shape (3)
             HSV values in the range [[0,360],[0,1],[0,1]].
-
         """
         h,s,v = colorsys.rgb_to_hsv(rgb[0],rgb[1],rgb[2])
         return np.array([h*360,s,v])
@@ -589,7 +568,6 @@ class Colormap(mpl.colors.ListedColormap):
         -------
         rgb : numpy.ndarray, shape (3)
             RGB values in the range [[0,1],[0,1],[0,1]].
-
         """
         return np.array(colorsys.hls_to_rgb(hsl[0]/360.,hsl[2],hsl[1]))
 
@@ -607,7 +585,6 @@ class Colormap(mpl.colors.ListedColormap):
         -------
         hsl : numpy.ndarray, shape (3)
             HSL values in the range [[0,360],[0,1],[0,1]].
-
         """
         h,l,s = colorsys.rgb_to_hls(rgb[0],rgb[1],rgb[2])
         return np.array([h*360,s,l])
@@ -631,7 +608,6 @@ class Colormap(mpl.colors.ListedColormap):
         References
         ----------
         https://www.easyrgb.com/en/math.php
-
         """
         rgb_lin = np.dot(np.array([
                                    [ 3.240969942,-1.537383178,-0.498610760],
@@ -661,7 +637,6 @@ class Colormap(mpl.colors.ListedColormap):
         References
         ----------
         https://www.easyrgb.com/en/math.php
-
         """
         rgb_lin = np.where(rgb>0.04045,((rgb+0.0555)/1.0555)**2.4,rgb/12.92)
         return np.dot(np.array([
@@ -693,7 +668,6 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         https://en.wikipedia.org/wiki/CIELAB_color_space
         http://www.brucelindbloom.com/index.html?Eqn_Lab_to_XYZ.html
-
         """
         f_x = (lab[0]+16.)/116. + lab[1]/500.
         f_z = (lab[0]+16.)/116. - lab[2]/200.
@@ -726,7 +700,6 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         https://en.wikipedia.org/wiki/CIELAB_color_space
         http://www.brucelindbloom.com/index.html?Eqn_Lab_to_XYZ.html
-
         """
         f = np.where(xyz/ref_white > _EPS,
                      (xyz/ref_white)**(1./3.),
@@ -758,7 +731,6 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         | https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
         | https://www.kennethmoreland.com/color-maps/diverging_map.py
-
         """
         M = np.linalg.norm(lab)
         return np.array([
@@ -786,7 +758,6 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         | https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
         | https://www.kennethmoreland.com/color-maps/diverging_map.py
-
         """
         return np.array([
                          msh[0] * np.cos(msh[1]),

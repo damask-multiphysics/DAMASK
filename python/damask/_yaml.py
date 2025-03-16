@@ -70,14 +70,13 @@ class YAML(dict):
         ----------
         config : dict or str, optional
             YAML. String needs to be valid YAML.
-        **kwargs: arbitrary key–value pairs, optional
+        **kwargs : arbitrary key–value pairs, optional
             Top-level entries of the configuration.
 
         Notes
         -----
         Values given as key–value pairs take precedence
         over entries with the same key in 'config'.
-
         """
         if int(platform.python_version_tuple()[1]) >= 9:
             if isinstance(config,str):
@@ -103,7 +102,6 @@ class YAML(dict):
         Return repr(self).
 
         Show as in file.
-
         """
         output = StringIO()
         self.save(output)
@@ -116,7 +114,6 @@ class YAML(dict):
         Return deepcopy(self).
 
         Create deep copy.
-
         """
         return copy.deepcopy(self)
 
@@ -140,10 +137,9 @@ class YAML(dict):
         updated : damask.YAML
             Updated configuration.
 
-        Note
-        ----
+        Notes
+        -----
         This functionality is a backport for Python 3.8
-
         """
         duplicate = self.copy()
         duplicate.update(other)
@@ -156,7 +152,6 @@ class YAML(dict):
         Return self|=other.
 
         Update configuration with contents of other (in-place).
-
         """
         return self.__or__(other)
 
@@ -175,7 +170,6 @@ class YAML(dict):
         -------
         updated : damask.YAML
             Updated configuration.
-
         """
         duplicate = self.copy()
         for k in keys if isinstance(keys, Iterable) and not isinstance(keys, str) else [keys]:
@@ -198,7 +192,6 @@ class YAML(dict):
         -------
         loaded : damask.YAML
             YAML from file.
-
         """
         with util.open_text(fname) as fhandle:
             return cls(yaml.load(fhandle, Loader=SafeLoader))
@@ -216,7 +209,6 @@ class YAML(dict):
             Filename or file to write.
         **kwargs : dict
             Keyword arguments parsed to yaml.dump.
-
         """
         for key,default in [('width',256),
                             ('default_flow_style',None),

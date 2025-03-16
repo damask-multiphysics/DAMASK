@@ -22,7 +22,6 @@ class ConfigMaterial(YAML):
     Manipulate material configurations for storage in YAML format.
     A complete material configuration file has the entries 'material',
     'phase', and 'homogenization'.
-
     """
 
     def __init__(self,
@@ -46,7 +45,6 @@ class ConfigMaterial(YAML):
         material : dict, optional
             Materialpoint configuration.
             Defaults to an empty list if 'config' is not given.
-
         """
         kwargs: Dict[str,Union[Dict[str,Dict],List[Dict[str,Any]]]] = {}
         for arg,value in zip(['homogenization','phase','material'],[homogenization,phase,material]):
@@ -126,7 +124,6 @@ class ConfigMaterial(YAML):
 
         Homogenization and phase entries are emtpy and need to be
         defined separately.
-
         """
         with h5py.File(fname, 'r') as f:
             b = util.DREAM3D_base_group(f) if base_group is None else base_group
@@ -170,18 +167,17 @@ class ConfigMaterial(YAML):
         ----------
         table : damask.Table
             Table that contains material information.
-        homogenization: (array-like) of str, optional
+        homogenization : (array-like) of str, optional
             Homogenization label.
-        phase: (array-like) of str, optional
+        phase : (array-like) of str, optional
             Phase label (per constituent).
-        v: (array-like) of float or str, optional
+        v : (array-like) of float or str, optional
             Constituent volume fraction (per constituent).
             Defaults to 1/N_constituent.
-        O: (array-like) of damask.Rotation or np.array/list of shape (4) or str, optional
+        O : (array-like) of damask.Rotation or np.array/list of shape (4) or str, optional
             Orientation as unit quaternion (per constituent).
-        V_e: (array-like) of np.array/list of shape (3,3) or str, optional
+        V_e : (array-like) of np.array/list of shape (3,3) or str, optional
             Left elastic stretch (per constituent).
-
 
         Returns
         -------
@@ -237,7 +233,6 @@ class ConfigMaterial(YAML):
             O: [0.0, 1.0, 0.0, 0.0]
             v: 1.0
           homogenization: single_crystal
-
         """
         kwargs = {}
         for arg,val in zip(['homogenization','phase','v','O','V_e'],[homogenization,phase,v,O,V_e]):
@@ -264,7 +259,6 @@ class ConfigMaterial(YAML):
         -------
         complete : bool
             Whether the material.yaml definition is complete.
-
         """
         def LabeledList(label,items):
             return f'{label.capitalize()}{"s" if len(items)>1 else ""} {util.srepr(items,",",quote=True)}'
@@ -332,7 +326,6 @@ class ConfigMaterial(YAML):
         -------
         valid : bool
             Whether the material.yaml definition is valid.
-
         """
         ok = True
 
@@ -373,18 +366,17 @@ class ConfigMaterial(YAML):
 
         Parameters
         ----------
-        mapping: dict
-            Mapping from old name to new name
-        ID: list of ints, optional
+        mapping : dict
+            Mapping from old name to new name.
+        ID : list of ints, optional
             Limit renaming to selected material IDs.
-        constituent: list of ints, optional
+        constituent : list of ints, optional
             Limit renaming to selected constituents.
 
         Returns
         -------
         updated : damask.ConfigMaterial
             Updated material configuration.
-
         """
         dup = self.copy()
         for i,m in enumerate(dup['material']):
@@ -406,16 +398,15 @@ class ConfigMaterial(YAML):
 
         Parameters
         ----------
-        mapping: dict
-            Mapping from old name to new name
-        ID: list of ints, optional
+        mapping : dict
+            Mapping from old name to new name.
+        ID : list of ints, optional
             Limit renaming to selected homogenization IDs.
 
         Returns
         -------
         updated : damask.ConfigMaterial
             Updated material configuration.
-
         """
         dup = self.copy()
         for i,m in enumerate(dup['material']):
@@ -438,16 +429,16 @@ class ConfigMaterial(YAML):
 
         Parameters
         ----------
-        homogenization: (array-like) of str, optional
+        homogenization : (array-like) of str, optional
             Homogenization label.
-        phase: (array-like) of str, optional
+        phase : (array-like) of str, optional
             Phase label (per constituent).
-        v: (array-like) of float, optional
+        v : (array-like) of float, optional
             Constituent volume fraction (per constituent).
             Defaults to 1/N_constituent.
-        O: (array-like) of damask.Rotation or np.array/list of shape (4), optional
+        O : (array-like) of damask.Rotation or np.array/list of shape (4), optional
             Orientation as unit quaternion (per constituent).
-        V_e: (array-like) of np.array/list of shape (3,3), optional
+        V_e : (array-like) of np.array/list of shape (3,3), optional
             Left elastic stretch (per constituent).
 
         Returns
@@ -574,7 +565,6 @@ class ConfigMaterial(YAML):
             v: 0.4
             O: [0.18430893147208752, 0.012407731059331692, -0.5551804816056372, -0.8109567798802285]
           homogenization: Taylor
-
         """
         dim = {'O':(4,),'V_e':(3,3,)}
         ex = dict((keyword, -len(val)) for keyword,val in dim.items())

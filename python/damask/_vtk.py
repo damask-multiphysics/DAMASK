@@ -83,7 +83,6 @@ class VTK:
             Description of geometry and topology, optionally with attached data.
             Valid types are vtkImageData, vtkUnstructuredGrid,
             vtkPolyData, and vtkRectilinearGrid.
-
         """
         self.vtk_data: vtkDataSet = vtk_data
 
@@ -93,7 +92,6 @@ class VTK:
         Return repr(self).
 
         Give short, human-readable summary.
-
         """
         info = [self.vtk_data.__vtkname__]                                                          # type: ignore[attr-defined]
 
@@ -117,7 +115,6 @@ class VTK:
         ----------
         other : damask.VTK
             VTK to check for equality.
-
         """
         if not isinstance(other, VTK):
             return NotImplemented
@@ -162,7 +159,6 @@ class VTK:
         ----------
         comments : sequence of str
             Comments.
-
         """
         s = vtkStringArray()
         s.SetName('comments')
@@ -221,7 +217,6 @@ class VTK:
         -------
         new : damask.VTK
             VTK-based geometry without nodal or cell data.
-
         """
         vtk_data = vtkImageData()
         vtk_data.SetDimensions(*(np.array(cells)+1))
@@ -254,7 +249,6 @@ class VTK:
         -------
         new : damask.VTK
             VTK-based geometry without nodal or cell data.
-
         """
         vtk_nodes = vtkPoints()
         vtk_nodes.SetData(numpy_to_vtk(np.ascontiguousarray(nodes)))
@@ -289,7 +283,6 @@ class VTK:
         -------
         new : damask.VTK
             VTK-based geometry without nodal or cell data.
-
         """
         N = points.shape[0]
         vtk_points = vtkPoints()
@@ -321,7 +314,6 @@ class VTK:
         -------
         new : damask.VTK
             VTK-based geometry without nodal or cell data.
-
         """
         vtk_data = vtkRectilinearGrid()
         vtk_data.SetDimensions(*map(len,grid))
@@ -352,7 +344,6 @@ class VTK:
         -------
         loaded : damask.VTK
             VTK-based geometry from file.
-
         """
         if not Path(fname).expanduser().is_file():                                                  # vtk has a strange error handling
             raise FileNotFoundError(f'file "{fname}" not found')
@@ -420,7 +411,6 @@ class VTK:
             Write data in parallel background process. Defaults to True.
         compress : bool, optional
             Compress with zlib algorithm. Defaults to True.
-
         """
         writer: Optional[vtkXMLWriter] = (
             vtkXMLImageDataWriter() if isinstance(self.vtk_data, vtkImageData) else
@@ -475,7 +465,7 @@ class VTK:
             number of cells or number of points.
         info : str, optional
             Human-readable information about the data.
-        table: damask.Table, optional
+        table : damask.Table, optional
             Data to add or replace. Each table label is individually considered.
             Number of rows needs to match either number of cells or number of points.
 
@@ -487,7 +477,6 @@ class VTK:
         Notes
         -----
         If the number of cells equals the number of points, the data is added to both.
-
         """
 
         def _add_array(vtk_data,
@@ -557,7 +546,6 @@ class VTK:
         -------
         data : numpy.ndarray
             Data stored under the given label.
-
         """
         cell_data = self.vtk_data.GetCellData()
         if label in [cell_data.GetArrayName(a) for a in range(cell_data.GetNumberOfArrays())]:
@@ -598,7 +586,6 @@ class VTK:
         -------
         updated : damask.VTK
             Updated VTK-based geometry.
-
         """
         dup = self.copy()
 
@@ -632,7 +619,6 @@ class VTK:
         -----
         The first component is shown when visualizing vector datasets
         (this includes tensor datasets as they are flattened).
-
         """
         # See http://compilatrix.com/article/vtk-1 for possible improvements.
         try:

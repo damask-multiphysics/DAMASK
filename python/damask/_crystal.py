@@ -686,7 +686,6 @@ class Crystal():
     Bravais lattice: cI
     a=2.87e-10 m, b=2.87e-10 m, c=2.87e-10 m
     α=90°, β=90°, γ=90°
-
     """
 
     def __init__(self, *,
@@ -700,10 +699,10 @@ class Crystal():
 
         Parameters
         ----------
-        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional
             Name of the crystal family.
             Will be inferred if 'lattice' is given.
-        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional
             Name of the Bravais lattice in Pearson notation.
         a : float, optional
             Length of lattice parameter 'a'.
@@ -719,7 +718,6 @@ class Crystal():
             Angle between a and b lattice basis.
         degrees : bool, optional
             Angles are given in degrees. Defaults to False.
-
         """
         if family is not None and family not in list(lattice_symmetries.values()):
             raise KeyError(f'invalid crystal family "{family}"')
@@ -773,7 +771,6 @@ class Crystal():
         Return repr(self).
 
         Give short, human-readable summary.
-
         """
         family = f'Crystal family: {self.family}'
         return family if self.lattice is None else \
@@ -796,7 +793,6 @@ class Crystal():
         ----------
         other : Crystal
             Crystal to check for equality.
-
         """
         return (NotImplemented if not isinstance(other, Crystal) else
                 self.lattice == other.lattice and
@@ -863,7 +859,6 @@ class Crystal():
         -----
         Not yet defined for monoclinic.
 
-
         References
         ----------
         Bases are computed from
@@ -882,7 +877,6 @@ class Crystal():
         ...                                            [1.,0.,0.],                           #              green
         ...                                            [0.,1.,0.]]).T),                      #              blue
         ...    }
-
         """
         _basis: Dict[CrystalFamily, Dict[str, np.ndarray]]  = {
             'cubic':    {'improper':np.array([ [-1.            ,  0.            ,  1. ],
@@ -941,7 +935,6 @@ class Crystal():
         - hexagonal: 622
         - cubic: 432
 
-
         References
         ----------
         U.F. Kocks et al.,
@@ -950,7 +943,6 @@ class Crystal():
         Cambridge University Press 1998. Table II
 
         https://en.wikipedia.org/wiki/Crystal_system#Crystal_classes
-
         """
         _symmetry_operations: Dict[CrystalFamily, List]  = {
             'cubic':         [
@@ -1042,7 +1034,6 @@ class Crystal():
         ----------
         C.T. Young and J.L. Lytton, Journal of Applied Physics 43:1408–1417, 1972
         https://doi.org/10.1063/1.1661333
-
         """
         if (p := self.parameters) is not None:
             return np.array([
@@ -1108,7 +1099,6 @@ class Crystal():
         Miller : numpy.ndarray, shape (...,3)
             Lattice vector of direction or plane.
             Use util.scale_to_coprime to convert to (integer) Miller indices.
-
         """
         if (direction is not None) ^ (plane is None):
             raise KeyError('specify either "direction" or "plane"')
@@ -1152,7 +1142,6 @@ class Crystal():
         >>> Ti = damask.Crystal(lattice='hP', a=295e-12, c=469e-12)
         >>> Ti.to_frame(hkl=(1, 0, 0))
         array([ 3.38983051e+09,  1.95711956e+09, -4.15134508e-07])
-
         """
         if sum(arg is not None for arg in (uvw,hkl, uvtw,hkil)) != 1:
             raise KeyError('specify either "uvw", "hkl", "uvtw", or "hkil"')
@@ -1184,7 +1173,6 @@ class Crystal():
         In contrast, twin kinematics are unidirectional and already consider
         the distinction between extension and compression twins such that the
         shape change equals the kinematics multiplied by (absolute) twin shear.
-
         """
         if self.lattice is None: raise KeyError('no lattice type specified')
         master = _kinematics[self.lattice][mode]
@@ -1223,7 +1211,6 @@ class Crystal():
         ----------
         J.W. Christian and S. Mahajan, Progress in Materials Science 39(1-2):1-157, 1995
         https://doi.org/10.1016/0079-6425(94)00007-7
-
         """
         if self.lattice in ['cI', 'cF']:
             N_twin_ = [len(a) for a in _kinematics[self.lattice]['twin']] if N_twin == '*' else N_twin
@@ -1276,7 +1263,6 @@ class Crystal():
 
         Y. He et al., Acta Materialia 53(4):1179-1190, 2005
         https://doi.org/10.1016/j.actamat.2004.11.021
-
         """
         m_l: BravaisLattice
         o_l: BravaisLattice
@@ -1333,7 +1319,6 @@ class Crystal():
         array([[ 0.    ,  0.    ,  0.    ],
                [ 0.4082,  0.4082,  0.4082],
                [-0.4082, -0.4082, -0.4082]])
-
         """
         if (N_slip is not None) ^ (N_twin is None):
             raise KeyError('specify either "N_slip" or "N_twin"')
