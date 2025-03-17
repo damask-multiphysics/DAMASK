@@ -137,127 +137,113 @@ mypy:
   tags:
     - matesting2-container-runner
   script:
-    - cd ${TEMPDIR}
+    - source env/DAMASK.sh
     - ./bin/DAMASK_test
     - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \;
 
 # -------------------------------------------------------------------------------------------------
 
-.unittest_GNU:
+unittest_GCC_DEBUG:
   extends: .unittest
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
-
-unittest_GNU_DEBUG:
-  extends: .unittest_GNU
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-debug:2025.03.10
   before_script:
-    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
-    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
-    - cmake --build ${TEMPDIR} --target install
+    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=DEBUG -DBUILDCMD_POST=-coverage
+    - cmake --build builddir --target install
 
-unittest_GNU_RELEASE:
-  extends: .unittest_GNU
+unittest_GCC_RELEASE:
+  extends: .unittest
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
   before_script:
-    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
-    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
-    - cmake --build ${TEMPDIR} --target install
+    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
+    - cmake --build builddir --target install
 
-unittest_GNU_PERFORMANCE:
-  extends: .unittest_GNU
+unittest_GCC_PERFORMANCE:
+  extends: .unittest
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
   before_script:
-    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
-    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=PERFORMANCE -DBUILDCMD_POST=-coverage
-    - cmake --build ${TEMPDIR} --target install
+    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=PERFORMANCE -DBUILDCMD_POST=-coverage
+    - cmake --build builddir --target install
 
 # -------------------------------------------------------------------------------------------------
 
-.unittest_Intel:
+unittest_oneAPI_DEBUG:
   extends: .unittest
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intelllvm20250_petsc2106_ml
-
-unittest_Intel_DEBUG:
-  extends: .unittest_Intel
+  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-debug:2025.03.09
   before_script:
-    - source /opt/intel/oneapi/setvars.sh
-    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
-    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
-    - cmake --build ${TEMPDIR} --target install
-    - source env/DAMASK.sh
+    # https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/Floating-point-exception-in-dgeev/td-p/1665868
+    - sed -i '/set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0/d' cmake/Compiler-IntelLLVM.cmake
+    - sed -i 's/FP_TRAP_ON/FP_TRAP_OFF/g' src/parallelization.f90
+    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=DEBUG
+    - cmake --build builddir --target install
 
-unittest_Intel_RELEASE:
-  extends: .unittest_Intel
+unittest_oneAPI_RELEASE:
+  extends: .unittest
+  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.03.09
   before_script:
-    - source /opt/intel/oneapi/setvars.sh
-    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
-    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
-    - cmake --build ${TEMPDIR} --target install
-    - source env/DAMASK.sh
+    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=RELEASE
+    - cmake --build builddir --target install
 
-unittest_Intel_PERFORMANCE:
-  extends: .unittest_Intel
+unittest_oneAPI_PERFORMANCE:
+  extends: .unittest
+  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.03.09
   before_script:
-    - source /opt/intel/oneapi/setvars.sh
-    - TEMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
-    - cmake -B ${TEMPDIR} -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${TEMPDIR} -DCMAKE_BUILD_TYPE=PERFORMANCE -DBUILDCMD_POST=-coverage
-    - cmake --build ${TEMPDIR} --target install
-    - source env/DAMASK.sh
+    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=PERFORMANCE
+    - cmake --build builddir --target install
 
 ###################################################################################################
 
-.compile_grid:
+.compile:
   stage: compile
   tags:
     - matesting2-container-runner
-  script:
+  before_script:
+    - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
+    - source env/DAMASK.sh
     - cd PRIVATE/testing
-    - pytest -k 'compile and grid'
+
+.compile_grid:
+  extends: .compile
+  script:
+    - python -m pytest -k 'compile and grid'
 
 .compile_mesh:
-  stage: compile
-  tags:
-    - matesting2-container-runner
+  extends: .compile
   script:
-    - cd PRIVATE/testing
-    - pytest -k 'compile and mesh'
+    - python -m pytest -k 'compile and mesh'
 
-grid_GNU:
+grid_GCC:
   extends: .compile_grid
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
-  before_script:
-    - source env/DAMASK.sh
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
 
-mesh_GNU:
+mesh_GCC:
   extends: .compile_mesh
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
-  before_script:
-    - source env/DAMASK.sh
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
 
-grid_GNU-64bit:
+grid_GCC-i64:
   extends: .compile_grid
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_int64
-  before_script:
-    - source env/DAMASK.sh
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-i64:2025.03.10
 
-mesh_GNU-64bit:
+mesh_GCC-i64:
   extends: .compile_mesh
-  tags:
-    - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_int64
-  before_script:
-    - source env/DAMASK.sh
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-i64:2025.03.10
 
-grid_Intel:
-  extends: .compile_grid
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intelllvm20250_petsc2106_ml
-  before_script:
-    - source /opt/intel/oneapi/setvars.sh
-    - source env/DAMASK.sh
+grid_oneAPI:
+  extends: .compile
+  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.03.09
+  script:
+    # https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/Floating-point-exception-in-dgeev/td-p/1665868
+    - sed -i '/set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0/d' ../../cmake/Compiler-IntelLLVM.cmake
+    - sed -i 's/FP_TRAP_ON/FP_TRAP_OFF/g' ../../src/parallelization.f90
+    - python -m pytest -k 'compile and grid'
 
-mesh_Intel:
-  extends: .compile_mesh
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_intelllvm20250_petsc2106_ml
-  before_script:
-    - source /opt/intel/oneapi/setvars.sh
-    - source env/DAMASK.sh
+mesh_oneAPI:
+  extends: .compile
+  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.03.09
+  script:
+    # https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/Floating-point-exception-in-dgeev/td-p/1665868
+    - sed -i '/set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0/d' ../../cmake/Compiler-IntelLLVM.cmake
+    - sed -i 's/FP_TRAP_ON/FP_TRAP_OFF/g' ../../src/parallelization.f90
+    - python -m pytest -k 'compile and mesh'
 
 Marc_Intel:
   stage: compile
@@ -282,17 +268,17 @@ setup_Marc:
 
 
 ###################################################################################################
-open-source_grid_GNU:
+open-source_grid_GCC:
   stage: fortran
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
   before_script:
     - cmake -DDAMASK_SOLVER=GRID && make -j2 all install
     - source env/DAMASK.sh
   script:
     - cd PRIVATE/testing
-    - pytest -k 'not compile and grid and not signal and not restart'
+    - pytest -k 'grid and not compile and not (signal or restart)'
 
 open-source_grid_signal_restart:
   stage: fortran
@@ -309,21 +295,21 @@ open-source_grid_signal_restart:
     - echo Job start:" $(date)"
   script:
     - cd PRIVATE/testing
-    - pytest -k 'not compile and grid and (signal or restart)' -m 'not cifail' --basetemp ${TESTROOT}/open-source -v
+    - pytest -k 'grid and not compile and (signal or restart)' -m 'not cifail' --basetemp ${TESTROOT}/open-source -v
   after_script:
     - echo Job end:" $(date)"
 
-open-source_mesh_GNU:
+open-source_mesh_GCC:
   tags:
     - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask:ubuntu2404_gnu13_petsc2106_ml
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
   stage: fortran
   before_script:
     - make mesh
     - source env/DAMASK.sh
   script:
     - cd PRIVATE/testing
-    - pytest -k 'not compile and mesh'
+    - pytest -k 'mesh and not compile'
 
 Marc:
   stage: fortran
