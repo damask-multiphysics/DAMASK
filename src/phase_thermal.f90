@@ -4,8 +4,8 @@
 submodule(phase) thermal
 
   type :: tThermalParameters
-    type(tpolynomial) :: C_p                                                                  !< heat capacity
-    type(tpolynomial) :: K_11, K_33                                                           !< thermal conductivity
+    type(tpolynomial) :: C_p                                                                        !< heat capacity
+    type(tpolynomial) :: K_11, K_33                                                                 !< thermal conductivity
     character(len=pSTRLEN), allocatable, dimension(:) :: output
   end type tThermalParameters
 
