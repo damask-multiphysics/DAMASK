@@ -11,12 +11,18 @@ the following operations are required for tensorial data:
     - D1 = D3.reshape(cells+(-1,),order='C').reshape(-1,9,order='F')
 """
 
-from typing import Tuple as _Tuple, Union as _Union
+from typing import NamedTuple as _NamedTuple, Union as _Union
 
 from scipy import spatial as _spatial
 import numpy as _np
 
 from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence
+
+
+class CellsSizeOriginTuple(_NamedTuple):
+    cells: _np.ndarray
+    size: _np.ndarray
+    origin: _np.ndarray
 
 
 def _ks(size: _FloatSequence,
@@ -257,7 +263,7 @@ def coordinates_point(size: _FloatSequence,
 
 
 def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
-                                       ordered: bool = True) -> _Tuple[_np.ndarray,_np.ndarray,_np.ndarray]:
+                                       ordered: bool = True) -> CellsSizeOriginTuple:
     """
     Return grid 'DNA', i.e. cells, size, and origin from 1D array of point positions.
 
@@ -302,7 +308,7 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
                                     coordinates0_point(list(cells),size,origin),atol=atol):
         raise ValueError('input data is not ordered (x fast, z slow)')
 
-    return (cells,size,origin)
+    return CellsSizeOriginTuple(cells,size,origin)
 
 
 def coordinates0_node(cells: _IntSequence,
@@ -416,7 +422,7 @@ def coordinates_node(size: _FloatSequence,
 
 
 def cellsSizeOrigin_coordinates0_node(coordinates0: _np.ndarray,
-                                      ordered: bool = True) -> _Tuple[_np.ndarray,_np.ndarray,_np.ndarray]:
+                                      ordered: bool = True) -> CellsSizeOriginTuple:
     """
     Return grid 'DNA', i.e. cells, size, and origin from 1D array of nodal positions.
 
@@ -453,7 +459,7 @@ def cellsSizeOrigin_coordinates0_node(coordinates0: _np.ndarray,
                                     coordinates0_node(list(cells),size,origin),atol=atol):
         raise ValueError('input data is not ordered (x fast, z slow)')
 
-    return (cells,size,origin)
+    return CellsSizeOriginTuple(cells,size,origin)
 
 
 def point_to_node(cell_data: _np.ndarray) -> _np.ndarray:
