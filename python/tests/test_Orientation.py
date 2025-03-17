@@ -392,7 +392,7 @@ class TestOrientation:
                              ('hP','plane',[0,-1, 1,0],2),
                              ('hP','plane',[1, 0,-1,0],2),
                              ('hP','direction',[2,-1,-1,0],2),
-                             ('hP','direction',[-1,-1,2,0],2),
+                             ('hP','direction',[-1,2,-1,0],2),
                              ('hP','direction',[-1,-1,2,0],2),
                              ('cI','plane',[0,0,1],4),
                              ('cI','direction',[0,0,1],4),
