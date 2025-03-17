@@ -35,9 +35,8 @@ variables:
   # Names of module files to load
   # ===============================================================================================
   # ++++++++++++ Compiler/MPI/PETSc +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  COMPILER_INTEL: "Compiler/Intel/2022.0.1 Libraries/IMKL/2022.0.1"
-  MPI_INTEL: "MPI/Intel/2022.0.1/IntelMPI/2021.5.0"
-  PETSC_INTEL: "Libraries/PETSc/3.16.5/Intel-2022.0.1-IntelMPI-2021.5.0"
+  COMPILER_INTEL: "oneapi/2025.0.0"
+  PETSC_INTEL: "Libraries/PETSc/3.22.4/OneAPI-2025.0"
   # ++++++++++++ MSC Marc +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   MSC: "FEM/MSC/2024.1"
   IntelMarc: "Compiler/Intel/2022.0.1 Libraries/IMKL/2022.0.1"
@@ -285,7 +284,7 @@ open-source_grid_signal_restart:
   tags:
     - bare-metal
   before_script:
-    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
+    - module load ${COMPILER_INTEL} ${PETSC_INTEL}
     - cd $(mktemp -d)
     - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
     - make -j2 all install
@@ -335,7 +334,7 @@ grid_performance:
     - source env/DAMASK.sh
     - echo Job start:" $(date)"
   script:
-    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
+    - module load ${COMPILER_INTEL} ${PETSC_INTEL}
     - cd $(mktemp -d)
     - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=./ ${CI_PROJECT_DIR}
     - make -j2 all install
