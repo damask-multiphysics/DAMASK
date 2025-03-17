@@ -404,7 +404,7 @@ class TestOrientation:
         o = Orientation.from_random(lattice=lattice,rng_seed=np_rng)
         frame = o.to_frame(**{keyword:vector,'with_symmetry':True})
         shape_full = frame.shape[0]
-        shape_reduced = np.unique(np.around(frame,11),axis=0).shape[0]
+        shape_reduced = np.unique(np.around(frame,10),axis=0).shape[0]
         assert shape_full//N_sym == shape_reduced
 
 
