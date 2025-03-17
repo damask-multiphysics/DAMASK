@@ -22,7 +22,9 @@ module system_routines
     signalusr1_C, &
     signalusr2_C, &
     isatty, &
+#if __INTEL_COMPILER_BUILD_DATE < 20240000
     f_c_string, &
+#endif
     free_C
 
 
