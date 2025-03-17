@@ -33,7 +33,7 @@ dependencies = [
     'h5py>=3.6',
     'vtk>=9.1',
     'matplotlib>=3.5',
-    'pyyaml>=5.3',
+    'pyyaml>=5.4',
 ]
 
 readme = 'README.md'
