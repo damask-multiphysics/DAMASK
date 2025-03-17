@@ -73,7 +73,7 @@ class TestVTK:
         with open(tmp_path/'polyData.vtk','w') as f:
             f.write(string)
         vtk = VTK.load(tmp_path/'polyData.vtk','polyData')
-        assert(string == vtp.as_ASCII() == vtk.as_ASCII())
+        assert (string == vtp.as_ASCII() == vtk.as_ASCII())
 
     @pytest.mark.parametrize('cell_type,n',[
                                             ('VTK_hexahedron',8),
@@ -93,7 +93,7 @@ class TestVTK:
         with open(tmp_path/'unstructuredGrid.vtk','w') as f:
             f.write(string)
         vtk = VTK.load(tmp_path/'unstructuredGrid.vtk','unstructuredgrid')
-        assert(string == vtu.as_ASCII() == vtk.as_ASCII())
+        assert (string == vtu.as_ASCII() == vtk.as_ASCII())
 
 
     def test_parallel_out(self,np_rng,tmp_path):
@@ -105,10 +105,10 @@ class TestVTK:
         v.save(fname_p,True)
         for i in range(10):
             if os.path.isfile(fname_p) and filecmp.cmp(fname_s,fname_p):
-                assert(True)
+                assert True
                 return
             time.sleep(.5)
-        assert(False)
+        assert False
 
     def test_compress(self,np_rng,tmp_path):
         points = np_rng.random((102,3))
@@ -117,7 +117,7 @@ class TestVTK:
         fname_p = tmp_path/'plain.vtp'
         v.save(fname_c,parallel=False,compress=False)
         v.save(fname_p,parallel=False,compress=True)
-        assert(VTK.load(fname_c).as_ASCII() == VTK.load(fname_p).as_ASCII())
+        assert (VTK.load(fname_c).as_ASCII() == VTK.load(fname_p).as_ASCII())
 
 
     @pytest.mark.parametrize('fname',['a','a.vtp','a.b','a.b.vtp'])
