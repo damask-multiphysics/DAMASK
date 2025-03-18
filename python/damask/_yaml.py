@@ -2,7 +2,7 @@ import copy
 from io import StringIO
 from collections.abc import Iterable
 import abc
-from typing import Optional, Union, Dict, Any, Type, TypeVar
+from typing import Optional, Union, Any, Type, TypeVar
 
 import numpy as np
 import yaml
@@ -60,7 +60,7 @@ class YAML(dict):
     """YAML-based configuration."""
 
     def __init__(self,
-                 config: Optional[Union[str, Dict[str, Any]]] = None,
+                 config: Optional[Union[str, dict[str, Any]]] = None,
                  **kwargs):
         """
         New YAML-based configuration.

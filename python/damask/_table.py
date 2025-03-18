@@ -1,6 +1,6 @@
 import re
 import copy
-from typing import Optional, Union, Tuple, List, Mapping, Iterable
+from typing import Optional, Union, Mapping, Iterable
 
 import pandas as pd
 import numpy as np
@@ -13,7 +13,7 @@ class Table:
     """Manipulate multi-dimensional spreadsheet-like data."""
 
     def __init__(self,
-                 shapes: Mapping[str,Union[Union[int,np.integer],Tuple[Union[int,np.integer],...]]] = {},
+                 shapes: Mapping[str,Union[Union[int,np.integer],tuple[Union[int,np.integer],...]]] = {},
                  data: Optional[Union[np.ndarray,pd.DataFrame]] = None,
                  comments: Union[None, str, Iterable[str]] = None):
         """
@@ -66,7 +66,7 @@ class Table:
 
 
     def __getitem__(self,
-                    item: Union[slice, Tuple[slice, ...]]) -> 'Table':
+                    item: Union[slice, tuple[slice, ...]]) -> 'Table':
         """
         Return self[item].
 
@@ -141,8 +141,8 @@ class Table:
 
 
     def _label(self,
-               what: Union[str, List[str]],
-               how: str) -> List[str]:
+               what: Union[str, list[str]],
+               how: str) -> list[str]:
         """
         Expand labels according to data shape.
 
@@ -352,7 +352,7 @@ class Table:
 
 
     @property
-    def labels(self) -> List[str]:
+    def labels(self) -> list[str]:
         return list(self.shapes)
 
 
@@ -397,7 +397,7 @@ class Table:
         updated : damask.Table
             Updated table.
         """
-        def add_comment(label: str, shape: Tuple[int, ...],info: str) -> List[str]:
+        def add_comment(label: str, shape: tuple[int, ...],info: str) -> list[str]:
             specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=np.int64) > 1 else ""}: {info}'
             general  = util.execution_stamp('Table')
             return [f'{specific} / {general}']
@@ -480,8 +480,8 @@ class Table:
 
 
     def sort_by(self,
-                labels: Union[str, List[str]],
-                ascending: Union[bool, List[bool]] = True) -> 'Table':
+                labels: Union[str, list[str]],
+                ascending: Union[bool, list[bool]] = True) -> 'Table':
         """
         Sort table by data of given columns.
 

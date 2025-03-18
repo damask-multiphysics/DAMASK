@@ -2,7 +2,7 @@ import os
 import multiprocessing as mp
 from pathlib import Path
 import logging
-from typing import Optional, Union, Literal, List, Sequence
+from typing import Optional, Union, Literal, Sequence
 
 import numpy as np
 
@@ -140,7 +140,7 @@ class VTK:
 
 
     @property
-    def comments(self) -> List[str]:
+    def comments(self) -> list[str]:
         """Return the comments."""
         field_data = self.vtk_data.GetFieldData()
         for a in range(field_data.GetNumberOfArrays()):
