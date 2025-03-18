@@ -1,0 +1,21 @@
+type: Hooke
+
+references:
+  - P.E. Armstrong, J.M. Dickinson, and H.L. Brown
+    Transactions of the Metallurgical Society of AIME 236:1404-1408, 1966
+    fit to Fig. 4 and 5 (T_min=73K, T_max=973K)
+
+C_11: 2.45e+11
+C_11,T: -3.37e+07
+C_11,T^2: 1.84e+04
+
+C_12: 1.24e+11
+C_12,T: -1.05e+07
+C_12,T^2: 1.40e+04
+
+C_44: 3.11e+10
+C_44,T: -1.83e+07
+C_44,T^2: 3.48e+04
+C_44,T^3: -1.56e+01
+
+T_ref: 0
