@@ -186,8 +186,8 @@ subroutine VTI_readCellsSizeOrigin(cells,geomSize,origin, &
 
   end do outer
 
-  if (any(geomSize<=0)) call IO_error(error_ID = 844, ext_msg='size')
-  if (any(cells<1))     call IO_error(error_ID = 844, ext_msg='cells')
+  if (any(geomSize<=0)) call IO_error(error_ID = 844, ext_msg='one or more grid.size <= 0')
+  if (any(cells<1))     call IO_error(error_ID = 844, ext_msg='one or more grid.cells < 1')
 
 end subroutine VTI_readCellsSizeOrigin
 
