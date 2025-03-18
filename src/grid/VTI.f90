@@ -432,11 +432,13 @@ pure function fileFormatOk(line)
   character(len=*),intent(in) :: line
   logical :: fileFormatOk
 
+  character(len=:), allocatable :: compressor
 
+
+  compressor = getXMLValue(line,'compressor')
   fileFormatOk = getXMLValue(line,'type')       == 'ImageData' .and. &
                  getXMLValue(line,'byte_order') == 'LittleEndian' .and. &
-                 getXMLValue(line,'compressor') /= 'vtkLZ4DataCompressor' .and. &
-                 getXMLValue(line,'compressor') /= 'vtkLZMADataCompressor'
+                 (compressor == '' .or. compressor == 'vtkZLibDataCompressor')
 
 end function fileFormatOk
 
