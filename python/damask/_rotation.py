@@ -40,6 +40,11 @@ class Rotation:
       the coordinate frame.
     - P = -1 (as default).
 
+    References
+    ----------
+    D. Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015
+    https://doi.org/10.1088/0965-0393/23/8/083501
+
     Examples
     --------
     Rotate vector 'a' (defined in coordinate system 'A') to
@@ -62,12 +67,6 @@ class Rotation:
     >>> R = R2 * R1
     >>> np.allclose(R.as_matrix(), np.dot(R2.as_matrix(),R1.as_matrix()))
     True
-
-    References
-    ----------
-    D. Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015
-    https://doi.org/10.1088/0965-0393/23/8/083501
-
     """
 
     __slots__ = ['quaternion']
@@ -83,7 +82,6 @@ class Rotation:
             Unit quaternion in positive real hemisphere.
             Use .from_quaternion to perform a sanity check.
             Defaults to no rotation.
-
         """
         self.quaternion: np.ndarray
         if isinstance(rotation,Rotation):
@@ -99,7 +97,6 @@ class Rotation:
         Return str(self).
 
         Give short, human-readable summary.
-
         """
         return re.sub(r'\[([ +-]*[0-9.eE+-]+)(\s*)([ +-]*[0-9.eE+-]+)(\s*)([ +-]*[0-9.eE+-]+)(\s*)([ +-]*[0-9.eE+-]+)(\s*)\]',
                       r'\1\2    \3\4\5\6\7\8',self.quaternion.__str__())
@@ -110,7 +107,6 @@ class Rotation:
         Return repr(self).
 
         Give unambiguous representation.
-
         """
         return re.sub(r'\[(\+|-| )*(?=\d)([^,]+,)\s*?(\+|-| )*(?=\d)([^,]+,)\s*?(\+|-| )*(?=\d)([^,]+,)\s*?(\+|-| )*(?=\d)(.+?)\]',
                       r'(\1\2    \3\4 \5\6 \7\8)',self.quaternion.__repr__())
@@ -122,7 +118,6 @@ class Rotation:
         Return deepcopy(self).
 
         Create deep copy.
-
         """
         dup = copy.deepcopy(self)
         if rotation is not None:
@@ -139,7 +134,6 @@ class Rotation:
         Return self[item].
 
         Return slice according to item.
-
         """
         c = [self.quaternion[...,i] for i in range(4)]
         return self.copy(np.stack([c[i][item] for i in range(4)],axis=-1))
@@ -156,7 +150,6 @@ class Rotation:
         ----------
         other : Rotation
             Rotation to check for equality.
-
         """
         return NotImplemented if not isinstance(other, Rotation) else \
                np.logical_or(np.all(self.quaternion ==     other.quaternion,axis=-1),
@@ -173,7 +166,6 @@ class Rotation:
         ----------
         other : Rotation
             Rotation to check for inequality.
-
         """
         return np.logical_not(self==other)
 
@@ -201,7 +193,6 @@ class Rotation:
         -------
         mask : numpy.ndarray of bool, shape (self.shape)
             Mask indicating where corresponding rotations are close.
-
         """
         s = self.quaternion
         o = other.quaternion
@@ -231,7 +222,6 @@ class Rotation:
         -------
         answer : bool
             Whether all values are close between both rotations.
-
         """
         return np.all(self.isclose(other,rtol,atol,equal_nan))
 
@@ -255,7 +245,6 @@ class Rotation:
         Return len(self).
 
         Length of leading/leftmost dimension of array.
-
         """
         return 0 if self.shape == () else self.shape[0]
 
@@ -265,7 +254,6 @@ class Rotation:
         Return ~self.
 
         Inverse rotation (backward rotation).
-
         """
         dup = self.copy()
         dup.quaternion[...,1:] *= -1.
@@ -283,7 +271,6 @@ class Rotation:
         ----------
         exp : float
             Exponent.
-
         """
         phi = np.arccos(self.quaternion[...,0:1])
         p = self.quaternion[...,1:]/np.linalg.norm(self.quaternion[...,1:],axis=-1,keepdims=True)
@@ -300,7 +287,6 @@ class Rotation:
         ----------
         exp : float
             Exponent.
-
         """
         return self**exp
 
@@ -322,7 +308,6 @@ class Rotation:
         -------
         composition : Rotation
             Compound rotation self*other, i.e. first other then self rotation.
-
         """
         if isinstance(other,Rotation):
             blend = util.shapeblender( self.shape,other.shape)
@@ -353,7 +338,6 @@ class Rotation:
         other : Rotation, shape (self.shape)
             Rotation for composition.
             Compatible innermost dimensions will blend.
-
         """
         return self*other
 
@@ -375,7 +359,6 @@ class Rotation:
         -------
         composition : Rotation
             Compound rotation self*(~other), i.e. first inverse of other then self rotation.
-
         """
         if isinstance(other,Rotation):
             return self*~other
@@ -393,7 +376,6 @@ class Rotation:
         ----------
         other : Rotation, shape (self.shape)
             Rotation to invert for composition.
-
         """
         return self/other
 
@@ -466,7 +448,6 @@ class Rotation:
         >>> o = np.ones((12,3,3))
         >>> (r@o[np.newaxis,...]).shape                                                             # (12) @ (1,12, 3,3)
         (12, 12, 3, 3)
-
         """
         if isinstance(other, np.ndarray):
             obs = (util.shapeblender(self.shape,other.shape[:-1])+other.shape[-1:])[len(self.shape):]
@@ -513,7 +494,7 @@ class Rotation:
         Parameters
         ----------
         other : (list of) damask.Rotation
-
+            Rotation(s) to append.
         """
         return self.copy(np.vstack(tuple(map(lambda x:x.quaternion,
                                              [self]+other if isinstance(other,list) else [self,other]))))
@@ -537,7 +518,6 @@ class Rotation:
         -------
         flattened : damask.Rotation
             Rotation flattened to single dimension.
-
         """
         return self.copy() if self.shape == () else \
                self.copy(self.quaternion.reshape((-1,4),order=order))
@@ -565,7 +545,6 @@ class Rotation:
         -------
         reshaped : damask.Rotation
             Rotation of given shape.
-
         """
         shape = (newshape,) if isinstance(newshape,(int,np.integer)) else newshape
         return self.copy(self.quaternion.reshape(tuple(shape)+(4,),order=order))
@@ -589,7 +568,6 @@ class Rotation:
         -------
         broadcasted : damask.Rotation
             Rotation broadcasted to given shape.
-
         """
         shape_ = (shape,) if isinstance(shape,(int,np.integer)) else tuple(shape)
         return self.copy(np.broadcast_to(self.quaternion.reshape(util.shapeshifter(self.shape,shape_,mode)+(4,)),
@@ -615,7 +593,6 @@ class Rotation:
         ----------
         F. Landis Markley et al., Journal of Guidance, Control, and Dynamics 30(4):1193-1197, 2007
         https://doi.org/10.2514/1.28949
-
         """
         def M(quat):
             """Intermediate representation supporting quaternion averaging."""
@@ -650,7 +627,6 @@ class Rotation:
         -------
         g : damask.Rotation
             Misorientation.
-
         """
         return ~(self*~other)
 
@@ -670,7 +646,6 @@ class Rotation:
         -------
         omega : np.ndarray
             Misorientation angle.
-
         """
         trace_max = np.abs((self*~other).quaternion[...,0])
         return 2.*np.arccos(np.clip(np.round(trace_max,15),None,1.))
@@ -687,7 +662,6 @@ class Rotation:
         -------
         q : numpy.ndarray, shape (...,4)
             Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1, q_0 ≥ 0.
-
         """
         return self.quaternion.copy()
 
@@ -718,7 +692,6 @@ class Rotation:
         >>> import damask
         >>> damask.Rotation([1,0,0,0]).as_Euler_angles()
         array([0., 0., 0.])
-
         """
         eu = Rotation._qu2eu(self.quaternion)
         return np.degrees(eu) if degrees else eu
@@ -749,7 +722,6 @@ class Rotation:
         >>> import damask
         >>> damask.Rotation([1,0,0,0]).as_axis_angle(pair=True)
         AxisAngleTuple(axis=array([0., 0., 1.]), angle=array(0.))
-
         """
         ax: np.ndarray = Rotation._qu2ax(self.quaternion)
         if degrees: ax[...,3] = np.degrees(ax[...,3])
@@ -776,7 +748,6 @@ class Rotation:
         array([[1., 0., 0.],
                [0., 1., 0.],
                [0., 0., 1.]])
-
         """
         return Rotation._qu2om(self.quaternion)
 
@@ -804,7 +775,6 @@ class Rotation:
         >>> import damask
         >>> damask.Rotation([1,0,0,0]).as_Rodrigues_vector(compact=True)
         array([ 0.,  0., 0.])
-
         """
         ro = Rotation._qu2ro(self.quaternion)
         if compact:
@@ -829,7 +799,6 @@ class Rotation:
         >>> import damask
         >>> damask.Rotation([1,0,0,0]).as_homochoric()
         array([0., 0., 0.])
-
         """
         return Rotation._qu2ho(self.quaternion)
 
@@ -849,7 +818,6 @@ class Rotation:
         >>> import damask
         >>> damask.Rotation([1,0,0,0]).as_cubochoric()
         array([0., 0., 0.])
-
         """
         return Rotation._qu2cu(self.quaternion)
 
@@ -871,7 +839,7 @@ class Rotation:
         accept_homomorph : bool, optional
             Allow homomorphic variants, i.e. q_0 < 0 (negative real hemisphere).
             Defaults to False.
-        normalize: bool, optional
+        normalize : bool, optional
             Allow ǀqǀ ≠ 1. Defaults to False.
         P : int ∈ {-1,1}, optional
             Sign convention. Defaults to -1.
@@ -886,7 +854,6 @@ class Rotation:
         >>> damask.Rotation.from_quaternion([[1,0,0,0],[0,1,0,0]])
         array([(1.,     0.,  0.,  0.),
                (0.,     1.,  0.,  0.)])
-
         """
         qu = np.array(q,dtype=float)
         if qu.shape[:-2:-1] != (4,): raise ValueError(f'invalid shape: {qu.shape}')
@@ -934,7 +901,6 @@ class Rotation:
         >>> import damask
         >>> damask.Rotation.from_Euler_angles([180,0,0],degrees=True)
         array((0.,     0.,  0.,  1.))
-
         """
         eu = np.array(phi,dtype=float)
         if eu.shape[:-2:-1] != (3,): raise ValueError(f'invalid shape: {eu.shape}')
@@ -961,7 +927,7 @@ class Rotation:
             or ω ∈ [0,180] if degrees == True.
         degrees : bool, optional
             Angle ω is given in degrees. Defaults to False.
-        normalize: bool, optional
+        normalize : bool, optional
             Allow ǀnǀ ≠ 1. Defaults to False.
         P : int ∈ {-1,1}, optional
             Sign convention. Defaults to -1.
@@ -976,7 +942,6 @@ class Rotation:
         >>> damask.Rotation.from_axis_angle([[0,0,1,90],[1,0,0,90]],degrees=True)
         array([(0.707,   0.   ,  0. , 0.707),
                (0.707,   0.707,  0. , 0.   )])
-
         """
         ax = np.array(n_omega,dtype=float)
         if ax.shape[:-2:-1] != (4,): raise ValueError(f'invalid shape: {ax.shape}')
@@ -1015,7 +980,6 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
-
         """
         om = np.array(basis,dtype=float)
         if om.shape[-2:] != (3,3): raise ValueError(f'invalid shape: {om.shape}')
@@ -1061,7 +1025,6 @@ class Rotation:
         >>> import damask
         >>> damask.Rotation.from_matrix([[1,0,0],[0,0,-1],[0,1,0]])
         array(( 0.707,    -0.707, -0. , -0. ))
-
         """
         return Rotation.from_basis(np.array(R,dtype=float) * (np.linalg.det(R)**(-1./3.))[...,np.newaxis,np.newaxis]
                                    if normalize else
@@ -1099,7 +1062,6 @@ class Rotation:
         >>> import damask
         >>> damask.Rotation.from_parallel([[2,0,0],[0,1,0]],[[1,0,0],[0,2,0]])
         array(( 1.,     0.,  0.,  0.))
-
         """
         s_ = np.array(source,dtype=float)
         t_ = np.array(target,dtype=float)
@@ -1145,7 +1107,6 @@ class Rotation:
         >>> import damask
         >>> damask.Rotation.from_Rodrigues_vector([0,0,1,1])
         array((0.707,     0. ,  0. ,  0.707))
-
         """
         ro = np.array(rho,dtype=float)
         if ro.shape[:-2:-1] != (4,): raise ValueError(f'invalid shape: {ro}')
@@ -1180,7 +1141,6 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
-
         """
         ho = np.array(h,dtype=float)
         if ho.shape[:-2:-1] != (3,): raise ValueError(f'invalid shape: {ho.shape}')
@@ -1210,7 +1170,6 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
-
         """
         cu = np.array(x,dtype=float)
         if cu.shape[:-2:-1] != (3,): raise ValueError(f'invalid shape: {cu.shape}')
@@ -1241,7 +1200,6 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
-
         """
         rng = np.random.default_rng(rng_seed)
         r = rng.random(3 if shape is None else tuple(shape)+(3,) if hasattr(shape, '__iter__') else (shape,3))
@@ -1279,7 +1237,7 @@ class Rotation:
         fractions : bool, optional
             ODF values correspond to volume fractions, not probability densities.
             Defaults to True.
-        rng_seed: {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
 
@@ -1299,7 +1257,6 @@ class Rotation:
         ----------
         P. Eisenlohr and F. Roters, Computational Materials Science 42(4):670-678, 2008
         https://doi.org/10.1016/j.commatsci.2007.09.015
-
         """
         def _dg(eu,deg):
             """Return infinitesimal Euler space volume of bin(s)."""
@@ -1333,7 +1290,7 @@ class Rotation:
         shape : (sequence of) int, optional
             Output shape. Defaults to None, which gives a scalar.
         degrees : bool, optional
-            sigma is given in degrees. Defaults to False.
+            Standard deviation is given in degrees. Defaults to False.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
@@ -1353,7 +1310,6 @@ class Rotation:
         >>> import damask
         >>> center = damask.Rotation.from_Euler_angles([0.,45.,0.],degrees=True)
         >>> goss = damask.Rotation.from_spherical_component(center=center,sigma=3.,shape=100,degrees=True)
-
         """
         rng = np.random.default_rng(rng_seed)
         sigma = np.radians(sigma) if degrees else sigma
@@ -1433,7 +1389,6 @@ class Rotation:
 
         >>> import damask
         >>> basal = damask.Rotation.from_fiber_component([0.,0.],[0.,0.],shape=320,sigma=.15)
-
         """
         rng = np.random.default_rng(rng_seed)
         sigma_,alpha,beta = (np.radians(c) for c in (sigma,crystal,sample)) if degrees else \
@@ -1493,6 +1448,24 @@ class Rotation:
     #---------- Quaternion ----------
     @staticmethod
     def _qu2om(qu: np.ndarray) -> np.ndarray:
+        """
+        Quaternion to rotation matrix.
+
+        Parameters
+        ----------
+        qu : numpy.ndarray, shape (...,4)
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
+
+        Returns
+        -------
+        om : numpy.ndarray, shape (...,3,3)
+            Rotation matrix with det(R) = 1 and R.T ∙ R = I.
+
+        References
+        ----------
+        E. Bernardes and S. Viollet, PLoS ONE 17(11):e0276302, 2022
+        https://doi.org/10.1371/journal.pone.0276302
+        """
         qq = qu[...,0:1]**2-(qu[...,1:2]**2 + qu[...,2:3]**2 + qu[...,3:4]**2)
         om = np.block([qq + 2.*qu[...,1:2]**2,
                        2.*(qu[...,2:3]*qu[...,1:2]-_P*qu[...,0:1]*qu[...,3:4]),
@@ -1511,11 +1484,20 @@ class Rotation:
         """
         Quaternion to Bunge Euler angles.
 
+        Parameters
+        ----------
+        qu : numpy.ndarray, shape (...,4)
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
+
+        Returns
+        -------
+        eu : numpy.ndarray, shape (...,3)
+            Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]).
+
         References
         ----------
         E. Bernardes and S. Viollet, PLoS ONE 17(11):e0276302, 2022
         https://doi.org/10.1371/journal.pone.0276302
-
         """
         a =     qu[...,0:1]
         b = -_P*qu[...,3:4]
@@ -1551,6 +1533,16 @@ class Rotation:
         Quaternion to axis–angle pair.
 
         Modified version of the original formulation, should be numerically more stable.
+
+        Parameters
+        ----------
+        qu : numpy.ndarray, shape (...,4)
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
+
+        Returns
+        -------
+        ax : numpy.ndarray, shape (...,4)
+            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π].
         """
         with np.errstate(invalid='ignore',divide='ignore'):
             s = np.sign(qu[...,0:1])/np.sqrt(qu[...,1:2]**2+qu[...,2:3]**2+qu[...,3:4]**2)
@@ -1563,7 +1555,19 @@ class Rotation:
 
     @staticmethod
     def _qu2ro(qu: np.ndarray) -> np.ndarray:
-        """Quaternion to Rodrigues–Frank vector."""
+        """
+        Quaternion to Rodrigues–Frank vector.
+
+        Parameters
+        ----------
+        qu : numpy.ndarray, shape (...,4)
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
+
+        Returns
+        -------
+        ro : numpy.ndarray, shape (...,4)
+            Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π].
+        """
         with np.errstate(invalid='ignore',divide='ignore'):
             s  = np.linalg.norm(qu[...,1:4],axis=-1,keepdims=True)
             ro = np.where(np.broadcast_to(np.abs(qu[...,0:1]) < 1.e-12,qu.shape),
@@ -1577,7 +1581,19 @@ class Rotation:
 
     @staticmethod
     def _qu2ho(qu: np.ndarray) -> np.ndarray:
-        """Quaternion to homochoric vector."""
+        """
+        Quaternion to homochoric vector.
+
+        Parameters
+        ----------
+        qu : numpy.ndarray, shape (...,4)
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
+
+        Returns
+        -------
+        ho : numpy.ndarray, shape (...,3)
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
+        """
         with np.errstate(invalid='ignore'):
             omega = 2. * np.arccos(np.clip(qu[...,0:1],-1.,1.))
             ho = np.where(np.abs(omega) < 1.e-12,
@@ -1588,7 +1604,19 @@ class Rotation:
 
     @staticmethod
     def _qu2cu(qu: np.ndarray) -> np.ndarray:
-        """Quaternion to cubochoric vector."""
+        """
+        Quaternion to cubochoric vector.
+
+        Parameters
+        ----------
+        qu : numpy.ndarray, shape (...,4)
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
+
+        Returns
+        -------
+        cu : numpy.ndarray, shape (...,3)
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2 π^(2/3).
+        """
         return Rotation._ho2cu(Rotation._qu2ho(qu))
 
 
@@ -1600,6 +1628,16 @@ class Rotation:
 
         This formulation is from  www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion.
         The original formulation had issues.
+
+        Parameters
+        ----------
+        om : numpy.ndarray, shape (...,3,3)
+            Rotation matrix with det(R) = 1 and R.T ∙ R = I.
+
+        Returns
+        -------
+        qu : numpy.ndarray, shape (...,4)
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
         """
         trace = om[...,0,0:1] + om[...,1,1:2] + om[...,2,2:3]
 
@@ -1637,7 +1675,19 @@ class Rotation:
 
     @staticmethod
     def _om2eu(om: np.ndarray) -> np.ndarray:
-        """Rotation matrix to Bunge Euler angles."""
+        """
+        Rotation matrix to Bunge Euler angles.
+
+        Parameters
+        ----------
+        om : numpy.ndarray, shape (...,3,3)
+            Rotation matrix with det(R) = 1 and R.T ∙ R = I.
+
+        Returns
+        -------
+        eu : numpy.ndarray, shape (...,3)
+            Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]).
+        """
         with np.errstate(invalid='ignore',divide='ignore'):
             zeta = 1./np.sqrt(1.-om[...,2,2:3]**2)
             eu = np.where(np.isclose(np.abs(om[...,2,2:3]),1.,0.),
@@ -1655,7 +1705,19 @@ class Rotation:
 
     @staticmethod
     def _om2ax(om: np.ndarray) -> np.ndarray:
-        """Rotation matrix to axis–angle pair."""
+        """
+        Rotation matrix to axis–angle pair.
+
+        Parameters
+        ----------
+        om : numpy.ndarray, shape (...,3,3)
+            Rotation matrix with det(R) = 1 and R.T ∙ R = I.
+
+        Returns
+        -------
+        ax : numpy.ndarray, shape (...,4)
+            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π].
+        """
         diag_delta = -_P*np.block([om[...,1,2:3]-om[...,2,1:2],
                                    om[...,2,0:1]-om[...,0,2:3],
                                    om[...,0,1:2]-om[...,1,0:1]
@@ -1676,24 +1738,72 @@ class Rotation:
 
     @staticmethod
     def _om2ro(om: np.ndarray) -> np.ndarray:
-        """Rotation matrix to Rodrigues–Frank vector."""
+        """
+        Rotation matrix to Rodrigues–Frank vector.
+
+        Parameters
+        ----------
+        om : numpy.ndarray, shape (...,3,3)
+            Rotation matrix with det(R) = 1 and R.T ∙ R = I.
+
+        Returns
+        -------
+        ro : numpy.ndarray, shape (...,4)
+            Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π].
+        """
         return Rotation._eu2ro(Rotation._om2eu(om))
 
     @staticmethod
     def _om2ho(om: np.ndarray) -> np.ndarray:
-        """Rotation matrix to homochoric vector."""
+        """
+        Rotation matrix to homochoric vector.
+
+        Parameters
+        ----------
+        om : numpy.ndarray, shape (...,3,3)
+            Rotation matrix with det(R) = 1 and R.T ∙ R = I.
+
+        Returns
+        -------
+        ho : numpy.ndarray, shape (...,3)
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
+        """
         return Rotation._ax2ho(Rotation._om2ax(om))
 
     @staticmethod
     def _om2cu(om: np.ndarray) -> np.ndarray:
-        """Rotation matrix to cubochoric vector."""
+        """
+        Rotation matrix to cubochoric vector.
+
+        Parameters
+        ----------
+        om : numpy.ndarray, shape (...,3,3)
+            Rotation matrix with det(R) = 1 and R.T ∙ R = I.
+
+        Returns
+        -------
+        cu : numpy.ndarray, shape (...,3)
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2 π^(2/3).
+        """
         return Rotation._ho2cu(Rotation._om2ho(om))
 
 
     #---------- Bunge Euler angles ----------
     @staticmethod
     def _eu2qu(eu: np.ndarray) -> np.ndarray:
-        """Bunge Euler angles to quaternion."""
+        """
+        Bunge Euler angles to quaternion.
+
+        Parameters
+        ----------
+        eu : numpy.ndarray, shape (...,3)
+            Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]).
+
+        Returns
+        -------
+        qu : numpy.ndarray, shape (...,4)
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
+        """
         ee = 0.5*eu
         cPhi = np.cos(ee[...,1:2])
         sPhi = np.sin(ee[...,1:2])
@@ -1706,7 +1816,19 @@ class Rotation:
 
     @staticmethod
     def _eu2om(eu: np.ndarray) -> np.ndarray:
-        """Bunge Euler angles to rotation matrix."""
+        """
+        Bunge Euler angles to rotation matrix.
+
+        Parameters
+        ----------
+        eu : numpy.ndarray, shape (...,3)
+            Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]).
+
+        Returns
+        -------
+        om : numpy.ndarray, shape (...,3,3)
+            Rotation matrix with det(R) = 1 and R.T ∙ R = I.
+        """
         c = np.cos(eu)
         s = np.sin(eu)
         om = np.block([+c[...,0:1]*c[...,2:3]-s[...,0:1]*s[...,2:3]*c[...,1:2],
@@ -1724,7 +1846,19 @@ class Rotation:
 
     @staticmethod
     def _eu2ax(eu: np.ndarray) -> np.ndarray:
-        """Bunge Euler angles to axis–angle pair."""
+        """
+        Bunge Euler angles to axis–angle pair.
+
+        Parameters
+        ----------
+        eu : numpy.ndarray, shape (...,3)
+            Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]).
+
+        Returns
+        -------
+        ax : numpy.ndarray, shape (...,4)
+            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π].
+        """
         t = np.tan(eu[...,1:2]*0.5)
         sigma = 0.5*(eu[...,0:1]+eu[...,2:3])
         delta = 0.5*(eu[...,0:1]-eu[...,2:3])
@@ -1743,7 +1877,19 @@ class Rotation:
 
     @staticmethod
     def _eu2ro(eu: np.ndarray) -> np.ndarray:
-        """Bunge Euler angles to Rodrigues–Frank vector."""
+        """
+        Bunge Euler angles to Rodrigues–Frank vector.
+
+        Parameters
+        ----------
+        eu : numpy.ndarray, shape (...,3)
+            Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]).
+
+        Returns
+        -------
+        ro : numpy.ndarray, shape (...,4)
+            Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π].
+        """
         ax = Rotation._eu2ax(eu)
         ro = np.block([ax[...,:3],np.tan(ax[...,3:4]*.5)])
         ro[ax[...,3] >= np.pi,3] = np.inf
@@ -1752,19 +1898,55 @@ class Rotation:
 
     @staticmethod
     def _eu2ho(eu: np.ndarray) -> np.ndarray:
-        """Bunge Euler angles to homochoric vector."""
+        """
+        Bunge Euler angles to homochoric vector.
+
+        Parameters
+        ----------
+        eu : numpy.ndarray, shape (...,3)
+            Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]).
+
+        Returns
+        -------
+        ho : numpy.ndarray, shape (...,3)
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
+        """
         return Rotation._ax2ho(Rotation._eu2ax(eu))
 
     @staticmethod
     def _eu2cu(eu: np.ndarray) -> np.ndarray:
-        """Bunge Euler angles to cubochoric vector."""
+        """
+        Bunge Euler angles to cubochoric vector.
+
+        Parameters
+        ----------
+        eu : numpy.ndarray, shape (...,3)
+            Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]).
+
+        Returns
+        -------
+        cu : numpy.ndarray, shape (...,3)
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2 π^(2/3).
+        """
         return Rotation._ho2cu(Rotation._eu2ho(eu))
 
 
     #---------- Axis angle pair ----------
     @staticmethod
     def _ax2qu(ax: np.ndarray) -> np.ndarray:
-        """Axis–angle pair to quaternion."""
+        """
+        Axis–angle pair to quaternion.
+
+        Parameters
+        ----------
+        ax : numpy.ndarray, shape (...,4)
+            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π].
+
+        Returns
+        -------
+        qu : numpy.ndarray, shape (...,4)
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
+        """
         c = np.cos(ax[...,3:4]*.5)
         s = np.sin(ax[...,3:4]*.5)
         qu = np.where(np.abs(ax[...,3:4]) < 1.e-6,[1.,0.,0.,0.],np.block([c,ax[...,:3]*s]))
@@ -1772,7 +1954,19 @@ class Rotation:
 
     @staticmethod
     def _ax2om(ax: np.ndarray) -> np.ndarray:
-        """Axis-angle pair to rotation matrix."""
+        """
+        Axis-angle pair to rotation matrix.
+
+        Parameters
+        ----------
+        ax : numpy.ndarray, shape (...,4)
+            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π].
+
+        Returns
+        -------
+        om : numpy.ndarray, shape (...,3,3)
+            Rotation matrix with det(R) = 1 and R.T ∙ R = I.
+        """
         c = np.cos(ax[...,3:4])
         s = np.sin(ax[...,3:4])
         omc = 1.-c
@@ -1789,12 +1983,36 @@ class Rotation:
 
     @staticmethod
     def _ax2eu(ax: np.ndarray) -> np.ndarray:
-        """Rotation matrix to Bunge Euler angles."""
+        """
+        Rotation matrix to Bunge Euler angles.
+
+        Parameters
+        ----------
+        ax : numpy.ndarray, shape (...,4)
+            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π].
+
+        Returns
+        -------
+        eu : numpy.ndarray, shape (...,3)
+            Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]).
+        """
         return Rotation._om2eu(Rotation._ax2om(ax))
 
     @staticmethod
     def _ax2ro(ax: np.ndarray) -> np.ndarray:
-        """Axis–angle pair to Rodrigues–Frank vector."""
+        """
+        Axis–angle pair to Rodrigues–Frank vector.
+
+        Parameters
+        ----------
+        ax : numpy.ndarray, shape (...,4)
+            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π].
+
+        Returns
+        -------
+        ro : numpy.ndarray, shape (...,4)
+            Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π].
+        """
         ro = np.block([ax[...,:3],
                        np.where(np.isclose(ax[...,3:4],np.pi,atol=1.e-15,rtol=.0),
                                 np.inf,
@@ -1805,35 +2023,107 @@ class Rotation:
 
     @staticmethod
     def _ax2ho(ax: np.ndarray) -> np.ndarray:
-        """Axis–angle pair to homochoric vector."""
+        """
+        Axis–angle pair to homochoric vector.
+
+        Parameters
+        ----------
+        ax : numpy.ndarray, shape (...,4)
+            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π].
+
+        Returns
+        -------
+        ho : numpy.ndarray, shape (...,3)
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
+        """
         f = (0.75 * ( ax[...,3:4] - np.sin(ax[...,3:4]) ))**(1./3.)
         return ax[...,:3] * f
 
     @staticmethod
     def _ax2cu(ax: np.ndarray) -> np.ndarray:
-        """Axis–angle pair to cubochoric vector."""
+        """
+        Axis–angle pair to cubochoric vector.
+
+        Parameters
+        ----------
+        ax : numpy.ndarray, shape (...,4)
+            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π].
+
+        Returns
+        -------
+        cu : numpy.ndarray, shape (...,3)
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2 π^(2/3).
+        """
         return Rotation._ho2cu(Rotation._ax2ho(ax))
 
 
     #---------- Rodrigues-Frank vector ----------
     @staticmethod
     def _ro2qu(ro: np.ndarray) -> np.ndarray:
-        """Rodrigues–Frank vector to quaternion."""
+        """
+        Rodrigues–Frank vector to quaternion.
+
+        Parameters
+        ----------
+        ro : numpy.ndarray, shape (...,4)
+            Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π].
+
+        Returns
+        -------
+        qu : numpy.ndarray, shape (...,4)
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
+        """
         return Rotation._ax2qu(Rotation._ro2ax(ro))
 
     @staticmethod
     def _ro2om(ro: np.ndarray) -> np.ndarray:
-        """Rodgrigues–Frank vector to rotation matrix."""
+        """
+        Rodgrigues–Frank vector to rotation matrix.
+
+        Parameters
+        ----------
+        ro : numpy.ndarray, shape (...,4)
+            Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π].
+
+        Returns
+        -------
+        om : numpy.ndarray, shape (...,3,3)
+            Rotation matrix with det(R) = 1 and R.T ∙ R = I.
+        """
         return Rotation._ax2om(Rotation._ro2ax(ro))
 
     @staticmethod
     def _ro2eu(ro: np.ndarray) -> np.ndarray:
-        """Rodrigues–Frank vector to Bunge Euler angles."""
+        """
+        Rodrigues–Frank vector to Bunge Euler angles.
+
+        Parameters
+        ----------
+        ro : numpy.ndarray, shape (...,4)
+            Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π].
+
+        Returns
+        -------
+        eu : numpy.ndarray, shape (...,3)
+            Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]).
+        """
         return Rotation._om2eu(Rotation._ro2om(ro))
 
     @staticmethod
     def _ro2ax(ro: np.ndarray) -> np.ndarray:
-        """Rodrigues–Frank vector to axis–angle pair."""
+        """
+        Rodrigues–Frank vector to axis–angle pair.
+
+        Parameters
+        ----------
+        ro : numpy.ndarray, shape (...,4)
+            Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π].
+
+        Returns
+        -------
+        ax : numpy.ndarray, shape (...,4)
+            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π].
+        """
         with np.errstate(invalid='ignore',divide='ignore'):
             ax = np.where(np.isfinite(ro[...,3:4]),
                  np.block([ro[...,0:3]*np.linalg.norm(ro[...,0:3],axis=-1,keepdims=True),2.*np.arctan(ro[...,3:4])]),
@@ -1843,36 +2133,108 @@ class Rotation:
 
     @staticmethod
     def _ro2ho(ro: np.ndarray) -> np.ndarray:
-        """Rodrigues–Frank vector to homochoric vector."""
+        """
+        Rodrigues–Frank vector to homochoric vector.
+
+        Parameters
+        ----------
+        ro : numpy.ndarray, shape (...,4)
+            Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π].
+
+        Returns
+        -------
+        ho : numpy.ndarray, shape (...,3)
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
+        """
         f = np.where(np.isfinite(ro[...,3:4]),2.*np.arctan(ro[...,3:4]) -np.sin(2.*np.arctan(ro[...,3:4])),np.pi)
         return np.where(np.broadcast_to(np.sum(ro[...,0:3]**2,axis=-1,keepdims=True) < 1.e-8,ro[...,0:3].shape),
                         np.zeros(3), ro[...,0:3]* (0.75*f)**(1./3.))
 
     @staticmethod
     def _ro2cu(ro: np.ndarray) -> np.ndarray:
-        """Rodrigues–Frank vector to cubochoric vector."""
+        """
+        Rodrigues–Frank vector to cubochoric vector.
+
+        Parameters
+        ----------
+        ro : numpy.ndarray, shape (...,4)
+            Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π].
+
+        Returns
+        -------
+        cu : numpy.ndarray, shape (...,3)
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2 π^(2/3).
+        """
         return Rotation._ho2cu(Rotation._ro2ho(ro))
 
 
     #---------- Homochoric vector----------
     @staticmethod
     def _ho2qu(ho: np.ndarray) -> np.ndarray:
-        """Homochoric vector to quaternion."""
+        """
+        Homochoric vector to quaternion.
+
+        Parameters
+        ----------
+        ho : numpy.ndarray, shape (...,3)
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
+
+        Returns
+        -------
+        qu : numpy.ndarray, shape (...,4)
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
+        """
         return Rotation._ax2qu(Rotation._ho2ax(ho))
 
     @staticmethod
     def _ho2om(ho: np.ndarray) -> np.ndarray:
-        """Homochoric vector to rotation matrix."""
+        """
+        Homochoric vector to rotation matrix.
+
+        Parameters
+        ----------
+        ho : numpy.ndarray, shape (...,3)
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
+
+        Returns
+        -------
+        om : numpy.ndarray, shape (...,3,3)
+            Rotation matrix with det(R) = 1 and R.T ∙ R = I.
+        """
         return Rotation._ax2om(Rotation._ho2ax(ho))
 
     @staticmethod
     def _ho2eu(ho: np.ndarray) -> np.ndarray:
-        """Homochoric vector to Bunge Euler angles."""
+        """
+        Homochoric vector to Bunge Euler angles.
+
+        Parameters
+        ----------
+        ho : numpy.ndarray, shape (...,3)
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
+
+        Returns
+        -------
+        eu : numpy.ndarray, shape (...,3)
+            Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]).
+        """
         return Rotation._ax2eu(Rotation._ho2ax(ho))
 
     @staticmethod
     def _ho2ax(ho: np.ndarray) -> np.ndarray:
-        """Homochoric vector to axis–angle pair."""
+        """
+        Homochoric vector to axis–angle pair.
+
+        Parameters
+        ----------
+        ho : numpy.ndarray, shape (...,3)
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
+
+        Returns
+        -------
+        ax : numpy.ndarray, shape (...,4)
+            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π].
+        """
         tfit = np.array([+0.9999999999999968,     -0.49999999999986866,     -0.025000000000632055,
                          -0.003928571496460683,   -0.0008164666077062752,   -0.00019411896443261646,
                          -0.00004985822229871769, -0.000014164962366386031, -1.9000248160936107e-6,
@@ -1889,7 +2251,19 @@ class Rotation:
 
     @staticmethod
     def _ho2ro(ho: np.ndarray) -> np.ndarray:
-        """Axis–angle pair to Rodrigues–Frank vector."""
+        """
+        Homochoric vector to Rodrigues–Frank vector.
+
+        Parameters
+        ----------
+        ho : numpy.ndarray, shape (...,3)
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
+
+        Returns
+        -------
+        ro : numpy.ndarray, shape (...,4)
+            Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π].
+        """
         return Rotation._ax2ro(Rotation._ho2ax(ho))
 
     @staticmethod
@@ -1897,11 +2271,20 @@ class Rotation:
         """
         Homochoric vector to cubochoric vector.
 
+        Parameters
+        ----------
+        ho : numpy.ndarray, shape (...,3)
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
+
+        Returns
+        -------
+        cu : numpy.ndarray, shape (...,3)
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2 π^(2/3).
+
         References
         ----------
         D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
         https://doi.org/10.1088/0965-0393/22/7/075013
-
         """
         rs = np.linalg.norm(ho,axis=-1,keepdims=True)
 
@@ -1932,27 +2315,87 @@ class Rotation:
     #---------- Cubochoric ----------
     @staticmethod
     def _cu2qu(cu: np.ndarray) -> np.ndarray:
-        """Cubochoric vector to quaternion."""
+        """
+        Cubochoric vector to quaternion.
+
+        Parameters
+        ----------
+        cu : numpy.ndarray, shape (...,3)
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2 π^(2/3).
+
+        Returns
+        -------
+        qu : numpy.ndarray, shape (...,4)
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
+        """
         return Rotation._ho2qu(Rotation._cu2ho(cu))
 
     @staticmethod
     def _cu2om(cu: np.ndarray) -> np.ndarray:
-        """Cubochoric vector to rotation matrix."""
+        """
+        Cubochoric vector to rotation matrix.
+
+        Parameters
+        ----------
+        cu : numpy.ndarray, shape (...,3)
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2 π^(2/3).
+
+        Returns
+        -------
+        om : numpy.ndarray, shape (...,3,3)
+            Rotation matrix with det(R) = 1 and R.T ∙ R = I.
+        """
         return Rotation._ho2om(Rotation._cu2ho(cu))
 
     @staticmethod
     def _cu2eu(cu: np.ndarray) -> np.ndarray:
-        """Cubochoric vector to Bunge Euler angles."""
+        """
+        Cubochoric vector to Bunge Euler angles.
+
+        Parameters
+        ----------
+        cu : numpy.ndarray, shape (...,3)
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2 π^(2/3).
+
+        Returns
+        -------
+        eu : numpy.ndarray, shape (...,3)
+            Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]).
+        """
         return Rotation._ho2eu(Rotation._cu2ho(cu))
 
     @staticmethod
     def _cu2ax(cu: np.ndarray) -> np.ndarray:
-        """Cubochoric vector to axis–angle pair."""
+        """
+        Cubochoric vector to axis–angle pair.
+
+        Parameters
+        ----------
+        cu : numpy.ndarray, shape (...,3)
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2 π^(2/3).
+
+        Returns
+        -------
+        ax : numpy.ndarray, shape (...,4)
+            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π].
+        """
         return Rotation._ho2ax(Rotation._cu2ho(cu))
 
     @staticmethod
     def _cu2ro(cu: np.ndarray) -> np.ndarray:
-        """Cubochoric vector to Rodrigues–Frank vector."""
+        """
+        Cubochoric vector to Rodrigues–Frank vector.
+
+        Parameters
+        ----------
+        cu : numpy.ndarray, shape (...,3)
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2 π^(2/3).
+
+        Returns
+        -------
+        ro : numpy.ndarray, shape (...,4)
+            Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π].
+        """
         return Rotation._ho2ro(Rotation._cu2ho(cu))
 
     @staticmethod
@@ -1960,11 +2403,20 @@ class Rotation:
         """
         Cubochoric vector to homochoric vector.
 
+        Parameters
+        ----------
+        cu : numpy.ndarray, shape (...,3)
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2 π^(2/3).
+
+        Returns
+        -------
+        ho : numpy.ndarray, shape (...,3)
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
+
         References
         ----------
         D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
         https://doi.org/10.1088/0965-0393/22/7/075013
-
         """
         with np.errstate(invalid='ignore',divide='ignore'):
             # get pyramid and scale by grid parameter ratio
@@ -2014,7 +2466,6 @@ class Rotation:
         ----------
         D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
         https://doi.org/10.1088/0965-0393/22/7/075013
-
         """
         order = {'forward': np.array([[0,1,2],[1,2,0],[2,0,1]]),
                  'backward':np.array([[0,1,2],[2,0,1],[1,2,0]])}

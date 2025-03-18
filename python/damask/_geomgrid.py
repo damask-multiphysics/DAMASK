@@ -58,7 +58,6 @@ class GeomGrid:
             Initial condition label and field values at each grid point.
         comments : (sequence of) str, optional
             Additional, human-readable information, e.g. history of operations.
-
         """
         self.material = material
         self.size = size                                                                            # type: ignore[assignment]
@@ -73,7 +72,6 @@ class GeomGrid:
         Return repr(self).
 
         Give short, human-readable summary.
-
         """
         mat_min = np.nanmin(self.material)
         mat_max = np.nanmax(self.material)
@@ -92,7 +90,6 @@ class GeomGrid:
         Return deepcopy(self).
 
         Create deep copy.
-
         """
         return copy.deepcopy(self)
 
@@ -110,7 +107,6 @@ class GeomGrid:
         ----------
         other : damask.GeomGrid
             GeomGrid to compare self against.
-
         """
         if not isinstance(other, GeomGrid):
             return NotImplemented
@@ -211,7 +207,6 @@ class GeomGrid:
         -------
         loaded : damask.GeomGrid
             Grid-based geometry from file.
-
         """
         v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
         cells = np.array(v.vtk_data.GetDimensions())-1                                              # type: ignore[attr-defined]
@@ -240,7 +235,6 @@ class GeomGrid:
         -------
         loaded : damask.GeomGrid
             Grid-based geometry from file.
-
         """
         return GeomGrid._load(fname,'material')
 
@@ -265,7 +259,6 @@ class GeomGrid:
         -----
         A SPPARKS VTI dump is equivalent to a DAMASK VTI file,
         but stores the materialID information as 'Spin' rather than 'material'.
-
         """
         return GeomGrid._load(fname,'Spin')
 
@@ -304,7 +297,6 @@ class GeomGrid:
         size:   1.0 × 1.0 × 1.0 m³
         origin: 0.0   0.0   0.0 m
         # materials: 20
-
         """
         v = VTK.load(fname,'ImageData')
         cells = np.array(v.vtk_data.GetDimensions())-1                                              # type: ignore[attr-defined]
@@ -330,7 +322,6 @@ class GeomGrid:
         Data in DREAM.3D files can be stored per cell ('CellData')
         and/or per grain ('Grain Data'). Per default, i.e. if
         'feature_IDs' is None, cell-wise data is assumed.
-
 
         Parameters
         ----------
@@ -377,7 +368,6 @@ class GeomGrid:
         argument is used for this function, the correct material configuration
         is only obtained if the "grain_data" argument is used when calling
         damask.ConfigMaterial.load_DREAM3D.
-
         """
         with h5py.File(fname, 'r') as f:
             b = util.DREAM3D_base_group(f) if base_group is None else base_group
@@ -425,7 +415,6 @@ class GeomGrid:
         -------
         new : damask.GeomGrid
             Grid-based geometry from values in table.
-
         """
         cells,size,origin = grid_filters.cellsSizeOrigin_coordinates0_point(table.get(coordinates))
 
@@ -476,15 +465,14 @@ class GeomGrid:
         periodic : bool, optional
             Assume grid to be periodic. Defaults to True.
 
-        Notes
-        -----
-        damask.seeds contains functionality for seed generation.
-
         Returns
         -------
         new : damask.GeomGrid
             Grid-based geometry from tessellation.
 
+        Notes
+        -----
+        damask.seeds contains functionality for seed generation.
         """
         weights_p: FloatSequence
         if periodic:
@@ -561,7 +549,6 @@ class GeomGrid:
         size:   1e-06 × 1e-06 × 1e-06 m³
         origin: 0.0   0.0   0.0 m
         # materials: 3
-
         """
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
         tree = spatial.KDTree(seeds,boxsize=np.asarray(size) if periodic else None)
@@ -633,9 +620,9 @@ class GeomGrid:
             Edge lengths of the grid in meter.
         surface : str
             Type of the minimal surface. See notes for details.
-        threshold : float, optional.
+        threshold : float, optional
             Threshold of the minimal surface. Defaults to 0.0.
-        periods : integer, optional.
+        periods : int, optional
             Number of periods per unit cell. Defaults to 1.
         materials : sequence of int, len (2)
             Material IDs. Defaults to (0,1).
@@ -694,7 +681,6 @@ class GeomGrid:
         size:   0.0005 × 0.0005 × 0.0005 m³
         origin: 0.0   0.0   0.0 m
         # materials: 2 (min: 1, max: 5)
-
         """
         x,y,z = np.meshgrid(periods*2.0*np.pi*(np.arange(cells[0])+0.5)/cells[0],
                             periods*2.0*np.pi*(np.arange(cells[1])+0.5)/cells[1],
@@ -719,7 +705,6 @@ class GeomGrid:
             Valid extension is .vti, which will be appended if not given.
         compress : bool, optional
             Compress with zlib algorithm. Defaults to True.
-
         """
         v = VTK.from_image_data(self.cells,self.size,self.origin)\
                .set('material',self.material.flatten(order='F'))
@@ -740,7 +725,6 @@ class GeomGrid:
         ----------
         colormap : damask.Colormap or str, optional
             Colormap for visualization of material IDs. Defaults to 'cividis'.
-
         """
         VTK.from_image_data(self.cells,self.size,self.origin) \
            .set('material',self.material.flatten('F'),) \
@@ -782,7 +766,6 @@ class GeomGrid:
         size:   0.001 × 0.001 × 0.0005 m³
         origin: 0.0   0.0   0.0005 m
         # materials: 1
-
         """
         offset_ = np.array(offset,np.int64) if offset is not None else np.zeros(3,np.int64)
         cells_ = np.array(cells,np.int64) if cells is not None else self.cells
@@ -850,7 +833,6 @@ class GeomGrid:
 
         >>> g.mirror('xy') == g.mirror(['y','x'])
         True
-
         """
         if not set(directions).issubset(valid := ['x', 'y', 'z']):
             raise ValueError(f'invalid direction "{set(directions).difference(valid)}" specified')
@@ -905,7 +887,6 @@ class GeomGrid:
 
         >>> g.mirror('x',reflect=True) == g.mirror('x',reflect=True).flip('x')
         True
-
         """
         if not set(directions).issubset(valid := ['x', 'y', 'z']):
             raise ValueError(f'invalid direction "{set(directions).difference(valid)}" specified')
@@ -951,7 +932,6 @@ class GeomGrid:
         # materials: 120
         >>> g.rotate(damask.Rotation.from_axis_angle([0,0,1,180],degrees=True)) == g.flip('xy')
         True
-
         """
         material = self.material
         # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
@@ -1004,7 +984,6 @@ class GeomGrid:
         size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
         # materials: 1
-
         """
         orig = tuple(map(np.linspace,self.origin             + self.size/self.cells*.5,
                                      self.origin + self.size - self.size/self.cells*.5,self.cells))
@@ -1036,7 +1015,6 @@ class GeomGrid:
         updated : damask.GeomGrid
             Updated grid-based geometry.
             Cell count of resulting grid matches shape of index map.
-
         """
         cells = idx.shape[:3]
         flat = (idx if len(idx.shape)==3 else grid_filters.ravel_index(idx)).flatten(order='F')
@@ -1058,7 +1036,6 @@ class GeomGrid:
         -------
         updated : damask.GeomGrid
             Updated grid-based geometry.
-
         """
         _,renumbered = np.unique(self.material,return_inverse=True)
 
@@ -1087,7 +1064,6 @@ class GeomGrid:
         -------
         updated : damask.GeomGrid
             Updated grid-based geometry.
-
         """
         material = self.material.copy()
         for f,t in zip(from_material if isinstance(from_material,(Sequence,np.ndarray)) else [from_material],
@@ -1110,7 +1086,6 @@ class GeomGrid:
         -------
         updated : damask.GeomGrid
             Updated grid-based geometry.
-
         """
         a = self.material.flatten(order='F')
         from_ma = pd.unique(a)
@@ -1157,7 +1132,6 @@ class GeomGrid:
         Notes
         -----
         If multiple material IDs are most frequent within a stencil, a random choice is taken.
-
         """
         def most_frequent(stencil: np.ndarray,
                           selection: Union[None,np.ndarray],
@@ -1224,8 +1198,8 @@ class GeomGrid:
             If given as floats, physical coordinates are addressed.
         exponent : (sequence of) float, len (3)
             Exponents for the three axes.
-            0 gives octahedron (ǀxǀ^(2^0) + ǀyǀ^(2^0) + ǀzǀ^(2^0) < 1)
-            1 gives sphere     (ǀxǀ^(2^1) + ǀyǀ^(2^1) + ǀzǀ^(2^1) < 1)
+            0 gives octahedron (ǀxǀ^(2^0) + ǀyǀ^(2^0) + ǀzǀ^(2^0) < 1),
+            1 gives sphere     (ǀxǀ^(2^1) + ǀyǀ^(2^1) + ǀzǀ^(2^1) < 1).
         fill : int, optional
             Fill value for primitive. Defaults to material.max()+1.
         R : damask.Rotation, optional
@@ -1264,7 +1238,6 @@ class GeomGrid:
         size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
         # materials: 2
-
         """
         # radius and center
         r = np.array(dimension)/2.0*self.size/self.cells if np.issubdtype(np.array(dimension).dtype,np.integer) else \
@@ -1327,7 +1300,6 @@ class GeomGrid:
         -------
         updated : damask.GeomGrid
             Updated grid-based geometry.
-
         """
         @numba_njit_wrapper()
         def tainted_neighborhood(stencil: np.ndarray,
@@ -1383,7 +1355,6 @@ class GeomGrid:
         -------
         grain_boundaries : damask.VTK
             VTK-based geometry of grain boundary network.
-
         """
         if not set(directions).issubset(valid := ['x', 'y', 'z']):
             raise ValueError(f'invalid direction "{set(directions).difference(valid)}" specified')

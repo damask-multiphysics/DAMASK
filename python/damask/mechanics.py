@@ -2,7 +2,6 @@
 Finite-strain continuum mechanics.
 
 All routines operate on numpy.ndarrays of shape (...,3,3).
-
 """
 
 from typing import Sequence as _Sequence, Union as _Union #, Literal as _Literal
@@ -32,7 +31,6 @@ def deformation_Cauchy_Green_left(F: _np.ndarray) -> _np.ndarray:
     .. math::
 
        \vb{B} = \vb{F} \vb{F}^\text{T}
-
     """
     return _np.matmul(F,_tensor.transpose(F))
 
@@ -56,7 +54,6 @@ def deformation_Cauchy_Green_right(F: _np.ndarray) -> _np.ndarray:
     .. math::
 
        \vb{C} = \vb{F}^\text{T} \vb{F}
-
     """
     return _np.matmul(_tensor.transpose(F),F)
 
@@ -85,7 +82,6 @@ def equivalent_strain_Mises(epsilon: _np.ndarray) -> _np.ndarray:
 
     where :math:`\vb*{\epsilon}^\prime` is the deviatoric part
     of the strain tensor.
-
     """
     return _equivalent_Mises(epsilon,2.0/3.0)
 
@@ -114,7 +110,6 @@ def equivalent_stress_Mises(sigma: _np.ndarray) -> _np.ndarray:
 
     where :math:`\vb*{\sigma}^\prime` is the deviatoric part
     of the stress tensor.
-
     """
     return _equivalent_Mises(sigma,3.0/2.0)
 
@@ -132,7 +127,6 @@ def maximum_shear(T_sym: _np.ndarray) -> _np.ndarray:
     -------
     gamma_max : numpy.ndarray, shape (...)
         Maximum shear of T_sym.
-
     """
     w = _tensor.eigenvalues(T_sym)
     return (w[...,0] - w[...,2])*0.5
@@ -162,7 +156,6 @@ def rotation(T: _np.ndarray) -> _rotation.Rotation:
 
     where :math:`\vb{V}` and :math:`\vb{U}` are the left
     and right stretch tensor, respectively.
-
     """
     return _rotation.Rotation.from_matrix(_polar_decomposition(T,'R')[0])
 
@@ -202,7 +195,6 @@ def strain(F: _np.ndarray,
     ----------
     | https://en.wikipedia.org/wiki/Finite_strain_theory
     | https://de.wikipedia.org/wiki/Verzerrungstensor
-
     """
     if t not in ['V', 'U']: raise ValueError('polar decomposition type not in {V, U}')
     w,n = _np.linalg.eigh(deformation_Cauchy_Green_left(F) if t=='V' else deformation_Cauchy_Green_right(F))
@@ -229,7 +221,6 @@ def stress_Cauchy(P: _np.ndarray,
     -------
     sigma : numpy.ndarray, shape (...,3,3)
         Cauchy stress.
-
     """
     return _tensor.symmetric(_np.einsum('...,...ij,...kj',1.0/_np.linalg.det(F),P,F))
 
@@ -253,7 +244,6 @@ def stress_second_Piola_Kirchhoff(P: _np.ndarray,
     -------
     S : numpy.ndarray, shape (...,3,3)
         Second Piola-Kirchhoff stress.
-
     """
     return _tensor.symmetric(_np.einsum('...ij,...jk',_np.linalg.inv(F),P))
 
@@ -282,7 +272,6 @@ def stretch_left(T: _np.ndarray) -> _np.ndarray:
        \vb{V} = \vb{T} \vb{R}^\text{T}
 
     where :math:`\vb{R}` is a rotation.
-
     """
     return _polar_decomposition(T,'V')[0]
 
@@ -311,7 +300,6 @@ def stretch_right(T: _np.ndarray) -> _np.ndarray:
        \vb{U} = \vb{R}^\text{T} \vb{T}
 
     where :math:`\vb{R}` is a rotation.
-
     """
     return _polar_decomposition(T,'U')[0]
 
@@ -333,7 +321,6 @@ def _polar_decomposition(T: _np.ndarray,
     -------
     VRU : tuple of numpy.ndarray, shape (...,3,3)
        Requested components of the singular value decomposition.
-
     """
     u, _, vh = _np.linalg.svd(T)
     R = u @ vh
@@ -368,7 +355,6 @@ def _equivalent_Mises(T_sym: _np.ndarray,
     -------
     eq : numpy.ndarray, shape (...)
         Scaled second invariant of the deviatoric part of T_sym.
-
     """
     d = _tensor.deviatoric(T_sym)
     return _np.sqrt(s*_np.sum(d**2.0,axis=(-1,-2)))

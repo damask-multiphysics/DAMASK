@@ -33,7 +33,7 @@ dependencies = [
     'h5py>=3.6',
     'vtk>=9.1',
     'matplotlib>=3.5',
-    'pyyaml>=5.3',
+    'pyyaml>=5.4',
 ]
 
 readme = 'README.md'
@@ -55,3 +55,21 @@ version = {file = ['damask/VERSION']}
 
 [tool.pytest.ini_options]
 doctest_optionflags = 'NUMBER NORMALIZE_WHITESPACE ELLIPSIS'
+
+[tool.numpydoc_validation]
+checks = [
+    "all",   # report on all checks, except the below
+    "EX01",
+    "SA01",
+    "ES01",
+]
+
+exclude = [  # don't report on objects that match any of these regex
+    '\.undocumented_method$',
+    '\.__repr__$',
+]
+override_SS05 = [  # override SS05 to allow docstrings starting with these words
+    '^Process ',
+    '^Assess ',
+    '^Access ',
+]

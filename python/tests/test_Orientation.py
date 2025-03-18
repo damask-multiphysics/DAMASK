@@ -392,7 +392,7 @@ class TestOrientation:
                              ('hP','plane',[0,-1, 1,0],2),
                              ('hP','plane',[1, 0,-1,0],2),
                              ('hP','direction',[2,-1,-1,0],2),
-                             ('hP','direction',[-1,-1,2,0],2),
+                             ('hP','direction',[-1,2,-1,0],2),
                              ('hP','direction',[-1,-1,2,0],2),
                              ('cI','plane',[0,0,1],4),
                              ('cI','direction',[0,0,1],4),
@@ -404,7 +404,7 @@ class TestOrientation:
         o = Orientation.from_random(lattice=lattice,rng_seed=np_rng)
         frame = o.to_frame(**{keyword:vector,'with_symmetry':True})
         shape_full = frame.shape[0]
-        shape_reduced = np.unique(np.around(frame,11),axis=0).shape[0]
+        shape_reduced = np.unique(np.around(frame,10),axis=0).shape[0]
         assert shape_full//N_sym == shape_reduced
 
 

@@ -68,7 +68,6 @@ def srepr(msg,
     -------
     joined : str
         String representation of the joined and quoted items.
-
     """
     q = '"' if quote else ''
     if (not hasattr(msg, 'strip') and
@@ -92,7 +91,6 @@ def emph(msg) -> str:
     -------
     formatted : str
         Formatted string representation of the joined items.
-
     """
     return _colors['bold']+srepr(msg)+_colors['end_color']
 
@@ -109,7 +107,6 @@ def deemph(msg) -> str:
     -------
     formatted : str
         Formatted string representation of the joined items.
-
     """
     return _colors['dim']+srepr(msg)+_colors['end_color']
 
@@ -126,7 +123,6 @@ def warn(msg) -> str:
     -------
     formatted : str
         Formatted string representation of the joined items.
-
     """
     return _colors['warning']+emph(msg)+_colors['end_color']
 
@@ -143,7 +139,6 @@ def strikeout(msg) -> str:
     -------
     formatted : str
         Formatted string representation of the joined items.
-
     """
     return _colors['crossout']+srepr(msg)+_colors['end_color']
 
@@ -163,14 +158,13 @@ def run(cmd: str,
         Working directory of process. Defaults to './'.
     env : dict, optional
         Environment for execution.
-    timeout : integer, optional
+    timeout : int, optional
         Timeout in seconds.
 
     Returns
     -------
     stdout, stderr : (str, str)
         Output of the executed command.
-
     """
     def pass_signal(sig,_,proc,default):
         proc.send_signal(sig)
@@ -206,7 +200,7 @@ def run(cmd: str,
 def open_text(fname: _FileHandle,
               mode: _Literal['r','w'] = 'r') -> _Generator[_TextIO, None, None]:                    # noqa
     """
-    Open a text file with Unix line endings
+    Open a text file with Unix line endings.
 
     If a path or string is given, a context manager ensures that
     the file handle is closed.
@@ -216,13 +210,12 @@ def open_text(fname: _FileHandle,
     ----------
     fname : file, str, or pathlib.Path
         Name or handle of file.
-    mode: {'r','w'}, optional
+    mode : {'r','w'}, optional
         Access mode: 'r'ead or 'w'rite, defaults to 'r'.
 
     Returns
     -------
     f : file handle
-
     """
     if isinstance(fname, (str,_Path)):
         fhandle = open(_Path(fname).expanduser(),mode,newline=('\n' if mode == 'w' else None))
@@ -251,7 +244,6 @@ def natural_sort(key: str) -> _List[_Union[int, str]]:
     References
     ----------
     https://en.wikipedia.org/wiki/Natural_sort_order
-
     """
     convert = lambda text: int(text) if text.isdigit() else text
     return [ convert(c) for c in _re.split('([0-9]+)', key) ]
@@ -276,7 +268,6 @@ def show_progress(iterable: _Iterable,
         Prefix string. Defaults to ''.
     bar_length : int, optional
         Length of progress bar in characters. Defaults to 50.
-
     """
     if isinstance(iterable,_abc.Sequence):
         if N_iter is None:
@@ -308,14 +299,13 @@ def scale_to_coprime(v: _FloatSequence,
     ----------
     v : sequence of float, len (:)
         Vector to scale.
-    N_significant: int, optional
+    N_significant : int, optional
         Number of significant digits to consider. Defaults to 9.
 
     Returns
     -------
     m : numpy.ndarray, shape (:)
         Vector scaled to co-prime numbers.
-
     """
 
     def get_square_denominator(x,max_denominator):
@@ -380,7 +370,6 @@ def project_equal_angle(vector: _np.ndarray,
     array([0. , 0.5, 0.5])
     >>> project_equal_angle([0,1,1],direction='y',normalize=True,keepdims=False)
     array([0.4142, 0. ])
-
     """
     shift = 'zyx'.index(direction)
     v = _np.roll(vector/_np.linalg.norm(vector,axis=-1,keepdims=True) if normalize else vector,
@@ -418,7 +407,6 @@ def project_equal_area(vector: _np.ndarray,
     the next and next-next axis relative to the projection direction,
     e.g. x-y when projecting along z and z-x when projecting along y.
 
-
     Examples
     --------
     >>> import damask
@@ -429,7 +417,6 @@ def project_equal_area(vector: _np.ndarray,
     array([0. , 0.7071, 0.7071])
     >>> project_equal_area([0,1,1],direction='y',normalize=True,keepdims=False)
     array([0.5412, 0. ])
-
     """
     shift = 'zyx'.index(direction)
     v = _np.roll(vector/_np.linalg.norm(vector,axis=-1,keepdims=True) if normalize else vector,
@@ -458,7 +445,6 @@ def hybrid_IA(dist: _FloatSequence,
     -------
     hist : numpy.ndarray, shape (N)
         Integer approximation of the distribution.
-
     """
     N_opt_samples = max(_np.count_nonzero(dist),N)                                                  # random subsampling if too little samples requested
     N_inv_samples = _np.int_(0)
@@ -510,7 +496,6 @@ def shapeshifter(fro: _Tuple[int, ...],
     >>> b_extended = b.reshape(util.shapeshifter(b.shape,a.shape))
     >>> (a * np.broadcast_to(b_extended,a.shape)).shape
     (3, 4, 2)
-
     """
     if len(fro) == 0 and len(to) == 0: return tuple()
     _fro = [1] if len(fro) == 0 else list(fro)[::-1 if mode=='left' else 1]
@@ -564,7 +549,6 @@ def shapeblender(a: _Tuple[int, ...],
     (2, 2, 1)
     >>> shapeblender((1,),(2,2,1),True)
     (1, 2, 2, 1)
-
     """
     def is_broadcastable(a,b):
         try:
@@ -602,7 +586,6 @@ def DREAM3D_base_group(fname: _Union[str, _Path, _h5py.File]) -> str:
     -------
     path : str
         Path to the base group.
-
     """
     def get_base_group(f: _h5py.File) -> str:
         base_group = f.visit(lambda path: path.rsplit('/',2)[0] if '_SIMPL_GEOMETRY/SPACING' in path else None)
@@ -633,7 +616,6 @@ def DREAM3D_cell_data_group(fname: _Union[str, _Path, _h5py.File]) -> str:
     -------
     path : str
         Path to the cell data group.
-
     """
     def get_cell_data_group(f: _h5py.File) -> str:
         base_group = DREAM3D_base_group(f)
@@ -666,7 +648,6 @@ def _standardize_MillerBravais(idx: _IntSequence) -> _np.ndarray:
     -------
     uvtw|hkil : numpy.ndarray, shape (...,4)
         Miller-Bravais indices of [uvtw] direction or (hkil) plane normal.
-
     """
     def expand(v: _np.ndarray) -> _np.ndarray:
         """Expand from 3 to 4 indices."""
@@ -711,7 +692,6 @@ def Bravais_to_Miller(*,
     -------
     uvw|hkl : numpy.ndarray, shape (...,3)
         Miller indices of [uvw] direction or (hkl) plane normal.
-
     """
     if (uvtw is not None) ^ (hkil is None):
         raise KeyError('specify either "uvtw" or "hkil"')
@@ -746,7 +726,6 @@ def Miller_to_Bravais(*,
     -------
     uvtw|hkil : numpy.ndarray, shape (...,4)
         Miller–Bravais indices of [uvtw] direction or (hkil) plane normal.
-
     """
     if (uvw is not None) ^ (hkl is None):
         raise KeyError('specify either "uvw" or "hkl"')
@@ -782,7 +761,6 @@ def dict_prune(d: _Dict) -> _Dict:
     -------
     pruned : dict
         Pruned dictionary.
-
     """
     # https://stackoverflow.com/questions/48151953
     new = {}
@@ -807,7 +785,6 @@ def dict_flatten(d: _Dict) -> _Dict:
     -------
     flattened : dict
         Flattened dictionary.
-
     """
     if isinstance(d,dict) and len(d) == 1:
         entry = d[list(d.keys())[0]]
@@ -843,7 +820,6 @@ class ProgressBar:
             Prefix string.
         bar_length : int
             Character length of bar.
-
         """
         self.total = total
         self.prefix = prefix

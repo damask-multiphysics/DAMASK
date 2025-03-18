@@ -1,6 +1,6 @@
 """Functionality for generation of seed points for Voronoi or Laguerre tessellation."""
 
-from typing import Optional as _Optional, Tuple as _Tuple
+from typing import Optional as _Optional, NamedTuple as _NamedTuple
 
 from scipy import spatial as _spatial
 import numpy as _np
@@ -9,6 +9,11 @@ from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequ
                         NumpyRngSeed as _NumpyRngSeed
 from . import util as _util
 from . import grid_filters as _grid_filters
+
+
+class FromGridTuple(_NamedTuple):
+    coords: _np.ndarray
+    materials: _np.ndarray
 
 
 def from_random(size: _FloatSequence,
@@ -24,7 +29,7 @@ def from_random(size: _FloatSequence,
         Edge lengths of the seeding domain.
     N_seeds : int
         Number of seeds.
-    cells : sequence of int, len (3), optional.
+    cells : sequence of int, len (3), optional
         If given, ensures that each seed results in a grain when a standard Voronoi
         tessellation is performed using the given grid resolution (i.e. size/cells).
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
@@ -35,7 +40,6 @@ def from_random(size: _FloatSequence,
     -------
     coords : numpy.ndarray, shape (N_seeds,3)
         Seed coordinates in 3D space.
-
     """
     size_ = _np.asarray(size,float)
     rng = _np.random.default_rng(rng_seed)
@@ -79,7 +83,6 @@ def from_Poisson_disc(size: _FloatSequence,
     -------
     coords : numpy.ndarray, shape (N_seeds,3)
         Seed coordinates in 3D space.
-
     """
     size_ = _np.asarray(size,float)
     rng = _np.random.default_rng(rng_seed)
@@ -109,7 +112,7 @@ def from_grid(grid,
               selection: _Optional[_IntSequence] = None,
               invert_selection: bool = False,
               average: bool = False,
-              periodic: bool = True) -> _Tuple[_np.ndarray, _np.ndarray]:
+              periodic: bool = True) -> FromGridTuple:
     """
     Create seeds from grid description.
 
@@ -158,7 +161,6 @@ def from_grid(grid,
     10.1
     >>> print((ID == matID).all())
     True
-
     """
     material = grid.material.reshape((-1,1),order='F')
     mask = _np.full(grid.cells.prod(),True,dtype=bool) if selection is None else \
@@ -166,7 +168,7 @@ def from_grid(grid,
     coords = _grid_filters.coordinates0_point(grid.cells,grid.size).reshape(-1,3,order='F')
 
     if not average:
-        return (coords[mask],material[mask])
+        return FromGridTuple(coords[mask],material[mask])
     else:
         materials = _np.unique(material[mask])
         coords_ = _np.zeros((materials.size,3),dtype=float)
@@ -177,4 +179,4 @@ def from_grid(grid,
                                      -_np.average(_np.cos(pc),axis=0))) \
                          if periodic else \
                          _np.average(coords[material[:,0]==mat,:],axis=0)
-        return (coords_,materials)
+        return FromGridTuple(coords_,materials)

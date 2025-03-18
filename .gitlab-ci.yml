@@ -35,9 +35,8 @@ variables:
   # Names of module files to load
   # ===============================================================================================
   # ++++++++++++ Compiler/MPI/PETSc +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  COMPILER_INTEL: "Compiler/Intel/2022.0.1 Libraries/IMKL/2022.0.1"
-  MPI_INTEL: "MPI/Intel/2022.0.1/IntelMPI/2021.5.0"
-  PETSC_INTEL: "Libraries/PETSc/3.16.5/Intel-2022.0.1-IntelMPI-2021.5.0"
+  COMPILER_INTEL: "oneapi/2025.0.0"
+  PETSC_INTEL: "Libraries/PETSc/3.22.4/OneAPI-2025.0"
   # ++++++++++++ MSC Marc +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   MSC: "FEM/MSC/2024.1"
   IntelMarc: "Compiler/Intel/2022.0.1 Libraries/IMKL/2022.0.1"
@@ -250,6 +249,7 @@ Marc_Intel:
   tags:
     - bare-metal
   script:
+    - source /opt/venv/bin/activate
     - module load $IntelMarc $HDF5Marc $MSC
     - cd PRIVATE/testing
     - pytest -k 'compile and Marc' --basetemp ${TESTROOT}/compile_Marc
@@ -259,6 +259,7 @@ setup_Marc:
   tags:
     - bare-metal
   script:
+    - source /opt/venv/bin/activate
     - module load $IntelMarc $HDF5Marc $MSC
     - cd $(mktemp -d)
     - cp ${CI_PROJECT_DIR}/examples/Marc/* .
@@ -285,7 +286,8 @@ open-source_grid_signal_restart:
   tags:
     - bare-metal
   before_script:
-    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
+    - source /opt/venv/bin/activate
+    - module load ${COMPILER_INTEL} ${PETSC_INTEL}
     - cd $(mktemp -d)
     - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
     - make -j2 all install
@@ -316,6 +318,7 @@ Marc:
   tags:
     - bare-metal
   script:
+    - source /opt/venv/bin/activate
     - cd PRIVATE/testing
     - pytest -k 'not compile and Marc' -m 'not cifail' --damask-root=${TESTROOT} --basetemp ${TESTROOT}/Marc -v
 
@@ -332,10 +335,11 @@ grid_performance:
     - bare-metal
   before_script:
     - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} ${TOKEN} --blocking
+    - source /opt/venv/bin/activate
     - source env/DAMASK.sh
     - echo Job start:" $(date)"
   script:
-    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
+    - module load ${COMPILER_INTEL} ${PETSC_INTEL}
     - cd $(mktemp -d)
     - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=./ ${CI_PROJECT_DIR}
     - make -j2 all install
@@ -374,6 +378,7 @@ update_revision:
     - bare-metal
   before_script:
     - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} ${TOKEN}
+    - source /opt/venv/bin/activate
     - echo Job start:" $(date)"
   script:
     - cd $(mktemp -d)

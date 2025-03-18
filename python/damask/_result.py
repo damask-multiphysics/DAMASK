@@ -98,7 +98,6 @@ class Result:
             on ...
      executing "..."\x1b[0m
     ...
-
     """
 
     def __init__(self, fname: Union[str, Path]):
@@ -109,7 +108,6 @@ class Result:
         ----------
         fname : str or pathlib.Path
             Name of the DADF5 file to be opened.
-
         """
         with h5py.File(fname,'r') as f:
 
@@ -162,7 +160,6 @@ class Result:
         Return deepcopy(self).
 
         Create deep copy.
-
         """
         return copy.deepcopy(self)
 
@@ -174,7 +171,6 @@ class Result:
         Return repr(self).
 
         Give short, human-readable summary.
-
         """
         with h5py.File(self.fname,'r') as f:
             header = [f'Created by {f.attrs["creator"]}',
@@ -207,12 +203,23 @@ class Result:
         ----------
         action : str
             Select from 'set', 'add', and 'del'.
+        increments : (list of) int, (list of) str, or bool, optional
+            Numbers of increments to select.
+        times : (list of) float, (list of) str, or bool, optional
+            Simulation times of increments to select.
+        phases : (list of) str, or bool, optional
+            Names of phases to select.
+        homogenizations : (list of) str, or bool, optional
+            Names of homogenizations to select.
+        fields : (list of) str, or bool, optional
+            Names of fields to select.
+        protected : bool, optional
+            Protection status of existing data.
 
         Returns
         -------
         view : damask.Result
             Modified or new view on the DADF5 file.
-
         """
         if increments is not None and times is not None:
             raise ValueError('"increments" and "times" are mutually exclusive')
@@ -279,7 +286,6 @@ class Result:
         -------
         increments : list of ints
             Increment number of all increments within the given bounds.
-
         """
         s,e = map(lambda x: int(x.split(prefix_inc)[-1] if isinstance(x,str) and x.startswith(prefix_inc) else x),
                   (self._incs[ 0] if start is None else start,
@@ -303,7 +309,6 @@ class Result:
         -------
         times : list of float
             Time of each increment within the given bounds.
-
         """
         s,e = (self.times[ 0] if start is None else start,
                self.times[-1] if end   is None else end)
@@ -325,17 +330,17 @@ class Result:
 
         Parameters
         ----------
-        increments: (list of) int, (list of) str, or bool, optional.
+        increments : (list of) int, (list of) str, or bool, optional
             Numbers of increments to select.
-        times: (list of) float, (list of) str, or bool, optional.
+        times : (list of) float, (list of) str, or bool, optional
             Simulation times of increments to select.
-        phases: (list of) str, or bool, optional.
+        phases : (list of) str, or bool, optional
             Names of phases to select.
-        homogenizations: (list of) str, or bool, optional.
+        homogenizations : (list of) str, or bool, optional
             Names of homogenizations to select.
-        fields: (list of) str, or bool, optional.
+        fields : (list of) str, or bool, optional
             Names of fields to select.
-        protected: bool, optional.
+        protected : bool, optional
             Protection status of existing data.
 
         Returns
@@ -356,7 +361,6 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r_t10to40 = r.view(times=r.times_in_range(10.0,40.0))
-
         """
         dup = self._manage_view('set',increments,times,phases,homogenizations,fields)
         if protected is not None:
@@ -381,15 +385,15 @@ class Result:
 
         Parameters
         ----------
-        increments: (list of) int, (list of) str, or bool, optional.
+        increments : (list of) int, (list of) str, or bool, optional
             Numbers of increments to select.
-        times: (list of) float, (list of) str, or bool, optional.
+        times : (list of) float, (list of) str, or bool, optional
             Simulation times of increments to select.
-        phases: (list of) str, or bool, optional.
+        phases : (list of) str, or bool, optional
             Names of phases to select.
-        homogenizations: (list of) str, or bool, optional.
+        homogenizations : (list of) str, or bool, optional
             Names of homogenizations to select.
-        fields: (list of) str, or bool, optional.
+        fields : (list of) str, or bool, optional
             Names of fields to select.
 
         Returns
@@ -405,7 +409,6 @@ class Result:
         >>> r_empty = damask.Result('my_file.hdf5').view(increments=False)
         >>> r_first = r_empty.view_more(increments=0)
         >>> r_first_and_last = r_first.view_more(increments=-1)
-
         """
         return self._manage_view('add',increments,times,phases,homogenizations,fields)
 
@@ -424,15 +427,15 @@ class Result:
 
         Parameters
         ----------
-        increments: (list of) int, (list of) str, or bool, optional.
+        increments : (list of) int, (list of) str, or bool, optional
             Numbers of increments to select.
-        times: (list of) float, (list of) str, or bool, optional.
+        times : (list of) float, (list of) str, or bool, optional
             Simulation times of increments to select.
-        phases: (list of) str, or bool, optional.
+        phases : (list of) str, or bool, optional
             Names of phases to select.
-        homogenizations: (list of) str, or bool, optional.
+        homogenizations : (list of) str, or bool, optional
             Names of homogenizations to select.
-        fields: (list of) str, or bool, optional.
+        fields : (list of) str, or bool, optional
             Names of fields to select.
 
         Returns
@@ -447,7 +450,6 @@ class Result:
         >>> import damask
         >>> r_all = damask.Result('my_file.hdf5')
         >>> r_deformed = r_all.view_less(increments=0)
-
         """
         return self._manage_view('del',increments,times,phases,homogenizations,fields)
 
@@ -460,7 +462,6 @@ class Result:
         -------
         modified_view : damask.Result
             View with all attributes visible.
-
         """
         return self.view(increments='*',phases='*',homogenizations='*',fields='*')
 
@@ -490,7 +491,6 @@ class Result:
         >>> r_unprotected = r.view(protected=False)
         \x1b[93m\x1b[1mWarning: Modification of existing datasets allowed!\x1b[0m\x1b[0m
         >>> r_unprotected.rename('F','def_grad')
-
         """
         if self._protected:
             raise PermissionError('rename datasets')
@@ -529,7 +529,6 @@ class Result:
         >>> r_unprotected = r.view(protected=False)
         \x1b[93m\x1b[1mWarning: Modification of existing datasets allowed!\x1b[0m\x1b[0m
         >>> r_unprotected.remove('F')
-
         """
         if self._protected:
             raise PermissionError('delete datasets')
@@ -551,7 +550,6 @@ class Result:
         -------
         data : list of str
             Line-formatted information about active datasets.
-
         """
         msg = []
         with h5py.File(self.fname,'r') as f:
@@ -649,7 +647,6 @@ class Result:
         ----------
         x : str
             Name of scalar, vector, or tensor dataset to take absolute value of.
-
         """
         def absolute(x: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -716,7 +713,6 @@ class Result:
         >>> r.add_calculation('equivalent_stress(#F#,#P#)','sigma_vM','Pa',
         ...                   'Mises equivalent of the Cauchy stress')
         [...]
-
         """
         def calculation(**kwargs) -> DADF5Dataset:
             formula = kwargs['formula']
@@ -756,7 +752,6 @@ class Result:
         F : str, optional
             Name of the dataset containing the deformation gradient.
             Defaults to 'F'.
-
         """
 
         def stress_Cauchy(P: DADF5Dataset, F: DADF5Dataset) -> DADF5Dataset:
@@ -792,7 +787,6 @@ class Result:
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_determinant('F_p')
         [...]
-
         """
 
         def determinant(T: DADF5Dataset) -> DADF5Dataset:
@@ -826,7 +820,6 @@ class Result:
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_deviator('sigma')
         [...]
-
         """
 
         def deviator(T: DADF5Dataset) -> DADF5Dataset:
@@ -864,7 +857,6 @@ class Result:
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_eigenvalue('sigma','min')
         [...]
-
         """
 
         def eigenval(T_sym: DADF5Dataset, eigenvalue: Literal['max', 'mid', 'min']) -> DADF5Dataset:
@@ -903,7 +895,6 @@ class Result:
         eigenvalue : {'max', 'mid', 'min'}, optional
             Eigenvalue to which the eigenvector corresponds.
             Defaults to 'max'.
-
         """
 
         def eigenvector(T_sym: DADF5Dataset, eigenvalue: Literal['max', 'mid', 'min']) -> DADF5Dataset:
@@ -952,7 +943,6 @@ class Result:
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_IPF_color(l = [0,1,1], q = 'O')
         [...]
-
         """
 
         def IPF_color(l: FloatSequence, q: DADF5Dataset) -> DADF5Dataset:
@@ -982,7 +972,6 @@ class Result:
         ----------
         T_sym : str
             Name of symmetric tensor dataset.
-
         """
         def maximum_shear(T_sym: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -1027,7 +1016,6 @@ class Result:
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_equivalent_Mises('epsilon_V^0.0(F)')
         [...]
-
         """
         def equivalent_Mises(T_sym: DADF5Dataset, kind: str) -> DADF5Dataset:
             k = kind
@@ -1065,7 +1053,6 @@ class Result:
             Name of vector or tensor dataset.
         ord : {non-zero int, inf, -inf, 'fro', 'nuc'}, optional
             Order of the norm. inf means NumPy's inf object. For details refer to numpy.linalg.norm.
-
         """
         def norm(x: DADF5Dataset, ord: Union[int, float, Literal['fro', 'nuc']]) -> DADF5Dataset:
             o = ord
@@ -1113,7 +1100,6 @@ class Result:
         follows the standard definition in nonlinear continuum mechanics.
         As such, no intermediate configuration, for instance that reached by :math:`\vb{F}_\text{p}`,
         is taken into account.
-
         """
         def stress_second_Piola_Kirchhoff(P: DADF5Dataset, F: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -1155,7 +1141,6 @@ class Result:
         normalize : bool, optional
             Normalize output vector.
             Defaults to True.
-
         """
         def pole(q: DADF5Dataset,
                  uvw: IntSequence, hkl: IntSequence,
@@ -1203,7 +1188,6 @@ class Result:
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_rotation('F')
         [...]
-
         """
         def rotation(F: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -1236,7 +1220,6 @@ class Result:
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_spherical('sigma')
         [...]
-
         """
         def spherical(T: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -1272,22 +1255,6 @@ class Result:
         m : float, optional
             Order of the strain calculation. Defaults to 0.0.
 
-        Examples
-        --------
-        Add the Euler-Almansi strain:
-
-        >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_strain(t='V',m=-1.0)
-        [...]
-
-        Add the plastic Biot strain:
-
-        >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_strain('F_p','U',0.5)
-        [...]
-
         Notes
         -----
         The presence of rotational parts in the elastic and plastic deformation gradient
@@ -1313,6 +1280,21 @@ class Result:
         | https://en.wikipedia.org/wiki/Finite_strain_theory
         | https://de.wikipedia.org/wiki/Verzerrungstensor
 
+        Examples
+        --------
+        Add the Euler-Almansi strain:
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.add_strain(t='V',m=-1.0)
+        [...]
+
+        Add the plastic Biot strain:
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.add_strain('F_p','U',0.5)
+        [...]
         """
         def strain(F: DADF5Dataset, t: Literal['V', 'U'], m: float) -> DADF5Dataset:
             side = 'left' if t == 'V' else 'right'
@@ -1343,7 +1325,6 @@ class Result:
         t : {'V', 'U'}, optional
             Type of the polar decomposition, 'V' for left stretch tensor and 'U' for right stretch tensor.
             Defaults to 'V'.
-
         """
         def stretch_tensor(F: DADF5Dataset, t: str) -> DADF5Dataset:
             return {
@@ -1373,7 +1354,6 @@ class Result:
         -----
         This function is implemented only for structured grids
         with one constituent and a single phase.
-
         """
         def curl(f: DADF5Dataset, size: np.ndarray) -> DADF5Dataset:
             return {
@@ -1402,7 +1382,6 @@ class Result:
         -----
         This function is implemented only for structured grids
         with one constituent and a single phase.
-
         """
         def divergence(f: DADF5Dataset, size: np.ndarray) -> DADF5Dataset:
             return {
@@ -1431,7 +1410,6 @@ class Result:
         -----
         This function is implemented only for structured grids
         with one constituent and a single phase.
-
         """
         def gradient(f: DADF5Dataset, size: np.ndarray) -> DADF5Dataset:
             return {
@@ -1465,7 +1443,6 @@ class Result:
             {arg (name to which the data is passed in func): label (in DADF5 file)}.
         args : dictionary
             Arguments parsed to func.
-
         """
         if self.N_constituents != 1 or len(datasets) != 1 or not self.structured:
             raise NotImplementedError('not a structured grid with one constituent and a single phase')
@@ -1524,7 +1501,6 @@ class Result:
             {arg (name to which the data is passed in func): label (in DADF5 file)}.
         args : dictionary, optional
             Arguments parsed to func.
-
         """
         args = args if args else {}
 
@@ -1634,7 +1610,6 @@ class Result:
         -------
         data : dict of numpy.ndarray
             Datasets structured by phase/homogenization and according to selected view.
-
         """
         r: Dict[str,Any] = {}
 
@@ -1700,7 +1675,6 @@ class Result:
         -------
         data : dict of numpy.ma.MaskedArray
             Datasets structured by spatial position and according to selected view.
-
         """
         r: Dict[str,Any] = {}
 
@@ -1778,7 +1752,6 @@ class Result:
         -----
         This function is implemented only for structured grids with
         one constituent and a single phase.
-
         """
         if self.N_constituents != 1 or len(self.phases) != 1 or not self.structured:
             raise NotImplementedError('not a structured grid with one constituent and a single phase')
@@ -1921,7 +1894,6 @@ class Result:
         parallel : bool, optional
             Write VTK files in parallel in a separate background process.
             Defaults to True.
-
         """
         if mode.lower()=='cell':
             v = self.geometry0
@@ -2008,7 +1980,6 @@ class Result:
         -----
         This function is implemented only for structured grids with
         one constituent.
-
         """
         def add_attribute(obj,name,data):
             """DREAM.3D requires fixed length string."""
@@ -2135,7 +2106,6 @@ class Result:
         mapping : numpy.ndarray of int, shape (:,:,:), optional
             Indices for regridding. Only applicable for grid
             solver results.
-
         """
         if Path(fname).expanduser().absolute() == self.fname:
             raise PermissionError(f'cannot overwrite "{self.fname}"')
@@ -2233,7 +2203,6 @@ class Result:
         overwrite : bool, optional
             Overwrite any existing setup files.
             Defaults to False.
-
         """
         def export(name: str,
                    obj: Union[h5py.Dataset,h5py.Group],

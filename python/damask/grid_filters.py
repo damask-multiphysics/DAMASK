@@ -9,15 +9,20 @@ the following operations are required for tensorial data:
 
     - D3 = D1.reshape(cells+(-1,),order='F').reshape(cells+(3,3),order='C')
     - D1 = D3.reshape(cells+(-1,),order='C').reshape(-1,9,order='F')
-
 """
 
-from typing import Tuple as _Tuple, Union as _Union
+from typing import NamedTuple as _NamedTuple, Union as _Union
 
 from scipy import spatial as _spatial
 import numpy as _np
 
 from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence
+
+
+class CellsSizeOriginTuple(_NamedTuple):
+    cells: _np.ndarray
+    size: _np.ndarray
+    origin: _np.ndarray
 
 
 def _ks(size: _FloatSequence,
@@ -34,7 +39,6 @@ def _ks(size: _FloatSequence,
         Number of cells.
     first_order : bool, optional
         Correction for first order derivatives, defaults to False.
-
     """
     k_sk = _np.where(_np.arange(cells[0])>cells[0]//2,
                      _np.arange(cells[0])-cells[0],_np.arange(cells[0]))/size[0]
@@ -65,7 +69,6 @@ def curl(size: _FloatSequence,
     -------
     ∇ × f : numpy.ndarray, shape (:,:,:,3) or (:,:,:,3,3)
         Curl of f.
-
     """
     n = _np.prod(f.shape[3:])
     k_s = _ks(size,f.shape[:3],True)
@@ -97,7 +100,6 @@ def divergence(size: _FloatSequence,
     -------
     ∇ · f : numpy.ndarray, shape (:,:,:,1) or (:,:,:,3)
         Divergence of f.
-
     """
     n = _np.prod(f.shape[3:])
     k_s = _ks(size,f.shape[:3],True)
@@ -125,7 +127,6 @@ def gradient(size: _FloatSequence,
     -------
     ∇ f : numpy.ndarray, shape (:,:,:,3) or (:,:,:,3,3)
         Gradient of f.
-
     """
     n = _np.prod(f.shape[3:])
     k_s = _ks(size,f.shape[:3],True)
@@ -156,7 +157,6 @@ def coordinates0_point(cells: _IntSequence,
     -------
     x_p_0 : numpy.ndarray, shape (:,:,:,3)
         Undeformed cell center coordinates.
-
     """
     size_ = _np.array(size,float)
     start = origin         + size_/_np.array(cells,_np.int64)*.5
@@ -184,7 +184,6 @@ def displacement_fluct_point(size: _FloatSequence,
     -------
     u_p_fluct : numpy.ndarray, shape (:,:,:,3)
         Fluctuating part of the cell center displacements.
-
     """
     k_s = _ks(size,F.shape[:3],False)
     k_s_squared = _np.einsum('...l,...l',k_s,k_s)
@@ -215,7 +214,6 @@ def displacement_avg_point(size: _FloatSequence,
     -------
     u_p_avg : numpy.ndarray, shape (:,:,:,3)
         Average part of the cell center displacements.
-
     """
     F_avg = _np.average(F,axis=(0,1,2))
     return _np.einsum('ml,ijkl->ijkm',F_avg - _np.eye(3),coordinates0_point(F.shape[:3],size))
@@ -237,7 +235,6 @@ def displacement_point(size: _FloatSequence,
     -------
     u_p : numpy.ndarray, shape (:,:,:,3)
         Cell center displacements.
-
     """
     return displacement_avg_point(size,F) + displacement_fluct_point(size,F)
 
@@ -261,13 +258,12 @@ def coordinates_point(size: _FloatSequence,
     -------
     x_p : numpy.ndarray, shape (:,:,:,3)
         Cell center coordinates.
-
     """
     return coordinates0_point(F.shape[:3],size,origin) + displacement_point(size,F)
 
 
 def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
-                                       ordered: bool = True) -> _Tuple[_np.ndarray,_np.ndarray,_np.ndarray]:
+                                       ordered: bool = True) -> CellsSizeOriginTuple:
     """
     Return grid 'DNA', i.e. cells, size, and origin from 1D array of point positions.
 
@@ -283,7 +279,6 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
     -------
     cells, size, origin : Three numpy.ndarray, each of shape (3)
         Information to reconstruct grid.
-
     """
     coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]
     mincorner = _np.array(list(map(min,coords)))
@@ -313,7 +308,7 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
                                     coordinates0_point(list(cells),size,origin),atol=atol):
         raise ValueError('input data is not ordered (x fast, z slow)')
 
-    return (cells,size,origin)
+    return CellsSizeOriginTuple(cells,size,origin)
 
 
 def coordinates0_node(cells: _IntSequence,
@@ -335,7 +330,6 @@ def coordinates0_node(cells: _IntSequence,
     -------
     x_n_0 : numpy.ndarray, shape (:,:,:,3)
         Undeformed nodal coordinates.
-
     """
     return _np.stack(_np.meshgrid(_np.linspace(origin[0],size[0]+origin[0],cells[0]+1),
                                   _np.linspace(origin[1],size[1]+origin[1],cells[1]+1),
@@ -359,7 +353,6 @@ def displacement_fluct_node(size: _FloatSequence,
     -------
     u_n_fluct : numpy.ndarray, shape (:,:,:,3)
         Fluctuating part of the nodal displacements.
-
     """
     return point_to_node(displacement_fluct_point(size,F))
 
@@ -380,7 +373,6 @@ def displacement_avg_node(size: _FloatSequence,
     -------
     u_n_avg : numpy.ndarray, shape (:,:,:,3)
         Average part of the nodal displacements.
-
     """
     F_avg = _np.average(F,axis=(0,1,2))
     return _np.einsum('ml,ijkl->ijkm',F_avg - _np.eye(3),coordinates0_node(F.shape[:3],size))
@@ -402,7 +394,6 @@ def displacement_node(size: _FloatSequence,
     -------
     u_n : numpy.ndarray, shape (:,:,:,3)
         Nodal displacements.
-
     """
     return displacement_avg_node(size,F) + displacement_fluct_node(size,F)
 
@@ -426,13 +417,12 @@ def coordinates_node(size: _FloatSequence,
     -------
     x_n : numpy.ndarray, shape (:,:,:,3)
         Nodal coordinates.
-
     """
     return coordinates0_node(F.shape[:3],size,origin) + displacement_node(size,F)
 
 
 def cellsSizeOrigin_coordinates0_node(coordinates0: _np.ndarray,
-                                      ordered: bool = True) -> _Tuple[_np.ndarray,_np.ndarray,_np.ndarray]:
+                                      ordered: bool = True) -> CellsSizeOriginTuple:
     """
     Return grid 'DNA', i.e. cells, size, and origin from 1D array of nodal positions.
 
@@ -448,7 +438,6 @@ def cellsSizeOrigin_coordinates0_node(coordinates0: _np.ndarray,
     -------
     cells, size, origin : Three numpy.ndarray, each of shape (3)
         Information to reconstruct grid.
-
     """
     coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]
     mincorner = _np.array(list(map(min,coords)))
@@ -470,7 +459,7 @@ def cellsSizeOrigin_coordinates0_node(coordinates0: _np.ndarray,
                                     coordinates0_node(list(cells),size,origin),atol=atol):
         raise ValueError('input data is not ordered (x fast, z slow)')
 
-    return (cells,size,origin)
+    return CellsSizeOriginTuple(cells,size,origin)
 
 
 def point_to_node(cell_data: _np.ndarray) -> _np.ndarray:
@@ -486,7 +475,6 @@ def point_to_node(cell_data: _np.ndarray) -> _np.ndarray:
     -------
     node_data : numpy.ndarray, shape (:,:,:,...)
         Data defined on the nodes of a periodic grid.
-
     """
     n = (  cell_data + _np.roll(cell_data,1,(0,1,2))
          + _np.roll(cell_data,1,(0,))  + _np.roll(cell_data,1,(1,))  + _np.roll(cell_data,1,(2,))
@@ -508,7 +496,6 @@ def node_to_point(node_data: _np.ndarray) -> _np.ndarray:
     -------
     cell_data : numpy.ndarray, shape (:,:,:,...)
         Data defined on the cell centers of a periodic grid.
-
     """
     c = (  node_data + _np.roll(node_data,1,(0,1,2))
          + _np.roll(node_data,1,(0,))  + _np.roll(node_data,1,(1,))  + _np.roll(node_data,1,(2,))
@@ -530,7 +517,6 @@ def coordinates0_valid(coordinates0: _np.ndarray) -> bool:
     -------
     valid : bool
         Whether the coordinates form a regular grid.
-
     """
     try:
         cellsSizeOrigin_coordinates0_point(coordinates0,ordered=True)
@@ -569,7 +555,6 @@ def ravel_index(idx: _np.ndarray) -> _np.ndarray:
             [2]],
            [[1],
             [0]]])
-
     """
     cells = idx.shape[:3]
     return (  idx[:,:,:,0]
@@ -607,7 +592,6 @@ def unravel_index(idx: _np.ndarray) -> _np.ndarray:
             [[2, 1, 0]]]])
     >>> coord_idx[1,1,0]
     array([1, 1, 0])
-
     """
     cells = idx.shape
     idx_ = _np.expand_dims(idx,3)
@@ -626,13 +610,12 @@ def ravel(d_unraveled: _np.ndarray,
     d_unraveled : numpy.ndarray, shape (:,:,:,...)
         Unraveled data, three-dimensional along leading dimensions.
     flatten : bool, optional
-        Flatten data, i.e. enforce two-dimensional array
+        Flatten data, i.e. enforce two-dimensional array.
 
     Returns
     -------
     d_raveled : numpy.ndarray, shape (:,...)
         Raveled data, one-dimensional along leading dimension.
-
     """
     d = d_unraveled.reshape((-1,)+d_unraveled.shape[3:],order='F').copy()                           # NumPy > 2.1 has copy arg
     return (d.reshape(d.shape[:1]+(-1,)) if flatten else d)
@@ -647,17 +630,16 @@ def unravel(d_raveled: _np.ndarray,
     Parameters
     ----------
     d_raveled : numpy.ndarray, shape (:,...)
-        Raveled data, one-dimensional along leading dimension
+        Raveled data, one-dimensional along leading dimension.
     cells : sequence of int, len (3)
         Number of cells.
     flatten : bool, optional
-        Flatten data, i.e. enforce four-dimensional array
+        Flatten data, i.e. enforce four-dimensional array.
 
     Returns
     -------
     d_unraveled : numpy.ndarray, shape (:,:,:,...)
         Unraveled data, three-dimensional along leading dimensions.
-
     """
     d = d_raveled.reshape(tuple(cells)+d_raveled.shape[1:],order='F').copy()                        # NumPy > 2.1 has copy arg
     return (d.reshape(d.shape[:3]+(-1,)) if flatten else d)
@@ -684,7 +666,6 @@ def regrid(size: _FloatSequence,
     -------
     idx : numpy.ndarray of int, shape (cells)
         Flat index of closest point on deformed grid A for each point on grid B.
-
     """
     box = _np.dot(_np.average(F,axis=(0,1,2)),size)
     c = coordinates_point(size,F)%box

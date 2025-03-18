@@ -28,7 +28,6 @@ class Table:
             Data. Existing column labels of a pandas.DataFrame will be replaced.
         comments : (iterable of) str, optional
             Additional, human-readable information.
-
         """
         self.comments = [] if comments is None else  \
                         [comments] if isinstance(comments,str) else \
@@ -43,7 +42,6 @@ class Table:
         Return repr(self).
 
         Give short, human-readable summary.
-
         """
         self._relabel('shapes')
         data_repr = self.data.__repr__()
@@ -62,7 +60,6 @@ class Table:
         ----------
         other : Table
             Table to check for equality.
-
         """
         return NotImplemented if not isinstance(other,Table) else \
                self.shapes == other.shapes and self.data.equals(other.data)
@@ -108,7 +105,6 @@ class Table:
            colB
         0     1
         3    10
-
         """
         item_ = (item,slice(None,None,None)) if isinstance(item,(slice,np.ndarray)) else \
                 (np.array(item),slice(None,None,None)) if isinstance(item,list) and np.array(item).dtype == np.bool_ else \
@@ -129,7 +125,6 @@ class Table:
         Return len(self).
 
         Number of rows.
-
         """
         return len(self.data)
 
@@ -139,7 +134,6 @@ class Table:
         Return deepcopy(self).
 
         Create deep copy.
-
         """
         return copy.deepcopy(self)
 
@@ -161,7 +155,6 @@ class Table:
             'uniform' ==> v v v
             'shapes'  ==> 3:v v v
             'linear'  ==> 1_v 2_v 3_v
-
         """
         what = [what] if isinstance(what,str) else what
         labels = []
@@ -191,7 +184,6 @@ class Table:
             'uniform' ==> v v v
             'shapes'  ==> 3:v v v
             'linear'  ==> 1_v 2_v 3_v
-
         """
         self.data.columns = self._label(self.shapes,how)                                            # type: ignore
 
@@ -219,7 +211,6 @@ class Table:
         -------
         mask : numpy.ndarray of bool
             Mask indicating where corresponding table values are close.
-
         """
         return np.isclose( self.data.to_numpy(),
                           other.data.to_numpy(),
@@ -251,7 +242,6 @@ class Table:
         -------
         answer : bool
             Whether corresponding values are close between both tables.
-
         """
         return np.allclose( self.data.to_numpy(),
                            other.data.to_numpy(),
@@ -280,7 +270,6 @@ class Table:
         -------
         loaded : damask.Table
             Table data from file.
-
         """
         with util.open_text(fname) as f:
             f.seek(0)
@@ -342,7 +331,6 @@ class Table:
         -------
         loaded : damask.Table
             Table data from file.
-
         """
         with util.open_text(fname) as f:
             f.seek(0)
@@ -382,7 +370,6 @@ class Table:
         -------
         data : numpy.ndarray
             Array of column data.
-
         """
         data = self.data[label].to_numpy().reshape((-1,)+self.shapes[label])
 
@@ -409,7 +396,6 @@ class Table:
         -------
         updated : damask.Table
             Updated table.
-
         """
         def add_comment(label: str, shape: Tuple[int, ...],info: str) -> List[str]:
             specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=np.int64) > 1 else ""}: {info}'
@@ -458,7 +444,6 @@ class Table:
         -------
         updated : damask.Table
             Updated table.
-
         """
         dup = self.copy()
         dup.data.drop(columns=label,inplace=True)
@@ -475,16 +460,15 @@ class Table:
 
         Parameters
         ----------
-        label_old : (iterable of) str
+        old : (iterable of) str
             Old column labels.
-        label_new : (iterable of) str
+        new : (iterable of) str
             New column labels.
 
         Returns
         -------
         updated : damask.Table
             Updated table.
-
         """
         dup = self.copy()
         columns = dict(zip([old] if isinstance(old,str) else old,
@@ -503,7 +487,7 @@ class Table:
 
         Parameters
         ----------
-        label : str or list
+        labels : str or list
             Column labels for sorting.
         ascending : bool or list, optional
             Set sort order. Defaults to True.
@@ -512,7 +496,6 @@ class Table:
         -------
         updated : damask.Table
             Updated table.
-
         """
         labels_ = [labels] if isinstance(labels,str) else labels.copy()
         for i,l in enumerate(labels_):
@@ -545,7 +528,6 @@ class Table:
         -------
         updated : damask.Table
             Updated table.
-
         """
         if self.shapes != other.shapes or not self.data.columns.equals(other.data.columns):
             raise KeyError('mismatch of shapes or labels or their order')
@@ -571,7 +553,6 @@ class Table:
         -------
         updated : damask.Table
             Updated table.
-
         """
         if set(self.shapes) & set(other.shapes) or self.data.shape[0] != other.data.shape[0]:
             raise KeyError('duplicated keys or row count mismatch')
@@ -595,7 +576,6 @@ class Table:
             Filename or file to write.
         with_labels : bool, optional
             Write column labels. Defaults to True.
-
         """
         labels = []
         if with_labels:
