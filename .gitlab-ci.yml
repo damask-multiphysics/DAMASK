@@ -249,7 +249,7 @@ Marc_Intel:
   tags:
     - bare-metal
   script:
-    - PATH=/opt/venv/bin:${PATH}
+    - source /opt/venv/bin/activate
     - module load $IntelMarc $HDF5Marc $MSC
     - cd PRIVATE/testing
     - pytest -k 'compile and Marc' --basetemp ${TESTROOT}/compile_Marc
@@ -259,7 +259,7 @@ setup_Marc:
   tags:
     - bare-metal
   script:
-    - PATH=/opt/venv/bin:${PATH}
+    - source /opt/venv/bin/activate
     - module load $IntelMarc $HDF5Marc $MSC
     - cd $(mktemp -d)
     - cp ${CI_PROJECT_DIR}/examples/Marc/* .
@@ -286,7 +286,7 @@ open-source_grid_signal_restart:
   tags:
     - bare-metal
   before_script:
-    - PATH=/opt/venv/bin:${PATH}
+    - source /opt/venv/bin/activate
     - module load ${COMPILER_INTEL} ${PETSC_INTEL}
     - cd $(mktemp -d)
     - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
@@ -318,7 +318,7 @@ Marc:
   tags:
     - bare-metal
   script:
-    - PATH=/opt/venv/bin:${PATH}
+    - source /opt/venv/bin/activate
     - cd PRIVATE/testing
     - pytest -k 'not compile and Marc' -m 'not cifail' --damask-root=${TESTROOT} --basetemp ${TESTROOT}/Marc -v
 
@@ -335,7 +335,7 @@ grid_performance:
     - bare-metal
   before_script:
     - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} ${TOKEN} --blocking
-    - PATH=/opt/venv/bin:${PATH}
+    - source /opt/venv/bin/activate
     - source env/DAMASK.sh
     - echo Job start:" $(date)"
   script:
@@ -378,7 +378,7 @@ update_revision:
     - bare-metal
   before_script:
     - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} ${TOKEN}
-    - PATH=/opt/venv/bin:${PATH}
+    - source /opt/venv/bin/activate
     - echo Job start:" $(date)"
   script:
     - cd $(mktemp -d)
