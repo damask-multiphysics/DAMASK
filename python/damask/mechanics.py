@@ -205,7 +205,7 @@ def strain(F: _np.ndarray,
 
 def stress_Cauchy(P: _np.ndarray,
                   F: _np.ndarray) -> _np.ndarray:
-    """
+    r"""
     Calculate the Cauchy stress (true stress).
 
     Resulting tensor is symmetrized as the Cauchy stress needs to be symmetric.
@@ -221,13 +221,21 @@ def stress_Cauchy(P: _np.ndarray,
     -------
     sigma : numpy.ndarray, shape (...,3,3)
         Cauchy stress.
+
+    Notes
+    -----
+    The Cauchy stress is computed as:
+
+    .. math::
+
+        \vb*{\sigma} = \vb{P} \vb{F}^\text{T}/\operatorname{det}(\vb{F})
     """
     return _tensor.symmetric(_np.einsum('...,...ij,...kj',1.0/_np.linalg.det(F),P,F))
 
 
 def stress_second_Piola_Kirchhoff(P: _np.ndarray,
                                   F: _np.ndarray) -> _np.ndarray:
-    """
+    r"""
     Calculate the second Piola-Kirchhoff stress.
 
     Resulting tensor is symmetrized as the second Piola-Kirchhoff stress
@@ -244,6 +252,14 @@ def stress_second_Piola_Kirchhoff(P: _np.ndarray,
     -------
     S : numpy.ndarray, shape (...,3,3)
         Second Piola-Kirchhoff stress.
+
+    Notes
+    -----
+    The second Piola-Kirchhoff stress is computed as:
+
+    .. math::
+
+        \vb{S} = \vb{F}^{-1} \vb{P}
     """
     return _tensor.symmetric(_np.einsum('...ij,...jk',_np.linalg.inv(F),P))
 
