@@ -14,7 +14,7 @@ from functools import reduce as _reduce, partial as _partial
 from pathlib import Path as _Path
 import logging
 from typing import Optional as _Optional, Union as _Union, Iterable as _Iterable, \
-                   Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, NamedTuple as _NamedTuple, \
+                   Literal as _Literal, NamedTuple as _NamedTuple, \
                    Any as _Any, TextIO as _TextIO, Generator as _Generator
 
 import numpy as _np
@@ -145,7 +145,7 @@ def strikeout(msg) -> str:
 
 def run(cmd: str,
         wd: str = './',
-        env: _Optional[_Dict[str, str]] = None,
+        env: _Optional[dict[str, str]] = None,
         timeout: _Optional[int] = None) -> stdioTuple:
     """
     Run a command.
@@ -235,7 +235,7 @@ def execution_stamp(class_name: str,
     return f'damask.{class_name}{_function_name} v{_version} ({time_stamp()})'
 
 
-def natural_sort(key: str) -> _List[_Union[int, str]]:
+def natural_sort(key: str) -> list[_Union[int, str]]:
     """
     Natural sort.
 
@@ -460,10 +460,10 @@ def hybrid_IA(dist: _FloatSequence,
     return _np.repeat(_np.arange(len(dist)),repeats)[_np.random.default_rng(rng_seed).permutation(N_inv_samples)[:N]]
 
 
-def shapeshifter(fro: _Tuple[int, ...],
-                 to: _Tuple[int, ...],
+def shapeshifter(fro: tuple[int, ...],
+                 to: tuple[int, ...],
                  mode: _Literal['left','right'] = 'left',                                           # noqa
-                 keep_ones: bool = False) -> _Tuple[int, ...]:
+                 keep_ones: bool = False) -> tuple[int, ...]:
     """
     Return dimensions that reshape 'fro' to become broadcastable to 'to'.
 
@@ -501,7 +501,7 @@ def shapeshifter(fro: _Tuple[int, ...],
     _fro = [1] if len(fro) == 0 else list(fro)[::-1 if mode=='left' else 1]
     _to  = [1] if len(to)  == 0 else list(to) [::-1 if mode=='left' else 1]
 
-    final_shape: _List[int] = []
+    final_shape: list[int] = []
     index = 0
     for i,item in enumerate(_to):
         if item == _fro[index]:
@@ -517,9 +517,9 @@ def shapeshifter(fro: _Tuple[int, ...],
     if index != len(_fro): raise ValueError(f'shapes cannot be shifted {fro} --> {to}')
     return tuple(final_shape[::-1] if mode == 'left' else final_shape)
 
-def shapeblender(a: _Tuple[int, ...],
-                 b: _Tuple[int, ...],
-                 keep_ones: bool = False) -> _Tuple[int, ...]:
+def shapeblender(a: tuple[int, ...],
+                 b: tuple[int, ...],
+                 keep_ones: bool = False) -> tuple[int, ...]:
     """
     Return a shape that overlaps the rightmost entries of 'a' with the leftmost of 'b'.
 
@@ -748,7 +748,7 @@ def Miller_to_Bravais(*,
 Miller_to_MillerBravais = Miller_to_Bravais
 
 
-def dict_prune(d: _Dict) -> _Dict:
+def dict_prune(d: dict) -> dict:
     """
     Recursively remove empty dictionaries.
 
@@ -772,7 +772,7 @@ def dict_prune(d: _Dict) -> _Dict:
 
     return new
 
-def dict_flatten(d: _Dict) -> _Dict:
+def dict_flatten(d: dict) -> dict:
     """
     Recursively remove keys of single-entry dictionaries.
 
