@@ -1,4 +1,4 @@
-from typing import Optional, Union, Dict, Any, List
+from typing import Optional, Union, Any
 
 from numpy import ma
 
@@ -20,10 +20,10 @@ class LoadcaseGrid(YAML):
     """Load case for grid solver."""
 
     def __init__(self,
-                 config: Optional[Union[str,Dict[str,Any]]] = None,
+                 config: Optional[Union[str,dict[str,Any]]] = None,
                  *,
-                 solver: Optional[Dict[str,str]] = None,
-                 loadstep: Optional[List[Dict[str,Any]]] = None):
+                 solver: Optional[dict[str,str]] = None,
+                 loadstep: Optional[list[dict[str,Any]]] = None):
         """
         New grid solver load case.
 
@@ -38,8 +38,8 @@ class LoadcaseGrid(YAML):
             Load step configuration.
             Defaults to an empty list if 'config' is not given.
         """
-        kwargs: Dict[str,Union[Dict[str,str],List[Dict[str,Any]]]] = {}
-        default: Union[List,Dict]
+        kwargs: dict[str,Union[dict[str,str],list[dict[str,Any]]]] = {}
+        default: Union[list,dict]
         for arg,value,default in [('solver',solver,{}),('loadstep',loadstep,[])]:                   # type: ignore[assignment]
             if value is not None:
                 kwargs[arg] = value

@@ -8,7 +8,7 @@ import functools
 from pathlib import Path
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Optional, Union, Callable, Any, Sequence, Literal, Dict, List, Tuple, NamedTuple
+from typing import Optional, Union, Callable, Any, Sequence, Literal, NamedTuple
 
 import h5py
 import numpy as np
@@ -34,10 +34,10 @@ chunk_size = 1024**2//8                                                         
 prefix_inc = 'increment_'
 
 class MappingsTuple(NamedTuple):
-    at_cell_ph: List[Dict[str, np.ndarray]]
-    in_data_ph: List[Dict[str, np.ndarray]]
-    at_cell_ho: Dict[str, np.ndarray]
-    in_data_ho: Dict[str, np.ndarray]
+    at_cell_ph: list[dict[str, np.ndarray]]
+    in_data_ph: list[dict[str, np.ndarray]]
+    at_cell_ho: dict[str, np.ndarray]
+    in_data_ho: dict[str, np.ndarray]
 
 
 def _read(dataset: h5py._hl.dataset.Dataset) -> np.ndarray:
@@ -47,7 +47,7 @@ def _read(dataset: h5py._hl.dataset.Dataset) -> np.ndarray:
     return np.array(dataset,dtype=dtype)
 
 def _match(requested,
-           existing: h5py._hl.base.KeysViewHDF5) -> List[str]:
+           existing: h5py._hl.base.KeysViewHDF5) -> list[str]:
     """Find matches among two sets of labels."""
     def flatten_list(list_of_lists):
         return [e for e_ in list_of_lists for e in e_]
@@ -137,7 +137,7 @@ class Result:
             self.phase            = f['cell_to/phase']['label'].astype('str')
             self._phases          = sorted(np.unique(self.phase),key=util.natural_sort)
 
-            fields: List[str] = []
+            fields: list[str] = []
             for c in self._phases:
                 fields += f['/'.join([self._increments[0],'phase',c])].keys()
             for m in self._homogenizations:
@@ -542,7 +542,7 @@ class Result:
                             if path in f.keys(): del f[path]
 
 
-    def list_data(self) -> List[str]:
+    def list_data(self) -> list[str]:
         """
         Collect information on all active datasets in the file.
 
@@ -1057,7 +1057,7 @@ class Result:
         def norm(x: DADF5Dataset, ord: Union[int, float, Literal['fro', 'nuc']]) -> DADF5Dataset:
             o = ord
             if len(x['data'].shape) == 2:
-                axis: Union[int, Tuple[int, int]] = 1
+                axis: Union[int, tuple[int, int]] = 1
                 t = 'vector'
                 if o is None: o = 2
             elif len(x['data'].shape) == 3:
@@ -1428,8 +1428,8 @@ class Result:
 
     def _add_generic_grid(self,
                           func: Callable[..., DADF5Dataset],
-                          datasets: Dict[str, str],
-                          args: Dict[str,Any]):
+                          datasets: dict[str, str],
+                          args: dict[str,Any]):
         """
         General function to add data on a regular grid.
 
@@ -1486,8 +1486,8 @@ class Result:
 
     def _add_generic_pointwise(self,
                                func: Callable[..., DADF5Dataset],
-                               datasets: Dict[str, str],
-                               args: Optional[Dict[str, Any]] = None):
+                               datasets: dict[str, str],
+                               args: Optional[dict[str, Any]] = None):
         """
         General function to add pointwise data.
 
@@ -1506,8 +1506,8 @@ class Result:
 
         def job_pointwise(group: str,
                           callback: Callable[..., DADF5Dataset],
-                          datasets: Dict[str, str],
-                          args: Dict[str, str]) -> Union[None, DADF5Dataset]:
+                          datasets: dict[str, str],
+                          args: dict[str, str]) -> Union[None, DADF5Dataset]:
             try:
                 datasets_in = {}
                 with h5py.File(self.fname,'r') as f:
@@ -1588,9 +1588,9 @@ class Result:
 
 
     def get(self,
-            output: Union[str, List[str]] = '*',
+            output: Union[str, list[str]] = '*',
             flatten: bool = True,
-            prune: bool = True) -> Union[None,Dict[str,Any]]:
+            prune: bool = True) -> Union[None,dict[str,Any]]:
         """
         Collect data per phase/homogenization reflecting the group/folder structure in the DADF5 file.
 
@@ -1611,7 +1611,7 @@ class Result:
         data : dict of numpy.ndarray
             Datasets structured by phase/homogenization and according to selected view.
         """
-        r: Dict[str,Any] = {}
+        r: dict[str,Any] = {}
 
         with h5py.File(self.fname,'r') as f:
             for inc in util.show_progress(self._visible['increments']):
@@ -1635,12 +1635,12 @@ class Result:
 
 
     def place(self,
-              output: Union[str, List[str]] = '*',
+              output: Union[str, list[str]] = '*',
               flatten: bool = True,
               prune: bool = True,
               constituents: Optional[IntSequence] = None,
               fill_float: float = np.nan,
-              fill_int: int = 0) -> Optional[Dict[str,Any]]:
+              fill_int: int = 0) -> Optional[dict[str,Any]]:
         """
         Merge data into spatial order that is compatible with the damask.VTK geometry representation.
 
@@ -1676,7 +1676,7 @@ class Result:
         data : dict of numpy.ma.MaskedArray
             Datasets structured by spatial position and according to selected view.
         """
-        r: Dict[str,Any] = {}
+        r: dict[str,Any] = {}
 
         constituents_ = map(int,constituents) if isinstance(constituents,Iterable) else \
                       (range(self.N_constituents) if constituents is None else [constituents])      # type: ignore
@@ -1726,7 +1726,7 @@ class Result:
 
 
     def export_XDMF(self,
-                    output: Union[str, List[str]] = '*',
+                    output: Union[str, list[str]] = '*',
                     target_dir: Union[None, str, Path] = None,
                     absolute_path: bool = False):
         """
@@ -1856,7 +1856,7 @@ class Result:
 
 
     def export_VTK(self,
-                   output: Union[str,List[str]] = '*',
+                   output: Union[str,list[str]] = '*',
                    mode: str = 'cell',
                    constituents: Optional[IntSequence] = None,
                    target_dir: Union[None, str, Path] = None,
@@ -1929,7 +1929,7 @@ class Result:
 
                 for ty in ['phase','homogenization']:
                     for field in self._visible['fields']:
-                        outs: Dict[str, np.ma.core.MaskedArray] = {}
+                        outs: dict[str, np.ma.core.MaskedArray] = {}
                         for label in self._visible[ty+'s']:
                             if field not in f['/'.join([inc,ty,label])].keys(): continue
 
@@ -2088,7 +2088,7 @@ class Result:
 
     def export_DADF5(self,
                      fname,
-                     output: Union[str, List[str]] = '*',
+                     output: Union[str, list[str]] = '*',
                      mapping = None):
         """
         Export visible components into a new DADF5 file.
@@ -2186,7 +2186,7 @@ class Result:
 
 
     def export_simulation_setup(self,
-                     output: Union[str, List[str]] = '*',
+                     output: Union[str, list[str]] = '*',
                      target_dir: Union[None, str, Path] = None,
                      overwrite: bool = False,
                      ):
@@ -2206,7 +2206,7 @@ class Result:
         """
         def export(name: str,
                    obj: Union[h5py.Dataset,h5py.Group],
-                   output: Union[str,List[str]],
+                   output: Union[str,list[str]],
                    cfg_dir: Path,
                    overwrite: bool):
 

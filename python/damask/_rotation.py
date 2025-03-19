@@ -2,7 +2,7 @@ import sys
 import copy
 import re
 import builtins
-from typing import Optional, Union, Sequence, Tuple, Literal, List, TypeVar, NamedTuple
+from typing import Optional, Union, Sequence, Literal, TypeVar, NamedTuple
 
 import numpy as np
 import numpy.typing as npt
@@ -128,7 +128,7 @@ class Rotation:
 
 
     def __getitem__(self: MyType,
-                    item: Union[Tuple[Union[None, int, slice, "builtins.ellipsis"], ...],
+                    item: Union[tuple[Union[None, int, slice, "builtins.ellipsis"], ...],
                                 int, bool, np.bool_, np.ndarray]) -> MyType:
         """
         Return self[item].
@@ -236,7 +236,7 @@ class Rotation:
         return self.quaternion[...,0].size
 
     @property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self) -> tuple[int, ...]:
         return self.quaternion[...,0].shape
 
 
@@ -487,7 +487,7 @@ class Rotation:
 
 
     def append(self: MyType,
-               other: Union[MyType, List[MyType]]) -> MyType:
+               other: Union[MyType, list[MyType]]) -> MyType:
         """
         Extend array along first dimension with other array(s).
 

@@ -1,4 +1,4 @@
-from typing import Optional, Union, Dict, List, Tuple, Literal
+from typing import Optional, Union, Literal
 
 import numpy as np
 
@@ -7,7 +7,7 @@ from . import util
 from . import Rotation
 
 
-_kinematics: Dict[BravaisLattice, Dict[CrystalKinematics, List[np.ndarray]]] = {
+_kinematics: dict[BravaisLattice, dict[CrystalKinematics, list[np.ndarray]]] = {
     'cF': {
         'slip': [np.array([
                    [ 0,+1,-1, +1,+1,+1],
@@ -244,7 +244,7 @@ _kinematics: Dict[BravaisLattice, Dict[CrystalKinematics, List[np.ndarray]]] = {
 }
 
 
-lattice_symmetries: Dict[Optional[BravaisLattice], CrystalFamily] = {
+lattice_symmetries: dict[Optional[BravaisLattice], CrystalFamily] = {
                 'aP': 'triclinic',
 
                 'mP': 'monoclinic',
@@ -265,7 +265,7 @@ lattice_symmetries: Dict[Optional[BravaisLattice], CrystalFamily] = {
                 'cF': 'cubic',
                }
 
-orientation_relationships: Dict[str, Dict[str,List[np.ndarray]]] = {
+orientation_relationships: dict[str, dict[str,list[np.ndarray]]] = {
   'KS': { # https://doi.org/10.1016/j.jallcom.2012.02.004
     'cF-->cI' : [
         np.repeat(np.array([
@@ -800,17 +800,17 @@ class Crystal():
                 self.family == other.family)
 
     @property
-    def parameters(self) -> Optional[Dict]:
+    def parameters(self) -> Optional[dict]:
         """Return lattice parameters a, b, c, alpha, beta, gamma."""
         has_parameters = all([hasattr(self,p) for p in ['a','b','c','alpha','beta','gamma']])
         return dict(a=self.a,b=self.b,c=self.c,
                     alpha=self.alpha,beta=self.beta,gamma=self.gamma) if has_parameters else None
 
     @property
-    def immutable(self) -> Dict[str, float]:
+    def immutable(self) -> dict[str, float]:
         """Return immutable lattice parameters."""
         # ToDo: use pattern matching in Python 3.10
-        _immutable: Dict[CrystalFamily, Dict[str,float]] = {
+        _immutable: dict[CrystalFamily, dict[str,float]] = {
             'cubic': {
                          'b': 1.0,
                          'c': 1.0,
@@ -845,13 +845,13 @@ class Crystal():
 
 
     @property
-    def orientation_relationships(self) -> List[str]:
+    def orientation_relationships(self) -> list[str]:
         """Return labels of orientation relationships."""
         return [k for k,v in orientation_relationships.items() if np.any([m.startswith(str(self.lattice)) for m in v])]
 
 
     @property
-    def standard_triangle(self) -> Union[Dict[str, np.ndarray], None]:
+    def standard_triangle(self) -> Union[dict[str, np.ndarray], None]:
         """
         Corners of the standard triangle.
 
@@ -878,7 +878,7 @@ class Crystal():
         ...                                            [0.,1.,0.]]).T),                      #              blue
         ...    }
         """
-        _basis: Dict[CrystalFamily, Dict[str, np.ndarray]]  = {
+        _basis: dict[CrystalFamily, dict[str, np.ndarray]]  = {
             'cubic':    {'improper':np.array([ [-1.            ,  0.            ,  1. ],
                                                [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
                                                [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
@@ -944,7 +944,7 @@ class Crystal():
 
         https://en.wikipedia.org/wiki/Crystal_system#Crystal_classes
         """
-        _symmetry_operations: Dict[CrystalFamily, List]  = {
+        _symmetry_operations: dict[CrystalFamily, list]  = {
             'cubic':         [
                               [ 1.0,            0.0,            0.0,            0.0            ],
                               [ 0.0,            1.0,            0.0,            0.0            ],
@@ -1058,7 +1058,7 @@ class Crystal():
     @property
     def lattice_points(self) -> np.ndarray:
         """Return lattice points."""
-        _lattice_points: Dict[str, List] = {
+        _lattice_points: dict[str, list] = {
                 'P': [
                      ],
                 'S': [
@@ -1152,7 +1152,7 @@ class Crystal():
 
 
     def kinematics(self,
-                   mode: CrystalKinematics) -> Dict[str, List[np.ndarray]]:
+                   mode: CrystalKinematics) -> dict[str, list[np.ndarray]]:
         """
         Return crystal kinematics systems.
 
@@ -1189,7 +1189,7 @@ class Crystal():
 
 
     def characteristic_shear_twin(self,
-                                  N_twin: Union[List[int], Literal['*']] = '*') -> np.ndarray:
+                                  N_twin: Union[list[int], Literal['*']] = '*') -> np.ndarray:
         """
         Return characteristic shear for twinning.
 
@@ -1229,7 +1229,7 @@ class Crystal():
 
     def relation_operations(self,
                             model: str,
-                            target = None) -> Tuple[BravaisLattice, Rotation]:
+                            target = None) -> tuple[BravaisLattice, Rotation]:
         """
         Crystallographic orientation relationships for phase transformations.
 

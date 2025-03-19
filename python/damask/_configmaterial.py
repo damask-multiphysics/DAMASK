@@ -1,4 +1,4 @@
-from typing import Optional, Union, Sequence, Dict, Any, List
+from typing import Optional, Union, Sequence, Any
 
 import numpy as np
 import h5py
@@ -25,10 +25,10 @@ class ConfigMaterial(YAML):
     """
 
     def __init__(self,
-                 config: Optional[Union[str,Dict[str,Any]]] = None,*,
-                 homogenization: Optional[Dict[str,Dict]] = None,
-                 phase: Optional[Dict[str,Dict]] = None,
-                 material: Optional[List[Dict[str,Any]]] = None):
+                 config: Optional[Union[str,dict[str,Any]]] = None,*,
+                 homogenization: Optional[dict[str,dict]] = None,
+                 phase: Optional[dict[str,dict]] = None,
+                 material: Optional[list[dict[str,Any]]] = None):
         """
         New material configuration.
 
@@ -46,7 +46,7 @@ class ConfigMaterial(YAML):
             Materialpoint configuration.
             Defaults to an empty list if 'config' is not given.
         """
-        kwargs: Dict[str,Union[Dict[str,Dict],List[Dict[str,Any]]]] = {}
+        kwargs: dict[str,Union[dict[str,dict],list[dict[str,Any]]]] = {}
         for arg,value in zip(['homogenization','phase','material'],[homogenization,phase,material]):
             if value is None and config is None:
                 kwargs[arg] = [] if arg == 'material' else {}
@@ -358,7 +358,7 @@ class ConfigMaterial(YAML):
 
 
     def material_rename_phase(self,
-                              mapping: Dict[str, str],
+                              mapping: dict[str, str],
                               ID: Optional[Sequence[int]] = None,
                               constituent: Optional[Sequence[int]] = None) -> 'ConfigMaterial':
         """
@@ -391,7 +391,7 @@ class ConfigMaterial(YAML):
 
 
     def material_rename_homogenization(self,
-                                       mapping: Dict[str, str],
+                                       mapping: dict[str, str],
                                        ID: Optional[Sequence[int]] = None) -> 'ConfigMaterial':
         """
         Change homogenization name in material.
