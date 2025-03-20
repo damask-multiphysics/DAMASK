@@ -203,12 +203,12 @@ unittest_oneAPI_PERFORMANCE:
 .compile_grid:
   extends: .compile
   script:
-    - python -m pytest -k 'compile and grid'
+    - python -m pytest -v -k 'compile and grid'
 
 .compile_mesh:
   extends: .compile
   script:
-    - python -m pytest -k 'compile and mesh'
+    - python -m pytest -v -k 'compile and mesh'
 
 grid_GCC:
   extends: .compile_grid
@@ -233,7 +233,7 @@ grid_oneAPI:
     # https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/Floating-point-exception-in-dgeev/td-p/1665868
     - sed -i '/set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0/d' ../../cmake/Compiler-IntelLLVM.cmake
     - sed -i 's/FP_TRAP_ON/FP_TRAP_OFF/g' ../../src/parallelization.f90
-    - python -m pytest -k 'compile and grid'
+    - python -m pytest -v -k 'compile and grid'
 
 mesh_oneAPI:
   extends: .compile
@@ -242,7 +242,7 @@ mesh_oneAPI:
     # https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/Floating-point-exception-in-dgeev/td-p/1665868
     - sed -i '/set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0/d' ../../cmake/Compiler-IntelLLVM.cmake
     - sed -i 's/FP_TRAP_ON/FP_TRAP_OFF/g' ../../src/parallelization.f90
-    - python -m pytest -k 'compile and mesh'
+    - python -m pytest -v -k 'compile and mesh'
 
 Marc_Intel:
   stage: compile
@@ -269,19 +269,20 @@ setup_Marc:
 
 
 ###################################################################################################
-open-source_grid_GCC:
+open-source_GCC:
   stage: fortran
   tags:
     - matesting2-container-runner
   image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
   before_script:
-    - cmake -DDAMASK_SOLVER=GRID && make -j2 all install
+    - cmake -DDAMASK_SOLVER=grid -B build/grid && cmake --build build/grid --parallel --target install
+    - cmake -DDAMASK_SOLVER=mesh -B build/grid && cmake --build build/grid --parallel --target install
     - source env/DAMASK.sh
   script:
     - cd PRIVATE/testing
-    - pytest -k 'grid and not compile and not (signal or restart)'
+    - pytest -v -k 'not compile and not (signal or restart) and not Marc'
 
-open-source_grid_signal_restart:
+open-source_signal_restart_GCC:
   stage: fortran
   tags:
     - bare-metal
@@ -297,21 +298,9 @@ open-source_grid_signal_restart:
     - echo Job start:" $(date)"
   script:
     - cd PRIVATE/testing
-    - pytest -k 'grid and not compile and (signal or restart)' -m 'not cifail' --basetemp ${TESTROOT}/open-source -v
+    - pytest -v -k 'signal or restart' -m 'not cifail' --basetemp ${TESTROOT}/open-source -v
   after_script:
     - echo Job end:" $(date)"
-
-open-source_mesh_GCC:
-  tags:
-    - matesting2-container-runner
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
-  stage: fortran
-  before_script:
-    - make mesh
-    - source env/DAMASK.sh
-  script:
-    - cd PRIVATE/testing
-    - pytest -k 'mesh and not compile'
 
 Marc:
   stage: fortran
