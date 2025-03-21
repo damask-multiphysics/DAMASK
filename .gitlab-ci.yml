@@ -144,6 +144,7 @@ mypy:
     - matesting2-container-runner
   script:
     - source env/DAMASK.sh
+    - export OPENBLAS_NUM_THREADS=1
     - ./bin/DAMASK_test
     - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \;
 
@@ -205,6 +206,7 @@ unittest_oneAPI_PERFORMANCE:
   before_script:
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
     - source env/DAMASK.sh
+    - export OPENBLAS_NUM_THREADS=1
     - cd PRIVATE/testing
 
 .compile_grid:
@@ -284,6 +286,7 @@ open-source_grid_GCC:
   before_script:
     - cmake -DDAMASK_SOLVER=GRID && make -j2 all install
     - source env/DAMASK.sh
+    - export OPENBLAS_NUM_THREADS=1
   script:
     - cd PRIVATE/testing
     - pytest -k 'grid and not compile and not (signal or restart)'
@@ -316,6 +319,7 @@ open-source_mesh_GCC:
   before_script:
     - make mesh
     - source env/DAMASK.sh
+    - export OPENBLAS_NUM_THREADS=1
   script:
     - cd PRIVATE/testing
     - pytest -k 'mesh and not compile'
