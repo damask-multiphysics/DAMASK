@@ -28,6 +28,8 @@ def deformation_Cauchy_Green_left(F: _np.ndarray) -> _np.ndarray:
 
     Notes
     -----
+    The left Cauchy-Green deformation tensor is defined as:
+
     .. math::
 
        \vb{B} = \vb{F} \vb{F}^\text{T}
@@ -51,6 +53,8 @@ def deformation_Cauchy_Green_right(F: _np.ndarray) -> _np.ndarray:
 
     Notes
     -----
+    The right Cauchy-Green deformation tensor is defined as:
+
     .. math::
 
        \vb{C} = \vb{F}^\text{T} \vb{F}
@@ -127,6 +131,11 @@ def maximum_shear(T_sym: _np.ndarray) -> _np.ndarray:
     -------
     gamma_max : numpy.ndarray, shape (...)
         Maximum shear of T_sym.
+
+    Notes
+    -----
+    The maximum shear component is half of the difference
+    between the maximum and minium eigenvalue.
     """
     w = _tensor.eigenvalues(T_sym)
     return (w[...,0] - w[...,2])*0.5
@@ -188,8 +197,21 @@ def strain(F: _np.ndarray,
 
     .. math::
 
-        \vb*{\epsilon}_V^{(m)} = \frac{1}{2m} (\vb{V}^{2m} - \vb{I}) \\\\
-        \vb*{\epsilon}_U^{(m)} = \frac{1}{2m} (\vb{U}^{2m} - \vb{I})
+        \vb*{\epsilon}_V^{(m)} = \begin{cases}
+        \ln (\vb{V}) \text{ if }m = 0\\
+        \frac{1}{2m} (\vb{V}^{2m} - \vb{I}) \text{ else}
+        \end{cases} \\\\
+
+        \vb*{\epsilon}_U^{(m)} = \begin{cases}
+        \ln (\vb{U}) \text{ if }m = 0\\
+        \frac{1}{2m} (\vb{U}^{2m} - \vb{I}) \text{ else}
+        \end{cases}
+
+    The presence of rotational parts in the elastic and plastic deformation
+    gradient calls for the use of
+    material/Lagragian strain measures (based on 'U') for plastic strains and
+    spatial/Eulerian strain measures (based on 'V') for elastic strains
+    when calculating averages.
 
     References
     ----------
@@ -224,7 +246,7 @@ def stress_Cauchy(P: _np.ndarray,
 
     Notes
     -----
-    The Cauchy stress is computed as:
+    The Cauchy stress is defined as:
 
     .. math::
 
@@ -255,11 +277,15 @@ def stress_second_Piola_Kirchhoff(P: _np.ndarray,
 
     Notes
     -----
-    The second Piola-Kirchhoff stress is computed as:
+    The second Piola-Kirchhoff stress is defined as:
 
     .. math::
 
-        \vb{S} = \vb{F}^{-1} \vb{P}
+        \vb{S} = \left(\vb{F}^{-1} \vb{P}\right)_\text{sym}
+
+    which is the definition in nonlinear continuum mechanics.
+    As such, no intermediate configuration, for instance that reached
+    by :math:`\vb{F}_\text{p}`, is taken into account.
     """
     return _tensor.symmetric(_np.einsum('...ij,...jk',_np.linalg.inv(F),P))
 

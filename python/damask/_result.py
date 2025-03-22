@@ -647,6 +647,10 @@ class Result:
         ----------
         x : str
             Name of scalar, vector, or tensor dataset to take absolute value of.
+
+        Notes
+        -----
+        For details refer to ``numpy.abs``.
         """
         def absolute(x: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -752,8 +756,11 @@ class Result:
         F : str, optional
             Name of the dataset containing the deformation gradient.
             Defaults to 'F'.
-        """
 
+        Notes
+        -----
+        For details refer to :func:`damask.mechanics.stress_Cauchy`.
+        """
         def stress_Cauchy(P: DADF5Dataset, F: DADF5Dataset) -> DADF5Dataset:
             return {
                     'data':  mechanics.stress_Cauchy(P['data'],F['data']),
@@ -779,6 +786,10 @@ class Result:
         T : str
             Name of tensor dataset.
 
+        Notes
+        -----
+        For details refer to ``numpy.linalg.det``.
+
         Examples
         --------
         Add the determinant of plastic deformation gradient 'F_p':
@@ -788,7 +799,6 @@ class Result:
         >>> r.add_determinant('F_p')
         [...]
         """
-
         def determinant(T: DADF5Dataset) -> DADF5Dataset:
             return {
                     'data':  np.linalg.det(T['data']),
@@ -812,6 +822,10 @@ class Result:
         T : str
             Name of tensor dataset.
 
+        Notes
+        -----
+        For details refer to :func:`damask.tensor.deviatoric`.
+
         Examples
         --------
         Add the deviatoric part of Cauchy stress 'sigma':
@@ -821,7 +835,6 @@ class Result:
         >>> r.add_deviator('sigma')
         [...]
         """
-
         def deviator(T: DADF5Dataset) -> DADF5Dataset:
             return {
                     'data':  tensor.deviatoric(T['data']),
@@ -849,6 +862,10 @@ class Result:
         eigenvalue : {'max', 'mid', 'min'}, optional
             Eigenvalue. Defaults to 'max'.
 
+        Notes
+        -----
+        For details refer to :func:`damask.tensor.eigenvalues`.
+
         Examples
         --------
         Add the minimum eigenvalue of Cauchy stress 'sigma':
@@ -858,7 +875,6 @@ class Result:
         >>> r.add_eigenvalue('sigma','min')
         [...]
         """
-
         def eigenval(T_sym: DADF5Dataset, eigenvalue: Literal['max', 'mid', 'min']) -> DADF5Dataset:
             if   eigenvalue == 'max':
                 label,p = 'maximum',2
@@ -895,8 +911,11 @@ class Result:
         eigenvalue : {'max', 'mid', 'min'}, optional
             Eigenvalue to which the eigenvector corresponds.
             Defaults to 'max'.
-        """
 
+        Notes
+        -----
+        For details refer to :func:`damask.tensor.eigenvectors`.
+        """
         def eigenvector(T_sym: DADF5Dataset, eigenvalue: Literal['max', 'mid', 'min']) -> DADF5Dataset:
             if   eigenvalue == 'max':
                 label,p = 'maximum',2
@@ -935,16 +954,19 @@ class Result:
             Name of the dataset containing the crystallographic orientation as quaternions.
             Defaults to 'O'.
 
+        Notes
+        -----
+        For details refer to :func:`damask.Orientation.IPF_color`.
+
         Examples
         --------
-        Add the IPF color along [0,1,1] for orientation 'O':
+        Add the IPF color along x-direction for orientation 'O':
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_IPF_color(l = [0,1,1], q = 'O')
+        >>> r.add_IPF_color(l = [1,0,0], q = 'O')
         [...]
         """
-
         def IPF_color(l: FloatSequence, q: DADF5Dataset) -> DADF5Dataset:
             m = util.scale_to_coprime(np.array(l))
             lattice: BravaisLattice = q['meta']['lattice']                                          # type: ignore[assignment]
@@ -972,6 +994,10 @@ class Result:
         ----------
         T_sym : str
             Name of symmetric tensor dataset.
+
+        Notes
+        -----
+        For details refer to :func:`damask.mechanics.maximum_shear`.
         """
         def maximum_shear(T_sym: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -1001,6 +1027,11 @@ class Result:
             Kind of the von Mises equivalent. Defaults to None, in which case
             it is selected based on the unit of the dataset ('1' -> strain, 'Pa' -> stress).
 
+        Notes
+        -----
+        For details refer to :func:`damask.mechanics.equivalent_stress_Mises` and
+        :func:`damask.mechanics.equivalent_strain_Mises`.
+
         Examples
         --------
         Add the Mises equivalent of the Cauchy stress 'sigma':
@@ -1028,8 +1059,8 @@ class Result:
                 raise ValueError(f'invalid von Mises kind "{kind}"')
 
             return {
-                    'data':  (mechanics.equivalent_strain_Mises if k=='strain' else \
-                              mechanics.equivalent_stress_Mises)(T_sym['data']),
+                    'data':  mechanics._equivalent_Mises(T_sym['data'],
+                                                        2./3. if k == 'strain' else 3./2.),
                     'label': f"{T_sym['label']}_vM",
                     'meta':  {
                               'unit':        T_sym['meta']['unit'],
@@ -1052,7 +1083,11 @@ class Result:
         x : str
             Name of vector or tensor dataset.
         ord : {non-zero int, inf, -inf, 'fro', 'nuc'}, optional
-            Order of the norm. inf means NumPy's inf object. For details refer to numpy.linalg.norm.
+            Order of the norm. inf means NumPy's inf object.
+
+        Notes
+        -----
+        For details refer to numpy.linalg.norm.
         """
         def norm(x: DADF5Dataset, ord: Union[int, float, Literal['fro', 'nuc']]) -> DADF5Dataset:
             o = ord
@@ -1095,11 +1130,7 @@ class Result:
 
         Notes
         -----
-        The definition of the second Piola-Kirchhoff stress
-        :math:`\vb{S} = \left(\vb{F}^{-1} \vb{P}\right)_\text{sym}`
-        follows the standard definition in nonlinear continuum mechanics.
-        As such, no intermediate configuration, for instance that reached by :math:`\vb{F}_\text{p}`,
-        is taken into account.
+        For details refer to :func:`damask.mechanics.stress_second_Piola_Kirchhoff`.
         """
         def stress_second_Piola_Kirchhoff(P: DADF5Dataset, F: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -1141,6 +1172,10 @@ class Result:
         normalize : bool, optional
             Normalize output vector.
             Defaults to True.
+
+        Notes
+        -----
+        For details refer to :func:`damask.Orientation.to_frame`.
         """
         def pole(q: DADF5Dataset,
                  uvw: IntSequence, hkl: IntSequence,
@@ -1180,6 +1215,10 @@ class Result:
         F : str
             Name of deformation gradient dataset.
 
+        Notes
+        -----
+        For details refer to :func:`damask.mechanics.rotation`.
+
         Examples
         --------
         Add the rotational part of deformation gradient 'F':
@@ -1211,6 +1250,10 @@ class Result:
         ----------
         T : str
             Name of tensor dataset.
+
+        Notes
+        -----
+        For details refer to :func:`damask.tensor.spherical`.
 
         Examples
         --------
@@ -1257,28 +1300,7 @@ class Result:
 
         Notes
         -----
-        The presence of rotational parts in the elastic and plastic deformation gradient
-        calls for the use of
-        material/Lagragian strain measures (based on 'U') for plastic strains and
-        spatial/Eulerian strain measures (based on 'V') for elastic strains
-        when calculating averages.
-
-        The strain is defined as:
-
-        .. math::
-
-            m = 0 \\\\
-            \vb*{\epsilon}_V^{(0)} = \ln (\vb{V}) \\\\
-            \vb*{\epsilon}_U^{(0)} = \ln (\vb{U}) \\\\
-
-            m \neq 0 \\\\
-            \vb*{\epsilon}_V^{(m)} = \frac{1}{2m} (\vb{V}^{2m} - \vb{I}) \\\\
-            \vb*{\epsilon}_U^{(m)} = \frac{1}{2m} (\vb{U}^{2m} - \vb{I})
-
-        References
-        ----------
-        | https://en.wikipedia.org/wiki/Finite_strain_theory
-        | https://de.wikipedia.org/wiki/Verzerrungstensor
+        For details refer to :func:`damask.mechanics.strain`.
 
         Examples
         --------
@@ -1318,6 +1340,11 @@ class Result:
         """
         Add stretch tensor of a deformation gradient.
 
+        Notes
+        -----
+        For details refer to :func:`damask.mechanics.stretch_left` and
+        :func:`damask.mechanics.stretch_right`.
+
         Parameters
         ----------
         F : str, optional
@@ -1328,7 +1355,7 @@ class Result:
         """
         def stretch_tensor(F: DADF5Dataset, t: str) -> DADF5Dataset:
             return {
-                    'data':  (mechanics.stretch_left if t.upper() == 'V' else mechanics.stretch_right)(F['data']),
+                    'data':  mechanics._polar_decomposition(F['data'],t)[0],
                     'label': f"{t}({F['label']})",
                     'meta':  {
                               'unit':        F['meta']['unit'],
@@ -1352,6 +1379,8 @@ class Result:
 
         Notes
         -----
+        For details refer to :func:`damask.grid_filters.curl`.
+
         This function is implemented only for structured grids
         with one constituent and a single phase.
         """
@@ -1380,6 +1409,8 @@ class Result:
 
         Notes
         -----
+        For details refer to :func: `damask.grid_filters.divergence`.
+
         This function is implemented only for structured grids
         with one constituent and a single phase.
         """
@@ -1408,6 +1439,8 @@ class Result:
 
         Notes
         -----
+        For details refer to :func:`damask.grid_filters.gradient`.
+
         This function is implemented only for structured grids
         with one constituent and a single phase.
         """
