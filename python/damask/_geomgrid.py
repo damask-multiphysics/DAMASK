@@ -2,7 +2,7 @@ import os
 import copy
 import multiprocessing as mp
 from functools import partial
-from typing import Optional, Union, Sequence, Dict
+from typing import Optional, Union, Sequence
 from pathlib import Path
 
 import numpy as np
@@ -40,7 +40,7 @@ class GeomGrid:
                  material: np.ndarray,
                  size: FloatSequence,
                  origin: FloatSequence = np.zeros(3),
-                 initial_conditions: Optional[Dict[str,np.ndarray]] = None,
+                 initial_conditions: Optional[dict[str,np.ndarray]] = None,
                  comments: Union[None, str, Sequence[str]] = None):
         """
         New geometry definition for grid solvers.
@@ -163,7 +163,7 @@ class GeomGrid:
         self._origin = np.array(origin,np.float64)
 
     @property
-    def initial_conditions(self) -> Dict[str,np.ndarray]:
+    def initial_conditions(self) -> dict[str,np.ndarray]:
         """Fields of initial conditions."""
         self._ic = dict(zip(self._ic.keys(),                                                        # type: ignore[has-type]
                         [v if isinstance(v,np.ndarray) else
@@ -172,7 +172,7 @@ class GeomGrid:
 
     @initial_conditions.setter
     def initial_conditions(self,
-                           ic: Dict[str,np.ndarray]):
+                           ic: dict[str,np.ndarray]):
         if not isinstance(ic,dict):
             raise TypeError('initial conditions is not a dictionary')
 
