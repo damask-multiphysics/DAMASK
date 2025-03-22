@@ -49,16 +49,12 @@ def _read_dt(dataset: h5py._hl.dataset.Dataset) -> np.dtype:
     """Only read the metadata of an item without loading the full array."""
     return np.dtype(dataset.dtype, metadata=dict(dataset.attrs.items()))
 
-def get_common_metadata(dtypes: List[np.dtype]) -> np.dtype:
+def _get_common_metadata(dtypes: List[np.dtype]) -> np.dtype:
     metadata_list = [dtype.metadata for dtype in dtypes if dtype.metadata]
-    common_keys = set(metadata_list[0].keys())
-    for meta in metadata_list[1:]:
-        common_keys.intersection_update(meta.keys())
     common_metadata = {}
-    for key in common_keys:
+    for key in set.intersection(*map(set, metadata_list)):
         value = metadata_list[0][key]
-        if all(np.array_equal(meta[key], value) if isinstance(meta[key], np.ndarray) else meta[key] == value
-               for meta in metadata_list):
+        if all(np.array_equal(meta[key], value) for meta in metadata_list):
             common_metadata[key] = value
     return np.dtype(dtypes[0].base.type, metadata=common_metadata)
 
@@ -79,7 +75,7 @@ def _match(requested,
     return sorted(set(flatten_list([fnmatch.filter(existing,r) for r in requested_])),
                   key=util.natural_sort)
 
-def _empty_like(dataset_shape: Tuple[int],
+def _empty_like(dataset_shape: tuple[int],
                 dtype: np.dtype,
                 N_materialpoints: int,
                 fill_float: float,
@@ -88,6 +84,7 @@ def _empty_like(dataset_shape: Tuple[int],
     return ma.array(np.empty((N_materialpoints,) + dataset_shape[1:], dtype=dtype),
                     fill_value=fill_float if np.issubdtype(dtype, np.floating) else fill_int,
                     mask=True)
+
 
 class Result:
     r"""
@@ -1743,7 +1740,7 @@ class Result:
                         for field in _match(self._visible['fields'], f['/'.join([inc, ty, label])].keys()):
                             for out in _match(output, f['/'.join([inc, ty, label, field])].keys()):
                                 dtypes_by_out.setdefault(out, []).append(_read_dt(f['/'.join([inc, ty, label, field, out])]))
-                    dtype_by_out = {out: get_common_metadata(dtypes) for out, dtypes in dtypes_by_out.items()}
+                    dtype_by_out = {out: _get_common_metadata(dtypes) for out, dtypes in dtypes_by_out.items()}
 
                     for label in self._visible[ty+'s']:
                         for field in _match(self._visible['fields'],f['/'.join([inc,ty,label])].keys()):
@@ -1988,7 +1985,7 @@ class Result:
                         for field in _match(self._visible['fields'], f['/'.join([inc, ty, label])].keys()):
                             for out in _match(output, f['/'.join([inc, ty, label, field])].keys()):
                                 dtypes_by_out.setdefault(out, []).append(_read_dt(f['/'.join([inc, ty, label, field, out])]))
-                    dtype_by_out = {out: get_common_metadata(dtypes) for out, dtypes in dtypes_by_out.items()}
+                    dtype_by_out = {out: _get_common_metadata(dtypes) for out, dtypes in dtypes_by_out.items()}
 
                     for field in self._visible['fields']:
                         outs: Dict[str, np.ma.core.MaskedArray] = {}
