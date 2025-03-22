@@ -93,7 +93,7 @@ subroutine VTI_readDataset_raw(base64Str,dataType,headerType,compressed, &
     if (.not. inFile) then
       if (index(fileContent(startPos:endPos),'<VTKFile',kind=pI64) /= 0_pI64) then
         inFile = .true.
-        if (.not. fileFormatOk(fileContent(startPos:endPos))) call IO_error(error_ID = 844, ext_msg='file format')
+        call checkFileFormat(fileContent(startPos:endPos))
         headerType = merge('UInt64','UInt32',getXMLValue(fileContent(startPos:endPos),'header_type')=='UInt64')
         compressed  = getXMLValue(fileContent(startPos:endPos),'compressor') == 'vtkZLibDataCompressor'
       end if
@@ -109,7 +109,7 @@ subroutine VTI_readDataset_raw(base64Str,dataType,headerType,compressed, &
                  getXMLValue(fileContent(startPos:endPos),'Name') == label ) then
 
               if (getXMLValue(fileContent(startPos:endPos),'format') /= 'binary') &
-                call IO_error(error_ID = 844, ext_msg='format ('//label//')')
+                call IO_error(error_ID = 844, ext_msg='"'//label//'" not in binary format')
               dataType = getXMLValue(fileContent(startPos:endPos),'type')
 
               startPos = endPos + 2_pI64
@@ -168,7 +168,7 @@ subroutine VTI_readCellsSizeOrigin(cells,geomSize,origin, &
     if (.not. inFile) then
       if (index(fileContent(startPos:endPos),'<VTKFile',kind=pI64) /= 0_pI64) then
         inFile = .true.
-        if (.not. fileFormatOk(fileContent(startPos:endPos))) call IO_error(error_ID = 844, ext_msg='file format')
+        call checkFileFormat(fileContent(startPos:endPos))
         headerType = merge('UInt64','UInt32',getXMLValue(fileContent(startPos:endPos),'header_type')=='UInt64')
         compressed  = getXMLValue(fileContent(startPos:endPos),'compressor') == 'vtkZLibDataCompressor'
       end if
@@ -186,8 +186,8 @@ subroutine VTI_readCellsSizeOrigin(cells,geomSize,origin, &
 
   end do outer
 
-  if (any(geomSize<=0)) call IO_error(error_ID = 844, ext_msg='size')
-  if (any(cells<1))     call IO_error(error_ID = 844, ext_msg='cells')
+  if (any(geomSize<=0)) call IO_error(error_ID = 844, ext_msg='one or more grid.size <= 0')
+  if (any(cells<1))     call IO_error(error_ID = 844, ext_msg='one or more grid.cells < 1')
 
 end subroutine VTI_readCellsSizeOrigin
 
@@ -212,7 +212,7 @@ subroutine cellsSizeOrigin(c,s,o,header)
 
   call tokenize(getXMLValue(header,'WholeExtent'),' ',temp)
   if (any([(IO_strAsInt(temp(i)),i=1,5,2)] /= 0)) &
-    call IO_error(error_ID = 844, ext_msg = 'coordinate start')
+    call IO_error(error_ID = 844, ext_msg = 'coordinate start not 0')
   c = [(IO_strAsInt(temp(i)),i=2,6,2)]
 
   call tokenize(getXMLValue(header,'Spacing'),' ',temp)
@@ -427,17 +427,25 @@ end function getXMLValue
 !--------------------------------------------------------------------------------------------------
 !> @brief Check for supported file format variants.
 !--------------------------------------------------------------------------------------------------
-pure function fileFormatOk(line)
+subroutine checkFileFormat(line)
 
   character(len=*),intent(in) :: line
-  logical :: fileFormatOk
+
+  character(len=:), allocatable :: val
 
 
-  fileFormatOk = getXMLValue(line,'type')       == 'ImageData' .and. &
-                 getXMLValue(line,'byte_order') == 'LittleEndian' .and. &
-                 getXMLValue(line,'compressor') /= 'vtkLZ4DataCompressor' .and. &
-                 getXMLValue(line,'compressor') /= 'vtkLZMADataCompressor'
+  val = getXMLValue(line,'type')
+  if (val /= 'ImageData') &
+    call IO_error(844, ext_msg='type ("'//val//'") is not "ImageData"')
 
-end function fileFormatOk
+  val = getXMLValue(line,'byte_order')
+  if (val /= 'LittleEndian') &
+    call IO_error(844, ext_msg='byte_order ("'//val//'") is not "LittleEndian"')
+
+  val = getXMLValue(line,'compressor')
+  if (val /= '' .and. val /= 'vtkZLibDataCompressor') &
+    call IO_error(844, ext_msg='compressor ("'//val//'") is not "vtkZLibDataCompressor"')
+
+end subroutine checkFileFormat
 
 end module VTI
