@@ -121,8 +121,10 @@ doctest:
     - export DAMASK_ROOT=$(pwd)
     - PYTHONPATH=${DAMASK_ROOT}/python:$PYTHONPATH
     - cd python
-    - cp tests/resources/doctest/small.txt .
-    - python3 -m pytest -v --doctest-modules -k 'not result and not orientation and not (geomgrid and neper)' damask
+    - cp tests/resources/doctest/* .
+    - echo '#!/usr/bin/env bash' > /bin/neper
+    - chmod +x /bin/neper
+    - python3 -m pytest -v --doctest-modules -k 'not result and not orientation' damask
 
 mypy:
   extends: .python_default
