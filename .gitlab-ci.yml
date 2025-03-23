@@ -44,6 +44,13 @@ variables:
 
 
 ###################################################################################################
+# https://docs.gitlab.com/ci/yaml/workflow
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
 
 create_testroot:
   stage: prepare
@@ -137,6 +144,7 @@ mypy:
     - matesting2-container-runner
   script:
     - source env/DAMASK.sh
+    - export OPENBLAS_NUM_THREADS=1
     - ./bin/DAMASK_test
     - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \;
 
@@ -198,6 +206,7 @@ unittest_oneAPI_PERFORMANCE:
   before_script:
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
     - source env/DAMASK.sh
+    - export OPENBLAS_NUM_THREADS=1
     - cd PRIVATE/testing
 
 .compile_grid:
@@ -278,6 +287,7 @@ open-source_GCC:
     - cmake -DDAMASK_SOLVER=grid -B build/grid && cmake --build build/grid --parallel --target install
     - cmake -DDAMASK_SOLVER=mesh -B build/grid && cmake --build build/grid --parallel --target install
     - source env/DAMASK.sh
+    - export OPENBLAS_NUM_THREADS=1
   script:
     - cd PRIVATE/testing
     - pytest -v -k 'not compile and not (signal or restart) and not Marc'
