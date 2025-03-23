@@ -38,6 +38,12 @@ def deformation_Cauchy_Green_left(F: _np.ndarray) -> _np.ndarray:
     .. math::
 
        \vb{B} = \vb{F} \vb{F}^\text{T}
+
+    References
+    ----------
+    J. Bonet and R. D. Wood, Nonlinear Continuum Mechanics for Finite Element Analysis
+    Cambridge University Press, 2008
+    https://doi.org/10.1017/CBO9780511755446
     """
     return _np.matmul(F,_tensor.transpose(F))
 
@@ -68,6 +74,13 @@ def deformation_Cauchy_Green_right(F: _np.ndarray) -> _np.ndarray:
     .. math::
 
        \vb{C} = \vb{F}^\text{T} \vb{F}
+
+    References
+    ----------
+    J. Bonet and R. D. Wood, Nonlinear Continuum Mechanics for Finite Element Analysis
+    Cambridge University Press, 2008
+    https://doi.org/10.1017/CBO9780511755446
+
     """
     return _np.matmul(_tensor.transpose(F),F)
 
@@ -282,6 +295,12 @@ def stress_Cauchy(P: _np.ndarray,
     .. math::
 
         \vb*{\sigma} = \vb{P} \vb{F}^\text{T}/\operatorname{det}(\vb{F})
+
+    References
+    ----------
+    J. Bonet and R. D. Wood, Nonlinear Continuum Mechanics for Finite Element Analysis
+    Cambridge University Press, 2008
+    https://doi.org/10.1017/CBO9780511755446
     """
     return _tensor.symmetric(_np.einsum('...,...ij,...kj',1.0/_np.linalg.det(F),P,F))
 
@@ -321,6 +340,12 @@ def stress_second_Piola_Kirchhoff(P: _np.ndarray,
     which is the definition in nonlinear continuum mechanics.
     As such, no intermediate configuration, for instance that reached
     by :math:`\vb{F}_\text{p}`, is taken into account.
+
+    References
+    ----------
+    J. Bonet and R. D. Wood, Nonlinear Continuum Mechanics for Finite Element Analysis
+    Cambridge University Press, 2008
+    https://doi.org/10.1017/CBO9780511755446
     """
     return _tensor.symmetric(_np.einsum('...ij,...jk',_np.linalg.inv(F),P))
 
