@@ -42,9 +42,21 @@ class MappingsTuple(NamedTuple):
 
 def _read(dataset: h5py._hl.dataset.Dataset) -> np.ndarray:
     """Read a dataset and its metadata into a numpy.ndarray."""
-    metadata = {k:v for k,v in dataset.attrs.items()}
-    dtype = np.dtype(dataset.dtype,metadata=metadata)                                               # type: ignore
-    return np.array(dataset,dtype=dtype)
+    dtype = np.dtype(dataset.dtype, metadata=dict(dataset.attrs.items()))                           # type: ignore
+    return np.array(dataset, dtype=dtype)
+
+def _read_dt(dataset: h5py._hl.dataset.Dataset) -> np.dtype:
+    """Only read the metadata of an item without loading the full array."""
+    return np.dtype(dataset.dtype, metadata=dict(dataset.attrs.items()))
+
+def _get_common_metadata(dtypes: list[np.dtype]) -> np.dtype:
+    metadata_list = [dtype.metadata for dtype in dtypes if dtype.metadata]
+    common_metadata = {}
+    for key in set.intersection(*map(set, metadata_list)):
+        value = metadata_list[0][key]
+        if all(np.array_equal(meta[key], value) for meta in metadata_list):
+            common_metadata[key] = value
+    return np.dtype(dtypes[0].base.type, metadata=common_metadata)
 
 def _match(requested,
            existing: h5py._hl.base.KeysViewHDF5) -> list[str]:
@@ -63,14 +75,15 @@ def _match(requested,
     return sorted(set(flatten_list([fnmatch.filter(existing,r) for r in requested_])),
                   key=util.natural_sort)
 
-def _empty_like(dataset: np.ma.core.MaskedArray,
+def _empty_like(dataset_shape: tuple[int],
+                dtype: np.dtype,
                 N_materialpoints: int,
                 fill_float: float,
                 fill_int: int) -> np.ma.core.MaskedArray:
     """Create empty numpy.ma.MaskedArray."""
-    return ma.array(np.empty((N_materialpoints,)+dataset.shape[1:],dataset.dtype),
-                    fill_value = fill_float if np.issubdtype(dataset.dtype,np.floating) else fill_int,
-                    mask = True)
+    return ma.array(np.empty((N_materialpoints,) + dataset_shape[1:], dtype=dtype),
+                    fill_value=fill_float if np.issubdtype(dtype, np.floating) else fill_int,
+                    mask=True)
 
 
 class Result:
@@ -1695,6 +1708,14 @@ class Result:
                     r[inc]['geometry'][out] = ma.array(_read(f['/'.join([inc,'geometry',out])]),fill_value = fill_float)
 
                 for ty in ['phase','homogenization']:
+
+                    dtypes_by_out: dict[str, Any] = {}
+                    for label in self._visible[ty + 's']:
+                        for field in _match(self._visible['fields'], f['/'.join([inc, ty, label])].keys()):
+                            for out in _match(output, f['/'.join([inc, ty, label, field])].keys()):
+                                dtypes_by_out.setdefault(out, []).append(_read_dt(f['/'.join([inc, ty, label, field, out])]))
+                    dtype_by_out = {out: _get_common_metadata(dtypes) for out, dtypes in dtypes_by_out.items()}
+
                     for label in self._visible[ty+'s']:
                         for field in _match(self._visible['fields'],f['/'.join([inc,ty,label])].keys()):
                             if field not in r[inc][ty].keys():
@@ -1707,7 +1728,8 @@ class Result:
                                     if out+suffixes[0] not in r[inc][ty][field].keys():
                                         for c,suffix in zip(constituents_,suffixes):
                                             r[inc][ty][field][out+suffix] = \
-                                                _empty_like(data,self.N_materialpoints,fill_float,fill_int)
+                                                _empty_like(data.shape,dtype_by_out[out],
+                                                            self.N_materialpoints,fill_float,fill_int)
 
                                     for c,suffix in zip(constituents_,suffixes):
                                         r[inc][ty][field][out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]] # type: ignore
@@ -1715,7 +1737,8 @@ class Result:
                                 if ty == 'homogenization':
                                     if out not in r[inc][ty][field].keys():
                                         r[inc][ty][field][out] = \
-                                            _empty_like(data,self.N_materialpoints,fill_float,fill_int)
+                                            _empty_like(data.shape,dtype_by_out[out],
+                                                        self.N_materialpoints,fill_float,fill_int)
 
                                     r[inc][ty][field][out][at_cell_ho[label]] = data[in_data_ho[label]]
 
@@ -1928,6 +1951,14 @@ class Result:
                 v = v.set('u',u)
 
                 for ty in ['phase','homogenization']:
+
+                    dtypes_by_out: dict[str, Any] = {}
+                    for label in self._visible[ty + 's']:
+                        for field in _match(self._visible['fields'], f['/'.join([inc, ty, label])].keys()):
+                            for out in _match(output, f['/'.join([inc, ty, label, field])].keys()):
+                                dtypes_by_out.setdefault(out, []).append(_read_dt(f['/'.join([inc, ty, label, field, out])]))
+                    dtype_by_out = {out: _get_common_metadata(dtypes) for out, dtypes in dtypes_by_out.items()}
+
                     for field in self._visible['fields']:
                         outs: dict[str, np.ma.core.MaskedArray] = {}
                         for label in self._visible[ty+'s']:
@@ -1940,19 +1971,20 @@ class Result:
                                     if out+suffixes[0] not in outs.keys():
                                         for c,suffix in zip(constituents_,suffixes):
                                             outs[out+suffix] = \
-                                                _empty_like(data,self.N_materialpoints,fill_float,fill_int)
+                                                _empty_like(data.shape,dtype_by_out[out],
+                                                            self.N_materialpoints,fill_float,fill_int)
 
                                     for c,suffix in zip(constituents_,suffixes):
                                         outs[out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
 
                                 if ty == 'homogenization':
                                     if out not in outs.keys():
-                                        outs[out] = _empty_like(data,self.N_materialpoints,fill_float,fill_int)
-
+                                        outs[out] = _empty_like(data.shape,dtype_by_out[out],
+                                                                self.N_materialpoints,fill_float,fill_int)
                                     outs[out][at_cell_ho[label]] = data[in_data_ho[label]]
 
                         for label,dataset in outs.items():
-                            v = v.set(' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]),dataset)
+                            v = v.set(' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata.get('unit')]),dataset)
 
                 v.save(out_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
                        parallel=parallel)

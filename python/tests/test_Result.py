@@ -237,8 +237,8 @@ class TestResult:
     def test_add_IPF_color(self,default,d):
         default.add_IPF_color(d,'O')
         qu = default.place('O')
-        crystal_structure = qu.dtype.metadata['lattice']
-        c = Orientation(rotation=qu,lattice=crystal_structure)
+        assert 'lattice' not in qu.dtype.metadata # default result object has both cI and cF phases
+        c = Orientation(rotation=qu, family='cubic')
         in_memory = np.uint8(c.IPF_color(np.array(d))*255)
         in_file = default.place('IPFcolor_({} {} {})'.format(*d))
         assert np.allclose(in_memory,in_file)
@@ -303,7 +303,8 @@ class TestResult:
     def test_add_pole(self,default,options):
         default.add_pole(**options)
         rot = default.place('O')
-        in_memory = np.moveaxis(Orientation(rot,lattice=rot.dtype.metadata['lattice']).to_frame(**options),
+        assert 'lattice' not in rot.dtype.metadata
+        in_memory = np.moveaxis(Orientation(rot,lattice='cI').to_frame(**options),
                                 0,-2 if options['with_symmetry'] else 0)
         brackets = [['[[]','[]]'],'()','⟨⟩','{}'][('hkl' in options)*1+(options['with_symmetry'])*2]   # escape fnmatch
         label = 'p^{}{} {} {}{}'.format(brackets[0],
