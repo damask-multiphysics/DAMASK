@@ -742,41 +742,6 @@ class Result:
         self._add_generic_pointwise(calculation,dataset_mapping,args)
 
 
-    def add_stress_Cauchy(self,
-                          P: str = 'P',
-                          F: str = 'F'):
-        """
-        Add Cauchy stress calculated from first Piola-Kirchhoff stress and deformation gradient.
-
-        Parameters
-        ----------
-        P : str, optional
-            Name of the dataset containing the first Piola-Kirchhoff stress.
-            Defaults to 'P'.
-        F : str, optional
-            Name of the dataset containing the deformation gradient.
-            Defaults to 'F'.
-
-        Notes
-        -----
-        For details refer to :func:`damask.mechanics.stress_Cauchy`.
-        """
-        def stress_Cauchy(P: DADF5Dataset, F: DADF5Dataset) -> DADF5Dataset:
-            return {
-                    'data':  mechanics.stress_Cauchy(P['data'],F['data']),
-                    'label': 'sigma',
-                    'meta':  {
-                              'unit':        P['meta']['unit'],
-                              'description': "Cauchy stress calculated "
-                                             f"from {P['label']} ({P['meta']['description']})"
-                                             f" and {F['label']} ({F['meta']['description']})",
-                              'creator':     'add_stress_Cauchy'
-                              }
-                    }
-
-        self._add_generic_pointwise(stress_Cauchy,{'P':P,'F':F})
-
-
     def add_determinant(self, T: str):
         """
         Add the determinant of a tensor.
@@ -940,6 +905,65 @@ class Result:
         self._add_generic_pointwise(eigenvector,{'T_sym':T_sym},{'eigenvalue':eigenvalue})
 
 
+    def add_equivalent_Mises(self,
+                             T_sym: str,
+                             kind: Optional[str] = None):
+        """
+        Add the equivalent von Mises stress or strain of a symmetric tensor.
+
+        Parameters
+        ----------
+        T_sym : str
+            Name of symmetric tensorial stress or strain dataset.
+        kind : {'stress', 'strain', None}, optional
+            Kind of the von Mises equivalent. Defaults to None, in which case
+            it is selected based on the unit of the dataset ('1' -> strain, 'Pa' -> stress).
+
+        Notes
+        -----
+        For details refer to :func:`damask.mechanics.equivalent_stress_Mises` and
+        :func:`damask.mechanics.equivalent_strain_Mises`.
+
+        Examples
+        --------
+        Add the von Mises equivalent of the Cauchy stress 'sigma':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.add_equivalent_Mises('sigma')
+        [...]
+
+        Add the von Mises equivalent of the spatial logarithmic strain 'epsilon_V^0.0(F)':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.add_equivalent_Mises('epsilon_V^0.0(F)')
+        [...]
+        """
+        def equivalent_Mises(T_sym: DADF5Dataset, kind: str) -> DADF5Dataset:
+            k = kind
+            if k is None:
+                if T_sym['meta']['unit'] == '1':
+                    k = 'strain'
+                elif T_sym['meta']['unit'] == 'Pa':
+                    k = 'stress'
+            if k not in ['stress', 'strain']:
+                raise ValueError(f'invalid von Mises kind "{kind}"')
+
+            return {
+                    'data':  mechanics._equivalent_Mises(T_sym['data'],
+                                                        2./3. if k == 'strain' else 3./2.),
+                    'label': f"{T_sym['label']}_vM",
+                    'meta':  {
+                              'unit':        T_sym['meta']['unit'],
+                              'description': f"Mises equivalent {k} of {T_sym['label']} ({T_sym['meta']['description']})",
+                              'creator':     'add_Mises'
+                              }
+                    }
+
+        self._add_generic_pointwise(equivalent_Mises,{'T_sym':T_sym},{'kind':kind})
+
+
     def add_IPF_color(self,
                       l: FloatSequence,
                       q: str = 'O'):
@@ -1013,65 +1037,6 @@ class Result:
         self._add_generic_pointwise(maximum_shear,{'T_sym':T_sym})
 
 
-    def add_equivalent_Mises(self,
-                             T_sym: str,
-                             kind: Optional[str] = None):
-        """
-        Add the equivalent von Mises stress or strain of a symmetric tensor.
-
-        Parameters
-        ----------
-        T_sym : str
-            Name of symmetric tensorial stress or strain dataset.
-        kind : {'stress', 'strain', None}, optional
-            Kind of the von Mises equivalent. Defaults to None, in which case
-            it is selected based on the unit of the dataset ('1' -> strain, 'Pa' -> stress).
-
-        Notes
-        -----
-        For details refer to :func:`damask.mechanics.equivalent_stress_Mises` and
-        :func:`damask.mechanics.equivalent_strain_Mises`.
-
-        Examples
-        --------
-        Add the von Mises equivalent of the Cauchy stress 'sigma':
-
-        >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_equivalent_Mises('sigma')
-        [...]
-
-        Add the von Mises equivalent of the spatial logarithmic strain 'epsilon_V^0.0(F)':
-
-        >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_equivalent_Mises('epsilon_V^0.0(F)')
-        [...]
-        """
-        def equivalent_Mises(T_sym: DADF5Dataset, kind: str) -> DADF5Dataset:
-            k = kind
-            if k is None:
-                if T_sym['meta']['unit'] == '1':
-                    k = 'strain'
-                elif T_sym['meta']['unit'] == 'Pa':
-                    k = 'stress'
-            if k not in ['stress', 'strain']:
-                raise ValueError(f'invalid von Mises kind "{kind}"')
-
-            return {
-                    'data':  mechanics._equivalent_Mises(T_sym['data'],
-                                                        2./3. if k == 'strain' else 3./2.),
-                    'label': f"{T_sym['label']}_vM",
-                    'meta':  {
-                              'unit':        T_sym['meta']['unit'],
-                              'description': f"Mises equivalent {k} of {T_sym['label']} ({T_sym['meta']['description']})",
-                              'creator':     'add_Mises'
-                              }
-                    }
-
-        self._add_generic_pointwise(equivalent_Mises,{'T_sym':T_sym},{'kind':kind})
-
-
     def add_norm(self,
                  x: str,
                  ord: Union[None, int, float, Literal['fro', 'nuc']] = None):
@@ -1113,40 +1078,6 @@ class Result:
                      }
 
         self._add_generic_pointwise(norm,{'x':x},{'ord':ord})
-
-
-    def add_stress_second_Piola_Kirchhoff(self,
-                                          P: str = 'P',
-                                          F: str = 'F'):
-        r"""
-        Add second Piola-Kirchhoff stress calculated from first Piola-Kirchhoff stress and deformation gradient.
-
-        Parameters
-        ----------
-        P : str, optional
-            Name of first Piola-Kirchhoff stress dataset. Defaults to 'P'.
-        F : str, optional
-            Name of deformation gradient dataset. Defaults to 'F'.
-
-        Notes
-        -----
-        For details refer to :func:`damask.mechanics.stress_second_Piola_Kirchhoff`.
-        """
-        def stress_second_Piola_Kirchhoff(P: DADF5Dataset, F: DADF5Dataset) -> DADF5Dataset:
-            return {
-                    'data':  mechanics.stress_second_Piola_Kirchhoff(P['data'],F['data']),
-                    'label': 'S',
-                    'meta':  {
-                              'unit':        P['meta']['unit'],
-                              'description': "second Piola-Kirchhoff stress calculated "
-                                             f"from {P['label']} ({P['meta']['description']})"
-                                             f" and {F['label']} ({F['meta']['description']})",
-                              'creator':     'add_stress_second_Piola_Kirchhoff'
-                              }
-                    }
-
-        self._add_generic_pointwise(stress_second_Piola_Kirchhoff,{'P':P,'F':F})
-
 
 
     def add_pole(self,
@@ -1332,6 +1263,74 @@ class Result:
                      }
 
         self._add_generic_pointwise(strain,{'F':F},{'t':t,'m':m})
+
+
+    def add_stress_Cauchy(self,
+                          P: str = 'P',
+                          F: str = 'F'):
+        """
+        Add Cauchy stress calculated from first Piola-Kirchhoff stress and deformation gradient.
+
+        Parameters
+        ----------
+        P : str, optional
+            Name of the dataset containing the first Piola-Kirchhoff stress.
+            Defaults to 'P'.
+        F : str, optional
+            Name of the dataset containing the deformation gradient.
+            Defaults to 'F'.
+
+        Notes
+        -----
+        For details refer to :func:`damask.mechanics.stress_Cauchy`.
+        """
+        def stress_Cauchy(P: DADF5Dataset, F: DADF5Dataset) -> DADF5Dataset:
+            return {
+                    'data':  mechanics.stress_Cauchy(P['data'],F['data']),
+                    'label': 'sigma',
+                    'meta':  {
+                              'unit':        P['meta']['unit'],
+                              'description': "Cauchy stress calculated "
+                                             f"from {P['label']} ({P['meta']['description']})"
+                                             f" and {F['label']} ({F['meta']['description']})",
+                              'creator':     'add_stress_Cauchy'
+                              }
+                    }
+
+        self._add_generic_pointwise(stress_Cauchy,{'P':P,'F':F})
+
+
+    def add_stress_second_Piola_Kirchhoff(self,
+                                          P: str = 'P',
+                                          F: str = 'F'):
+        r"""
+        Add second Piola-Kirchhoff stress calculated from first Piola-Kirchhoff stress and deformation gradient.
+
+        Parameters
+        ----------
+        P : str, optional
+            Name of first Piola-Kirchhoff stress dataset. Defaults to 'P'.
+        F : str, optional
+            Name of deformation gradient dataset. Defaults to 'F'.
+
+        Notes
+        -----
+        For details refer to :func:`damask.mechanics.stress_second_Piola_Kirchhoff`.
+        """
+        def stress_second_Piola_Kirchhoff(P: DADF5Dataset, F: DADF5Dataset) -> DADF5Dataset:
+            return {
+                    'data':  mechanics.stress_second_Piola_Kirchhoff(P['data'],F['data']),
+                    'label': 'S',
+                    'meta':  {
+                              'unit':        P['meta']['unit'],
+                              'description': "second Piola-Kirchhoff stress calculated "
+                                             f"from {P['label']} ({P['meta']['description']})"
+                                             f" and {F['label']} ({F['meta']['description']})",
+                              'creator':     'add_stress_second_Piola_Kirchhoff'
+                              }
+                    }
+
+        self._add_generic_pointwise(stress_second_Piola_Kirchhoff,{'P':P,'F':F})
 
 
     def add_stretch_tensor(self,
