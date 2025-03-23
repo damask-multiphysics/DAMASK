@@ -26,6 +26,11 @@ def deformation_Cauchy_Green_left(F: _np.ndarray) -> _np.ndarray:
     B : numpy.ndarray, shape (...,3,3)
         Left Cauchy-Green deformation tensor.
 
+    See Also
+    --------
+    deformation_Cauchy_Green_right : Calculate right Cauchy-Green
+        deformation tensor.
+
     Notes
     -----
     The left Cauchy-Green deformation tensor is defined as:
@@ -46,6 +51,11 @@ def deformation_Cauchy_Green_right(F: _np.ndarray) -> _np.ndarray:
     F : numpy.ndarray, shape (...,3,3)
         Deformation gradient.
 
+    See Also
+    --------
+    deformation_Cauchy_Green_left : Calculate left Cauchy-Green
+        deformation tensor.
+
     Returns
     -------
     C : numpy.ndarray, shape (...,3,3)
@@ -64,7 +74,7 @@ def deformation_Cauchy_Green_right(F: _np.ndarray) -> _np.ndarray:
 
 def equivalent_strain_Mises(epsilon: _np.ndarray) -> _np.ndarray:
     r"""
-    Calculate the Mises equivalent of a strain tensor.
+    Calculate the von Mises equivalent of a strain tensor.
 
     Parameters
     ----------
@@ -75,6 +85,11 @@ def equivalent_strain_Mises(epsilon: _np.ndarray) -> _np.ndarray:
     -------
     epsilon_vM : numpy.ndarray, shape (...)
         Von Mises equivalent strain of epsilon.
+
+    See Also
+    --------
+    equivalent_stress_Mises : Calculate the von Mises equivalent
+        of a stress tensor.
 
     Notes
     -----
@@ -92,7 +107,7 @@ def equivalent_strain_Mises(epsilon: _np.ndarray) -> _np.ndarray:
 
 def equivalent_stress_Mises(sigma: _np.ndarray) -> _np.ndarray:
     r"""
-    Calculate the Mises equivalent of a stress tensor.
+    Calculate the von Mises equivalent of a stress tensor.
 
     Parameters
     ----------
@@ -103,6 +118,11 @@ def equivalent_stress_Mises(sigma: _np.ndarray) -> _np.ndarray:
     -------
     sigma_vM : numpy.ndarray, shape (...)
         Von Mises equivalent stress of sigma.
+
+    See Also
+    --------
+    equivalent_strain_Mises : Calculate the von Mises equivalent
+        of a strain tensor.
 
     Notes
     -----
@@ -149,6 +169,11 @@ def rotation(T: _np.ndarray) -> _rotation.Rotation:
     ----------
     T : numpy.ndarray, shape (...,3,3)
         Tensor of which the rotational part is computed.
+
+    See Also
+    --------
+    damask.Rotation : Rotation with functionality for
+        conversion between different representations.
 
     Returns
     -------
@@ -230,7 +255,8 @@ def stress_Cauchy(P: _np.ndarray,
     r"""
     Calculate the Cauchy stress (true stress).
 
-    Resulting tensor is symmetrized as the Cauchy stress needs to be symmetric.
+    Resulting tensor is symmetrized as the Cauchy stress is
+    symmetric by definition.
 
     Parameters
     ----------
@@ -243,6 +269,11 @@ def stress_Cauchy(P: _np.ndarray,
     -------
     sigma : numpy.ndarray, shape (...,3,3)
         Cauchy stress.
+
+    See Also
+    --------
+    stress_second_Piola_Kirchhoff : Calculate the second Piola-Kirchhoff
+        stress
 
     Notes
     -----
@@ -260,8 +291,8 @@ def stress_second_Piola_Kirchhoff(P: _np.ndarray,
     r"""
     Calculate the second Piola-Kirchhoff stress.
 
-    Resulting tensor is symmetrized as the second Piola-Kirchhoff stress
-    needs to be symmetric.
+    Resulting tensor is symmetrized as the second Piola-Kirchhoff
+    stress is symmetric by definition.
 
     Parameters
     ----------
@@ -275,13 +306,17 @@ def stress_second_Piola_Kirchhoff(P: _np.ndarray,
     S : numpy.ndarray, shape (...,3,3)
         Second Piola-Kirchhoff stress.
 
+    See Also
+    --------
+    stress_Cauchy : Calculate the Cauchy stress (true stress).
+
     Notes
     -----
     The second Piola-Kirchhoff stress is defined as:
 
     .. math::
 
-        \vb{S} = \left(\vb{F}^{-1} \vb{P}\right)_\text{sym}
+        \vb{S} = \vb{F}^{-1} \vb{P}
 
     which is the definition in nonlinear continuum mechanics.
     As such, no intermediate configuration, for instance that reached
@@ -303,6 +338,10 @@ def stretch_left(T: _np.ndarray) -> _np.ndarray:
     -------
     V : numpy.ndarray, shape (...,3,3)
         Left stretch tensor from Polar decomposition of T.
+
+    See Also
+    --------
+    stretch_right : Calculate right stretch of a tensor.
 
     Notes
     -----
@@ -331,6 +370,10 @@ def stretch_right(T: _np.ndarray) -> _np.ndarray:
     -------
     U : numpy.ndarray, shape (...,3,3)
         Left stretch tensor from Polar decomposition of T.
+
+    See Also
+    --------
+    stretch_left : Calculate right left of a tensor.
 
     Notes
     -----

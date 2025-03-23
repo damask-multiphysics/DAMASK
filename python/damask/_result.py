@@ -88,7 +88,7 @@ class Result:
     Examples
     --------
     Open 'my_file.hdf5', which is assumed to contain deformation gradient 'F'
-    and first Piola-Kirchhoff stress 'P', add the Mises equivalent of the
+    and first Piola-Kirchhoff stress 'P', add the von Mises equivalent of the
     Cauchy stress, and export it to VTK (file) and numpy.ndarray (memory).
 
     >>> import damask
@@ -704,7 +704,7 @@ class Result:
         ...                    '1/m²','total dislocation density')
         [...]
 
-        Add Mises equivalent of the Cauchy stress without storage of
+        Add von Mises equivalent of the Cauchy stress without storage of
         intermediate results. Define a user function for better readability:
 
         >>> import damask
@@ -715,7 +715,7 @@ class Result:
         >>> r.enable_user_function(equivalent_stress)
         Function equivalent_stress enabled in add_calculation.
         >>> r.add_calculation('equivalent_stress(#F#,#P#)','sigma_vM','Pa',
-        ...                   'Mises equivalent of the Cauchy stress')
+        ...                   'von Mises equivalent of the Cauchy stress')
         [...]
         """
         def calculation(**kwargs) -> DADF5Dataset:
@@ -1017,7 +1017,7 @@ class Result:
                              T_sym: str,
                              kind: Optional[str] = None):
         """
-        Add the equivalent Mises stress or strain of a symmetric tensor.
+        Add the equivalent von Mises stress or strain of a symmetric tensor.
 
         Parameters
         ----------
@@ -1034,14 +1034,14 @@ class Result:
 
         Examples
         --------
-        Add the Mises equivalent of the Cauchy stress 'sigma':
+        Add the von Mises equivalent of the Cauchy stress 'sigma':
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_equivalent_Mises('sigma')
         [...]
 
-        Add the Mises equivalent of the spatial logarithmic strain 'epsilon_V^0.0(F)':
+        Add the von Mises equivalent of the spatial logarithmic strain 'epsilon_V^0.0(F)':
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
