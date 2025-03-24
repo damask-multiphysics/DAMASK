@@ -231,7 +231,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%tau_0    = math_expand(pl%get_as1dReal('tau_0',     requiredSize=size(N_sl)),N_sl)
       prm%B        = math_expand(pl%get_as1dReal('B',         requiredSize=size(N_sl), &
                                                  defaultVal=[(0.0_pREAL,i=1,size(N_sl))]),N_sl)
-      prm%d_caron  = prm%b_sl *  pl%get_asReal('D_a')
+      prm%d_caron  = prm%b_sl * pl%get_asReal('D_a')
 
       prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
 
@@ -271,6 +271,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
                prm%q, &
                prm%tau_0, &
                prm%B, &
+               prm%d_caron, &
                source=emptyRealArray)
       allocate(prm%forestProjection(0,0), &
                prm%h_sl_sl(0,0)) ! PE: What about P_sl and systems_sl?
