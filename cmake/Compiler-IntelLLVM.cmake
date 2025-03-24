@@ -6,17 +6,16 @@ if (OPENMP)
 endif ()
 
 if (OPTIMIZATION STREQUAL "OFF" OR OPTIMIZATION STREQUAL "DEBUG")
-  set (OPTIMIZATION_FLAGS    "-O0")
+  set (OPTIMIZATION_FLAGS "-O0")
 elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
-  set (OPTIMIZATION_FLAGS    "-O2")
+  set (OPTIMIZATION_FLAGS "-O2")
 elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
-  #set (OPTIMIZATION_FLAGS    "-ipo -O3 -fp-model fast=2 -xHost") # ifx 2022.0 has problems with YAML types and IPO
-  set (OPTIMIZATION_FLAGS    "-O3 -fp-model strict -xHost")
+  set (OPTIMIZATION_FLAGS "-O3 -fp-model strict -xHost -align array64byte") # -ipo/-flto give linker error
 endif ()
 
 # -assume std_mod_proc_name (included in -standard-semantics) causes problems if other modules
 # (PETSc, HDF5) are not compiled with this option (https://software.intel.com/en-us/forums/intel-fortran-compiler-for-linux-and-mac-os-x/topic/62172)
-set (STANDARD_CHECK "-stand f18 -assume nostd_mod_proc_name")
+set (STANDARD_CHECK "-stand f23 -assume nostd_mod_proc_name")
 set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel")
 # Link against shared Intel libraries instead of static ones
 set (LINKER_FLAGS   "${LINKER_FLAGS} -fc=ifx")
