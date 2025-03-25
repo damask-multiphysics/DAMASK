@@ -124,7 +124,7 @@ doctest:
     - cp tests/resources/doctest/* .
     - echo '#!/usr/bin/env bash' > /bin/neper
     - chmod +x /bin/neper
-    - python3 -m pytest -v --doctest-modules -k 'not result and not orientation' damask
+    - python3 -m pytest -v --doctest-modules -k 'not result' damask
 
 mypy:
   extends: .python_default
