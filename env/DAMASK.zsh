@@ -32,8 +32,8 @@ ulimit -s unlimited 2>/dev/null # maximum stack size (kB)
 if [ ! -z "$PS1" ]; then
   echo
   echo Düsseldorf Advanced Materials Simulation Kit --- DAMASK
-  echo Max-Planck-Institut für Eisenforschung GmbH, Düsseldorf
-  echo https://damask.mpie.de
+  echo Max-Planck-Institut für Nachhaltige Materialien GmbH, Düsseldorf
+  echo https://damask-multiphysics.org
   echo
   echo "Using environment with ..."
   echo "DAMASK             $DAMASK_ROOT $BRANCH"
