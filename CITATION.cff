@@ -1,0 +1,166 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: DAMASK
+message: >-
+  Please cite
+  https://doi.org/10.1016/j.commatsci.2018.04.030.
+type: software
+authors:
+  - given-names: Martin
+    family-names: Diehl
+    email: martin.diehl@kuleuven.be
+    affiliation: KU Leuven
+    orcid: 'https://orcid.org/0000-0002-3738-7363'
+  - given-names: Philip
+    family-names: Eisenlohr
+    orcid: 'https://orcid.org/0000-0002-8220-5995'
+    email: pe@msu.edu
+    affiliation: Michigan State University
+  - given-names: Sharan
+    family-names: Roongta
+    affiliation: Max-Planck-Institut für Nachhaltige Materialien GmbH
+    email: s.roongta@mpie.de
+    orcid: 'https://orcid.org/0000-0001-5754-068X'
+  - given-names: Daniel
+    family-names: Otto de Mentock
+    email: d.mentock@mpie.de
+    affiliation: Max-Planck-Institut für Nachhaltige Materialien GmbH
+    orcid: 'https://orcid.org/0009-0005-8363-6112'
+  - given-names: Yi
+    family-names: Hu
+    email: y.hu@mpie.de
+    affiliation: Max-Planck-Institut für Nachhaltige Materialien GmbH
+    orcid: 'https://orcid.org/0000-0003-2775-6169'
+  - given-names: Nikhil
+    family-names: Prabhu
+    email: nikhil.prabhu@kuleuven.be
+    affiliation: KU Leuven
+    orcid: 'https://orcid.org/0000-0003-0843-3903'
+  - given-names: Pratheek
+    family-names: Shanthraj
+    affiliation: United Kingdom Atomic Energy Authority
+    orcid: 'https://orcid.org/0000-0002-6324-0306'
+    email: pratheek.shanthraj@ukaea.uk
+  - given-names: Franz
+    family-names: Roters
+    email: f.roters@mpie.de
+    affiliation: Max-Planck-Institut für Nachhaltige Materialien GmbH
+    orcid: 'https://orcid.org/0000-0002-9098-9566'
+identifiers:
+  - type: doi
+    value: 10.1016/j.commatsci.2018.04.030
+    description: >-
+      F. Roters et al.: DAMASK – The Düsseldorf Advanced
+      Material Simulation Kit for Modelling Multi-Physics
+      Crystal Plasticity, Damage, and Thermal Phenomena from
+      the Single Crystal up to the Component Scale
+  - type: doi
+    value: 10.21105/joss.07164
+    description: >-
+      D. Otto de Mentock et al.: A Python Library for Pre-
+      and Post-Processing of DAMASK Simulations
+repository-code: 'https://github.com/eisenforschung/damask'
+url: 'https://damask-multiphysics.org'
+repository: 'https://doi.org/10.5281/zenodo.14586837'
+abstract: >-
+  DAMASK® is a unified multi-physics crystal plasticity
+  simulation package. The solution of continuum mechanical
+  boundary value problems requires a constitutive response
+  that connects deformation and stress at each material
+  point. This problem is solved in DAMASK on the basis of
+  crystal plasticity using a variety of constitutive models
+  and homogenization approaches. However, treating mechanics
+  in isolation is no longer sufficient to study emergent
+  advanced high-strength materials. In these materials,
+  deformation happens interrelated with displacive phase
+  transformation, significant heating, and potential damage
+  evolution. Therefore, DAMASK is capable of handling
+  multi-physics problems. Following a modular approach,
+  additional field equations are solved in a fully coupled
+  way using a staggered approach.
+keywords:
+  - crystal plasticity
+  - simulation
+  - multi-physics
+license: AGPL-3.0-or-later
+commit: 06c6851a3f2ef5dd6e57fb7475cf646312176876
+version: 3.0.1
+date-released: '2024-10-18'
+preferred-citation:
+  type: article
+  authors:
+    - family-names: Roters
+      given-names: Franz
+      orcid: 'https://orcid.org/0000-0002-9098-9566'
+    - family-names: Diehl
+      given-names: Martin
+      orcid: 'https://orcid.org/0000-0002-3738-7363'
+    - family-names: Shanthraj
+      given-names: Pratheek
+      orcid: 'https://orcid.org/0000-0002-6324-0306'
+    - family-names: Eisenlohr
+      given-names: Philip
+      orcid: 'https://orcid.org/0000-0002-8220-5995'
+    - family-names: Reuber
+      given-names: Christoph
+    - family-names: Wong
+      given-names: Su Leen
+      orcid: 'https://orcid.org/0000-0002-2178-492X'
+    - family-names: Maiti
+      given-names: Tias
+      orcid: 'https://orcid.org/0000-0003-0182-0177'
+    - family-names: Ebrahimi
+      given-names: Alireza
+    - family-names: Hochrainer
+      given-names: Thomas
+      orcid: 'https://orcid.org/0000-0003-0501-7306'
+    - family-names: Fabritius
+      given-names: Helge-Otto
+    - family-names: Nikolov
+      given-names: Svetoslav
+      orcid: 'https://orcid.org/0000-0002-3760-804X'
+    - family-names: Friák
+      given-names: Martin
+    - family-names: Fujita
+      given-names: Noriki
+      orcid: 'https://orcid.org/0000-0002-4877-7113'
+    - family-names: Grilli
+      given-names: Nicolò
+      orcid: 'https://orcid.org/0000-0003-2539-9444'
+    - family-names: Janssens
+      given-names: Koenraad G. F.
+      orcid: 'https://orcid.org/0000-0001-9776-3431'
+    - family-names: Jia
+      given-names: Nan
+    - family-names: Kok
+      given-names: Piet J. J.
+    - family-names: Ma
+      given-names: Duancheng
+      orcid: 'https://orcid.org/0000-0003-3954-3347'
+    - family-names: Meier
+      given-names: Felix
+      orcid: 'https://orcid.org/0000-0002-1846-2356'
+    - family-names: Werner
+      given-names: Ewald
+      orcid: 'https://orcid.org/0000-0002-3550-9574'
+    - family-names: Stricker
+      given-names: Markus
+      orcid: 'https://orcid.org/0000-0002-8933-0238'
+    - family-names: Weygand
+      given-names: Daniel
+      orcid: 'https://orcid.org/0000-0002-8681-3904'
+    - family-names: Raabe
+      given-names: Dierk
+      orcid: 'https://orcid.org/0000-0003-0194-6124'
+  doi: 10.1016/j.commatsci.2018.04.030
+  journal: Computational Materials Science
+  start: 420
+  end: 478
+  title: >-
+    DAMASK - The Düsseldorf Advanced Material Simulation Kit for Modelling
+    Multi-Physics Crystal Plasticity, Damage, and Thermal Phenomena from the
+    Single Crystal up to the Component Scale
+  volume: 158
+  year: 2019
