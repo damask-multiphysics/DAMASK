@@ -278,6 +278,39 @@ setup_Marc:
 
 
 ###################################################################################################
+
+.configexamples_debug:
+  stage: compile
+  tags:
+    - matesting2-container-runner
+  script:
+    - pytest -k configexamples
+
+configexamples_debug_GCC:
+  extends: .configexamples_debug
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
+  before_script:
+    - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
+    - source env/DAMASK.sh
+    - export OPENBLAS_NUM_THREADS=1
+    - cmake -B builddir -DDAMASK_SOLVER=grid -DCMAKE_BUILD_TYPE=DEBUG
+    - cmake --build builddir --target install
+    - cd PRIVATE/testing
+
+configexamples_debug_oneAPI:
+  extends: .configexamples_debug
+  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.03.09
+  before_script:
+    - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
+    - source env/DAMASK.sh
+    - export OPENBLAS_NUM_THREADS=1
+    - sed -i '/set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0/d' cmake/Compiler-IntelLLVM.cmake
+    - sed -i 's/FP_TRAP_ON/FP_TRAP_OFF/g' src/parallelization.f90
+    - cmake -B builddir -DDAMASK_SOLVER=grid -DCMAKE_BUILD_TYPE=DEBUG
+    - cmake --build builddir --target install
+    - cd PRIVATE/testing
+
+###################################################################################################
 open-source_GCC:
   stage: fortran
   tags:
@@ -300,7 +333,7 @@ open-source_signal_restart_GCC:
     - source /opt/venv/bin/activate
     - module load ${COMPILER_INTEL} ${PETSC_INTEL}
     - cd $(mktemp -d)
-    - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
+    - cmake -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
     - make -j2 all install
     - export PATH=${TESTROOT}/bin:${PATH}
     - cd ${CI_PROJECT_DIR}
@@ -340,7 +373,7 @@ grid_performance:
   script:
     - module load ${COMPILER_INTEL} ${PETSC_INTEL}
     - cd $(mktemp -d)
-    - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=./ ${CI_PROJECT_DIR}
+    - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=./ ${CI_PROJECT_DIR}
     - make -j2 all install
     - export PATH=${PWD}/bin:${PATH}
     - cd $(mktemp -d)
