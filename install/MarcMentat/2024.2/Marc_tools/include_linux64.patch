@@ -1,22 +1,24 @@
 ---
 +++
-@@ -212,6 +212,15 @@
+@@ -212,6 +212,17 @@
   MARC_COSIM_LIB="$MSCCOSIM_HOME/CoSim$MSCCOSIM_VERSION/Dcosim$MSCCOSIM_VERSION/lib"
  fi
 
 +# DAMASK uses the HDF5 compiler wrapper around the Intel compiler
-+H5FC=$(h5fc -shlib -show)
-+if [[ "$H5FC" == *"$dir is"* ]]; then
-+  H5FC=$(echo $(echo "$H5FC" | tail -n1) | sed -e "s/\-shlib/-fPIC -qopenmp/g")
-+  H5FC=${H5FC%-lmpifort*}
++if test -n "$DAMASK_USER"; then
++  H5FC=$(h5fc -shlib -show)
++  if [[ "$H5FC" == *"$dir is"* ]]; then
++    H5FC=$(echo $(echo "$H5FC" | tail -n1) | sed -e "s/\-shlib/-fPIC -qopenmp/g")
++    H5FC=${H5FC%-lmpifort*}
++  fi
++  HDF5_LIB=${H5FC//*ifort/}
++  FCOMP="$H5FC"
 +fi
-+HDF5_LIB=${H5FC//*ifort/}
-+FCOMP="$H5FC"
 +
  # AEM
  if test "$MARCDLLOUTDIR" = ""; then
   DLLOUTDIR="$MARC_LIB"
-@@ -688,7 +697,7 @@
+@@ -688,7 +699,7 @@
  PROFILE=" $PROFILE -pg"
  fi
 
@@ -25,7 +27,7 @@
  # FORT_OPT="-c -assume byterecl -safe-cray-ptr -mp1 -WB "
  if test "$MTHREAD" = "OPENMP"
  then
-@@ -702,7 +711,7 @@
+@@ -702,7 +713,7 @@
    FORT_OPT=" $FORT_OPT -save -zero"
  fi
  if test "$MARCHDF_HDF" = "HDF"; then
@@ -34,7 +36,7 @@
  fi
  if test "$NASTRAN_LIB" = "on" ; then
    FORT_OPT="$FORT_OPT -fPIC "
-@@ -719,6 +728,41 @@
+@@ -719,6 +730,41 @@
  #  for compiling free form f90 files. high opt, integer(4)
  FORTF90="$FCOMP -c -O3"
 
@@ -76,7 +78,7 @@
  if test "$MARCDEBUG" = "ON"
  then
    FORTLOW="$FCOMP $FORT_OPT $PROFILE $I8FFLAGS -I$MARC_SOURCE/common \
-@@ -885,7 +929,7 @@
+@@ -885,7 +931,7 @@
 
  SOLVERLIBS="${BCSSOLVERLIBS} ${VKISOLVERLIBS} ${CASISOLVERLIBS} ${MF2SOLVERLIBS} \
    -L$MARC_MKL \

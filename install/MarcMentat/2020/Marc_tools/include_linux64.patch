@@ -1,18 +1,20 @@
 --- 
 +++ 
-@@ -95,6 +95,11 @@
+@@ -95,6 +95,13 @@
  else
   FCOMPROOT=
  fi
 +
 +# DAMASK uses the HDF5 compiler wrapper around the Intel compiler
-+H5FC="$(h5fc -shlib -show)"
-+HDF5_LIB=${H5FC//ifort/}
-+FCOMP="$H5FC"
++if test -n "$DAMASK_USER"; then
++  H5FC="$(h5fc -shlib -show)"
++  HDF5_LIB=${H5FC//ifort/}
++  FCOMP="$H5FC"
++fi
  
  # AEM
  if test "$MARCDLLOUTDIR" = ""; then
-@@ -390,7 +395,7 @@
+@@ -390,7 +397,7 @@
    I8DEFINES=
    I8CDEFINES=
  else
@@ -21,7 +23,7 @@
    I8DEFINES="-DI64"
    I8CDEFINES="-U_DOUBLE -D_SINGLE"
  fi
-@@ -498,7 +503,7 @@
+@@ -498,7 +505,7 @@
  PROFILE=" $PROFILE -pg"
  fi
  
@@ -30,7 +32,7 @@
  if test "$MTHREAD" = "OPENMP"
  then
    FORT_OPT=" $FORT_OPT -qopenmp"
-@@ -511,7 +516,7 @@
+@@ -511,7 +518,7 @@
    FORT_OPT=" $FORT_OPT -save -zero"
  fi
  if test "$MARCHDF_HDF" = "HDF"; then
@@ -39,7 +41,7 @@
  fi
  
  FORTLOW="$FCOMP $FORT_OPT $PROFILE -O0 $I8FFLAGS -I$MARC_SOURCE/common \
-@@ -524,6 +529,41 @@
+@@ -524,6 +531,41 @@
    $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"
  #  for compiling free form f90 files. high opt, integer(4)
  FORTF90="$FCOMP -c -O3"
@@ -81,7 +83,7 @@
  
  if test "$MARCDEBUG" = "ON"
  then
-@@ -697,16 +737,16 @@
+@@ -697,16 +739,16 @@
  fi
  
  if test "$MARC_INTEGER_SIZE" = "i4" ; then
@@ -102,7 +104,7 @@
  
  SOLVERLIBS_DLL=${SOLVERLIBS}
  if test "$AEM_DLL" -eq 1
-@@ -734,7 +774,7 @@
+@@ -734,7 +776,7 @@
   OPENSSL=NONE
  fi
  
@@ -111,7 +113,7 @@
  
  # Uncomment the following lines to turn on the trace and comment out the next 4 lines
  # if test $MPITYPE = intelmpi
-@@ -744,7 +784,7 @@
+@@ -744,7 +786,7 @@
  # fi
  if test $MPITYPE = intelmpi
  then
