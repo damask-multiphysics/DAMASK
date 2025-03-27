@@ -8,6 +8,14 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Interfaces DAMASK with MSC.Marc
 !--------------------------------------------------------------------------------------------------
+#ifdef linux
+#undef linux
+#endif
+
+#ifdef unix
+#undef unix
+#endif
+
 #define QUOTE(x) #x
 #define PASTE(x,y) x ## y
 
