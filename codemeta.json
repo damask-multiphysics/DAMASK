@@ -1,0 +1,114 @@
+{
+    "@context": "https://w3id.org/codemeta/3.0",
+    "type": "SoftwareSourceCode",
+    "applicationCategory": "Materials Science",
+    "author": [
+        {
+            "id": "https://orcid.org/0000-0002-3738-7363",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "KU Leuven"
+            },
+            "familyName": "Diehl",
+            "givenName": "Martin"
+        },
+        {
+            "id": "https://orcid.org/0000-0002-8220-5995",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "Michigan State University"
+            },
+            "familyName": "Eisenlohr",
+            "givenName": "Philip"
+        },
+        {
+            "id": "https://orcid.org/0000-0001-5754-068X",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "Max-Planck-Institut für Nachhaltige Materialien GmbH"
+            },
+            "familyName": "Roongta",
+            "givenName": "Sharan"
+        },
+        {
+            "id": "https://orcid.org/0009-0005-8363-6112",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "Max-Planck-Institut für Nachhaltige Materialien GmbH"
+            },
+            "familyName": "Otto de Mentock",
+            "givenName": "Daniel"
+        },
+        {
+            "id": "https://orcid.org/0000-0003-2775-6169",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "Max-Planck-Institut für Nachhaltige Materialien GmbH"
+            },
+            "familyName": "Hu",
+            "givenName": "Yi"
+        },
+        {
+            "id": "https://orcid.org/0000-0003-0843-3903",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "KU Leuven"
+            },
+            "familyName": "Prabhu",
+            "givenName": "Nikhil"
+        },
+        {
+            "id": "https://orcid.org/0000-0002-6324-0306",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "United Kingdom Atomic Energy Authority"
+            },
+            "familyName": "Shanthraj",
+            "givenName": "Pratheek"
+        },
+        {
+            "id": "https://orcid.org/0000-0002-9098-9566",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "Max-Planck-Institut für Nachhaltige Materialien GmbH"
+            },
+            "familyName": "Roters",
+            "givenName": "Franz"
+        }
+    ],
+    "codeRepository": "https://github.com/damask-multiphysics/DAMASK.git",
+    "dateCreated": "2007-03-20",
+    "dateModified": "2024-10-18",
+    "datePublished": "2012-11-15",
+    "description": "DAMASK® is a unified multi-physics crystal plasticity simulation package. The solution of continuum mechanical boundary value problems requires a constitutive response that connects deformation and stress at each material point. This problem is solved in DAMASK on the basis of crystal plasticity using a variety of constitutive models and homogenization approaches. However, treating mechanics in isolation is no longer sufficient to study emergent advanced high-strength materials. In these materials, deformation happens interrelated with displacive phase transformation, significant heating, and potential damage evolution. Therefore, DAMASK is capable of handling multi-physics problems. Following a modular approach, additional field equations are solved in a fully coupled way using a staggered approach.",
+    "downloadUrl": "https://damask-multiphysics.org/download/damask-3.0.1.tar.xz",
+    "identifier": "10.5281/zenodo.14586837",
+    "keywords": [
+        "crystal plasticity",
+        "simulation",
+        "multi-physics"
+    ],
+    "license": "https://spdx.org/licenses/AGPL-3.0-or-later",
+    "name": "DAMASK",
+    "operatingSystem": [
+        "Linux",
+        "macOS"
+    ],
+    "programmingLanguage": [
+        "Fortran",
+        "C",
+        "Python"
+    ],
+    "softwareRequirements": "PETSc, FFTW, zlib, HDF5, Python, pandas, NumPy, SciPy, h5py, VTK, Matplotlib, PyYAML",
+    "version": "3.0.1",
+    "developmentStatus": "active",
+    "referencePublication": "https://doi.org/10.1016/j.commatsci.2018.04.030"
+}
