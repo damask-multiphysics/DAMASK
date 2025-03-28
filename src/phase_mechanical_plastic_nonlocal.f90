@@ -492,7 +492,7 @@ end function plastic_nonlocal_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates quantities characterizing the microstructure
+!> @brief Calculate quantities characterizing the microstructure
 !--------------------------------------------------------------------------------------------------
 module subroutine nonlocal_dependentState(ph, en)
 
@@ -650,7 +650,7 @@ module subroutine nonlocal_dependentState(ph, en)
                                     - rho_delta_nbr(c,s,neighbors(2))
         end do
         invConnections = math_inv33(connections)
-        if (all(dEq0(invConnections))) call IO_error(-1,ext_msg='back stress calculation: inversion error')
+        if (all(dEq0(invConnections))) error stop 'back stress calculation: inversion error'
 
         rhoExcessGradient(c) = math_inner(m(1:3,s,c), matmul(invConnections,rhoExcessDifferences))
       end do
