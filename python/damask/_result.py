@@ -204,11 +204,11 @@ class Result:
 
     def _manage_view(self,
                      action: Literal['set', 'add', 'del'],
-                     increments: Union[None, int, Sequence[int], str, Sequence[str], bool] = None,
-                     times: Union[None, float, Sequence[float], str, Sequence[str], bool] = None,
-                     phases: Union[None, str, Sequence[str], bool] = None,
-                     homogenizations: Union[None, str, Sequence[str], bool] = None,
-                     fields: Union[None, str, Sequence[str], bool] = None) -> "Result":
+                     increments: Optional[Union[int, Sequence[int], str, Sequence[str], bool]] = None,
+                     times: Optional[Union[float, Sequence[float], Literal['*'], bool]] = None,
+                     phases: Optional[Union[str, Sequence[str], bool]] = None,
+                     homogenizations: Optional[Union[str, Sequence[str], bool]] = None,
+                     fields: Optional[Union[str, Sequence[str], bool]] = None) -> "Result":
         """
         Manage the visibility of the groups.
 
@@ -217,9 +217,10 @@ class Result:
         action : str
             Select from 'set', 'add', and 'del'.
         increments : (list of) int, (list of) str, or bool, optional
-            Numbers of increments to select.
-        times : (list of) float, (list of) str, or bool, optional
-            Simulation times of increments to select.
+            Numbers of increments to select. Mutually exclusive with 'times'.
+        times : (list of) float, '*', or bool, optional
+            Simulation times of increments to select. Mutually exclusive with
+            'increments'.
         phases : (list of) str, or bool, optional
             Names of phases to select.
         homogenizations : (list of) str, or bool, optional
@@ -247,7 +248,9 @@ class Result:
                 datasets = '*'
             elif datasets is False:
                 datasets = []
+
             choice = [datasets] if not hasattr(datasets,'__iter__') or isinstance(datasets,str) else list(datasets) # type: ignore
+            N_expected = len(choice)
 
             if   what == 'increments':
                 choice = [c if isinstance(c,str) and c.startswith(prefix_inc) else
@@ -255,7 +258,7 @@ class Result:
                           f'{prefix_inc}{c}' for c in choice]
             elif what == 'times':
                 times = list(self._times.values())
-                atol = 1e-2 * np.min(np.diff(times))
+                atol = 1.e-2 * np.min(np.diff(times))
                 what = 'increments'
                 if choice == ['*']:
                     choice = self._increments
@@ -270,8 +273,11 @@ class Result:
                             choice.append(self._increments[idx-1])
 
             valid = _match(choice,getattr(self,'_'+what))
-            existing = set(self._visible[what])
+            if len(valid) < N_expected:
+                w = what if times is None else 'times'
+                logger.warning(f'Found only "{list(map(str,valid))}" when requesting "{datasets}" for "{w}".')
 
+            existing = set(self._visible[what])
             if   action == 'set':
                 dup._visible[what] = sorted(set(valid), key=util.natural_sort)
             elif action == 'add':
@@ -329,11 +335,11 @@ class Result:
 
 
     def view(self,*,
-             increments: Union[None, int, Sequence[int], str, Sequence[str], bool] = None,
-             times: Union[None, float, Sequence[float], str, Sequence[str], bool] = None,
-             phases: Union[None, str, Sequence[str], bool] = None,
-             homogenizations: Union[None, str, Sequence[str], bool] = None,
-             fields: Union[None, str, Sequence[str], bool] = None,
+             increments: Optional[Union[int, Sequence[int], str, Sequence[str], bool]] = None,
+             times: Optional[Union[float, Sequence[float], Literal['*'], bool]] = None,
+             phases: Optional[Union[str, Sequence[str], bool]] = None,
+             homogenizations: Optional[Union[str, Sequence[str], bool]] = None,
+             fields: Optional[Union[str, Sequence[str], bool]] = None,
              protected: Optional[bool] = None) -> "Result":
         """
         Set view.
@@ -344,9 +350,10 @@ class Result:
         Parameters
         ----------
         increments : (list of) int, (list of) str, or bool, optional
-            Numbers of increments to select.
-        times : (list of) float, (list of) str, or bool, optional
-            Simulation times of increments to select.
+            Numbers of increments to select. Mutually exclusive with 'times'.
+        times : (list of) float, '*', or bool, optional
+            Simulation times of increments to select. Mutually exclusive with
+            'increments'.
         phases : (list of) str, or bool, optional
             Names of phases to select.
         homogenizations : (list of) str, or bool, optional
@@ -385,11 +392,11 @@ class Result:
 
 
     def view_more(self,*,
-                  increments: Union[None, int, Sequence[int], str, Sequence[str], bool] = None,
-                  times: Union[None, float, Sequence[float], str, Sequence[str], bool] = None,
-                  phases: Union[None, str, Sequence[str], bool] = None,
-                  homogenizations: Union[None, str, Sequence[str], bool] = None,
-                  fields: Union[None, str, Sequence[str], bool] = None) -> "Result":
+                  increments: Optional[Union[int, Sequence[int], str, Sequence[str], bool]] = None,
+                  times: Optional[Union[float, Sequence[float], Literal['*'], bool]] = None,
+                  phases: Optional[Union[str, Sequence[str], bool]] = None,
+                  homogenizations: Optional[Union[str, Sequence[str], bool]] = None,
+                  fields: Optional[Union[str, Sequence[str], bool]] = None) -> "Result":
         """
         Add to view.
 
@@ -399,9 +406,10 @@ class Result:
         Parameters
         ----------
         increments : (list of) int, (list of) str, or bool, optional
-            Numbers of increments to select.
-        times : (list of) float, (list of) str, or bool, optional
-            Simulation times of increments to select.
+            Numbers of increments to select. Mutually exclusive with 'times'.
+        times : (list of) float, '*', or bool, optional
+            Simulation times of increments to select. Mutually exclusive with
+            'increments'.
         phases : (list of) str, or bool, optional
             Names of phases to select.
         homogenizations : (list of) str, or bool, optional
@@ -427,11 +435,11 @@ class Result:
 
 
     def view_less(self,*,
-                  increments: Union[None, int, Sequence[int], str, Sequence[str], bool] = None,
-                  times: Union[None, float, Sequence[float], str, Sequence[str], bool] = None,
-                  phases: Union[None, str, Sequence[str], bool] = None,
-                  homogenizations: Union[None, str, Sequence[str], bool] = None,
-                  fields: Union[None, str, Sequence[str], bool] = None) -> "Result":
+                  increments: Optional[Union[int, Sequence[int], str, Sequence[str], bool]] = None,
+                  times: Optional[Union[float, Sequence[float], Literal['*'], bool]] = None,
+                  phases: Optional[Union[str, Sequence[str], bool]] = None,
+                  homogenizations: Optional[Union[str, Sequence[str], bool]] = None,
+                  fields: Optional[Union[str, Sequence[str], bool]] = None) -> "Result":
         """
         Remove from view.
 
@@ -441,9 +449,10 @@ class Result:
         Parameters
         ----------
         increments : (list of) int, (list of) str, or bool, optional
-            Numbers of increments to select.
-        times : (list of) float, (list of) str, or bool, optional
-            Simulation times of increments to select.
+            Numbers of increments to select. Mutually exclusive with 'times'.
+        times : (list of) float, '*', or bool, optional
+            Simulation times of increments to select. Mutually exclusive with
+            'increments'.
         phases : (list of) str, or bool, optional
             Names of phases to select.
         homogenizations : (list of) str, or bool, optional
