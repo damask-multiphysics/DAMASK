@@ -157,7 +157,7 @@ class YAML(dict):
             Updated configuration.
         """
         duplicate = self.copy()
-        for k in keys if isinstance(keys, Iterable) and not isinstance(keys, str) else [keys]:
+        for k in util.to_list(keys):
             del duplicate[k]
         return duplicate
 

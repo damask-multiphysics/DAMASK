@@ -795,6 +795,23 @@ def dict_flatten(d: dict) -> dict:
     return new
 
 
+def to_list(a: _Any) -> list:
+    """
+    Put into list.
+
+    Parameters
+    ----------
+    d : any
+        Variable to put into list or convert to list.
+
+    Returns
+    -------
+    l : list
+        Data in list.
+    """
+    return [a] if not hasattr(a,'__iter__') or isinstance(a,str) else list(a)
+
+
 ####################################################################################################
 # Classes
 ####################################################################################################
