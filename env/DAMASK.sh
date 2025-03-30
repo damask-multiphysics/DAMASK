@@ -40,6 +40,11 @@ SOLVER_MESH=$(type -p DAMASK_mesh || true 2>/dev/null)
 #           http://superuser.com/questions/220059/what-parameters-has-ulimit
 ulimit -s unlimited 2>/dev/null # maximum stack size (kB)
 
+[ "x$OMP_NUM_THREADS" == "x" ] && export OMP_NUM_THREADS=4
+[ "x$OPENBLAS_NUM_THREADS" == "x" ] && export OPENBLAS_NUM_THREADS=1 # avoid nested threads
+[ "x$I_MPI_JOB_ABORT_SIGNAL" == "x" ] && export I_MPI_JOB_ABORT_SIGNAL=15 # SIGTERM
+[ "x$I_MPI_JOB_SIGNAL_PROPAGATION" == "x" ] && export I_MPI_JOB_SIGNAL_PROPAGATION=yes
+
 # disable output in case of scp
 if [ ! -z "$PS1" ]; then
   echo
@@ -51,15 +56,17 @@ if [ ! -z "$PS1" ]; then
   echo "DAMASK             $DAMASK_ROOT $BRANCH"
   echo "Grid Solver        $SOLVER_GRID"
   echo "Mesh Solver        $SOLVER_MESH"
-  if [ "x$PETSC_DIR"   != "x" ]; then
+  if [ "x$PETSC_DIR" != "x" ]; then
     echo -n "PETSc location     "
     [ -d $PETSC_DIR ] && echo $PETSC_DIR || blink $PETSC_DIR
     [[ $(canonicalPath "$PETSC_DIR") == $PETSC_DIR ]] \
     || echo "               ~~> "$(canonicalPath "$PETSC_DIR")
   fi
   [ "x$PETSC_ARCH" != "x" ] && echo "PETSc architecture $PETSC_ARCH"
-  [ "x$OMP_NUM_THREADS" == "x" ] && export OMP_NUM_THREADS=4
   echo "Multithreading     OMP_NUM_THREADS=$OMP_NUM_THREADS"
+  echo "                   OPENBLAS_NUM_THREADS=$OPENBLAS_NUM_THREADS"
+  echo "IntelMPI           I_MPI_JOB_ABORT_SIGNAL=$I_MPI_JOB_ABORT_SIGNAL"
+  echo "                   I_MPI_JOB_SIGNAL_PROPAGATION=$I_MPI_JOB_SIGNAL_PROPAGATION"
   echo -n "heap  size         "
    [[ "$(ulimit -d)" == "unlimited" ]] \
    && echo "unlimited" \
