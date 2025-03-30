@@ -486,8 +486,8 @@ subroutine grid_mechanical_spectral_Galerkin_restartWrite()
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
-  call HDF5_write(reshape(F,[3,3,product(cells(1:2))*cells3]),groupHandle,'F')
-  call HDF5_write(reshape(F_lastInc,[3,3,product(cells(1:2))*cells3]),groupHandle,'F_lastInc')
+  call HDF5_write(reshape(F,[3,3,product(shape(F))/9]),groupHandle,'F')
+  call HDF5_write(reshape(F_lastInc,[3,3,product(shape(F_lastInc))/9]),groupHandle,'F_lastInc')
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 
@@ -617,12 +617,10 @@ end subroutine formResidual
 !--------------------------------------------------------------------------------------------------
 subroutine GK_op(Jac,dF_global,output_global,err_PETSc)
 
-  DM                                   :: dm_local
-  Vec                                  :: dF_global
-  Vec                                  :: dF_local
-  Vec                                  :: output_global
-  Mat                                  :: Jac
-  PetscErrorCode                       :: err_PETSc
+  DM :: dm_local
+  Vec :: dF_global, dF_local, output_global
+  Mat :: Jac
+  PetscErrorCode :: err_PETSc
 
   real(pREAL), pointer,dimension(:,:,:,:) :: dF_scal, output_scal
 

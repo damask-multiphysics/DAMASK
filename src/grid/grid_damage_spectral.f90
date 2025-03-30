@@ -314,8 +314,8 @@ subroutine grid_damage_spectral_restartWrite()
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
   groupHandle = HDF5_openGroup(fileHandle,'solver')
-  call HDF5_write(reshape(phi,[1,product(cells(1:2))*cells3]),groupHandle,'phi')
-  call HDF5_write(reshape(phi_lastInc,[1,product(cells(1:2))*cells3]),groupHandle,'phi_lastInc')
+  call HDF5_write(reshape(phi,[1,product(shape(phi))]),groupHandle,'phi')
+  call HDF5_write(reshape(phi_lastInc,[1,product(shape(phi_lastInc))]),groupHandle,'phi_lastInc')
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 
