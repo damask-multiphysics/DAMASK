@@ -12,8 +12,16 @@ from . import grid_filters as _grid_filters
 
 
 class FromGridTuple(_NamedTuple):
+    """
+    Seed coordinates and corresponding material ID.
+
+    GeomGrid can be reconstructed from this information
+    and cells and size using Voronoi tessellation.
+    """
+
     coords: _np.ndarray
     materials: _np.ndarray
+
 
 
 def from_random(size: _FloatSequence,

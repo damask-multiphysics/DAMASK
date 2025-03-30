@@ -216,6 +216,7 @@ def open_text(fname: _FileHandle,
     Returns
     -------
     f : file handle
+        File handle for a text file.
     """
     if isinstance(fname, (str,_Path)):
         fhandle = open(_Path(fname).expanduser(),mode,newline=('\n' if mode == 'w' else None))
@@ -225,12 +226,25 @@ def open_text(fname: _FileHandle,
         yield fname
 
 def time_stamp() -> str:
-    """Provide current time as formatted string."""
+    """
+    Provide current time as formatted string.
+
+    Returns
+    -------
+    time_stamp : str
+        Current time as string in %Y-%m-%d %H:%M:%S%z format.
+    """
     return _datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
 
 def execution_stamp(class_name: str,
                     function_name: _Optional[str] = None) -> str:
-    """Timestamp the execution of a (function within a) class."""
+    """
+    Timestamp the execution of a (function within a) class.
+
+    execution_stamp : str
+        Fingerprint of an operation: Class, (function), version, and
+        current time.
+    """
     _function_name = '' if function_name is None else f'.{function_name}'
     return f'damask.{class_name}{_function_name} v{_version} ({time_stamp()})'
 
@@ -678,7 +692,7 @@ def _standardize_MillerBravais(idx: _IntSequence) -> _np.ndarray:
 
 def Bravais_to_Miller(*,
                       uvtw: _Optional[_IntSequence] = None,
-                      hkil: _Optional[_IntSequence] = None) -> _np.ndarray:
+                      hkil: _Optional[_IntSequence] = None) -> _np.ndarray:                         # numpydoc ignore=PR01,PR02
     """
     Transform 4 Miller–Bravais indices to 3 Miller indices of crystal direction [uvw] or plane normal (hkl).
 
@@ -713,7 +727,7 @@ MillerBravais_to_Miller = Bravais_to_Miller
 
 def Miller_to_Bravais(*,
                       uvw: _Optional[_IntSequence] = None,
-                      hkl: _Optional[_IntSequence] = None) -> _np.ndarray:
+                      hkl: _Optional[_IntSequence] = None) -> _np.ndarray:                          # numpydoc ignore=PR01,PR02
     """
     Transform 3 Miller indices to 4 Miller–Bravais indices of crystal direction [uvtw] or plane normal (hkil).
 
@@ -801,7 +815,7 @@ def to_list(a: _Any) -> list:
 
     Parameters
     ----------
-    d : any
+    a : any
         Variable to put into list or convert to list.
 
     Returns

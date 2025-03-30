@@ -58,18 +58,14 @@ doctest_optionflags = 'NUMBER NORMALIZE_WHITESPACE ELLIPSIS'
 
 [tool.numpydoc_validation]
 checks = [
-    "all",   # report on all checks, except the below
-    "EX01",
-    "SA01",
-    "ES01",
+    'all',   # report on all checks, except the below
+    'EX01',
+    'SA01',
+    'ES01',
+    'RT02',  # because shape information (for np.ndarray) besides type
 ]
 
 exclude = [  # don't report on objects that match any of these regex
     '\.undocumented_method$',
     '\.__repr__$',
-]
-override_SS05 = [  # override SS05 to allow docstrings starting with these words
-    '^Process ',
-    '^Assess ',
-    '^Access ',
 ]

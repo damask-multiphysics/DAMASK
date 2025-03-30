@@ -136,6 +136,11 @@ class YAML(dict):
         Return self|=other.
 
         Update configuration with contents of other (in-place).
+
+        Parameters
+        ----------
+        other : damask.YAML or dict
+            Key–value pairs that update self.
         """
         self.update(other)
         return self

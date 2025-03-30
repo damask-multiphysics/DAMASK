@@ -69,6 +69,16 @@ class Colormap(mpl.colors.ListedColormap):
         Return self==other.
 
         Test equality of other.
+
+        Parameters
+        ----------
+        other : Colormap
+            Colormap to check for equality.
+
+        Returns
+        -------
+        eq : bool
+            Wheter self equals other.
         """
         if not isinstance(other, Colormap):
             return NotImplemented
@@ -81,6 +91,16 @@ class Colormap(mpl.colors.ListedColormap):
         Return self+other.
 
         Concatenate.
+
+        Parameters
+        ----------
+        other : Colormap
+            Colormap to concatenate.
+
+        Returns
+        -------
+        new : Colormap
+            Concatenated colormap.
         """
         return Colormap(np.vstack((self.colors,other.colors)),
                         f'{self.name}+{other.name}')
@@ -92,6 +112,16 @@ class Colormap(mpl.colors.ListedColormap):
         Return self+=other.
 
         Concatenate (in-place).
+
+        Parameters
+        ----------
+        other : Colormap
+            Colormap to concatenate.
+
+        Returns
+        -------
+        updated : Colormap
+            Concatenated colormap.
         """
         return self.__add__(other)
 
@@ -102,6 +132,16 @@ class Colormap(mpl.colors.ListedColormap):
         Return self*other.
 
         Repeat.
+
+        Parameters
+        ----------
+        factor : int
+            Number of repetitions.
+
+        Returns
+        -------
+        new : Colormap
+            Repeated colormap.
         """
         return Colormap(np.vstack([self.colors]*factor),f'{self.name}*{factor}')
 
@@ -111,6 +151,16 @@ class Colormap(mpl.colors.ListedColormap):
         Return self*=other.
 
         Repeat (in-place).
+
+        Parameters
+        ----------
+        factor : int
+            Number of repetitions.
+
+        Returns
+        -------
+        updated : Colormap
+            Repeated colormap.
         """
         return self.__mul__(factor)
 
@@ -120,6 +170,11 @@ class Colormap(mpl.colors.ListedColormap):
         Return ~self.
 
         Reverse.
+
+        Returns
+        -------
+        new : Colormap
+            Reversed colormap.
         """
         return self.reversed()
 
@@ -767,28 +822,119 @@ class Colormap(mpl.colors.ListedColormap):
 
     @staticmethod
     def _lab2rgb(lab: np.ndarray) -> np.ndarray:
+        """
+        CIELAB to Red Green Blue.
+
+        Parameters
+        ----------
+        lab : numpy.ndarray, shape (3)
+            CIELAB values.
+
+        Returns
+        -------
+        rgb : numpy.ndarray, shape (3)
+            RGB values in the range [[0,1],[0,1],[0,1]].
+        """
         return Colormap._xyz2rgb(Colormap._lab2xyz(lab))
 
     @staticmethod
     def _rgb2lab(rgb: np.ndarray) -> np.ndarray:
+        """
+        Red Green Blue to CIELAB.
+
+        Parameters
+        ----------
+        rgb : numpy.ndarray, shape (3)
+            RGB values in the range [[0,1],[0,1],[0,1]].
+
+        Returns
+        -------
+        lab : numpy.ndarray, shape (3)
+            CIELAB values.
+        """
         return Colormap._xyz2lab(Colormap._rgb2xyz(rgb))
 
     @staticmethod
     def _msh2rgb(msh: np.ndarray) -> np.ndarray:
+        """
+        Msh to Red Green Blue.
+
+        Parameters
+        ----------
+        msh : numpy.ndarray, shape (3)
+            Msh values.
+
+        Returns
+        -------
+        rgb : numpy.ndarray, shape (3)
+            RGB values in the range [[0,1],[0,1],[0,1]].
+        """
         return Colormap._lab2rgb(Colormap._msh2lab(msh))
 
     @staticmethod
     def _rgb2msh(rgb: np.ndarray) -> np.ndarray:
+        """
+        Red Green Blue to Msh.
+
+        Parameters
+        ----------
+        rgb : numpy.ndarray, shape (3)
+            RGB values in the range [[0,1],[0,1],[0,1]].
+
+        Returns
+        -------
+        msh : numpy.ndarray, shape (3)
+            Msh values.
+        """
         return Colormap._lab2msh(Colormap._rgb2lab(rgb))
 
     @staticmethod
     def _hsv2msh(hsv: np.ndarray) -> np.ndarray:
+        """
+        Hue Saturation Value to msh.
+
+        Parameters
+        ----------
+        hsv : numpy.ndarray, shape (3)
+            HSV values in the range [[0,360],[0,1],[0,1]].
+
+        Returns
+        -------
+        msh : numpy.ndarray, shape (3)
+            Msh values.
+        """
         return Colormap._rgb2msh(Colormap._hsv2rgb(hsv))
 
     @staticmethod
     def _hsl2msh(hsl: np.ndarray) -> np.ndarray:
+        """
+        Hue Saturation Luminance to Msh.
+
+        Parameters
+        ----------
+        hsl : numpy.ndarray, shape (3)
+            HSL values in the range [[0,360],[0,1],[0,1]].
+
+        Returns
+        -------
+        msh : numpy.ndarray, shape (3)
+            Msh values.
+        """
         return Colormap._rgb2msh(Colormap._hsl2rgb(hsl))
 
     @staticmethod
     def _xyz2msh(xyz: np.ndarray) -> np.ndarray:
+        """
+        CIEXYZ to Msh.
+
+        Parameters
+        ----------
+        xyz : numpy.ndarray, shape (3)
+            CIEXYZ values.
+
+        Returns
+        -------
+        msh : numpy.ndarray, shape (3)
+            Msh values.
+        """
         return Colormap._lab2msh(Colormap._xyz2lab(xyz))
