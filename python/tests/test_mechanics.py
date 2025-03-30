@@ -235,3 +235,19 @@ class TestMechanics:
     def test_invalid_strain(self,np_rng):
         with pytest.raises(ValueError):
             mechanics.strain(np_rng.random((10,3,3)),'A',0)
+
+    @pytest.mark.parametrize('deformation,stretch',
+        [(mechanics.deformation_Cauchy_Green_left,mechanics.stretch_left),
+         (mechanics.deformation_Cauchy_Green_right,mechanics.stretch_right)])
+    def test_stretch_deformation(self,np_rng,assert_allclose,deformation,stretch):
+        F = np.eye(3) + (np_rng.random((self.n,3,3))-.5)*5e-1
+        assert_allclose(deformation(F),np.linalg.matrix_power(stretch(F),2))
+
+    @pytest.mark.parametrize('f,t',[(mechanics.stretch_left,'V'),                                   # Eulerian
+                                    (mechanics.stretch_right,'U')])                                 # Langrangian
+    def test_Seth_Hill(self,np_rng,assert_allclose,f,t):
+        # http://dx.doi.org/10.1155/2016/7473046
+        F = np.eye(3) + (np_rng.random((self.n,3,3))-.5)*5e-1
+        m = np_rng.integers(1,6)*np_rng.choice([-1,1])
+        assert_allclose(0.5/m*(np.linalg.matrix_power(f(F),2*m) - np.eye(3)),
+                        mechanics.strain(F,t,m))
