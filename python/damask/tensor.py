@@ -159,7 +159,7 @@ def symmetric(T: _np.ndarray) -> _np.ndarray:
 
     Notes
     -----
-    The symmetrization of a second order Tensor is defined as:
+    The symmetrization of a second-order tensor is defined as:
 
     .. math::
 
@@ -184,7 +184,7 @@ def transpose(T: _np.ndarray) -> _np.ndarray:
 
     Notes
     -----
-    The second transpose of a second order Tensor is defined as:
+    The transpose of a second-order tensor is defined as:
 
     .. math::
 
