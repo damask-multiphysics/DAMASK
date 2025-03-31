@@ -43,7 +43,8 @@ class Orientation(Rotation,Crystal):
     - cubic
 
     and enables symmetry-related operations such as
-    "equivalent", "reduced", "disorientation", "IPF_color", or "to_SST".
+    :func:`equivalent`, :func:`reduced` :func:`disorientation`,
+    :func:`IPF_color`, or :func:`to_SST`.
 
     The Bravais lattice is given in the Pearson notation:
 
@@ -74,8 +75,9 @@ class Orientation(Rotation,Crystal):
 
     and inherits the corresponding crystal family.
     Specifying a Bravais lattice, compared to just the crystal family,
-    extends the functionality of Orientation objects to include operations such as
-    "Schmid", "related", or "to_frame" that require a lattice type and its parameters.
+    extends the functionality of Orientation objects to include operations
+    such as :func:`Schmid`, :func:`related`, or :func:`to_frame` that
+    require a lattice type and its parameters.
 
     Examples
     --------
@@ -1177,7 +1179,7 @@ class Orientation(Rotation,Crystal):
         >>> b = damask.Orientation.from_Euler_angles(phi=[104,11,87],degrees=True,family='hexagonal')
         >>> a.disorientation(b)
         Crystal family: hexagonal
-        Quaternion [0.976   0.189 0.018 0.103]
+        array((0.976478  ,     0.18880082,  0.01784483,  0.10259889))
 
         Plot a sample from the Mackenzie distribution.
 
@@ -1188,8 +1190,8 @@ class Orientation(Rotation,Crystal):
         >>> b = damask.Orientation.from_random(shape=N,family='cubic')
         >>> n,omega = a.disorientation(b).as_axis_angle(degrees=True,pair=True)
         >>> plt.hist(omega,25)
-        [...]
-        >>> plt.show()
+        (...)
+        >>> plt.show(block=False)
         """
         # For extension to cases with differing symmetry see
         # https://doi.org/10.1107/S0021889808016373 and https://doi.org/10.1107/S0108767391006864
@@ -1495,10 +1497,10 @@ class Orientation(Rotation,Crystal):
         >>> coord = damask.util.project_equal_area(o.to_SST(lab))
         >>> color = o.IPF_color(lab)
         >>> plt.scatter(coord[:,0],coord[:,1],color=color,s=.06)
-        [...]
+        <matplotlib.collections.PathCollection object at ...>
         >>> plt.axis('scaled')
-        [...]
-        >>> plt.show()
+        (...)
+        >>> plt.show(block=False)
         """
         if np.array(vector).shape[-1] != 3:
             raise ValueError('input is not a field of three-dimensional vectors')
@@ -1565,11 +1567,11 @@ class Orientation(Rotation,Crystal):
         >>> import numpy as np
         >>> import damask
         >>> cubic = damask.Orientation.from_axis_angle(n_omega=[1,0,0,90],degrees=True,lattice='cI')
-        >>> cubic.to_lattice(direction=[1, 0, 0])
+        >>> np.round(cubic.to_lattice(direction=[1, 0, 0]),3)
         array([1., 0., 0.])
-        >>> cubic.to_lattice(direction=[0, 1, 0])
-        array([0., 0., -1.])
-        >>> cubic.to_lattice(direction=[0, 0, 1])
+        >>> np.round(cubic.to_lattice(direction=[0, 1, 0]),3)
+        array([ 0., 0., -1.])
+        >>> np.round(cubic.to_lattice(direction=[0, 0, 1]),3)
         array([-0., 1., 0.])
         >>> tetragonal = damask.Orientation(lattice='tI',c=0.5)
         >>> damask.util.scale_to_coprime(tetragonal.to_lattice(direction=[1,1,1]))
@@ -1656,9 +1658,9 @@ class Orientation(Rotation,Crystal):
         >>> import damask
         >>> O = damask.Orientation.from_Euler_angles(phi=[0,45,0],degrees=True,lattice='cF')
         >>> O.Schmid(N_slip=[12])[0]
-        array([[ 0.000,  0.000,  0.000],
-               [ 0.577, -0.000,  0.816],
-               [ 0.000,  0.000,  0.000]])
+        array([[ 0.   ,  0.   ,  0.   ],
+               [ 0.408,  0.408,  0.408],
+               [-0.408, -0.408, -0.408]])
         """
         if len(self.shape) == 0:
             return self @ super().Schmid(N_slip=N_slip, N_twin=N_twin)
@@ -1700,10 +1702,9 @@ class Orientation(Rotation,Crystal):
         Bravais lattice: cI
         a=1 m, b=1 m, c=1 m
         α=90°, β=90°, γ=90°
-        Quaternions of shape (3,)
-        [[ 6.53281482e-01  2.70598050e-01  6.53281482e-01  2.70598050e-01]
-         [ 2.70598050e-01 -2.70598050e-01 -6.53281482e-01 -6.53281482e-01]
-         [ 9.23879533e-01 -5.55111512e-17 -2.77555756e-17 -3.82683432e-01]]
+        array([( 6.53281482e-01,     2.70598050e-01,  6.53281482e-01,  2.70598050e-01),
+               ( 2.70598050e-01,    -2.70598050e-01, -6.53281482e-01, -6.53281482e-01),
+               ( 9.23879533e-01,    -5.55111512e-17, -2.77555756e-17, -3.82683432e-01)])
         """
         lattice,o = self.relation_operations(model,target)
         target = Crystal(lattice=lattice) if target is None else target

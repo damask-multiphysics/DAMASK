@@ -25,8 +25,8 @@ from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequ
                         NumpyRngSeed as _NumpyRngSeed, FileHandle as _FileHandle
 
 class stdioTuple(_NamedTuple):
-    stdin: str
     stdout: str
+    stderr: str
 
 
 logger = logging.getLogger(__name__)
