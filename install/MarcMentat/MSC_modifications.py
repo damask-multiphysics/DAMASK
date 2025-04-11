@@ -20,7 +20,7 @@ def copy_and_patch(patch,orig,editor):
         shutil.copyfile(orig,orig.parent/patch.stem)
     except shutil.SameFileError:
         pass
-    subprocess.run(shlex.split(f'patch {orig.parent/patch.stem} {patch} --backup --forward'))
+    subprocess.run(shlex.split(f'patch {orig.parent/patch.stem} {patch} --backup --forward'), check=True)
     with open(orig.parent/patch.stem) as f_in:
         content = f_in.read()
     with open(orig.parent/patch.stem,'w') as f_out:
@@ -61,10 +61,10 @@ matches = {'Marc_tools':  [['comp_user','comp_damask_*mp'],
 
 for cmd in ['xvfb-run','patch'] if args.command == APPLY else ['xvfb-run'] if args.command == RESTORE else []:
     try:
-        subprocess.run([cmd,'--help'], capture_output=True)
+        subprocess.run([cmd,'--help'], capture_output=True, check=True)
     except FileNotFoundError:
         print(f'"{cmd}" not found, please install')
-        sys.exit()
+        sys.exit(1)
 
 if args.command == APPLY:
     print('patching files...')
@@ -98,7 +98,7 @@ print('compiling Mentat menu binaries...')
 
 executable = marc_root/f'mentat{marc_version}/bin/mentat'
 menu_file  = marc_root/f'mentat{marc_version}/menus/linux64/main.msb'
-subprocess.run(shlex.split(f'xvfb-run -a {executable} -compile {menu_file}'))
+subprocess.run(shlex.split(f'xvfb-run -a {executable} -compile {menu_file}'), check=True)
 
 print('setting file access rights...')
 
