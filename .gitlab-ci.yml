@@ -38,13 +38,6 @@ create_testroot_matesting:
   script:
     - mkdir -p ${TESTROOT}
 
-create_testroot_matesting2:
-  stage: prepare
-  tags:
-    - matesting2_bare-metal
-  script:
-    - mkdir -p ${TESTROOT}
-
 .on_merge:
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
@@ -306,7 +299,7 @@ open-source_GCC:
   image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
   before_script:
     - cmake -DDAMASK_SOLVER=grid -B build/grid && cmake --build build/grid --parallel 2 --target install
-    - cmake -DDAMASK_SOLVER=mesh -B build/grid && cmake --build build/grid --parallel 2 --target install
+    - cmake -DDAMASK_SOLVER=mesh -B build/mesh && cmake --build build/mesh --parallel 2 --target install
     - source env/DAMASK.sh
     - export OPENBLAS_NUM_THREADS=1
   script:
@@ -316,7 +309,7 @@ open-source_GCC:
 open-source_signal_restart_GCC:
   stage: fortran
   tags:
-    - matesting2_bare-metal
+    - matesting_bare-metal
   before_script:
     - source /etc/zsh/spackenv
     - spack env activate DAMASK_oneapi_2503
@@ -361,7 +354,7 @@ grid_performance:
     - make -j2 all install
     - export PATH=${PWD}/bin:${PATH}
     - cd $(mktemp -d)
-    - git clone -q git@git.damask-multiphysics.org:damask/statistics.git .
+    - git clone -q https://damask_user:${STATISTICS_TOKEN}@git.damask-multiphysics.org/damask/statistics.git .
     - ./measure_performance.py --input_dir ${CI_PROJECT_DIR}/examples/grid --tag ${CI_COMMIT_SHA}
     - >
         if [ ${CI_COMMIT_BRANCH} == development ]; then
@@ -396,8 +389,7 @@ update_revision:
     - echo Job start:" $(date)"
   script:
     - cd $(mktemp -d)
-    - git clone -q git@git.damask-multiphysics.org:damask/DAMASK.git .
-    - git pull
+    - git clone -b development -q https://damask_user:${TOKEN}@git.damask-multiphysics.org/damask/DAMASK.git .
     - export VERSION=$(git describe ${CI_COMMIT_SHA})
     - echo ${VERSION:1} > VERSION
     - >
