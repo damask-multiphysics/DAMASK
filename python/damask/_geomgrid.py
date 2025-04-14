@@ -291,7 +291,7 @@ class GeomGrid:
         >>> N_grains = 20
         >>> cells = (32,32,32)
         >>> damask.util.run(f'neper -T -n {N_grains} -tesrsize {cells[0]}:{cells[1]}:{cells[2]} -periodicity all -format vtk')
-        running 'neper -T -n 20 -tesrsize 32:32:32 -periodicity all -format vtk' ...
+        stdioTuple(stdout=...
         >>> damask.GeomGrid.load_Neper(f'n{N_grains}-id1.vtk').renumber()
         cells:  32 × 32 × 32
         size:   1.0 × 1.0 × 1.0 m³
