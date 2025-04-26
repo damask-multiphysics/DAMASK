@@ -157,40 +157,23 @@ unittest_oneAPI:
     - head -n 10 /petsc/include/petscversion.h | tail -n 6
     - source env/DAMASK.sh
     - cd PRIVATE/testing
+  parallel:
+    matrix:
+      - IMAGE:
+          - gcc_petsc-default:2025.03.10
+          - gcc_petsc-i64:2025.03.10
+          - oneapi_petsc-default:2025.04.01
+  image: git.damask-multiphysics.org:5050/damask/damask/${IMAGE}
 
-.compile_grid:
+compile_grid:
   extends: .compile
   script:
     - pytest -v -k 'compile and grid'
 
-.compile_mesh:
+compile_mesh:
   extends: .compile
   script:
     - pytest -v -k 'compile and mesh'
-
-grid_GCC:
-  extends: .compile_grid
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
-
-mesh_GCC:
-  extends: .compile_mesh
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
-
-grid_GCC-i64:
-  extends: .compile_grid
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-i64:2025.03.10
-
-mesh_GCC-i64:
-  extends: .compile_mesh
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-i64:2025.03.10
-
-grid_oneAPI:
-  extends: .compile_grid
-  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.04.01
-
-mesh_oneAPI:
-  extends: .compile_mesh
-  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.04.01
 
 Marc_patch:
   stage: compile
