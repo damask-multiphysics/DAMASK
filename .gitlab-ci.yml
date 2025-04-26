@@ -154,6 +154,7 @@ unittest_oneAPI:
     - matesting2_docker
   before_script:
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
+    - head -n 10 /petsc/include/petscversion.h | tail -n 6
     - source env/DAMASK.sh
     - cd PRIVATE/testing
 
@@ -234,6 +235,7 @@ setup_Marc:
     - matesting2_docker
   before_script:
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
+    - head -n 10 /petsc/include/petscversion.h | tail -n 6
     - source env/DAMASK.sh
     - cmake -B builddir -DDAMASK_SOLVER=grid -DCMAKE_BUILD_TYPE=DEBUG
     - cmake --build builddir --target install
