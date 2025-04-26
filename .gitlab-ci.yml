@@ -126,56 +126,24 @@ mypy:
     - matesting2_docker
   script:
     - source env/DAMASK.sh
-    - export OPENBLAS_NUM_THREADS=1
     - ./bin/DAMASK_test
     - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \;
+  parallel:
+    matrix:
+      - BUILD_TYPE: [DEBUG, RELEASE, PERFORMANCE]
 
-.unittest_GCC:
+unittest_GCC:
   extends: .unittest
   image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-debug:2025.03.10
+  before_script:
+    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=-coverage
+    - cmake --build builddir --target install
 
-.unittest_oneAPI:
+unittest_oneAPI:
   extends: .unittest
   image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-debug:2025.04.01
-
-# -------------------------------------------------------------------------------------------------
-
-unittest_GCC_DEBUG:
-  extends: .unittest_GCC
   before_script:
-    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=DEBUG -DBUILDCMD_POST=-coverage
-    - cmake --build builddir --target install
-
-unittest_GCC_RELEASE:
-  extends: .unittest_GCC
-  before_script:
-    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=RELEASE -DBUILDCMD_POST=-coverage
-    - cmake --build builddir --target install
-
-unittest_GCC_PERFORMANCE:
-  extends: .unittest_GCC
-  before_script:
-    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=PERFORMANCE -DBUILDCMD_POST=-coverage
-    - cmake --build builddir --target install
-
-# -------------------------------------------------------------------------------------------------
-
-unittest_oneAPI_DEBUG:
-  extends: .unittest_oneAPI
-  before_script:
-    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=DEBUG
-    - cmake --build builddir --target install
-
-unittest_oneAPI_RELEASE:
-  extends: .unittest_oneAPI
-  before_script:
-    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=RELEASE
-    - cmake --build builddir --target install
-
-unittest_oneAPI_PERFORMANCE:
-  extends: .unittest_oneAPI
-  before_script:
-    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=PERFORMANCE
+    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
     - cmake --build builddir --target install
 
 ###################################################################################################
@@ -187,7 +155,6 @@ unittest_oneAPI_PERFORMANCE:
   before_script:
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
     - source env/DAMASK.sh
-    - export OPENBLAS_NUM_THREADS=1
     - cd PRIVATE/testing
 
 .compile_grid:
@@ -268,7 +235,6 @@ setup_Marc:
   before_script:
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
     - source env/DAMASK.sh
-    - export OPENBLAS_NUM_THREADS=1
     - cmake -B builddir -DDAMASK_SOLVER=grid -DCMAKE_BUILD_TYPE=DEBUG
     - cmake --build builddir --target install
     - cd PRIVATE/testing
@@ -278,13 +244,6 @@ setup_Marc:
 configexamples_debug_GCC:
   extends: .configexamples_debug
   image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
-  before_script:
-    - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
-    - source env/DAMASK.sh
-    - export OPENBLAS_NUM_THREADS=1
-    - cmake -B builddir -DDAMASK_SOLVER=grid -DCMAKE_BUILD_TYPE=DEBUG
-    - cmake --build builddir --target install
-    - cd PRIVATE/testing
 
 configexamples_debug_oneAPI:
   extends: .configexamples_debug
@@ -301,7 +260,6 @@ open-source_GCC:
     - cmake -DDAMASK_SOLVER=grid -B build/grid && cmake --build build/grid --parallel 2 --target install
     - cmake -DDAMASK_SOLVER=mesh -B build/mesh && cmake --build build/mesh --parallel 2 --target install
     - source env/DAMASK.sh
-    - export OPENBLAS_NUM_THREADS=1
   script:
     - cd PRIVATE/testing
     - pytest -v -k 'not compile and not (signal or restart) and not Marc'
