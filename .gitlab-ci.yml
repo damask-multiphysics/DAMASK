@@ -132,19 +132,40 @@ mypy:
     matrix:
       - BUILD_TYPE: [DEBUG, RELEASE, PERFORMANCE]
 
-unittest_GCC:
+.unittest_GCC:
   extends: .unittest
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-debug:2025.03.10
   before_script:
     - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=-coverage
     - cmake --build builddir --target install
 
-unittest_oneAPI:
+.unittest_oneAPI:
   extends: .unittest
-  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-debug:2025.04.01
   before_script:
     - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
     - cmake --build builddir --target install
+
+
+unittest_GCC:
+  extends: .unittest_GCC
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-debug:2025.04.01
+
+unittest_oneAPI:
+  extends: .unittest_oneAPI
+  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-debug:2025.04.01
+
+
+unittest_GCC_min:
+  extends:
+    - .unittest_GCC
+    - .on_merge
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-debug:2025.03.10
+
+unittest_oneAPI_min:
+  extends:
+    - .unittest_oneAPI
+    - .on_merge
+  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-debug:2025.03.27
+
 
 ###################################################################################################
 
@@ -160,8 +181,8 @@ unittest_oneAPI:
   parallel:
     matrix:
       - IMAGE:
-          - gcc_petsc-default:2025.03.10
-          - gcc_petsc-i64:2025.03.10
+          - gcc_petsc-default:2025.04.01
+          - gcc_petsc-i64:2025.04.01
           - oneapi_petsc-default:2025.04.01
   image: git.damask-multiphysics.org:5050/damask/damask/${IMAGE}
 
@@ -228,11 +249,11 @@ setup_Marc:
 
 configexamples_debug_GCC:
   extends: .configexamples_debug
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.04.01
 
 configexamples_debug_oneAPI:
   extends: .configexamples_debug
-  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.03.27
+  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.04.01
 
 ##################################################################################################
 
@@ -240,7 +261,7 @@ open-source_GCC:
   stage: fortran
   tags:
     - matesting2_docker
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.03.10
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.04.01
   before_script:
     - cmake -DDAMASK_SOLVER=grid -B build/grid && cmake --build build/grid --parallel 2 --target install
     - cmake -DDAMASK_SOLVER=mesh -B build/mesh && cmake --build build/mesh --parallel 2 --target install
