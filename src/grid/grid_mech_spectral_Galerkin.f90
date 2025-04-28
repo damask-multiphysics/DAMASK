@@ -95,9 +95,8 @@ module grid_mechanical_spectral_Galerkin
     grid_mechanical_spectral_Galerkin_updateCoords, &
     grid_mechanical_spectral_Galerkin_restartWrite
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
   ! Missing interfaces for some PETSc versions
-  interface MatCreateShell
+  interface
     subroutine MatCreateShell(comm,mloc,nloc,m,n,ctx,mat,ierr)
       use petscmat
       MPI_Comm :: comm
@@ -106,38 +105,44 @@ module grid_mechanical_spectral_Galerkin
       Mat :: mat
       PetscErrorCode :: ierr
     end subroutine MatCreateShell
-  end interface MatCreateShell
 
-  interface MatShellSetContext
+    subroutine MatShellSetOperation(mat,op_num,op_callback,ierr)
+      use petscmat
+      Mat :: mat
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+      PetscEnum :: op_num
+#else
+      TYPE(ematoperation) :: op_num
+#endif
+      external :: op_callback
+      PetscErrorCode :: ierr
+    end subroutine MatShellSetOperation
+
+    subroutine SNESSetUpdate(snes_mech,upd_callback,ierr)
+      use petscsnes
+      SNES :: snes_mech
+      external :: upd_callback
+      PetscErrorCode :: ierr
+    end subroutine SNESSetUpdate
+  end interface
+
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+  interface
     subroutine MatShellSetContext(mat,ctx,ierr)
       use petscmat
       Mat :: mat
       Vec :: ctx
       PetscErrorCode :: ierr
     end subroutine MatShellSetContext
-  end interface MatShellSetContext
 
-  interface MatShellGetContext
     subroutine MatShellGetContext(mat,ctx,ierr)
       use petscmat
       Mat :: mat
       Vec, Pointer :: ctx
       PetscErrorCode :: ierr
     end subroutine MatShellGetContext
-  end interface MatShellGetContext
-
-  interface MatShellSetOperation
-    subroutine MatShellSetOperation(mat,op_num,op_callback,ierr)
-      use petscmat
-      Mat :: mat
-      PetscEnum :: op_num
-      external :: op_callback
-      PetscErrorCode :: ierr
-    end subroutine MatShellSetOperation
-  end interface MatShellSetOperation
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<22)
-  interface SNESSetJacobian
     subroutine SNESSetJacobian(snes_mech,A,P,jac_callback,ctx,ierr)
       use petscsnes
       SNES :: snes_mech
@@ -146,17 +151,8 @@ module grid_mechanical_spectral_Galerkin
       integer :: ctx
       PetscErrorCode :: ierr
     end subroutine SNESSetJacobian
-  end interface SNESSetJacobian
 #endif
-
-  interface SNESSetUpdate
-    subroutine SNESSetUpdate(snes_mech,upd_callback,ierr)
-      use petscsnes
-      SNES :: snes_mech
-      external :: upd_callback
-      PetscErrorCode :: ierr
-    end subroutine SNESSetUpdate
-  end interface SNESSetUpdate
+  end interface
 #endif
 
 contains
