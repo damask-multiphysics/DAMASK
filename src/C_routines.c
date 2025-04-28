@@ -7,8 +7,9 @@
 #include <pwd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifdef GRID
 #include <zlib.h>
-
+#endif
 #ifdef FYAML
 #include <libfyaml.h>
 #endif
@@ -71,19 +72,7 @@ void signalusr2_c(void (*handler)(int)){
 }
 
 
-void inflate_c(const uLong *s_deflated, const uLong *s_inflated, const Byte deflated[], Byte inflated[], int *stat){
-  /* make writable copy, uncompress will write to it */
-  uLong s_inflated_,i;
-  s_inflated_ = *s_inflated;
 
-  *stat = 1;
-  // https://stackoverflow.com/questions/51334741
-  if(uncompress((Bytef *)inflated, &s_inflated_, (Bytef *)deflated, *s_deflated) == Z_OK){
-    if (*s_inflated == s_inflated_) *stat = 0;
-    return;
-  }
-  else memset(inflated,0,(size_t)*s_inflated);
-}
 
 
 int stdout_isatty_c(){
@@ -98,6 +87,21 @@ int stdin_isatty_c(){
   return isatty(STDIN_FILENO);
 }
 
+#ifdef GRID
+void inflate_c(const uLong *s_deflated, const uLong *s_inflated, const Byte deflated[], Byte inflated[], int *stat){
+  /* make writable copy, uncompress will write to it */
+  uLong s_inflated_,i;
+  s_inflated_ = *s_inflated;
+
+  *stat = 1;
+  // https://stackoverflow.com/questions/51334741
+  if(uncompress((Bytef *)inflated, &s_inflated_, (Bytef *)deflated, *s_deflated) == Z_OK){
+    if (*s_inflated == s_inflated_) *stat = 0;
+    return;
+  }
+  else memset(inflated,0,(size_t)*s_inflated);
+}
+#endif
 
 #ifdef FYAML
 void to_flow_c(char **flow, long* length_flow, const char *mixed){

@@ -99,10 +99,10 @@ subroutine result_init(restart)
     call result_addAttribute('created',now())
     call get_command(commandLine)
     call result_addAttribute('call',trim(commandLine))
-#ifdef DAMASK_GRID
+#ifdef GRID
     call result_addAttribute('solver','grid')
 #endif
-#ifdef DAMASK_MESH
+#ifdef MESH
     call result_addAttribute('solver','mesh')
 #endif
 #ifdef MARC_SOURCE
