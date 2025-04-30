@@ -178,23 +178,55 @@ unittest_oneAPI_min:
     - head -n 10 /petsc/include/petscversion.h | tail -n 6
     - source env/DAMASK.sh
     - cd PRIVATE/testing
+  image: git.damask-multiphysics.org:5050/damask/damask/${PETSC_IMAGE}
+
+.fortran_default:
   parallel:
     matrix:
-      - IMAGE:
+      - PETSC_IMAGE:
           - gcc_petsc-default:2025.04.30
           - gcc_petsc-i64:2025.04.30
           - oneapi_petsc-default:2025.04.30
-  image: git.damask-multiphysics.org:5050/damask/damask/${IMAGE}
 
-compile_grid:
+.fortran_min:
+  parallel:
+    matrix:
+      - PETSC_IMAGE:
+          - gcc_petsc-default:2025.03.10
+          - gcc_petsc-i64:2025.03.10
+          - oneapi_petsc-default:2025.03.27
+
+.compile_grid:
   extends: .compile
   script:
     - pytest -v -k 'compile and grid'
 
-compile_mesh:
+.compile_mesh:
   extends: .compile
   script:
     - pytest -v -k 'compile and mesh'
+
+compile_grid:
+  extends:
+    - .compile_grid
+    - .fortran_default
+
+compile_mesh:
+  extends:
+    - .compile_mesh
+    - .fortran_default
+
+compile_grid_min:
+  extends:
+    - .compile_grid
+    - .fortran_min
+    - .on_merge
+
+compile_mesh_min:
+  extends:
+    - .compile_mesh
+    - .fortran_min
+    - .on_merge
 
 Marc_patch:
   stage: compile
