@@ -69,8 +69,7 @@ def _match(requested,
     elif requested is False or requested is None:
         requested = []
 
-    requested_ = requested if hasattr(requested,'__iter__') and not isinstance(requested,str) else \
-                [requested]
+    requested_ = util.to_list(requested)
 
     return sorted(set(flatten_list([fnmatch.filter(existing,r) for r in requested_])),
                   key=util.natural_sort)
@@ -248,8 +247,7 @@ class Result:
                 datasets = '*'
             elif datasets is False:
                 datasets = []
-
-            choice = [datasets] if not hasattr(datasets,'__iter__') or isinstance(datasets,str) else list(datasets) # type: ignore
+            choice = util.to_list(datasets)
             N_expected = len(choice)
 
             if   what == 'increments':

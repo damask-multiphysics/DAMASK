@@ -57,15 +57,15 @@ def deformation_Cauchy_Green_right(F: _np.ndarray) -> _np.ndarray:
     F : numpy.ndarray, shape (...,3,3)
         Deformation gradient.
 
-    See Also
-    --------
-    deformation_Cauchy_Green_left : Calculate left Cauchy-Green
-        deformation tensor.
-
     Returns
     -------
     C : numpy.ndarray, shape (...,3,3)
         Right Cauchy-Green deformation tensor.
+
+    See Also
+    --------
+    deformation_Cauchy_Green_left : Calculate left Cauchy-Green
+        deformation tensor.
 
     Notes
     -----
@@ -80,7 +80,6 @@ def deformation_Cauchy_Green_right(F: _np.ndarray) -> _np.ndarray:
     J. Bonet and R. D. Wood, Nonlinear Continuum Mechanics for Finite Element Analysis
     Cambridge University Press, 2008
     https://doi.org/10.1017/CBO9780511755446
-
     """
     return _np.matmul(_tensor.transpose(F),F)
 
@@ -183,15 +182,15 @@ def rotation(T: _np.ndarray) -> _rotation.Rotation:
     T : numpy.ndarray, shape (...,3,3)
         Tensor of which the rotational part is computed.
 
-    See Also
-    --------
-    damask.Rotation : Rotation with functionality for
-        conversion between different representations.
-
     Returns
     -------
     R : damask.Rotation, shape (...)
         Rotational part of the tensor.
+
+    See Also
+    --------
+    damask.Rotation : Rotation with functionality for
+        conversion between different representations.
 
     Notes
     -----
@@ -286,7 +285,7 @@ def stress_Cauchy(P: _np.ndarray,
     See Also
     --------
     stress_second_Piola_Kirchhoff : Calculate the second Piola-Kirchhoff
-        stress
+        stress.
 
     Notes
     -----

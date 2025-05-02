@@ -113,7 +113,7 @@ class Rotation:
 
 
     def __copy__(self: MyType,
-                 rotation: Union[None, FloatSequence, 'Rotation'] = None) -> MyType:
+                 rotation: Optional[Union[FloatSequence, 'Rotation']] = None) -> MyType:
         """
         Return deepcopy(self).
 
@@ -220,8 +220,9 @@ class Rotation:
 
         Returns
         -------
-        answer : bool
-            Whether all values are close between both rotations.
+        allclose : bool
+            Test whether all values are approximately equal to corresponding
+            ones of other rotation.
         """
         return np.all(self.isclose(other,rtol,atol,equal_nan))
 
@@ -847,6 +848,7 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
+            Rotation representing the given quaternion.
 
         Examples
         --------
@@ -891,6 +893,7 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
+            Rotation representing the given Bunge Euler angles.
 
         Notes
         -----
@@ -935,6 +938,7 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
+            Rotation representing the given axis-angle pair.
 
         Examples
         --------
@@ -980,6 +984,7 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
+            Rotation representing the given basis.
         """
         om = np.array(basis,dtype=float)
         if om.shape[-2:] != (3,3): raise ValueError(f'invalid shape: {om.shape}')
@@ -1019,6 +1024,7 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
+            Rotation representing the given rotation matrix.
 
         Examples
         --------
@@ -1050,6 +1056,7 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
+            Rotation representing the given basis vectors.
 
         Notes
         -----
@@ -1101,6 +1108,7 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
+            Rotation representing the given Rodrigues–Frank vector.
 
         Examples
         --------
@@ -1141,6 +1149,7 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
+            Rotation representing the given homochoric vector.
         """
         ho = np.array(h,dtype=float)
         if ho.shape[:-2:-1] != (3,): raise ValueError(f'invalid shape: {ho.shape}')
@@ -1170,6 +1179,7 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
+            Rotation representing the given cubochoric vector.
         """
         cu = np.array(x,dtype=float)
         if cu.shape[:-2:-1] != (3,): raise ValueError(f'invalid shape: {cu.shape}')
@@ -1200,6 +1210,7 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
+            Random rotation of given shape.
         """
         rng = np.random.default_rng(rng_seed)
         r = rng.random(3 if shape is None else tuple(shape)+(3,) if hasattr(shape, '__iter__') else (shape,3))
@@ -1244,6 +1255,7 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
+            Rotation sampled from given ODF.
 
         Notes
         -----
@@ -1294,6 +1306,11 @@ class Rotation:
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+
+        Returns
+        -------
+        new : damask.Orientation
+            Rotation sampled from normal distribution around a center.
 
         Examples
         --------
@@ -1356,6 +1373,7 @@ class Rotation:
         Returns
         -------
         new : damask.Rotation
+            Rotation sampled from normal distribution around a direction.
 
         Notes
         -----
@@ -1398,7 +1416,7 @@ class Rotation:
         d_lab = np.array([np.sin( beta[0])*np.cos( beta[1]), np.sin( beta[0])*np.sin( beta[1]), np.cos( beta[0])])
         ax_align = np.append(np.cross(d_cr,d_lab), np.arccos(np.dot(d_cr,d_lab)))                   # align crystal frame direction to sample frame direction
         if np.isclose(ax_align[3],0.): ax_align[:3] = np.array([1.,0.,0.])
-        R_align  = Rotation.from_axis_angle(ax_align if ax_align[3] > 0. else -ax_align,normalize=True)
+        R_align = Rotation.from_axis_angle(ax_align if ax_align[3] > 0. else -ax_align,normalize=True)
 
         N = 1 if shape is None else np.prod(shape).astype(int)
         u,Theta = (rng.random((N,2)) * 2. * np.array([1.,np.pi]) - np.array([1.,0.])).T
@@ -2461,6 +2479,8 @@ class Rotation:
         xyz : numpy.ndarray
            Coordinates of a point on a uniform refinable grid on a ball or
            in a uniform refinable cubical grid.
+        direction : {'forward', 'backward'}
+            Wheter to map from ball to cube or from cube to ball.
 
         References
         ----------

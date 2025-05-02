@@ -135,14 +135,14 @@ class Orientation(Rotation,Crystal):
         """
         Return repr(self).
 
-        Give short, human-readable summary.
+        Give unambiguous representation.
         """
         return util.srepr([Crystal.__repr__(self),
                            Rotation.__repr__(self)])
 
 
     def __copy__(self: MyType,
-                 rotation: Union[None, FloatSequence, Rotation] = None) -> MyType:
+                 rotation: Optional[Union[FloatSequence, Rotation]] = None) -> MyType:
         """
         Return deepcopy(self).
 
@@ -192,9 +192,9 @@ class Orientation(Rotation,Crystal):
 
     def isclose(self: MyType,
                 other: MyType,
-                rtol: float = 1e-5,
-                atol: float = 1e-8,
-                equal_nan: bool = True) -> np.ndarray:
+                rtol: float = 1.e-5,
+                atol: float = 1.e-8,
+                equal_nan: bool = True) -> npt.NDArray[np.bool_]:
         """
         Report where values are approximately equal to corresponding ones of other Orientation.
 
@@ -221,8 +221,8 @@ class Orientation(Rotation,Crystal):
 
     def allclose(self: MyType,
                  other: MyType,
-                 rtol: float = 1e-5,
-                 atol: float = 1e-8,
+                 rtol: float = 1.e-5,
+                 atol: float = 1.e-8,
                  equal_nan: bool = True) -> np.bool_:
         """
         Test whether all values are approximately equal to corresponding ones of other Orientation.
@@ -240,8 +240,9 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        answer : bool
-            Whether all values are close between both orientations.
+        allclose : bool
+            Test whether all values are approximately equal to corresponding
+            ones of other orientation.
         """
         return np.all(self.isclose(other,rtol,atol,equal_nan))
 
@@ -257,6 +258,7 @@ class Orientation(Rotation,Crystal):
         ----------
         other : Rotation or Orientation, shape (self.shape)
             Object for composition.
+            Compatible innermost dimensions will blend.
 
         Returns
         -------
@@ -316,6 +318,7 @@ class Orientation(Rotation,Crystal):
         Returns
         -------
         new : damask.Orientation
+            Orientation representing the given quaternion.
         """
         return Orientation(Rotation.from_quaternion(q,accept_homomorph,normalize,P),
                            family=family,lattice=lattice,
@@ -362,6 +365,7 @@ class Orientation(Rotation,Crystal):
         Returns
         -------
         new : damask.Orientation
+            Orientation representing the given Bunge Euler angles.
 
         Notes
         -----
@@ -418,6 +422,7 @@ class Orientation(Rotation,Crystal):
         Returns
         -------
         new : damask.Orientation
+            Orientation representing the given axis-angle pair.
         """
         return Orientation(Rotation.from_axis_angle(n_omega,degrees,normalize,P),
                            family=family,lattice=lattice,
@@ -468,6 +473,7 @@ class Orientation(Rotation,Crystal):
         Returns
         -------
         new : damask.Orientation
+            Orientation representing the given basis.
         """
         return Orientation(Rotation.from_basis(basis,orthonormal,reciprocal),
                            family=family,lattice=lattice,
@@ -515,6 +521,7 @@ class Orientation(Rotation,Crystal):
         Returns
         -------
         new : damask.Orientation
+            Orientation representing the given rotation matrix.
         """
         return Orientation(Rotation.from_matrix(R,normalize),
                            family=family,lattice=lattice,
@@ -566,6 +573,7 @@ class Orientation(Rotation,Crystal):
         Returns
         -------
         new : damask.Orientation
+            Orientation representing the given basis vectors.
 
         Notes
         -----
@@ -622,6 +630,7 @@ class Orientation(Rotation,Crystal):
         Returns
         -------
         new : damask.Orientation
+            Orientation representing the given Rodrigues–Frank vector.
         """
         return Orientation(Rotation.from_Rodrigues_vector(rho,normalize,P),
                            family=family,lattice=lattice,
@@ -669,6 +678,7 @@ class Orientation(Rotation,Crystal):
         Returns
         -------
         new : damask.Orientation
+            Orientation representing the given homochoric vector.
         """
         return Orientation(Rotation.from_homochoric(h,P),
                            family=family,lattice=lattice,
@@ -716,6 +726,7 @@ class Orientation(Rotation,Crystal):
         Returns
         -------
         new : damask.Orientation
+            Orientation representing the given cubochoric vector.
         """
         return Orientation(Rotation.from_cubochoric(x,P),
                            family=family,lattice=lattice,
@@ -764,6 +775,7 @@ class Orientation(Rotation,Crystal):
         Returns
         -------
         new : damask.Orientation
+            Random orientation of given shape.
         """
         return Orientation(Rotation.from_random(shape,rng_seed),
                            family=family,lattice=lattice,
@@ -823,6 +835,7 @@ class Orientation(Rotation,Crystal):
         Returns
         -------
         new : damask.Orientation
+            Orientation sampled from given ODF.
 
         Notes
         -----
@@ -891,6 +904,7 @@ class Orientation(Rotation,Crystal):
         Returns
         -------
         new : damask.Orientation
+            Orientation sampled from normal distribution around a center.
         """
         return Orientation(Rotation.from_spherical_component(center,sigma,shape,degrees,rng_seed),
                            family=family,lattice=lattice,
@@ -952,6 +966,7 @@ class Orientation(Rotation,Crystal):
         Returns
         -------
         new : damask.Orientation
+            Orientation sampled from normal distribution around a direction.
 
         Notes
         -----
@@ -1023,6 +1038,8 @@ class Orientation(Rotation,Crystal):
         Returns
         -------
         new : damask.Orientation
+            Orientation representing the relationship between direction and plane
+            and lab x- and z-direction.
         """
         o = Orientation(rotation=[1,0,0,0],
                         family=family,lattice=lattice,
@@ -1543,7 +1560,7 @@ class Orientation(Rotation,Crystal):
 
     def to_lattice(self, *,
                    direction: Optional[FloatSequence] = None,
-                   plane: Optional[FloatSequence] = None) -> np.ndarray:
+                   plane: Optional[FloatSequence] = None) -> np.ndarray:                            # numpydoc ignore=PR01,PR02
         """
         Calculate lattice vector corresponding to lab frame direction or plane normal.
 
@@ -1592,7 +1609,7 @@ class Orientation(Rotation,Crystal):
                  hkil: Optional[IntSequence] = None,
                  with_symmetry: bool = False,
                  normalize: bool = True,
-                 ) -> np.ndarray:
+                 ) -> np.ndarray:                                                                   # numpydoc ignore=PR01,PR02
         """
         Calculate lab frame vector along lattice direction [uvw]/[uvtw] or plane normal (hkl)/(hkil).
 
@@ -1634,7 +1651,7 @@ class Orientation(Rotation,Crystal):
 
     def Schmid(self, *,
                N_slip: Optional[Union[IntSequence, Literal['*']]] = None,
-               N_twin: Optional[Union[IntSequence, Literal['*']]] = None) -> np.ndarray:
+               N_twin: Optional[Union[IntSequence, Literal['*']]] = None) -> np.ndarray:            # numpydoc ignore=PR01,PR02
         u"""
         Calculate Schmid matrix P = d ⨂ n in the lab frame for selected deformation systems.
 

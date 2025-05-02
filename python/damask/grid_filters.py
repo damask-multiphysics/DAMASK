@@ -20,9 +20,17 @@ from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequ
 
 
 class CellsSizeOriginTuple(_NamedTuple):
+    """
+    Cells, size, and origin.
+
+    Coordinates of a regular grid can be constructed from this
+    information.
+    """
+
     cells: _np.ndarray
     size: _np.ndarray
     origin: _np.ndarray
+
 
 
 def _ks(size: _FloatSequence,
@@ -39,6 +47,16 @@ def _ks(size: _FloatSequence,
         Number of cells.
     first_order : bool, optional
         Correction for first order derivatives, defaults to False.
+
+    Returns
+    -------
+    k_s : np.ndarray, shape (:,:,:,3)
+        Wave number operator.
+
+    Notes
+    -----
+    Complex conjugate symmetry is considered. Hence,
+    the last dimension is cells[2]//2+1.
     """
     k_sk = _np.where(_np.arange(cells[0])>cells[0]//2,
                      _np.arange(cells[0])-cells[0],_np.arange(cells[0]))/size[0]

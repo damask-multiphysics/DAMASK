@@ -136,6 +136,11 @@ class YAML(dict):
         Return self|=other.
 
         Update configuration with contents of other (in-place).
+
+        Parameters
+        ----------
+        other : damask.YAML or dict
+            Key–value pairs that update self.
         """
         self.update(other)
         return self
@@ -157,7 +162,7 @@ class YAML(dict):
             Updated configuration.
         """
         duplicate = self.copy()
-        for k in keys if isinstance(keys, Iterable) and not isinstance(keys, str) else [keys]:
+        for k in util.to_list(keys):
             del duplicate[k]
         return duplicate
 

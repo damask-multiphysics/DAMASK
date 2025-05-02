@@ -803,14 +803,29 @@ class Crystal():
 
     @property
     def parameters(self) -> Optional[dict]:
-        """Return lattice parameters a, b, c, alpha, beta, gamma."""
+        """
+        Return lattice parameters.
+
+        Returns
+        -------
+        parameters : dict
+            Lattice parameters a, b, c, alpha, beta, gamma.
+        """
         has_parameters = all([hasattr(self,p) for p in ['a','b','c','alpha','beta','gamma']])
         return dict(a=self.a,b=self.b,c=self.c,
                     alpha=self.alpha,beta=self.beta,gamma=self.gamma) if has_parameters else None
 
     @property
     def immutable(self) -> dict[str, float]:
-        """Return immutable lattice parameters."""
+        """
+        Return immutable lattice parameters.
+
+        Returns
+        -------
+        immutable : dict
+            Lattice parameters a, b, c, alpha, beta, gamma
+            that are fixed for the given crystal family.
+        """
         # ToDo: use pattern matching in Python 3.10
         _immutable: dict[CrystalFamily, dict[str,float]] = {
             'cubic': {
@@ -855,7 +870,13 @@ class Crystal():
     @property
     def standard_triangle(self) -> Union[dict[str, np.ndarray], None]:
         """
-        Corners of the standard triangle.
+        Returns corners of the standard triangle.
+
+        Returns
+        -------
+        standard_triangle : dict
+            Proper and improper corners of the standard triangle
+            for the given crystal family.
 
         Notes
         -----
@@ -919,6 +940,11 @@ class Crystal():
     def symmetry_operations(self) -> Rotation:
         """
         Return symmetry operations.
+
+        Returns
+        -------
+        symmetry_operations : damask.Rotation
+            Symmetry operations for given crystal family.
 
         Notes
         -----
@@ -1086,7 +1112,7 @@ class Crystal():
 
     def to_lattice(self, *,
                    direction: Optional[FloatSequence] = None,
-                   plane: Optional[FloatSequence] = None) -> np.ndarray:
+                   plane: Optional[FloatSequence] = None) -> np.ndarray:                            # numpydoc ignore=PR01,PR02
         """
         Calculate lattice vector corresponding to crystal frame direction or plane normal.
 
@@ -1114,7 +1140,7 @@ class Crystal():
                  uvw: Optional[IntSequence] = None,
                  hkl: Optional[IntSequence] = None,
                  uvtw: Optional[IntSequence] = None,
-                 hkil: Optional[IntSequence] = None) -> np.ndarray:
+                 hkil: Optional[IntSequence] = None) -> np.ndarray:                                 # numpydoc ignore=PR01,PR02
         """
         Calculate crystal frame vector corresponding to lattice direction [uvw]/[uvtw] or plane normal (hkl)/(hkil).
 
@@ -1294,7 +1320,7 @@ class Crystal():
 
     def Schmid(self, *,
                N_slip: Optional[Union[IntSequence, Literal['*']]] = None,
-               N_twin: Optional[Union[IntSequence, Literal['*']]] = None) -> np.ndarray:
+               N_twin: Optional[Union[IntSequence, Literal['*']]] = None) -> np.ndarray:            # numpydoc ignore=PR01,PR02
         u"""
         Calculate Schmid matrix P = d ⨂ n for selected deformation systems.
 

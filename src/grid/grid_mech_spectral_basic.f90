@@ -404,8 +404,8 @@ subroutine grid_mechanical_spectral_basic_restartWrite()
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
-  call HDF5_write(reshape(F,[3,3,product(cells(1:2))*cells3]),groupHandle,'F')
-  call HDF5_write(reshape(F_lastInc,[3,3,product(cells(1:2))*cells3]),groupHandle,'F_lastInc')
+  call HDF5_write(reshape(F,[3,3,product(shape(F))/9]),groupHandle,'F')
+  call HDF5_write(reshape(F_lastInc,[3,3,product(shape(F_lastInc))/9]),groupHandle,'F_lastInc')
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 

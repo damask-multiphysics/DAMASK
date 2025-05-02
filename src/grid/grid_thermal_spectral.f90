@@ -299,9 +299,9 @@ subroutine grid_thermal_spectral_restartWrite()
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
   groupHandle = HDF5_openGroup(fileHandle,'solver')
-  call HDF5_write(reshape(T,[1,product(cells(1:2))*cells3]),groupHandle,'T')
-  call HDF5_write(reshape(T_lastInc,[1,product(cells(1:2))*cells3]),groupHandle,'T_lastInc')
-  call HDF5_write(reshape(dotT_lastInc,[1,product(cells(1:2))*cells3]),groupHandle,'dotT_lastInc')
+  call HDF5_write(reshape(T,[1,product(shape(T))]),groupHandle,'T')
+  call HDF5_write(reshape(T_lastInc,[1,product(shape(T_lastInc))]),groupHandle,'T_lastInc')
+  call HDF5_write(reshape(dotT_lastInc,[1,product(shape(dotT_lastInc))]),groupHandle,'dotT_lastInc')
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 

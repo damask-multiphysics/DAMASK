@@ -237,7 +237,7 @@ Marc_patch:
     - cd examples/Marc && python3 -c "import damask;damask.solver.Marc(version=${MARC_VERSION}).submit_job('r-value','texture',True,'h')"
     - test -f "${CI_PROJECT_DIR}/src/Marc/DAMASK_Marc.marc" || { echo "Marc simulation failed, DAMASK_Marc.marc not generated"; exit 1; }
 
-Marc_Intel:
+Marc_compile:
   stage: compile
   image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
   tags:
@@ -246,17 +246,6 @@ Marc_Intel:
     - source env/DAMASK.sh
     - cd PRIVATE/testing
     - pytest -k 'compile and Marc'
-
-setup_Marc:
-  stage: compile
-  image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
-  tags:
-    - matesting2_docker
-  before_script:
-    - source env/DAMASK.sh
-    - cd examples/Marc && python3 -c "import damask;damask.solver.Marc(version=${MARC_VERSION}).submit_job('r-value','texture',True,'h')"
-  script:
-    - test -f "${CI_PROJECT_DIR}/src/Marc/DAMASK_Marc.marc" || { echo "Marc simulation failed, DAMASK_Marc.marc not generated"; exit 1; }
 
 
 ###################################################################################################
@@ -326,9 +315,14 @@ open-source_signal_restart_GCC:
   after_script:
     - echo Job end:" $(date)"
 
-Marc:
+Marc_run:
   stage: fortran
-  extends: setup_Marc
+  image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
+  tags:
+    - matesting2_docker
+  before_script:
+    - source env/DAMASK.sh
+    - cd examples/Marc && python3 -c "import damask;damask.solver.Marc(version=${MARC_VERSION}).submit_job('r-value','texture',True,'h')"
   script:
     - cd ${CI_PROJECT_DIR}/PRIVATE/testing
     - pytest -k 'not compile and Marc' -m 'not cifail'
