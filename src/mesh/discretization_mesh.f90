@@ -11,7 +11,7 @@ module discretization_mesh
   use PETScDMplex
   use PETScDMDA
   use PETScIS
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18)
+#if (PETSC_VERSION_MAJOR==3 && (PETSC_VERSION_MINOR>=18 && PETSC_VERSION_MINOR<23))
   use PETScDT
 #endif
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
@@ -156,11 +156,11 @@ subroutine discretization_mesh_init()
   call DMGetLabelIdIS(globalMesh,'Face Sets',faceSetIS,err_PETSc)
   CHKERRQ(err_PETSc)
   if (nFaceSets > 0) then
-    call ISGetIndicesF90(faceSetIS,pFaceSets,err_PETSc)
+    call ISGetIndices(faceSetIS,pFaceSets,err_PETSc)
     CHKERRQ(err_PETSc)
     mesh_boundaries(1:nFaceSets) = pFaceSets
     CHKERRQ(err_PETSc)
-    call ISRestoreIndicesF90(faceSetIS,pFaceSets,err_PETSc)
+    call ISRestoreIndices(faceSetIS,pFaceSets,err_PETSc)
   end if
   call MPI_Bcast(mesh_boundaries,int(mesh_Nboundaries),MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
@@ -181,7 +181,7 @@ subroutine discretization_mesh_init()
   call mesh_FEM_build_ipCoordinates(dimPlex,FEM_quadrature_points(dimPlex,p_i)%p)
   call mesh_FEM_build_ipVolumes(dimPlex)
 #else
-  call PetscDTSimplexQuadrature(dimplex, p_i, -1, quadrature, err_PETSc)
+  call PetscDTSimplexQuadrature(dimplex, p_i, PETSCDTSIMPLEXQUAD_DEFAULT, quadrature, err_PETSc)
   CHKERRQ(err_PETSc)
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=22)
   call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
@@ -215,11 +215,11 @@ subroutine discretization_mesh_init()
 
   call DMGetCoordinatesLocal(geomMesh,coords_node0,err_PETSc)
   CHKERRQ(err_PETSc)
-  call VecGetArrayReadF90(coords_node0, mesh_node0_temp,err_PETSc)
+  call VecGetArrayRead(coords_node0, mesh_node0_temp,err_PETSc)
   CHKERRQ(err_PETSc)
   allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pREAL)
   mesh_node0(1:dimPlex,:) = reshape(mesh_node0_temp,[dimPlex,mesh_Nnodes])
-  call VecRestoreArrayReadF90(coords_node0, mesh_node0_temp,err_PETSc)
+  call VecRestoreArrayRead(coords_node0, mesh_node0_temp,err_PETSc)
   CHKERRQ(err_PETSc)
 
   call discretization_init(int(materialAt),&
