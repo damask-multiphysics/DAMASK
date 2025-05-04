@@ -216,7 +216,7 @@ subroutine grid_mechanical_spectral_polarization_init(num_grid)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  call DMDAVecGetArrayF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)                              ! places pointer on PETSc data
+  call DMDAVecGetArray(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)                                 ! places pointer on PETSc data
   CHKERRQ(err_PETSc)
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
@@ -259,7 +259,7 @@ subroutine grid_mechanical_spectral_polarization_init(num_grid)
   call utilities_constitutiveResponse(status,P,P_av,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
                                       0.0_pREAL)                                                    ! time increment
-  call DMDAVecRestoreArrayF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)                          ! deassociate pointer
+  call DMDAVecRestoreArray(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)                             ! deassociate pointer
   CHKERRQ(err_PETSc)
 
   restartRead2: if (CLI_restartInc > 0) then
@@ -319,7 +319,11 @@ function grid_mechanical_spectral_polarization_solution(incInfoIn) result(soluti
   call SNESGetConvergedReason(SNES_mech,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  solution%converged = reason > 0
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+  solution%converged = reason > SNES_CONVERGED_ITERATING
+#else
+  solution%converged = reason%v > SNES_CONVERGED_ITERATING%v
+#endif
   solution%iterationsNeeded = totalIter
   P_aim = merge(P_av,P_aim,params%stress_mask)
 
@@ -351,7 +355,7 @@ subroutine grid_mechanical_spectral_polarization_forward(cutBack,guess,Delta_t,D
   real(pREAL), dimension(3,3) :: F_lambda33
 
 
-  call DMDAVecGetArrayF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
+  call DMDAVecGetArray(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
@@ -414,7 +418,7 @@ subroutine grid_mechanical_spectral_polarization_forward(cutBack,guess,Delta_t,D
     end do; end do; end do
   end if
 
-  call DMDAVecRestoreArrayF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
+  call DMDAVecRestoreArray(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -434,10 +438,10 @@ subroutine grid_mechanical_spectral_polarization_updateCoords()
   PetscErrorCode :: err_PETSc
   real(pREAL), dimension(:,:,:,:), pointer :: FandF_tau
 
-  call DMDAVecGetArrayReadF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
+  call DMDAVecGetArrayRead(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
   call utilities_updateCoords(reshape(FandF_tau(0:8,:,:,:),[3,3,size(FandF_tau,2),size(FandF_tau,3),size(FandF_tau,4)]))
-  call DMDAVecRestoreArrayReadF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
+  call DMDAVecRestoreArrayRead(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_spectral_polarization_updateCoords
@@ -452,7 +456,8 @@ subroutine grid_mechanical_spectral_polarization_restartWrite()
   integer(HID_T) :: fileHandle, groupHandle
   real(pREAL), dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
 
-  call DMDAVecGetArrayReadF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
+
+  call DMDAVecGetArrayRead(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
@@ -484,7 +489,7 @@ subroutine grid_mechanical_spectral_polarization_restartWrite()
     call HDF5_closeFile(fileHandle)
   end if
 
-  call DMDAVecRestoreArrayReadF90(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
+  call DMDAVecRestoreArrayRead(DM_mech,FandF_tau_PETSc,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_spectral_polarization_restartWrite
@@ -515,11 +520,11 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
 
   if (totalIter >= num%itmin .and. all([err_div/divTol, err_curl/curlTol, err_BC/BCTol] < 1.0_pREAL) &
        .and. status == STATUS_OK) then
-    reason = 1
+    reason = SNES_CONVERGED_USER
   elseif (totalIter >= num%itmax) then
-    reason = -1
+    reason = SNES_DIVERGED_USER
   else
-    reason = 0
+    reason = SNES_CONVERGED_ITERATING
   end if
 
   print '(/,1x,a)', '... reporting .............................................................'
@@ -542,7 +547,12 @@ end subroutine converged
 subroutine formResidual(residual_subdomain, FandF_tau, &
                         r, dummy,err_PETSc)
 
-  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: residual_subdomain                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<22)
+  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
+#else
+  DMDALocalInfo :: &
+#endif
+    residual_subdomain
   real(pREAL), dimension(3,3,2,cells(1),cells(2),cells3), target, intent(in) :: &
     FandF_tau                                                                                       !< deformation gradient field
   real(pREAL), dimension(3,3,2,cells(1),cells(2),cells3), target, intent(out) :: &

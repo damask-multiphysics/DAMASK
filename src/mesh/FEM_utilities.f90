@@ -5,7 +5,7 @@
 module FEM_utilities
 #include <petsc/finclude/petsc.h>
   use PETSc
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08
 #endif
 
@@ -17,10 +17,12 @@ module FEM_utilities
   use parallelization
   use discretization_mesh
   use homogenization
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
   use FEM_quadrature
+#endif
   use constants
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   implicit none(type,external)
 #else
   implicit none
@@ -50,10 +52,12 @@ module FEM_utilities
     logical,     allocatable, dimension(:) :: Mask
   end type tMechBC
 
-  external :: &                                                                                     ! ToDo: write interfaces
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+  external :: &
     PetscSectionGetFieldComponents, &
     PetscSectionGetFieldDof, &
     PetscSectionGetFieldOffset
+#endif
 
   public :: &
     FEM_utilities_init, &
@@ -89,7 +93,11 @@ subroutine FEM_utilities_init(num_mesh)
   p_s = num_mesh%get_asInt('p_s',defaultVal = 2)
   p_i = num_mesh%get_asInt('p_i',defaultVal = p_s)
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
   if (p_s < 1 .or. p_s > size(FEM_nQuadrature,2)) &
+#else
+  if (p_s < 1) &
+#endif
     call IO_error(821,ext_msg='shape function order (p_s) out of bounds')
   if (p_i < max(1,p_s-1) .or. p_i > p_s) &
     call IO_error(821,ext_msg='integration order (p_i) out of bounds')
@@ -130,7 +138,7 @@ subroutine utilities_constitutiveResponse(status, Delta_t,P_av,forwardData)
 
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
 
-  call homogenization_mechanical_response(status,Delta_t,1,mesh_maxNips*mesh_NcpElems)              ! calculate P field
+  call homogenization_mechanical_response(status,Delta_t,1,int(mesh_maxNips*mesh_NcpElems))         ! calculate P field
   cutBack = .false.
 
   P_av = sum(homogenization_P,dim=3) * wgt
@@ -144,42 +152,59 @@ end subroutine utilities_constitutiveResponse
 !--------------------------------------------------------------------------------------------------
 !> @brief Project BC values to local vector
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCValue,BCDotValue,Delta_t)
+subroutine utilities_projectBCValues(dm_local,solution_local,section,mechBC,Delta_t,dimPlex)
+  DM  :: dm_local
+  Vec :: solution_local
+  PetscSection   :: section
+  type(tMechBC),  dimension(:), intent(in) :: &
+    mechBC
+  real(pREAL),    intent(in) :: Delta_t
+  PetscInt, intent(in) :: dimPlex
 
-  Vec                  :: localVec
-  PetscInt             :: field, comp, nBcPoints, point, dof, numDof, numComp, offset
-  PetscSection         :: section
-  IS                   :: bcPointsIS
+  PetscInt       :: component, face, bcSize, &
+                    nBcPoints, point, dof, numDof, numComp, offset
+  IS             :: bcPointsIS
+  PetscErrorCode :: err_PETSc
   PetscInt,    pointer :: bcPoints(:)
   real(pREAL), pointer :: localArray(:)
-  real(pREAL)          :: BCValue,BCDotValue,Delta_t
-  PetscErrorCode       :: err_PETSc
 
 
-  call PetscSectionGetFieldComponents(section,field,numComp,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call ISGetSize(bcPointsIS,nBcPoints,err_PETSc)
-  CHKERRQ(err_PETSc)
-  if (nBcPoints > 0) call ISGetIndicesF90(bcPointsIS,bcPoints,err_PETSc)
-  call VecGetArrayF90(localVec,localArray,err_PETSc)
-  CHKERRQ(err_PETSc)
-  do point = 1, nBcPoints
-    call PetscSectionGetFieldDof(section,bcPoints(point),field,numDof,err_PETSc)
-    CHKERRQ(err_PETSc)
-    call PetscSectionGetFieldOffset(section,bcPoints(point),field,offset,err_PETSc)
-    CHKERRQ(err_PETSc)
-    do dof = offset+comp+1, offset+numDof, numComp
-      localArray(dof) = localArray(dof) + BCValue + BCDotValue*Delta_t
-    end do
-  end do
-  call VecRestoreArrayF90(localVec,localArray,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call VecAssemblyBegin(localVec, err_PETSc)
-  CHKERRQ(err_PETSc)
-  call VecAssemblyEnd  (localVec, err_PETSc)
-  CHKERRQ(err_PETSc)
-  if (nBcPoints > 0) call ISRestoreIndicesF90(bcPointsIS,bcPoints,err_PETSc)
-  CHKERRQ(err_PETSc)
+
+  do face = 1, mesh_Nboundaries; do component = 1, dimPlex
+   if (mechBC(face)%Mask(component)) then
+     call DMGetStratumSize(dm_local,'Face Sets',mesh_boundaries(face),bcSize,err_PETSc)
+     if (bcSize > 0) then
+       call DMGetStratumIS(dm_local,'Face Sets',mesh_boundaries(face),bcPointsIS,err_PETSc)
+       CHKERRQ(err_PETSc)
+       call PetscSectionGetFieldComponents(section,0_pPETSCINT,numComp,err_PETSc)
+       CHKERRQ(err_PETSc)
+       call ISGetSize(bcPointsIS,nBcPoints,err_PETSc)
+       CHKERRQ(err_PETSc)
+       if (nBcPoints > 0) call ISGetIndices(bcPointsIS,bcPoints,err_PETSc)
+       call VecGetArray(solution_local,localArray,err_PETSc)
+       CHKERRQ(err_PETSc)
+       do point = 1, nBcPoints
+         call PetscSectionGetFieldDof(section,bcPoints(point),0_pPETSCINT,numDof,err_PETSc)
+         CHKERRQ(err_PETSc)
+         call PetscSectionGetFieldOffset(section,bcPoints(point),0_pPETSCINT,offset,err_PETSc)
+         CHKERRQ(err_PETSc)
+         do dof = offset+component, offset+numDof, numComp
+           localArray(dof) = localArray(dof) + mechBC(face)%Value(component)*Delta_t
+         end do
+       end do
+       call VecRestoreArray(solution_local,localArray,err_PETSc)
+       CHKERRQ(err_PETSc)
+       call VecAssemblyBegin(solution_local, err_PETSc)
+       CHKERRQ(err_PETSc)
+       call VecAssemblyEnd(solution_local, err_PETSc)
+       CHKERRQ(err_PETSc)
+       if (nBcPoints > 0) call ISRestoreIndices(bcPointsIS,bcPoints,err_PETSc)
+       CHKERRQ(err_PETSc)
+       call ISDestroy(bcPointsIS,err_PETSc)
+       CHKERRQ(err_PETSc)
+     end if
+   end if
+  end do; end do
 
 end subroutine utilities_projectBCValues
 

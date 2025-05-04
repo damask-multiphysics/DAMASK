@@ -216,9 +216,9 @@ subroutine grid_mechanical_FEM_init(num_grid)
   CHKERRQ(err_PETSc)
   call VecSet(uDot_PETSc   ,0.0_pREAL,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(DM_mech,u_PETSc,u,err_PETSc)
+  call DMDAVecGetArray(DM_mech,u_PETSc,u,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(DM_mech,u_lastInc_PETSc,u_lastInc,err_PETSc)
+  call DMDAVecGetArray(DM_mech,u_lastInc_PETSc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
 
   delta = geomSize/real(cells,pREAL)                                                                ! grid spacing
@@ -274,9 +274,9 @@ subroutine grid_mechanical_FEM_init(num_grid)
   call utilities_constitutiveResponse(status,P_current,P_av,C_volAvg,devNull, &                     ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       F, &                                                          ! target F
                                       0.0_pREAL)                                                    ! time increment
-  call DMDAVecRestoreArrayF90(DM_mech,u_PETSc,u,err_PETSc)
+  call DMDAVecRestoreArray(DM_mech,u_PETSc,u,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArrayF90(DM_mech,u_lastInc_PETSc,u_lastInc,err_PETSc)
+  call DMDAVecRestoreArray(DM_mech,u_lastInc_PETSc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
 
   restartRead2: if (CLI_restartInc > 0) then
@@ -323,7 +323,11 @@ function grid_mechanical_FEM_solution(incInfoIn) result(solution)
   call SNESGetConvergedReason(SNES_mech,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  solution%converged = reason > 0
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+  solution%converged = reason > SNES_CONVERGED_ITERATING
+#else
+  solution%converged = reason%v > SNES_CONVERGED_ITERATING%v
+#endif
   solution%iterationsNeeded = totalIter
   P_aim = merge(P_av,P_aim,params%stress_mask)
 
@@ -430,9 +434,9 @@ subroutine grid_mechanical_FEM_restartWrite()
   PetscScalar, dimension(:,:,:,:), pointer :: u,u_lastInc
 
 
-  call DMDAVecGetArrayReadF90(DM_mech,u_PETSc,u,err_PETSc)
+  call DMDAVecGetArrayRead(DM_mech,u_PETSc,u,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayReadF90(DM_mech,u_lastInc_PETSc,u_lastInc,err_PETSc)
+  call DMDAVecGetArrayRead(DM_mech,u_lastInc_PETSc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
 
   print'(1x,a)', 'saving solver data required for restart'; flush(IO_STDOUT)
@@ -459,9 +463,9 @@ subroutine grid_mechanical_FEM_restartWrite()
     call HDF5_closeFile(fileHandle)
   end if
 
-  call DMDAVecRestoreArrayReadF90(DM_mech,u_PETSc,u,err_PETSc)
+  call DMDAVecRestoreArrayRead(DM_mech,u_PETSc,u,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArrayReadF90(DM_mech,u_lastInc_PETSc,u_lastInc,err_PETSc)
+  call DMDAVecRestoreArrayRead(DM_mech,u_lastInc_PETSc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_FEM_restartWrite
@@ -492,11 +496,11 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,e
 
   if (totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pREAL) &
        .and. status == STATUS_OK) then
-    reason = 1
+    reason = SNES_CONVERGED_USER
   elseif (totalIter >= num%itmax) then
-    reason = -1
+    reason = SNES_DIVERGED_USER
   else
-    reason = 0
+    reason = SNES_CONVERGED_ITERATING
   end if
 
   print'(/,1x,a)', '... reporting .............................................................'
@@ -554,7 +558,7 @@ subroutine formResidual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! get deformation gradient
-  call DMDAVecGetArrayReadF90(da_local,x_local,x_scal,err_PETSc)
+  call DMDAVecGetArrayRead(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, cells(1)
     ctr = 0
@@ -564,7 +568,7 @@ subroutine formResidual(da_local,x_local, &
     end do; end do; end do
     F(1:3,1:3,i,j,k-cells3Offset) = params%rotation_BC%rotate(F_aim,active=.true.) + transpose(matmul(BMat,x_elem))
   end do; end do; end do
-  call DMDAVecRestoreArrayReadF90(da_local,x_local,x_scal,err_PETSc)
+  call DMDAVecRestoreArrayRead(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -582,9 +586,9 @@ subroutine formResidual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  call DMDAVecGetArrayF90(da_local,f_local,r,err_PETSc)
+  call DMDAVecGetArray(da_local,f_local,r,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayReadF90(da_local,x_local,x_scal,err_PETSc)
+  call DMDAVecGetArrayRead(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   ce = 0
   r = 0.0_pREAL
@@ -605,7 +609,7 @@ subroutine formResidual(da_local,x_local, &
       r(0:2,i+ii,j+jj,k+kk) = r(0:2,i+ii,j+jj,k+kk) + f_elem(ctr,1:3)
     end do; end do; end do
   end do; end do; end do
-  call DMDAVecRestoreArrayReadF90(da_local,x_local,x_scal,err_PETSc)
+  call DMDAVecRestoreArrayRead(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -622,7 +626,7 @@ subroutine formResidual(da_local,x_local, &
     r(0:2,0,       cells(2),cells(3)) = 0.0_pREAL
     r(0:2,cells(1),cells(2),cells(3)) = 0.0_pREAL
   end if
-  call DMDAVecRestoreArrayF90(da_local,f_local,r,err_PETSc)
+  call DMDAVecRestoreArray(da_local,f_local,r,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine formResidual
@@ -639,9 +643,13 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   PetscObject                          :: dummy
   PetscErrorCode                       :: err_PETSc
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
   MatStencil,dimension(4,24)           :: row, col
+#else
+  MatStencil,dimension(24)             :: row, col
+#endif
   real(pREAL),pointer,dimension(:,:,:,:) :: x_scal
-  real(pREAL),dimension(24,24)         :: K_ele
+  PetscScalar,dimension(24,24)         :: K_ele
   real(pREAL),dimension(9,24)          :: BMatFull
   PetscInt                             :: i, ii, j, jj, k, kk, ctr, ce
   PetscInt,dimension(3),parameter      :: rows = [0, 1, 2]
@@ -665,6 +673,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
     ctr = 0
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
       col(MatStencil_i,ctr   ) = i+ii
       col(MatStencil_j,ctr   ) = j+jj
       col(MatStencil_k,ctr   ) = k+kk
@@ -677,6 +686,20 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
       col(MatStencil_j,ctr+16) = j+jj
       col(MatStencil_k,ctr+16) = k+kk
       col(MatStencil_c,ctr+16) = 2
+#else
+      col(ctr   )%i = i+ii
+      col(ctr   )%j = j+jj
+      col(ctr   )%k = k+kk
+      col(ctr   )%c = 0
+      col(ctr+8 )%i = i+ii
+      col(ctr+8 )%j = j+jj
+      col(ctr+8 )%k = k+kk
+      col(ctr+8 )%c = 1
+      col(ctr+16)%i = i+ii
+      col(ctr+16)%j = j+jj
+      col(ctr+16)%k = k+kk
+      col(ctr+16)%c = 2
+#endif
     end do; end do; end do
     row = col
     ce = ce + 1
@@ -694,7 +717,11 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
             matmul(transpose(BMatFull), &
                    matmul(reshape(reshape(homogenization_dPdF(1:3,1:3,1:3,1:3,ce), &
                                           shape=[3,3,3,3], order=[2,1,4,3]),shape=[9,9]),BMatFull))*detJ
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
     call MatSetValuesStencil(Jac,24_pPETScInt,row,24_pPetscInt,col,K_ele,ADD_VALUES,err_PETSc)
+#else
+    call MatSetValuesStencil(Jac,24_pPETScInt,row,24_pPetscInt,col,reshape(K_ele,[24*24]),ADD_VALUES,err_PETSc)
+#endif
     CHKERRQ(err_PETSc)
   end do; end do; end do
   call MatAssemblyBegin(Jac,MAT_FINAL_ASSEMBLY,err_PETSc)
@@ -714,10 +741,10 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMGetGlobalVector(da_local,coordinates,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(da_local,coordinates,x_scal,err_PETSc)
+  call DMDAVecGetArray(da_local,coordinates,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   x_scal = reshape(discretization_IPcoords,[3,cells(1),cells(2),cells3])
-  call DMDAVecRestoreArrayF90(da_local,coordinates,x_scal,err_PETSc)                                ! ToDo: use undeformed or deformed configuration?
+  call DMDAVecRestoreArray(da_local,coordinates,x_scal,err_PETSc)                                   ! ToDo: use undeformed or deformed configuration?
   CHKERRQ(err_PETSc)
   call MatNullSpaceCreateRigidBody(coordinates,matnull,err_PETSc)                                   ! get rigid body deformation modes
   CHKERRQ(err_PETSc)

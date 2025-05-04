@@ -11,38 +11,45 @@ module discretization_mesh
   use PETScDMplex
   use PETScDMDA
   use PETScIS
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#if (PETSC_VERSION_MAJOR==3 && (PETSC_VERSION_MINOR>=18 && PETSC_VERSION_MINOR<23))
+  use PETScDT
+#endif
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08
 #endif
 
   use CLI
+  use prec
   use parallelization
-  use IO
   use config
   use discretization
   use result
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
   use FEM_quadrature
+#endif
   use types
   use prec
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   implicit none(type,external)
 #else
   implicit none
 #endif
   private
 
-  integer, public, protected :: &
-    mesh_Nboundaries, &
+  PetscInt, public, protected :: &
+    mesh_Nboundaries
+
+  PetscInt, public, protected :: &
     mesh_NcpElemsGlobal
 
-  integer, public, protected :: &
+  PetscInt, public, protected :: &
     mesh_NcpElems                                                                                   !< total number of CP elements in mesh
 
 !!!! BEGIN DEPRECATED !!!!!
-  integer, public, protected :: &
+  PetscInt, public, protected :: &
     mesh_maxNips                                                                                    !< max number of IPs in any CP element
-!!!! BEGIN DEPRECATED !!!!!
+!!!! END DEPRECATED !!!!!
 
   DM, public :: geomMesh
 
@@ -56,7 +63,7 @@ module discretization_mesh
   real(pREAL), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
-#if defined(PETSC_USE_64BIT_INDICES) || PETSC_VERSION_MINOR < 16
+#if PETSC_VERSION_MINOR < 16
   external :: &
     DMDestroy
 #endif
@@ -83,6 +90,9 @@ subroutine discretization_mesh_init(restart)
   PetscInt :: nFaceSets, Nboundaries, NelemsGlobal, Nelems
   PetscInt, pointer, dimension(:) :: pFaceSets
   IS :: faceSetIS
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18)
+  PetscQuadrature :: quadrature
+#endif
   PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscInt, dimension(:), allocatable :: &
@@ -90,10 +100,16 @@ subroutine discretization_mesh_init(restart)
   type(tDict), pointer :: &
     num_solver, &
     num_mesh
-  integer :: p_i, dim                                                                               !< integration order (quadrature rule)
+  PetscInt :: p_i
+  integer:: dim                                                                                     !< integration order (quadrature rule)
   type(tvec) :: coords_node0
   real(pREAL), pointer, dimension(:) :: &
     mesh_node0_temp
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18)
+  real(pREAL), pointer, dimension(:) :: &
+    qPointsP, &
+    PETSC_NULL_REAL_PTR => null()
+#endif
 
 
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'
@@ -142,13 +158,13 @@ subroutine discretization_mesh_init(restart)
   call DMGetLabelIdIS(globalMesh,'Face Sets',faceSetIS,err_PETSc)
   CHKERRQ(err_PETSc)
   if (nFaceSets > 0) then
-    call ISGetIndicesF90(faceSetIS,pFaceSets,err_PETSc)
+    call ISGetIndices(faceSetIS,pFaceSets,err_PETSc)
     CHKERRQ(err_PETSc)
     mesh_boundaries(1:nFaceSets) = pFaceSets
     CHKERRQ(err_PETSc)
-    call ISRestoreIndicesF90(faceSetIS,pFaceSets,err_PETSc)
+    call ISRestoreIndices(faceSetIS,pFaceSets,err_PETSc)
   end if
-  call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  call MPI_Bcast(mesh_boundaries,int(mesh_Nboundaries),MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
   call DMDestroy(globalMesh,err_PETSc)
@@ -161,15 +177,37 @@ subroutine discretization_mesh_init(restart)
   CHKERRQ(err_PETSc)
 
 ! Get initial nodal coordinates
-  call DMGetCoordinatesLocal(geomMesh,coords_node0,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call VecGetArrayF90(coords_node0, mesh_node0_temp,err_PETSc)
-  CHKERRQ(err_PETSc)
-
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
   mesh_maxNips = FEM_nQuadrature(dimPlex,p_i)
 
   call mesh_FEM_build_ipCoordinates(dimPlex,FEM_quadrature_points(dimPlex,p_i)%p)
   call mesh_FEM_build_ipVolumes(dimPlex)
+#else
+  call PetscDTSimplexQuadrature(dimplex, p_i, PETSCDTSIMPLEXQUAD_DEFAULT, quadrature, err_PETSc)
+  CHKERRQ(err_PETSc)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=22)
+  call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                              mesh_maxNips,qPointsP,PETSC_NULL_REAL_PTR,err_PETSc)
+#else
+  call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
+                              mesh_maxNips,qPointsP,PETSC_NULL_REAL_PTR,err_PETSc)
+#endif
+  CHKERRQ(err_PETSc)
+
+  call mesh_FEM_build_ipCoordinates(dimPlex,qPointsP)
+  call mesh_FEM_build_ipVolumes(dimPlex)
+
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=22)
+  call PetscQuadratureRestoreData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                                  PETSC_NULL_INTEGER,qPointsP,PETSC_NULL_REAL_PTR,err_PETSc)
+#else
+  call PetscQuadratureRestoreData(quadrature,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
+                                  PETSC_NULL_INTEGER(1),qPointsP,PETSC_NULL_REAL_PTR,err_PETSc)
+#endif
+  CHKERRQ(err_PETSc)
+  call PetscQuadratureDestroy(quadrature, err_PETSc)
+  CHKERRQ(err_PETSc)
+#endif
 
   allocate(materialAt(mesh_NcpElems))
   do j = 1, mesh_NcpElems
@@ -177,15 +215,20 @@ subroutine discretization_mesh_init(restart)
     CHKERRQ(err_PETSc)
   end do
 
+  call DMGetCoordinatesLocal(geomMesh,coords_node0,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecGetArrayRead(coords_node0, mesh_node0_temp,err_PETSc)
+  CHKERRQ(err_PETSc)
   allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pREAL)
   mesh_node0(1:dimPlex,:) = reshape(mesh_node0_temp,[dimPlex,mesh_Nnodes])
-
+  call VecRestoreArrayRead(coords_node0, mesh_node0_temp,err_PETSc)
+  CHKERRQ(err_PETSc)
 
   call discretization_init(int(materialAt),&
-                           reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
+                           reshape(mesh_ipCoordinates,[3,int(mesh_maxNips*mesh_NcpElems)]), &
                            mesh_node0)
 
-  call writeGeometry(reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]),mesh_node0)
+  call writeGeometry(reshape(mesh_ipCoordinates,[3,int(mesh_maxNips*mesh_NcpElems)]),mesh_node0)
 
 end subroutine discretization_mesh_init
 

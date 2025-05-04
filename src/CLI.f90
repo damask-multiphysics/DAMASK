@@ -6,7 +6,7 @@
 !> @brief Parse command line interface for PETSc-based solvers
 !--------------------------------------------------------------------------------------------------
 #define PETSC_MINOR_MIN 12
-#define PETSC_MINOR_MAX 22
+#define PETSC_MINOR_MAX 23
 
 module CLI
   use, intrinsic :: ISO_fortran_env
@@ -53,6 +53,8 @@ subroutine CLI_init()
 #define PETSC_DOI '10.2172/2205494'
 #elif  PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==21
 #define PETSC_DOI '10.2172/2337606'
+#elif  PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==22
+#define PETSC_DOI '10.2172/2476320'
 #endif
   character(len=:), allocatable :: &
     commandLine, &                                                                                  !< command line call as string

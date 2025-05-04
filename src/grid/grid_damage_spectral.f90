@@ -171,7 +171,7 @@ subroutine grid_damage_spectral_init(num_grid)
     CHKERRQ(err_PETSc)
   end if
 
-  call DMDAVecGetArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)                                        ! returns 0-indexed phi
+  call DMDAVecGetArray(DM_damage,phi_PETSc,phi,err_PETSc)                                           ! returns 0-indexed phi
   CHKERRQ(err_PETSc)
 
   restartRead: if (CLI_restartInc > 0) then
@@ -193,7 +193,7 @@ subroutine grid_damage_spectral_init(num_grid)
 
   call homogenization_set_phi(reshape(phi,[product(cells(1:2))*cells3]))
 
-  call DMDAVecRestoreArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)
+  call DMDAVecRestoreArray(DM_damage,phi_PETSc,phi,err_PETSc)
   CHKERRQ(err_PETSc)
 
   call updateReference()
@@ -227,7 +227,11 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
   call SNESGetConvergedReason(SNES_damage,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  solution%converged = reason > 0
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+  solution%converged = reason > SNES_CONVERGED_ITERATING
+#else
+  solution%converged = reason%v > SNES_CONVERGED_ITERATING%v
+#endif
   solution%iterationsNeeded = merge(totalIter,num%itmax,solution%converged)
 
   call VecMin(phi_PETSc,devNull,phi_min,err_PETSc)
@@ -237,7 +241,7 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
 
   call SNESGetDM(SNES_damage,DM_damage,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)                                        ! returns 0-indexed phi
+  call DMDAVecGetArrayRead(DM_damage,phi_PETSc,phi,err_PETSc)                                       ! returns 0-indexed phi
   CHKERRQ(err_PETSc)
 
   stagNorm = maxval(abs(phi - phi_stagInc))
@@ -250,7 +254,7 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
 
   call homogenization_set_phi(reshape(phi,[product(cells(1:2))*cells3]))
 
-  call DMDAVecRestoreArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)
+  call DMDAVecRestoreArrayRead(DM_damage,phi_PETSc,phi,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (solution%converged) &
@@ -276,7 +280,7 @@ subroutine grid_damage_spectral_forward(cutBack)
 
   call SNESGetDM(SNES_damage,DM_damage,err_PETSc)
     CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)                                        ! returns 0-indexed T
+  call DMDAVecGetArray(DM_damage,phi_PETSc,phi,err_PETSc)                                           ! returns 0-indexed T
     CHKERRQ(err_PETSc)
 
   if (cutBack) then
@@ -288,7 +292,7 @@ subroutine grid_damage_spectral_forward(cutBack)
     call updateReference()
   end if
 
-  call DMDAVecRestoreArrayF90(DM_damage,phi_PETSc,phi,err_PETSc)
+  call DMDAVecRestoreArray(DM_damage,phi_PETSc,phi,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine grid_damage_spectral_forward
@@ -307,7 +311,7 @@ subroutine grid_damage_spectral_restartWrite()
 
   call SNESGetDM(SNES_damage,DM_damage,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayReadF90(DM_damage,phi_PETSc,phi,err_PETSc)                                    ! returns 0-indexed T
+  call DMDAVecGetArrayRead(DM_damage,phi_PETSc,phi,err_PETSc)                                       ! returns 0-indexed T
   CHKERRQ(err_PETSc)
 
   print'(1x,a)', 'saving damage solver data required for restart'; flush(IO_STDOUT)
@@ -319,7 +323,7 @@ subroutine grid_damage_spectral_restartWrite()
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 
-  call DMDAVecRestoreArrayReadF90(DM_damage,phi_PETSc,phi,err_PETSc);
+  call DMDAVecRestoreArrayRead(DM_damage,phi_PETSc,phi,err_PETSc);
   CHKERRQ(err_PETSc)
 
 end subroutine grid_damage_spectral_restartWrite
@@ -330,7 +334,11 @@ end subroutine grid_damage_spectral_restartWrite
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<22)
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
+#else
+  DMDALocalInfo :: &
+#endif
     residual_subdomain
   real(pREAL), dimension(cells(1),cells(2),cells3), intent(in) :: &
     x_scal
