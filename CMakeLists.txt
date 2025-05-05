@@ -63,6 +63,9 @@ endif()
 add_definitions(-DCMAKE_SYSTEM_NAME="${CMAKE_SYSTEM_NAME}")
 add_definitions(-DCMAKE_SYSTEM_PROCESSOR="${CMAKE_SYSTEM_PROCESSOR}")
 
+add_definitions(-DSTRLEN=256)
+add_definitions(-DPATHLEN=4096)
+
 if(PETSC_VERSION VERSION_EQUAL 3.17.0)
   add_definitions("-DCHKERRQ=PetscCall")
 endif()
