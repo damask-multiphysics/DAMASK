@@ -259,8 +259,7 @@ def natural_sort(key: str) -> list[_Union[int, str]]:
     ----------
     https://en.wikipedia.org/wiki/Natural_sort_order
     """
-    convert = lambda text: int(text) if text.isdigit() else text
-    return [ convert(c) for c in _re.split('([0-9]+)', key) ]
+    return [int(c) if c.isdigit() else c for c in _re.split('([0-9]+)', key)]
 
 
 def show_progress(iterable: _Iterable,
