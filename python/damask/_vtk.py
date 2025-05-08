@@ -115,6 +115,11 @@ class VTK:
         ----------
         other : damask.VTK
             VTK to check for equality.
+
+        Returns
+        -------
+        equal : bool
+            Wheter both arguments are equal.
         """
         if not isinstance(other, VTK):
             return NotImplemented

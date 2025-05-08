@@ -670,6 +670,25 @@ class Crystal():
     """
     Representation of a crystal as (general) crystal family or (more specific) as a scaled Bravais lattice.
 
+    Attributes
+    ----------
+    family : str
+        Name of the crystal family.
+    lattice : str, optional
+        Name of the Bravais lattice in Pearson notation.
+    a : float, optional
+        Length of lattice parameter 'a'.
+    b : float, optional
+        Length of lattice parameter 'b'.
+    c : float, optional
+        Length of lattice parameter 'c'.
+    alpha : float, optional
+        Angle between 'b' and 'c' lattice basis.
+    beta : float, optional
+        Angle between 'c' and 'a' lattice basis.
+    gamma : float, optional
+        Angle between 'a' and 'b' lattice basis.
+
     Examples
     --------
     Cubic crystal family:
@@ -795,6 +814,11 @@ class Crystal():
         ----------
         other : Crystal
             Crystal to check for equality.
+
+        Returns
+        -------
+        equal : bool
+            Wheter both arguments are equal.
         """
         return (NotImplemented if not isinstance(other, Crystal) else
                 self.lattice == other.lattice and
@@ -863,14 +887,21 @@ class Crystal():
 
     @property
     def orientation_relationships(self) -> list[str]:
-        """Return labels of orientation relationships."""
+        """
+        Return labels of orientation relationships.
+
+        Returns
+        -------
+        labels : list of str
+           Short labels of the orientation relationships.
+        """
         return [k for k,v in orientation_relationships.items() if np.any([m.startswith(str(self.lattice)) for m in v])]
 
 
     @property
     def standard_triangle(self) -> Union[dict[str, np.ndarray], None]:
         """
-        Returns corners of the standard triangle.
+        Return corners of the standard triangle.
 
         Returns
         -------
@@ -1041,7 +1072,14 @@ class Crystal():
 
     @property
     def ratio(self):
-        """Return axes ratios of own lattice."""
+        """
+        Return axes ratios.
+
+        Returns
+        -------
+        ratio : dict
+            Ratio of lattice parameters 'b' and 'c' with respect to 'a'.
+        """
         _ratio = { 'hexagonal': {'c': np.sqrt(8./3.)}}
 
         return dict(b = self.immutable['b']
@@ -1057,6 +1095,11 @@ class Crystal():
     def basis_real(self) -> np.ndarray:
         """
         Return orthogonal real space crystal basis.
+
+        Returns
+        -------
+        basis_real : numpy.ndarray, shape(3)
+            Orthogonal real space crystal basis.
 
         References
         ----------
@@ -1079,13 +1122,27 @@ class Crystal():
 
     @property
     def basis_reciprocal(self) -> np.ndarray:
-        """Return reciprocal (dual) crystal basis."""
+        """
+        Return reciprocal (dual) crystal basis.
+
+        Returns
+        -------
+        basis_real : numpy.ndarray, shape(3)
+            Reciprocal (dual) rystal basis.
+        """
         return np.linalg.inv(self.basis_real.T)
 
 
     @property
     def lattice_points(self) -> np.ndarray:
-        """Return lattice points."""
+        """
+        Return lattice points.
+
+        Returns
+        -------
+        lattice_points : numpy.ndarray, shape(:,3)
+            Positions of atoms.
+        """
         _lattice_points: dict[str, list] = {
                 'P': [
                      ],

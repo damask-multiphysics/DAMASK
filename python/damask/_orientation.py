@@ -167,6 +167,11 @@ class Orientation(Rotation,Crystal):
         ----------
         other : Orientation
             Orientation to check for equality.
+
+        Returns
+        -------
+        equal : numpy.ndarray
+            Wheter both arguments are equal.
         """
         if not isinstance(other, Orientation):
             return NotImplemented

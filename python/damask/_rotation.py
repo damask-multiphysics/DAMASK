@@ -149,6 +149,11 @@ class Rotation:
         ----------
         other : Rotation
             Rotation to check for equality.
+
+        Returns
+        -------
+        equal : numpy.ndarray
+            Wheter both arguments are equal.
         """
         return NotImplemented if not isinstance(other, Rotation) else \
                np.logical_or(np.all(self.quaternion ==     other.quaternion,axis=-1),

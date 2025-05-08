@@ -60,6 +60,11 @@ class Table:
         ----------
         other : Table
             Table to check for equality.
+
+        Returns
+        -------
+        equal : bool
+            Wheter both arguments are equal.
         """
         return NotImplemented if not isinstance(other,Table) else \
                self.shapes == other.shapes and self.data.equals(other.data)
