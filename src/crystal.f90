@@ -596,8 +596,8 @@ function crystal_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(
 
   integer, dimension(CF_NSLIP,CF_NSLIP), parameter :: &
     CF_INTERACTIONSLIPSLIP = reshape( [&
-       1, 2, 2, 4, 7, 5, 3, 5, 5, 4, 6, 7,  10,11,10,11,12,13, & ! -----> acting (forest)
-       2, 1, 2, 7, 4, 5, 6, 4, 7, 5, 3, 5,  10,11,12,13,10,11, & ! |
+       1, 2, 2, 4, 7, 6, 3, 5, 5, 4, 6, 7,  10,11,10,11,12,13, & ! -----> acting (forest)
+       2, 1, 2, 7, 4, 6, 6, 4, 7, 5, 3, 5,  10,11,12,13,10,11, & ! |
        2, 2, 1, 5, 5, 3, 6, 7, 4, 7, 6, 4,  12,13,10,11,10,11, & ! |
        4, 7, 6, 1, 2, 2, 4, 6, 7, 3, 5, 5,  10,11,11,10,13,12, & ! v
        7, 4, 6, 2, 1, 2, 5, 3, 5, 6, 4, 7,  10,11,13,12,11,10, & ! reacting (primary)
