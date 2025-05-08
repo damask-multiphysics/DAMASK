@@ -135,8 +135,7 @@ class Rotation:
 
         Return slice according to item.
         """
-        c = [self.quaternion[...,i] for i in range(4)]
-        return self.copy(np.stack([c[i][item] for i in range(4)],axis=-1))
+        return self.copy(np.stack([c[item] for c in np.rollaxis(self.quaternion,-1)],axis=-1))
 
 
     def __eq__(self,                                                                                # type: ignore[override]
@@ -1188,7 +1187,7 @@ class Rotation:
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'cubochoric coordinate outside of the cube\n{cu}')
 
-        ho = -P * Rotation._cu2ho(cu)
+        ho = Rotation._cu2ho(cu) if P == -1 else Rotation._cu2ho(cu) * -1
 
         return Rotation(Rotation._ho2qu(ho))
 
