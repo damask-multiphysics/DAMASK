@@ -111,7 +111,7 @@ class GeomGrid:
         Returns
         -------
         equal : bool
-            Wheter both arguments are equal.
+            Whether both arguments are equal.
         """
         if not isinstance(other, GeomGrid):
             return NotImplemented

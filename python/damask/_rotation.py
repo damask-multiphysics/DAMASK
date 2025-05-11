@@ -153,7 +153,7 @@ class Rotation:
         Returns
         -------
         equal : numpy.ndarray
-            Wheter both arguments are equal.
+            Whether both arguments are equal.
         """
         return NotImplemented if not isinstance(other, Rotation) else \
                np.logical_or(np.all(self.quaternion ==     other.quaternion,axis=-1),
@@ -2484,7 +2484,7 @@ class Rotation:
            Coordinates of a point on a uniform refinable grid on a ball or
            in a uniform refinable cubical grid.
         direction : {'forward', 'backward'}
-            Wheter to map from ball to cube or from cube to ball.
+            Whether to map from ball to cube or from cube to ball.
 
         References
         ----------

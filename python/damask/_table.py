@@ -64,7 +64,7 @@ class Table:
         Returns
         -------
         equal : bool
-            Wheter both arguments are equal.
+            Whether both arguments are equal.
         """
         return NotImplemented if not isinstance(other,Table) else \
                self.shapes == other.shapes and self.data.equals(other.data)

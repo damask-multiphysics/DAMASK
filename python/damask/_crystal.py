@@ -819,7 +819,7 @@ class Crystal():
         Returns
         -------
         equal : bool
-            Wheter both arguments are equal.
+            Whether both arguments are equal.
         """
         return (NotImplemented if not isinstance(other, Crystal) else
                 self.lattice == other.lattice and
@@ -896,7 +896,7 @@ class Crystal():
         Returns
         -------
         labels : list of str
-           Short labels of the orientation relationships.
+            Labels of the applicable orientation relationships.
         """
         return [k for k,v in orientation_relationships.items() if np.any([m.startswith(str(self.lattice)) for m in v])]
 
@@ -1138,8 +1138,8 @@ class Crystal():
 
         Returns
         -------
-        basis_real : numpy.ndarray, shape(3)
-            Reciprocal (dual) rystal basis.
+        basis_reciprocal : numpy.ndarray, shape(3)
+            Reciprocal (dual) crystal basis.
         """
         return np.linalg.inv(self.basis_real.T)
 

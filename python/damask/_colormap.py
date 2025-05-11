@@ -78,7 +78,7 @@ class Colormap(mpl.colors.ListedColormap):
         Returns
         -------
         eq : bool
-            Wheter self equals other.
+            Whether self equals other.
         """
         if not isinstance(other, Colormap):
             return NotImplemented
@@ -523,15 +523,15 @@ class Colormap(mpl.colors.ListedColormap):
         | https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
         | https://www.kennethmoreland.com/color-maps/diverging_map.py
         """
-        def rad_diff(a,b):
+        def rad_diff(h_1,h_2):
             """
             Compute angular difference between two hue orientations.
 
             Parameters
             ----------
-            a : float
+            h_1 : float
                 First hue orientation.
-            b : float
+            h_2 : float
                 Second hue orientation.
 
             Returns
@@ -539,7 +539,8 @@ class Colormap(mpl.colors.ListedColormap):
             d : float
                 Angular difference between given hue orientations.
             """
-            return abs(a[2]-b[2])
+            d = abs(h_1-h_2)%(2*np.pi)
+            return min(d,2*np.pi-d)
 
         def adjust_hue(msh_sat, m_unsat):
             """
@@ -567,7 +568,7 @@ class Colormap(mpl.colors.ListedColormap):
         lo = np.array(low)
         hi = np.array(high)
 
-        if (lo[1] > 0.05 and hi[1] > 0.05 and rad_diff(lo,hi) > np.pi/3.0):
+        if (lo[1] > 0.05 and hi[1] > 0.05 and rad_diff(lo[2],hi[2]) > np.pi/3.0):
             M_mid = max(lo[0],hi[0],88.0)
             if frac < 0.5:
                 hi = np.array([M_mid,0.0,0.0])
