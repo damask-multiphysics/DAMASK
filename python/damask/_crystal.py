@@ -1,4 +1,5 @@
 from typing import Optional, Union, Literal
+import math
 
 import numpy as np
 
@@ -764,9 +765,9 @@ class Crystal():
                       self.b / self.ratio['b'] * self.ratio['c']
                       if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
 
-            self.alpha = np.radians(alpha) if degrees and alpha is not None else alpha
-            self.beta  = np.radians(beta)  if degrees and beta  is not None else beta
-            self.gamma = np.radians(gamma) if degrees and gamma is not None else gamma
+            self.alpha = math.radians(alpha) if degrees and alpha is not None else alpha
+            self.beta  = math.radians(beta)  if degrees and beta  is not None else beta
+            self.gamma = math.radians(gamma) if degrees and gamma is not None else gamma
             if self.alpha is None and 'alpha' in self.immutable: self.alpha = self.immutable['alpha']
             if self.beta  is None and 'beta'  in self.immutable: self.beta  = self.immutable['beta']
             if self.gamma is None and 'gamma' in self.immutable: self.gamma = self.immutable['gamma']
@@ -855,30 +856,30 @@ class Crystal():
             'cubic': {
                          'b': 1.0,
                          'c': 1.0,
-                         'alpha': np.pi/2.,
-                         'beta':  np.pi/2.,
-                         'gamma': np.pi/2.,
+                         'alpha': math.pi/2.,
+                         'beta':  math.pi/2.,
+                         'gamma': math.pi/2.,
                        },
             'hexagonal': {
                          'b': 1.0,
-                         'alpha': np.pi/2.,
-                         'beta':  np.pi/2.,
-                         'gamma': 2.*np.pi/3.,
+                         'alpha': math.pi/2.,
+                         'beta':  math.pi/2.,
+                         'gamma': 2.*math.pi/3.,
                        },
             'tetragonal': {
                          'b': 1.0,
-                         'alpha': np.pi/2.,
-                         'beta':  np.pi/2.,
-                         'gamma': np.pi/2.,
+                         'alpha': math.pi/2.,
+                         'beta':  math.pi/2.,
+                         'gamma': math.pi/2.,
                        },
             'orthorhombic': {
-                         'alpha': np.pi/2.,
-                         'beta':  np.pi/2.,
-                         'gamma': np.pi/2.,
+                         'alpha': math.pi/2.,
+                         'beta':  math.pi/2.,
+                         'gamma': math.pi/2.,
                        },
             'monoclinic': {
-                         'alpha': np.pi/2.,
-                         'gamma': np.pi/2.,
+                         'alpha': math.pi/2.,
+                         'gamma': math.pi/2.,
                        },
             'triclinic': {}
                      }
@@ -1080,7 +1081,7 @@ class Crystal():
         ratio : dict
             Ratio of lattice parameters 'b' and 'c' with respect to 'a'.
         """
-        _ratio = { 'hexagonal': {'c': np.sqrt(8./3.)}}
+        _ratio = { 'hexagonal': {'c': math.sqrt(8./3.)}}
 
         return dict(b = self.immutable['b']
                         if 'b' in self.immutable else
