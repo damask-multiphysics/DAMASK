@@ -69,3 +69,6 @@ exclude = [  # don't report on objects that match any of these regex
     '\.undocumented_method$',
     '\.__repr__$',
 ]
+
+[tool.ruff.lint]
+ignore = ['E701','E741']

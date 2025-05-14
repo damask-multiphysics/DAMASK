@@ -14,9 +14,6 @@
 #include <libfyaml.h>
 #endif
 
-#define PATHLEN 4096
-#define STRLEN   256
-
 
 int setcwd_c(const char *cwd){
   return chdir(cwd);

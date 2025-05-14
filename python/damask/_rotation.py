@@ -135,8 +135,7 @@ class Rotation:
 
         Return slice according to item.
         """
-        c = [self.quaternion[...,i] for i in range(4)]
-        return self.copy(np.stack([c[i][item] for i in range(4)],axis=-1))
+        return self.copy(np.stack([c[item] for c in np.rollaxis(self.quaternion,-1)],axis=-1))
 
 
     def __eq__(self,                                                                                # type: ignore[override]
@@ -150,6 +149,11 @@ class Rotation:
         ----------
         other : Rotation
             Rotation to check for equality.
+
+        Returns
+        -------
+        equal : numpy.ndarray
+            Whether both arguments are equal.
         """
         return NotImplemented if not isinstance(other, Rotation) else \
                np.logical_or(np.all(self.quaternion ==     other.quaternion,axis=-1),
@@ -1188,7 +1192,7 @@ class Rotation:
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'cubochoric coordinate outside of the cube\n{cu}')
 
-        ho = -P * Rotation._cu2ho(cu)
+        ho = Rotation._cu2ho(cu) if P == -1 else Rotation._cu2ho(cu) * -1
 
         return Rotation(Rotation._ho2qu(ho))
 
@@ -2480,7 +2484,7 @@ class Rotation:
            Coordinates of a point on a uniform refinable grid on a ball or
            in a uniform refinable cubical grid.
         direction : {'forward', 'backward'}
-            Wheter to map from ball to cube or from cube to ball.
+            Whether to map from ball to cube or from cube to ball.
 
         References
         ----------

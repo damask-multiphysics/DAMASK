@@ -26,7 +26,7 @@ class NiceDumper(SafeDumper):
     def represent_data(self,
                        data: Any):
         """Cast YAML objects and their subclasses to dict."""
-        if isinstance(data, dict) and type(data) != dict:
+        if isinstance(data, dict) and type(data) is not dict:
             return self.represent_data(dict(data))
         if isinstance(data, np.ndarray):
             return self.represent_data(data.tolist())

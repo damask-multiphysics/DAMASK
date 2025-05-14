@@ -259,8 +259,7 @@ def natural_sort(key: str) -> list[_Union[int, str]]:
     ----------
     https://en.wikipedia.org/wiki/Natural_sort_order
     """
-    convert = lambda text: int(text) if text.isdigit() else text
-    return [ convert(c) for c in _re.split('([0-9]+)', key) ]
+    return [int(c) if c.isdigit() else c for c in _re.split('([0-9]+)', key)]
 
 
 def show_progress(iterable: _Iterable,
@@ -535,17 +534,22 @@ def shapeblender(a: tuple[int, ...],
                  b: tuple[int, ...],
                  keep_ones: bool = False) -> tuple[int, ...]:
     """
-    Return a shape that overlaps the rightmost entries of 'a' with the leftmost of 'b'.
+    Calculate shape that overlaps the rightmost entries of 'a' with the leftmost of 'b'.
 
     Parameters
     ----------
     a : tuple
-        Shape of first array.
+        Shape of first ("left") array.
     b : tuple
-        Shape of second array.
+        Shape of second ("right") array.
     keep_ones : bool, optional
         Treat innermost '1's as literal value instead of dimensional placeholder.
         Defaults to False.
+
+    Returns
+    -------
+    shape : tuple
+        Shape that overlaps the rightmost entries of 'a' with the leftmost of 'b'.
 
     Examples
     --------

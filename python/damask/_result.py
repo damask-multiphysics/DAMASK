@@ -1683,7 +1683,7 @@ class Result:
         if prune:   r = util.dict_prune(r)
         if flatten: r = util.dict_flatten(r)
 
-        return None if (type(r) == dict and r == {}) else r
+        return None if (type(r) is dict and r == {}) else r
 
 
     def place(self,
@@ -1784,7 +1784,7 @@ class Result:
         if prune:   r = util.dict_prune(r)
         if flatten: r = util.dict_flatten(r)
 
-        return None if (type(r) == dict and r == {}) else r
+        return None if (type(r) is dict and r == {}) else r
 
 
     def export_XDMF(self,
@@ -2283,7 +2283,7 @@ class Result:
 
             cfg = cfg_dir/name
 
-            if type(obj) == h5py.Dataset and _match(output,[name]):
+            if type(obj) is h5py.Dataset and _match(output,[name]):
                 if cfg.exists() and not overwrite:
                     raise PermissionError(f'"{cfg}" exists')
                 else:

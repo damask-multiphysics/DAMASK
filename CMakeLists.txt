@@ -63,6 +63,9 @@ endif()
 add_definitions(-DCMAKE_SYSTEM_NAME="${CMAKE_SYSTEM_NAME}")
 add_definitions(-DCMAKE_SYSTEM_PROCESSOR="${CMAKE_SYSTEM_PROCESSOR}")
 
+add_definitions(-DSTRLEN=256)
+add_definitions(-DPATHLEN=4096)
+
 if(PETSC_VERSION VERSION_EQUAL 3.17.0)
   add_definitions("-DCHKERRQ=PetscCall")
 endif()
@@ -134,21 +137,18 @@ if(CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
 endif()
 
 
-if   (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
-  set(Fortran_COMPILER_VERSION_MIN 11.1)
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "IntelLLVM")
-  set(Fortran_COMPILER_VERSION_MIN 19)
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "LLVMFlang")
-  set(Fortran_COMPILER_VERSION_MIN 20)
+if((CMAKE_Fortran_COMPILER_ID STREQUAL "GNU") OR
+   (CMAKE_Fortran_COMPILER_ID STREQUAL "IntelLLVM") OR
+   (CMAKE_Fortran_COMPILER_ID STREQUAL "LLVMFlang"))
+  include("${PROJECT_SOURCE_DIR}/cmake/Compiler-${CMAKE_Fortran_COMPILER_ID}.cmake")
 else()
   message(FATAL_ERROR "Compiler '${CMAKE_Fortran_COMPILER_ID}' not supported")
 endif()
+
 if(CMAKE_Fortran_COMPILER_VERSION VERSION_LESS Fortran_COMPILER_VERSION_MIN)
   message(FATAL_ERROR "Version '${CMAKE_Fortran_COMPILER_VERSION}' of '${CMAKE_Fortran_COMPILER_ID}' is not supported")
 endif()
 
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-include("Compiler-${CMAKE_Fortran_COMPILER_ID}")
 
 file(STRINGS "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/petsc/conf/petscvariables" PETSC_EXTERNAL_LIB REGEX "PETSC_EXTERNAL_LIB_BASIC = .*$?")
 string(REPLACE "PETSC_EXTERNAL_LIB_BASIC = " "" PETSC_EXTERNAL_LIB "${PETSC_EXTERNAL_LIB}")

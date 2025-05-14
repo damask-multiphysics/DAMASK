@@ -107,6 +107,11 @@ class GeomGrid:
         ----------
         other : damask.GeomGrid
             GeomGrid to compare self against.
+
+        Returns
+        -------
+        equal : bool
+            Whether both arguments are equal.
         """
         if not isinstance(other, GeomGrid):
             return NotImplemented

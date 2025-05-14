@@ -1,4 +1,5 @@
 from typing import Optional, Union, Literal
+import math
 
 import numpy as np
 
@@ -670,6 +671,25 @@ class Crystal():
     """
     Representation of a crystal as (general) crystal family or (more specific) as a scaled Bravais lattice.
 
+    Attributes
+    ----------
+    family : str
+        Name of the crystal family.
+    lattice : str, optional
+        Name of the Bravais lattice in Pearson notation.
+    a : float, optional
+        Length of lattice parameter 'a'.
+    b : float, optional
+        Length of lattice parameter 'b'.
+    c : float, optional
+        Length of lattice parameter 'c'.
+    alpha : float, optional
+        Angle between 'b' and 'c' lattice basis.
+    beta : float, optional
+        Angle between 'c' and 'a' lattice basis.
+    gamma : float, optional
+        Angle between 'a' and 'b' lattice basis.
+
     Examples
     --------
     Cubic crystal family:
@@ -745,9 +765,9 @@ class Crystal():
                       self.b / self.ratio['b'] * self.ratio['c']
                       if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
 
-            self.alpha = np.radians(alpha) if degrees and alpha is not None else alpha
-            self.beta  = np.radians(beta)  if degrees and beta  is not None else beta
-            self.gamma = np.radians(gamma) if degrees and gamma is not None else gamma
+            self.alpha = math.radians(alpha) if degrees and alpha is not None else alpha
+            self.beta  = math.radians(beta)  if degrees and beta  is not None else beta
+            self.gamma = math.radians(gamma) if degrees and gamma is not None else gamma
             if self.alpha is None and 'alpha' in self.immutable: self.alpha = self.immutable['alpha']
             if self.beta  is None and 'beta'  in self.immutable: self.beta  = self.immutable['beta']
             if self.gamma is None and 'gamma' in self.immutable: self.gamma = self.immutable['gamma']
@@ -795,6 +815,11 @@ class Crystal():
         ----------
         other : Crystal
             Crystal to check for equality.
+
+        Returns
+        -------
+        equal : bool
+            Whether both arguments are equal.
         """
         return (NotImplemented if not isinstance(other, Crystal) else
                 self.lattice == other.lattice and
@@ -826,51 +851,60 @@ class Crystal():
             Lattice parameters a, b, c, alpha, beta, gamma
             that are fixed for the given crystal family.
         """
-        # ToDo: use pattern matching in Python 3.10
-        _immutable: dict[CrystalFamily, dict[str,float]] = {
-            'cubic': {
+        match self.family:
+            case 'cubic':
+                return {
                          'b': 1.0,
                          'c': 1.0,
-                         'alpha': np.pi/2.,
-                         'beta':  np.pi/2.,
-                         'gamma': np.pi/2.,
-                       },
-            'hexagonal': {
+                         'alpha': math.pi/2.,
+                         'beta':  math.pi/2.,
+                         'gamma': math.pi/2.,
+                       }
+            case 'hexagonal':
+                return {
                          'b': 1.0,
-                         'alpha': np.pi/2.,
-                         'beta':  np.pi/2.,
-                         'gamma': 2.*np.pi/3.,
-                       },
-            'tetragonal': {
+                         'alpha': math.pi/2.,
+                         'beta':  math.pi/2.,
+                         'gamma': 2.*math.pi/3.,
+                       }
+            case 'tetragonal':
+                return {
                          'b': 1.0,
-                         'alpha': np.pi/2.,
-                         'beta':  np.pi/2.,
-                         'gamma': np.pi/2.,
-                       },
-            'orthorhombic': {
-                         'alpha': np.pi/2.,
-                         'beta':  np.pi/2.,
-                         'gamma': np.pi/2.,
-                       },
-            'monoclinic': {
-                         'alpha': np.pi/2.,
-                         'gamma': np.pi/2.,
-                       },
-            'triclinic': {}
-                     }
-        return _immutable[self.family]
-
+                         'alpha': math.pi/2.,
+                         'beta':  math.pi/2.,
+                         'gamma': math.pi/2.,
+                       }
+            case 'orthorhombic':
+                return {
+                         'alpha': math.pi/2.,
+                         'beta':  math.pi/2.,
+                         'gamma': math.pi/2.,
+                       }
+            case 'monoclinic':
+                return {
+                         'alpha': math.pi/2.,
+                         'gamma': math.pi/2.,
+                       }
+            case 'triclinic':
+                return {}
 
     @property
     def orientation_relationships(self) -> list[str]:
-        """Return labels of orientation relationships."""
+        """
+        Return labels of orientation relationships.
+
+        Returns
+        -------
+        labels : list of str
+            Labels of the applicable orientation relationships.
+        """
         return [k for k,v in orientation_relationships.items() if np.any([m.startswith(str(self.lattice)) for m in v])]
 
 
     @property
     def standard_triangle(self) -> Union[dict[str, np.ndarray], None]:
         """
-        Returns corners of the standard triangle.
+        Return corners of the standard triangle.
 
         Returns
         -------
@@ -901,39 +935,41 @@ class Crystal():
         ...                                            [0.,1.,0.]]).T),                      #              blue
         ...    }
         """
-        _basis: dict[CrystalFamily, dict[str, np.ndarray]]  = {
-            'cubic':    {'improper':np.array([ [-1.            ,  0.            ,  1. ],
-                                               [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
-                                               [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
-                           'proper':np.array([ [ 0.            , -1.            ,  1. ],
-                                               [-np.sqrt(2.)   , np.sqrt(2.)    ,  0. ],
-                                               [ np.sqrt(3.)   ,  0.            ,  0. ] ]),
-                        },
-            'hexagonal':
-                        {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                               [ 1.            , -np.sqrt(3.)   ,  0. ],
-                                               [ 0.            ,  2.            ,  0. ] ]),
-                           'proper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                               [-1.            ,  np.sqrt(3.)   ,  0. ],
-                                               [ np.sqrt(3.)   , -1.            ,  0. ] ]),
-                        },
-            'tetragonal':
-                        {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                               [ 1.            , -1.            ,  0. ],
-                                               [ 0.            ,  np.sqrt(2.)   ,  0. ] ]),
-                           'proper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                               [-1.            ,  1.            ,  0. ],
-                                               [ np.sqrt(2.)   ,  0.            ,  0. ] ]),
-                        },
-            'orthorhombic':
-                        {'improper':np.array([ [ 0., 0., 1.],
-                                               [ 1., 0., 0.],
-                                               [ 0., 1., 0.] ]),
-                           'proper':np.array([ [ 0., 0., 1.],
-                                               [-1., 0., 0.],
-                                               [ 0., 1., 0.] ]),
-                        }}
-        return _basis.get(self.family, None)
+        match self.family:
+            case 'cubic':
+                return {'improper':np.array([ [-1.            ,  0.            ,  1. ],
+                                              [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
+                                              [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
+                          'proper':np.array([ [ 0.            , -1.            ,  1. ],
+                                              [-np.sqrt(2.)   , np.sqrt(2.)    ,  0. ],
+                                              [ np.sqrt(3.)   ,  0.            ,  0. ] ]),
+                       }
+            case 'hexagonal':
+                return {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
+                                              [ 1.            , -np.sqrt(3.)   ,  0. ],
+                                              [ 0.            ,  2.            ,  0. ] ]),
+                          'proper':np.array([ [ 0.            ,  0.            ,  1. ],
+                                              [-1.            ,  np.sqrt(3.)   ,  0. ],
+                                              [ np.sqrt(3.)   , -1.            ,  0. ] ]),
+                       }
+            case 'tetragonal':
+                return {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
+                                              [ 1.            , -1.            ,  0. ],
+                                              [ 0.            ,  np.sqrt(2.)   ,  0. ] ]),
+                          'proper':np.array([ [ 0.            ,  0.            ,  1. ],
+                                              [-1.            ,  1.            ,  0. ],
+                                              [ np.sqrt(2.)   ,  0.            ,  0. ] ]),
+                       }
+            case 'orthorhombic':
+                return {'improper':np.array([ [ 0., 0., 1.],
+                                              [ 1., 0., 0.],
+                                              [ 0., 1., 0.] ]),
+                          'proper':np.array([ [ 0., 0., 1.],
+                                              [-1., 0., 0.],
+                                              [ 0., 1., 0.] ]),
+                       }
+            case _:
+                return None
 
 
     @property
@@ -972,77 +1008,90 @@ class Crystal():
 
         https://en.wikipedia.org/wiki/Crystal_system#Crystal_classes
         """
-        _symmetry_operations: dict[CrystalFamily, list]  = {
-            'cubic':         [
-                              [ 1.0,            0.0,            0.0,            0.0            ],
-                              [ 0.0,            1.0,            0.0,            0.0            ],
-                              [ 0.0,            0.0,            1.0,            0.0            ],
-                              [ 0.0,            0.0,            0.0,            1.0            ],
-                              [ 0.0,            0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2) ],
-                              [ 0.0,            0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2) ],
-                              [ 0.0,            0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2) ],
-                              [ 0.0,            0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2) ],
-                              [ 0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
-                              [ 0.0,           -0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
-                              [ 0.5,            0.5,            0.5,            0.5            ],
-                              [-0.5,            0.5,            0.5,            0.5            ],
-                              [-0.5,            0.5,            0.5,           -0.5            ],
-                              [-0.5,            0.5,           -0.5,            0.5            ],
-                              [-0.5,           -0.5,            0.5,            0.5            ],
-                              [-0.5,           -0.5,            0.5,           -0.5            ],
-                              [-0.5,           -0.5,           -0.5,            0.5            ],
-                              [-0.5,            0.5,           -0.5,           -0.5            ],
-                              [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                              [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                              [-0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2), 0.0            ],
-                              [-0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2), 0.0            ],
-                              [-0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0,            0.0            ],
-                              [-0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0,            0.0            ],
-                            ], # 432
-            'hexagonal':    [
-                              [ 1.0,            0.0,            0.0,            0.0            ],
-                              [-0.5*np.sqrt(3), 0.0,            0.0,           -0.5            ],
-                              [ 0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
-                              [ 0.0,            0.0,            0.0,            1.0            ],
-                              [-0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
-                              [-0.5*np.sqrt(3), 0.0,            0.0,            0.5            ],
-                              [ 0.0,            1.0,            0.0,            0.0            ],
-                              [ 0.0,           -0.5*np.sqrt(3), 0.5,            0.0            ],
-                              [ 0.0,            0.5,           -0.5*np.sqrt(3), 0.0            ],
-                              [ 0.0,            0.0,            1.0,            0.0            ],
-                              [ 0.0,           -0.5,           -0.5*np.sqrt(3), 0.0            ],
-                              [ 0.0,            0.5*np.sqrt(3), 0.5,            0.0            ],
-                            ], # 622
-            'tetragonal':   [
-                              [ 1.0,            0.0,            0.0,            0.0            ],
-                              [ 0.0,            1.0,            0.0,            0.0            ],
-                              [ 0.0,            0.0,            1.0,            0.0            ],
-                              [ 0.0,            0.0,            0.0,            1.0            ],
-                              [ 0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
-                              [ 0.0,           -0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
-                              [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                              [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                            ], # 422
-            'orthorhombic': [
-                              [ 1.0,0.0,0.0,0.0 ],
-                              [ 0.0,1.0,0.0,0.0 ],
-                              [ 0.0,0.0,1.0,0.0 ],
-                              [ 0.0,0.0,0.0,1.0 ],
-                            ], # 222
-            'monoclinic':   [
-                              [ 1.0,0.0,0.0,0.0 ],
-                              [ 0.0,0.0,1.0,0.0 ],
-                            ], # 2
-            'triclinic':    [
-                              [ 1.0,0.0,0.0,0.0 ],
-                            ]} # 1
-        return Rotation.from_quaternion(_symmetry_operations[self.family],accept_homomorph=True)
+        match self.family:
+            case 'cubic': # 432
+                ops = [
+                        [ 1.0,            0.0,            0.0,            0.0            ],
+                        [ 0.0,            1.0,            0.0,            0.0            ],
+                        [ 0.0,            0.0,            1.0,            0.0            ],
+                        [ 0.0,            0.0,            0.0,            1.0            ],
+                        [ 0.0,            0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2) ],
+                        [ 0.0,            0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2) ],
+                        [ 0.0,            0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2) ],
+                        [ 0.0,            0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2) ],
+                        [ 0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
+                        [ 0.0,           -0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
+                        [ 0.5,            0.5,            0.5,            0.5            ],
+                        [-0.5,            0.5,            0.5,            0.5            ],
+                        [-0.5,            0.5,            0.5,           -0.5            ],
+                        [-0.5,            0.5,           -0.5,            0.5            ],
+                        [-0.5,           -0.5,            0.5,            0.5            ],
+                        [-0.5,           -0.5,            0.5,           -0.5            ],
+                        [-0.5,           -0.5,           -0.5,            0.5            ],
+                        [-0.5,            0.5,           -0.5,           -0.5            ],
+                        [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
+                        [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
+                        [-0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2), 0.0            ],
+                        [-0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2), 0.0            ],
+                        [-0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0,            0.0            ],
+                        [-0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0,            0.0            ],
+                      ]
+            case 'hexagonal': # 622
+                ops = [
+                        [ 1.0,            0.0,            0.0,            0.0            ],
+                        [-0.5*np.sqrt(3), 0.0,            0.0,           -0.5            ],
+                        [ 0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
+                        [ 0.0,            0.0,            0.0,            1.0            ],
+                        [-0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
+                        [-0.5*np.sqrt(3), 0.0,            0.0,            0.5            ],
+                        [ 0.0,            1.0,            0.0,            0.0            ],
+                        [ 0.0,           -0.5*np.sqrt(3), 0.5,            0.0            ],
+                        [ 0.0,            0.5,           -0.5*np.sqrt(3), 0.0            ],
+                        [ 0.0,            0.0,            1.0,            0.0            ],
+                        [ 0.0,           -0.5,           -0.5*np.sqrt(3), 0.0            ],
+                        [ 0.0,            0.5*np.sqrt(3), 0.5,            0.0            ],
+                      ]
+            case 'tetragonal': # 422
+                ops = [
+                        [ 1.0,            0.0,            0.0,            0.0            ],
+                        [ 0.0,            1.0,            0.0,            0.0            ],
+                        [ 0.0,            0.0,            1.0,            0.0            ],
+                        [ 0.0,            0.0,            0.0,            1.0            ],
+                        [ 0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
+                        [ 0.0,           -0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
+                        [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
+                        [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
+                      ]
+            case 'orthorhombic': # 222
+                ops = [
+                        [ 1.0,0.0,0.0,0.0 ],
+                        [ 0.0,1.0,0.0,0.0 ],
+                        [ 0.0,0.0,1.0,0.0 ],
+                        [ 0.0,0.0,0.0,1.0 ],
+                      ]
+            case 'monoclinic':
+                ops = [ # 2
+                        [ 1.0,0.0,0.0,0.0 ],
+                        [ 0.0,0.0,1.0,0.0 ],
+                      ]
+            case 'triclinic': # 1
+                ops = [
+                        [ 1.0,0.0,0.0,0.0 ],
+                      ]
+        return Rotation.from_quaternion(ops,accept_homomorph=True)
 
 
     @property
     def ratio(self):
-        """Return axes ratios of own lattice."""
-        _ratio = { 'hexagonal': {'c': np.sqrt(8./3.)}}
+        """
+        Return axes ratios.
+
+        Returns
+        -------
+        ratio : dict
+            Ratio of lattice parameters 'b' and 'c' with respect to 'a'.
+        """
+        _ratio = { 'hexagonal': {'c': math.sqrt(8./3.)}}
 
         return dict(b = self.immutable['b']
                         if 'b' in self.immutable else
@@ -1057,6 +1106,11 @@ class Crystal():
     def basis_real(self) -> np.ndarray:
         """
         Return orthogonal real space crystal basis.
+
+        Returns
+        -------
+        basis_real : numpy.ndarray, shape(3)
+            Orthogonal real space crystal basis.
 
         References
         ----------
@@ -1079,36 +1133,45 @@ class Crystal():
 
     @property
     def basis_reciprocal(self) -> np.ndarray:
-        """Return reciprocal (dual) crystal basis."""
+        """
+        Return reciprocal (dual) crystal basis.
+
+        Returns
+        -------
+        basis_reciprocal : numpy.ndarray, shape(3)
+            Reciprocal (dual) crystal basis.
+        """
         return np.linalg.inv(self.basis_real.T)
 
 
     @property
-    def lattice_points(self) -> np.ndarray:
-        """Return lattice points."""
-        _lattice_points: dict[str, list] = {
-                'P': [
-                     ],
-                'S': [
-                      [0.5,0.5,0],
-                     ],
-                'I': [
-                      [0.5,0.5,0.5],
-                     ],
-                'F': [
-                      [0.0,0.5,0.5],
-                      [0.5,0.0,0.5],
-                      [0.5,0.5,0.0],
-                     ],
-                'hP': [
-                       [2./3.,1./3.,0.5],
-                     ],
-                }
+    def lattice_points(self) -> np.ndarray:                                                         # type: ignore[return]
+        """
+        Return lattice points.
 
+        Returns
+        -------
+        lattice_points : numpy.ndarray, shape(:,3)
+            Positions of atoms.
+        """
         if self.lattice is None: raise KeyError('no lattice type specified')
-        return np.array([[0,0,0]]
-                        + _lattice_points.get(self.lattice if self.lattice == 'hP' else
-                                              self.lattice[-1],[]),dtype=float)
+
+        origin = [0.,0.,0.]
+        match list(self.lattice):
+            case ['h','P']:
+                return np.array([origin] + [ [2./3.,1./3.,0.5] ])
+            case [_,'P']:
+                return np.array([origin])
+            case [_,'S']:
+                return np.array([origin] + [ [0.5,0.5,0.0] ])
+            case [_,'I']:
+                return np.array([origin] + [ [0.5,0.5,0.5] ])
+            case [_,'F']:
+                return np.array([origin] + [
+                                             [0.0,0.5,0.5],
+                                             [0.5,0.0,0.5],
+                                             [0.5,0.5,0.0],
+                                           ])
 
     def to_lattice(self, *,
                    direction: Optional[FloatSequence] = None,

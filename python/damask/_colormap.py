@@ -78,7 +78,7 @@ class Colormap(mpl.colors.ListedColormap):
         Returns
         -------
         eq : bool
-            Wheter self equals other.
+            Whether self equals other.
         """
         if not isinstance(other, Colormap):
             return NotImplemented
@@ -504,27 +504,71 @@ class Colormap(mpl.colors.ListedColormap):
 
         This interpolation gives a perceptually uniform colormap.
 
+        Parameters
+        ----------
+        frac : float
+            Location at the colormap in a range [0,1].
+        low : numpy.ndarray, shape (3)
+            Color in Msh for the low end of the colormap.
+        high : numpy.ndarray, shape (3)
+            Color in Msh for the high end of the colormap.
+
+        Returns
+        -------
+        color : numpy.ndarray, shape (3)
+            Color in Msh at frac between low and high.
+
         References
         ----------
         | https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
         | https://www.kennethmoreland.com/color-maps/diverging_map.py
         """
-        def rad_diff(a,b):
-            return abs(a[2]-b[2])
+        def rad_diff(h_1,h_2):
+            """
+            Compute angular difference between two hue orientations.
 
-        def adjust_hue(msh_sat, msh_unsat):
-            """If saturation of one of the two colors is much less than the other, hue of the less."""
-            if msh_sat[0] >= msh_unsat[0]:
+            Parameters
+            ----------
+            h_1 : float
+                First hue orientation.
+            h_2 : float
+                Second hue orientation.
+
+            Returns
+            -------
+            d : float
+                Angular difference between given hue orientations.
+            """
+            d = abs(h_1-h_2)%(2*np.pi)
+            return min(d,2*np.pi-d)
+
+        def adjust_hue(msh_sat, m_unsat):
+            """
+            Provide adjusted hue when interpolating to an unsaturated color.
+
+            Parameters
+            ----------
+            msh_sat : numpy.ndarray, shape(3)
+                Saturated color in Msh space.
+            m_unsat : float
+                Magnitue (in Msh space) of unsaturated color.
+
+            Returns
+            -------
+            h_adjusted : float
+                Adjusted hue.
+            """
+            if msh_sat[0] >= m_unsat:
                 return msh_sat[2]
 
-            hSpin = msh_sat[1]/np.sin(msh_sat[1])*np.sqrt(msh_unsat[0]**2.0-msh_sat[0]**2)/msh_sat[0]
+            hSpin = msh_sat[1]/np.sin(msh_sat[1])*np.sqrt(m_unsat**2.0-msh_sat[0]**2)/msh_sat[0]
             if msh_sat[2] < - np.pi/3.0: hSpin *= -1.0
             return msh_sat[2] + hSpin
 
         lo = np.array(low)
         hi = np.array(high)
 
-        if (lo[1] > 0.05 and hi[1] > 0.05 and rad_diff(lo,hi) > np.pi/3.0):
+        if (lo[1] > 0.05 and hi[1] > 0.05 and rad_diff(lo[2],hi[2]) > np.pi/3.0):
             M_mid = max(lo[0],hi[0],88.0)
             if frac < 0.5:
                 hi = np.array([M_mid,0.0,0.0])
@@ -533,9 +577,9 @@ class Colormap(mpl.colors.ListedColormap):
                 lo = np.array([M_mid,0.0,0.0])
                 frac = 2.0*frac - 1.0
         if   lo[1] < 0.05 < hi[1]:
-            lo[2] = adjust_hue(hi,lo)
+            lo[2] = adjust_hue(hi,lo[0])
         elif hi[1] < 0.05 < lo[1]:
-            hi[2] = adjust_hue(lo,hi)
+            hi[2] = adjust_hue(lo,hi[0])
 
         return (1.0 - frac) * lo + frac * hi
 
