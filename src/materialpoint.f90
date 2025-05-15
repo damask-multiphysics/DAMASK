@@ -34,6 +34,7 @@ module materialpoint
   use discretization_mesh
 #elif defined(GRID)
   use base64
+  use zlib
   use discretization_grid
 #endif
 
@@ -58,6 +59,7 @@ subroutine materialpoint_initAll()
 #if   defined(MESH) && (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
   call FEM_quadrature_init()
 #elif defined(GRID)
+   call zlib_init()
    call base64_init()
 #endif
   call types_init()

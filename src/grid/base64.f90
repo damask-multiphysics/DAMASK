@@ -25,7 +25,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Do self test.
 !--------------------------------------------------------------------------------------------------
-subroutine base64_init
+subroutine base64_init()
 
   print'(/,1x,a)', '<<<+-  base64 init  -+>>>'; flush(IO_STDOUT)
 
@@ -73,6 +73,7 @@ function base64_to_bytes(base64_str,s,e) result(bytes)
   integer(pI64) :: s_bytes, e_bytes, s_str, e_str
   integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
 
+
   if (.not. validBase64(base64_str)) call IO_error(114,ext_msg='invalid character')
 
   if (present(s)) then
@@ -113,6 +114,7 @@ pure function decodeBase64(base64_str) result(bytes)
   integer(C_SIGNED_CHAR), dimension(0:3) :: charPos
   integer(pI64) :: c, b, p
 
+
   c = 1_pI64
   b = 1_pI64
 
@@ -148,6 +150,7 @@ pure logical function validBase64(base64_str)
 
   integer(pI64) :: l
 
+
   l = len(base64_str,pI64)
   validBase64 = .true.
 
@@ -161,10 +164,11 @@ end function validBase64
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of base64 functions.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest
+subroutine selfTest()
 
   integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
   character(len=*), parameter :: zero_to_three = 'AAECAw=='
+
 
   ! https://en.wikipedia.org/wiki/Base64#Output_padding
   if (base64_nChar(20_pI64) /= 28_pI64) error stop 'base64_nChar/20/28'

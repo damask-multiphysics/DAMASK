@@ -18,10 +18,7 @@ module system_routines
     getCWD, &
     getHostName, &
     getUserName, &
-    signalint_C, &
-    signalusr1_C, &
-    signalusr2_C, &
-    isatty, &
+    isaTTY, &
 #if (defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || (defined(__GFORTRAN__) && __GNUC__ < 15)
     f_c_string, &
 #endif
@@ -29,7 +26,6 @@ module system_routines
 
 
   interface
-
 
     function setCWD_C(cwd) bind(C)
       use, intrinsic :: ISO_C_binding, only: C_INT, C_CHAR
@@ -66,27 +62,6 @@ module system_routines
       integer(C_INT),                               intent(out) :: stat
     end subroutine getUserName_C
 
-    subroutine signalint_C(handler) bind(C)
-      use, intrinsic :: ISO_C_binding, only: C_FUNPTR
-
-      implicit none(type,external)
-      type(C_FUNPTR), intent(in), value :: handler
-    end subroutine signalint_C
-
-    subroutine signalusr1_C(handler) bind(C)
-      use, intrinsic :: ISO_C_binding, only: C_FUNPTR
-
-      implicit none(type,external)
-      type(C_FUNPTR), intent(in), value :: handler
-    end subroutine signalusr1_C
-
-    subroutine signalusr2_C(handler) bind(C)
-      use, intrinsic :: ISO_C_binding, only: C_FUNPTR
-
-      implicit none(type,external)
-      type(C_FUNPTR), intent(in), value :: handler
-    end subroutine signalusr2_C
-
     subroutine free_C(ptr) bind(C,name='free')
       use, intrinsic :: ISO_C_binding, only: C_PTR
 
@@ -94,27 +69,26 @@ module system_routines
       type(C_PTR), value :: ptr
     end subroutine free_C
 
-    function stdout_isatty_C() bind(C)
+    function isatty_stdout_C() bind(C)
       use, intrinsic :: ISO_C_binding, only: C_INT
 
       implicit none(type,external)
-      integer(C_INT) :: stdout_isatty_C
-    end function stdout_isatty_C
+      integer(C_INT) :: isatty_stdout_C
+    end function isatty_stdout_C
 
-    function stderr_isatty_C() bind(C)
+    function isatty_stderr_C() bind(C)
       use, intrinsic :: ISO_C_binding, only: C_INT
 
       implicit none(type,external)
-      integer(C_INT) :: stderr_isatty_C
-    end function stderr_isatty_C
+      integer(C_INT) :: isatty_stderr_C
+    end function isatty_stderr_C
 
-    function stdin_isatty_C() bind(C)
+    function isatty_stdin_C() bind(C)
       use, intrinsic :: ISO_C_binding, only: C_INT
 
       implicit none(type,external)
-      integer(C_INT) :: stdin_isatty_C
-    end function stdin_isatty_C
-
+      integer(C_INT) :: isatty_stdin_C
+    end function isatty_stdin_C
 
   end interface
 
@@ -256,7 +230,7 @@ end function f_c_string
 !> @brief Test whether a file descriptor refers to a terminal.
 !> @detail A terminal is neither a file nor a redirected STDOUT/STDERR/STDIN.
 !--------------------------------------------------------------------------------------------------
-logical function isatty(unit)
+logical function isaTTY(unit)
 
   integer, intent(in) :: unit
 
@@ -264,17 +238,17 @@ logical function isatty(unit)
   select case(unit)
 #ifndef LOGFILE
     case (OUTPUT_UNIT)
-      isatty = stdout_isatty_C()==1
+      isaTTY = isatty_stdout_C()==1
     case (ERROR_UNIT)
-      isatty = stderr_isatty_C()==1
+      isaTTY = isatty_stderr_C()==1
 #endif
     case (INPUT_UNIT)
-      isatty = stdin_isatty_C()==1
+      isaTTY = isatty_stdin_C()==1
     case default
-      isatty = .false.
+      isaTTY = .false.
   end select
 
-end function isatty
+end function isaTTY
 
 
 !--------------------------------------------------------------------------------------------------
