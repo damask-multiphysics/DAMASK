@@ -14,7 +14,7 @@ module zlib
   interface
 
     subroutine inflate_C(s_deflated,s_inflated,deflated,inflated,stat) bind(C)
-      use, intrinsic :: ISO_C_Binding, only: C_SIGNED_CHAR, C_INT64_T, C_INT
+      use, intrinsic :: ISO_C_binding, only: C_SIGNED_CHAR, C_INT64_T, C_INT
       implicit none(type,external)
 
       integer(C_INT64_T),                            intent(in)  :: s_deflated,s_inflated

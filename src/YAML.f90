@@ -25,7 +25,7 @@ module YAML
   interface
 
     subroutine to_flow_C(flow,length_flow,mixed) bind(C)
-      use, intrinsic :: ISO_C_Binding, only: C_LONG, C_CHAR, C_PTR
+      use, intrinsic :: ISO_C_binding, only: C_LONG, C_CHAR, C_PTR
       implicit none(type,external)
 
       type(C_PTR), intent(out) :: flow
