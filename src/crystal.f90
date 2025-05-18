@@ -226,14 +226,14 @@ module crystal
        2, -1, -1,  0,     0,  1, -1,  0, &
       -1,  2, -1,  0,    -1,  0,  1,  0, &
       -1, -1,  2,  0,     1, -1,  0,  0, &
-    ! <-1-1.0>{-11.1}/1. order pyramidal <a> systems (direction independent of c/a-ratio)
+    ! <-1-1.0>{-11.1}/1st order pyramidal <a> systems (direction independent of c/a-ratio)
       -1,  2, -1,  0,     1,  0, -1,  1, &
       -2,  1,  1,  0,     0,  1, -1,  1, &
       -1, -1,  2,  0,    -1,  1,  0,  1, &
        1, -2,  1,  0,    -1,  0,  1,  1, &
        2, -1, -1,  0,     0, -1,  1,  1, &
        1,  1, -2,  0,     1, -1,  0,  1, &
-    ! <11.3>{-10.1}/1. order pyramidal <c+a> systems (direction independent of c/a-ratio)
+    ! <11.3>{-10.1}/1st order pyramidal <c+a> systems (direction independent of c/a-ratio)
       -2,  1,  1,  3,     1,  0, -1,  1, &
       -1, -1,  2,  3,     1,  0, -1,  1, &
       -1, -1,  2,  3,     0,  1, -1,  1, &
@@ -246,7 +246,7 @@ module crystal
       -1,  2, -1,  3,     0, -1,  1,  1, &
       -1,  2, -1,  3,     1, -1,  0,  1, &
       -2,  1,  1,  3,     1, -1,  0,  1, &
-    ! <11.3>{-1-1.2}/2. order pyramidal <c+a> systems
+    ! <11.3>{-1-1.2}/2nd order pyramidal <c+a> systems
       -1, -1,  2,  3,     1,  1, -2,  2, &
        1, -2,  1,  3,    -1,  2, -1,  2, &
        2, -1, -1,  3,    -2,  1,  1,  2, &
@@ -1330,9 +1330,11 @@ end function crystal_interaction_TwinBySlip
 !--------------------------------------------------------------------------------------------------
 !> @brief Schmid matrix for slip
 !> @details only active slip systems are considered
-! Non-schmid projections for cI with up to 6 coefficients
+! Non-Schmid projections for cI with up to 6 coefficients
 ! https://doi.org/10.1016/j.actamat.2012.03.053, eq. (17)
 ! https://doi.org/10.1016/j.actamat.2008.07.037, table 1
+! Non-Schmid projections for hcp with 1 coefficient
+! https://doi.org/10.1016/j.scriptamat.2019.11.002
 !--------------------------------------------------------------------------------------------------
 function crystal_SchmidMatrix_slip(Nslip,lattice,cOverA,nonSchmidCoefficients,sense) result(SchmidMatrix)
 
@@ -1346,11 +1348,12 @@ function crystal_SchmidMatrix_slip(Nslip,lattice,cOverA,nonSchmidCoefficients,se
   real(pREAL), dimension(3,3,sum(Nslip))             :: coordinateSystem
   real(pREAL), dimension(:,:),           allocatable :: slipSystems
   integer,     dimension(:),             allocatable :: NslipMax
-  integer,     dimension(:),             allocatable :: slipFamily
+  integer,     dimension(:),             allocatable :: family
   real(pREAL), dimension(3)                          :: direction, normal, np
   real(pREAL), dimension(6)                          :: coeff                                       !< local nonSchmid coefficient variable
   type(tRotation)                                    :: R
   integer                                            :: i
+
 
   select case(lattice)
     case('cF')
@@ -1370,12 +1373,26 @@ function crystal_SchmidMatrix_slip(Nslip,lattice,cOverA,nonSchmidCoefficients,se
       call IO_error(137,ext_msg='crystal_SchmidMatrix_slip: '//trim(lattice))
   end select
 
+  if (present(nonSchmidCoefficients)) then
+    select case(lattice)
+      case('cI')
+        if (size(nonSchmidCoefficients,dim=2) > 6) &
+          call IO_error(132,ext_msg='too many non-Schmid coefficients for cI')
+      case('hP')
+        if (size(nonSchmidCoefficients,dim=2) > 1) &
+          call IO_error(132,ext_msg='too many non-Schmid coefficients for hP')
+      case default
+        if (size(nonSchmidCoefficients,dim=2) > 0) &
+          call IO_error(132,ext_msg='non-Schmid coefficients not implemented for '//lattice)
+    end select
+  endif
+
   if (any(NslipMax(1:size(Nslip)) - Nslip < 0)) &
     call IO_error(145,ext_msg='Nslip '//trim(lattice))
   if (any(Nslip < 0)) &
     call IO_error(144,ext_msg='Nslip '//trim(lattice))
 
-  slipFamily = math_expand([(i, i=1,size(Nslip))],Nslip)
+  family = math_expand([(i, i=1,size(Nslip))],Nslip)
   coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,lattice,cOverA)
   if (present(sense)) then
     if (abs(sense) /= 1) error stop 'neither +1 nor -1 sense in crystal_SchmidMatrix_slip'
@@ -1390,23 +1407,36 @@ function crystal_SchmidMatrix_slip(Nslip,lattice,cOverA,nonSchmidCoefficients,se
     if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
       error stop 'dilatational Schmid matrix for slip'
 
-    if (present(nonSchmidCoefficients) .and. lattice == 'cI') then
+    if (present(nonSchmidCoefficients)) then
+      if (size(nonSchmidCoefficients,dim=2) == 0 .or. size(nonSchmidCoefficients,dim=1) < family(i)) cycle
+
       coeff(:) = 0.0_pREAL
-      family: select case(slipFamily(i))
-        case(1)
-          if (size(nonSchmidCoefficients,1) < 1) exit family
-          coeff(:size(nonSchmidCoefficients(1,:))) = nonSchmidCoefficients(1,:)
-          call R%fromAxisAngle([direction,60.0_pREAL],degrees=.true.,P=1)
-          np = R%rotate(normal)
-          SchmidMatrix(1:3,1:3,i) = SchmidMatrix(1:3,1:3,i) &
-                                  + coeff(1) * math_outer(direction, np) &
-                                  + coeff(2) * math_outer(math_cross(normal, direction), normal) &
-                                  + coeff(3) * math_outer(math_cross(np, direction), np) &
-                                  + coeff(4) * math_outer(normal, normal) &
-                                  + coeff(5) * math_outer(math_cross(normal, direction), &
-                                                          math_cross(normal, direction)) &
-                                  + coeff(6) * math_outer(direction, direction)
-      end select family
+
+      select case(lattice)
+
+        case ('cI')
+          if (family(i) == 1) then ! <111>{110} systems
+            coeff(:size(nonSchmidCoefficients,dim=2)) = nonSchmidCoefficients(family(i),:)
+            call R%fromAxisAngle([direction,60.0_pREAL],degrees=.true.,P=1)
+            np = R%rotate(normal)
+            SchmidMatrix(1:3,1:3,i) = SchmidMatrix(1:3,1:3,i) &
+                                    + coeff(1) * math_outer(direction, np) &
+                                    + coeff(2) * math_outer(math_cross(normal, direction), normal) &
+                                    + coeff(3) * math_outer(math_cross(np, direction), np) &
+                                    + coeff(4) * math_outer(normal, normal) &
+                                    + coeff(5) * math_outer(math_cross(normal, direction), &
+                                                            math_cross(normal, direction)) &
+                                    + coeff(6) * math_outer(direction, direction)
+          end if
+
+        case ('hP')
+          if (any(family(i) == [4,5])) then ! <11.3>{-10.1}/1st order pyramidal <c+a> and <11.3>{-1-1.2}/2nd order pyramidal <c+a>
+            coeff(:size(nonSchmidCoefficients,dim=2)) = nonSchmidCoefficients(family(i),:)
+            SchmidMatrix(1:3,1:3,i) = SchmidMatrix(1:3,1:3,i) &
+                                    + coeff(1) * math_outer(normal, normal)
+          end if
+
+      end select
     end if
   end do
 
