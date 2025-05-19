@@ -1685,9 +1685,9 @@ class Orientation(Rotation,Crystal):
                [-0.408, -0.408, -0.408]])
         """
         if len(self.shape) == 0:
-            return self @ super().Schmid(N_slip=N_slip, N_twin=N_twin)
-        P = np.moveaxis(self @ super().Schmid(N_slip=N_slip, N_twin=N_twin),-3,0)
-        return P.reshape((P.shape[0],)+self.shape+(3,3))
+            return super().Schmid(N_slip=N_slip, N_twin=N_twin)
+        # super().Schmid uses Orientation.to_frame which blends. Avoid blending with np.newaxis
+        return np.moveaxis(super(Orientation,self[...,np.newaxis]).Schmid(N_slip=N_slip, N_twin=N_twin),-3,0)
 
 
     def related(self: MyType,
