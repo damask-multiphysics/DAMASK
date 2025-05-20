@@ -1679,12 +1679,12 @@ class Orientation(Rotation,Crystal):
         >>> import numpy as np
         >>> import damask
         >>> O = damask.Orientation.from_Euler_angles(phi=[0,45,0],degrees=True,lattice='cF')
-        >>> O.Schmid(N_slip=[12])[0]
+        >>> np.round(O.Schmid(N_slip=[12])[0],3)
         array([[ 0.   ,  0.   ,  0.   ],
-               [ 0.408,  0.408,  0.408],
-               [-0.408, -0.408, -0.408]])
+               [ 0.577, -0.   ,  0.816],
+               [ 0.   ,  0.   ,  0.   ]])
         """
-        return np.moveaxis(self @
+        return np.moveaxis(~self @
                            super().Schmid(N_slip=N_slip,
                                           N_twin=N_twin)[(np.newaxis,)*len(self.shape)],
                            -3,
