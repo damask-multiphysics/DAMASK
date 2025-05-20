@@ -1422,7 +1422,7 @@ class Crystal():
         if not active or (np.array(active) > everylen[:len(active)]).any():
             raise ValueError('Invalid number of slip/twin systems')
 
-        d = self.to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
-        p = self.to_frame(hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
+        d = Crystal.to_frame(self,uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
+        p = Crystal.to_frame(self,hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
         return np.einsum('...i,...j',d/np.linalg.norm(d,axis=-1,keepdims=True),
                                      p/np.linalg.norm(p,axis=-1,keepdims=True))
