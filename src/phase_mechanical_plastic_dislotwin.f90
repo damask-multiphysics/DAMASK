@@ -182,8 +182,8 @@ module function plastic_dislotwin_init() result(myPlasticity)
               idx_dot => indexDotState(ph))
 
     phase => phases%get_dict(ph)
-    mech  => phase%get_dict('mechanical')
-    pl    => mech%get_dict('plastic')
+    mech => phase%get_dict('mechanical')
+    pl => mech%get_dict('plastic')
 
     print'(/,1x,a,1x,i0,a)', 'phase',ph,': '//phases%key(ph)
     refs = config_listReferences(pl,indent=3)
@@ -199,12 +199,14 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
-    N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
+    N_sl = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
+      prm%P_sl = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
       prm%systems_sl = crystal_labels_slip(N_sl,phase_lattice(ph))
-      prm%P_sl       = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
-      prm%n0_sl      = crystal_slip_normal(N_sl,phase_lattice(ph),phase_cOverA(ph))
+      prm%n0_sl = crystal_slip_normal(N_sl,phase_lattice(ph),phase_cOverA(ph))
+
+      prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
 
       prm%extendedDislocations = pl%get_asBool('extend_dislocations',defaultVal=prm%extendedDislocations)
       prm%omitDipoles          = pl%get_asBool('omit_dipoles',       defaultVal=prm%omitDipoles)
@@ -233,7 +235,6 @@ module function plastic_dislotwin_init() result(myPlasticity)
                                                  defaultVal=[(0.0_pREAL,i=1,size(N_sl))]),N_sl)
       prm%d_caron  = prm%b_sl * pl%get_asReal('D_a')
 
-      prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
 
       prm%forestProjection = spread(          f_edge,1,prm%sum_N_sl) &
                            * crystal_forestProjection_edge (N_sl,phase_lattice(ph),phase_cOverA(ph)) &
@@ -282,9 +283,11 @@ module function plastic_dislotwin_init() result(myPlasticity)
     prm%N_tw = pl%get_as1dInt('N_tw', defaultVal=emptyIntArray)
     prm%sum_N_tw = sum(abs(prm%N_tw))
     twinActive: if (prm%sum_N_tw > 0) then
-      prm%systems_tw    = crystal_labels_twin(prm%N_tw,phase_lattice(ph))
-      prm%P_tw          = crystal_SchmidMatrix_twin(prm%N_tw,phase_lattice(ph),phase_cOverA(ph))
-      prm%gamma_char_tw = abs(crystal_characteristicShear_Twin(prm%N_tw,phase_lattice(ph),phase_cOverA(ph)))
+      prm%P_tw = crystal_SchmidMatrix_twin(prm%N_tw,phase_lattice(ph),phase_cOverA(ph))
+      prm%systems_tw = crystal_labels_twin(prm%N_tw,phase_lattice(ph))
+      prm%gamma_char_tw = abs(crystal_characteristicShear_twin(prm%N_tw,phase_lattice(ph),phase_cOverA(ph)))
+
+      prm%h_tw_tw = crystal_interaction_TwinByTwin(prm%N_tw,pl%get_as1dReal('h_tw-tw'), phase_lattice(ph))
 
       prm%L_tw = pl%get_asReal('L_tw')
       prm%i_tw = pl%get_asReal('i_tw')
@@ -292,9 +295,6 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%b_tw = math_expand(pl%get_as1dReal('b_tw', requiredSize=size(prm%N_tw)),prm%N_tw)
       prm%t_tw = math_expand(pl%get_as1dReal('t_tw', requiredSize=size(prm%N_tw)),prm%N_tw)
       prm%r    = math_expand(pl%get_as1dReal('p_tw', requiredSize=size(prm%N_tw)),prm%N_tw)
-
-      prm%h_tw_tw = crystal_interaction_TwinByTwin(prm%N_tw,pl%get_as1dReal('h_tw-tw'), &
-                                                   phase_lattice(ph))
 
       ! sanity checks
       if (.not. prm%fccTwinTransNucleation)   extmsg = trim(extmsg)//' TWIP for non-fcc'
@@ -318,6 +318,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
     prm%sum_N_tr = sum(abs(prm%N_tr))
     transActive: if (prm%sum_N_tr > 0) then
       prm%P_tr = crystal_SchmidMatrix_trans(prm%N_tr,'hP',prm%cOverA_hP)
+      prm%h_tr_tr = crystal_interaction_TransByTrans(prm%N_tr,pl%get_as1dReal('h_tr-tr'),phase_lattice(ph))
 
       prm%Delta_G = polynomial(pl,'Delta_G','T')
       prm%i_tr            = pl%get_asReal('i_tr')
@@ -332,9 +333,6 @@ module function plastic_dislotwin_init() result(myPlasticity)
       a_cF           = prm%b_tr(1)*sqrt(6.0_pREAL)                                                  ! b_tr is Shockley partial
       prm%h          = 5.0_pREAL * a_cF/sqrt(3.0_pREAL)
       prm%rho        = 4.0_pREAL/(sqrt(3.0_pREAL)*a_cF**2)/N_A
-      prm%h_tr_tr = crystal_interaction_TransByTrans(prm%N_tr,pl%get_as1dReal('h_tr-tr'),&
-                                                     phase_lattice(ph))
-
 
       ! sanity checks
       if (.not. prm%fccTwinTransNucleation)   extmsg = trim(extmsg)//' TRIP for non-fcc'

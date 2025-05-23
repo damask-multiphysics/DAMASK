@@ -236,18 +236,20 @@ module function plastic_nonlocal_init() result(myPlasticity)
     prm%isotropic_bound = pl%get_asStr('isotropic_bound',defaultVal='isostrain')
     prm%atol_rho = pl%get_asReal('atol_rho',defaultVal=1.0_pREAL)
 
-    ini%N_sl     = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
+    ini%N_sl = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(ini%N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%systems_sl = crystal_labels_slip(ini%N_sl,phase_lattice(ph))
       prm%P_sl = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph), phase_cOverA(ph))
+      prm%systems_sl = crystal_labels_slip(ini%N_sl,phase_lattice(ph))
+
 
       a_nS = pl%get_as2dReal('a_non-Schmid',defaultVal=reshape(emptyRealArray,[0,0]))
-      prm%P_nS_pos = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=+1)
-      prm%P_nS_neg = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=-1)
+      prm%P_nS_pos = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph),phase_cOverA(ph), &
+                                               nonSchmidCoefficients=a_nS,sense=+1)
+      prm%P_nS_neg = crystal_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph),phase_cOverA(ph), &
+                                               nonSchmidCoefficients=a_nS,sense=-1)
 
-      prm%h_sl_sl = crystal_interaction_SlipBySlip(ini%N_sl,pl%get_as1dReal('h_sl-sl'), &
-                                                   phase_lattice(ph))
+      prm%h_sl_sl = crystal_interaction_SlipBySlip(ini%N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
 
       prm%forestProjection_edge  = crystal_forestProjection_edge (ini%N_sl,phase_lattice(ph),&
                                                                   phase_cOverA(ph))

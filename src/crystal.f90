@@ -1341,7 +1341,7 @@ function crystal_SchmidMatrix_slip(Nslip,lattice,cOverA,nonSchmidCoefficients,se
   integer,     dimension(:),              intent(in) :: Nslip                                       !< number of active slip systems per family
   character(len=*),                       intent(in) :: lattice                                     !< Bravais lattice (Pearson symbol)
   real(pREAL),                            intent(in) :: cOverA
-  real(pREAL), dimension(:,:), optional,  intent(in) :: nonSchmidCoefficients                       !< non-Schmid coefficients for projections
+  real(pREAL), dimension(:,:), optional,  intent(in) :: nonSchmidCoefficients                       !< non-Schmid coefficients for projections, shape(N_families,N_coeff)
   integer,                     optional,  intent(in) :: sense                                       !< sense (-1,+1)
   real(pREAL), dimension(3,3,sum(Nslip))             :: SchmidMatrix
 
@@ -1377,25 +1377,27 @@ function crystal_SchmidMatrix_slip(Nslip,lattice,cOverA,nonSchmidCoefficients,se
     select case(lattice)
       case('cI')
         if (size(nonSchmidCoefficients,dim=2) > 6) &
-          call IO_error(132,ext_msg='too many non-Schmid coefficients for cI')
+          call IO_error(132,'too many non-Schmid coefficients for cI (max=6)')
       case('hP')
         if (size(nonSchmidCoefficients,dim=2) > 1) &
-          call IO_error(132,ext_msg='too many non-Schmid coefficients for hP')
+          call IO_error(132,'too many non-Schmid coefficients for hP (max=1)')
       case default
         if (size(nonSchmidCoefficients,dim=2) > 0) &
-          call IO_error(132,ext_msg='non-Schmid coefficients not implemented for '//lattice)
+          call IO_error(132,'non-Schmid coefficients not implemented for '//lattice)
     end select
   endif
 
   if (any(NslipMax(1:size(Nslip)) - Nslip < 0)) &
-    call IO_error(145,ext_msg='Nslip '//trim(lattice))
+    call IO_error(145,'Nslip for '//trim(lattice), &
+                  'family',findloc(NslipMax(1:size(Nslip)) - Nslip < 0,.true.,dim=1))
   if (any(Nslip < 0)) &
-    call IO_error(144,ext_msg='Nslip '//trim(lattice))
+    call IO_error(144,'Nslip for '//trim(lattice), &
+                  'family',findloc(Nslip < 0,.true.,dim=1))
 
   family = math_expand([(i, i=1,size(Nslip))],Nslip)
   coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,lattice,cOverA)
   if (present(sense)) then
-    if (abs(sense) /= 1) error stop 'neither +1 nor -1 sense in crystal_SchmidMatrix_slip'
+    if (abs(sense) /= 1) error stop 'crystal_SchmidMatrix_slip called with "sense" different from +1 or -1'
     coordinateSystem(1:3,1,1:sum(Nslip)) = coordinateSystem(1:3,1,1:sum(Nslip)) * real(sense,pREAL)
   end if
 
