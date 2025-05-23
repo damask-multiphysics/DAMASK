@@ -1,10 +1,7 @@
 ---
 stages:
-  - prepare
-  - python
-  - compile
-  - fortran
-  - statistics
+  - processing
+  - core
   - finalize
 
 
@@ -14,11 +11,9 @@ variables:
   # GitLab Settings
   # ===============================================================================================
   GIT_SUBMODULE_STRATEGY: normal
-
   # ===============================================================================================
   # Shortcut names
   # ===============================================================================================
-  TESTROOT:   "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID"
   MARC_VERSION: "2024.1"
 
 
@@ -31,13 +26,6 @@ workflow:
       when: never
     - if: $CI_COMMIT_BRANCH
 
-create_testroot_matesting:
-  stage: prepare
-  tags:
-    - matesting_bare-metal
-  script:
-    - mkdir -p ${TESTROOT}
-
 .on_merge:
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
@@ -45,7 +33,7 @@ create_testroot_matesting:
 ###################################################################################################
 
 .python_base:
-  stage: python
+  stage: processing
   image: git.damask-multiphysics.org:5050/damask/damask/python:$PYTHON_IMAGE
   tags:
     - docker_all
@@ -61,6 +49,12 @@ create_testroot_matesting:
   extends: .python_base
   variables: {PYTHON_IMAGE: '310_2412'}
 
+mypy:
+  extends: .python_default
+  needs: []
+  script:
+    - cd python
+    - mypy damask
 
 .create_package:
   script:
@@ -112,16 +106,24 @@ doctest:
     - chmod +x /bin/neper
     - python3 -m pytest -v --doctest-modules -k 'not result' damask
 
-mypy:
-  extends: .python_default
-  script:
-    - cd python
-    - mypy damask
-
 ###################################################################################################
 
+open-source:
+  stage: core
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.04.30
+  tags:
+    - docker_all
+  needs: []
+  before_script:
+    - cmake -DDAMASK_SOLVER=grid -B build/grid && cmake --build build/grid --parallel 2 --target install
+    - cmake -DDAMASK_SOLVER=mesh -B build/mesh && cmake --build build/mesh --parallel 2 --target install
+    - source env/DAMASK.sh
+  script:
+    - cd PRIVATE/testing
+    - pytest -v -k 'not compile and not Marc'
+
 .unittest:
-  stage: compile
+  stage: core
   tags:
     - docker_all
   script:
@@ -167,10 +169,9 @@ unittest_oneAPI_min:
   image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-debug:2025.03.27
 
 
-###################################################################################################
-
 .compile:
-  stage: compile
+  stage: core
+  image: git.damask-multiphysics.org:5050/damask/damask/${PETSC_IMAGE}
   tags:
     - docker_all
   before_script:
@@ -178,7 +179,6 @@ unittest_oneAPI_min:
     - head -n 10 /petsc/include/petscversion.h | tail -n 6
     - source env/DAMASK.sh
     - cd PRIVATE/testing
-  image: git.damask-multiphysics.org:5050/damask/damask/${PETSC_IMAGE}
 
 .fortran_default:
   parallel:
@@ -229,7 +229,7 @@ compile_mesh_min:
     - .on_merge
 
 Marc_patch:
-  stage: compile
+  stage: core
   image: git.damask-multiphysics.org:5050/damask/damask/marc_base:${MARC_VERSION}
   tags:
     - docker_all
@@ -242,7 +242,7 @@ Marc_patch:
     - test -f "${CI_PROJECT_DIR}/src/Marc/DAMASK_Marc.marc" || { echo "Marc simulation failed, DAMASK_Marc.marc not generated"; exit 1; }
 
 Marc_compile:
-  stage: compile
+  stage: core
   image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
   tags:
     - docker_all
@@ -252,10 +252,8 @@ Marc_compile:
     - pytest -k 'compile and Marc'
 
 
-###################################################################################################
-
 .configexamples_debug:
-  stage: compile
+  stage: core
   tags:
     - docker_all
   before_script:
@@ -276,23 +274,9 @@ configexamples_debug_oneAPI:
   extends: .configexamples_debug
   image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.04.30
 
-##################################################################################################
-
-open-source_GCC:
-  stage: fortran
-  tags:
-    - docker_all
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.04.30
-  before_script:
-    - cmake -DDAMASK_SOLVER=grid -B build/grid && cmake --build build/grid --parallel 2 --target install
-    - cmake -DDAMASK_SOLVER=mesh -B build/mesh && cmake --build build/mesh --parallel 2 --target install
-    - source env/DAMASK.sh
-  script:
-    - cd PRIVATE/testing
-    - pytest -v -k 'not compile and not Marc'
 
 Marc_run:
-  stage: fortran
+  stage: core
   image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
   tags:
     - docker_all
@@ -305,12 +289,12 @@ Marc_run:
 
 # Needs closer look
 # Phenopowerlaw_singleSlip:
-#   stage: fortran
+#   stage: core
 #   script: Phenopowerlaw_singleSlip/test.py
 
 ###################################################################################################
 grid_performance:
-  stage: statistics
+  stage: core
   tags:
     - matesting_bare-metal
   before_script:
@@ -326,12 +310,9 @@ grid_performance:
     - cd $(mktemp -d)
     - git clone -q https://damask_user:${STATISTICS_TOKEN}@git.damask-multiphysics.org/damask/statistics.git .
     - ./measure_performance.py --input_dir ${CI_PROJECT_DIR}/examples/grid --tag ${CI_COMMIT_SHA}
-    - >
-        if [ ${CI_COMMIT_BRANCH} == development ]; then
-          git add performance.txt
-          git commit -m ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
-          git push
-        fi
+  artifacts:
+    untracked: true
+    paths: [performance.txt]
 
 
 ###################################################################################################
@@ -350,6 +331,22 @@ update_website_3.0:
     branch: "3.0"
   only:
     - "3.0"
+
+update_statistics:
+  stage: finalize
+  tags:
+    - matesting2_bare-metal # could be any runner, needs git and should be fast
+  dependencies:
+    - grid_performance
+  script:
+    - cd $(mktemp -d)
+    - git clone -q https://damask_user:${STATISTICS_TOKEN}@git.damask-multiphysics.org/damask/statistics.git .
+    - cp ${CI_PROJECT_DIR}/performance.txt .
+    - git add performance.txt
+    - git commit -m ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
+    - git push
+  only:
+    - development
 
 update_revision:
   stage: finalize
