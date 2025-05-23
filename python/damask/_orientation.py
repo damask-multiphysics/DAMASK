@@ -1679,15 +1679,54 @@ class Orientation(Rotation,Crystal):
         >>> import numpy as np
         >>> import damask
         >>> O = damask.Orientation.from_Euler_angles(phi=[0,45,0],degrees=True,lattice='cF')
-        >>> O.Schmid(N_slip=[12])[0]
+        >>> np.round(O.Schmid(N_slip=[12])[0],3)
         array([[ 0.   ,  0.   ,  0.   ],
-               [ 0.408,  0.408,  0.408],
-               [-0.408, -0.408, -0.408]])
+               [ 0.577, -0.   ,  0.816],
+               [ 0.   ,  0.   ,  0.   ]])
+
+        Schmid matrix (in lab frame) of first {110}, {112}, and {123} slip systems of
+        a body-centered cubic crystal in "rotated cube" orientation.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> O = damask.Orientation.from_directions([0,0,1],[1,0,0],lattice='cI')
+        >>> np.round(O.Schmid(N_slip=[1,1,1]),3)
+        array([[[ 0.408, -0.408, -0.   ],
+                [ 0.408, -0.408, -0.   ],
+                [ 0.408, -0.408, -0.   ]],
+        <BLANKLINE>
+               [[-0.236, -0.236,  0.471],
+                [-0.236, -0.236,  0.471],
+                [-0.236, -0.236,  0.471]],
+        <BLANKLINE>
+               [[ 0.463, -0.309, -0.154],
+                [ 0.463, -0.309, -0.154],
+                [ 0.463, -0.309, -0.154]]])
+
+        Schmid matrix (in lab frame) of all three prismatic slip systems of a
+        hexagonal crystal in "cube" orientation.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> O = damask.Orientation(lattice='hP')
+        >>> np.round(O.Schmid(N_slip=[0,3]),3)
+        array([[[ 0.   ,  1.   , -0.   ],
+                [ 0.   ,  0.   ,  0.   ],
+                [ 0.   ,  0.   ,  0.   ]],
+        <BLANKLINE>
+               [[ 0.433,  0.25 , -0.   ],
+                [-0.75 , -0.433,  0.   ],
+                [ 0.   ,  0.   ,  0.   ]],
+        <BLANKLINE>
+               [[-0.433,  0.25 , -0.   ],
+                [-0.75 ,  0.433, -0.   ],
+                [ 0.   ,  0.   ,  0.   ]]])
         """
-        if len(self.shape) == 0:
-            return self @ super().Schmid(N_slip=N_slip, N_twin=N_twin)
-        P = np.moveaxis(self @ super().Schmid(N_slip=N_slip, N_twin=N_twin),-3,0)
-        return P.reshape((P.shape[0],)+self.shape+(3,3))
+        return np.moveaxis(~self @
+                           super().Schmid(N_slip=N_slip,
+                                          N_twin=N_twin)[(np.newaxis,)*len(self.shape)],
+                           -3,
+                           0)
 
 
     def related(self: MyType,

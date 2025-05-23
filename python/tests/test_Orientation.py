@@ -7,6 +7,7 @@ from PIL import Image
 from damask import Rotation
 from damask import Orientation
 from damask import Table
+from damask import Crystal
 from damask import util
 from damask import grid_filters
 from damask import _crystal
@@ -421,6 +422,20 @@ class TestOrientation:
         expected = np.broadcast_to(np.array(mode).reshape(4,1),(4,6)).flatten()
         assert (np.where(O.Schmid(N_twin=[6,6,6,6])[...,2,2]>0,'c','t')==expected).all()
 
+
+    @pytest.mark.parametrize('lattice',['hP','cI','cF','tI'])
+    def test_Schmid_crystal_equivalence(self,np_rng,assert_allclose,lattice):
+        shape = np_rng.integers(1,4,np_rng.integers(1,4))
+        O = Orientation.from_random(shape=shape,lattice=lattice,
+                                    c=(1.2 if lattice == 'tI' else None),rng_seed=np_rng)           # noqa
+        c = Crystal(lattice=lattice,c=(1.2 if lattice == 'tI' else None))
+        for mode in ['slip']+([] if lattice == 'tI' else ['twin']):
+            Ps = O.Schmid(N_slip='*') if mode == 'slip' else O.Schmid(N_twin='*')
+            for i in itertools.product(*map(range,tuple(shape))):
+                P = ~O[i] @ (c.Schmid(N_slip='*') if mode == 'slip' else c.Schmid(N_twin='*'))
+                idx = (slice(None),)+i+(slice(None),slice(None))
+                assert_allclose(P,Ps[idx])
+                #assert_allclose(P,Ps[:,*i,:,:])                                                    # ok for Python >= 3.13
 
 ### vectorization tests ###
 

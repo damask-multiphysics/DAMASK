@@ -48,7 +48,7 @@ create_testroot_matesting:
   stage: python
   image: git.damask-multiphysics.org:5050/damask/damask/python:$PYTHON_IMAGE
   tags:
-    - matesting2_docker
+    - docker_all
   before_script:
     - python --version
     - pip list
@@ -123,7 +123,7 @@ mypy:
 .unittest:
   stage: compile
   tags:
-    - matesting2_docker
+    - docker_all
   script:
     - source env/DAMASK.sh
     - ./bin/DAMASK_test
@@ -172,7 +172,7 @@ unittest_oneAPI_min:
 .compile:
   stage: compile
   tags:
-    - matesting2_docker
+    - docker_all
   before_script:
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
     - head -n 10 /petsc/include/petscversion.h | tail -n 6
@@ -232,7 +232,7 @@ Marc_patch:
   stage: compile
   image: git.damask-multiphysics.org:5050/damask/damask/marc_base:${MARC_VERSION}
   tags:
-    - matesting2_docker
+    - docker_all
   script:
     - source env/DAMASK.sh
     - export TMPDIR=/tmp
@@ -245,7 +245,7 @@ Marc_compile:
   stage: compile
   image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
   tags:
-    - matesting2_docker
+    - docker_all
   script:
     - source env/DAMASK.sh
     - cd PRIVATE/testing
@@ -257,7 +257,7 @@ Marc_compile:
 .configexamples_debug:
   stage: compile
   tags:
-    - matesting2_docker
+    - docker_all
   before_script:
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
     - head -n 10 /petsc/include/petscversion.h | tail -n 6
@@ -281,7 +281,7 @@ configexamples_debug_oneAPI:
 open-source_GCC:
   stage: fortran
   tags:
-    - matesting2_docker
+    - docker_all
   image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.04.30
   before_script:
     - cmake -DDAMASK_SOLVER=grid -B build/grid && cmake --build build/grid --parallel 2 --target install
@@ -315,7 +315,7 @@ Marc_run:
   stage: fortran
   image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
   tags:
-    - matesting2_docker
+    - docker_all
   before_script:
     - source env/DAMASK.sh
     - cd examples/Marc && python3 -c "import damask;damask.solver.Marc(version=${MARC_VERSION}).submit_job('r-value','texture',True,'h')"

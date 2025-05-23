@@ -1400,16 +1400,32 @@ class Crystal():
 
         Examples
         --------
-        Schmid matrix of first octahedral slip system of a face-centered
+        Schmid matrix of third octahedral slip system of a face-centered
         cubic crystal.
 
         >>> import numpy as np
         >>> import damask
         >>> C = damask.Crystal(lattice='cF')
-        >>> C.Schmid(N_slip=[12])[0]
-        array([[ 0.    ,  0.    ,  0.    ],
-               [ 0.4082,  0.4082,  0.4082],
-               [-0.4082, -0.4082, -0.4082]])
+        >>> np.round(C.Schmid(N_slip=[12])[3],3)
+        array([[ 0.   ,  0.   , -0.   ],
+               [ 0.408,  0.408, -0.408],
+               [ 0.408,  0.408, -0.408]])
+
+        Schmid matrix of the first 2nd order pyramidal <c+a> slip system of
+        hexagonal crystals in dependence of the c/a ratio.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> Mg = damask.Crystal(lattice='hP',a=320.91e-12,c=521.03e-12)
+        >>> Ti = damask.Crystal(lattice='hP',a=295.05e-12,c=468.33e-12)
+        >>> np.round(Mg.Schmid(N_slip=[0,0,0,0,1]),3)
+        array([[[-0.112, -0.193, -0.138],
+                [-0.193, -0.335, -0.238],
+                [ 0.362,  0.628,  0.447]]])
+        >>> np.round(Ti.Schmid(N_slip=[0,0,0,0,1]),3)
+        array([[[-0.113, -0.195, -0.142],
+                [-0.195, -0.338, -0.246],
+                [ 0.358,  0.62 ,  0.451]]])
         """
         if (N_slip is not None) ^ (N_twin is None):
             raise KeyError('specify either "N_slip" or "N_twin"')
@@ -1422,7 +1438,7 @@ class Crystal():
         if not active or (np.array(active) > everylen[:len(active)]).any():
             raise ValueError('Invalid number of slip/twin systems')
 
-        d = self.to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
-        p = self.to_frame(hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
+        d = Crystal.to_frame(self,uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
+        p = Crystal.to_frame(self,hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
         return np.einsum('...i,...j',d/np.linalg.norm(d,axis=-1,keepdims=True),
                                      p/np.linalg.norm(p,axis=-1,keepdims=True))
