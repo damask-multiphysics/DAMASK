@@ -289,27 +289,7 @@ open-source_GCC:
     - source env/DAMASK.sh
   script:
     - cd PRIVATE/testing
-    - pytest -v -k 'not compile and not (signal or restart) and not Marc'
-
-open-source_signal_restart_GCC:
-  stage: fortran
-  tags:
-    - matesting_bare-metal
-  before_script:
-    - source /etc/zsh/spackenv
-    - spack env activate DAMASK_oneapi_2503
-    - cd $(mktemp -d)
-    - cmake -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
-    - make -j2 all install
-    - export PATH=${TESTROOT}/bin:${PATH}
-    - cd ${CI_PROJECT_DIR}
-    - source env/DAMASK.sh
-    - echo Job start:" $(date)"
-  script:
-    - cd PRIVATE/testing
-    - pytest -v -k 'signal or restart' -m 'not cifail' --basetemp ${TESTROOT}/open-source -v
-  after_script:
-    - echo Job end:" $(date)"
+    - pytest -v -k 'not compile and not Marc'
 
 Marc_run:
   stage: fortran
@@ -321,7 +301,7 @@ Marc_run:
     - cd examples/Marc && python3 -c "import damask;damask.solver.Marc(version=${MARC_VERSION}).submit_job('r-value','texture',True,'h')"
   script:
     - cd ${CI_PROJECT_DIR}/PRIVATE/testing
-    - pytest -k 'not compile and Marc' -m 'not cifail'
+    - pytest -k 'not compile and Marc'
 
 # Needs closer look
 # Phenopowerlaw_singleSlip:

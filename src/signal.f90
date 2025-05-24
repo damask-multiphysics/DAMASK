@@ -20,64 +20,22 @@ module signal
     signal_setSIGUSR1, &
     signal_setSIGUSR2
 
+  interface
+    subroutine init_signal_C() bind(C)
+    end subroutine init_signal_C
+  end interface
+
 contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Register signal handlers.
+!> @brief Init C signal handler.
 !--------------------------------------------------------------------------------------------------
 subroutine signal_init()
 
-  call signalint_c(c_funloc(catchSIGINT))
-  call signalusr1_c(c_funloc(catchSIGUSR1))
-  call signalusr2_c(c_funloc(catchSIGUSR2))
+  call init_signal_C()
 
 end subroutine signal_init
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable signal_SIGINT to .true.
-!> @details This function can be registered to catch signals sent to the executable.
-!--------------------------------------------------------------------------------------------------
-subroutine catchSIGINT(sig) bind(C)
-
-  integer(C_INT), value :: sig
-
-
-  print'(a,i0)', ' received signal ',sig
-  call signal_setSIGINT(.true.)
-
-end subroutine catchSIGINT
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable signal_SIGUSR1 to .true.
-!> @details This function can be registered to catch signals sent to the executable.
-!--------------------------------------------------------------------------------------------------
-subroutine catchSIGUSR1(sig) bind(C)
-
-  integer(C_INT), value :: sig
-
-
-  print'(a,i0)', ' received signal ',sig
-  call signal_setSIGUSR1(.true.)
-
-end subroutine catchSIGUSR1
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable signal_SIGUSR2 to .true.
-!> @details This function can be registered to catch signals sent to the executable.
-!--------------------------------------------------------------------------------------------------
-subroutine catchSIGUSR2(sig) bind(C)
-
-  integer(C_INT), value :: sig
-
-
-  print'(a,i0,a)', ' received signal ',sig
-  call signal_setSIGUSR2(.true.)
-
-end subroutine catchSIGUSR2
 
 
 !--------------------------------------------------------------------------------------------------
@@ -89,9 +47,19 @@ subroutine signal_setSIGINT(state)
 
 
   signal_SIGINT = state
-  print*, 'set SIGINT to',state
+  print '(/a)', 'SIGINT ' // trim(merge('received', 'cleared ', state))
 
 end subroutine signal_setSIGINT
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Set global variable signal_SIGINT to .true.
+!> @details To be called from the signal handler in C.
+!--------------------------------------------------------------------------------------------------
+subroutine signal_setSIGINT_true_Fortran() bind(C,name='signal_setSIGINT_true_Fortran')
+
+  call signal_setSIGINT(.true.)
+
+end subroutine signal_setSIGINT_true_Fortran
 
 
 !--------------------------------------------------------------------------------------------------
@@ -103,10 +71,19 @@ subroutine signal_setSIGUSR1(state)
 
 
   signal_SIGUSR1 = state
-  print*, 'set SIGUSR1 to',state
+  print '(/a)', 'SIGUSR1 ' // trim(merge('received', 'cleared ', state))
 
 end subroutine signal_setSIGUSR1
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Set global variable signal_SIGUSR1 to .true.
+!> @details To be called from the signal handler in C.
+!--------------------------------------------------------------------------------------------------
+subroutine signal_setSIGUSR1_true_Fortran() bind(C,name='signal_setSIGUSR1_true_Fortran')
+
+  call signal_setSIGUSR1(.true.)
+
+end subroutine signal_setSIGUSR1_true_Fortran
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Set global variable signal_SIGUSR2.
@@ -117,9 +94,19 @@ subroutine signal_setSIGUSR2(state)
 
 
   signal_SIGUSR2 = state
-  print*, 'set SIGUSR2 to',state
+  print '(/a)', 'SIGUSR2 ' // trim(merge('received', 'cleared ', state))
 
 end subroutine signal_setSIGUSR2
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Set global variable signal_SIGUSR2 to .true.
+!> @details To be called from the signal handler in C.
+!--------------------------------------------------------------------------------------------------
+subroutine signal_setSIGUSR2_true_Fortran() bind(C,name='signal_setSIGUSR2_true_Fortran')
+
+  call signal_setSIGUSR2(.true.)
+
+end subroutine signal_setSIGUSR2_true_Fortran
 
 
 end module signal

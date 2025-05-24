@@ -1,4 +1,5 @@
 /* Unix */
+#include <signal.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -14,6 +15,25 @@
 #include <libfyaml.h>
 #endif
 
+extern void signal_setSIGINT_true_Fortran(void);
+extern void signal_setSIGUSR1_true_Fortran(void);
+extern void signal_setSIGUSR2_true_Fortran(void);
+
+static void signalHandler(int signum) {
+  if (signum == SIGINT) {
+      signal_setSIGINT_true_Fortran();
+  } else if (signum == SIGUSR1) {
+      signal_setSIGUSR1_true_Fortran();
+  } else if (signum == SIGUSR2) {
+      signal_setSIGUSR2_true_Fortran();
+  }
+}
+
+void init_signal_c() {
+  signal(SIGINT, signalHandler);
+  signal(SIGUSR1, signalHandler);
+  signal(SIGUSR2, signalHandler);
+}
 
 int setcwd_c(const char *cwd){
   return chdir(cwd);
@@ -54,22 +74,6 @@ void getusername_c(char username[], int *stat){
     *stat = 1;
   }
 }
-
-
-void signalint_c(void (*handler)(int)){
-  signal(SIGINT, handler);
-}
-
-void signalusr1_c(void (*handler)(int)){
-  signal(SIGUSR1, handler);
-}
-
-void signalusr2_c(void (*handler)(int)){
-  signal(SIGUSR2, handler);
-}
-
-
-
 
 
 int stdout_isatty_c(){
