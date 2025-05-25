@@ -25,6 +25,8 @@ workflow:
     - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
       when: never
     - if: $CI_COMMIT_BRANCH
+  auto_cancel:
+    on_job_failure: all
 
 .on_merge:
   rules:
@@ -120,7 +122,7 @@ open-source:
     - source env/DAMASK.sh
   script:
     - cd PRIVATE/testing
-    - pytest -v -k 'not compile and not Marc'
+    - pytest -v -k 'not compile and not Marc' -x --durations=20
 
 .unittest:
   stage: core
@@ -301,7 +303,6 @@ grid_performance:
     - source /etc/zsh/spackenv
     - spack env activate DAMASK_oneapi_2503
     - source env/DAMASK.sh
-    - echo Job start:" $(date)"
   script:
     - cd $(mktemp -d)
     - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=./ ${CI_PROJECT_DIR}
@@ -352,8 +353,6 @@ update_revision:
   stage: finalize
   tags:
     - matesting2_bare-metal
-  before_script:
-    - echo Job start:" $(date)"
   script:
     - cd $(mktemp -d)
     - git clone -b development -q https://damask_user:${TOKEN}@git.damask-multiphysics.org/damask/DAMASK.git .
