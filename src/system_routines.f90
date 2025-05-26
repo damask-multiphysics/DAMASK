@@ -22,7 +22,9 @@ module system_routines
     signalusr1_C, &
     signalusr2_C, &
     isatty, &
+#if (defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || (defined(__GFORTRAN__) && __GNUC__ < 15)
     f_c_string, &
+#endif
     free_C
 
 
@@ -235,7 +237,7 @@ pure function c_f_string(c_string) result(f_string)
 
 end function c_f_string
 
-#if __INTEL_COMPILER_BUILD_DATE < 20240000
+#if (defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || (defined(__GFORTRAN__) && __GNUC__ < 15)
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert Fortran string to C string.
 !> @details: C string is NULL terminated and, hence, longer by one than the Fortran string.
