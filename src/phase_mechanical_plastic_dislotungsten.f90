@@ -147,15 +147,18 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
-    N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
+    N_sl = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%systems_sl = crystal_labels_slip(N_sl,phase_lattice(ph))
       prm%P_sl = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
+      prm%systems_sl = crystal_labels_slip(N_sl,phase_lattice(ph))
 
       a_nS = pl%get_as2dReal('a_non-Schmid',defaultVal=reshape(emptyRealArray,[0,0]))
       prm%P_nS_pos = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=+1)
       prm%P_nS_neg = crystal_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph),nonSchmidCoefficients=a_nS,sense=-1)
+
+      prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
+                                                   phase_lattice(ph))
 
       prm%dipoleformation = .not. pl%get_asBool('no_dipole_formation', defaultVal=.false.)
 
@@ -179,9 +182,6 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       prm%B           = math_expand(pl%get_as1dReal('B',           requiredSize=size(N_sl)),N_sl)
       prm%d_caron     = prm%b_sl *  pl%get_asReal('D_a')
       prm%f_at        = prm%b_sl**3*pl%get_asReal('f_at')
-
-      prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
-                                                   phase_lattice(ph))
 
       prm%forestProjection = spread(          f_edge,1,prm%sum_N_sl) &
                            * crystal_forestProjection_edge (N_sl,phase_lattice(ph),phase_cOverA(ph)) &
