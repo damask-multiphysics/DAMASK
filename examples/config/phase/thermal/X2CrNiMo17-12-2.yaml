@@ -5,10 +5,12 @@ references:
     https://doi.org/10.2172/4152287,
     Eq. 7 and Eq. 30 (T_min=300K, T_max=1600K)
 
+output: [T]
+
 K_11: 13.85
 K_11,T: 1.571e-2
 
 C_p: 497.7
-C_p,T: 1.327e-1 # not implemented
+C_p,T: 1.327e-1
 
 T_ref: 293.15

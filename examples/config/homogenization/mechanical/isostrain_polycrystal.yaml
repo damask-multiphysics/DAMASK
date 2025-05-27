@@ -1,3 +1,4 @@
 # For Taylor homogenization with N_constituents > 1
 type: isostrain
-output: ['F', 'P']
+
+output: [F, P]

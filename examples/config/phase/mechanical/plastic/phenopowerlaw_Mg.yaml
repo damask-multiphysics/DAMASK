@@ -5,7 +5,7 @@ references:
     Acta Materialia 80:77-93, 2014,
     https://doi.org/10.1016/j.actamat.2014.07.048
 
-output: [xi_sl, xi_tw]
+output: [xi_sl, gamma_sl, xi_tw, gamma_tw]
 
 N_sl: [3, 3, 6, 0, 6]  # basal, prism, 1. pyr<a>, -, 2. pyr<c+a>
 N_tw: [6, 0, 6]        # tension, -, compression
