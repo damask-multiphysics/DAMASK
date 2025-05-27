@@ -4,17 +4,20 @@
 !--------------------------------------------------------------------------------------------------
 module zlib
   use prec
+  use IO
+  use base64
 
   implicit none(type,external)
   private
 
   public :: &
+    zlib_init, &
     zlib_inflate
 
   interface
 
     subroutine inflate_C(s_deflated,s_inflated,deflated,inflated,stat) bind(C)
-      use, intrinsic :: ISO_C_Binding, only: C_SIGNED_CHAR, C_INT64_T, C_INT
+      use, intrinsic :: ISO_C_binding, only: C_SIGNED_CHAR, C_INT64_T, C_INT
       implicit none(type,external)
 
       integer(C_INT64_T),                            intent(in)  :: s_deflated,s_inflated
@@ -26,6 +29,19 @@ module zlib
   end interface
 
 contains
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Do self test.
+!--------------------------------------------------------------------------------------------------
+subroutine zlib_init()
+
+  print'(/,1x,a)', '<<<+-  zlib init  -+>>>'; flush(IO_STDOUT)
+
+  call selfTest()
+
+end subroutine zlib_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Inflate byte-wise representation.
@@ -43,5 +59,24 @@ function zlib_inflate(deflated,size_inflated)
   if (stat /= 0) error stop 'inflate failed'
 
 end function zlib_inflate
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check correctness of zlib inflate.
+!> @details From Python: print(base64.b64encode(zlib.compress(b'DAMASK zlib FFTW PETSc fyaml',9))).
+!--------------------------------------------------------------------------------------------------
+subroutine selfTest()
+
+  character(len=*), parameter :: deflated = 'eNpzcfR1DPZWqMrJTFJwcwsJVwhwDQlOVkirTMzNAQB5gwjS'
+  character(len=*), parameter :: inflated = 'DAMASK zlib FFTW PETSc fyaml'
+  integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes_deflated
+  integer(C_SIGNED_CHAR), dimension(len(inflated)) :: bytes_inflated
+
+
+  bytes_deflated = base64_to_bytes(deflated)
+  bytes_inflated = zlib_inflate(bytes_deflated,len(inflated,kind=pI64))
+  if (inflated /= transfer(bytes_inflated,inflated)) error stop 'zlib_inflate'
+
+end subroutine selfTest
 
 end module zlib

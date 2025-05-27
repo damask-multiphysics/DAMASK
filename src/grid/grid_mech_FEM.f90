@@ -516,7 +516,7 @@ end subroutine converged
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Form the residual vector.
+!> @brief Construct the residual vector.
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(da_local,x_local, &
                         f_local,dummy,err_PETSc)
@@ -524,7 +524,7 @@ subroutine formResidual(da_local,x_local, &
   DM          :: da_local
   Vec         :: x_local, f_local
   PetscObject :: dummy
-  PetscErrorCode :: err_PETSc
+  PetscErrorCode, intent(out) :: err_PETSc
 
   real(pREAL), pointer,dimension(:,:,:,:) :: x_scal, r
   real(pREAL), dimension(8,3) :: x_elem,  f_elem

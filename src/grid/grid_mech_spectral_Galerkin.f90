@@ -573,7 +573,7 @@ subroutine formResidual(residual_subdomain, F, &
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(out) :: &
     r                                                                                               !< residuum field
   PetscObject :: dummy
-  PetscErrorCode :: err_PETSc
+  PetscErrorCode, intent(out) :: err_PETSc
 
   real(pREAL), dimension(3,3) :: dP_with_BC
 

@@ -494,7 +494,7 @@ end subroutine grid_mech_spectral_polarization_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convergence check
+!> @brief Check for convergence.
 !--------------------------------------------------------------------------------------------------
 subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dummy,err_PETSc)
 
@@ -506,11 +506,13 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
     devNull3
   SNESConvergedReason :: reason
   PetscObject :: dummy
-  PetscErrorCode :: err_PETSc
+  PetscErrorCode, intent(out) :: err_PETSc
+
   real(pREAL) :: &
     curlTol, &
     divTol, &
     BCTol
+
 
   curlTol = max(maxval(abs(F_aim-math_I3))*num%eps_curl_rtol, num%eps_curl_atol)
   divTol = max(maxval(abs(P_av))*num%eps_div_rtol, num%eps_div_atol)
@@ -556,7 +558,7 @@ subroutine formResidual(residual_subdomain, FandF_tau, &
   real(pREAL), dimension(3,3,2,cells(1),cells(2),cells3), target, intent(out) :: &
     r                                                                                               !< residuum field
   PetscObject :: dummy
-  PetscErrorCode :: err_PETSc
+  PetscErrorCode, intent(out) :: err_PETSc
 
   real(pREAL), pointer, dimension(:,:,:,:,:) :: &
     F, &

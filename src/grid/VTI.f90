@@ -313,13 +313,13 @@ end function asBytes
 ! #p-size = Size of last partial block (zero if it not needed)
 ! #c-size-i = Size in bytes of block i after compression
 !--------------------------------------------------------------------------------------------------
-function asBytes_compressed(base64Str,headerType) result(bytes)
+function asBytes_compressed(base64Str,headerType) result(bytes_inflated)
 
   character(len=*), intent(in) :: base64Str, &                                                      ! base64 encoded string
                                   headerType                                                        ! header type (UInt32 or Uint64)
-  integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
-
   integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes_inflated
+
+  integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes_deflated
   integer(pI64), dimension(:), allocatable :: temp, size_inflated, size_deflated
   integer(pI64) :: headerLen, nBlock, b,s,e
 
@@ -339,14 +339,14 @@ function asBytes_compressed(base64Str,headerType) result(bytes)
   allocate(size_inflated(nBlock),source=temp(2))
   size_inflated(nBlock) = merge(temp(3),temp(2),temp(3)/=0_pI64)
   size_deflated = temp(4:)
-  bytes_inflated = base64_to_bytes(base64Str(base64_nChar(headerLen)+1_pI64:))
+  bytes_deflated = base64_to_bytes(base64Str(base64_nChar(headerLen)+1_pI64:))
 
-  allocate(bytes(sum(size_inflated)))
+  allocate(bytes_inflated(sum(size_inflated)))
   e = 0_pI64
   do b = 1, nBlock
     s = e + 1_pI64
     e = s + size_deflated(b) - 1_pI64
-    bytes(sum(size_inflated(:b-1))+1_pI64:sum(size_inflated(:b))) = zlib_inflate(bytes_inflated(s:e),size_inflated(b))
+    bytes_inflated(sum(size_inflated(:b-1))+1_pI64:sum(size_inflated(:b))) = zlib_inflate(bytes_deflated(s:e),size_inflated(b))
   end do
 
 end function asBytes_compressed

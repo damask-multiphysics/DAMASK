@@ -414,16 +414,16 @@ end function FEM_mechanical_solution
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Form the FEM residual vector.
+!> @brief Construct the FEM residual vector.
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc)
 
   DM                                 :: dm_local
   PetscObject,intent(in)             :: dummy
-  PetscErrorCode                     :: err_PETSc
-  integer(MPI_INTEGER_KIND)          :: err_MPI
   Vec                                :: f_local, xx_local
+  PetscErrorCode, intent(out)        :: err_PETSc
 
+  integer(MPI_INTEGER_KIND)          :: err_MPI
   PetscDS                            :: prob
   Vec                                :: x_local
   PetscSection                       :: section

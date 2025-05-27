@@ -4,7 +4,6 @@
 !--------------------------------------------------------------------------------------------------
 module signal
   use prec
-  use system_routines
 
   implicit none(type,external)
   private
@@ -21,8 +20,10 @@ module signal
     signal_setSIGUSR2
 
   interface
+
     subroutine init_signal_C() bind(C)
     end subroutine init_signal_C
+
   end interface
 
 contains
