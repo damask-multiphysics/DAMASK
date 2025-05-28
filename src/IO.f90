@@ -34,6 +34,7 @@ implicit none(type,external)
     IO_lc, &
     IO_glueDiffering, &
     IO_intAsStr, &
+    IO_realAsStr, &
     IO_strAsInt, &
     IO_strAsReal, &
     IO_strAsBool, &
@@ -197,6 +198,23 @@ function IO_intAsStr(i)
   write(IO_intAsStr,'(i0)') i
 
 end function IO_intAsStr
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Return given float value as string.
+!--------------------------------------------------------------------------------------------------
+function IO_realAsStr(f)
+
+  real(pREAL), intent(in)        :: f
+  character(len=:), allocatable  :: IO_realAsStr
+  character(len=15)              :: tmp
+
+
+  write(tmp,'(g15.7)') f
+  tmp = adjustl(tmp)
+  allocate(IO_realAsStr,source=tmp(:len_trim(tmp)))
+
+end function IO_realAsStr
 
 
 !--------------------------------------------------------------------------------------------------
@@ -665,6 +683,9 @@ subroutine IO_selfTest()
 
   if ('1234' /= IO_intAsStr(1234))                   error stop 'IO_intAsStr'
   if ('-12'  /= IO_intAsStr(-0012))                  error stop 'IO_intAsStr'
+
+  if ('-0.1200000' /= IO_realAsStr(-0.12_pREAL))        error stop 'IO_realAsStr'
+  if ('0.1234000E-31' /= IO_realAsStr(123.4e-34_pREAL)) error stop 'IO_realAsStr'
 
   if (CRLF2LF('') /= '')                             error stop 'CRLF2LF/0'
   if (CRLF2LF(LF)     /= LF)                         error stop 'CRLF2LF/1a'
