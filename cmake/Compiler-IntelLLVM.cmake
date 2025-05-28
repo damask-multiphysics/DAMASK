@@ -10,16 +10,15 @@ if (OPTIMIZATION STREQUAL "OFF" OR OPTIMIZATION STREQUAL "DEBUG")
 elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
   set (OPTIMIZATION_FLAGS    "-O2")
 elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
-  #set (OPTIMIZATION_FLAGS    "-ipo -O3 -fp-model fast=2 -xHost") # ifx 2022.0 has problems with YAML types and IPO
-  set (OPTIMIZATION_FLAGS    "-O3 -fp-model fast=2 -xHost")
+  set (OPTIMIZATION_FLAGS "-O3 -fp-model strict -xHost -align array64byte") # -ipo/-flto give linker error
 endif ()
 
 # -assume std_mod_proc_name (included in -standard-semantics) causes problems if other modules
 # (PETSc, HDF5) are not compiled with this option (https://software.intel.com/en-us/forums/intel-fortran-compiler-for-linux-and-mac-os-x/topic/62172)
-set (STANDARD_CHECK "-stand f18 -assume nostd_mod_proc_name")
+set (STANDARD_CHECK "-stand f23 -assume nostd_mod_proc_name")
 set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel")
 # Link against shared Intel libraries instead of static ones
-set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel -fc=ifx")
+set (LINKER_FLAGS   "${LINKER_FLAGS} -fc=ifx")
 # enforce use of ifx for MPI wrapper
 
 #------------------------------------------------------------------------------------------------
@@ -72,7 +71,7 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS} -traceback")
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -gen-interfaces")
 # Generate an interface block for each routine. http://software.intel.com/en-us/blogs/2012/01/05/doctor-fortran-gets-explicit-again/
 
-set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-stack-check")
+# set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-stack-check") not available on ifx 2025.0.4
 # Generate extra code after every function call to ensure that the floating-point (FP) stack is in the expected state
 
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-model strict")
@@ -88,7 +87,7 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS},output_conversion")
 #   ... for the fit of data items within a designated format descriptor field.
 set (DEBUG_FLAGS "${DEBUG_FLAGS},pointers")
 #   ... for certain disassociated or uninitialized pointers or unallocated allocatable objects.
-set (DEBUG_FLAGS "${DEBUG_FLAGS},uninit")
+set (DEBUG_FLAGS "${DEBUG_FLAGS},nouninit") # https://fortran-lang.discourse.group/t/issue-with-stdlib-and-intel-oneapi-fortran-compiler-ifx-2024-0/7049/4
 #   ... for uninitialized variables.
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0 -ftz")
 #   ... capture all floating-point exceptions, need to overwrite -no-ftz
