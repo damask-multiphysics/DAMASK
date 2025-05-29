@@ -86,14 +86,14 @@ module subroutine thermal_init(phases)
 
   print'(/,1x,a)', '<<<+-  phase:thermal init  -+>>>'
 
-  allocate(current(phases%length))
-  allocate(thermalState(phases%length))
-  allocate(thermal_Nsources(phases%length),source = 0)
-  allocate(param(phases%length))
+  allocate(current(size(phases)))
+  allocate(thermalState(size(phases)))
+  allocate(thermal_Nsources(size(phases)),source = 0)
+  allocate(param(size(phases)))
 
   extmsg = ''
   thermal_active = .false.
-  do ph = 1, phases%length
+  do ph = 1, size(phases)
     Nmembers = count(material_ID_phase == ph)
     allocate(current(ph)%T(Nmembers),source=T_ROOM)
     allocate(current(ph)%dot_T(Nmembers),source=0.0_pREAL)
@@ -105,7 +105,7 @@ module subroutine thermal_init(phases)
       thermal => phase%get_dict('thermal',defaultVal=emptyDict)
     end if
 
-    if (thermal%length > 0) then
+    if (size(thermal) > 0) then
       thermal_active = .true.
 
       print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
@@ -131,7 +131,7 @@ module subroutine thermal_init(phases)
       param(ph)%output = thermal%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
       sources => thermal%get_list('source',defaultVal=emptyList)
-      thermal_Nsources(ph) = sources%length
+      thermal_Nsources(ph) = size(sources)
     else
       thermal_Nsources(ph) = 0
     end if
@@ -140,7 +140,7 @@ module subroutine thermal_init(phases)
 
   end do
 
-  allocate(thermal_source_type(maxval(thermal_Nsources),phases%length), source = UNDEFINED)
+  allocate(thermal_source_type(maxval(thermal_Nsources),size(phases)), source = UNDEFINED)
 
   if (maxval(thermal_Nsources) /= 0) then
     where(source_dissipation_init (maxval(thermal_Nsources))) thermal_source_type = THERMAL_SOURCE_DISSIPATION
@@ -148,7 +148,7 @@ module subroutine thermal_init(phases)
   end if
 
   thermal_source_maxSizeDotState = 0
-  do ph = 1,phases%length
+  do ph = 1,size(phases)
 
     do so = 1,thermal_Nsources(ph)
       thermalState(ph)%p(so)%state  = thermalState(ph)%p(so)%state0
@@ -415,12 +415,12 @@ function thermal_active(source_label,src_length)  result(active_source)
   integer :: p,s
 
   phases => config_material%get_dict('phase')
-  allocate(active_source(src_length,phases%length), source = .false. )
-  do p = 1, phases%length
+  allocate(active_source(src_length,size(phases)), source = .false. )
+  do p = 1, size(phases)
     phase => phases%get_dict(p)
     thermal => phase%get_dict('thermal',defaultVal=emptyDict)
     sources => thermal%get_list('source',defaultVal=emptyList)
-    do s = 1, sources%length
+    do s = 1, size(sources)
       src => sources%get_dict(s)
       active_source(s,p) = src%get_asStr('type') == source_label
     end do

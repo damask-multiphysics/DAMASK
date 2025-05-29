@@ -46,10 +46,10 @@ module subroutine thermal_init()
 
 
   configHomogenizations => config_material%get_dict('homogenization')
-  allocate(param(configHomogenizations%length))
-  allocate(current(configHomogenizations%length))
+  allocate(param(size(configHomogenizations)))
+  allocate(current(size(configHomogenizations)))
 
-  do ho = 1, configHomogenizations%length
+  do ho = 1, size(configHomogenizations)
     allocate(current(ho)%T(count(material_ID_homogenization==ho)), source=T_ROOM)
     allocate(current(ho)%dot_T(count(material_ID_homogenization==ho)), source=0.0_pREAL)
     configHomogenization => configHomogenizations%get_dict(ho)

@@ -113,10 +113,10 @@ program DAMASK_mesh
   load => YAML_str_asDict(fileContent)
   load_steps => load%get_list('loadstep')
 
-  allocate(loadCases(load_steps%length))
+  allocate(loadCases(size(load_steps)))
 
 
-  do l = 1, load_steps%length
+  do l = 1, size(load_steps)
     load_step => load_steps%get_dict(l)
     step_bc   => load_step%get_dict('boundary_conditions')
     step_mech => step_bc%get_list('mechanical')
@@ -127,7 +127,7 @@ program DAMASK_mesh
       allocate(loadCases(l)%mechBC(faceSet)%Mask(dimPlex),  source = .false.)
     end do
 
-    do m = 1, step_mech%length
+    do m = 1, size(step_mech)
       mech_BC => step_mech%get_dict(m)
       currentFaceSet = -1
       do faceSet = 1, mesh_Nboundaries
@@ -157,7 +157,7 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case
   errorID = 0
-  checkLoadcases: do l = 1, load_steps%length
+  checkLoadcases: do l = 1, size(load_steps)
     write (loadcase_string, '(i0)' ) l
     print'(/,1x,a,1x,i0)', 'load case:', l
     if (.not. loadCases(l)%estimate_rate) &
@@ -197,7 +197,7 @@ program DAMASK_mesh
   flush(IO_STDOUT)
   call materialpoint_result(0,0.0_pREAL)
 
-  loadCaseLooping: do l = 1, load_steps%length
+  loadCaseLooping: do l = 1, size(load_steps)
     t_0 = t                                                                                        ! load case start time
     guess = loadCases(l)%estimate_rate                                                             ! change of load case? homogeneous guess for the first inc
 
@@ -222,7 +222,7 @@ program DAMASK_mesh
                 'Time', t, &
                 's: Increment ', inc, '/', loadCases(l)%N,&
                 '-', stepFraction, '/', subStepFactor**cutBackLevel,&
-                ' of load case ', l,'/',load_steps%length
+                ' of load case ', l,'/',size(load_steps)
         write(incInfo,'(4(a,i0))') &
                'Increment ',totalIncsCounter,'/',sum(loadCases%N),&
                '-',stepFraction, '/', subStepFactor**cutBackLevel

@@ -54,10 +54,10 @@ module function anisobrittle_init() result(mySources)
 
 
   phases => config_material%get_dict('phase')
-  allocate(param(phases%length))
+  allocate(param(size(phases)))
   extmsg = ''
 
-  do ph = 1, phases%length
+  do ph = 1, size(phases)
     if (mySources(ph)) then
       phase => phases%get_dict(ph)
       src => phase%get_dict('damage')

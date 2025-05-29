@@ -16,8 +16,6 @@ module types
   private
 
   type, abstract, public :: tNode
-    integer :: &
-      length = 0
     contains
     procedure(asFormattedStr), deferred :: &
       asFormattedStr
@@ -43,6 +41,8 @@ module types
     type(tItem), pointer :: &
       first => NULL(), &
       last => NULL()
+    integer, private :: &
+      length = 0
     contains
     procedure :: &
       asFormattedStr => tList_asFormattedStr, &
@@ -161,13 +161,18 @@ module types
     module procedure tScalar_assign__
   end interface assignment (=)
 
+  interface size
+    module procedure tList_size
+  end interface size
+
   public :: &
     types_init, &
     types_selfTest, &
 #ifdef __GFORTRAN__
     output_as1dStr, &                                       !ToDo: Hack for GNU. Remove later
 #endif
-    assignment(=)
+    assignment(=), &
+    size
 
 contains
 
@@ -222,7 +227,7 @@ subroutine types_selfTest()
     if (l_pointer%contains('1'))                       error stop 'empty tList_contains(pointer)'
     call l%append(s1)
     call l%append(s2)
-    if (l%length /= 2)                                 error stop 'tList%len'
+    if (size(l) /= 2)                                  error stop 'tList%length/size(tList)'
     if (dNeq(l%get_asReal(1),1.0_pREAL))               error stop 'tList_get_asReal'
     if (l%get_asInt(1) /= 1)                           error stop 'tList_get_asInt'
     if (l%get_asStr(2) /= '2')                         error stop 'tList_get_asStr'
@@ -504,13 +509,26 @@ recursive function tList_asFormattedStr(self) result(str)
 
   str = '['
   item => self%first
-  do i = 2, self%length
+  do i = 2, size(self)
     str = str//item%node%asFormattedStr()//', '
     item => item%next
   end do
   str = str//item%node%asFormattedStr()//']'
 
 end function tList_asFormattedStr
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Number of elements.
+!--------------------------------------------------------------------------------------------------
+pure integer function tList_size(list)
+
+  class(tList), intent(in) :: list
+
+
+  tList_size = list%length
+
+end function tList_size
 
 
 !--------------------------------------------------------------------------------------------------
@@ -553,9 +571,9 @@ function tList_as1dReal(self)
   type(tScalar), pointer :: scalar
 
 
-  allocate(tList_as1dReal(self%length))
+  allocate(tList_as1dReal(size(self)))
   item => self%first
-  do i = 1, self%length
+  do i = 1, size(self)
     scalar => item%node%asScalar()
     tList_as1dReal(i) = scalar%asReal()
     item => item%next
@@ -577,11 +595,11 @@ function tList_as2dReal(self)
 
 
   row_data => self%get_list(1)
-  allocate(tList_as2dReal(self%length,row_data%length))
+  allocate(tList_as2dReal(size(self),size(row_data)))
 
-  do i = 1, self%length
+  do i = 1, size(self)
     row_data => self%get_list(i)
-    if (row_data%length /= size(tList_as2dReal,2)) call IO_error(709,ext_msg='inconsistent column count in tList_as2dReal')
+    if (size(row_data) /= size(tList_as2dReal,2)) call IO_error(709,ext_msg='inconsistent column count in tList_as2dReal')
     tList_as2dReal(i,:) = self%get_as1dReal(i)
   end do
 
@@ -601,9 +619,9 @@ function tList_as1dInt(self)
   type(tScalar), pointer :: scalar
 
 
-  allocate(tList_as1dInt(self%length))
+  allocate(tList_as1dInt(size(self)))
   item => self%first
-  do i = 1, self%length
+  do i = 1, size(self)
     scalar => item%node%asScalar()
     tList_as1dInt(i) = scalar%asInt()
     item => item%next
@@ -625,9 +643,9 @@ function tList_as1dBool(self)
   type(tScalar), pointer :: scalar
 
 
-  allocate(tList_as1dBool(self%length))
+  allocate(tList_as1dBool(size(self)))
   item => self%first
-  do i = 1, self%length
+  do i = 1, size(self)
     scalar => item%node%asScalar()
     tList_as1dBool(i) = scalar%asBool()
     item => item%next
@@ -654,21 +672,21 @@ function tList_as1dStr(self)
 
 
 #ifdef __GFORTRAN__
-  allocate(tList_as1dStr(self%length))
+  allocate(tList_as1dStr(size(self)))
 #else
   integer :: len_max
   len_max = 0
   item => self%first
-  do j = 1, self%length
+  do j = 1, size(self)
     scalar => item%node%asScalar()
     len_max = max(len_max, len_trim(scalar%asStr()))
     item => item%next
   end do
 
-  allocate(character(len=len_max) :: tList_as1dStr(self%length))
+  allocate(character(len=len_max) :: tList_as1dStr(size(self)))
 #endif
   item => self%first
-  do j = 1, self%length
+  do j = 1, size(self)
     scalar => item%node%asScalar()
     tList_as1dStr(j) = scalar%asStr()
     item => item%next
@@ -694,7 +712,7 @@ function tList_contains(self,k)  result(exists)
   item => self%first
   exists = .false.
   j = 1
-  do while (j <= self%length .and. .not. exists)
+  do while (j <= size(self) .and. .not. exists)
     scalar => item%node%asScalar()
     exists = scalar%value == k
     item => item%next
@@ -717,8 +735,8 @@ function tList_get(self,i) result(node)
   integer :: j
 
 
-  if (i < 1 .or. i > self%length) call IO_error(150,ext_msg='tList_get @ '//IO_intAsStr(i) &
-                                                                  //' of '//IO_intAsStr(self%length) )
+  if (i < 1 .or. i > size(self)) call IO_error(150,ext_msg='tList_get @ '//IO_intAsStr(i) &
+                                                                  //' of '//IO_intAsStr(size(self)) )
   item => self%first
   do j = 2, i
     item => item%next
@@ -952,7 +970,7 @@ recursive function tDict_asFormattedStr(self) result(str)
 
   str = '{'
   item => self%first
-  do i = 2, self%length
+  do i = 2, size(self)
     str = str//trim(item%key)//': '//item%node%asFormattedStr()//', '
     item => item%next
   end do
@@ -1032,8 +1050,8 @@ function tDict_key(self,i)  result(key)
   type(tItem), pointer :: item
 
 
-  if (i < 1 .or. i > self%length) call IO_error(150,ext_msg='tDict_key @ '//IO_intAsStr(i) &
-                                                                  //' of '//IO_intAsStr(self%length) )
+  if (i < 1 .or. i > size(self)) call IO_error(150,ext_msg='tDict_key @ '//IO_intAsStr(i) &
+                                                                  //' of '//IO_intAsStr(size(self)) )
   item => self%first
   do j = 2, i
     item => item%next
@@ -1056,15 +1074,15 @@ function tDict_keys(self) result(keys)
   integer :: j, l
 
 
-  allocate(temp(self%length))
+  allocate(temp(size(self)))
   l = 0
-  do j = 1, self%length
+  do j = 1, size(self)
     temp(j) = self%key(j)
     l = max(len_trim(temp(j)),l)
   end do
 
-  allocate(character(l)::keys(self%length))
-  do j = 1, self%length
+  allocate(character(l)::keys(size(self)))
+  do j = 1, size(self)
     keys(j) = trim(temp(j))
   end do
 
@@ -1085,7 +1103,7 @@ function tDict_contains(self,k)  result(exists)
 
   exists = .false.
   j = 1
-  do while(j <= self%length .and. .not. exists)
+  do while(j <= size(self) .and. .not. exists)
     exists = self%key(j) == k
     j = j + 1
   end do
@@ -1108,7 +1126,7 @@ function tDict_get(self,k,defaultVal) result(node)
 
   item => self%first
 
-  do j=1, self%length
+  do j=1, size(self)
     if (item%key == k) then
       node => item%node
       return
@@ -1275,7 +1293,7 @@ function tDict_get_as1dReal_chunked(self,k,defaultVal,requiredChunks) result(nod
         nodeAs1dReal = node_outer%asReal()
       class is(tList)
         list_outer => self%get_list(k)
-        if (list_outer%length /= size(requiredChunks)) &
+        if (size(list_outer) /= size(requiredChunks)) &
           call IO_error(709,'list "'//list_outer%asFormattedStr()//'" is not of length '//IO_intAsStr(size(requiredChunks)))
         do i = 1, size(requiredChunks)
           node_inner => list_outer%get(i)
@@ -1584,8 +1602,8 @@ function output_as1dStr(self)  result(output)
   integer :: o
 
   output_list => self%get_list('output',defaultVal=emptyList)
-  allocate(output(output_list%length))
-  do o = 1, output_list%length
+  allocate(output(size(output_list)))
+  do o = 1, size(output_list)
     output(o) = output_list%get_asStr(o)
   end do
 

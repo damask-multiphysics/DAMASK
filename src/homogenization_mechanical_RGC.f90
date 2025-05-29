@@ -99,10 +99,10 @@ module subroutine RGC_init()
 
 
   material_homogenization => config_material%get_dict('homogenization')
-  allocate(param(material_homogenization%length))
-  allocate(state(material_homogenization%length))
-  allocate(state0(material_homogenization%length))
-  allocate(dependentState(material_homogenization%length))
+  allocate(param(size(material_homogenization)))
+  allocate(state(size(material_homogenization)))
+  allocate(state0(size(material_homogenization)))
+  allocate(dependentState(size(material_homogenization)))
 
   num_homogenization => config_numerics%get_dict('homogenization',defaultVal=emptyDict)
   num_mechanical => num_homogenization%get_dict('mechanical',defaultVal=emptyDict)

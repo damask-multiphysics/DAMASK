@@ -106,12 +106,12 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
 
   phases => config_material%get_dict('phase')
-  allocate(param(phases%length))
-  allocate(indexDotState(phases%length))
-  allocate(state(phases%length))
+  allocate(param(size(phases)))
+  allocate(indexDotState(size(phases)))
+  allocate(state(size(phases)))
   extmsg = ''
 
-  do ph = 1, phases%length
+  do ph = 1, size(phases)
     if (.not. myPlasticity(ph)) cycle
 
     associate(prm => param(ph), &

@@ -112,14 +112,14 @@ subroutine parse()
   homogenizations => config_material%get_dict('homogenization')
 
 
-  if (maxval(discretization_materialAt) > materials%length) &
+  if (maxval(discretization_materialAt) > size(materials)) &
     call IO_error(155,ext_msg='More materials requested than found in material.yaml')
 
   material_name_phase          = phases%keys()
   material_name_homogenization = homogenizations%keys()
 
-  allocate(homogenization_Nconstituents(homogenizations%length))
-  do ho=1, homogenizations%length
+  allocate(homogenization_Nconstituents(size(homogenizations)))
+  do ho=1, size(homogenizations)
     homogenization => homogenizations%get_dict(ho)
     homogenization_Nconstituents(ho) = homogenization%get_asInt('N_constituents')
   end do
@@ -127,27 +127,27 @@ subroutine parse()
 
   allocate(material_v(homogenization_maxNconstituents,discretization_Ncells),source=0.0_pREAL)
 
-  allocate(material_O_0(materials%length))
-  allocate(material_V_e_0(materials%length))
+  allocate(material_O_0(size(materials)))
+  allocate(material_V_e_0(size(materials)))
 
-  allocate(ho_of(materials%length))
-  allocate(ph_of(materials%length,homogenization_maxNconstituents),source=-1)
-  allocate( v_of(materials%length,homogenization_maxNconstituents),source=0.0_pREAL)
+  allocate(ho_of(size(materials)))
+  allocate(ph_of(size(materials),homogenization_maxNconstituents),source=-1)
+  allocate( v_of(size(materials),homogenization_maxNconstituents),source=0.0_pREAL)
 
   ! Parse YAML structure. Manual loop over linked list to have O(n) instead of O(n^2) complexity
   item => materials%first
-  do ma = 1, materials%length
+  do ma = 1, size(materials)
     material => item%node%asDict()
     ho_of(ma) = homogenizations%index(material%get_asStr('homogenization'))
     constituents => material%get_list('constituents')
 
     homogenization => homogenizations%get_dict(ho_of(ma))
-    if (constituents%length /= homogenization%get_asInt('N_constituents')) call IO_error(148)
+    if (size(constituents) /= homogenization%get_asInt('N_constituents')) call IO_error(148)
 
-    allocate(material_O_0(ma)%data(constituents%length))
-    allocate(material_V_e_0(ma)%data(1:3,1:3,constituents%length))
+    allocate(material_O_0(ma)%data(size(constituents)))
+    allocate(material_V_e_0(ma)%data(1:3,1:3,size(constituents)))
 
-    do co = 1, constituents%length
+    do co = 1, size(constituents)
       constituent => constituents%get_dict(co)
        v_of(ma,co) = constituent%get_asReal('v')
       ph_of(ma,co) = phases%index(constituent%get_asStr('phase'))
@@ -163,8 +163,8 @@ subroutine parse()
     item => item%next
   end do
 
-  allocate(counterPhase(phases%length),source=0)
-  allocate(counterHomogenization(homogenizations%length),source=0)
+  allocate(counterPhase(size(phases)),source=0)
+  allocate(counterHomogenization(size(homogenizations)),source=0)
 
   allocate(material_ID_homogenization(discretization_Ncells),source=0)
   allocate(material_entry_homogenization(discretization_Ncells),source=0)
@@ -217,15 +217,15 @@ function getKeys(dict)
 
   integer :: i,l
 
-  allocate(temp(dict%length))
+  allocate(temp(size(dict)))
   l = 0
-  do i=1, dict%length
+  do i=1, size(dict)
     temp(i) = dict%key(i)
     l = max(len_trim(temp(i)),l)
   end do
 
-  allocate(character(l)::getKeys(dict%length))
-  do i=1, dict%length
+  allocate(character(l)::getKeys(size(dict)))
+  do i=1, size(dict)
     getKeys(i) = trim(temp(i))
   end do
 

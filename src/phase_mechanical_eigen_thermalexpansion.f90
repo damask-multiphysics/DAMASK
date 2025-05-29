@@ -44,15 +44,15 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
 
   phases => config_material%get_dict('phase')
   allocate(param(count(myKinematics)))
-  allocate(kinematics_thermal_expansion_instance(phases%length), source=0)
+  allocate(kinematics_thermal_expansion_instance(size(phases)), source=0)
 
-  do p = 1, phases%length
+  do p = 1, size(phases)
     if (any(myKinematics(:,p))) kinematics_thermal_expansion_instance(p) = count(myKinematics(:,1:p))
     phase => phases%get_dict(p)
     if (count(myKinematics(:,p)) == 0) cycle
     mech => phase%get_dict('mechanical')
     kinematics => mech%get_list('eigen')
-    do k = 1, kinematics%length
+    do k = 1, size(kinematics)
       if (myKinematics(k,p)) then
         associate(prm  => param(kinematics_thermal_expansion_instance(p)))
 

@@ -203,16 +203,16 @@ module function plastic_nonlocal_init() result(myPlasticity)
   print'(/,1x,a,1x,i0)', '# phases:',count(myPlasticity); flush(IO_STDOUT)
 
   phases => config_material%get_dict('phase')
-  allocate(geom(phases%length))
-  allocate(param(phases%length))
-  allocate(state(phases%length))
-  allocate(state0(phases%length))
-  allocate(dotState(phases%length))
-  allocate(deltaState(phases%length))
-  allocate(dependentState(phases%length))
+  allocate(geom(size(phases)))
+  allocate(param(size(phases)))
+  allocate(state(size(phases)))
+  allocate(state0(size(phases)))
+  allocate(dotState(size(phases)))
+  allocate(deltaState(size(phases)))
+  allocate(dependentState(size(phases)))
   extmsg = ''
 
-  do ph = 1, phases%length
+  do ph = 1, size(phases)
     if (.not. myPlasticity(ph)) cycle
 
     associate(prm => param(ph),  dot => dotState(ph),   stt => state(ph), &

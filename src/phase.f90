@@ -391,12 +391,12 @@ subroutine phase_init()
   print'(/,1x,a)', '<<<+-  phase init  -+>>>'; flush(IO_STDOUT)
 
   phases => config_material%get_dict('phase')
-  allocate(phase_lattice(phases%length))
-  allocate(phase_cOverA(phases%length),source=-1.0_pREAL)
-  allocate(phase_rho(phases%length))
-  allocate(phase_O_0(phases%length))
+  allocate(phase_lattice(size(phases)))
+  allocate(phase_cOverA(size(phases)),source=-1.0_pREAL)
+  allocate(phase_rho(size(phases)))
+  allocate(phase_O_0(size(phases)))
 
-  do ph = 1,phases%length
+  do ph = 1,size(phases)
     print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
     phase => phases%get_dict(ph)
     refs = config_listReferences(phase,indent=3)
@@ -418,8 +418,8 @@ subroutine phase_init()
     end do
   end do
 
-  allocate(phase_O(phases%length))
-  do ph = 1,phases%length
+  allocate(phase_O(size(phases)))
+  do ph = 1,size(phases)
     phase_O(ph)%data = phase_O_0(ph)%data
   end do
 

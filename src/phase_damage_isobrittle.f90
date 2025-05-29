@@ -52,12 +52,12 @@ module function isobrittle_init() result(mySources)
 
 
   phases => config_material%get_dict('phase')
-  allocate(param(phases%length))
-  allocate(state(phases%length))
-  allocate(deltaState(phases%length))
+  allocate(param(size(phases)))
+  allocate(state(size(phases)))
+  allocate(deltaState(size(phases)))
   extmsg = ''
 
-  do ph = 1, phases%length
+  do ph = 1, size(phases)
     if (mySources(ph)) then
       phase => phases%get_dict(ph)
       src => phase%get_dict('damage')
