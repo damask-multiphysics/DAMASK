@@ -194,6 +194,8 @@ module function plastic_dislotwin_init() result(myPlasticity)
 #else
     prm%output = pl%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
+   if (any(prm%output == 'f_tw')) call IO_warning(10_pI16,'f_tw (twinned volume fraction)',IO_EOL, &
+                                                          'use gamma_tw (twinning shear)')
 
    prm%isotropic_bound = pl%get_asStr('isotropic_bound',defaultVal='isostrain')
 
@@ -753,7 +755,7 @@ module subroutine dislotwin_dependentState(ph,en)
     sumf_tw = sum(stt%f_tw(1:prm%sum_N_tw,en))
     sumf_tr = sum(stt%f_tr(1:prm%sum_N_tr,en))
 
-    !* rescaled volume fraction for topology
+    ! rescaled volume fraction for topology
     f_over_t_tw = stt%f_tw(1:prm%sum_N_tw,en)/prm%t_tw                                              ! this is per system ...
     f_over_t_tr = sumf_tr/prm%t_tr                                                                  ! but this not
                                                                                                     ! ToDo ...Physically correct, but naming could be adjusted
@@ -812,6 +814,10 @@ module subroutine plastic_dislotwin_result(ph,group)
           call result_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
                                    'passing stress for slip','Pa',prm%systems_sl)
 
+        case('gamma_tw')
+          call result_writeDataset(stt%f_tw*spread(prm%gamma_char_tw,2,size(stt%f_tw,2)), &
+                                   group,trim(prm%output(ou)), &
+                                   'twinning shear','1',prm%systems_tw)
         case('f_tw')
           call result_writeDataset(stt%f_tw,group,trim(prm%output(ou)), &
                                    'twinned volume fraction','m³/m³',prm%systems_tw)

@@ -570,6 +570,8 @@ subroutine IO_warning_new(warning_ID, &
   character(len=:), allocatable :: msg
 
   select case (warning_ID)
+    case (10)
+      msg = 'deprecated keyword'
     case (47)
       msg = 'invalid parameter for FFTW'
     case (207)

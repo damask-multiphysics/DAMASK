@@ -11,7 +11,7 @@ references:
     Acta Materialia 56:6040-6049,
     https://doi.org/10.1016/j.actamat.2008.08.012
 
-output: [rho_mob, rho_dip, gamma_sl, Lambda_sl, tau_pass, f_tw, Lambda_tw, f_tr]
+output: [rho_mob, rho_dip, gamma_sl, Lambda_sl, tau_pass, gamma_tw, Lambda_tw, f_tr]
 
 # Glide
 N_sl: [12]
