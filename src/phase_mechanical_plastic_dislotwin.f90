@@ -271,6 +271,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
                prm%q, &
                prm%tau_0, &
                prm%B, &
+               prm%d_caron, &
                source=emptyRealArray)
       allocate(prm%forestProjection(0,0), &
                prm%h_sl_sl(0,0)) ! PE: What about P_sl and systems_sl?
