@@ -191,29 +191,6 @@ compile_mesh_min:
     - .fortran_min
     - .on_merge
 
-Marc_patch:
-  stage: compile
-  image: git.damask-multiphysics.org:5050/damask/damask/marc_base:${MARC_VERSION}
-  tags:
-    - docker_all
-  script:
-    - source env/DAMASK.sh
-    - export TMPDIR=/tmp
-    - python3 install/MarcMentat/MSC_modifications.py --editor=gted --marc-version="${MARC_VERSION}" --damask-root="${CI_PROJECT_DIR}" --marc-root=/opt/msc
-    - test -f "/opt/msc/mentat${MARC_VERSION}/bin/kill6"
-    - cd examples/Marc && python3 -c "import damask;damask.solver.Marc(version=${MARC_VERSION}).submit_job('r-value','texture',True,'h')"
-    - test -f "${CI_PROJECT_DIR}/src/Marc/DAMASK_Marc.marc" || { echo "Marc simulation failed, DAMASK_Marc.marc not generated"; exit 1; }
-
-Marc_compile:
-  stage: compile
-  image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
-  tags:
-    - docker_all
-  script:
-    - source env/DAMASK.sh
-    - cd PRIVATE/testing
-    - pytest -k 'compile and Marc'
-
 
 ###################################################################################################
 
@@ -235,10 +212,6 @@ configexamples_debug_GCC:
   extends: .configexamples_debug
   image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:2025.04.30
 
-configexamples_debug_oneAPI:
-  extends: .configexamples_debug
-  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:2025.04.30
-
 ##################################################################################################
 
 open-source_GCC:
@@ -253,48 +226,6 @@ open-source_GCC:
   script:
     - cd PRIVATE/testing
     - pytest -v -k 'not compile and not Marc'
-
-Marc_run:
-  stage: fortran
-  image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
-  tags:
-    - docker_all
-  before_script:
-    - source env/DAMASK.sh
-    - cd examples/Marc && python3 -c "import damask;damask.solver.Marc(version=${MARC_VERSION}).submit_job('r-value','texture',True,'h')"
-  script:
-    - cd ${CI_PROJECT_DIR}/PRIVATE/testing
-    - pytest -k 'not compile and Marc'
-
-# Needs closer look
-# Phenopowerlaw_singleSlip:
-#   stage: fortran
-#   script: Phenopowerlaw_singleSlip/test.py
-
-###################################################################################################
-grid_performance:
-  stage: statistics
-  tags:
-    - matesting_bare-metal
-  before_script:
-    - source /etc/zsh/spackenv
-    - spack env activate DAMASK_oneapi_2503
-    - source env/DAMASK.sh
-    - echo Job start:" $(date)"
-  script:
-    - cd $(mktemp -d)
-    - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=./ ${CI_PROJECT_DIR}
-    - make -j2 all install
-    - export PATH=${PWD}/bin:${PATH}
-    - cd $(mktemp -d)
-    - git clone -q https://damask_user:${STATISTICS_TOKEN}@git.damask-multiphysics.org/damask/statistics.git .
-    - ./measure_performance.py --input_dir ${CI_PROJECT_DIR}/examples/grid --tag ${CI_COMMIT_SHA}
-    - >
-        if [ ${CI_COMMIT_BRANCH} == development ]; then
-          git add performance.txt
-          git commit -m ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
-          git push
-        fi
 
 
 ###################################################################################################
@@ -313,21 +244,3 @@ update_website_master:
 #    branch: "3.0"
 #  only:
 #    - "3.0"
-
-update_revision:
-  stage: finalize
-  tags:
-    - matesting2_bare-metal
-  before_script:
-    - echo Job start:" $(date)"
-  script:
-    - cd $(mktemp -d)
-    - git clone -b development -q https://damask_user:${TOKEN}@git.damask-multiphysics.org/damask/DAMASK.git .
-    - export VERSION=$(git describe ${CI_COMMIT_SHA})
-    - echo ${VERSION:1} > VERSION
-    - >
-       git diff-index --quiet HEAD ||
-       git commit VERSION -m "[skip ci] updated version information after successful test of $VERSION"
-    - if [ ${CI_COMMIT_SHA} == $(git rev-parse HEAD^) ]; then git push --atomic --no-verify origin HEAD:development HEAD:master; fi
-  only:
-    - development
