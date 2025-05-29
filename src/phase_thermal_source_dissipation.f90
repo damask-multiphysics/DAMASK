@@ -46,9 +46,9 @@ module function source_dissipation_init(maxNsources) result(isMySource)
 
 
   phases => config_material%get_dict('phase')
-  allocate(param(phases%length))
+  allocate(param(size(phases)))
 
-  do ph = 1, phases%length
+  do ph = 1, size(phases)
     Nsources = count(isMySource(:,ph))
     if (Nsources == 0) cycle
     if (Nsources > 1) call IO_error(600,ext_msg='dissipation')
@@ -56,7 +56,7 @@ module function source_dissipation_init(maxNsources) result(isMySource)
     phase => phases%get_dict(ph)
     thermal => phase%get_dict('thermal')
     sources => thermal%get_list('source')
-    do so = 1, sources%length
+    do so = 1, size(sources)
       if (isMySource(so,ph)) then
         associate(prm  => param(ph))
           src => sources%get_dict(so)

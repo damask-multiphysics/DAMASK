@@ -168,13 +168,13 @@ module function plastic_dislotwin_init() result(myPlasticity)
   print'(/,1x,a,1x,i0)', '# phases:',count(myPlasticity); flush(IO_STDOUT)
 
   phases => config_material%get_dict('phase')
-  allocate(param(phases%length))
-  allocate(indexDotState(phases%length))
-  allocate(state(phases%length))
-  allocate(dependentState(phases%length))
+  allocate(param(size(phases)))
+  allocate(indexDotState(size(phases)))
+  allocate(state(size(phases)))
+  allocate(dependentState(size(phases)))
   extmsg = ''
 
-  do ph = 1, phases%length
+  do ph = 1, size(phases)
     if (.not. myPlasticity(ph)) cycle
 
     associate(prm => param(ph), &

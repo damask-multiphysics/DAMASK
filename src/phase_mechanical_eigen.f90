@@ -43,16 +43,16 @@ module subroutine eigen_init(phases)
 
 !--------------------------------------------------------------------------------------------------
 ! explicit eigen mechanisms
-  allocate(Nmodels(phases%length),source = 0)
+  allocate(Nmodels(size(phases)),source = 0)
 
-  do ph = 1,phases%length
+  do ph = 1,size(phases)
     phase => phases%get_dict(ph)
     mechanics => phase%get_dict('mechanical')
     kinematics => mechanics%get_list('eigen',defaultVal=emptyList)
-    Nmodels(ph) = kinematics%length
+    Nmodels(ph) = size(kinematics)
   end do
 
-  allocate(mechanical_eigen_kinematics_type(maxval(Nmodels),phases%length), source = UNDEFINED)
+  allocate(mechanical_eigen_kinematics_type(maxval(Nmodels),size(phases)), source = UNDEFINED)
 
   if (maxval(Nmodels) /= 0) then
     where(thermalexpansion_init(maxval(Nmodels))) mechanical_eigen_kinematics_type = MECHANICAL_EIGEN_THERMALEXPANSION
@@ -81,12 +81,12 @@ function kinematics_active(kinematics_label,kinematics_length)  result(active_ki
 
 
   phases => config_material%get_dict('phase')
-  allocate(active_kinematics(kinematics_length,phases%length), source = .false. )
-  do ph = 1, phases%length
+  allocate(active_kinematics(kinematics_length,size(phases)), source = .false. )
+  do ph = 1, size(phases)
     phase => phases%get_dict(ph)
     mechanics => phase%get_dict('mechanical')
     kinematics => mechanics%get_list('eigen',defaultVal=emptyList)
-    do k = 1, kinematics%length
+    do k = 1, size(kinematics)
       kinematic => kinematics%get_dict(k)
       active_kinematics(k,ph) = kinematic%get_asStr('type') == kinematics_label
     end do

@@ -204,24 +204,24 @@ module subroutine mechanical_init(phases, num_mech)
   print'(/,1x,a)', '<<<+-  phase:mechanical init  -+>>>'
 
 !-------------------------------------------------------------------------------------------------
-  allocate(output_mechanical(phases%length))
+  allocate(output_mechanical(size(phases)))
 
-  allocate(phase_mechanical_Fe(phases%length))
-  allocate(phase_mechanical_Fi(phases%length))
-  allocate(phase_mechanical_Fi0(phases%length))
-  allocate(phase_mechanical_Fp(phases%length))
-  allocate(phase_mechanical_Fp0(phases%length))
-  allocate(phase_mechanical_F(phases%length))
-  allocate(phase_mechanical_F0(phases%length))
-  allocate(phase_mechanical_Li(phases%length))
-  allocate(phase_mechanical_Li0(phases%length))
-  allocate(phase_mechanical_Lp(phases%length))
-  allocate(phase_mechanical_Lp0(phases%length))
-  allocate(phase_mechanical_S(phases%length))
-  allocate(phase_mechanical_P(phases%length))
-  allocate(phase_mechanical_S0(phases%length))
+  allocate(phase_mechanical_Fe(size(phases)))
+  allocate(phase_mechanical_Fi(size(phases)))
+  allocate(phase_mechanical_Fi0(size(phases)))
+  allocate(phase_mechanical_Fp(size(phases)))
+  allocate(phase_mechanical_Fp0(size(phases)))
+  allocate(phase_mechanical_F(size(phases)))
+  allocate(phase_mechanical_F0(size(phases)))
+  allocate(phase_mechanical_Li(size(phases)))
+  allocate(phase_mechanical_Li0(size(phases)))
+  allocate(phase_mechanical_Lp(size(phases)))
+  allocate(phase_mechanical_Lp0(size(phases)))
+  allocate(phase_mechanical_S(size(phases)))
+  allocate(phase_mechanical_P(size(phases)))
+  allocate(phase_mechanical_S0(size(phases)))
 
-  do ph = 1, phases%length
+  do ph = 1, size(phases)
     Nmembers = count(material_ID_phase == ph)
 
     allocate(phase_mechanical_Fe(ph)%data(3,3,Nmembers))
@@ -258,7 +258,7 @@ module subroutine mechanical_init(phases, num_mech)
     end do
   end do
 
-  do ph = 1, phases%length
+  do ph = 1, size(phases)
     phase_mechanical_F0(ph)%data  = phase_mechanical_F(ph)%data
     phase_mechanical_Fp0(ph)%data = phase_mechanical_Fp(ph)%data
     phase_mechanical_Fi0(ph)%data = phase_mechanical_Fi(ph)%data
@@ -266,10 +266,10 @@ module subroutine mechanical_init(phases, num_mech)
 
 
   call elastic_init(phases)
-  allocate(plasticState(phases%length))
-  allocate(mechanical_plasticity_type(phases%length),source = UNDEFINED)
+  allocate(plasticState(size(phases)))
+  allocate(mechanical_plasticity_type(size(phases)),source = UNDEFINED)
   call plastic_init()
-  do ph = 1,phases%length
+  do ph = 1,size(phases)
     plasticState(ph)%state0 = plasticState(ph)%state
   end do
   call eigen_init(phases)

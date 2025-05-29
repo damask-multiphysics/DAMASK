@@ -34,12 +34,12 @@ module subroutine elastic_init(phases)
   print'(/,1x,a)', '<<<+-  phase:mechanical:elastic init  -+>>>'
   print'(/,1x,a)', '<<<+-  phase:mechanical:elastic:Hooke init  -+>>>'
 
-  print'(/,1x,a,1x,i0)', '# phases:',phases%length; flush(IO_STDOUT)
+  print'(/,1x,a,1x,i0)', '# phases:',size(phases); flush(IO_STDOUT)
 
 
-  allocate(param(phases%length))
+  allocate(param(size(phases)))
 
-  do ph = 1, phases%length
+  do ph = 1, size(phases)
     phase   => phases%get_dict(ph)
     mech    => phase%get_dict('mechanical')
     elastic => mech%get_dict('elastic')

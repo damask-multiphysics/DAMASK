@@ -463,13 +463,13 @@ function parseLoadsteps(load_steps) result(loadCases)
 #endif
 
 
-  allocate(loadCases(load_steps%length))
-  do l = 1, load_steps%length
+  allocate(loadCases(size(load_steps)))
+  do l = 1, size(load_steps)
     load_step => load_steps%get_dict(l)
     step_bc   => load_step%get_dict('boundary_conditions')
     step_mech => step_bc%get_dict('mechanical')
     loadCases(l)%stress%myType=''
-    readMech: do m = 1, step_mech%length
+    readMech: do m = 1, size(step_mech)
       select case (step_mech%key(m))
         case ('L','dot_F','F')                                                                      ! assign values for the deformation BC matrix
           loadCases(l)%deformation%myType = step_mech%key(m)

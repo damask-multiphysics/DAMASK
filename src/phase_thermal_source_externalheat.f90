@@ -48,10 +48,10 @@ module function source_externalheat_init(maxNsources) result(isMySource)
 
 
   phases => config_material%get_dict('phase')
-  allocate(param(phases%length))
-  allocate(source_ID(phases%length), source=0)
+  allocate(param(size(phases)))
+  allocate(source_ID(size(phases)), source=0)
 
-  do ph = 1, phases%length
+  do ph = 1, size(phases)
     Nsources = count(isMySource(:,ph))
     if (Nsources == 0) cycle
     if (Nsources > 1) call IO_error(600,ext_msg='externalheat')
@@ -59,7 +59,7 @@ module function source_externalheat_init(maxNsources) result(isMySource)
     phase => phases%get_dict(ph)
     thermal => phase%get_dict('thermal')
     sources => thermal%get_list('source')
-    do so = 1, sources%length
+    do so = 1, size(sources)
       if (isMySource(so,ph)) then
         source_ID(ph) = so
         associate(prm  => param(ph))

@@ -30,7 +30,7 @@ module function plastic_none_init() result(myPlasticity)
 
   phases => config_material%get_dict('phase')
 
-  do ph = 1, phases%length
+  do ph = 1, size(phases)
     if (.not. myPlasticity(ph)) cycle
 
     print'(/,1x,a,1x,i0,a)', 'phase',ph,': '//phases%key(ph)

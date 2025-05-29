@@ -83,13 +83,13 @@ module subroutine damage_init()
 
 
   phases => config_material%get_dict('phase')
-  allocate(current(phases%length))
-  allocate(damageState(phases%length))
-  allocate(param(phases%length))
+  allocate(current(size(phases)))
+  allocate(damageState(size(phases)))
+  allocate(param(size(phases)))
 
   extmsg = ''
   damage_active = .false.
-  do ph = 1,phases%length
+  do ph = 1,size(phases)
 
     Nmembers = count(material_ID_phase == ph)
     allocate(current(ph)%phi(Nmembers),source=1.0_pREAL)
@@ -101,7 +101,7 @@ module subroutine damage_init()
       damage => phase%get_dict('damage',defaultVal=emptyDict)
     end if
 
-    if (damage%length > 0) then
+    if (size(damage) > 0) then
       damage_active = .true.
 
       print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
@@ -120,14 +120,14 @@ module subroutine damage_init()
 
   end do
 
-  allocate(damage_type(phases%length), source = UNDEFINED)
+  allocate(damage_type(size(phases)), source = UNDEFINED)
 
   where(isobrittle_init()  ) damage_type = DAMAGE_ISOBRITTLE
   where(anisobrittle_init()) damage_type = DAMAGE_ANISOBRITTLE
   phase_damage_maxSizeDotState = maxval(damageState%sizeDotState)
 
   if (damage_active) then
-    do ph = 1,phases%length
+    do ph = 1,size(phases)
       phase => phases%get_dict(ph)
       damage => phase%get_dict('damage')
       if (any(damage%keys() == 'type') .and. damage_type(ph) == UNDEFINED) &
@@ -491,8 +491,8 @@ function source_active(source_label)  result(active_source)
 
 
   phases => config_material%get_dict('phase')
-  allocate(active_source(phases%length))
-  do ph = 1, phases%length
+  allocate(active_source(size(phases)))
+  do ph = 1, size(phases)
     phase => phases%get_dict(ph)
     src => phase%get_dict('damage',defaultVal=emptyDict)
     active_source(ph) = src%get_asStr('type',defaultVal = 'x') == source_label

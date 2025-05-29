@@ -435,8 +435,8 @@ function plastic_active(plastic_label) result(active_plastic)
   integer :: ph
 
   phases => config_material%get_dict('phase')
-  allocate(active_plastic(phases%length), source = .false. )
-  do ph = 1, phases%length
+  allocate(active_plastic(size(phases)), source = .false. )
+  do ph = 1, size(phases)
     phase => phases%get_dict(ph)
     mech  => phase%get_dict('mechanical')
     pl    => mech%get_dict('plastic',defaultVal = emptyDict)
