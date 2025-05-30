@@ -14,7 +14,6 @@ module discretization_grid
 
   use prec
   use parallelization
-  use system_routines
   use VTI
   use CLI
   use IO

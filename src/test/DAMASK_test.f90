@@ -5,7 +5,7 @@ program DAMASK_test
   use IO
 
   use test_prec
-  use test_system_routines
+  use test_OS
   use test_misc
   use test_math
   use test_polynomials
@@ -35,8 +35,8 @@ program DAMASK_test
   call test_misc_run()
   write(IO_STDOUT,fmt='(a)') ok
 
-  write(IO_STDOUT,fmt=fmt, advance='no') 'system_routines','...'
-  call test_system_routines_run()
+  write(IO_STDOUT,fmt=fmt, advance='no') 'OS','...'
+  call test_OS_run()
   write(IO_STDOUT,fmt='(a)') ok
 
   write(IO_STDOUT,fmt=fmt, advance='no') 'math','...'

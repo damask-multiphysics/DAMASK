@@ -14,7 +14,7 @@ module IO
   use constants
   use misc
 #ifndef MARC_SOURCE
-  use system_routines
+  use OS
 #endif
 
 implicit none(type,external)
@@ -287,7 +287,7 @@ function IO_color(fg,bg,unit)
   IO_color = ''
 
 #ifndef MARC_SOURCE
-  if (.not. isaTTY(misc_optional(unit,IO_STDOUT))) return
+  if (.not. OS_isaTTY(misc_optional(unit,IO_STDOUT))) return
 
   if (present(fg)) &
     IO_color = IO_color//achar(27)//'[38;2;'//IO_intAsStr(fg(1))//';' &
