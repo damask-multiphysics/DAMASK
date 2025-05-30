@@ -54,26 +54,21 @@ module material
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Parse material configuration file (material.yaml).
+!> @brief Parse material configuration file (material.yaml) and write mappings to result file.
 !--------------------------------------------------------------------------------------------------
-subroutine material_init(restart)
-
-  logical, intent(in) :: restart
-
+subroutine material_init()
 
   print'(/,1x,a)', '<<<+-  material init  -+>>>'; flush(IO_STDOUT)
-
 
   call parse()
   print'(/,1x,a)', 'parsed material.yaml'
 
-
-  if (.not. restart) then
-    call result_openJobFile()
+  call result_openJobFile()
+  if (.not. result_objectExists('cell_to/phase')) &
     call result_mapping_phase(material_ID_phase,material_entry_phase,material_name_phase)
+  if (.not. result_objectExists('cell_to/homogenization')) &
     call result_mapping_homogenization(material_ID_homogenization,material_entry_homogenization,material_name_homogenization)
-    call result_closeJobFile()
-  end if
+  call result_closeJobFile()
 
 end subroutine material_init
 

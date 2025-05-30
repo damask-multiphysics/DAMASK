@@ -52,9 +52,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Read the geometry file to obtain information on discretization.
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_grid_init(restart)
-
-  logical, intent(in) :: restart
+subroutine discretization_grid_init()
 
   real(pREAL), dimension(3) :: &
     mySize, &                                                                                       !< domain size of this process
@@ -147,19 +145,21 @@ subroutine discretization_grid_init(restart)
 
 !--------------------------------------------------------------------------------------------------
 ! store geometry information for post processing
-  if (.not. restart .and. worldrank == 0) then
+  if (worldrank == 0) then
     call result_openJobFile(parallel=.false.)
-    handle = result_addGroup('geometry')
-    call HDF5_write(cells,   handle,'cells', .false.)
-    call HDF5_write(geomSize,handle,'size',  .false.)
-    call HDF5_write(origin,  handle,'origin',.false.)
-    call HDF5_addAttribute(handle,'unit','1','cells')
-    call HDF5_addAttribute(handle,'unit','m³','size')
-    call HDF5_addAttribute(handle,'unit','m','origin')
-    call result_addAttribute('cells', cells,   '/geometry') ! legacy for DADF5 1.x
-    call result_addAttribute('size',  geomSize,'/geometry') ! legacy for DADF5 1.x
-    call result_addAttribute('origin',origin,  '/geometry') ! legacy for DADF5 1.x
-    call result_closeGroup(handle)
+    if (.not. result_objectExists('geometry')) then
+      handle = result_addGroup('geometry')
+      call HDF5_write(cells,   handle,'cells', .false.)
+      call HDF5_write(geomSize,handle,'size',  .false.)
+      call HDF5_write(origin,  handle,'origin',.false.)
+      call HDF5_addAttribute(handle,'unit','1','cells')
+      call HDF5_addAttribute(handle,'unit','m³','size')
+      call HDF5_addAttribute(handle,'unit','m','origin')
+      call result_addAttribute('cells', cells,   '/geometry') ! legacy for DADF5 1.x
+      call result_addAttribute('size',  geomSize,'/geometry') ! legacy for DADF5 1.x
+      call result_addAttribute('origin',origin,  '/geometry') ! legacy for DADF5 1.x
+      call result_closeGroup(handle)
+    end if
     call result_closeJobFile()
   end if
 

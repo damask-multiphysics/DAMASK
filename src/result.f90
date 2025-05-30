@@ -63,9 +63,10 @@ module result
     result_closeJobFile, &
     result_addIncrement, &
     result_finalizeIncrement, &
-    result_addGroup, &
     result_openGroup, &
+    result_addGroup, &
     result_closeGroup, &
+    result_objectExists, &
     result_writeDataset, &
     result_writeDataset_str, &
     result_setLink, &
@@ -82,6 +83,7 @@ subroutine result_init(restart)
 
   character(len=pPATHLEN) :: commandLine
   integer :: hdferr
+  logical :: file_exists
   character(len=:), allocatable :: date
 
 
@@ -90,8 +92,11 @@ subroutine result_init(restart)
   print'(/,1x,a)', 'M. Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
   print'(  1x,a)', 'https://doi.org/10.1007/s40192-017-0084-5'
 
-  if (.not. restart) then
-    resultFile = HDF5_openFile(CLI_jobName//'.hdf5','w')
+
+  inquire(file=CLI_jobName//'.hdf5',exist=file_exists)
+
+  if (.not. file_exists .or. .not. restart) then
+    call result_createJobFile()
     call result_addAttribute('DADF5_version_major',1)
     call result_addAttribute('DADF5_version_minor',2)
     call get_command_argument(0,commandLine)
@@ -145,6 +150,19 @@ subroutine result_init(restart)
   call result_closeJobFile()
 
 end subroutine result_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Open the result file to append data.
+!--------------------------------------------------------------------------------------------------
+subroutine result_createJobFile(parallel)
+
+  logical, intent(in), optional :: parallel
+
+
+  resultFile = HDF5_openFile(CLI_jobName//'.hdf5','w',parallel)
+
+end subroutine result_createJobFile
 
 
 !--------------------------------------------------------------------------------------------------
@@ -227,6 +245,19 @@ end function result_addGroup
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Check whether a group or a dataset exists in the result file.
+!--------------------------------------------------------------------------------------------------
+logical function result_objectExists(path)
+
+  character(len=*), intent(in) :: path
+
+
+  result_objectExists = HDF5_objectExists(resultFile,path)
+
+end function result_objectExists
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Set link to object in result file.
 !--------------------------------------------------------------------------------------------------
 subroutine result_setLink(path,link)
@@ -256,8 +287,8 @@ subroutine result_addSetupFile(content,fname,description)
   i = 0
 
   do while (HDF5_objectExists(groupHandle,name//suffix))
-      i = i+1
-      suffix = '.'//IO_intAsStr(i)
+    i = i+1
+    suffix = '.'//IO_intAsStr(i)
   end do
   call result_writeDataset_str(content,'setup',name//suffix,description)
   call result_closeGroup(groupHandle)

@@ -254,7 +254,7 @@ end function permutationStar22
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of quadrature weights and points.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest
+subroutine selfTest()
 
   integer :: o, d, n
   real(pREAL), dimension(2:3), parameter :: w = [3.0_pREAL,2.0_pREAL]

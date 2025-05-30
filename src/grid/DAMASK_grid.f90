@@ -90,7 +90,7 @@ program DAMASK_grid
     nActiveFields = 0, &
     maxCutBack, &                                                                                   !< max number of cut backs
     stagItMax                                                                                       !< max number of field level staggered iterations
-  logical :: active_Gamma = .false., active_G = .false., active_parabolic = .false.
+  logical :: active_Gamma = .false., active_G = .false., active_parabolic = .false., exists
   integer(MPI_INTEGER_KIND) :: err_MPI
   character(len=pSTRLEN) :: &
     incInfo
@@ -238,14 +238,15 @@ program DAMASK_grid
   call config_numerics_deallocate()
 
 !--------------------------------------------------------------------------------------------------
-! write header of output file
+! open/create statistics file
   if (worldrank == 0) then
-    writeHeader: if (CLI_restartInc < 1) then
-      open(newunit=statUnit,file=trim(CLI_jobName)//'.sta',form='FORMATTED',status='REPLACE')
-      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded StagIterationsNeeded' ! statistics file
+    fname = trim(CLI_jobName)//'.sta'
+    inquire(file=fname,exist=exists)
+    writeHeader: if (CLI_restartInc < 1 .or. .not. exists) then
+      open(newunit=statUnit,file=fname,form='FORMATTED',status='REPLACE')
+      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded StagIterationsNeeded'
     else writeHeader
-      open(newunit=statUnit,file=trim(CLI_jobName)//&
-                                  '.sta',form='FORMATTED', position='APPEND', status='OLD')
+      open(newunit=statUnit,file=fname,form='FORMATTED', position='APPEND', status='OLD')
     end if writeHeader
   end if
 
