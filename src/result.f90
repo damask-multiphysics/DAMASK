@@ -15,7 +15,7 @@ module result
   use HDF5
 #ifdef PETSC
   use CLI
-  use system_routines
+  use OS
 #include <petsc/finclude/petscsys.h>
   use PETScSys
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
@@ -122,8 +122,8 @@ subroutine result_init(restart)
     call result_addAttribute('PETSc_version_major',PETSC_VERSION_MAJOR)
     call result_addAttribute('PETSc_version_minor',PETSC_VERSION_MINOR)
     call result_addAttribute('PETSc_version_subminor',PETSC_VERSION_SUBMINOR)
-    call result_addAttribute('user',getUserName())
-    call result_addAttribute('host',getHostName())
+    call result_addAttribute('user',OS_getUserName())
+    call result_addAttribute('host',OS_getHostName())
 #endif
 
     call result_closeGroup(result_addGroup('cell_to'))

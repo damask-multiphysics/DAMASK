@@ -15,7 +15,7 @@ module CLI
 
   use prec
   use parallelization
-  use system_routines
+  use OS
   use IO
 
   implicit none(type,external)
@@ -73,7 +73,7 @@ subroutine CLI_init()
   character(len=*), parameter :: PETSc_DOI = PETSC_DOI
 #endif
 
-  workingDirArg = getCWD()
+  workingDirArg = OS_getCWD()
 
   print'(/,1x,a)', '<<<+-  CLI init  -+>>>'
 
@@ -187,11 +187,11 @@ subroutine CLI_init()
 
   commandLine = getArg(-1)
 
-  print'(/,1x,a)',      'Host name: '//getHostName()
-  print'(1x,a)',        'User name: '//getUserName()
+  print'(/,1x,a)',      'Host name: '//OS_getHostName()
+  print'(1x,a)',        'User name: '//OS_getUserName()
 
   print'(/,1x,a,/)',    'Command line call:      '//trim(commandLine)
-  print'(1x,a)',        'Working directory:      '//IO_glueDiffering(getCWD(),workingDirArg)
+  print'(1x,a)',        'Working directory:      '//IO_glueDiffering(OS_getCWD(),workingDirArg)
   print'(1x,a)',        'Geometry:               '//IO_glueDiffering(CLI_geomFile,geomArg)
   print'(1x,a)',        'Load case:              '//IO_glueDiffering(CLI_loadFile,loadArg)
   print'(1x,a)',        'Material config:        '//IO_glueDiffering(CLI_materialFile,materialArg)
@@ -247,12 +247,12 @@ subroutine setWorkingDirectory(workingDirectoryArg)
   absolutePath: if (workingDirectoryArg(1:1) == '/') then
     workingDirectory = workingDirectoryArg
   else absolutePath
-    workingDirectory = getCWD()
+    workingDirectory = OS_getCWD()
     workingDirectory = trim(workingDirectory)//'/'//workingDirectoryArg
   end if absolutePath
 
   workingDirectory = trim(normpath(workingDirectory))
-  if (setCWD(trim(workingDirectory))) call IO_error(640,ext_msg=workingDirectory)
+  if (OS_setCWD(trim(workingDirectory))) call IO_error(640,ext_msg=workingDirectory)
 
 end subroutine setWorkingDirectory
 
@@ -311,8 +311,8 @@ function getPathRelCWD(path,fileType)
 
 
   getPathRelCWD = trim(path)
-  if (scan(getPathRelCWD,'/') /= 1) getPathRelCWD = getCWD()//'/'//trim(getPathRelCWD)
-  getPathRelCWD = trim(relpath(getPathRelCWD,getCWD()))
+  if (scan(getPathRelCWD,'/') /= 1) getPathRelCWD = OS_getCWD()//'/'//trim(getPathRelCWD)
+  getPathRelCWD = trim(relpath(getPathRelCWD,OS_getCWD()))
 
   inquire(file=getPathRelCWD, exist=file_exists)
   if (.not. file_exists) call IO_error(100,ext_msg=fileType//' "'//trim(getPathRelCWD)//'"')

@@ -2,7 +2,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief  Wrappers to C routines for system operations
 !--------------------------------------------------------------------------------------------------
-module system_routines
+module OS
   use, intrinsic :: ISO_C_binding
   use, intrinsic :: ISO_fortran_env
 
@@ -12,13 +12,13 @@ module system_routines
   private
 
   public :: &
-    system_routines_init, &
-    system_routines_selfTest, &
-    setCWD, &
-    getCWD, &
-    getHostName, &
-    getUserName, &
-    isaTTY, &
+    OS_init, &
+    OS_selfTest, &
+    OS_setCWD, &
+    OS_getCWD, &
+    OS_getHostName, &
+    OS_getUserName, &
+    OS_isaTTY, &
 #if (defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || (defined(__GFORTRAN__) && __GNUC__ < 15)
     f_c_string, &
 #endif
@@ -27,40 +27,40 @@ module system_routines
 
   interface
 
-    function setCWD_C(cwd) bind(C)
+    function set_CWD_C(cwd) bind(C)
       use, intrinsic :: ISO_C_binding, only: C_INT, C_CHAR
 
       implicit none(type,external)
-      integer(C_INT) :: setCWD_C
+      integer(C_INT) :: set_CWD_C
       character(kind=C_CHAR), dimension(*), intent(in) :: cwd
-    end function setCWD_C
+    end function set_CWD_C
 
-    subroutine getCWD_C(cwd, stat) bind(C)
+    subroutine get_CWD_C(cwd, stat) bind(C)
       use, intrinsic :: ISO_C_binding, only: C_INT, C_CHAR
       use prec
 
       implicit none(type,external)
       character(kind=C_CHAR), dimension(pPathLen+1), intent(out) :: cwd                             ! NULL-terminated array
       integer(C_INT),                                intent(out) :: stat
-    end subroutine getCWD_C
+    end subroutine get_CWD_C
 
-    subroutine getHostName_C(hostname, stat) bind(C)
+    subroutine get_hostname_C(hostname, stat) bind(C)
       use, intrinsic :: ISO_C_binding, only: C_INT, C_CHAR
       use prec
 
       implicit none(type,external)
       character(kind=C_CHAR), dimension(pSTRLEN+1), intent(out) :: hostname                         ! NULL-terminated array
       integer(C_INT),                               intent(out) :: stat
-    end subroutine getHostName_C
+    end subroutine get_hostname_C
 
-    subroutine getUserName_C(username, stat) bind(C)
+    subroutine get_username_C(username, stat) bind(C)
       use, intrinsic :: ISO_C_binding, only: C_INT, C_CHAR
       use prec
 
       implicit none(type,external)
       character(kind=C_CHAR), dimension(pSTRLEN+1), intent(out) :: username                         ! NULL-terminated array
       integer(C_INT),                               intent(out) :: stat
-    end subroutine getUserName_C
+    end subroutine get_username_C
 
     subroutine free_C(ptr) bind(C,name='free')
       use, intrinsic :: ISO_C_binding, only: C_PTR
@@ -98,92 +98,92 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Do self test.
 !--------------------------------------------------------------------------------------------------
-subroutine system_routines_init()
+subroutine OS_init()
 
-  print'(/,1x,a)', '<<<+-  system_routines init  -+>>>'; flush(OUTPUT_UNIT)
+  print'(/,1x,a)', '<<<+-  OS init  -+>>>'; flush(OUTPUT_UNIT)
 
-  call system_routines_selfTest()
+  call OS_selfTest()
 
-end subroutine system_routines_init
+end subroutine OS_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Set the current working directory.
 !--------------------------------------------------------------------------------------------------
-logical function setCWD(path)
+logical function OS_setCWD(path)
 
   character(len=*), intent(in) :: path
 
 
-  setCWD = setCWD_C(f_c_string(path)) /= 0_C_INT
+  OS_setCWD = set_CWD_C(f_c_string(path)) /= 0_C_INT
 
-end function setCWD
+end function OS_setCWD
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Get the current working directory.
 !--------------------------------------------------------------------------------------------------
-function getCWD()
+function OS_getCWD()
 
-  character(len=:), allocatable :: getCWD
+  character(len=:), allocatable :: OS_getCWD
 
-  character(kind=C_CHAR,len=(pPathLen+1)) :: getCWD_Cstring
+  character(kind=C_CHAR,len=(pPathLen+1)) :: CWD_Cstring
   integer(C_INT) :: stat
 
 
-  call getCWD_C(getCWD_Cstring,stat)
+  call get_CWD_C(CWD_Cstring,stat)
 
   if (stat == 0) then
-    getCWD = c_f_string(getCWD_Cstring)
+    OS_getCWD = c_f_string(CWD_Cstring)
   else
     error stop 'invalid working directory'
   end if
 
-end function getCWD
+end function OS_getCWD
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Get the host name.
 !--------------------------------------------------------------------------------------------------
-function getHostName()
+function OS_getHostName()
 
-  character(len=:), allocatable :: getHostName
+  character(len=:), allocatable :: OS_getHostName
 
-  character(kind=C_CHAR,len=(pSTRLEN+1)) :: getHostName_Cstring
+  character(kind=C_CHAR,len=(pSTRLEN+1)) :: hostname_Cstring
   integer(C_INT) :: stat
 
 
-  call getHostName_C(getHostName_Cstring,stat)
+  call get_hostname_C(hostname_Cstring,stat)
 
   if (stat == 0) then
-    getHostName = c_f_string(getHostName_Cstring)
+    OS_getHostName = c_f_string(hostname_Cstring)
   else
-    getHostName = 'n/a (Error!)'
+    OS_getHostName = 'n/a (Error!)'
   end if
 
-end function getHostName
+end function OS_getHostName
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Get the user name.
 !--------------------------------------------------------------------------------------------------
-function getUserName()
+function OS_getUserName()
 
-  character(len=:), allocatable :: getUserName
+  character(len=:), allocatable :: OS_getUserName
 
-  character(kind=C_CHAR,len=(pSTRLEN+1)) :: getUserName_Cstring
+  character(kind=C_CHAR,len=(pSTRLEN+1)) :: username_Cstring
   integer(C_INT) :: stat
 
 
-  call getUserName_C(getUserName_Cstring,stat)
+  call get_username_C(username_Cstring,stat)
 
   if (stat == 0) then
-    getUserName = c_f_string(getUserName_Cstring)
+    OS_getUserName = c_f_string(username_Cstring)
   else
-    getUserName = 'n/a (Error!)'
+    OS_getUserName = 'n/a (Error!)'
   end if
 
-end function getUserName
+end function OS_getUserName
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert C string to Fortran string.
@@ -230,7 +230,7 @@ end function f_c_string
 !> @brief Test whether a file descriptor refers to a terminal.
 !> @detail A terminal is neither a file nor a redirected STDOUT/STDERR/STDIN.
 !--------------------------------------------------------------------------------------------------
-logical function isaTTY(unit)
+logical function OS_isaTTY(unit)
 
   integer, intent(in) :: unit
 
@@ -238,23 +238,23 @@ logical function isaTTY(unit)
   select case(unit)
 #ifndef LOGFILE
     case (OUTPUT_UNIT)
-      isaTTY = isatty_stdout_C()==1
+      OS_isaTTY = isatty_stdout_C()==1
     case (ERROR_UNIT)
-      isaTTY = isatty_stderr_C()==1
+      OS_isaTTY = isatty_stderr_C()==1
 #endif
     case (INPUT_UNIT)
-      isaTTY = isatty_stdin_C()==1
+      OS_isaTTY = isatty_stdin_C()==1
     case default
-      isaTTY = .false.
+      OS_isaTTY = .false.
   end select
 
-end function isaTTY
+end function OS_isaTTY
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Check correctness of some system_routine functions.
+!> @brief Check correctness of some OS functions.
 !--------------------------------------------------------------------------------------------------
-subroutine system_routines_selfTest()
+subroutine OS_selfTest()
 
   real :: r
   real, dimension(:), allocatable :: rnd_real
@@ -273,8 +273,8 @@ subroutine system_routines_selfTest()
 
   if (c_f_string(f_c_string(rnd_str)) /= rnd_str) error stop 'c_f_string/f_c_string'
 
-end subroutine system_routines_selfTest
+end subroutine OS_selfTest
 
 
-end module system_routines
+end module OS
 

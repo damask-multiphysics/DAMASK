@@ -37,12 +37,12 @@ void init_signal_c() {
 }
 
 
-int setcwd_c(const char *cwd){
+int set_cwd_c(const char *cwd){
   return chdir(cwd);
 }
 
 
-void getcwd_c(char cwd[], int *stat ){
+void get_cwd_c(char cwd[], int *stat ){
   char cwd_tmp[PATHLEN+1];
   if (getcwd(cwd_tmp, sizeof(cwd_tmp))){
     strcpy(cwd, cwd_tmp); // getcwd guarantees a NULL-terminated string
@@ -52,7 +52,7 @@ void getcwd_c(char cwd[], int *stat ){
 }
 
 
-void gethostname_c(char hostname[], int *stat){
+void get_hostname_c(char hostname[], int *stat){
   char hostname_tmp[STRLEN];
   if (gethostname(hostname_tmp, sizeof(hostname_tmp)) == 0){
     strncpy(hostname, hostname_tmp, sizeof(hostname_tmp)+1); // gethostname does not guarantee a NULL-terminated string
@@ -62,7 +62,7 @@ void gethostname_c(char hostname[], int *stat){
 }
 
 
-void getusername_c(char username[], int *stat){
+void get_username_c(char username[], int *stat){
   struct passwd *pw = getpwuid(getuid());
   if (pw && strlen(pw->pw_name) <= STRLEN){
     strncpy(username, pw->pw_name,STRLEN+1);

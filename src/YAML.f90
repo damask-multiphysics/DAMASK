@@ -10,7 +10,7 @@ module YAML
   use IO
   use types
 #ifdef FYAML
-  use system_routines
+  use OS
 #endif
 
   implicit none(type,external)
