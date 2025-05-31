@@ -27,12 +27,9 @@ module prec
   PetscErrorCode,  private   :: dummy_error_code
   integer,         parameter :: pPETSCINT = kind(dummy_int)
   integer,         parameter :: pPETSCERRORCODE = kind(dummy_error_code)
-  integer,         parameter :: pSTRLEN = STRLEN                                                    !< default string length
-  integer,         parameter :: pPATHLEN = PATHLEN                                                  !< maximum length of a path name on linux
-#else
+#endif
   integer,         parameter :: pSTRLEN = 256                                                       !< default string length
   integer,         parameter :: pPATHLEN = 4096                                                     !< maximum length of a path name on linux
-#endif
 
   real(pREAL), parameter :: tol_math_check = 1.0e-8_pREAL                                           !< tolerance for internal math self-checks (rotation)
 

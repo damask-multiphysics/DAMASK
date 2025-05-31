@@ -68,13 +68,14 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Report and set working directory.
 !--------------------------------------------------------------------------------------------------
-subroutine DAMASK_interface_init
+subroutine DAMASK_interface_init()
 
   integer, dimension(8)   :: dateAndTime
   integer                 :: ierr
-  character(len=pPathLen) :: wd
+  character(len=pPATHLEN) :: wd
 
   external                :: quit
+
 
   print'(/,1x,a)', '<<<+-  DAMASK_Marc init -+>>>'
 
