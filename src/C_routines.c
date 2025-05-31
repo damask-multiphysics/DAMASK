@@ -1,12 +1,7 @@
 #include <signal.h>
-#include <stdio.h>
 #include <unistd.h>
-#include <dirent.h>
 #include <string.h>
-#include <signal.h>
 #include <pwd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #ifdef GRID
 #include <zlib.h>
 #endif
