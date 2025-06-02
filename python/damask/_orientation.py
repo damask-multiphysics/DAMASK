@@ -192,7 +192,7 @@ class Orientation(Rotation,Crystal):
         other : Orientation
             Orientation to check for equality.
         """
-        return np.logical_not(self==other)
+        return np.logical_not(self==other) if isinstance(other, Orientation) else NotImplemented
 
 
     def isclose(self: MyType,

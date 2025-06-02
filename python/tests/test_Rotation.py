@@ -874,6 +874,14 @@ class TestRotation:
         assert R.allclose(R)
 
     @pytest.mark.parametrize('shape',[None,5,(4,6)])
+    def test_comparison_NotImplemented(self,np_rng,shape):
+        R = Rotation.from_random(shape,rng_seed=np_rng)
+        assert type(R != None) is bool
+        assert type(R == None) is bool
+        assert type(R != 15) is bool
+        assert type(R == 15) is bool
+
+    @pytest.mark.parametrize('shape',[None,5,(4,6)])
     def test_unequal(self,np_rng,shape):
         R = Rotation.from_random(shape,rng_seed=np_rng)
         assert not (R != R if shape is None else (R != R).any())

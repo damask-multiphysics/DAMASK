@@ -169,7 +169,7 @@ class Rotation:
         other : Rotation
             Rotation to check for inequality.
         """
-        return np.logical_not(self==other)
+        return np.logical_not(self==other) if isinstance(other, Rotation) else NotImplemented
 
 
     def isclose(self: MyType,
