@@ -34,6 +34,7 @@ set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/externalpackages:$ENV
 pkg_check_modules(HDF5 hdf5)
 pkg_check_modules(FFTW3 fftw3)
 pkg_check_modules(fYAML libfyaml)
+pkg_check_modules(LAPACK lapack)
 find_package(Boost)
 if(DAMASK_SOLVER_UPPER STREQUAL "GRID")
   pkg_check_modules(zlib zlib)
