@@ -1205,7 +1205,7 @@ class TestRotation:
 
 
     @pytest.mark.parametrize('sigma',[5,10,15,20])
-    @pytest.mark.parametrize('shape',[1000,10000,100000,(10,100)])
+    @pytest.mark.parametrize('shape',[1000,10000,100000,(20,40)])
     def test_spherical_component(self,sigma,shape):
         p = []
         for run in range(5):
@@ -1238,7 +1238,7 @@ class TestRotation:
 
 
     @pytest.mark.parametrize('sigma',[5,10,15,20])
-    @pytest.mark.parametrize('shape',[1000,10000,100000,(10,100)])
+    @pytest.mark.parametrize('shape',[1000,10000,100000,(20,40)])
     def test_from_fiber_component_sigma_shape(self,np_rng,sigma,shape):
 
         def astuple(a):
