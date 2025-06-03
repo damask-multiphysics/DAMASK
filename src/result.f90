@@ -80,7 +80,7 @@ subroutine result_init(restart)
 
   logical, intent(in) :: restart
 
-  character(len=pPathLen) :: commandLine
+  character(len=pPATHLEN) :: commandLine
   integer :: hdferr
   character(len=:), allocatable :: date
 

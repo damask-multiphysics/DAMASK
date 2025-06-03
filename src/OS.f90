@@ -18,11 +18,10 @@ module OS
     OS_getCWD, &
     OS_getHostName, &
     OS_getUserName, &
-    OS_isaTTY, &
 #if (defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || (defined(__GFORTRAN__) && __GNUC__ < 15)
     f_c_string, &
 #endif
-    free_C
+    OS_isaTTY
 
 
   interface
@@ -37,37 +36,27 @@ module OS
 
     subroutine get_CWD_C(cwd, stat) bind(C)
       use, intrinsic :: ISO_C_binding, only: C_INT, C_CHAR
-      use prec
 
       implicit none(type,external)
-      character(kind=C_CHAR), dimension(pPathLen+1), intent(out) :: cwd                             ! NULL-terminated array
-      integer(C_INT),                                intent(out) :: stat
+      character(kind=C_CHAR,len=:), allocatable, intent(out) :: cwd
+      integer(C_INT),                            intent(out) :: stat
     end subroutine get_CWD_C
 
     subroutine get_hostname_C(hostname, stat) bind(C)
       use, intrinsic :: ISO_C_binding, only: C_INT, C_CHAR
-      use prec
 
       implicit none(type,external)
-      character(kind=C_CHAR), dimension(pSTRLEN+1), intent(out) :: hostname                         ! NULL-terminated array
-      integer(C_INT),                               intent(out) :: stat
+      character(kind=C_CHAR,len=:), allocatable, intent(out) :: hostname
+      integer(C_INT),                            intent(out) :: stat
     end subroutine get_hostname_C
 
     subroutine get_username_C(username, stat) bind(C)
       use, intrinsic :: ISO_C_binding, only: C_INT, C_CHAR
-      use prec
 
       implicit none(type,external)
-      character(kind=C_CHAR), dimension(pSTRLEN+1), intent(out) :: username                         ! NULL-terminated array
-      integer(C_INT),                               intent(out) :: stat
+      character(kind=C_CHAR,len=:), allocatable, intent(out) :: username
+      integer(C_INT),                            intent(out) :: stat
     end subroutine get_username_C
-
-    subroutine free_C(ptr) bind(C,name='free')
-      use, intrinsic :: ISO_C_binding, only: C_PTR
-
-      implicit none(type,external)
-      type(C_PTR), value :: ptr
-    end subroutine free_C
 
     function isatty_stdout_C() bind(C)
       use, intrinsic :: ISO_C_binding, only: C_INT
@@ -125,19 +114,13 @@ end function OS_setCWD
 !--------------------------------------------------------------------------------------------------
 function OS_getCWD()
 
-  character(len=:), allocatable :: OS_getCWD
+  character(kind=C_CHAR,len=:), allocatable :: OS_getCWD
 
-  character(kind=C_CHAR,len=(pPathLen+1)) :: CWD_Cstring
   integer(C_INT) :: stat
 
 
-  call get_CWD_C(CWD_Cstring,stat)
-
-  if (stat == 0) then
-    OS_getCWD = c_f_string(CWD_Cstring)
-  else
-    error stop 'invalid working directory'
-  end if
+  call get_CWD_C(OS_getCWD,stat)
+  if (stat /= 0) error stop 'invalid working directory'
 
 end function OS_getCWD
 
@@ -147,19 +130,13 @@ end function OS_getCWD
 !--------------------------------------------------------------------------------------------------
 function OS_getHostName()
 
-  character(len=:), allocatable :: OS_getHostName
+  character(kind=C_CHAR,len=:), allocatable :: OS_getHostName
 
-  character(kind=C_CHAR,len=(pSTRLEN+1)) :: hostname_Cstring
   integer(C_INT) :: stat
 
 
-  call get_hostname_C(hostname_Cstring,stat)
-
-  if (stat == 0) then
-    OS_getHostName = c_f_string(hostname_Cstring)
-  else
-    OS_getHostName = 'n/a (Error!)'
-  end if
+  call get_hostname_C(OS_getHostName,stat)
+  if (stat /= 0) OS_getHostName = 'n/a (Error!)'
 
 end function OS_getHostName
 
@@ -169,21 +146,16 @@ end function OS_getHostName
 !--------------------------------------------------------------------------------------------------
 function OS_getUserName()
 
-  character(len=:), allocatable :: OS_getUserName
+  character(kind=C_CHAR,len=:), allocatable :: OS_getUserName
 
-  character(kind=C_CHAR,len=(pSTRLEN+1)) :: username_Cstring
   integer(C_INT) :: stat
 
 
-  call get_username_C(username_Cstring,stat)
-
-  if (stat == 0) then
-    OS_getUserName = c_f_string(username_Cstring)
-  else
-    OS_getUserName = 'n/a (Error!)'
-  end if
+  call get_username_C(OS_getUserName,stat)
+  if (stat /= 0) OS_getUserName = 'n/a (Error!)'
 
 end function OS_getUserName
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert C string to Fortran string.

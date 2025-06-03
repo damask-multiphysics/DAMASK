@@ -24,12 +24,12 @@ module YAML
 #ifdef FYAML
   interface
 
-    subroutine to_flow_C(flow,length_flow,mixed) bind(C)
-      use, intrinsic :: ISO_C_binding, only: C_LONG, C_CHAR, C_PTR
+    subroutine to_flow_C(flow,mixed,stat) bind(C)
+      use, intrinsic :: ISO_C_binding, only: C_INT, C_CHAR
       implicit none(type,external)
 
-      type(C_PTR), intent(out) :: flow
-      integer(C_LONG), intent(out) :: length_flow
+      character(kind=C_CHAR,len=:), allocatable, intent(out) :: flow
+      integer(C_INT), intent(out) :: stat
       character(kind=C_CHAR), dimension(*), intent(in) :: mixed
     end subroutine to_flow_C
 
@@ -215,23 +215,13 @@ end function quotedStr
 function to_flow(mixed) result(flow)
 
   character(len=*), intent(in) :: mixed
-  character(:,C_CHAR), allocatable :: flow
+  character(len=:,kind=C_CHAR), allocatable :: flow
 
-  type(C_PTR) :: str_ptr
-  integer(C_LONG) :: strlen
+  integer(C_INT) :: stat
 
 
-  call to_flow_C(str_ptr,strlen,f_c_string(mixed))
-  if (strlen < 1_C_LONG) call IO_error(703,ext_msg='libyfaml')
-  allocate(character(len=strlen,kind=c_char) :: flow)
-
-  block
-    character(len=strlen,kind=c_char), pointer :: s
-    call c_f_pointer(str_ptr,s)
-    flow = s(:len(s,kind=pI64)-1_pI64)
-  end block
-
-  call free_C(str_ptr)
+  call to_flow_C(flow,f_c_string(mixed),stat)
+  if (stat /= 0_C_INT) call IO_error(703,ext_msg='libyfaml')
 
 end function to_flow
 
