@@ -403,13 +403,6 @@ class VTK:
 
         return VTK(vtk_data)
 
-
-    @staticmethod
-    def _write(writer):
-        """Wrapper for parallel writing."""
-        writer.Write()
-
-
     def as_ASCII(self) -> str:
         """ASCII representation of the VTK data."""
         writer = vtkDataSetWriter()
@@ -419,6 +412,11 @@ class VTK:
         writer.Write()
         return writer.GetOutputString()
 
+
+    @staticmethod
+    def _write(writer):
+        """Wrapper for parallel writing."""
+        writer.Write()
 
     def save(self,
              fname: Union[str, Path],
