@@ -203,21 +203,21 @@ subroutine CLI_init()
   print'(/,1x,a)',      'Host name: '//OS_getHostName()
   print'(1x,a)',        'User name: '//OS_getUserName()
 
-  print'(/,1x,a,/)',    'Command line call:      '//trim(commandLine)
-  print'(1x,a)',        'Working directory:      '//IO_glueDiffering(OS_getCWD(),workingDirArg)
-  print'(1x,a)',        'Geometry:               '//IO_glueDiffering(CLI_geomFile,geomArg)
-  print'(1x,a)',        'Load case:              '//IO_glueDiffering(CLI_loadFile,loadArg)
-  print'(1x,a)',        'Material config:        '//IO_glueDiffering(CLI_materialFile,materialArg)
+  print'(/,1x,a,/)',    'Command line call:  '//trim(commandLine)
+  print'(1x,a)',        'Working directory:  '//IO_glueDiffering(OS_getCWD(),workingDirArg)
+  print'(1x,a)',        'Geometry:           '//IO_glueDiffering(CLI_geomFile,geomArg)
+  print'(1x,a)',        'Load case:          '//IO_glueDiffering(CLI_loadFile,loadArg)
+  print'(1x,a)',        'Material config:    '//IO_glueDiffering(CLI_materialFile,materialArg)
   if (allocated(numericsArg)) &
-    print'(1x,a)',      'Numerics config:        '//IO_glueDiffering(CLI_numericsFile,numericsArg)
-  print'(1x,a)',        'Job name:               '//CLI_jobName
+    print'(1x,a)',      'Numerics config:    '//IO_glueDiffering(CLI_numericsFile,numericsArg)
+  print'(1x,a)',        'Job name:           '//CLI_jobName
 #ifdef BOOST
    if (worldrank == 0) CLI_jobID = get_UUID()
    call parallelization_bcast_str(CLI_jobID)
-  print'(1x,a)',        'Job ID:                 '//CLI_jobID
+  print'(1x,a)',        'Job ID:             '//CLI_jobID
 #endif
   if (CLI_restartInc > 0) &
-    print'(1x,a,i6.6)', 'Restart from increment: ', CLI_restartInc
+    print'(1x,a,i0)', 'Restart increment:    ', CLI_restartInc
 
 
 end subroutine CLI_init
