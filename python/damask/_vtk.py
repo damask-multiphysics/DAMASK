@@ -6,6 +6,13 @@ from typing import Optional, Union, Literal, Sequence
 
 import numpy as np
 
+# needed for visualization but might not be available everywhere
+# https://gitlab.kitware.com/vtk/vtk/-/issues/19687
+try:
+    import vtkmodules.vtkRenderingOpenGL2                                                           # noqa
+except ImportError:
+    pass
+
 from vtkmodules.vtkIOXML import vtkXMLReader, vtkXMLWriter
 
 from vtkmodules.vtkCommonCore import (
