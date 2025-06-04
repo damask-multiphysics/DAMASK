@@ -19,16 +19,17 @@ module prec
   public
 
   ! https://stevelionel.com/drfortran/2017/03/27/doctor-fortran-in-it-takes-all-kinds
-  integer,     parameter :: pREAL      = IEEE_selected_real_kind(15,307)                            !< number with 15 significant digits, up to 1e+-307 (typically 64 bit)
-  integer,     parameter :: pI32       = selected_int_kind(9)                                       !< number with at least up to +-1e9 (typically 32 bit)
-  integer,     parameter :: pI64       = selected_int_kind(18)                                      !< number with at least up to +-1e18 (typically 64 bit)
+  integer, parameter :: pREAL = IEEE_selected_real_kind(15,307)                                     !< number with 15 significant digits, up to 1e+-307 (typically 64 bit)
+  integer, parameter :: pI16  = selected_int_kind(4)                                                !< number with at least up to +-1e4 (typically 16 bit)
+  integer, parameter :: pI32  = selected_int_kind(9)                                                !< number with at least up to +-1e9 (typically 32 bit)
+  integer, parameter :: pI64  = selected_int_kind(18)                                               !< number with at least up to +-1e18 (typically 64 bit)
 #ifdef PETSC
   PetscInt,        private   :: dummy_int
   PetscErrorCode,  private   :: dummy_error_code
   integer,         parameter :: pPETSCINT = kind(dummy_int)
   integer,         parameter :: pPETSCERRORCODE = kind(dummy_error_code)
 #endif
-  integer,         parameter :: pSTRLEN = 256                                                       !< default string length
+  integer,         parameter :: pSTRLEN = 256                                                       !< default length for fixed length strings
   integer,         parameter :: pPATHLEN = 4096                                                     !< maximum length of a path name on linux
 
   real(pREAL), parameter :: tol_math_check = 1.0e-8_pREAL                                           !< tolerance for internal math self-checks (rotation)
