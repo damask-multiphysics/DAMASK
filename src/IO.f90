@@ -13,7 +13,7 @@ module IO
   use prec
   use constants
   use misc
-#ifndef MARC4DAMASK
+#ifndef MARC_SOURCE
   use system_routines
 #endif
 
@@ -268,7 +268,7 @@ function IO_color(fg,bg,unit)
 
   IO_color = ''
 
-#ifndef MARC4DAMASK
+#ifndef MARC_SOURCE
   if (.not. isatty(misc_optional(unit,IO_STDOUT))) return
 
   if (present(fg)) &

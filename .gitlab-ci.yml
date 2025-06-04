@@ -191,6 +191,29 @@ compile_mesh_min:
     - .fortran_min
     - .on_merge
 
+Marc_patch:
+  stage: compile
+  image: git.damask-multiphysics.org:5050/damask/damask/marc_base:${MARC_VERSION}
+  tags:
+    - docker_all
+  script:
+    - source env/DAMASK.sh
+    - export TMPDIR=/tmp
+    - python3 install/MarcMentat/MSC_modifications.py --editor=gted --marc-version="${MARC_VERSION}" --damask-root="${CI_PROJECT_DIR}" --marc-root=/opt/msc
+    - test -f "/opt/msc/mentat${MARC_VERSION}/bin/kill6"
+    - cd examples/Marc && python3 -c "import damask;damask.solver.Marc(version=${MARC_VERSION}).submit_job('r-value','texture',True,'h')"
+    - test -f "${CI_PROJECT_DIR}/src/Marc/DAMASK_Marc.marc" || { echo "Marc simulation failed, DAMASK_Marc.marc not generated"; exit 1; }
+
+Marc_compile:
+  stage: compile
+  image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
+  tags:
+    - docker_all
+  script:
+    - source env/DAMASK.sh
+    - cd PRIVATE/testing
+    - pytest -k 'compile and Marc'
+
 
 ###################################################################################################
 
@@ -227,6 +250,17 @@ open-source_GCC:
     - cd PRIVATE/testing
     - pytest -v -k 'not compile and not Marc'
 
+Marc_run:
+  stage: fortran
+  image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
+  tags:
+    - docker_all
+  before_script:
+    - source env/DAMASK.sh
+    - cd examples/Marc && python3 -c "import damask;damask.solver.Marc(version=${MARC_VERSION}).submit_job('r-value','texture',True,'h')"
+  script:
+    - cd ${CI_PROJECT_DIR}/PRIVATE/testing
+    - pytest -k 'not compile and Marc'
 
 ###################################################################################################
 update_website_master:
