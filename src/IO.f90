@@ -20,11 +20,24 @@ module IO
 implicit none(type,external)
   private
 
-  character(len=*), parameter, public :: &
-    IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13), &                         !< whitespace characters
-    IO_QUOTES  = "'"//'"'
+  ! For transition period
+  interface IO_error
+    module procedure IO_error_new
+    module procedure IO_error_old
+  end interface IO_error
+  interface IO_warning
+    module procedure IO_warning_new
+    module procedure IO_warning_old
+  end interface IO_warning
+
   character, parameter, public :: &
+    IO_ESC = achar(27), &                                                                           !< escape character
     IO_EOL = LF                                                                                     !< end of line character
+  character(len=*), parameter, public :: &
+    IO_FORMATRESET = IO_ESC//'[0m', &                                                               !< reset formatting
+    IO_EMPH = IO_ESC//'[3m', &                                                                      !< emphasize (italics)
+    IO_QUOTES  = "'"//'"' , &                                                                       !< quotes for strings
+    IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13)                            !< whitespace characters
 
   public :: &
     IO_init, &
@@ -78,7 +91,7 @@ function IO_read(fileName) result(fileContent)
   inquire(file = fileName, size=fileLength)
   open(newunit=fileUnit, file=fileName, access='stream',&
        status='old', position='rewind', action='read',iostat=myStat)
-  if (myStat /= 0) call IO_error(100,trim(fileName))
+  if (myStat /= 0) call IO_error(100_pI16,trim(fileName),emph=[1])
   allocate(character(len=fileLength)::fileContent)
   if (fileLength==0) then
     close(fileUnit)
@@ -86,7 +99,7 @@ function IO_read(fileName) result(fileContent)
   end if
 
   read(fileUnit,iostat=myStat) fileContent
-  if (myStat /= 0) call IO_error(102,trim(fileName))
+  if (myStat /= 0) call IO_error(102_pI16,trim(fileName),emph=[1])
   close(fileUnit)
 
   if (index(fileContent,CR//LF,kind=pI64) /= 0)     fileContent = CRLF2LF(fileContent)
@@ -163,8 +176,6 @@ pure function IO_lc(str)
 end function IO_lc
 
 
-
-
 !--------------------------------------------------------------------------------------------------
 ! @brief Return first (with glued on second if they differ).
 !--------------------------------------------------------------------------------------------------
@@ -228,7 +239,7 @@ integer function IO_strAsInt(str)
 
 
   read(str,*,iostat=readStatus) IO_strAsInt
-  if (readStatus /= 0) call IO_error(111,'cannot represent "'//str//'" as integer')
+  if (readStatus /= 0) call IO_error(111_pI16,'cannot represent',str,'as integer',emph=[2])
 
 end function IO_strAsInt
 
@@ -244,7 +255,7 @@ real(pREAL) function IO_strAsReal(str)
 
 
   read(str,*,iostat=readStatus) IO_strAsReal
-  if (readStatus /= 0) call IO_error(111,'cannot represent "'//str//'" as real')
+  if (readStatus /= 0) call IO_error(111_pI16,'cannot represent',str,'as real',emph=[2])
 
 end function IO_strAsReal
 
@@ -264,7 +275,7 @@ logical function IO_strAsBool(str)
   elseif (trim(adjustl(str)) == 'False' .or. trim(adjustl(str)) == 'false') then
     IO_strAsBool = .false.
   else
-    call IO_error(111,'cannot represent "'//str//'" as boolean')
+    call IO_error(111_pI16,'cannot represent',str,'as boolean',emph=[2])
   end if
 
 end function IO_strAsBool
@@ -290,15 +301,15 @@ function IO_color(fg,bg,unit)
   if (.not. OS_isaTTY(misc_optional(unit,IO_STDOUT))) return
 
   if (present(fg)) &
-    IO_color = IO_color//achar(27)//'[38;2;'//IO_intAsStr(fg(1))//';' &
-                                            //IO_intAsStr(fg(2))//';' &
-                                            //IO_intAsStr(fg(3))//'m'
+    IO_color = IO_color//IO_ESC//'[38;2;'//IO_intAsStr(fg(1))//';' &
+                                         //IO_intAsStr(fg(2))//';' &
+                                         //IO_intAsStr(fg(3))//'m'
   if (present(bg)) &
-    IO_color = IO_color//achar(27)//'[48;2;'//IO_intAsStr(bg(1))//';' &
-                                            //IO_intAsStr(bg(2))//';' &
-                                            //IO_intAsStr(bg(3))//'m'
+    IO_color = IO_color//IO_ESC//'[48;2;'//IO_intAsStr(bg(1))//';' &
+                                         //IO_intAsStr(bg(2))//';' &
+                                         //IO_intAsStr(bg(3))//'m'
 
-  if (.not. present(fg) .and. .not. present(bg)) IO_color = achar(27)//'[0m'
+  if (.not. present(fg) .and. .not. present(bg)) IO_color = IO_FORMATRESET
 #endif
 
 end function IO_color
@@ -306,15 +317,19 @@ end function IO_color
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write error statements and terminate the run with exit #9xxx.
+!> @details Should become "IO_error" after completed migration.
 !--------------------------------------------------------------------------------------------------
-subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
+subroutine IO_error_new(error_ID, &
+                        info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9, &
+                        emph)
 
-  integer,                    intent(in) :: error_ID
-  character(len=*), optional, intent(in) :: ext_msg,label1,label2
-  integer,          optional, intent(in) :: ID1,ID2
 
-  external                      :: quit
+  integer(pI16),      intent(in) :: error_ID        ! should go back to default integer after completed migration.
+  class(*), optional, intent(in) :: info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9
+  integer, dimension(:), optional, intent(in) :: emph                                               !< which info(s) to emphasize
+
   character(len=:), allocatable :: msg
+  external :: quit
 
 
   select case (error_ID)
@@ -496,26 +511,63 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
 
   end select
 
-  call panel('error',error_ID,msg, &
-                     ext_msg=ext_msg, &
-                     label1=label1,ID1=ID1, &
-                     label2=label2,ID2=ID2)
-  call quit(9000+error_ID)
+  call panel('error',int(error_ID),msg, &
+             info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9, &
+             emph)
+  call quit(9000+int(error_ID))
 
-end subroutine IO_error
+end subroutine IO_error_new
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Write error statements and terminate the run with exit #9xxx.
+!> @details Deprecated.
+!--------------------------------------------------------------------------------------------------
+subroutine IO_error_old(error_ID,ext_msg,label1,ID1,label2,ID2)
+
+  integer,                    intent(in) :: error_ID
+  character(len=*), optional, intent(in) :: ext_msg,label1,label2
+  integer,          optional, intent(in) :: ID1,ID2
+
+  external                      :: quit
+  character(len=:), allocatable :: msg_extra
+
+
+  if (.not. present(label1) .and. present(ID1)) error stop 'missing label for value 1'
+  if (.not. present(label2) .and. present(ID2)) error stop 'missing label for value 2'
+
+  msg_extra = ''
+  if (present(ext_msg)) msg_extra = msg_extra//ext_msg//IO_EOL
+  if (present(label1)) then
+    msg_extra = msg_extra//'at '//label1
+    if (present(ID1)) msg_extra = msg_extra//' '//IO_intAsStr(ID1)
+    msg_extra = msg_extra//IO_EOL
+  end if
+  if (present(label2)) then
+    msg_extra = msg_extra//'at '//label2
+    if (present(ID2)) msg_extra = msg_extra//' '//IO_intAsStr(ID2)
+    msg_extra = msg_extra//IO_EOL
+  end if
+
+  call IO_error_new(int(error_ID,pI16),msg_extra,IO_EOL)
+
+end subroutine IO_error_old
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write warning statements.
+!> @details Should become "IO_warning" after completed migration.
 !--------------------------------------------------------------------------------------------------
-subroutine IO_warning(warning_ID,ext_msg,label1,ID1,label2,ID2)
+subroutine IO_warning_new(warning_ID, &
+                          info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9, &
+                          emph)
 
-  integer,                    intent(in) :: warning_ID
-  character(len=*), optional, intent(in) :: ext_msg,label1,label2
-  integer,          optional, intent(in) :: ID1,ID2
+
+  integer(pI16),      intent(in) :: warning_ID        ! should go back to default integer after completed migration.
+  class(*), optional, intent(in) :: info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9
+  integer, dimension(:), optional, intent(in) :: emph                                              !< which info(s) to emphasize
 
   character(len=:), allocatable :: msg
-
 
   select case (warning_ID)
     case (47)
@@ -533,12 +585,59 @@ subroutine IO_warning(warning_ID,ext_msg,label1,ID1,label2,ID2)
       error stop 'invalid warning number'
   end select
 
-  call panel('warning',warning_ID,msg, &
-             ext_msg=ext_msg, &
-             label1=label1,ID1=ID1, &
-             label2=label2,ID2=ID2)
+  call panel('warning',int(warning_ID),msg, &
+             info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9, &
+             emph)
 
-end subroutine IO_warning
+end subroutine IO_warning_new
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Write warning statements.
+!--------------------------------------------------------------------------------------------------
+subroutine IO_warning_old(warning_ID,ext_msg,label1,ID1,label2,ID2)
+
+  integer,                    intent(in) :: warning_ID
+  character(len=*), optional, intent(in) :: ext_msg,label1,label2
+  integer,          optional, intent(in) :: ID1,ID2
+
+  character(len=:), allocatable :: msg,msg_extra
+
+
+  if (.not. present(label1) .and. present(ID1)) error stop 'missing label for value 1'
+  if (.not. present(label2) .and. present(ID2)) error stop 'missing label for value 2'
+
+  select case (warning_ID)
+    case (47)
+      msg = 'invalid parameter for FFTW'
+    case (207)
+      msg = 'line truncated'
+    case (600)
+      msg = 'crystallite responds elastically'
+    case (601)
+      msg = 'stiffness close to zero'
+    case (709)
+      msg = 'read only the first document'
+
+    case default
+      error stop 'invalid warning number'
+  end select
+
+  msg_extra = ''
+  if (present(ext_msg)) msg_extra = msg_extra//ext_msg//IO_EOL
+  if (present(label1)) then
+    msg_extra = msg_extra//'at '//label1
+    if (present(ID1)) msg_extra = msg_extra//' '//IO_intAsStr(ID1)
+    msg_extra = msg_extra//IO_EOL
+  end if
+  if (present(label2)) then
+    msg_extra = msg_extra//'at '//label2
+    if (present(ID2)) msg_extra = msg_extra//' '//IO_intAsStr(ID2)
+    msg_extra = msg_extra//IO_EOL
+  end if
+  call panel('warning',warning_ID,msg,msg_extra,IO_EOL)
+
+end subroutine IO_warning_old
 
 
 !--------------------------------------------------------------------------------------------------
@@ -597,58 +696,115 @@ end subroutine tokenize
 !--------------------------------------------------------------------------------------------------
 !> @brief Write statements to standard error.
 !--------------------------------------------------------------------------------------------------
-subroutine panel(paneltype,ID,msg,ext_msg,label1,ID1,label2,ID2)
+subroutine panel(paneltype,ID,msg, &
+                 info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9, &
+                 emph)
 
-  character(len=*),           intent(in) :: paneltype,msg
-  character(len=*), optional, intent(in) :: ext_msg,label1,label2
+  character(len=*),           intent(in) :: paneltype, msg
   integer,                    intent(in) :: ID
-  integer,          optional, intent(in) :: ID1,ID2
+  class(*),         optional, intent(in) :: info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9
+  integer, dimension(:), optional, intent(in) :: emph                                               !< which info(s) to emphasize
 
-  character(len=pSTRLEN)                 :: formatString
-  integer, parameter                     :: panelwidth = 69
-  character(len=:), allocatable          :: msg_,ID_,msg1,msg2
-  character(len=*), parameter            :: DIVIDER = repeat('─',panelwidth)
+  integer, parameter :: panelwidth = 69
+  character(len=*), parameter :: DIVIDER = repeat('─',panelwidth)
+  character(len=pSTRLEN) :: formatString
+  character(len=:), allocatable :: heading, msg_, info_extra
+  character(len=:), dimension(:), allocatable :: info_split
+  integer :: len_corrected, &                                                                       !< string length corrected for control characters
+             i
 
 
-  if (.not. present(label1) .and. present(ID1)) error stop 'missing label for value 1'
-  if (.not. present(label2) .and. present(ID2)) error stop 'missing label for value 2'
+  heading = paneltype//' '//IO_intAsStr(ID)
 
-  ID_ = IO_intAsStr(ID)
-  if (present(label1)) msg1 = label1
-  if (present(label2)) msg2 = label2
-  if (present(ID1)) msg1 = msg1//' '//IO_intAsStr(ID1)
-  if (present(ID2)) msg2 = msg2//' '//IO_intAsStr(ID2)
+  select case (paneltype)
 
-  if (paneltype == 'error')   msg_ = IO_color([255,0,0],  unit=IO_STDERR)//trim(msg)//IO_color(unit=IO_STDERR)
-  if (paneltype == 'warning') msg_ = IO_color([255,255,0],unit=IO_STDERR)//trim(msg)//IO_color(unit=IO_STDERR)
+    case ('error')
+       msg_ = IO_color([255,0,0],  unit=IO_STDERR)//trim(msg)//IO_color(unit=IO_STDERR)
+    case ('warning')
+       msg_ = IO_color([255,192,0],unit=IO_STDERR)//trim(msg)//IO_color(unit=IO_STDERR)
+    case default
+       error stop 'invalid panel type: '//trim(paneltype)
+
+  end select
+
+  info_extra = as_str(info_1,any(emph==1)) &
+            // as_str(info_2,any(emph==2)) &
+            // as_str(info_3,any(emph==3)) &
+            // as_str(info_4,any(emph==4)) &
+            // as_str(info_5,any(emph==5)) &
+            // as_str(info_6,any(emph==6)) &
+            // as_str(info_7,any(emph==7)) &
+            // as_str(info_8,any(emph==8)) &
+            // as_str(info_9,any(emph==9))
+
+
   !$OMP CRITICAL (write2out)
-  write(IO_STDERR,'(/,a)')                ' ┌'//DIVIDER//'┐'
-  write(formatString,'(a,i2,a)') '(a,24x,a,1x,i0,',max(1,panelwidth-24-len_trim(paneltype)-1-len_trim(ID_)),'x,a)'
-  write(IO_STDERR,formatString)          ' │',trim(paneltype),ID,                                   '│'
-  write(IO_STDERR,'(a)')                  ' ├'//DIVIDER//'┤'
-  write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a4,a',max(1,len_trim(msg_)),',',&
-                                                     max(1,panelwidth+3-len_trim(msg)-4),'x,a)'
-  write(IO_STDERR,formatString)            '│ ',trim(msg_),                                         '│'
-  if (present(ext_msg)) then
-    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
-                                                       max(1,panelwidth+3-len_trim(ext_msg)-4),'x,a)'
-    write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
-  end if
-  if (present(label1)) then
-    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(msg1)),',',&
-                                                       max(1,panelwidth+3-len_trim(msg1)-7),'x,a)'
-    write(IO_STDERR,formatString)          '│ at ',trim(msg1),                                     '│'
-  end if
-  if (present(label2)) then
-    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(msg2)),',',&
-                                                       max(1,panelwidth+3-len_trim(msg2)-7),'x,a)'
-    write(IO_STDERR,formatString)          '│ at ',trim(msg2),                                     '│'
-  end if
-  write(formatString,'(a,i2.2,a)') '(a,',max(1,panelwidth),'x,a)'
-  write(IO_STDERR,formatString)          ' │',                                                     '│'
-  write(IO_STDERR,'(a)')                  ' └'//DIVIDER//'┘'
+  write(IO_STDERR,'(/,a)')                ' ┌'       //DIVIDER//        '┐'
+  write(formatString,'(a,i2,a)') '(a,24x,a,',max(1,panelwidth-24-len_trim(heading)),'x,a)'
+  write(IO_STDERR,formatString)           ' │',    trim(heading),       '│'
+  write(IO_STDERR,'(a)')                  ' ├'       //DIVIDER//        '┤'
+  write(formatString,'(a,i3.3,a,i3.3,a)') '(a,a',max(1,len_trim(msg_)),',',&
+                                                 max(1,panelwidth+3-len_trim(msg)-4),'x,a)'
+  write(IO_STDERR,formatString)           ' │ ',     trim(msg_),        '│'
+  if (len_trim(info_extra) > 0) then
+    call tokenize(info_extra,IO_EOL,info_split)
+    do i = 1, size(info_split)
+      info_extra = adjustl(info_split(i))
+      if (len_trim(info_extra) == 0) then
+        write(IO_STDERR,'(a)')            ' │'//repeat(' ',panelwidth)//'│'
+      else
+        len_corrected = len_trim(info_extra) - count([(info_extra(i:i)==IO_ESC,i=1,len_trim(info_extra))])*4
+        write(formatString,'(a,i3.3,a,i3.3,a)') '(a,a',max(1,len_trim(info_extra)),',',&
+                                                       max(1,panelwidth+3-len_corrected-4),'x,a)'
+        write(IO_STDERR,formatString)     ' │ ',    trim(info_extra),   '│'
+      end if
+    end do
+  endif
+  write(IO_STDERR,'(a)')                  ' └'       //DIVIDER//        '┘'
   flush(IO_STDERR)
   !$OMP END CRITICAL (write2out)
+
+  contains
+
+    !-----------------------------------------------------------------------------------------------
+    !> @brief Convert to string with white space prefix and optional emphasis.
+    !-----------------------------------------------------------------------------------------------
+    function as_str(info,emph)
+
+      character(len=:), allocatable :: as_str
+      class(*), optional, intent(in) :: info
+      logical, optional, intent(in) :: emph
+
+
+      if (present(info)) then
+        select type(info)
+          type is (character(*))
+            as_str = info
+          type is (integer)
+            as_str = IO_intAsStr(info)
+          type is (real(pREAL))
+            as_str = IO_realAsStr(info)
+          class default
+            error stop 'cannot convert info argument to string'
+        end select
+
+        if (present(emph)) then
+#ifndef MARC_SOURCE
+          if (OS_isaTTY(IO_STDERR)) then
+            as_str = IO_EMPH//as_str//IO_FORMATRESET
+          else
+            as_str = IO_QUOTES(2:2)//as_str//IO_QUOTES(2:2)
+          end if
+#else
+          as_str = IO_QUOTES(2:2)//as_str//IO_QUOTES(2:2)
+#endif
+        end if
+        as_str = ' '//as_str
+      else
+        as_str = ''
+      end if
+
+    end function as_str
 
 end subroutine panel
 
