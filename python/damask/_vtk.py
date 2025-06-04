@@ -244,7 +244,7 @@ class VTK:
     @staticmethod
     def from_unstructured_grid(nodes: np.ndarray,
                                connectivity: np.ndarray,
-                               cell_type: str) -> 'VTK':
+                               cell_type: Literal['TRIANGLE', 'TETRA', 'QUAD', 'HEXAHEDRON']) -> 'VTK':
         """
         Create VTK of type vtkUnstructuredGrid.
 
@@ -257,8 +257,8 @@ class VTK:
         connectivity : numpy.ndarray of np.dtype = np.int64
             Cell connectivity (0-based), first dimension determines #Cells,
             second dimension determines #Nodes/Cell.
-        cell_type : str
-            Name of the vtkCell subclass. Tested for TRIANGLE, QUAD, TETRA, and HEXAHEDRON.
+        cell_type : {'TRIANGLE', 'QUAD', 'TETRA', 'HEXAHEDRON'}
+            Name of the vtkCell subclass.
 
         Returns
         -------
