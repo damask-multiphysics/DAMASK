@@ -5,7 +5,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Parse command line interface for PETSc-based solvers
 !--------------------------------------------------------------------------------------------------
-#define PETSC_MINOR_MIN 12
+#define PETSC_MINOR_MIN 15
 #define PETSC_MINOR_MAX 23
 
 module CLI
@@ -80,22 +80,24 @@ subroutine CLI_init()
  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
 #ifdef DEBUG
   print'(a)', IO_color([255,0,0])
-  print'(1x,a,/)', 'debug version - debug version - debug version - debug version - debug version'
-#else
-  print'(a)', IO_color([67,128,208])
+  print'(1x,a)', 'debug version - debug version - debug version - debug version - debug version'
 #endif
+  print'(a)', IO_color([67,128,208])
   print'(1x,a)', '    _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/    _/_/_/'
   print'(1x,a)', '   _/    _/  _/    _/  _/_/  _/_/  _/    _/  _/        _/  _/            _/'
   print'(1x,a)', '  _/    _/  _/_/_/_/  _/  _/  _/  _/_/_/_/    _/_/    _/_/          _/_/'
   print'(1x,a)', ' _/    _/  _/    _/  _/      _/  _/    _/        _/  _/  _/            _/'
   print'(1x,a)', '_/_/_/    _/    _/  _/      _/  _/    _/  _/_/_/    _/    _/    _/_/_/'
 #if   defined(GRID)
+  print'(a)', IO_color([123,207,68])
   print'(1x,a)', 'Grid solver'
 #elif defined(MESH)
+  print'(a)', IO_color([230,150,68])
   print'(1x,a)', 'Mesh solver'
 #endif
 #ifdef DEBUG
-  print'(/,1x,a)', 'debug version - debug version - debug version - debug version - debug version'
+  print'(a)', IO_color([255,0,0])
+  print'(1x,a)', 'debug version - debug version - debug version - debug version - debug version'
 #endif
   print'(a)', IO_color()
 
@@ -107,19 +109,18 @@ subroutine CLI_init()
   print'(1x,a)', 'https://doi.org/'//PETSc_DOI
 #endif
 #endif
-  print'(/,1x,a)', 'Version: '//DAMASKVERSION
-
-  print'(/,1x,a)', 'Compiled with: '//compiler_version()
-  print'(1x,a)',   'Compiled on: '//CMAKE_SYSTEM
-  print'(1x,a)',   'Compiler options: '//compiler_options()
+  print'(/,1x,a)', 'Version: '//DAMASK_VERSION
 
   ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
-  print'(/,1x,a)', 'Compiled on: '//__DATE__//' at '//__TIME__
+  print'(/,1x,a)', 'Compiled with: '//compiler_version()
+  print'(1x,a)',   'Compiler options: '//compiler_options()
+  print'(1x,a)',   'Compiled for: '//CMAKE_SYSTEM_NAME//' on '//CMAKE_SYSTEM_PROCESSOR
+  print'(1x,a,1x,i0,a,i0,a,i0)', &
+                   'PETSc version:',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.',PETSC_VERSION_SUBMINOR
 
-  print'(/,1x,a,1x,i0,a,i0,a,i0)', &
-                'PETSc version:',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.',PETSC_VERSION_SUBMINOR
+  print'(/,1x,a)', 'Compiled at: '//__DATE__//' at '//__TIME__
 
-  call date_and_time(values = dateAndTime)
+   call date_and_time(values = dateAndTime)
   print'(/,1x,a,1x,2(i2.2,a),i4.4)', 'Date:',dateAndTime(3),'/',dateAndTime(2),'/',dateAndTime(1)
   print'(1x,a,1x,2(i2.2,a),i2.2)',   'Time:',dateAndTime(5),':',dateAndTime(6),':',dateAndTime(7)
 
@@ -424,33 +425,43 @@ subroutine help()
   print'(/,1x,a)','-----------------------------------------------------------------------'
   print'(1x,a)',  'Mandatory flags:'
   print'(/,1x,a)','  --geom GEOMFILE'
-  print'(1x,a)',  '       specify the file path of the geometry definition'
+#if defined(GRID)
+  print'(1x,a)',  '       Relative or absolute path to a VTK image data file (*.vti)'
+  print'(1x,a)',  '       with mandatory "material" field variable.'
+#elif defined(MESH)
+  print'(1x,a)',  '       Relative or absolute path to a Gmsh file (*.msh)'
+  print'(1x,a)',  '       with definitions of physical groups/tags for material IDs'
+  print'(1x,a)',  '       and boundary conditions.'
+#endif
   print'(/,1x,a)','  --load LOADFILE'
-  print'(1x,a)',  '       specify the file path of the load case definition'
+  print'(1x,a)',  '       Relative or absolute path to a load case definition'
+  print'(1x,a)',  '       in YAML format.'
   print'(/,1x,a)','  --material MATERIALFILE'
-  print'(1x,a)',  '       specify the file path of the material configuration'
+  print'(1x,a)',  '       Relative or absolute path to a material configuration'
+  print'(1x,a)',  '       in YAML format.'
   print'(/,1x,a)','-----------------------------------------------------------------------'
   print'(1x,a)',  'Optional flags:'
   print'(/,1x,a)','  --numerics NUMERICSFILE'
-  print'(1x,a)',  '       Specify the file path of the numerics configuration'
+  print'(1x,a)',  '       Relative or absolute path to a numerics configuration'
+  print'(1x,a)',  '       in YAML format.'
   print'(/,1x,a)','  --jobname JOBNAME'
-  print'(1x,a)',  '       specify the job name.'
-  print'(1x,a)',  '       Defaults to GEOM_LOAD_MATERIAL[_NUMERICS].'
-  print'(/,1x,a)','  --workingdirectory WORKINGDIRECTORY'
-  print'(1x,a)',  '       specify the base directory of relative paths.'
-  print'(1x,a)',  '       Defaults to the current working directory'
+  print'(1x,a)',  '       Job name, defaults to GEOM_LOAD_MATERIAL[_NUMERICS].'
+  print'(/,1x,a)','  --workingdir WORKINGDIRECTORY'
+  print'(1x,a)',  '       Working directory, defaults to current directory and'
+  print'(1x,a)',  '       serves as base directory of relative paths.'
 #if defined(GRID)
   print'(/,1x,a)','  --restart N'
-  print'(1x,a)',  '       read in increment N and continues with calculating'
-  print'(1x,a)',  '           increment N+1, N+2, ... based on this'
-  print'(1x,a)',  '       works only if the restart information for increment N'
-  print'(1x,a)',  '           is available in JOBNAME_restart.hdf5'
-  print'(1x,a)',  '       append to existing results file JOBNAME.hdf5'
+  print'(1x,a)',  '       Restart simulation from given increment.'
+  print'(1x,a)',  '       Read in increment N and, based on this, continue with'
+  print'(1x,a)',  '       calculating increments N+1, N+2, ...'
+  print'(1x,a)',  '       Requires restart information for increment N to be present in'
+  print'(1x,a)',  '       JOBNAME_restart.hdf5 and will append subsequent results to'
+  print'(1x,a)',  '       existing file JOBNAME.hdf5.'
 #endif
   print'(/,1x,a)','-----------------------------------------------------------------------'
   print'(1x,a)',  'Help:'
   print'(/,1x,a)','  --help'
-  print'(1x,a,/)','       Prints this message and exits'
+  print'(1x,a,/)','       Display help and exit.'
 
   call quit(0)
 
