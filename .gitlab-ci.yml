@@ -314,6 +314,7 @@ grid_performance:
     - cd $(mktemp -d)
     - git clone -q https://damask_user:${STATISTICS_TOKEN}@git.damask-multiphysics.org/damask/statistics.git .
     - ./measure_performance.py --input_dir ${CI_PROJECT_DIR}/examples/grid --tag ${CI_COMMIT_SHA}
+    - cp performance.txt ${CI_PROJECT_DIR}/
   artifacts:
     untracked: true
     paths: [performance.txt]
@@ -339,7 +340,7 @@ update_website_3.0:
 update_statistics:
   stage: finalize
   tags:
-    - matesting2_bare-metal  # could be any runner, needs git and should be fast to set up
+    - matesting_bare-metal  # could be any runner, needs git and should be fast to set up
   dependencies:
     - grid_performance
   script:
@@ -355,7 +356,7 @@ update_statistics:
 update_revision:
   stage: finalize
   tags:
-    - matesting2_bare-metal
+    - matesting_bare-metal  # could be any runner, needs git and should be fast to set up
   script:
     - cd $(mktemp -d)
     - git clone -b development -q https://damask_user:${TOKEN}@git.damask-multiphysics.org/damask/DAMASK.git .
