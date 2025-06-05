@@ -55,12 +55,12 @@ module DAMASK_interface
   type(tLoadcase), allocatable, protected, public :: loadcase(:)
   logical,          protected, public             :: symmetricSolver
   character(len=*), parameter, public             :: INPUTFILEEXTENSION = '.dat'
+  character(len=:), allocatable, public           :: CLI_jobName
   integer, save, public                           :: inc_written
 
 
   public :: &
     DAMASK_interface_init, &
-    getSolverJobName, &
     getOutputFrequency
 
 contains
@@ -100,6 +100,8 @@ subroutine DAMASK_interface_init()
     print*, 'working directory "'//trim(wd)//'" does not exist'
     call quit(1)
   end if
+  CLI_jobName = getSolverJobName()
+
   symmetricSolver = solverIsSymmetric()
   call getOutputFrequency
 
@@ -131,7 +133,7 @@ logical function solverIsSymmetric()
   character(len=pSTRLEN) :: line
   integer :: myStat,fileUnit,s,e
 
-  open(newunit=fileUnit, file=getSolverJobName()//INPUTFILEEXTENSION, &
+  open(newunit=fileUnit, file=CLI_jobName//INPUTFILEEXTENSION, &
        status='old', position='rewind', action='read',iostat=myStat)
   do
     read (fileUnit,'(A)',END=100) line
@@ -156,7 +158,7 @@ subroutine getOutputFrequency
   character(len=pSTRLEN) :: line
   integer, allocatable, dimension(:) :: chunkPos
 
-  open(newunit=fileUnit, file=getSolverJobName()//INPUTFILEEXTENSION, &
+  open(newunit=fileUnit, file=CLI_jobName//INPUTFILEEXTENSION, &
        status='old', position='rewind', action='read',iostat=myStat)
   number_loadcases = 0
   do

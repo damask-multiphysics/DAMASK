@@ -177,7 +177,7 @@ subroutine grid_damage_spectral_init(num_grid)
   restartRead: if (CLI_restartInc > 0) then
     print'(/,1x,a,1x,i0)', 'loading restart data of increment', CLI_restartInc
 
-    fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
+    fileHandle  = HDF5_openFile(CLI_jobName//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
 
     call HDF5_read(tempN,groupHandle,'phi',.false.)
@@ -316,7 +316,7 @@ subroutine grid_damage_spectral_restartWrite()
 
   print'(1x,a)', 'saving damage solver data required for restart'; flush(IO_STDOUT)
 
-  fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
+  fileHandle  = HDF5_openFile(CLI_jobName//'_restart.hdf5','a')
   groupHandle = HDF5_openGroup(fileHandle,'solver')
   call HDF5_write(reshape(phi,[1,product(shape(phi))]),groupHandle,'phi')
   call HDF5_write(reshape(phi_lastInc,[1,product(shape(phi_lastInc))]),groupHandle,'phi_lastInc')

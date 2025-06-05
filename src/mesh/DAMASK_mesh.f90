@@ -189,7 +189,7 @@ program DAMASK_mesh
   call config_numerics_deallocate()
 
   if (worldrank == 0) then
-    open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
+    open(newunit=statUnit,file=trim(CLI_jobName)//'.sta',form='FORMATTED',status='REPLACE')
     write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                  ! statistics file
   end if
 

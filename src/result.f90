@@ -91,7 +91,7 @@ subroutine result_init(restart)
   print'(  1x,a)', 'https://doi.org/10.1007/s40192-017-0084-5'
 
   if (.not. restart) then
-    resultFile = HDF5_openFile(getSolverJobName()//'.hdf5','w')
+    resultFile = HDF5_openFile(CLI_jobName//'.hdf5','w')
     call result_addAttribute('DADF5_version_major',1)
     call result_addAttribute('DADF5_version_minor',2)
     call get_command_argument(0,commandLine)
@@ -155,7 +155,7 @@ subroutine result_openJobFile(parallel)
   logical, intent(in), optional :: parallel
 
 
-  resultFile = HDF5_openFile(getSolverJobName()//'.hdf5','a',parallel)
+  resultFile = HDF5_openFile(CLI_jobName//'.hdf5','a',parallel)
 
 end subroutine result_openJobFile
 

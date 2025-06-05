@@ -212,12 +212,12 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,materialAt)
 
 
   call result_openJobFile()
-  call result_addSetupFile(IO_read(trim(getSolverJobName())//InputFileExtension), &
-                                   trim(getSolverJobName())//InputFileExtension, &
+  call result_addSetupFile(IO_read(trim(CLI_jobName)//InputFileExtension), &
+                                   trim(CLI_jobName)//InputFileExtension, &
                                    'MSC.Marc input deck')
   call result_closeJobFile()
 
-  inputFile = readlines(trim(getSolverJobName())//InputFileExtension)
+  inputFile = readlines(trim(CLI_jobName)//InputFileExtension)
   call inputRead_fileFormat(fileFormatVersion, &
                             inputFile)
   call inputRead_tableStyles(initialcondTableStyle,hypoelasticTableStyle, &

@@ -154,7 +154,7 @@ subroutine grid_thermal_spectral_init(num_grid)
   restartRead: if (CLI_restartInc > 0) then
     print'(/,1x,a,1x,i0)', 'loading restart data of increment', CLI_restartInc
 
-    fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
+    fileHandle  = HDF5_openFile(CLI_jobName//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
 
     call HDF5_read(tempN,groupHandle,'T',.false.)
@@ -301,7 +301,7 @@ subroutine grid_thermal_spectral_restartWrite()
 
   print'(1x,a)', 'saving thermal solver data required for restart'; flush(IO_STDOUT)
 
-  fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
+  fileHandle  = HDF5_openFile(CLI_jobName//'_restart.hdf5','a')
   groupHandle = HDF5_openGroup(fileHandle,'solver')
   call HDF5_write(reshape(T,[1,product(shape(T))]),groupHandle,'T')
   call HDF5_write(reshape(T_lastInc,[1,product(shape(T_lastInc))]),groupHandle,'T_lastInc')
