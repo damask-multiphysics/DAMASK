@@ -75,6 +75,15 @@ class TestVTK:
         vtk = VTK.load(tmp_path/'polyData.vtk','polyData')
         assert (string == vtp.as_ASCII() == vtk.as_ASCII())
 
+    @pytest.mark.xfail(np.lib.NumpyVersion(vtkVersion.GetVTKVersion()) < '9.4.0',
+                       reason = 'not available in VTK < 9.4')
+    def test_polyData_VTKHDF(self,np_rng,tmp_path):
+        points = np_rng.random((100,3))
+        v = VTK.from_poly_data(points)
+        v.save_VTKHDF(tmp_path/'polyData')
+        vtkhdf = VTK.load(tmp_path/'polyData.vtkhdf')
+        assert (v.as_ASCII() == vtkhdf.as_ASCII())
+
     @pytest.mark.parametrize('cell_type,n',[
                                             ('VTK_hexahedron',8),
                                             ('TETRA',4),
@@ -94,6 +103,23 @@ class TestVTK:
             f.write(string)
         vtk = VTK.load(tmp_path/'unstructuredGrid.vtk','unstructuredgrid')
         assert (string == vtu.as_ASCII() == vtk.as_ASCII())
+
+    @pytest.mark.xfail(np.lib.NumpyVersion(vtkVersion.GetVTKVersion()) < '9.4.0',
+                       reason = 'not available in VTK < 9.4')
+    @pytest.mark.parametrize('cell_type,n',[
+                                            ('VTK_hexahedron',8),
+                                            ('TETRA',4),
+                                            ('quad',4),
+                                            ('VTK_TRIANGLE',3)
+                                            ]
+                            )
+    def test_unstructuredGrid_VTKHDF(self,np_rng,tmp_path,cell_type,n):
+        nodes = np_rng.random((n,3))
+        connectivity = np_rng.choice(np.arange(n),n,False).reshape(-1,n)
+        v = VTK.from_unstructured_grid(nodes,connectivity,cell_type)
+        v.save_VTKHDF(tmp_path/'unstructuredGrid')
+        vtkhdf = VTK.load(tmp_path/'unstructuredGrid.vtkhdf')
+        assert (v.as_ASCII() == vtkhdf.as_ASCII())
 
 
     def test_parallel_out(self,np_rng,tmp_path):
@@ -228,7 +254,6 @@ class TestVTK:
         new = VTK.load(tmp_path/'with_comments.vti')
         assert new.comments == ['this is a comment']
 
-    @pytest.mark.xfail(vtkVersion.GetVTKMajorVersion()<8, reason='missing METADATA')
     def test_compare_reference_polyData(self,update,res_path,tmp_path):
         points=np.dstack((np.linspace(0.,1.,10),np.linspace(0.,2.,10),np.linspace(-1.,1.,10))).squeeze()
         polyData = VTK.from_poly_data(points).set('coordinates',points)
@@ -239,7 +264,6 @@ class TestVTK:
             assert polyData.as_ASCII() == reference.as_ASCII() and \
                    np.allclose(polyData.get('coordinates'),points)
 
-    @pytest.mark.xfail(vtkVersion.GetVTKMajorVersion()<8, reason='missing METADATA')
     def test_compare_reference_rectilinearGrid(self,update,res_path,tmp_path):
         grid = [np.arange(4)**2.,
                 np.arange(5)**2.,

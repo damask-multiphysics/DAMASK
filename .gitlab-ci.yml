@@ -47,7 +47,7 @@ workflow:
 
 .python_default:
   extends: .python_base
-  variables: {PYTHON_IMAGE: 2025.02.25}
+  variables: {PYTHON_IMAGE: 2025.06.05}
 
 .python_earliest:
   extends: .python_base
