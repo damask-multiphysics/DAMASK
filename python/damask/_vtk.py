@@ -13,13 +13,16 @@ try:
 except ImportError:
     pass
 
-from vtkmodules.vtkIOXML import vtkXMLReader, vtkXMLWriter
-
 from vtkmodules.vtkCommonCore import (
+    vtkVersion,
     vtkPoints,
     vtkStringArray,
     vtkLookupTable,
 )
+
+if has_vtkhdf := (np.lib.NumpyVersion(vtkVersion.GetVTKVersion()) >= '9.4.0'):
+    from vtkmodules.vtkIOHDF import vtkHDFReader, vtkHDFWriter
+
 from vtkmodules.vtkCommonDataModel import (
     vtkDataSet,
     vtkCellArray,
@@ -33,6 +36,7 @@ from vtkmodules.vtkIOLegacy import (
     vtkDataSetWriter,
 )
 from vtkmodules.vtkIOXML import (
+    vtkXMLWriter,
     vtkXMLImageDataReader,
     vtkXMLImageDataWriter,
     vtkXMLRectilinearGridReader,
@@ -135,6 +139,7 @@ class VTK:
 
 
     def copy(self):
+        """Return a deep copy."""
         if   isinstance(self.vtk_data,vtkImageData):
             dup = vtkImageData()
         elif isinstance(self.vtk_data,vtkUnstructuredGrid):
@@ -143,8 +148,6 @@ class VTK:
             dup = vtkPolyData()
         elif isinstance(self.vtk_data,vtkRectilinearGrid):
             dup = vtkRectilinearGrid()
-        else:
-            raise TypeError
 
         dup.DeepCopy(self.vtk_data)
 
@@ -153,7 +156,7 @@ class VTK:
 
     @property
     def comments(self) -> list[str]:
-        """Return the comments."""
+        """Comments in vtkdata"""                                                                   # noqa: D415
         field_data = self.vtk_data.GetFieldData()
         for a in range(field_data.GetNumberOfArrays()):
             if field_data.GetArrayName(a) == 'comments':
@@ -170,7 +173,7 @@ class VTK:
         Parameters
         ----------
         comments : sequence of str
-            Comments.
+            Comments to assign to vtkdata.
         """
         s = vtkStringArray()
         s.SetName('comments')
@@ -181,19 +184,19 @@ class VTK:
 
     @property
     def N_points(self) -> int:
-        """Number of points in vtkdata."""
+        """Number of points in vtkdata"""                                                           # noqa: D415
         return self.vtk_data.GetNumberOfPoints()
 
 
     @property
     def N_cells(self) -> int:
-        """Number of cells in vtkdata."""
+        """Number of cells in vtkdata"""                                                            # noqa: D415
         return self.vtk_data.GetNumberOfCells()
 
 
     @property
     def labels(self):
-        """Labels of datasets."""
+        """Labels of datasets"""                                                                    # noqa: D415
         labels = {}
 
         cell_data = self.vtk_data.GetCellData()
@@ -348,7 +351,7 @@ class VTK:
         ----------
         fname : str or pathlib.Path
             Filename to read.
-            Valid extensions are .vti, .vtu, .vtp, .vtr, and .vtk.
+            Valid extensions are .vti, .vtu, .vtp, .vtr, vtkhdf, and .vtk.
         dataset_type : {'ImageData', 'UnstructuredGrid', 'PolyData', 'RectilinearGrid'}, optional
             Name of the vtkDataSet subclass when opening a .vtk file.
 
@@ -356,38 +359,47 @@ class VTK:
         -------
         loaded : damask.VTK
             VTK-based geometry from file.
+
+        Notes
+        -----
+        Loading VTKHDF files requires VTK 9.4 or later and presently supports
+        PolyData, UnstructuredGrid, and ImageData. Loading ImageData is untested
+        because VTK does not yet provide the functionality to write ImageData
+        into VTKHDF format.
         """
         if not Path(fname).expanduser().is_file():                                                  # vtk has a strange error handling
             raise FileNotFoundError(f'file "{fname}" not found')
+
         if (ext := Path(fname).suffix) == '.vtk' or dataset_type is not None:
-            vtk_reader = vtkGenericDataObjectReader()
-            vtk_reader.SetFileName(str(Path(fname).expanduser()))
+            reader_legacy = vtkGenericDataObjectReader()
+            reader_legacy.SetFileName(str(Path(fname).expanduser()))
+            reader_legacy.Update()
             if dataset_type is None:
-                raise TypeError('dataset type for *.vtk file not given')
-            vtk_reader.Update()
-            if dataset_type.lower().endswith(('imagedata', 'image_data')):
-                vtk_data = vtk_reader.GetStructuredPointsOutput()
-            elif dataset_type.lower().endswith(('unstructuredgrid', 'unstructured_grid')):
-                vtk_data = vtk_reader.GetUnstructuredGridOutput()
-            elif dataset_type.lower().endswith(('polydata', 'poly_data')):
-                vtk_data = vtk_reader.GetPolyDataOutput()
-            elif dataset_type.lower().endswith(('rectilineargrid', 'rectilinear_grid')):
-                vtk_data = vtk_reader.GetRectilinearGridOutput()
-            else:
-                raise TypeError(f'unknown dataset type "{dataset_type}" for vtk file')
+                raise TypeError('missing dataset type for legacy VTK file')
+            dtl = dataset_type.lower()
+            vtk_data = (
+                reader_legacy.GetStructuredPointsOutput() if dtl.endswith(('imagedata', 'image_data')) else
+                reader_legacy.GetUnstructuredGridOutput() if dtl.endswith(('unstructuredgrid', 'unstructured_grid')) else
+                reader_legacy.GetPolyDataOutput() if dtl.endswith(('polydata', 'poly_data')) else
+                reader_legacy.GetRectilinearGridOutput() if dtl.endswith(('rectilineargrid', 'rectilinear_grid')) else
+                None
+            )
+            if vtk_data is None:
+                raise TypeError(f'unsupported VTK dataset type "{dataset_type}"')
         else:
-            xml_reader: Optional[vtkXMLReader] = (
+            reader = (
                 vtkXMLImageDataReader() if ext == '.vti' else
                 vtkXMLUnstructuredGridReader() if ext == '.vtu' else
                 vtkXMLPolyDataReader() if ext == '.vtp' else
                 vtkXMLRectilinearGridReader() if ext == '.vtr' else
+                vtkHDFReader() if (ext == '.vtkhdf' and has_vtkhdf) else
                 None
             )
-            if xml_reader is None:
-                raise TypeError(f'unknown file extension "{ext}"')
-            xml_reader.SetFileName(str(Path(fname).expanduser()))
-            xml_reader.Update()
-            vtk_data = xml_reader.GetOutputAsDataSet()
+            if reader is None:
+                raise TypeError(f'unsupported VTK file extension "{ext}"')
+            reader.SetFileName(str(Path(fname).expanduser()))
+            reader.Update()
+            vtk_data = reader.GetOutputAsDataSet()
 
         return VTK(vtk_data)
 
@@ -431,8 +443,7 @@ class VTK:
             vtkXMLRectilinearGridWriter() if isinstance(self.vtk_data, vtkRectilinearGrid) else
             None
         )
-        if writer is None:
-            raise TypeError(f'unknown vtk_data type "{type(self.vtk_data)}"')
+        assert writer is not None
 
         default_ext = '.'+writer.GetDefaultFileExtension()
         ext = Path(fname).suffix
@@ -454,6 +465,33 @@ class VTK:
                 writer.Write()
         else:
             writer.Write()
+
+
+    def save_VTKHDF(self,
+                    fname: Union[str, Path]):
+        """
+        Save as VTKHDF file.
+
+        Parameters
+        ----------
+        fname : str or pathlib.Path
+            Filename to write.
+
+        Notes
+        -----
+        Saving as VTKHDF file requires VTK 9.4 or later and only supports
+        PolyData and UnstructuredGrid.
+        """
+        if not has_vtkhdf:
+            raise NotImplementedError('save as VTKHDF requires VTK 9.4 or later')
+        if not isinstance(self.vtk_data, (vtkPolyData, vtkUnstructuredGrid)):
+            raise TypeError(f'unsupported vtk_data type "{type(self.vtk_data)}"')
+
+        writer = vtkHDFWriter()
+        ext = Path(fname).suffix
+        writer.SetFileName(str(Path(fname).expanduser())+('.vtkhdf' if '.vtkhdf' != ext else ''))
+        writer.SetInputData(self.vtk_data)
+        writer.Write()
 
 
     def set(self,
