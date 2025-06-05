@@ -14,16 +14,16 @@ variables:
   # ===============================================================================================
   # Shortcut names
   # ===============================================================================================
-  MARC_VERSION: "2024.1"
-  PETSC_GCC_LATEST: "2025.05.27"
-  PETSC_ONEAPI_LATEST: "2025.04.30"
+  MARC_VERSION: '2024.1'
+  PETSC_GCC_LATEST: '2025.05.27'
+  PETSC_ONEAPI_LATEST: '2025.04.30'
 
 
 ###################################################################################################
 # https://docs.gitlab.com/ci/yaml/workflow
 workflow:
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
       when: never
     - if: $CI_COMMIT_BRANCH
@@ -241,10 +241,10 @@ Marc_patch:
   script:
     - source env/DAMASK.sh
     - export TMPDIR=/tmp
-    - python3 install/MarcMentat/MSC_modifications.py --editor=gted --marc-version="${MARC_VERSION}" --damask-root="${CI_PROJECT_DIR}" --marc-root=/opt/msc
-    - test -f "/opt/msc/mentat${MARC_VERSION}/bin/kill6"
+    - python3 install/MarcMentat/MSC_modifications.py --editor=gted --marc-version=${MARC_VERSION} --damask-root=${CI_PROJECT_DIR} --marc-root=/opt/msc
+    - test -f /opt/msc/mentat${MARC_VERSION}/bin/kill6
     - cd examples/Marc && python3 -c "import damask;damask.solver.Marc(version=${MARC_VERSION}).submit_job('r-value','texture',True,'h')"
-    - test -f "${CI_PROJECT_DIR}/src/Marc/DAMASK_Marc.marc" || { echo "Marc simulation failed, DAMASK_Marc.marc not generated"; exit 1; }
+    - test -f ${CI_PROJECT_DIR}/src/Marc/DAMASK_Marc.marc || { echo 'Marc simulation failed, DAMASK_Marc.marc not generated'; exit 1; }
 
 Marc_compile:
   stage: core
@@ -327,16 +327,14 @@ update_website_master:
   trigger:
     project: damask/website
     branch: master
-  only:
-    - development
+  rules: [if: $CI_COMMIT_BRANCH == 'development']
 
 update_website_3.0:
   stage: finalize
   trigger:
     project: damask/website
-    branch: "3.0"
-  only:
-    - "3.0"
+    branch: '3.0'
+  rules: [if: $CI_COMMIT_BRANCH == '3.0']
 
 update_statistics:
   stage: finalize
@@ -351,8 +349,7 @@ update_statistics:
     - git add performance.txt
     - git commit -m ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
     - git push
-  only:
-    - development
+  rules: [if: $CI_COMMIT_BRANCH == 'development']
 
 update_revision:
   stage: finalize
@@ -365,7 +362,6 @@ update_revision:
     - echo ${VERSION:1} > VERSION
     - >
        git diff-index --quiet HEAD ||
-       git commit VERSION -m "[skip ci] updated version information after successful test of $VERSION"
+       git commit VERSION -m "[skip ci] updated version information after successful test of ${VERSION}"
     - if [ ${CI_COMMIT_SHA} == $(git rev-parse HEAD^) ]; then git push --atomic --no-verify origin HEAD:development HEAD:master; fi
-  only:
-    - development
+  rules: [if: $CI_COMMIT_BRANCH == 'development']
