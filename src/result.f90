@@ -5,8 +5,6 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !--------------------------------------------------------------------------------------------------
 module result
-  use, intrinsic :: ISO_fortran_env
-
   use prec
   use misc
   use parallelization
@@ -15,17 +13,16 @@ module result
   use HDF5
 #ifdef PETSC
   use CLI
-  use system_routines
 #include <petsc/finclude/petscsys.h>
   use PETScSys
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   use MPI_f08
 #endif
 #else
   use DAMASK_interface
 #endif
 
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
 #else
   implicit none
@@ -108,24 +105,6 @@ subroutine result_init(restart)
 #ifdef MARC_SOURCE
     call result_addAttribute('solver','Marc')
 #endif
-    call result_addAttribute('compiler',compiler_version())
-    call result_addAttribute('compiler_options',compiler_options())
-
-    call result_addAttribute('DAMASK_version_major',DAMASK_VERSION_MAJOR)
-    call result_addAttribute('DAMASK_version_minor',DAMASK_VERSION_MINOR)
-    call result_addAttribute('DAMASK_version_patch',DAMASK_VERSION_PATCH)
-#ifdef DAMASK_VERSION_HASH
-    call result_addAttribute('DAMASK_version_hash',DAMASK_VERSION_HASH)
-#endif
-
-#ifdef PETSC
-    call result_addAttribute('PETSc_version_major',PETSC_VERSION_MAJOR)
-    call result_addAttribute('PETSc_version_minor',PETSC_VERSION_MINOR)
-    call result_addAttribute('PETSc_version_subminor',PETSC_VERSION_SUBMINOR)
-    call result_addAttribute('user',getUserName())
-    call result_addAttribute('host',getHostName())
-#endif
-
     call result_closeGroup(result_addGroup('cell_to'))
     call result_addAttribute('description','mappings to place data in space','cell_to')
     call result_closeGroup(result_addGroup('setup'))
