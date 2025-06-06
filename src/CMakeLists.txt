@@ -1,4 +1,4 @@
-file(GLOB damask-sources CONFIGURE_DEPENDS *.f90 *.c)
+file(GLOB damask-sources CONFIGURE_DEPENDS *.f90 *.c *.cpp)
 
 set(executable-name "DAMASK_${DAMASK_SOLVER_LOWER}")
 file(GLOB solver-sources CONFIGURE_DEPENDS ${DAMASK_SOLVER_LOWER}/*.f90)
@@ -12,6 +12,8 @@ else()
   exec_program(mktemp ARGS -d OUTPUT_VARIABLE black_hole)
   install(PROGRAMS ${nothing} DESTINATION ${black_hole})
 endif()
+
+set_target_properties("DAMASK_${DAMASK_SOLVER_LOWER}" PROPERTIES LINKER_LANGUAGE Fortran)
 
 string(REPLACE ";" "\n" sources "${damask-sources};${solver-sources}")
 message(${CMAKE_BINARY_DIR})

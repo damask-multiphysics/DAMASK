@@ -27,7 +27,21 @@ module CLI
     CLI_loadFile, &                                                                                 !< location of the load case file
     CLI_materialFile, &                                                                             !< location of the material configuration file
     CLI_numericsFile, &                                                                             !< location of the numerics configuration file
-    CLI_jobName
+    CLI_jobName, &                                                                                  !< name of the job (will be used for DADF5 result file)
+    CLI_jobID                                                                                       !< unique job ID (UUID)
+
+#ifdef BOOST
+  interface
+
+    subroutine get_uuid_CPP(uuid, stat) bind(C)
+      use, intrinsic :: ISO_C_binding, only: C_INT, C_CHAR
+
+      character(kind=C_CHAR,len=:), allocatable, intent(out) :: uuid
+      integer(C_INT),                            intent(out) :: stat
+    end subroutine get_uuid_CPP
+
+  end interface
+#endif
 
   public :: &
     CLI_init
@@ -196,7 +210,12 @@ subroutine CLI_init()
   print'(1x,a)',        'Material config:        '//IO_glueDiffering(CLI_materialFile,materialArg)
   if (allocated(numericsArg)) &
     print'(1x,a)',      'Numerics config:        '//IO_glueDiffering(CLI_numericsFile,numericsArg)
-  print'(1x,a)',        'Solver job name:        '//CLI_jobName
+  print'(1x,a)',        'Job name:               '//CLI_jobName
+#ifdef BOOST
+   if (worldrank == 0) CLI_jobID = get_UUID()
+   call parallelization_bcast_str(CLI_jobID)
+  print'(1x,a)',        'Job ID:                 '//CLI_jobID
+#endif
   if (CLI_restartInc > 0) &
     print'(1x,a,i6.6)', 'Restart from increment: ', CLI_restartInc
 
@@ -383,6 +402,24 @@ function relpath(path,start)
   relpath = repeat('..'//'/',remainingSlashes)//path_cleaned(posLastCommonSlash+1:len_trim(path_cleaned))
 
 end function relpath
+
+
+#ifdef BOOST
+!--------------------------------------------------------------------------------------------------
+!> @brief Generate UUID.
+!--------------------------------------------------------------------------------------------------
+function get_UUID()
+
+  character(kind=C_CHAR,len=:), allocatable :: get_UUID
+
+  integer(C_INT) :: stat
+
+
+  call get_uuid_CPP(get_UUID,stat)
+  if (stat /= 0) error stop 'could not get UUID'
+
+end function get_UUID
+#endif
 
 
 !--------------------------------------------------------------------------------------------------

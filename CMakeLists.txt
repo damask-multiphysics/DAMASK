@@ -15,12 +15,13 @@ pkg_check_modules(PETSC REQUIRED PETSc<3.24.0)
 
 pkg_get_variable(CMAKE_Fortran_COMPILER PETSc fcompiler)
 pkg_get_variable(CMAKE_C_COMPILER PETSc ccompiler)
+pkg_get_variable(CMAKE_CXX_COMPILER PETSc cxxcompiler)
 
 # Solver determines name of project
 string(TOUPPER "${DAMASK_SOLVER}" DAMASK_SOLVER_UPPER)
 string(TOLOWER "${DAMASK_SOLVER}" DAMASK_SOLVER_LOWER)
 if("${DAMASK_SOLVER_UPPER}" MATCHES "^(GRID|MESH|TEST)$")
-  project("damask-${DAMASK_SOLVER_LOWER}" HOMEPAGE_URL https://damask-multiphysics.org LANGUAGES Fortran C)
+  project("damask-${DAMASK_SOLVER_LOWER}" HOMEPAGE_URL https://damask-multiphysics.org LANGUAGES Fortran C CXX)
 else()
   message(FATAL_ERROR "Invalid solver: DAMASK_SOLVER=${DAMASK_SOLVER}")
 endif()
@@ -33,6 +34,7 @@ set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/externalpackages:$ENV
 pkg_check_modules(HDF5 hdf5)
 pkg_check_modules(FFTW3 fftw3)
 pkg_check_modules(fYAML libfyaml)
+find_package(Boost)
 if(DAMASK_SOLVER_UPPER STREQUAL "GRID")
   pkg_check_modules(zlib zlib)
 endif()
@@ -182,10 +184,17 @@ if(fYAML_FOUND STREQUAL "1")
   set(CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}} -I${fYAML_INCLUDE_DIR}")
 endif()
 
-set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} ${BUILDCMD_POST}")
+if("${Boost_FOUND}" STREQUAL TRUE)
+  add_definitions(-DBOOST)
+  set(CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}} -I${Boost_INCLUDE_DIRS}")
+endif()
+
+# Link with Fortran compiler requires to add C++ standard library
+set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} -lstdc++ ${BUILDCMD_POST}")
 
 message("Fortran Compiler Flags:\n${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}}\n")
 message("C Compiler Flags:\n${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}}\n")
+message("C++ Compiler Flags:\n${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}}\n")
 message("Fortran Linker Command:\n${CMAKE_Fortran_LINK_EXECUTABLE}\n")
 
 # location of code

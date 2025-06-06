@@ -125,7 +125,10 @@ subroutine result_init(restart)
     call result_addAttribute('user',OS_getUserName())
     call result_addAttribute('host',OS_getHostName())
 #endif
-
+#ifdef BOOST
+    call result_addAttribute('job_id',CLI_jobID)
+#endif
+    call result_addAttribute('job_name',CLI_jobName)
     call result_closeGroup(result_addGroup('cell_to'))
     call result_addAttribute('description','mappings to place data in space','cell_to')
     call result_closeGroup(result_addGroup('setup'))
