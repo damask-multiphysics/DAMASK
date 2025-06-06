@@ -203,6 +203,7 @@ class YAML(dict):
         for key,default in [('width',256),
                             ('default_flow_style',None),
                             ('sort_keys',False),
+                            ('allow_unicode',True),
                             ('Dumper',NiceDumper)]:
             if key not in kwargs:
                 kwargs[key] = default

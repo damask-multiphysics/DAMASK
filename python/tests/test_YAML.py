@@ -55,6 +55,13 @@ class TestYAML:
             f.write(config.__repr__())
         assert YAML.load(tmp_path/'config.yaml') == config
 
+    def test_utf8_minimal_escaping(self,tmp_path):
+        config = YAML()
+        config['key'] = 'Ælżβéth 🌸 Михаи́л ᚠᛚᚨ🧙‍♂️'
+        repr = config.__repr__()
+        assert r'\x' not in repr
+        assert r'\u' not in repr
+
     def test_numpy(self,tmp_path):
         assert YAML({'A':np.ones(3,'i'), 'B':np.ones(1)[0]}).__repr__() == \
                YAML({'A':[1,1,1],        'B':1.0}).__repr__()
