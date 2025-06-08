@@ -31,14 +31,24 @@ module CLI
     CLI_jobID                                                                                       !< unique job ID (UUID)
 
 #ifdef BOOST
+
   interface
 
+#ifndef OLD_STYLE_C_TO_FORTRAN_STRING
     subroutine get_uuid_CPP(uuid, stat) bind(C)
       use, intrinsic :: ISO_C_binding, only: C_INT, C_CHAR
 
       character(kind=C_CHAR,len=:), allocatable, intent(out) :: uuid
       integer(C_INT),                            intent(out) :: stat
     end subroutine get_uuid_CPP
+#else
+    subroutine get_uuid_CPP(uuid, stat) bind(C)
+      use, intrinsic :: ISO_C_binding, only: C_INT, C_CHAR
+
+      character(kind=C_CHAR), dimension(36+1), intent(out) :: uuid                                  ! NULL-terminated array
+      integer(C_INT),                          intent(out) :: stat
+    end subroutine get_uuid_CPP
+#endif
 
   end interface
 #endif
@@ -415,9 +425,22 @@ function get_UUID()
   integer(C_INT) :: stat
 
 
+#ifndef OLD_STYLE_C_TO_FORTRAN_STRING
   call get_uuid_CPP(get_UUID,stat)
   if (stat /= 0) error stop 'could not get UUID'
+#else
+  character(kind=C_CHAR,len=(36+1)) :: UUID_Cstring
 
+
+  call get_uuid_CPP(UUID_Cstring,stat)
+
+  if (stat == 0) then
+    get_UUID = c_f_string(UUID_Cstring)
+  else
+    error stop 'could not get UUID'
+  end if
+
+#endif
 end function get_UUID
 #endif
 

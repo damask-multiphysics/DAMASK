@@ -19,6 +19,10 @@ endif ()
 
 set (STANDARD_CHECK "-std=f2018 -pedantic-errors" )
 
+if (CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 12)
+  add_definitions(-DOLD_STYLE_C_TO_FORTRAN_STRING)
+endif ()
+
 #------------------------------------------------------------------------------------------------
 # Fine tuning compilation options
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -fPIE")

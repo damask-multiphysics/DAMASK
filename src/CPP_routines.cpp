@@ -5,6 +5,8 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/lexical_cast.hpp>
 
+
+#ifndef OLD_STYLE_C_TO_FORTRAN_STRING
 extern "C"{
   void get_uuid_cpp(CFI_cdesc_t *uuid, int *stat){
     const std::string uuid_tmp = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
@@ -16,5 +18,16 @@ extern "C"{
     else *stat = 1;
   }
 }
+#else
+#include <cstring>
+extern "C"{
+  void get_uuid_cpp(char uuid[], int *stat){
+    const std::string uuid_tmp = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+    const char *uuid_c = uuid_tmp.c_str();
+    strncpy(uuid, uuid_c, strlen(uuid_c)+1);
+    *stat = 0;
+  }
+}
+#endif
 #endif
 
