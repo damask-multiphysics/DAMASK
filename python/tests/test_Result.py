@@ -37,7 +37,7 @@ def default(tmp_path,res_path):
 @pytest.fixture
 def single_phase(tmp_path,res_path):
     """Single phase Result file in temp location for modification."""
-    fname = '6grains6x7x8_single_phase_tensionY.hdf5'
+    fname = '6grains6x7x8_tensionY_singlePhase.hdf5'
     shutil.copy(res_path/fname,tmp_path)
     return Result(tmp_path/fname)
 
@@ -447,7 +447,7 @@ class TestResult:
     @pytest.mark.parametrize('output',['F','*',['P'],['P','F']],ids=range(4))
     @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5',
                                       '4grains2x4x3_compressionY.hdf5',
-                                      '6grains6x7x8_single_phase_tensionY.hdf5'],ids=range(3))
+                                      '6grains6x7x8_tensionY_singlePhase.hdf5'],ids=range(3))
     @pytest.mark.parametrize('inc',[4,0],ids=range(2))
     @pytest.mark.xfail(vtkVersion.GetVTKMajorVersion()<9, reason='missing "Direction" attribute')
     def test_export_vtk(self,request,tmp_path,res_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
@@ -669,7 +669,7 @@ class TestResult:
         assert open(tmp_path/output).read() == open(res_path/output).read()
 
     @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
-                                      '6grains6x7x8_single_phase_tensionY.hdf5'])
+                                      '6grains6x7x8_tensionY_singlePhase.hdf5'])
     @pytest.mark.parametrize('output',['material.yaml','*'])
     def test_export_simulation_setup_consistency(self,res_path,tmp_path,fname,output):
         r = Result(res_path/fname)
@@ -691,7 +691,7 @@ class TestResult:
             assert 'material.yaml' in os.listdir(absdir); (absdir/'material.yaml').unlink()
 
     @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
-                                      '6grains6x7x8_single_phase_tensionY.hdf5',
+                                      '6grains6x7x8_tensionY_singlePhase.hdf5',
                                       '12grains6x7x8_tensionY.hdf5',
                                       'check_compile_job1.hdf5',])
     def test_export_DADF5(self,np_rng,res_path,tmp_path,fname):
@@ -705,14 +705,14 @@ class TestResult:
         assert str(r.place()) == str(r_exp.place())
 
     @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
-                                      '6grains6x7x8_single_phase_tensionY.hdf5'])
+                                      '6grains6x7x8_tensionY_singlePhase.hdf5'])
     def test_export_DADF5_name_clash(self,res_path,tmp_path,fname):
         r = Result(res_path/fname)
         with pytest.raises(PermissionError):
             r.export_DADF5(r.fname)
 
     @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
-                                      '6grains6x7x8_single_phase_tensionY.hdf5',
+                                      '6grains6x7x8_tensionY_singlePhase.hdf5',
                                       '12grains6x7x8_tensionY.hdf5'])
     def test_export_DADF5_regrid(self,res_path,tmp_path,fname):
         r = Result(res_path/fname)
