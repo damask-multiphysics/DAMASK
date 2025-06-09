@@ -2,9 +2,13 @@ import subprocess
 import shlex
 import re
 from pathlib import Path
+import logging
 from typing import Literal
 
-_marc_version = '2023.4'
+
+logger = logging.getLogger(__name__)
+
+_marc_version = '2024.1'
 _marc_root = '/opt/msc'
 _damask_root = str(Path(__file__).parents[3])
 
@@ -56,6 +60,7 @@ class Marc:
     def submit_job(self, model: str, job: str,
                    compile: bool = False,
                    optimization: Literal['', 'l', 'h'] = '',
+                   domains: int = 1,
                    env = None):
         """
         Assemble command line arguments and call Marc executable.
@@ -72,6 +77,9 @@ class Marc:
         optimization : {'', 'l', 'h'}, optional
             Optimization level '': -O0, 'l': -O1, or 'h': -O3.
             Defaults to ''.
+        domains : int, optional
+            Number of domains.
+            Defaults to 1.
         env : dict, optional
             Environment for execution.
 
@@ -83,9 +91,12 @@ class Marc:
         # Define options [see Marc Installation and Operation Guide, pp 23]
         script = f'run_damask_{optimization}mp'
 
-        cmd = f'{self.tools_path/script} -jid {model}_{job} -nprocd 1 -autorst 0 -ci n -cr n -dcoup 0 -b no -v no ' \
+        cmd = f'{self.tools_path/script} -jid {model}_{job} '\
+            + ('-nprocd 1 ' if (domains == 1) else\
+               f'-nprocd {domains} -nsolver {domains} -nthread_elem {domains} -nthread_solver {domains} ')\
+            + '-autorst 0 -ci n -cr n -dcoup 0 -b no -v no '\
             + (f'-u {usersub} -save y' if compile else f'-prog {usersub.with_suffix("")}')
-        print(cmd)
+        logger.info(cmd)
 
         ret = subprocess.run(shlex.split(cmd),capture_output=True,env=env)
 

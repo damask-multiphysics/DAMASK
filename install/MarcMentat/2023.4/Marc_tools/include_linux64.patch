@@ -1,22 +1,24 @@
 ---
 +++
-@@ -207,6 +207,15 @@
+@@ -207,6 +207,17 @@
   MARC_COSIM_LIB="$MSCCOSIM_HOME/CoSim$MSCCOSIM_VERSION/Dcosim$MSCCOSIM_VERSION/lib"
  fi
 
 +# DAMASK uses the HDF5 compiler wrapper around the Intel compiler
-+H5FC=$(h5fc -shlib -show)
-+if [[ "$H5FC" == *"$dir is"* ]]; then
-+  H5FC=$(echo $(echo "$H5FC" | tail -n1) | sed -e "s/\-shlib/-fPIC -qopenmp/g")
-+  H5FC=${H5FC%-lmpifort*}
++if test -n "$DAMASK_USER"; then
++  H5FC=$(h5fc -shlib -show)
++  if [[ "$H5FC" == *"$dir is"* ]]; then
++    H5FC=$(echo $(echo "$H5FC" | tail -n1) | sed -e "s/\-shlib/-fPIC -qopenmp/g")
++    H5FC=${H5FC%-lmpifort*}
++  fi
++  HDF5_LIB=${H5FC//*ifort/}
++  FCOMP="$H5FC"
 +fi
-+HDF5_LIB=${H5FC//*ifort/}
-+FCOMP="$H5FC"
 +
  # AEM
  if test "$MARCDLLOUTDIR" = ""; then
   DLLOUTDIR="$MARC_LIB"
-@@ -680,7 +689,7 @@
+@@ -680,7 +691,7 @@
  PROFILE=" $PROFILE -pg"
  fi
 
@@ -25,7 +27,7 @@
  # FORT_OPT="-c -assume byterecl -safe-cray-ptr -mp1 -WB "
  if test "$MTHREAD" = "OPENMP"
  then
-@@ -694,7 +703,7 @@
+@@ -694,7 +705,7 @@
    FORT_OPT=" $FORT_OPT -save -zero"
  fi
  if test "$MARCHDF_HDF" = "HDF"; then
@@ -34,37 +36,49 @@
  fi
  if test "$NASTRAN_LIB" = "on" ; then
    FORT_OPT="$FORT_OPT -fPIC "
-@@ -711,6 +720,29 @@
+@@ -711,6 +722,41 @@
  #  for compiling free form f90 files. high opt, integer(4)
  FORTF90="$FCOMP -c -O3"
 
 +# determine DAMASK version
 +if test -n "$DAMASK_USER"; then
 +  DAMASKROOT=`dirname $DAMASK_USER`/../..
-+  read DAMASKVERSION < $DAMASKROOT/VERSION
-+  DAMASKVERSION="'"$DAMASKVERSION"'"
++  read DAMASK_VERSION < $DAMASKROOT/VERSION
++  DAMASK_VERSION_MAJOR="'`echo $DAMASK_VERSION | cut -d. -f1`'"
++  DAMASK_VERSION_MINOR="'`echo $DAMASK_VERSION | cut -d. -f2`'"
++  DAMASK_VERSION_PATCH=`echo $DAMASK_VERSION | cut -d. -f3`
++  if [[ $DAMASK_VERSION_PATCH == *"-"* ]]; then
++   DAMASK_VERSION_HASH="'`echo $DAMASK_VERSION_PATCH | cut -d- -f3`'"
++  fi
++  DAMASK_VERSION_PATCH="'`echo $DAMASK_VERSION_PATCH | cut -d- -f1`'"
++  DAMASK_VERSION="'"$DAMASK_VERSION"'"
 +else
-+  DAMASKVERSION="'N/A'"
++  DAMASK_VERSION="'N/A'"
++fi
++if [[ -n $DAMASK_VERSION_HASH ]]; then
++  DAMASK_INFO="-DDAMASKVERSION=$DAMASK_VERSION -DDAMASK_VERSION_MAJOR=$DAMASK_VERSION_MAJOR -DDAMASK_VERSION_MINOR=$DAMASK_VERSION_MINOR -DDAMASK_VERSION_PATCH=$DAMASK_VERSION_PATCH -DDAMASK_VERSION_HASH=$DAMASK_VERSION_HASH"
++else
++  DAMASK_INFO="-DDAMASKVERSION=$DAMASK_VERSION -DDAMASK_VERSION_MAJOR=$DAMASK_VERSION_MAJOR -DDAMASK_VERSION_MINOR=$DAMASK_VERSION_MINOR -DDAMASK_VERSION_PATCH=$DAMASK_VERSION_PATCH"
 +fi
 +
 +# DAMASK compiler calls
 +DFORTLOWMP="$FCOMP -c -O0 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2023.4 -DDAMASKVERSION=$DAMASKVERSION \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
 +DFORTRANMP="$FCOMP -c -O1 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2023.4 -DDAMASKVERSION=$DAMASKVERSION \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
 +DFORTHIGHMP="$FCOMP -c -O3 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2023.4 -DDAMASKVERSION=$DAMASKVERSION \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
 +
  if test "$MARCDEBUG" = "ON"
  then
    FORTLOW="$FCOMP $FORT_OPT $PROFILE $I8FFLAGS -I$MARC_SOURCE/common \
-@@ -877,7 +909,7 @@
+@@ -877,7 +923,7 @@
 
  SOLVERLIBS="${BCSSOLVERLIBS} ${VKISOLVERLIBS} ${CASISOLVERLIBS} ${MF2SOLVERLIBS} \
    -L$MARC_MKL \

@@ -1,45 +1,45 @@
 ---
 +++
-@@ -166,6 +166,17 @@
-  MARC_COSIM_LIB="$MSCCOSIM_HOME/Cosim$MSCCOSIM_VERSION/Dcosim$MSCCOSIM_VERSION/lib"
+@@ -212,6 +212,17 @@
+  MARC_COSIM_LIB="$MSCCOSIM_HOME/CoSim$MSCCOSIM_VERSION/Dcosim$MSCCOSIM_VERSION/lib"
  fi
- 
+
 +# DAMASK uses the HDF5 compiler wrapper around the Intel compiler
 +if test -n "$DAMASK_USER"; then
 +  H5FC=$(h5fc -shlib -show)
 +  if [[ "$H5FC" == *"$dir is"* ]]; then
-+    H5FC=$(echo $(echo "$H5FC" | tail -n1) | sed -e "s/\-shlib/-fPIC -integer-size 64 -real-size 64 -qopenmp/g")
++    H5FC=$(echo $(echo "$H5FC" | tail -n1) | sed -e "s/\-shlib/-fPIC -qopenmp/g")
 +    H5FC=${H5FC%-lmpifort*}
 +  fi
-+  HDF5_LIB=${H5FC//*"ifort"/}
++  HDF5_LIB=${H5FC//*ifort/}
 +  FCOMP="$H5FC"
 +fi
 +
  # AEM
  if test "$MARCDLLOUTDIR" = ""; then
   DLLOUTDIR="$MARC_LIB"
-@@ -594,7 +605,7 @@
+@@ -686,7 +697,7 @@
  PROFILE=" $PROFILE -pg"
  fi
- 
--FORT_OPT="-c -assume byterecl -safe_cray_ptr -mp1 -WB -fp-model source"
-+FORT_OPT="-c -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name  -safe_cray_ptr -mp1 -WB -fp-model source"
+
+-FORT_OPT="-c -assume byterecl -safe-cray-ptr -mp1 -WB -fp-model source"
++FORT_OPT="-c -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name  -safe-cray-ptr -mp1 -WB -fp-model source"
+ # FORT_OPT="-c -assume byterecl -safe-cray-ptr -mp1 -WB "
  if test "$MTHREAD" = "OPENMP"
  then
-   FORT_OPT=" $FORT_OPT -qopenmp"
-@@ -607,7 +618,7 @@
+@@ -700,7 +711,7 @@
    FORT_OPT=" $FORT_OPT -save -zero"
  fi
  if test "$MARCHDF_HDF" = "HDF"; then
 -  FORT_OPT="$FORT_OPT -DMARCHDF_HDF=$MARCHDF_HDF $HDF_INCLUDE"
 +  FORT_OPT="$FORT_OPT -DMARCHDF=$MARCHDF_HDF"
  fi
- 
- FORTLOW="$FCOMP $FORT_OPT $PROFILE -O0 $I8FFLAGS -I$MARC_SOURCE/common \
-@@ -621,6 +632,41 @@
+ if test "$NASTRAN_LIB" = "on" ; then
+   FORT_OPT="$FORT_OPT -fPIC "
+@@ -717,6 +728,41 @@
  #  for compiling free form f90 files. high opt, integer(4)
  FORTF90="$FCOMP -c -O3"
- 
+
 +# determine DAMASK version
 +if test -n "$DAMASK_USER"; then
 +  DAMASKROOT=`dirname $DAMASK_USER`/../..
@@ -62,15 +62,15 @@
 +fi
 +
 +# DAMASK compiler calls
-+DFORTLOWMP="$FCOMP -c -O0 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
++DFORTLOWMP="$FCOMP -c -O0 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
 + -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
-+DFORTRANMP="$FCOMP -c -O1 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
++DFORTRANMP="$FCOMP -c -O1 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
 + -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
-+DFORTHIGHMP="$FCOMP -c -O3 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
++DFORTHIGHMP="$FCOMP -c -O3 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
 + -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
@@ -78,12 +78,12 @@
  if test "$MARCDEBUG" = "ON"
  then
    FORTLOW="$FCOMP $FORT_OPT $PROFILE $I8FFLAGS -I$MARC_SOURCE/common \
-@@ -778,7 +824,7 @@
- 
+@@ -883,7 +929,7 @@
+
  SOLVERLIBS="${BCSSOLVERLIBS} ${VKISOLVERLIBS} ${CASISOLVERLIBS} ${MF2SOLVERLIBS} \
    -L$MARC_MKL \
--  $MARC_LIB/blas_src.a ${ACSI_LIB}/ACSI_MarcLib.a $KDTREE2_LIB/libkdtree2.a $MARC_LIB/libtetmeshinterface.a   $MARC_LIB/libcaefatigueinterface.a -L$MARC_LIB -lmkl_blacs_intelmpi_ilp64 -lmkl_scalapack_ilp64 -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -ltetmesh -lmeshgems -lmg-tetra -lmeshgems_stubs $HDF_LIBS $SOLVER2LIBS"
-+  $MARC_LIB/blas_src.a ${ACSI_LIB}/ACSI_MarcLib.a $KDTREE2_LIB/libkdtree2.a $MARC_LIB/libtetmeshinterface.a   $MARC_LIB/libcaefatigueinterface.a -L$MARC_LIB -lmkl_blacs_intelmpi_ilp64 -lmkl_scalapack_ilp64 -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -ltetmesh -lmeshgems -lmg-tetra -lmeshgems_stubs $HDF5_LIB $SOLVER2LIBS"
- 
+-  $MARC_LIB/blas_src.a ${ACSI_LIB}/ACSI_MarcLib.a $KDTREE2_LIB/libkdtree2.a $MARC_LIB/libtetmeshinterface.a   $MARC_LIB/libcaefatigueinterface.a -L$MARC_LIB -lmkl_blacs_intelmpi_ilp64 -lmkl_scalapack_ilp64 -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -ltetmesh -ltetadapt -lmeshgems -lmg-tetra -lmeshgems_stubs -lCATMshMesherCore -lmg-hybrid -lmg-cadsurf -lmg-hexa $HDF_LIBS $SOLVER2LIBS $RTREE_LIB/librtree_lib.a $SFGEO_LIB/libgeo_lib.a"
++    $MARC_LIB/blas_src.a ${ACSI_LIB}/ACSI_MarcLib.a $KDTREE2_LIB/libkdtree2.a $MARC_LIB/libtetmeshinterface.a   $MARC_LIB/libcaefatigueinterface.a -L$MARC_LIB -lmkl_blacs_intelmpi_ilp64 -lmkl_scalapack_ilp64 -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -ltetmesh -ltetadapt -lmeshgems -lmg-tetra -lmeshgems_stubs -lCATMshMesherCore -lmg-hybrid -lmg-cadsurf -lmg-hexa $HDF5_LIB $SOLVER2LIBS $RTREE_LIB/librtree_lib.a $SFGEO_LIB/libgeo_lib.a"
+
  SOLVERLIBS_DLL=${SOLVERLIBS}
  if test "$AEM_DLL" -eq 1

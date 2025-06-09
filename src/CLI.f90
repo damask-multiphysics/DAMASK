@@ -107,7 +107,7 @@ subroutine CLI_init()
   print'(1x,a)', 'https://doi.org/'//PETSc_DOI
 #endif
 #endif
-  print'(/,1x,a)', 'Version: '//DAMASKVERSION
+  print'(/,1x,a)', 'Version: '//DAMASK_VERSION
 
   print'(/,1x,a)', 'Compiled with: '//compiler_version()
   print'(1x,a)',   'Compiled on: '//CMAKE_SYSTEM
