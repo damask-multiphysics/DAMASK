@@ -86,10 +86,10 @@
     ],
     "codeRepository": "https://github.com/damask-multiphysics/DAMASK.git",
     "dateCreated": "2007-03-20",
-    "dateModified": "2024-10-18",
+    "dateModified": "2025-06-09",
     "datePublished": "2012-11-15",
     "description": "DAMASK® is a unified multi-physics crystal plasticity simulation package. The solution of continuum mechanical boundary value problems requires a constitutive response that connects deformation and stress at each material point. This problem is solved in DAMASK on the basis of crystal plasticity using a variety of constitutive models and homogenization approaches. However, treating mechanics in isolation is no longer sufficient to study emergent advanced high-strength materials. In these materials, deformation happens interrelated with displacive phase transformation, significant heating, and potential damage evolution. Therefore, DAMASK is capable of handling multi-physics problems. Following a modular approach, additional field equations are solved in a fully coupled way using a staggered approach.",
-    "downloadUrl": "https://damask-multiphysics.org/download/damask-3.0.1.tar.xz",
+    "downloadUrl": "https://damask-multiphysics.org/download/damask-3.0.2.tar.xz",
     "identifier": "10.5281/zenodo.14586837",
     "keywords": [
         "crystal plasticity",
@@ -108,7 +108,7 @@
         "Python"
     ],
     "softwareRequirements": "PETSc, FFTW, zlib, HDF5, Python, pandas, NumPy, SciPy, h5py, VTK, Matplotlib, PyYAML",
-    "version": "3.0.1",
+    "version": "3.0.2",
     "developmentStatus": "active",
     "referencePublication": "https://doi.org/10.1016/j.commatsci.2018.04.030"
 }
