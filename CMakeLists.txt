@@ -44,15 +44,15 @@ add_definitions("-D${DAMASK_SOLVER_UPPER}")
 
 set(CMAKE_Fortran_PREPROCESS "ON")
 
-# EXPERIMENTAL: This might help to detect HDF5 and FFTW3 in the future if PETSc is not aware of them
+# EXPERIMENTAL: This might help to detect external packages in future if PETSc is not aware of them
 set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/externalpackages:$ENV{PKG_CONFIG_PATH}")
 pkg_check_modules(HDF5 hdf5)
-pkg_check_modules(FFTW3 fftw3)
 pkg_check_modules(fYAML libfyaml)
 pkg_check_modules(LAPACK lapack)
 find_package(Boost)
 if(DAMASK_SOLVER_UPPER STREQUAL "GRID")
   pkg_check_modules(zlib zlib)
+  pkg_check_modules(FFTW3 fftw3)
 endif()
 
 message("\nBuilding ${CMAKE_PROJECT_NAME} ${DAMASK_VERSION_STRING}\n")
