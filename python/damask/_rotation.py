@@ -84,12 +84,10 @@ class Rotation:
             Defaults to no rotation.
         """
         self.quaternion: np.ndarray
-        if isinstance(rotation,Rotation):
-            self.quaternion = rotation.quaternion.copy()
-        elif np.array(rotation).shape[-1] == 4:
+        if len(s:=np.asarray(rotation).shape) > 0 and s[-1] == 4:
             self.quaternion = np.array(rotation,dtype=float)
         else:
-            raise TypeError('"rotation" is neither a Rotation nor a quaternion')
+            raise TypeError('"rotation" cannot be interpreted as quaternion')
 
 
     def __str__(self) -> str:
@@ -231,11 +229,6 @@ class Rotation:
         return np.all(self.isclose(other,rtol,atol,equal_nan))
 
 
-    def __array__(self,*, copy: Optional[bool] = None) -> np.ndarray:
-        """Initializer for numpy."""
-        return self.quaternion.copy() if copy is True else self.quaternion                          # noqa: E712
-
-
     @property
     def size(self) -> int:
         return self.quaternion[...,0].size
@@ -243,6 +236,16 @@ class Rotation:
     @property
     def shape(self) -> tuple[int, ...]:
         return self.quaternion[...,0].shape
+
+
+    def __array__(self,dtype = None,copy: Optional[bool] = None) -> np.ndarray:
+        """Initializer for numpy."""
+        if dtype is None or dtype == self.quaternion.dtype:
+            return self.quaternion.copy() if copy is True else self.quaternion
+        elif copy is not False:
+            return self.quaternion.astype(dtype)
+        else:
+           raise ValueError("`copy=False` isn't supported for mismatching `dtype`")
 
 
     def __len__(self) -> int:
