@@ -75,9 +75,9 @@ subroutine materialpoint_initAll()
 #if   defined(MESH)
   call discretization_mesh_init()
 #elif defined(GRID)
-  call discretization_grid_init(restart=CLI_restartInc>0)
+  call discretization_grid_init()
 #endif
-  call material_init(restart=CLI_restartInc>0)
+  call material_init()
   call phase_init()
   call homogenization_init()
   call materialpoint_init()
@@ -95,7 +95,6 @@ subroutine materialpoint_init()
 
 
   print'(/,1x,a)', '<<<+-  materialpoint init  -+>>>'; flush(IO_STDOUT)
-
 
   if (CLI_restartInc > 0) then
     print'(/,1x,a,1x,i0)', 'loading restart information of increment',CLI_restartInc; flush(IO_STDOUT)
