@@ -224,7 +224,7 @@ subroutine grid_mech_spectral_polarization_init(num_grid)
   restartRead: if (CLI_restartInc > 0) then
     print '(/,1x,a,1x,i0)', 'loading restart data of increment', CLI_restartInc
 
-    fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
+    fileHandle  = HDF5_openFile(CLI_jobName//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
 
     call HDF5_read(P_aim,groupHandle,'P_aim',.false.)
@@ -464,7 +464,7 @@ subroutine grid_mech_spectral_polarization_restartWrite()
 
   print '(1x,a)', 'saving solver data required for restart'; flush(IO_STDOUT)
 
-  fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
+  fileHandle  = HDF5_openFile(CLI_jobName//'_restart.hdf5','a')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
   call HDF5_write(reshape(F,[3,3,product(shape(F))/9]),groupHandle,'F')
   call HDF5_write(reshape(F_lastInc,[3,3,product(shape(F_lastInc))/9]),groupHandle,'F_lastInc')
@@ -474,7 +474,7 @@ subroutine grid_mech_spectral_polarization_restartWrite()
   call HDF5_closeFile(fileHandle)
 
   if (worldrank == 0) then
-    fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a',.false.)
+    fileHandle  = HDF5_openFile(CLI_jobName//'_restart.hdf5','a',.false.)
     groupHandle = HDF5_openGroup(fileHandle,'solver')
     call HDF5_write(F_aim,groupHandle,'P_aim',.false.)
     call HDF5_write(F_aim,groupHandle,'F_aim',.false.)

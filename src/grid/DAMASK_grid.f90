@@ -241,10 +241,10 @@ program DAMASK_grid
 ! write header of output file
   if (worldrank == 0) then
     writeHeader: if (CLI_restartInc < 1) then
-      open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
+      open(newunit=statUnit,file=trim(CLI_jobName)//'.sta',form='FORMATTED',status='REPLACE')
       write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded StagIterationsNeeded' ! statistics file
     else writeHeader
-      open(newunit=statUnit,file=trim(getSolverJobName())//&
+      open(newunit=statUnit,file=trim(CLI_jobName)//&
                                   '.sta',form='FORMATTED', position='APPEND', status='OLD')
     end if writeHeader
   end if
@@ -388,7 +388,7 @@ program DAMASK_grid
         call MPI_Allreduce(signal_SIGUSR2,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
         call parallelization_chkerr(err_MPI)
         if (mod(inc,loadCases(l)%f_restart) == 0 .or. sig) then
-          fileHandle = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
+          fileHandle = HDF5_openFile(CLI_jobName//'_restart.hdf5','w')
           call HDF5_addAttribute(fileHandle,'increment',totalIncsCounter)
           call HDF5_closeFile(fileHandle)
           do field = 1, nActiveFields

@@ -100,7 +100,7 @@ subroutine materialpoint_init()
   if (CLI_restartInc > 0) then
     print'(/,1x,a,1x,i0)', 'loading restart information of increment',CLI_restartInc; flush(IO_STDOUT)
 
-    fileHandle = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
+    fileHandle = HDF5_openFile(CLI_jobName//'_restart.hdf5','r')
 
     call homogenization_restartRead(fileHandle)
     call phase_restartRead(fileHandle)
@@ -121,7 +121,7 @@ subroutine materialpoint_restartWrite()
 
   print'(1x,a)', 'saving field and constitutive data required for restart';flush(IO_STDOUT)
 
-  fileHandle = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
+  fileHandle = HDF5_openFile(CLI_jobName//'_restart.hdf5','a')
 
   call homogenization_restartWrite(fileHandle)
   call phase_restartWrite(fileHandle)

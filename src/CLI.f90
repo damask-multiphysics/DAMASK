@@ -27,10 +27,9 @@ module CLI
     CLI_loadFile, &                                                                                 !< location of the load case file
     CLI_materialFile, &                                                                             !< location of the material configuration file
     CLI_numericsFile, &                                                                             !< location of the numerics configuration file
-    solverJobname
+    CLI_jobName
 
   public :: &
-    getSolverJobname, &
     CLI_init
 
 contains
@@ -155,7 +154,7 @@ subroutine CLI_init()
       case ('-n', '--numerics', '--numericsconfig')
         numericsArg = val
       case ('-j', '--job', '--jobname')
-        solverJobname = val
+        CLI_jobName = val
       case ('-w', '--wd', '--workingdir', '--workingdirectory')
         workingDirArg = val
 #if defined(GRID)
@@ -179,10 +178,10 @@ subroutine CLI_init()
   if (allocated(numericsArg)) &
     CLI_numericsFile = getPathRelCWD(numericsArg,'numerics configuration')
 
-  if (.not. allocated(solverJobname)) then
-    solverJobname = jobname(CLI_geomFile,CLI_loadFile,CLI_materialFile,CLI_numericsFile)
-  elseif (scan(solverJobname,'/') > 0) then
-    call IO_error(612,ext_msg=solverJobname,label1='--jobname')
+  if (.not. allocated(CLI_jobName)) then
+    CLI_jobName = jobname(CLI_geomFile,CLI_loadFile,CLI_materialFile,CLI_numericsFile)
+  elseif (scan(CLI_jobName,'/') > 0) then
+    call IO_error(612,ext_msg=CLI_jobName,label1='--jobname')
   endif
 
   commandLine = getArg(-1)
@@ -197,7 +196,7 @@ subroutine CLI_init()
   print'(1x,a)',        'Material config:        '//IO_glueDiffering(CLI_materialFile,materialArg)
   if (allocated(numericsArg)) &
     print'(1x,a)',      'Numerics config:        '//IO_glueDiffering(CLI_numericsFile,numericsArg)
-  print'(1x,a)',        'Solver job name:        '//getSolverJobname()
+  print'(1x,a)',        'Solver job name:        '//CLI_jobName
   if (CLI_restartInc > 0) &
     print'(1x,a,i6.6)', 'Restart from increment: ', CLI_restartInc
 
@@ -255,19 +254,6 @@ subroutine setWorkingDirectory(workingDirectoryArg)
   if (OS_setCWD(trim(workingDirectory))) call IO_error(640,ext_msg=workingDirectory)
 
 end subroutine setWorkingDirectory
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Return solver job name (MSC.Marc compatible).
-!--------------------------------------------------------------------------------------------------
-function getSolverJobname()
-
-  character(len=:), allocatable :: getSolverJobname
-
-
-  getSolverJobname = solverJobname
-
-end function getSolverJobname
 
 
 !--------------------------------------------------------------------------------------------------
