@@ -17,7 +17,11 @@ elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
   set (OPTIMIZATION_FLAGS "-O3 -march=native -funroll-loops -ftree-vectorize -flto")
 endif ()
 
-set (STANDARD_CHECK "-std=f2018 -pedantic-errors" )
+if (CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 14)
+  set (STANDARD_CHECK "-std=f2018 -pedantic-errors" )
+else ()
+  set (STANDARD_CHECK "-std=f2023 -pedantic-errors" )
+endif ()
 
 if (CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 12)
   add_definitions(-DOLD_STYLE_C_TO_FORTRAN_STRING)
