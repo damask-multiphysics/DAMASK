@@ -68,7 +68,7 @@ module OS
 
       implicit none(type,external)
       character(kind=C_CHAR), dimension(4096+1), intent(out) :: cwd                                 ! NULL-terminated array
-      integer(C_INT),                                intent(out) :: stat
+      integer(C_INT),                            intent(out) :: stat
     end subroutine get_CWD_C
 
     subroutine get_hostname_C(hostname, stat) bind(C)

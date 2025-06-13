@@ -2,8 +2,8 @@
 stages:
   - processing
   - core
-  - finalize
-
+  - update_repositories
+  - documentation
 
 ###################################################################################################
 variables:
@@ -319,24 +319,10 @@ grid_performance:
     untracked: true
     paths: [performance.txt]
 
-
 ###################################################################################################
-update_website_master:
-  stage: finalize
-  trigger:
-    project: damask/website
-    branch: master
-  rules: [if: $CI_COMMIT_BRANCH == 'development']
-
-update_website_3.0:
-  stage: finalize
-  trigger:
-    project: damask/website
-    branch: '3.0'
-  rules: [if: $CI_COMMIT_BRANCH == '3.0']
 
 update_statistics:
-  stage: finalize
+  stage: update_repositories
   tags:
     - matesting_bare-metal  # could be any runner, needs git and should be fast to set up
   dependencies:
@@ -351,7 +337,7 @@ update_statistics:
   rules: [if: $CI_COMMIT_BRANCH == 'development']
 
 update_revision:
-  stage: finalize
+  stage: update_repositories
   tags:
     - matesting_bare-metal  # could be any runner, needs git and should be fast to set up
   script:
@@ -364,3 +350,19 @@ update_revision:
        git commit VERSION -m "[skip ci] updated version information after successful test of ${VERSION}"
     - if [ ${CI_COMMIT_SHA} == $(git rev-parse HEAD^) ]; then git push --atomic --no-verify origin HEAD:development HEAD:master; fi
   rules: [if: $CI_COMMIT_BRANCH == 'development']
+
+###################################################################################################
+
+publish_website_master:
+  stage: documentation
+  trigger:
+    project: damask/website
+    branch: master
+  rules: [if: $CI_COMMIT_BRANCH == 'development']
+
+publish_website_3.0:
+  stage: documentation
+  trigger:
+    project: damask/website
+    branch: '3.0'
+  rules: [if: $CI_COMMIT_BRANCH == '3.0']
