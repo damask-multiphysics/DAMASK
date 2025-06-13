@@ -118,8 +118,8 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   DMLabel                                :: BCLabel
 
   PetscInt,  dimension(:),       pointer :: pNumComp, pNumDof, pBcField, pBcPoint
-  PetscInt                               :: numBC, bcSize, nc, &
-                                            component, faceSet, topologDim, nNodalPoints, &
+  PetscInt                               :: numActiveBC, bcSize, nc, &
+                                            component, boundary, topologDim, nNodalPoints, &
                                             cellStart, cellEnd, cell, basis
 
   IS                                     :: bcPoint
@@ -137,10 +137,12 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   real(pREAL),                   pointer, dimension(:) :: px_scal
   real(pREAL),       allocatable, target, dimension(:) ::  x_scal
 
-  character(len=*), parameter            :: prefix = 'mechanical_'
-  PetscErrorCode                         :: err_PETSc
+  character(len=*), parameter :: prefix = 'mechanical_'
+  character(len=11)           :: setLabel
+
+  PetscErrorCode              :: err_PETSc
   real(pREAL), dimension(3,3) :: devNull
-  type(tDict), pointer                   :: num_mech
+  type(tDict), pointer        :: num_mech
 
   print'(/,1x,a)', '<<<+-  FEM_mech init  -+>>>'; flush(IO_STDOUT)
 
@@ -245,34 +247,33 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
     call PetscSectionGetDof(section,cellStart,pnumDof(topologDim),err_PETSc)
     CHKERRQ(err_PETSc)
   end do
-  numBC = 0
-  do faceSet = 1, mesh_Nboundaries; do component = 1, dimPlex
-    if (mechBC(faceSet)%Mask(component)) numBC = numBC + 1
-  end do; end do
-  allocate(pbcField(numBC), source=0_pPETSCINT)
-  allocate(pbcComps(numBC))
-  allocate(pbcPoints(numBC))
-  numBC = 0
-  do faceSet = 1, mesh_Nboundaries; do component = 1, dimPlex
-    if (mechBC(faceSet)%Mask(component)) then
-      numBC = numBC + 1
-      call ISCreateGeneral(PETSC_COMM_WORLD,1_pPETSCINT,[component-1],PETSC_COPY_VALUES,pbcComps(numBC),err_PETSc)
+  numActiveBC = sum([(count(mechBC(boundary)%active), boundary = 1, size(mechBC))])                !< Number of active DOF in BC
+  allocate(pbcField(numActiveBC), source = 0_pPETSCINT)
+  allocate(pbcComps(numActiveBC))
+  allocate(pbcPoints(numActiveBC))
+  numActiveBC = 0_pPETSCINT
+  do boundary = 1_pPETSCINT, mesh_Nboundaries; do component = 1_pPETSCINT, dimPlex
+    if (mechBC(boundary)%active(component)) then
+      numActiveBC = numActiveBC + 1_pPETSCINT
+      setLabel = mesh_BCTypeLabel(mesh_boundariesIdx(boundary))
+      call ISCreateGeneral(PETSC_COMM_WORLD,1_pPETSCINT,[component-1_pPETSCINT],PETSC_COPY_VALUES, &
+                           pbcComps(numActiveBC),err_PETSc)
       CHKERRQ(err_PETSc)
-      call DMGetStratumSize(mechanical_mesh,'Face Sets',mesh_boundaries(faceSet),bcSize,err_PETSc)
+      call DMGetStratumSize(mechanical_mesh,setLabel,mesh_boundariesIS(boundary),bcSize,err_PETSc)
       CHKERRQ(err_PETSc)
       if (bcSize > 0) then
-        call DMGetStratumIS(mechanical_mesh,'Face Sets',mesh_boundaries(faceSet),bcPoint,err_PETSc)
+        call DMGetStratumIS(mechanical_mesh,setLabel,mesh_boundariesIS(boundary),bcPoint,err_PETSc)
         CHKERRQ(err_PETSc)
         call ISGetIndices(bcPoint,pBcPoint,err_PETSc)
         CHKERRQ(err_PETSc)
-        call ISCreateGeneral(PETSC_COMM_WORLD,bcSize,pBcPoint,PETSC_COPY_VALUES,pbcPoints(numBC),err_PETSc)
+        call ISCreateGeneral(PETSC_COMM_WORLD,bcSize,pBcPoint,PETSC_COPY_VALUES,pbcPoints(numActiveBC),err_PETSc)
         CHKERRQ(err_PETSc)
         call ISRestoreIndices(bcPoint,pBcPoint,err_PETSc)
         CHKERRQ(err_PETSc)
         call ISDestroy(bcPoint,err_PETSc)
         CHKERRQ(err_PETSc)
       else
-        call ISCreateGeneral(PETSC_COMM_WORLD,0_pPETSCINT,[0_pPETSCINT],PETSC_COPY_VALUES,pbcPoints(numBC),err_PETSc)
+        call ISCreateGeneral(PETSC_COMM_WORLD,0_pPETSCINT,[0_pPETSCINT],PETSC_COPY_VALUES,pbcPoints(numActiveBC),err_PETSc)
         CHKERRQ(err_PETSc)
       end if
     end if
@@ -282,12 +283,12 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
 #else
   call DMPlexCreateSection(mechanical_mesh,PETSC_NULL_DMLABEL_ARRAY,pNumComp,pNumDof, &
 #endif
-                           numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,err_PETSc)
+                           numActiveBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMSetLocalSection(mechanical_mesh,section,err_PETSc)
   CHKERRQ(err_PETSc)
-  do faceSet = 1, numBC
-    call ISDestroy(pbcPoints(faceSet),err_PETSc)
+  do boundary = 1_pPETSCINT, numActiveBC
+    call ISDestroy(pbcPoints(boundary),err_PETSc)
     CHKERRQ(err_PETSc)
   end do
 
@@ -414,16 +415,16 @@ end function FEM_mechanical_solution
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Construct the FEM residual vector.
+!> @brief Form the FEM residual vector.
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc)
 
   DM                                 :: dm_local
   PetscObject,intent(in)             :: dummy
-  Vec                                :: f_local, xx_local
-  PetscErrorCode, intent(out)        :: err_PETSc
-
+  PetscErrorCode                     :: err_PETSc
   integer(MPI_INTEGER_KIND)          :: err_MPI
+  Vec                                :: f_local, xx_local
+
   PetscDS                            :: prob
   Vec                                :: x_local
   PetscSection                       :: section
@@ -471,7 +472,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
 #endif
   CHKERRQ(err_PETSc)
 
- do cell = cellStart, cellEnd-1_pPETSCINT                                                           !< loop over all elements
+  do cell = cellStart, cellEnd-1_pPETSCINT                                                          !< loop over all elements
 
     call PetscSectionGetNumFields(section,numFields,err_PETSc)
     CHKERRQ(err_PETSc)
