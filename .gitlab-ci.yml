@@ -55,7 +55,6 @@ workflow:
 
 mypy:
   extends: .python_default
-  needs: []
   script:
     - cd python
     - mypy damask
