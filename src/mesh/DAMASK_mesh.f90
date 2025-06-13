@@ -68,16 +68,22 @@ program DAMASK_mesh
     loadcase_string
   integer :: &
     stagItMax, &                                                                                    !< max number of field level staggered iterations
-    maxCutBack                                                                                      !< max number of cutbacks
+    maxCutBack, &                                                                                   !< max number of cutbacks
+    skipBCTagDigits, &                                                                              !< number of characters to skip to print BC tag (T descriptor)
+    BCTag                                                                                           !< tag value read from YAML load file
+  integer, allocatable, dimension(:) :: &
+    knownBCTags                                                                                     !< array of read BC tags (check for duplicates)
+
 
   type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
   type(tSolutionState), allocatable, dimension(:) :: solres
-  PetscInt :: faceSet, currentFaceSet, dimPlex
+  PetscInt :: boundary, dimPlex
   PetscErrorCode :: err_PETSc
   external :: &
     quit
   character(len=:), allocatable :: &
-    fileContent, fname
+    fileContent, fname, tagPrintFormat
+  character(len=6) :: BC_elem
 
 
 !--------------------------------------------------------------------------------------------------
@@ -114,34 +120,40 @@ program DAMASK_mesh
   load_steps => load%get_list('loadstep')
 
   allocate(loadCases(size(load_steps)))
-
-
   do l = 1, size(load_steps)
     load_step => load_steps%get_dict(l)
     step_bc   => load_step%get_dict('boundary_conditions')
     step_mech => step_bc%get_list('mechanical')
     allocate(loadCases(l)%mechBC(mesh_Nboundaries))
     loadCases(l)%mechBC(:)%nComponents = dimPlex                                                   !< X, Y (, Z) displacements
-    do faceSet = 1, mesh_Nboundaries
-      allocate(loadCases(l)%mechBC(faceSet)%Value(dimPlex), source = 0.0_pREAL)
-      allocate(loadCases(l)%mechBC(faceSet)%Mask(dimPlex),  source = .false.)
+    do boundary = 1_pPETSCINT, mesh_Nboundaries
+      allocate(loadCases(l)%mechBC(boundary)%dot_u(dimPlex),  source = 0.0_pREAL)
+      allocate(loadCases(l)%mechBC(boundary)%active(dimPlex), source = .false.)
     end do
 
+    allocate(knownBCTags(size(step_mech)), source = -1)
     do m = 1, size(step_mech)
       mech_BC => step_mech%get_dict(m)
-      currentFaceSet = -1
-      do faceSet = 1, mesh_Nboundaries
-        if (mesh_boundaries(faceSet) == mech_BC%get_asInt('tag')) currentFaceSet = faceSet
-      end do
-      if (currentFaceSet < 0) call IO_error(error_ID = 837, ext_msg = 'invalid BC')
+      BCTag = mech_BC%get_asInt('tag')
+      boundary = findloc(mesh_boundariesIS, BCtag, dim = 1)
+      if (boundary == 0) then                                                                      !< tag not defined in mesh file
+        call IO_error(error_ID = 837, ext_msg = 'BC tag '//mech_BC%get_asStr('tag')// &
+                                                ' refers to inexistent node/edge/face mesh group')
+      else if (findloc(knownBCTags, BCTag, dim = 1) /= 0) then                                     !< duplicated tag
+        call IO_error(error_ID = 837, ext_msg = 'BC redefinition not allowed (tag '// &
+                                                mech_BC%get_asStr('tag')//')')
+      end if
+      knownBCTags(m) = BCTag
       mech_u => mech_BC%get_list('dot_u')
       do component = 1, dimPlex
         if (mech_u%get_asStr(component) /= 'x') then
-          loadCases(l)%mechBC(currentFaceSet)%Mask(component)  = .true.
-          loadCases(l)%mechBC(currentFaceSet)%Value(component) = mech_u%get_asReal(component)
+          loadCases(l)%mechBC(boundary)%active(component) = .true.
+          loadCases(l)%mechBC(boundary)%dot_u(component)  = mech_u%get_asReal(component)
         end if
       end do
     end do
+    deallocate(knownBCTags)
+
     step_discretization => load_step%get_dict('discretization')
     loadCases(l)%t = step_discretization%get_asReal('t')
     loadCases(l)%N = step_discretization%get_asInt  ('N')
@@ -157,6 +169,9 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case
   errorID = 0
+  skipBCTagDigits = 4+6+1+floor(log10(real(maxval(mesh_boundariesIS))))+1+2                        !< Indentation(4)+BC_elem(6)+blank(1)+descriptor T(1)+NumDigits(floor(..)+1)+2(start printing after 1 blank)
+  allocate(character(len=skipBCTagDigits) :: tagPrintFormat)
+  write(tagPrintFormat,'(i0)') skipBCTagDigits
   checkLoadcases: do l = 1, size(load_steps)
     write (loadcase_string, '(i0)' ) l
     print'(/,1x,a,1x,i0)', 'load case:', l
@@ -164,21 +179,23 @@ program DAMASK_mesh
       print'(2x,a)', 'drop guessing along trajectory'
     print'(2x,a)', 'Field '//trim(FIELD_MECH_label)
 
-    do faceSet = 1, mesh_Nboundaries
-       do component = 1, dimPlex
-         if (loadCases(l)%mechBC(faceSet)%Mask(component)) &
-           print'(a,i2,a,i2,a,f12.7)', &
-           '    Face ', mesh_boundaries(faceSet), &
-           ' Component ', component, &
-           ' Value ', loadCases(l)%mechBC(faceSet)%Value(component)
+    do boundary = 1_pPETSCINT, mesh_Nboundaries
+      BC_elem = merge('Vertex', merge('Edge  ', 'Face  ', dimplex == 2_pPETSCINT), &
+                      mesh_boundariesIdx(boundary) == 1_pPETSCINT)
+      do component = 1_pPETSCINT, dimPlex
+        if (loadCases(l)%mechBC(boundary)%active(component)) &
+          print'(4x,a,1x,i0,T'//tagPrintFormat//',a,1x,i1,1x,a,1x,f12.7)', &
+          BC_elem, mesh_boundariesIS(boundary), &
+          'Component', component, &
+          'Value', loadCases(l)%mechBC(boundary)%dot_u(component)
       end do
     end do
-    print'(2x,a,f12.6)', 'time:       ', loadCases(l)%t
-    if (loadCases(l)%N < 1)             errorID = 835                                              ! non-positive incs count
-    print'(2x,a,i5)',    'increments: ', loadCases(l)%N
-    if (loadCases(l)%f_out < 1)  errorID = 836                                                     ! non-positive result frequency
-    print'(2x,a,i5)',    'output frequency: ', &
-               loadCases(l)%f_out
+
+    print'(2x,a,T21,g0.6)', 'time:', loadCases(l)%t
+    if (loadCases(l)%N < 1) errorID = 835                                                          ! non-positive incs count
+    print'(2x,a,T21,i0)',   'increments:', loadCases(l)%N
+    if (loadCases(l)%f_out < 1) errorID = 836                                                      ! non-positive result frequency
+    print'(2x,a,T21,i0)',   'output frequency:', loadCases(l)%f_out
     if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                  ! exit with error message
   end do checkLoadcases
 
@@ -222,7 +239,7 @@ program DAMASK_mesh
                 'Time', t, &
                 's: Increment ', inc, '/', loadCases(l)%N,&
                 '-', stepFraction, '/', subStepFactor**cutBackLevel,&
-                ' of load case ', l,'/',size(load_steps)
+                ' of load case ', l,'/', size(load_steps)
         write(incInfo,'(4(a,i0))') &
                'Increment ',totalIncsCounter,'/',sum(loadCases%N),&
                '-',stepFraction, '/', subStepFactor**cutBackLevel

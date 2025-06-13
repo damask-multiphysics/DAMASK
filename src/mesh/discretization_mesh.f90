@@ -38,7 +38,14 @@ module discretization_mesh
   private
 
   PetscInt, public, protected :: &
-    mesh_Nboundaries
+    mesh_Nboundaries                                                                                !< Number of defined BC (total)
+
+  PetscInt, dimension(2), public, protected :: &
+    mesh_BCTypeSetSize                                                                              !< Number of each BC type (1: Vertex, 2: Faces)
+
+  PetscInt, dimension(:), allocatable, public, protected :: &
+    mesh_boundariesIS, &                                                                            !< Index Set (tag values) of BC in mesh file
+    mesh_boundariesIdx                                                                              !< BC Type index (BCType_Vertex, BCType_Face)
 
   PetscInt, public, protected :: &
     mesh_NcpElemsGlobal
@@ -51,10 +58,14 @@ module discretization_mesh
     mesh_maxNips                                                                                    !< max number of IPs in any CP element
 !!!! END DEPRECATED !!!!!
 
-  DM, public :: geomMesh
+  PetscInt, parameter :: &
+    BCTypeFace   = 1_pPETSCINT, &
+    BCTypeVertex = 2_pPETSCINT
 
-  PetscInt, dimension(:), allocatable, public, protected :: &
-    mesh_boundaries
+  character(len=11), dimension(2), public, protected :: &
+    mesh_BCTypeLabel = ['Face Sets  ', 'Vertex Sets']                                               !< PETSc default BC labels
+
+  DM, public :: geomMesh
 
   real(pREAL), dimension(:,:), allocatable :: &
     mesh_ipVolume, &                                                                                !< volume associated with IP (initially!)
@@ -62,6 +73,7 @@ module discretization_mesh
 
   real(pREAL), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
+
 
 #if PETSC_VERSION_MINOR < 16
   external :: &
@@ -85,9 +97,10 @@ subroutine discretization_mesh_init()
     j
   PetscSF :: sf
   DM :: globalMesh
-  PetscInt :: nFaceSets, Nboundaries, NelemsGlobal, Nelems
-  PetscInt, pointer, dimension(:) :: pFaceSets
-  IS :: faceSetIS
+  PetscInt :: NelemsGlobal, Nelems
+  PetscInt :: label
+  IS :: setIS
+  PetscInt, pointer, dimension(:) :: pSets
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18)
   PetscQuadrature :: quadrature
 #endif
@@ -99,7 +112,7 @@ subroutine discretization_mesh_init()
     num_solver, &
     num_mesh
   PetscInt :: p_i
-  integer:: dim                                                                                     !< integration order (quadrature rule)
+  integer:: dim
   type(tvec) :: coords_node0
   real(pREAL), pointer, dimension(:) :: &
     mesh_node0_temp
@@ -118,6 +131,7 @@ subroutine discretization_mesh_init()
   num_mesh   => num_solver%get_dict('mesh',defaultVal=emptyDict)
   p_i = num_mesh%get_asInt('p_i',defaultVal=2)
 
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS, ' -dm_plex_gmsh_mark_vertices ', err_PETSc)
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>16)
   call DMPlexCreateFromFile(PETSC_COMM_WORLD,CLI_geomFile,'n/a',PETSC_TRUE,globalMesh,err_PETSc)
 #else
@@ -128,16 +142,8 @@ subroutine discretization_mesh_init()
   CHKERRQ(err_PETSc)
   call DMGetStratumSize(globalMesh,'depth',dimPlex,NelemsGlobal,err_PETSc)
   CHKERRQ(err_PETSc)
-  mesh_NcpElemsGlobal = int(NelemsGlobal)
+  mesh_NcpElemsGlobal = NelemsGlobal
 
-  ! get number of IDs in face sets (for boundary conditions?)
-  call DMGetLabelSize(globalMesh,'Face Sets',Nboundaries,err_PETSc)
-  CHKERRQ(err_PETSc)
-  mesh_Nboundaries = int(Nboundaries)
-  call MPI_Bcast(mesh_Nboundaries,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-  call parallelization_chkerr(err_MPI)
-  call MPI_Bcast(mesh_NcpElemsGlobal,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-  call parallelization_chkerr(err_MPI)
   dim = int(dimPlex)
   call MPI_Bcast(dim,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   dimPlex = int(dim,pPETSCINT)
@@ -150,19 +156,35 @@ subroutine discretization_mesh_init()
   end if
   CHKERRQ(err_PETSc)
 
-  allocate(mesh_boundaries(mesh_Nboundaries), source = 0_pPETSCINT)
-  call DMGetLabelSize(globalMesh,'Face Sets',nFaceSets,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call DMGetLabelIdIS(globalMesh,'Face Sets',faceSetIS,err_PETSc)
-  CHKERRQ(err_PETSc)
-  if (nFaceSets > 0) then
-    call ISGetIndices(faceSetIS,pFaceSets,err_PETSc)
+  mesh_Nboundaries = 0_pPETSCINT
+  allocate(mesh_boundariesIS(mesh_Nboundaries))
+  mesh_BCTypeSetSize = 0_pPETSCINT
+  do label = 1_pPETSCINT, size(mesh_BCTypeLabel)
+    call DMGetLabelSize(globalMesh,mesh_BCTypeLabel(label),mesh_BCTypeSetSize(label),err_PETSc)
     CHKERRQ(err_PETSc)
-    mesh_boundaries(1:nFaceSets) = pFaceSets
+    call DMGetLabelIdIS(globalMesh,mesh_BCTypeLabel(label),setIS,err_PETSc)
     CHKERRQ(err_PETSc)
-    call ISRestoreIndices(faceSetIS,pFaceSets,err_PETSc)
-  end if
-  call MPI_Bcast(mesh_boundaries,int(mesh_Nboundaries),MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+    if (mesh_BCTypeSetSize(label) > 0_pPETSCINT) then
+      call ISGetIndices(setIS,pSets,err_PETSc)
+      CHKERRQ(err_PETSc)
+      mesh_boundariesIS = [mesh_boundariesIS, pSets]
+      call ISRestoreIndices(setIS,pSets,err_PETSc)
+      CHKERRQ(err_PETSc)
+      mesh_Nboundaries = mesh_Nboundaries+mesh_BCTypeSetSize(label)
+    end if
+  end do
+  allocate(mesh_boundariesIdx(mesh_Nboundaries), source = BCTypeFace)
+  mesh_boundariesIdx(mesh_BCTypeSetSize(BCTypeFace)+1_pPETSCINT:mesh_Nboundaries) = BCTypeVertex
+
+  call MPI_Bcast(mesh_BCTypeSetSize,int(size(mesh_BCTypeSetSize),kind=MPI_INTEGER_KIND),MPI_INTEGER,0_MPI_INTEGER_KIND, &
+                 MPI_COMM_WORLD,err_MPI)
+  call parallelization_chkerr(err_MPI)
+  call MPI_Bcast(mesh_Nboundaries,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  call parallelization_chkerr(err_MPI)
+  call MPI_Bcast(mesh_boundariesIdx,int(mesh_Nboundaries,kind=MPI_INTEGER_KIND),MPI_INTEGER,0_MPI_INTEGER_KIND, &
+                 MPI_COMM_WORLD,err_MPI)
+  call parallelization_chkerr(err_MPI)
+  call MPI_Bcast(mesh_boundariesIS,int(mesh_Nboundaries),MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
   call DMDestroy(globalMesh,err_PETSc)
