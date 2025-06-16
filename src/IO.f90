@@ -179,7 +179,7 @@ end function IO_lc
 !--------------------------------------------------------------------------------------------------
 ! @brief Return first (with glued on second if they differ).
 !--------------------------------------------------------------------------------------------------
-function IO_glueDiffering(first,second,glue)
+pure function IO_glueDiffering(first,second,glue)
 
   character(len=*),           intent(in)  :: first
   character(len=*),           intent(in)  :: second
@@ -199,7 +199,7 @@ end function IO_glueDiffering
 !--------------------------------------------------------------------------------------------------
 !> @brief Return given int value as string.
 !--------------------------------------------------------------------------------------------------
-function IO_intAsStr(i)
+pure function IO_intAsStr(i)
 
   integer, intent(in)            :: i
   character(len=:), allocatable  :: IO_intAsStr
@@ -214,7 +214,7 @@ end function IO_intAsStr
 !--------------------------------------------------------------------------------------------------
 !> @brief Return given float value as string.
 !--------------------------------------------------------------------------------------------------
-function IO_realAsStr(f)
+pure function IO_realAsStr(f)
 
   real(pREAL), intent(in)        :: f
   character(len=:), allocatable  :: IO_realAsStr

@@ -31,14 +31,24 @@ module CLI
     CLI_jobID                                                                                       !< unique job ID (UUID)
 
 #ifdef BOOST
+
   interface
 
+#ifndef OLD_STYLE_C_TO_FORTRAN_STRING
     subroutine get_uuid_CPP(uuid, stat) bind(C)
       use, intrinsic :: ISO_C_binding, only: C_INT, C_CHAR
 
       character(kind=C_CHAR,len=:), allocatable, intent(out) :: uuid
       integer(C_INT),                            intent(out) :: stat
     end subroutine get_uuid_CPP
+#else
+    subroutine get_uuid_CPP(uuid, stat) bind(C)
+      use, intrinsic :: ISO_C_binding, only: C_INT, C_CHAR
+
+      character(kind=C_CHAR), dimension(36+1), intent(out) :: uuid                                  ! NULL-terminated array
+      integer(C_INT),                          intent(out) :: stat
+    end subroutine get_uuid_CPP
+#endif
 
   end interface
 #endif
@@ -203,21 +213,21 @@ subroutine CLI_init()
   print'(/,1x,a)',      'Host name: '//OS_getHostName()
   print'(1x,a)',        'User name: '//OS_getUserName()
 
-  print'(/,1x,a,/)',    'Command line call:      '//trim(commandLine)
-  print'(1x,a)',        'Working directory:      '//IO_glueDiffering(OS_getCWD(),workingDirArg)
-  print'(1x,a)',        'Geometry:               '//IO_glueDiffering(CLI_geomFile,geomArg)
-  print'(1x,a)',        'Load case:              '//IO_glueDiffering(CLI_loadFile,loadArg)
-  print'(1x,a)',        'Material config:        '//IO_glueDiffering(CLI_materialFile,materialArg)
+  print'(/,1x,a,/)',    'Command line call:  '//trim(commandLine)
+  print'(1x,a)',        'Working directory:  '//IO_glueDiffering(OS_getCWD(),workingDirArg)
+  print'(1x,a)',        'Geometry:           '//IO_glueDiffering(CLI_geomFile,geomArg)
+  print'(1x,a)',        'Load case:          '//IO_glueDiffering(CLI_loadFile,loadArg)
+  print'(1x,a)',        'Material config:    '//IO_glueDiffering(CLI_materialFile,materialArg)
   if (allocated(numericsArg)) &
-    print'(1x,a)',      'Numerics config:        '//IO_glueDiffering(CLI_numericsFile,numericsArg)
-  print'(1x,a)',        'Job name:               '//CLI_jobName
+    print'(1x,a)',      'Numerics config:    '//IO_glueDiffering(CLI_numericsFile,numericsArg)
+  print'(1x,a)',        'Job name:           '//CLI_jobName
 #ifdef BOOST
    if (worldrank == 0) CLI_jobID = get_UUID()
    call parallelization_bcast_str(CLI_jobID)
-  print'(1x,a)',        'Job ID:                 '//CLI_jobID
+  print'(1x,a)',        'Job ID:             '//CLI_jobID
 #endif
   if (CLI_restartInc > 0) &
-    print'(1x,a,i6.6)', 'Restart from increment: ', CLI_restartInc
+    print'(1x,a,i0)', 'Restart increment:    ', CLI_restartInc
 
 
 end subroutine CLI_init
@@ -415,9 +425,22 @@ function get_UUID()
   integer(C_INT) :: stat
 
 
+#ifndef OLD_STYLE_C_TO_FORTRAN_STRING
   call get_uuid_CPP(get_UUID,stat)
   if (stat /= 0) error stop 'could not get UUID'
+#else
+  character(kind=C_CHAR,len=(36+1)) :: UUID_Cstring
 
+
+  call get_uuid_CPP(UUID_Cstring,stat)
+
+  if (stat == 0) then
+    get_UUID = c_f_string(UUID_Cstring)
+  else
+    error stop 'could not get UUID'
+  end if
+
+#endif
 end function get_UUID
 #endif
 

@@ -61,7 +61,7 @@ identifiers:
     description: >-
       D. Otto de Mentock et al.: A Python Library for Pre-
       and Post-Processing of DAMASK Simulations
-repository-code: 'https://github.com/eisenforschung/damask'
+repository-code: 'https://github.com/damask-multiphysics/DAMASK'
 url: 'https://damask-multiphysics.org'
 repository: 'https://doi.org/10.5281/zenodo.14586837'
 abstract: >-
@@ -85,9 +85,9 @@ keywords:
   - simulation
   - multi-physics
 license: AGPL-3.0-or-later
-commit: 06c6851a3f2ef5dd6e57fb7475cf646312176876
-version: 3.0.1
-date-released: '2024-10-18'
+commit: 810df52f6d98c0a3603c0fc88b9912c450b56e06
+version: 3.0.2
+date-released: '2024-06-09'
 preferred-citation:
   type: article
   authors:

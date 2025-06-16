@@ -53,13 +53,13 @@ subroutine prec_init()
 
   print'(/,1x,a)', '<<<+-  prec init  -+>>>'
 
-  print'(/,a,i3)',    ' integer size / bit:  ',bit_size(0)
-  print'(  a,i19)',   '   maximum value:     ',huge(0)
-  print'(/,a,i3)',    ' real size / bit:     ',storage_size(0.0_pREAL)
-  print'(  a,e10.3)', '   maximum value:     ',huge(0.0_pREAL)
-  print'(  a,e10.3)', '   minimum value:     ',PREAL_MIN
-  print'(  a,e10.3)', '   epsilon value:     ',PREAL_EPSILON
-  print'(  a,i3)',    '   decimal precision: ',precision(0.0_pREAL)
+  print'(/,a,i0)',    ' integer size / bit:  ',bit_size(0)
+  print'(  a,i0)',    '   maximum value:     ',huge(0)
+  print'(/,a,i0)',    ' real size / bit:     ',storage_size(0.0_pREAL)
+  print'(  a,e9.3)',  '   maximum value:     ',huge(0.0_pREAL)
+  print'(  a,e9.3)',  '   minimum value:     ',PREAL_MIN
+  print'(  a,e9.3)',  '   epsilon value:     ',PREAL_EPSILON
+  print'(  a,i0)',    '   decimal precision: ',precision(0.0_pREAL)
 
   call prec_selfTest()
 

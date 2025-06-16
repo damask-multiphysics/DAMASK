@@ -169,7 +169,7 @@ class Rotation:
         other : Rotation
             Rotation to check for inequality.
         """
-        return np.logical_not(self==other)
+        return np.logical_not(self==other) if isinstance(other, Rotation) else NotImplemented
 
 
     def isclose(self: MyType,
@@ -238,17 +238,16 @@ class Rotation:
         return self.quaternion[...,0].shape
 
 
-    def __array__(self,dtype = None,copy: Optional[bool] = None) -> np.ndarray:
+    def __array__(self: MyType,
+                  dtype: Optional[npt.DTypeLike] = None,
+                  *,
+                  copy: Optional[bool] = None) -> np.ndarray:
         """Initializer for numpy."""
-        if dtype is None or dtype == self.quaternion.dtype:
-            return self.quaternion.copy() if copy is True else self.quaternion
-        elif copy is not False:
-            return self.quaternion.astype(dtype)
-        else:
-           raise ValueError("`copy=False` isn't supported for mismatching `dtype`")
+        return self.quaternion.__array__(dtype) if np.lib.NumpyVersion(np.__version__) < '2.0.0' else \
+               self.quaternion.__array__(dtype,copy=copy)                                           # type: ignore[arg-type]
 
 
-    def __len__(self) -> int:
+    def __len__(self: MyType) -> int:
         """
         Return len(self).
 

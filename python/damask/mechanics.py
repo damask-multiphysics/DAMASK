@@ -4,7 +4,7 @@ Finite-strain continuum mechanics.
 All routines operate on numpy.ndarrays of shape (...,3,3).
 """
 
-from typing import Sequence as _Sequence, Union as _Union #, Literal as _Literal
+from typing import Sequence as _Sequence, Union as _Union, Literal as _Literal
 
 import numpy as _np
 
@@ -207,8 +207,7 @@ def rotation(T: _np.ndarray) -> _rotation.Rotation:
 
 
 def strain(F: _np.ndarray,
-           #t: _Literal['V', 'U'],   should work, but rejected by SC
-           t: str,
+           t: _Literal['V', 'U'],                                                                   # noqa: F821
            m: float) -> _np.ndarray:
     r"""
     Calculate strain tensor (Seth–Hill family).

@@ -40,6 +40,7 @@ int set_cwd_c(const char *cwd){
   return chdir(cwd);
 }
 
+#ifndef OLD_STYLE_C_TO_FORTRAN_STRING
 void get_cwd_c(CFI_cdesc_t *cwd, int *stat){
   char cwd_tmp[PATH_MAX]; // getcwd returns a string <= PATH_MAX (incl NULL)
   if (getcwd(cwd_tmp, sizeof(cwd_tmp))){
@@ -75,7 +76,36 @@ void get_username_c(CFI_cdesc_t *username, int *stat){
   }
   else *stat = 1;
 }
+#else
+void get_cwd_c(char cwd[], int *stat ){
+  char cwd_tmp[4096+1];
+  if (getcwd(cwd_tmp, sizeof(cwd_tmp))){
+    strcpy(cwd, cwd_tmp); // getcwd guarantees a NULL-terminated string
+    *stat = 0;
+  }
+  else *stat = 1;
+}
 
+
+void get_hostname_c(char hostname[], int *stat){
+  char hostname_tmp[256];
+  if (gethostname(hostname_tmp, sizeof(hostname_tmp)) == 0){
+    strncpy(hostname, hostname_tmp, strlen(hostname_tmp)+1); // gethostname does not guarantee a NULL-terminated string
+    *stat = 0;
+  }
+  else *stat = 1;
+}
+
+
+void get_username_c(char username[], int *stat){
+  struct passwd *pw = getpwuid(getuid());
+  if (pw && strlen(pw->pw_name) <= 256){
+    strncpy(username, pw->pw_name,strlen(pw->pw_name)+1);
+    *stat = 0;
+  }
+  else *stat = 1;
+}
+#endif
 
 int isatty_stdout_c(){
   return isatty(STDOUT_FILENO);
@@ -110,6 +140,7 @@ void inflate_c(const uLong *s_deflated, const uLong *s_inflated,
 
 
 #ifdef FYAML
+#ifndef OLD_STYLE_C_TO_FORTRAN_STRING
 void to_flow_c(CFI_cdesc_t *flow, const char *mixed, int *stat){
   struct fy_document *fyd = NULL;
   enum fy_emitter_cfg_flags emit_flags = FYECF_MODE_FLOW_ONELINE | FYECF_STRIP_LABELS | FYECF_STRIP_TAGS | FYECF_STRIP_DOC;
@@ -139,4 +170,27 @@ void to_flow_c(CFI_cdesc_t *flow, const char *mixed, int *stat){
   fy_document_destroy(fyd);
   *stat = 0;
 }
+#else
+void to_flow_c(char **flow, long* length_flow, const char *mixed){
+  struct fy_document *fyd = NULL;
+  enum fy_emitter_cfg_flags emit_flags = FYECF_MODE_FLOW_ONELINE | FYECF_STRIP_LABELS | FYECF_STRIP_TAGS | FYECF_STRIP_DOC;
+
+  fyd = fy_document_build_from_string(NULL, mixed, -1);
+  if (!fyd) {
+    *length_flow = -1;
+    return;
+  }
+  int err = fy_document_resolve(fyd);
+  if (err) {
+    *length_flow = -1;
+    return;
+  }
+
+  *flow = fy_emit_document_to_string(fyd, emit_flags);
+  *length_flow = (long) strlen(*flow);
+
+  fy_document_destroy(fyd);
+}
+
+#endif
 #endif
