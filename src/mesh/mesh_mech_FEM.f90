@@ -925,7 +925,7 @@ subroutine FEM_mechanical_updateCoords()
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
       qOffset = qPt * (size(basisField)/nQuadrature)
 #else
-      qOffset = qPt * (size(tab(1)%ptr%T(2)%ptr)/nQuadrature)
+      qOffset = qPt * (size(tab(1)%ptr%T(1)%ptr)/nQuadrature)
 #endif
       do comp=0,dimPlex-1                                                                           !< loop over components
         nOffset=0
@@ -935,7 +935,7 @@ subroutine FEM_mechanical_updateCoords()
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
                                      sum(basisField(qOffset+(q*dimPlex)+1:qOffset+(q*dimPlex)+dimPlex)*&
 #else
-                                     sum(tab(1)%ptr%T(2)%ptr(qOffset+(q*dimPlex)+1:qOffset+(q*dimPlex)+dimPlex)*&
+                                     sum(tab(1)%ptr%T(1)%ptr(qOffset+(q*dimPlex)+1:qOffset+(q*dimPlex)+dimPlex)*&
 #endif
                                      x_scal(nOffset+1:nOffset+dimPlex))
           q = q+dimPlex
@@ -946,7 +946,7 @@ subroutine FEM_mechanical_updateCoords()
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
     call DMPlexVecRestoreClosure(dm_local,section,x_local,c,x_scal,err_PETSc)
 #else
-    call DMPlexVecGetClosure(dm_local,section,x_local,c,PETSC_NULL_INTEGER,x_scal,err_PETSc) !< get nodal coordinates of each
+    call DMPlexVecRestoreClosure(dm_local,section,x_local,c,PETSC_NULL_INTEGER,x_scal,err_PETSc)
 #endif
     CHKERRQ(err_PETSc)
   end do
