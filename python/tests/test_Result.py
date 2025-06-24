@@ -388,12 +388,12 @@ class TestResult:
         assert (in_file == in_memory).all()
 
     @pytest.mark.parametrize('overwrite',['off','on'])
-    def test_add_overwrite(self,default,overwrite):
-        last = default.view(increments=-1)
+    def test_add_overwrite(self,single_phase,overwrite):
+        last = single_phase.view(increments=-1)
 
         last.add_stress_Cauchy()
 
-        created_first = last.place('sigma').dtype.metadata['created']
+        created_first = last.get('sigma').dtype.metadata['created']
         created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
 
         last = last.view(protected=overwrite != 'on')
@@ -404,7 +404,7 @@ class TestResult:
         except ValueError:
             pass
 
-        created_second = last.place('sigma').dtype.metadata['created']
+        created_second = last.get('sigma').dtype.metadata['created']
         created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
