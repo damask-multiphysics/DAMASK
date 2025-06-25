@@ -16,7 +16,7 @@ variables:
   # ===============================================================================================
   MARC_VERSION: '2024.1'
   PETSC_GCC_LATEST: '2025.05.27'
-  PETSC_ONEAPI_LATEST: '2025.04.30'
+  PETSC_ONEAPI_LATEST: '2025.06.12'
 
 
 ###################################################################################################
@@ -297,40 +297,38 @@ Marc_run:
 #   stage: core
 #   script: Phenopowerlaw_singleSlip/test.py
 
-###################################################################################################
 grid_performance:
   stage: core
+  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:${PETSC_ONEAPI_LATEST}
   tags:
-    - matesting_bare-metal
+    - matesting
   before_script:
-    - source /etc/zsh/spackenv
-    - spack env activate DAMASK_oneapi_2503
+    - cmake -DDAMASK_SOLVER=grid -DOPTIMIZATION=AGGRESSIVE -B build/grid
+    - cmake --build build/grid --parallel 4 --target install
     - source env/DAMASK.sh
   script:
-    - cd $(mktemp -d)
-    - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=./ ${CI_PROJECT_DIR}
-    - make -j2 all install
-    - export PATH=${PWD}/bin:${PATH}
-    - cd $(mktemp -d)
-    - git clone -q https://damask_user:${STATISTICS_TOKEN}@git.damask-multiphysics.org/damask/statistics.git .
-    - ./measure_performance.py --input_dir ${CI_PROJECT_DIR}/examples/grid --tag ${CI_COMMIT_SHA}
-    - cp performance.txt ${CI_PROJECT_DIR}/
+    - git clone -q https://damask_user:${STATISTICS_TOKEN}@git.damask-multiphysics.org/damask/statistics.git
+    - ./statistics/measure_performance.py --input_dir examples/grid --tag ${CI_COMMIT_SHA}
   artifacts:
-    untracked: true
     paths: [performance.txt]
+    expire_in: 1 month
 
 ###################################################################################################
 
 update_statistics:
   stage: update_repositories
+  image:
+    name: alpine/git
+    entrypoint: [""]
   tags:
-    - matesting_bare-metal  # could be any runner, needs git and should be fast to set up
-  dependencies:
-    - grid_performance
+    - docker_all
+  needs:
+    - job: grid_performance
+      artifacts: true
   script:
-    - cd $(mktemp -d)
-    - git clone -q https://damask_user:${STATISTICS_TOKEN}@git.damask-multiphysics.org/damask/statistics.git .
-    - cp ${CI_PROJECT_DIR}/performance.txt .
+    - git clone -q https://damask_user:${STATISTICS_TOKEN}@git.damask-multiphysics.org/damask/statistics.git
+    - cp performance.txt statistics/
+    - cd statistics
     - git add performance.txt
     - git commit -m ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
     - git push
@@ -338,8 +336,14 @@ update_statistics:
 
 update_revision:
   stage: update_repositories
+  image:
+    name: alpine/git
+    entrypoint: [""]
   tags:
-    - matesting_bare-metal  # could be any runner, needs git and should be fast to set up
+    - docker_all
+  before_script:
+    - git config --global user.name "testbot"
+    - git config --global user.email "testbot@damask-multiphysics.org"
   script:
     - cd $(mktemp -d)
     - git clone -b development -q https://damask_user:${TOKEN}@git.damask-multiphysics.org/damask/DAMASK.git .
@@ -347,7 +351,7 @@ update_revision:
     - echo ${VERSION:1} > VERSION
     - >
        git diff-index --quiet HEAD ||
-       git commit VERSION -m "[skip ci] updated version information after successful test of ${VERSION}"
+       git commit VERSION -m "[skip ci] updated version information after successful test of $VERSION"
     - if [ ${CI_COMMIT_SHA} == $(git rev-parse HEAD^) ]; then git push --atomic --no-verify origin HEAD:development HEAD:master; fi
   rules: [if: $CI_COMMIT_BRANCH == 'development']
 
