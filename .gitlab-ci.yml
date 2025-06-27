@@ -315,13 +315,19 @@ grid_performance:
 
 ###################################################################################################
 
-update_statistics:
+.update:
   stage: update_repositories
   image:
     name: alpine/git
     entrypoint: [""]
   tags:
     - docker_all
+  before_script:
+    - git config --global user.name "testbot"
+    - git config --global user.email "testbot@damask-multiphysics.org"
+
+update_statistics:
+  extends: .update
   needs:
     - job: grid_performance
       artifacts: true
@@ -335,15 +341,7 @@ update_statistics:
   rules: [if: $CI_COMMIT_BRANCH == 'development']
 
 update_revision:
-  stage: update_repositories
-  image:
-    name: alpine/git
-    entrypoint: [""]
-  tags:
-    - docker_all
-  before_script:
-    - git config --global user.name "testbot"
-    - git config --global user.email "testbot@damask-multiphysics.org"
+  extends: .update
   script:
     - cd $(mktemp -d)
     - git clone -b development -q https://damask_user:${TOKEN}@git.damask-multiphysics.org/damask/DAMASK.git .
