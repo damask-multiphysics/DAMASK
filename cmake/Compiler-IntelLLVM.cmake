@@ -18,39 +18,41 @@ endif ()
 # -assume std_mod_proc_name (included in -standard-semantics) causes problems if other modules
 # (PETSc, HDF5) are not compiled with this option (https://software.intel.com/en-us/forums/intel-fortran-compiler-for-linux-and-mac-os-x/topic/62172)
 set (STANDARD_CHECK "-stand f23 -assume nostd_mod_proc_name")
+
+# Link against shared Intel libraries instead of static ones:
 set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel")
-# Link against shared Intel libraries instead of static ones
+# enforce use of ifx for MPI wrapper:
 set (LINKER_FLAGS   "${LINKER_FLAGS} -fc=ifx")
-# enforce use of ifx for MPI wrapper
 
 #------------------------------------------------------------------------------------------------
 # Fine tuning compilation options
+#------------------------------------------------------------------------------------------------
+# disable flush underflow to zero, will be set if -O[1,2,3]:
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -no-ftz")
-# disable flush underflow to zero, will be set if -O[1,2,3]
 
+# disable warnings ...
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -diag-disable")
-# disables warnings ...
-set (COMPILE_FLAGS "${COMPILE_FLAGS} 5268")
 #   ... the text exceeds right hand column allowed on the line (enforced by pre-receive hook)
-set (COMPILE_FLAGS "${COMPILE_FLAGS},7624")
+set (COMPILE_FLAGS "${COMPILE_FLAGS} 5268")
 #   ... about deprecated forall (has nice syntax and most likely a performance advantage)
+set (COMPILE_FLAGS "${COMPILE_FLAGS},7624")
 
+# enable warnings ...
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn")
-# enables warnings ...
-set (COMPILE_FLAGS "${COMPILE_FLAGS} declarations")
 #   ... any undeclared names (alternative name: -implicitnone)
-set (COMPILE_FLAGS "${COMPILE_FLAGS},general")
+set (COMPILE_FLAGS "${COMPILE_FLAGS} declarations")
 #   ... warning messages and informational messages are issued by the compiler
-set (COMPILE_FLAGS "${COMPILE_FLAGS},usage")
+set (COMPILE_FLAGS "${COMPILE_FLAGS},general")
 #   ... questionable programming practices
-set (COMPILE_FLAGS "${COMPILE_FLAGS},interfaces")
+set (COMPILE_FLAGS "${COMPILE_FLAGS},usage")
 #   ... checks the interfaces of all SUBROUTINEs called and FUNCTIONs invoked in your compilation against an external set of interface blocks
-set (COMPILE_FLAGS "${COMPILE_FLAGS},ignore_loc")
+set (COMPILE_FLAGS "${COMPILE_FLAGS},interfaces")
 #   ... %LOC is stripped from an actual argument
-set (COMPILE_FLAGS "${COMPILE_FLAGS},alignments")
+set (COMPILE_FLAGS "${COMPILE_FLAGS},ignore_loc")
 #   ... data that is not naturally aligned
-set (COMPILE_FLAGS "${COMPILE_FLAGS},unused")
+set (COMPILE_FLAGS "${COMPILE_FLAGS},alignments")
 #   ... declared variables that are never used
+set (COMPILE_FLAGS "${COMPILE_FLAGS},unused")
 
 # Additional options
 #  -warn:                    enables warnings, where
@@ -62,55 +64,55 @@ set (COMPILE_FLAGS "${COMPILE_FLAGS},unused")
 
 #------------------------------------------------------------------------------------------------
 # Runtime debugging
-set (DEBUG_FLAGS "${DEBUG_FLAGS} -g")
+#------------------------------------------------------------------------------------------------
 # Generate symbolic debugging information in the object file
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -g")
 
-set (DEBUG_FLAGS "${DEBUG_FLAGS} -traceback")
 # Generate extra information in the object file to provide source file traceback information when a severe error occurs at run time
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -traceback")
 
-set (DEBUG_FLAGS "${DEBUG_FLAGS} -gen-interfaces")
 # Generate an interface block for each routine. http://software.intel.com/en-us/blogs/2012/01/05/doctor-fortran-gets-explicit-again/
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -gen-interfaces")
 
-# set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-stack-check") not available on ifx 2025.0.4
 # Generate extra code after every function call to ensure that the floating-point (FP) stack is in the expected state
+# set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-stack-check") not available on ifx 2025.0.4
 
-set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-model strict")
 # Trap uninitalized variables
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -fp-model strict")
 
+# Check at runtime ...
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -check" )
-# Checks at runtime ...
-set (DEBUG_FLAGS "${DEBUG_FLAGS} bounds")
 #   ... if an array index is too small (<1) or too large!
-set (DEBUG_FLAGS "${DEBUG_FLAGS},format")
+set (DEBUG_FLAGS "${DEBUG_FLAGS} bounds")
 #   ... for the data type of an item being formatted for output.
-set (DEBUG_FLAGS "${DEBUG_FLAGS},output_conversion")
+set (DEBUG_FLAGS "${DEBUG_FLAGS},format")
 #   ... for the fit of data items within a designated format descriptor field.
-set (DEBUG_FLAGS "${DEBUG_FLAGS},pointers")
+set (DEBUG_FLAGS "${DEBUG_FLAGS},output_conversion")
 #   ... for certain disassociated or uninitialized pointers or unallocated allocatable objects.
-set (DEBUG_FLAGS "${DEBUG_FLAGS},nouninit") # https://fortran-lang.discourse.group/t/issue-with-stdlib-and-intel-oneapi-fortran-compiler-ifx-2024-0/7049/4
+set (DEBUG_FLAGS "${DEBUG_FLAGS},pointers")
 #   ... for uninitialized variables.
-set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0 -ftz")
+set (DEBUG_FLAGS "${DEBUG_FLAGS},nouninit") # https://fortran-lang.discourse.group/t/issue-with-stdlib-and-intel-oneapi-fortran-compiler-ifx-2024-0/7049/4
 #   ... capture all floating-point exceptions, need to overwrite -no-ftz
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0 -ftz")
 
+# Initialize logical to false, integer to -huge, float+complex to signaling NaN
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -init=arrays,zero,minus_huge,snan")
-#   ... initialize logical to false, integer to -huge, float+complex to signaling NaN
 
 # disable due to compiler bug https://community.intel.com/t5/Intel-Fortran-Compiler/false-positive-stand-f18-and-IEEE-SELECTED-REAL-KIND/m-p/1227336
-#set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn")
 # enables warnings ...
-#set (DEBUG_FLAGS "${DEBUG_FLAGS} errors")
+#set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn")
 #   ... warnings are changed to errors
-#set (DEBUG_FLAGS "${DEBUG_FLAGS},stderrors")
+#set (DEBUG_FLAGS "${DEBUG_FLAGS} errors")
 #   ... warnings about Fortran standard violations are changed to errors
+#set (DEBUG_FLAGS "${DEBUG_FLAGS},stderrors")
 
-set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug-parameters all")
 # generate debug information for parameters
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug-parameters all")
 
-set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug all")
 # generate complete debugging information
-
 # Additional options
 # -heap-arrays:            Should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
 # -check:                  Checks at runtime, where
 #    arg_temp_created:       will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
 #    stack:
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug all")
