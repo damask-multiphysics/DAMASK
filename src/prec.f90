@@ -51,6 +51,11 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine prec_init()
 
+#ifdef PETSC
+  PetscErrorCode :: err_PETSc
+#endif
+
+
   print'(/,1x,a)', '<<<+-  prec init  -+>>>'
 
   print'(/,a,i0)',    ' integer size / bit:  ',bit_size(0)
@@ -60,6 +65,15 @@ subroutine prec_init()
   print'(  a,e9.3)',  '   minimum value:     ',PREAL_MIN
   print'(  a,e9.3)',  '   epsilon value:     ',PREAL_EPSILON
   print'(  a,i0)',    '   decimal precision: ',precision(0.0_pREAL)
+
+#ifdef PETSC
+#ifdef DEBUG
+  call PetscSetFPTrap(PETSC_FP_TRAP_ON,err_PETSc)
+#else
+  call PetscSetFPTrap(PETSC_FP_TRAP_OFF,err_PETSc)
+#endif
+  CHKERRQ(err_PETSc)
+#endif
 
   call prec_selfTest()
 
@@ -252,7 +266,9 @@ subroutine prec_selfTest()
   real(pREAL),   dimension(1) :: f
   integer(pI64), dimension(1) :: i
   real(pREAL),   dimension(2) :: r
+#ifndef DEBUG
   real(pREAL)                 :: NaN
+#endif
 #ifdef PETSC
   PetscScalar :: dummy_scalar
 
