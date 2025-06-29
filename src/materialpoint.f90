@@ -50,12 +50,12 @@ contains
 subroutine materialpoint_initAll()
 
   call parallelization_init()
-  call CLI_init()                                                                                   ! grid and mesh commandline interface
-  call OS_init()
-  call signal_init()
   call prec_init()
+  call OS_init()
   call misc_init()
   call IO_init()
+  call CLI_init()                                                                                   ! grid and mesh commandline interface
+  call signal_init()
 #if   defined(MESH) && (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
   call FEM_quadrature_init()
 #elif defined(GRID)
