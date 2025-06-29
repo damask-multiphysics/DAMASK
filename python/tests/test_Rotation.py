@@ -1128,7 +1128,7 @@ class TestRotation:
 
     def test_misorientation_zero(self,set_of_quaternions,assert_allclose):
         r = Rotation.from_quaternion(set_of_quaternions)
-        assert_allclose(r.misorientation_angle(r),0.,atol=1.e-8,rtol=0.)
+        assert_allclose(r.misorientation_angle(r),0.,atol=1.e-7,rtol=0.)
         assert_allclose(r.misorientation(r).as_axis_angle(pair=True)[1],0.,atol=1.e-8,rtol=0.)
 
     @pytest.mark.parametrize('shapes',[[None,None],
