@@ -86,7 +86,7 @@ module math
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief initialization of random seed generator and internal checks
+!> @brief Report random state and do self test.
 !--------------------------------------------------------------------------------------------------
 subroutine math_init()
 
@@ -681,6 +681,27 @@ real(pREAL) pure function math_detSym33(m)
                   + m(1,1)*m(2,2)*m(3,3) + 2.0_pREAL * m(1,2)*m(1,3)*m(2,3)
 
 end function  math_detSym33
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculate determinant of a matrix of arbitrary dimension.
+!--------------------------------------------------------------------------------------------------
+real(pREAL) pure function math_det(A)
+
+  real(pREAL), dimension(:,:), intent(in)  :: A
+
+  real(pREAL), dimension(size(A,1),size(A,1)) :: U
+  integer,     dimension(size(A,1))           :: ipiv
+  integer                                     :: ierr, i
+
+
+  U = A
+  call dgetrf(size(A,1),size(A,1),U,size(A,1),ipiv,ierr)
+  if (ierr /= 0) error stop 'LU decomposition failed'
+
+  math_det = product([(U(i,i) * merge(1.0_pREAL,-1.0_pREAL,ipiv(i)==i),i=1,size(A,1))])
+
+end function math_det
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1374,6 +1395,9 @@ subroutine math_selfTest()
   if (dNeq(math_det33(math_symmetric33(t33)),math_detSym33(math_symmetric33(t33)),tol=1.0e-12_pREAL)) &
     error stop 'math_det33/math_detSym33'
 
+  if (dNeq(math_det33(t33),math_det(t33),tol=1.0e-12_pREAL)) &
+    error stop 'math_det33/math_det'
+
   if (any(dNeq(t33+transpose(t33),math_mul3333xx33(math_identity4th(),t33+transpose(t33))))) &
     error stop 'math_mul3333xx33/math_identity4th'
 
@@ -1402,7 +1426,7 @@ subroutine math_selfTest()
   if (any(dNeq0(matmul(t33,t33_2) - math_eye(3),tol=1.0e-9_pREAL)) .or. e) &
     error stop 'math_invert t33'
 
-  do while(math_det33(t33)<1.0e-2_pREAL)                                                            ! O(det(F)) = 1
+  do while(math_det33(t33)<1.0e-5_pREAL)                                                            ! O(det(F)) < 1
     call random_number(t33)
   end do
   t33_2 = math_rotationalPart(transpose(t33))
@@ -1420,7 +1444,10 @@ subroutine math_selfTest()
   if (any(dNeq0(txx_2,txx) .or. e)) &
     error stop 'math_invert(txx)/math_eye'
 
-  call math_invert(t99_2,e,t99) ! not sure how likely it is that we get a singular matrix
+  do while(abs(math_det(t99))<1.0e-5_pREAL)                                                         ! O(det(F)) < 1
+    call random_number(t99)
+  end do
+  call math_invert(t99_2,e,t99)
   if (any(dNeq0(matmul(t99_2,t99)-math_eye(9),tol=1.0e-9_pREAL)) .or. e) &
     error stop 'math_invert(t99)'
 
