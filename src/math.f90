@@ -1426,7 +1426,7 @@ subroutine math_selfTest()
   if (any(dNeq0(matmul(t33,t33_2) - math_eye(3),tol=1.0e-9_pREAL)) .or. e) &
     error stop 'math_invert t33'
 
-  do while(math_det33(t33)<1.0e-5_pREAL)                                                            ! O(det(F)) < 1
+  do while(math_det33(t33)<1.0e-2_pREAL)                                                            ! O(det(F)) = 1
     call random_number(t33)
   end do
   t33_2 = math_rotationalPart(transpose(t33))
@@ -1444,7 +1444,7 @@ subroutine math_selfTest()
   if (any(dNeq0(txx_2,txx) .or. e)) &
     error stop 'math_invert(txx)/math_eye'
 
-  do while(abs(math_det(t99))<1.0e-5_pREAL)                                                         ! O(det(F)) < 1
+  do while(abs(math_det(t99))<1.0e-8_pREAL)                                                         ! avoid approximately singular matrices
     call random_number(t99)
   end do
   call math_invert(t99_2,e,t99)
