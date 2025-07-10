@@ -453,7 +453,7 @@ function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
     ! https://doi.org/10.1016/0079-6425(94)00007-7, Table 3 with reversed signs for modes that shear in tension and compression
     case('hP')
       if (cOverA < 1.0_pREAL .or. cOverA > 3.0_pREAL) &
-        call IO_error(131,ext_msg='crystal_characteristicShear_Twin')
+        call IO_error(130_pI16,'c/a for hP lattice not in range [1,3]', cOverA, emph=[2])
 
       myFamilies: do f = 1,size(Ntwin,1)
         s = sum(Ntwin(:f-1)) + 1
@@ -519,11 +519,11 @@ end function crystal_C66_twin
 !--------------------------------------------------------------------------------------------------
 !> @brief Rotated elasticity matrices for transformation in 6x6-matrix notation
 !--------------------------------------------------------------------------------------------------
-function crystal_C66_trans(Ntrans,C_parent66,crystal_target, &
+function crystal_C66_trans(Ntrans,C_parent66,lattice_target, &
                            cOverA_trans,a_cF,a_cI)
 
   integer,     dimension(:),             intent(in) :: Ntrans                                       !< number of active twin systems per family
-  character(len=*),                      intent(in) :: crystal_target                               !< Bravais lattice (Pearson symbol)
+  character(len=*),                      intent(in) :: lattice_target                               !< Bravais lattice (Pearson symbol)
   real(pREAL), dimension(6,6),           intent(in) :: C_parent66
   real(pREAL),                 optional, intent(in) :: cOverA_trans, a_cF, a_cI
   real(pREAL), dimension(6,6,sum(Ntrans))           :: crystal_C66_trans
@@ -535,11 +535,15 @@ function crystal_C66_trans(Ntrans,C_parent66,crystal_target, &
 
  !--------------------------------------------------------------------------------------------------
  ! elasticity matrix of the target phase in cube orientation
-  if (crystal_target == 'hP' .and. present(cOverA_trans)) then
+  if (lattice_target  == 'cI' .and. present(a_cF) .and. present(a_cI)) then
+    if (a_cI <= 0.0_pREAL .or. a_cF <= 0.0_pREAL) &
+      call IO_error(130_pI16,'negative lattice parameter a', min(a_cI,a_cF), emph=[2])
+    C_target_unrotated66 = C_parent66
+  elseif (lattice_target == 'hP' .and. present(cOverA_trans)) then
     ! https://doi.org/10.1063/1.1663858 eq. (16), eq. (18), eq. (19)
     ! https://doi.org/10.1016/j.actamat.2016.07.032 eq. (47), eq. (48)
-    if (cOverA_trans < 1.0_pREAL .or. cOverA_trans > 2.0_pREAL) &
-      call IO_error(131,ext_msg='crystal_C66_trans: '//trim(crystal_target))
+    if (cOverA_trans < 1.0_pREAL .or. cOverA_trans > 3.0_pREAL) &
+      call IO_error(130_pI16,'c/a for hP target lattice not in range [1,3]', cOverA_trans, emph=[2])
     C_bar66(1,1) = (C_parent66(1,1) + C_parent66(1,2) + 2.0_pREAL*C_parent66(4,4))/2.0_pREAL
     C_bar66(1,2) = (C_parent66(1,1) + 5.0_pREAL*C_parent66(1,2) - 2.0_pREAL*C_parent66(4,4))/6.0_pREAL
     C_bar66(3,3) = (C_parent66(1,1) + 2.0_pREAL*C_parent66(1,2) + 4.0_pREAL*C_parent66(4,4))/3.0_pREAL
@@ -554,17 +558,15 @@ function crystal_C66_trans(Ntrans,C_parent66,crystal_target, &
     C_target_unrotated66(3,3) = C_bar66(3,3)
     C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2/(0.5_pREAL*(C_bar66(1,1) - C_bar66(1,2)))
     C_target_unrotated66 = crystal_symmetrize_C66(C_target_unrotated66,'hP')
-  elseif (crystal_target  == 'cI' .and. present(a_cF) .and. present(a_cI)) then
-    if (a_cI <= 0.0_pREAL .or. a_cF <= 0.0_pREAL) &
-      call IO_error(134,ext_msg='crystal_C66_trans: '//trim(crystal_target))
-    C_target_unrotated66 = C_parent66
+  elseif (all(lattice_target /= ['cI','hP'])) then
+    call IO_error(130_pI16,'invalid target lattice',lattice_target,emph=[2])
   else
-    call IO_error(137,ext_msg='crystal_C66_trans : '//trim(crystal_target))
+    call IO_error(130_pI16,'lattice parameters for target lattice not given', lattice_target, emph=[2])
   end if
 
   do i = 1,6
     if (abs(C_target_unrotated66(i,i))<tol_math_check) &
-    call IO_error(135,'matrix diagonal in transformation',label1='entry',ID1=i)
+      call IO_error(130_pI16,'zero entry in elasticity matrix at', i, i, emph=[2,3])
   end do
 
   call buildTransformationSystem(Q,S,Ntrans,cOverA_trans,a_cF,a_cI)
@@ -1500,26 +1502,28 @@ end function crystal_SchmidMatrix_twin
 !> @brief Schmid matrix for transformation
 !> @details only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
-function crystal_SchmidMatrix_trans(Ntrans,crystal_target,cOverA,a_cF,a_cI) result(SchmidMatrix)
+function crystal_SchmidMatrix_trans(Ntrans,lattice_target,cOverA,a_cF,a_cI) result(SchmidMatrix)
 
   integer,         dimension(:),             intent(in) :: Ntrans                                   !< number of active twin systems per family
-  character(len=*),                          intent(in) :: crystal_target                           !< Bravais lattice (Pearson symbol)
+  character(len=*),                          intent(in) :: lattice_target                           !< Bravais lattice (Pearson symbol)
   real(pREAL),                     optional, intent(in) :: cOverA, a_cI, a_cF
   real(pREAL),     dimension(3,3,sum(Ntrans))           :: SchmidMatrix
 
   real(pREAL), dimension(3,3,sum(Ntrans)) :: devNull
 
 
-  if (crystal_target == 'hP' .and. present(cOverA)) then
-    if (cOverA < 1.0_pREAL .or. cOverA > 2.0_pREAL) &
-    call IO_error(131,ext_msg='crystal_SchmidMatrix_trans: '//trim(crystal_target))
-    call buildTransformationSystem(devNull,SchmidMatrix,Ntrans,cOverA=cOverA)
-  else if (crystal_target == 'cI' .and. present(a_cF) .and. present(a_cI)) then
+  if (lattice_target == 'cI' .and. present(a_cF) .and. present(a_cI)) then
     if (a_cI <= 0.0_pREAL .or. a_cF <= 0.0_pREAL) &
-    call IO_error(134,ext_msg='crystal_SchmidMatrix_trans: '//trim(crystal_target))
+      call IO_error(130_pI16,'negative lattice parameter a', min(a_cI,a_cF), emph=[2])
     call buildTransformationSystem(devNull,SchmidMatrix,Ntrans,a_cF=a_cF,a_cI=a_cI)
+  elseif (lattice_target == 'hP' .and. present(cOverA)) then
+    if (cOverA < 1.0_pREAL .or. cOverA > 3.0_pREAL) &
+      call IO_error(130_pI16,'c/a for hP target lattice not in range [1,3]', cOverA, emph=[2])
+    call buildTransformationSystem(devNull,SchmidMatrix,Ntrans,cOverA=cOverA)
+  elseif (all(lattice_target /= ['cI','hP'])) then
+    call IO_error(130_pI16,'invalid target lattice',lattice_target,emph=[2])
   else
-    call IO_error(131,ext_msg='crystal_SchmidMatrix_trans: '//trim(crystal_target))
+    call IO_error(130_pI16,'lattice parameters for target lattice not given', lattice_target, emph=[2])
   end if
 
 end function crystal_SchmidMatrix_trans
@@ -1935,9 +1939,9 @@ function buildCoordinateSystem(active,potential,system,lattice,cOverA) result(co
     s                                                                                               !< index of my system in current family
 
   if (lattice == 'tI' .and. cOverA > 2.0_pREAL) &
-    call IO_error(131,ext_msg='buildCoordinateSystem:'//trim(lattice))
-  if (lattice == 'hP' .and. (cOverA < 1.0_pREAL .or. cOverA > 2.0_pREAL)) &
-    call IO_error(131,ext_msg='buildCoordinateSystem:'//trim(lattice))
+    call IO_error(130_pI16,'c/a for tI lattice larger than 2:', cOverA)
+  if (lattice == 'hP' .and. (cOverA < 1.0_pREAL .or. cOverA > 3.0_pREAL)) &
+    call IO_error(130_pI16,'c/a for hP lattice not in range [1,3]', cOverA)
 
   a = 0
   activeFamilies: do f = 1,size(active,1)

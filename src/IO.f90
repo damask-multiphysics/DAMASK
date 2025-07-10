@@ -353,15 +353,9 @@ subroutine IO_error_new(error_ID, &
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
     case (130)
-      msg = 'unknown lattice structure encountered'
-    case (131)
-      msg = 'hex lattice structure with invalid c/a ratio'
+      msg = 'invalid crystal parameters'
     case (132)
       msg = 'invalid parameters for transformation'
-    case (134)
-      msg = 'negative lattice parameter'
-    case (135)
-      msg = 'zero entry on stiffness diagonal'
     case (137)
       msg = 'not defined for lattice structure'
     case (138)
@@ -775,7 +769,7 @@ subroutine panel(paneltype,ID,msg, &
 
       character(len=:), allocatable :: as_str
       class(*), optional, intent(in) :: info
-      logical, optional, intent(in) :: emph
+      logical, intent(in) :: emph
 
 
       if (present(info)) then
@@ -790,7 +784,7 @@ subroutine panel(paneltype,ID,msg, &
             error stop 'cannot convert info argument to string'
         end select
 
-        if (present(emph)) then
+        if (emph) then
 #ifndef MARC_SOURCE
           if (OS_isaTTY(IO_STDERR)) then
             as_str = IO_EMPH//as_str//IO_FORMATRESET

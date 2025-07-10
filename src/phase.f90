@@ -404,7 +404,7 @@ subroutine phase_init()
     phase_rho(ph) = phase%get_asReal('rho',defaultVal=0.0_pREAL)
     phase_lattice(ph) = phase%get_asStr('lattice')
     if (all(phase_lattice(ph) /= ['cF','cI','hP','tI'])) &
-      call IO_error(130,ext_msg='phase_init: '//phase%get_asStr('lattice'))
+      call IO_error(130_pI16,'invalid lattice', phase_lattice(ph), emph=[2])
     if (any(phase_lattice(ph) == ['hP','tI'])) &
       phase_cOverA(ph) = phase%get_asReal('c/a')
     allocate(phase_O_0(ph)%data(count(material_ID_phase==ph)))
