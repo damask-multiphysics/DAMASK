@@ -81,13 +81,6 @@ subroutine parallelization_init()
   call PetscInitializeNoArguments(err_PETSc)
   CHKERRQ(err_PETSc)
 
-#if defined(DEBUG)
-  call PetscSetFPTrap(PETSC_FP_TRAP_ON,err_PETSc)
-#else
-  call PetscSetFPTrap(PETSC_FP_TRAP_OFF,err_PETSc)
-#endif
-  CHKERRQ(err_PETSc)
-
   call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
   CHKERRQ(err_PETSc)
 

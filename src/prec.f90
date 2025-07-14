@@ -51,6 +51,11 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine prec_init()
 
+#ifdef PETSC
+  PetscErrorCode :: err_PETSc
+#endif
+
+
   print'(/,1x,a)', '<<<+-  prec init  -+>>>'
 
   print'(/,a,i0)',    ' integer size / bit:  ',bit_size(0)
@@ -60,6 +65,15 @@ subroutine prec_init()
   print'(  a,e9.3)',  '   minimum value:     ',PREAL_MIN
   print'(  a,e9.3)',  '   epsilon value:     ',PREAL_EPSILON
   print'(  a,i0)',    '   decimal precision: ',precision(0.0_pREAL)
+
+#ifdef PETSC
+#ifdef DEBUG
+  call PetscSetFPTrap(PETSC_FP_TRAP_ON,err_PETSc)
+#else
+  call PetscSetFPTrap(PETSC_FP_TRAP_OFF,err_PETSc)
+#endif
+  CHKERRQ(err_PETSc)
+#endif
 
   call prec_selfTest()
 
@@ -252,12 +266,16 @@ subroutine prec_selfTest()
   real(pREAL),   dimension(1) :: f
   integer(pI64), dimension(1) :: i
   real(pREAL),   dimension(2) :: r
+#ifndef DEBUG
+  real(pREAL)                 :: NaN
+#endif
 #ifdef PETSC
   PetscScalar :: dummy_scalar
 
 
   if (pREAL /= kind(dummy_scalar))          error stop 'PETSc and DAMASK scalar datatypes do not match'
 #endif
+
   realloc_lhs_test = [1,2]
   if (any(realloc_lhs_test/=[1,2]))         error stop 'LHS allocation'
 
@@ -266,6 +284,31 @@ subroutine prec_selfTest()
   if (.not. all(dEq(r,r+PREAL_EPSILON)))    error stop 'dEq'
   if (dEq(r(1),r(2)) .and. dNeq(r(1),r(2))) error stop 'dNeq'
   if (.not. all(dEq0(r-(r+PREAL_MIN))))     error stop 'dEq0'
+
+  ! even silent NaN causes issues with  PETSc's SetFPTrap
+#ifndef DEBUG
+  NaN = IEEE_value(1.0_pREAL, IEEE_QUIET_NAN)
+
+  if (dEq(NaN,NaN))                         error stop 'dEq/(NaN,NaN)'
+  if (dEq(NaN,r(1)))                        error stop 'dEq/(NaN,float)'
+  if (dEq(r(1),NaN))                        error stop 'dEq/(float,NaN)'
+  if (dEq0(NaN))                            error stop 'dEq0/(NaN)'
+
+  if (.not. dNeq(NaN,NaN))                  error stop 'dNeq/(NaN,NaN)'
+  if (.not. dNeq(NaN,r(1)))                 error stop 'dNeq/(NaN,float)'
+  if (.not. dNeq(r(1),NaN))                 error stop 'dNeq/(float,NaN)'
+  if (.not. dNeq0(NaN))                     error stop 'dNeq0/(NaN)'
+
+  if (dEq(NaN,NaN,huge(1._pREAL)))          error stop 'dEq/(NaN,NaN,tol)'
+  if (dEq(NaN,r(1),huge(1._pREAL)))         error stop 'dEq/(NaN,float,tol)'
+  if (dEq(r(1),NaN,huge(1._pREAL)))         error stop 'dEq/(float,NaN,tol)'
+  if (dEq0(NaN,huge(1._pREAL)))             error stop 'dEq0/(NaN,tol)'
+
+  if (.not. dNeq(NaN,NaN,huge(1._pREAL)))   error stop 'dNeq/(NaN,NaN,tol)'
+  if (.not. dNeq(NaN,r(1),huge(1._pREAL)))  error stop 'dNeq/(NaN,float,tol)'
+  if (.not. dNeq(r(1),NaN,huge(1._pREAL)))  error stop 'dNeq/(float,NaN,tol)'
+  if (.not. dNeq0(NaN,huge(1._pREAL)))      error stop 'dNeq0/(NaN,tol)'
+#endif
 
   ! https://www.binaryconvert.com
   ! https://www.rapidtables.com/convert/number/binary-to-decimal.html
