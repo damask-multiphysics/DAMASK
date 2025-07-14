@@ -667,7 +667,7 @@ pure function CRLF2LF(str)
 
 end function CRLF2LF
 
-
+#if ((defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || !defined(__INTEL_COMPILER))
 !--------------------------------------------------------------------------------------------------
 !> @brief Fortran 2023 tokenize (first form).
 !--------------------------------------------------------------------------------------------------
@@ -693,7 +693,7 @@ pure subroutine tokenize(string,set,tokens)
   end do
 
 end subroutine tokenize
-
+#endif
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write statements to standard error.
@@ -872,6 +872,7 @@ subroutine IO_selfTest()
   if ('abc,'//IO_EOL//'xxdefg,'//IO_EOL//'xxhij' /= IO_wrapLines('abc,defg, hij',filler='xx',length=4)) &
                                                      error stop 'IO_wrapLines/7'
 
+#if ((defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || !defined(__INTEL_COMPILER))
   call tokenize('','$',tokens)
   if (size(tokens) /= 0 .or. len(tokens) /=0) error stop 'tokenize empty'
   call tokenize('abcd','dcba',tokens)
@@ -903,8 +904,7 @@ subroutine IO_selfTest()
 
 
   contains
-  subroutine test_tokenize(input,delimiter,solution)
-
+  pure subroutine test_tokenize(input,delimiter,solution)
     character(len=*), intent(in) :: input, delimiter
     character(len=*), dimension(:), intent(in) :: solution
 
@@ -919,6 +919,7 @@ subroutine IO_selfTest()
     end do
 
   end subroutine test_tokenize
+#endif
 
 end subroutine IO_selfTest
 
