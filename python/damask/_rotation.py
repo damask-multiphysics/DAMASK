@@ -6,6 +6,7 @@ from typing import Optional, Union, Sequence, Literal, TypeVar, NamedTuple
 
 import numpy as np
 import numpy.typing as npt
+from scipy.spatial.transform import Rotation as ScipyRotation
 
 from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
 from . import tensor
@@ -67,24 +68,45 @@ class Rotation:
     >>> R = R2 * R1
     >>> np.allclose(R.as_matrix(), np.dot(R2.as_matrix(),R1.as_matrix()))
     True
+
+    Initialize from scipy.spatial.transform.Rotation:
+
+    >>> import numpy as np
+    >>> import damask
+    >>> from scipy.spatial.transform import Rotation as ScipyRotation
+    >>> R_SciPy = ScipyRotation.random()
+    >>> R_DAMASK = damask.Rotation(R_SciPy)
+    >>> v = np.random.rand(3)
+    >>> np.allclose(R_DAMASK@v, R_SciPy.apply(v,inverse=True))
+    True
+    >>> np.allclose(R_DAMASK.as_quaternion(),R_SciPy.as_quat(canonical=True,scalar_first=True))
+    True
     """
 
     __slots__ = ['quaternion']
 
     def __init__(self,
-                 rotation: Union[FloatSequence, 'Rotation'] = np.array([1.,0.,0.,0.])):
+                 rotation: Union[FloatSequence, ScipyRotation, 'Rotation'] = np.array([1.,0.,0.,0.])):
         """
         New rotation.
 
         Parameters
         ----------
-        rotation : list, numpy.ndarray, or Rotation, optional
-            Unit quaternion in positive real hemisphere.
+        rotation : list, numpy.ndarray, Rotation, or scipy.spatial.transform.Rotation, optional
+            Unit quaternion in positive real hemisphere or Rotation.
             Use .from_quaternion to perform a sanity check.
             Defaults to no rotation.
+
+        Note
+        ----
+        When passing in a Rotation from SciPy, it is interpreted
+        passively even though SciPy uses an active convention.
         """
         self.quaternion: np.ndarray
-        if len(s:=np.asarray(rotation).shape) > 0 and s[-1] == 4:
+
+        if (isinstance(rotation,ScipyRotation)):
+            self.quaternion = rotation.as_quat(canonical=True,scalar_first=True)
+        elif len(s:=np.asarray(rotation).shape) > 0 and s[-1] == 4:
             self.quaternion = np.array(rotation,dtype=float)
         else:
             raise TypeError('"rotation" cannot be interpreted as quaternion')
