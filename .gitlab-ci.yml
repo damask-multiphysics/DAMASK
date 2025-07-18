@@ -308,7 +308,8 @@ grid_performance:
     - source env/DAMASK.sh
   script:
     - git clone -q https://damask_user:${STATISTICS_TOKEN}@git.damask-multiphysics.org/damask/statistics.git
-    - ./statistics/measure_performance.py --input_dir examples/grid --tag ${CI_COMMIT_SHA}
+    - ./statistics/measure_performance.py --input_dir examples/grid --tag ${CI_COMMIT_SHA} --output_dir statistics
+    - cp statistics/performance.txt .
   artifacts:
     paths: [performance.txt]
     expire_in: 1 month
