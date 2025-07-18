@@ -43,8 +43,6 @@ workflow:
 core_compile_all_commits:
   stage: check_source
   image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:${PETSC_GCC_LATEST}
-  tags:
-    - docker_all
   variables:
     GIT_DEPTH: 0
   allow_failure: false
@@ -64,8 +62,6 @@ core_compile_all_commits:
 .python_base:
   stage: processing
   image: git.damask-multiphysics.org:5050/damask/damask/python:$PYTHON_IMAGE
-  tags:
-    - docker_all
   before_script:
     - python --version
     - pip list
@@ -142,8 +138,6 @@ doctest:
 open-source:
   stage: core
   image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:${PETSC_GCC_LATEST}
-  tags:
-    - docker_all
   needs: []
   before_script:
     - cmake -DDAMASK_SOLVER=grid -B build/grid && cmake --build build/grid --parallel 4 --target install
@@ -156,8 +150,6 @@ open-source:
 
 .unittest:
   stage: core
-  tags:
-    - docker_all
   script:
     - source env/DAMASK.sh
     - ./bin/DAMASK_test
@@ -204,8 +196,6 @@ unittest_oneAPI_earliest:
 .compile:
   stage: core
   image: git.damask-multiphysics.org:5050/damask/damask/${PETSC_IMAGE}
-  tags:
-    - docker_all
   before_script:
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
     - head -n 10 /petsc/include/petscversion.h | tail -n 6
@@ -263,8 +253,6 @@ compile_mesh_earliest:
 Marc_patch:
   stage: core
   image: git.damask-multiphysics.org:5050/damask/damask/marc_base:${MARC_VERSION}
-  tags:
-    - docker_all
   script:
     - source env/DAMASK.sh
     - export TMPDIR=/tmp
@@ -276,8 +264,6 @@ Marc_patch:
 Marc_compile:
   stage: core
   image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
-  tags:
-    - docker_all
   script:
     - source env/DAMASK.sh
     - cd PRIVATE/testing
@@ -286,8 +272,6 @@ Marc_compile:
 
 .configexamples_debug:
   stage: core
-  tags:
-    - docker_all
   before_script:
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
     - head -n 10 /petsc/include/petscversion.h | tail -n 6
@@ -310,8 +294,6 @@ configexamples_debug_oneAPI:
 Marc_run:
   stage: core
   image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
-  tags:
-    - docker_all
   before_script:
     - source env/DAMASK.sh
     - cd examples/Marc && python3 -c "import damask;damask.solver.Marc(version=${MARC_VERSION}).submit_job('r-value','texture',True,'h')"
@@ -351,8 +333,6 @@ grid_performance:
   image:
     name: alpine/git
     entrypoint: [""]
-  tags:
-    - docker_all
   before_script:
     - git config --global user.name "testbot"
     - git config --global user.email "testbot@damask-multiphysics.org"
