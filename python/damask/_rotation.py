@@ -6,6 +6,7 @@ from typing import Optional, Union, Sequence, Literal, TypeVar, NamedTuple
 
 import numpy as np
 import numpy.typing as npt
+import scipy
 from scipy.spatial.transform import Rotation as ScipyRotation
 
 from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
@@ -105,7 +106,11 @@ class Rotation:
         self.quaternion: np.ndarray
 
         if (isinstance(rotation,ScipyRotation)):
-            self.quaternion = rotation.as_quat(canonical=True,scalar_first=True)
+            if np.lib.NumpyVersion(scipy.__version__) >= '1.14.0':
+                self.quaternion = rotation.as_quat(canonical=True,scalar_first=True)
+            else:
+                quat = rotation.as_quat(canonical=True)
+                self.quaternion = np.block([quat[...,3:4],quat[...,0:3]])
         elif len(s:=np.asarray(rotation).shape) > 0 and s[-1] == 4:
             self.quaternion = np.array(rotation,dtype=float)
         else:
