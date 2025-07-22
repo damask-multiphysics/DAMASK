@@ -155,7 +155,9 @@ pure recursive subroutine math_sort(a, iStart, iEnd, sortDim)
   !> @brief Partitioning required for quicksort
   !-------------------------------------------------------------------------------------------------
   pure subroutine qsort_partition(a,p, istart, iend, sort)
-
+#ifndef __GFORTRAN__
+    import, none
+#endif
     integer, dimension(:,:), intent(inout) :: a
     integer,                 intent(out)   :: p                                                     ! Pivot element
     integer,                 intent(in)    :: istart,iend,sort

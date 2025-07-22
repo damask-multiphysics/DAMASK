@@ -16,8 +16,9 @@ elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
 endif ()
 
 # -assume std_mod_proc_name (included in -standard-semantics) causes problems if other modules
-# (PETSc, HDF5) are not compiled with this option (https://software.intel.com/en-us/forums/intel-fortran-compiler-for-linux-and-mac-os-x/topic/62172)
-set (STANDARD_CHECK "-stand f23 -assume nostd_mod_proc_name")
+# (PETSc, HDF5) are not compiled with this option
+# https://community.intel.com/t5/Intel-Fortran-Compiler/building-and-linking-against-a-Fortran-dynamic-library-on-Linux/td-p/1178514
+set (STANDARD_CHECK "-stand f23 -standard-semantics -assume nostd_mod_proc_name")
 
 # Link against shared Intel libraries instead of static ones:
 set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel")

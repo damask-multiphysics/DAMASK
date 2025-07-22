@@ -353,15 +353,9 @@ subroutine IO_error_new(error_ID, &
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
     case (130)
-      msg = 'unknown lattice structure encountered'
-    case (131)
-      msg = 'hex lattice structure with invalid c/a ratio'
+      msg = 'invalid crystal parameters'
     case (132)
       msg = 'invalid parameters for transformation'
-    case (134)
-      msg = 'negative lattice parameter'
-    case (135)
-      msg = 'zero entry on stiffness diagonal'
     case (137)
       msg = 'not defined for lattice structure'
     case (138)
@@ -667,7 +661,7 @@ pure function CRLF2LF(str)
 
 end function CRLF2LF
 
-
+#if ((defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || !defined(__INTEL_COMPILER))
 !--------------------------------------------------------------------------------------------------
 !> @brief Fortran 2023 tokenize (first form).
 !--------------------------------------------------------------------------------------------------
@@ -693,7 +687,7 @@ pure subroutine tokenize(string,set,tokens)
   end do
 
 end subroutine tokenize
-
+#endif
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write statements to standard error.
@@ -775,7 +769,7 @@ subroutine panel(paneltype,ID,msg, &
 
       character(len=:), allocatable :: as_str
       class(*), optional, intent(in) :: info
-      logical, optional, intent(in) :: emph
+      logical, intent(in) :: emph
 
 
       if (present(info)) then
@@ -790,7 +784,7 @@ subroutine panel(paneltype,ID,msg, &
             error stop 'cannot convert info argument to string'
         end select
 
-        if (present(emph)) then
+        if (emph) then
 #ifndef MARC_SOURCE
           if (OS_isaTTY(IO_STDERR)) then
             as_str = IO_EMPH//as_str//IO_FORMATRESET
@@ -872,6 +866,7 @@ subroutine IO_selfTest()
   if ('abc,'//IO_EOL//'xxdefg,'//IO_EOL//'xxhij' /= IO_wrapLines('abc,defg, hij',filler='xx',length=4)) &
                                                      error stop 'IO_wrapLines/7'
 
+#if ((defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || !defined(__INTEL_COMPILER))
   call tokenize('','$',tokens)
   if (size(tokens) /= 0 .or. len(tokens) /=0) error stop 'tokenize empty'
   call tokenize('abcd','dcba',tokens)
@@ -903,8 +898,7 @@ subroutine IO_selfTest()
 
 
   contains
-  subroutine test_tokenize(input,delimiter,solution)
-
+  pure subroutine test_tokenize(input,delimiter,solution)
     character(len=*), intent(in) :: input, delimiter
     character(len=*), dimension(:), intent(in) :: solution
 
@@ -919,6 +913,7 @@ subroutine IO_selfTest()
     end do
 
   end subroutine test_tokenize
+#endif
 
 end subroutine IO_selfTest
 

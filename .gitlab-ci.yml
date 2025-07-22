@@ -1,25 +1,22 @@
 ---
 stages:
+  - check_source
   - processing
   - core
   - update_repositories
   - documentation
 
-###################################################################################################
+####################################################################################################
 variables:
-  # ===============================================================================================
   # GitLab Settings
-  # ===============================================================================================
   GIT_SUBMODULE_STRATEGY: normal
-  # ===============================================================================================
   # Shortcut names
-  # ===============================================================================================
   MARC_VERSION: '2024.1'
   PETSC_GCC_LATEST: '2025.05.27'
   PETSC_ONEAPI_LATEST: '2025.06.12'
 
 
-###################################################################################################
+####################################################################################################
 # https://docs.gitlab.com/ci/yaml/workflow
 workflow:
   rules:
@@ -34,13 +31,37 @@ workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
 
-###################################################################################################
+.on_merge_without_squash:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_SQUASH_ON_MERGE != 'true'
+
+
+####################################################################################################
+# Check Source
+####################################################################################################
+
+core_compile_all_commits:
+  stage: check_source
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:${PETSC_GCC_LATEST}
+  variables:
+    GIT_DEPTH: 0
+  allow_failure: false
+  extends:
+    - .on_merge_without_squash
+  script:
+    - |
+      for COMMIT in $(git log --reverse --format=format:%H origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME..$CI_COMMIT_SHA); do
+        echo $COMMIT
+      done
+
+
+####################################################################################################
+# Processing
+####################################################################################################
 
 .python_base:
   stage: processing
   image: git.damask-multiphysics.org:5050/damask/damask/python:$PYTHON_IMAGE
-  tags:
-    - docker_all
   before_script:
     - python --version
     - pip list
@@ -109,13 +130,14 @@ doctest:
     - chmod +x /bin/neper
     - python3 -m pytest -v --doctest-modules -k 'not result' damask
 
-###################################################################################################
+
+####################################################################################################
+# Core
+####################################################################################################
 
 open-source:
   stage: core
   image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:${PETSC_GCC_LATEST}
-  tags:
-    - docker_all
   needs: []
   before_script:
     - cmake -DDAMASK_SOLVER=grid -B build/grid && cmake --build build/grid --parallel 4 --target install
@@ -128,8 +150,6 @@ open-source:
 
 .unittest:
   stage: core
-  tags:
-    - docker_all
   script:
     - source env/DAMASK.sh
     - ./bin/DAMASK_test
@@ -176,8 +196,6 @@ unittest_oneAPI_earliest:
 .compile:
   stage: core
   image: git.damask-multiphysics.org:5050/damask/damask/${PETSC_IMAGE}
-  tags:
-    - docker_all
   before_script:
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
     - head -n 10 /petsc/include/petscversion.h | tail -n 6
@@ -235,8 +253,6 @@ compile_mesh_earliest:
 Marc_patch:
   stage: core
   image: git.damask-multiphysics.org:5050/damask/damask/marc_base:${MARC_VERSION}
-  tags:
-    - docker_all
   script:
     - source env/DAMASK.sh
     - export TMPDIR=/tmp
@@ -248,8 +264,6 @@ Marc_patch:
 Marc_compile:
   stage: core
   image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
-  tags:
-    - docker_all
   script:
     - source env/DAMASK.sh
     - cd PRIVATE/testing
@@ -258,8 +272,6 @@ Marc_compile:
 
 .configexamples_debug:
   stage: core
-  tags:
-    - docker_all
   before_script:
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
     - head -n 10 /petsc/include/petscversion.h | tail -n 6
@@ -282,8 +294,6 @@ configexamples_debug_oneAPI:
 Marc_run:
   stage: core
   image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
-  tags:
-    - docker_all
   before_script:
     - source env/DAMASK.sh
     - cd examples/Marc && python3 -c "import damask;damask.solver.Marc(version=${MARC_VERSION}).submit_job('r-value','texture',True,'h')"
@@ -314,15 +324,16 @@ grid_performance:
     paths: [performance.txt]
     expire_in: 1 month
 
-###################################################################################################
+
+####################################################################################################
+# Update Repositories
+####################################################################################################
 
 .update:
   stage: update_repositories
   image:
     name: alpine/git
     entrypoint: [""]
-  tags:
-    - docker_all
   before_script:
     - git config --global user.name "testbot"
     - git config --global user.email "testbot@damask-multiphysics.org"
@@ -354,7 +365,10 @@ update_revision:
     - if [ ${CI_COMMIT_SHA} == $(git rev-parse HEAD^) ]; then git push --atomic --no-verify origin HEAD:development HEAD:master; fi
   rules: [if: $CI_COMMIT_BRANCH == 'development']
 
-###################################################################################################
+
+####################################################################################################
+# Documentation
+####################################################################################################
 
 publish_website_master:
   stage: documentation

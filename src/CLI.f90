@@ -300,8 +300,10 @@ function jobname(geomFile,LoadFile,materialsFile,numericsFile)
 
   contains
 
-  function stem(fullname)
-
+  pure function stem(fullname)
+#ifndef __GFORTRAN__
+    import, none
+#endif
     character(len=:), allocatable :: stem
     character(len=*), intent(in)  :: fullname
 

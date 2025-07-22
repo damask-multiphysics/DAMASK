@@ -39,11 +39,10 @@ module result
   end interface result_closeGroup
 
   interface result_writeDataset
-    module procedure result_writeTensorDataset_real
-    module procedure result_writeVectorDataset_real
     module procedure result_writeScalarDataset_real
+    module procedure result_writeVectorDataset_real
+    module procedure result_writeTensorDataset_real
 
-    module procedure result_writeTensorDataset_int
     module procedure result_writeVectorDataset_int
   end interface result_writeDataset
 
@@ -518,27 +517,6 @@ subroutine result_writeVectorDataset_int(dataset,group,label,description,SIunit,
   call HDF5_closeGroup(groupHandle)
 
 end subroutine result_writeVectorDataset_int
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Store integer tensor dataset with associated metadata.
-!--------------------------------------------------------------------------------------------------
-subroutine result_writeTensorDataset_int(dataset,group,label,description,SIunit)
-
-  character(len=*), intent(in)                   :: label,group,description
-  character(len=*), intent(in), optional         :: SIunit
-  integer,          intent(in), dimension(:,:,:) :: dataset
-
-  integer(HID_T) :: groupHandle
-
-
-  groupHandle = result_openGroup(group)
-  call HDF5_write(dataset,groupHandle,label)
-  call executionStamp(group//'/'//label,description,SIunit)
-  call HDF5_closeGroup(groupHandle)
-
-
-end subroutine result_writeTensorDataset_int
 
 
 !--------------------------------------------------------------------------------------------------

@@ -201,6 +201,15 @@ class Result:
         return util.srepr([util.deemph(header)] + first + in_between + last)
 
 
+    def __bool__(self) -> bool:
+        """
+        Return bool(self).
+
+        Report whether file is still a valid HDF5 file.
+        """
+        return h5py.is_hdf5(self.fname)
+
+
     def _manage_view(self,
                      action: Literal['set', 'add', 'del'],
                      increments: Optional[Union[int, Sequence[int], str, Sequence[str], bool]] = None,

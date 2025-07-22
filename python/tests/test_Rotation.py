@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 from scipy import stats
+from scipy.spatial.transform import Rotation as ScipyRotation
 
 from damask import Rotation
 from damask import Table
@@ -693,6 +694,14 @@ def test_normalization_vectorization(np_rng,func):
     ori = func(vec,normalize=True)
     for v,o in zip(vec,ori):
         assert np.allclose(func(v,normalize=True).as_quaternion(),o.as_quaternion())
+
+def test_init_scipy(np_rng):
+    n = np_rng.integers(1,1000)
+    v = np_rng.random([n,3])
+    r_scipy = ScipyRotation.random(n)
+    r_damask = Rotation(r_scipy)
+    assert np.max(np.abs(r_scipy.as_matrix() - tensor.transpose(r_damask.as_matrix()))) < 2.e-15
+    assert np.max(np.abs(r_scipy.apply(v,inverse=True) - r_damask@v)) < 2.e-15
 
 def test_invalid_init():
     with pytest.raises(TypeError):

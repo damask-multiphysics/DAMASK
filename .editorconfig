@@ -2,20 +2,20 @@
 
 root = true
 
-[{*.{md,f90,py,c,yaml,yml,json,cmake},CMakeLists.txt}]
+[{*.{f90,c,cpp,py,yaml,yml,json,md,cmake},CMakeLists.txt}]
 charset = utf-8
 end_of_line = lf
 
-[{*.{f90,py,c,yaml,yml,json,cmake},CMakeLists.txt}]
+[{*.{f90,c,cpp,py,yaml,yml,json,cmake},CMakeLists.txt}]
 max_line_length = 100
 indent_style = space
 trim_trailing_whitespace = true
 insert_final_newline = true
 
-[{*.{f90,c,yaml,yml,json,cmake},CMakeLists.txt}]
+[{*.{f90,c,cpp,yaml,yml,cmake},CMakeLists.txt}]
 indent_size = 2
 
-[*.py]
+[*{.py,json}]
 indent_size = 4
 
 [*.md]
