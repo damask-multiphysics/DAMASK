@@ -264,7 +264,7 @@ def test_rotate360(default,axis_angle):
     assert default == modified
 
 @pytest.mark.parametrize('Eulers',[[32.0,68.0,21.0],
-                                    [0.0,32.0,240.0]])
+                                   [0.0,32.0,240.0]])
 def test_rotate(default,update,res_path,Eulers):
     modified = default.rotate(Rotation.from_Euler_angles(Eulers,degrees=True))
     tag = f'Eulers_{util.srepr(Eulers,"-")}'
