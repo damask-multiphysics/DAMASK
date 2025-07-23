@@ -285,8 +285,8 @@ subroutine prec_selfTest()
 
   NaN = IEEE_value(1.0_pREAL, IEEE_QUIET_NAN)
 
-  ! even silent NaN causes issues with  PETSc's SetFPTrap and Gfortran with debug options
-#if (!defined(DEBUG) || !defined(__GFORTRAN__))
+  ! even silent NaN causes issues with  PETSc's SetFPTrap
+#ifndef DEBUG
   if (dEq(NaN,NaN))                         error stop 'dEq/(NaN,NaN)'
   if (dEq(NaN,r(1)))                        error stop 'dEq/(NaN,float)'
   if (dEq(r(1),NaN))                        error stop 'dEq/(float,NaN)'
