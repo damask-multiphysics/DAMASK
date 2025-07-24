@@ -138,6 +138,8 @@ doctest:
 open-source:
   stage: core
   image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:${PETSC_GCC_LATEST}
+  tags:
+    - long_running
   needs: []
   before_script:
     - cmake -DDAMASK_SOLVER=grid -B build/grid && cmake --build build/grid --parallel 4 --target install
