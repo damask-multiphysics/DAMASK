@@ -1028,7 +1028,7 @@ class Rotation:
 
         if not orthonormal:
             U, _, Vh = np.linalg.svd(om)                                                            # singular value decomposition
-            om = np.einsum('...ij,...jl',U,Vh)
+            om = np.matmul(U,Vh)
         elif  (np.abs(np.einsum('...i,...i',om[...,0],om[...,1])) > 5.e-8).any() \
            or (np.abs(np.einsum('...i,...i',om[...,1],om[...,2])) > 5.e-8).any() \
            or (np.abs(np.einsum('...i,...i',om[...,2],om[...,0])) > 5.e-8).any():

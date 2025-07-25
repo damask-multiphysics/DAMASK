@@ -345,7 +345,7 @@ def stress_second_Piola_Kirchhoff(P: _np.ndarray,
     Cambridge University Press, 2008
     https://doi.org/10.1017/CBO9780511755446
     """
-    return _tensor.symmetric(_np.einsum('...ij,...jk',_np.linalg.inv(F),P))
+    return _tensor.symmetric(_np.matmul(_np.linalg.inv(F),P))
 
 
 def stretch_left(T: _np.ndarray) -> _np.ndarray:
@@ -437,9 +437,9 @@ def _polar_decomposition(T: _np.ndarray,
     if 'R' in requested:
         output+=[R]
     if 'V' in requested:
-        output+=[_np.einsum('...ij,...kj',T,R)]
+        output+=[_np.matmul(T,_tensor.transpose(R))]
     if 'U' in requested:
-        output+=[_np.einsum('...ji,...jk',R,T)]
+        output+=[_np.matmul(_tensor.transpose(R),T)]
 
     if len(output) == 0 or len(set(['V','R','U']).union(requested))> 3:
         raise ValueError(f'requested invalid dataset {requested}')
