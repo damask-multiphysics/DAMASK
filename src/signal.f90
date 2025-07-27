@@ -4,15 +4,17 @@
 !--------------------------------------------------------------------------------------------------
 module signal
   use prec
+  use iso_c_binding
 
   implicit none(type,external)
   private
 
-  logical, volatile, public, protected :: &
-    signal_SIGINT  = .false., &                                                                    !< interrupt signal
-    signal_SIGUSR1 = .false., &                                                                    !< 1. user-defined signal
-    signal_SIGUSR2 = .false.                                                                       !< 2. user-defined signal
-
+   logical(C_BOOL), public, protected, volatile, &
+        bind(C, name="f_sigint" ) :: signal_SIGINT  = .false._C_BOOL
+   logical(C_BOOL), public, protected, volatile, &
+        bind(C, name="f_sigusr1") :: signal_SIGUSR1 = .false._C_BOOL
+   logical(C_BOOL), public, protected, volatile, &
+        bind(C, name="f_sigusr2") :: signal_SIGUSR2 = .false._C_BOOL
   public :: &
     signal_init, &
     signal_setSIGINT, &
@@ -47,21 +49,10 @@ subroutine signal_setSIGINT(state)
   logical, intent(in) :: state
 
 
-  signal_SIGINT = state
+  signal_SIGINT = logical(state,C_BOOL)
   print '(/a)', 'SIGINT ' // trim(merge('received', 'cleared ', state))
 
 end subroutine signal_setSIGINT
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable signal_SIGINT to .true.
-!> @details To be called from the signal handler in C.
-!--------------------------------------------------------------------------------------------------
-subroutine signal_setSIGINT_true_Fortran() bind(C,name='signal_setSIGINT_true_Fortran')
-
-  call signal_setSIGINT(.true.)
-
-end subroutine signal_setSIGINT_true_Fortran
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Set global variable signal_SIGUSR.
@@ -71,20 +62,10 @@ subroutine signal_setSIGUSR1(state)
   logical, intent(in) :: state
 
 
-  signal_SIGUSR1 = state
+  signal_SIGUSR1 = logical(state,C_BOOL)
   print '(/a)', 'SIGUSR1 ' // trim(merge('received', 'cleared ', state))
 
 end subroutine signal_setSIGUSR1
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable signal_SIGUSR1 to .true.
-!> @details To be called from the signal handler in C.
-!--------------------------------------------------------------------------------------------------
-subroutine signal_setSIGUSR1_true_Fortran() bind(C,name='signal_setSIGUSR1_true_Fortran')
-
-  call signal_setSIGUSR1(.true.)
-
-end subroutine signal_setSIGUSR1_true_Fortran
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Set global variable signal_SIGUSR2.
@@ -94,20 +75,9 @@ subroutine signal_setSIGUSR2(state)
   logical, intent(in) :: state
 
 
-  signal_SIGUSR2 = state
+  signal_SIGUSR2 = logical(state,C_BOOL)
   print '(/a)', 'SIGUSR2 ' // trim(merge('received', 'cleared ', state))
 
 end subroutine signal_setSIGUSR2
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable signal_SIGUSR2 to .true.
-!> @details To be called from the signal handler in C.
-!--------------------------------------------------------------------------------------------------
-subroutine signal_setSIGUSR2_true_Fortran() bind(C,name='signal_setSIGUSR2_true_Fortran')
-
-  call signal_setSIGUSR2(.true.)
-
-end subroutine signal_setSIGUSR2_true_Fortran
-
 
 end module signal

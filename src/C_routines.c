@@ -4,6 +4,7 @@
 #include <pwd.h>
 #include <limits.h>
 #include "ISO_Fortran_binding.h"
+#include <stdbool.h>
 
 #ifdef GRID
 #include <zlib.h>
@@ -13,21 +14,13 @@
 #include <libfyaml.h>
 #endif
 
-extern void signal_setSIGINT_true_Fortran(void);
-extern void signal_setSIGUSR1_true_Fortran(void);
-extern void signal_setSIGUSR2_true_Fortran(void);
-
+extern bool f_sigint, f_sigusr1, f_sigusr2;
 
 static void signalHandler(int signum) {
-  if (signum == SIGINT) {
-      signal_setSIGINT_true_Fortran();
-  } else if (signum == SIGUSR1) {
-      signal_setSIGUSR1_true_Fortran();
-  } else if (signum == SIGUSR2) {
-      signal_setSIGUSR2_true_Fortran();
-  }
+  if      (signum == SIGINT)  f_sigint  = true;
+  else if (signum == SIGUSR1) f_sigusr1 = true;
+  else if (signum == SIGUSR2) f_sigusr2 = true;
 }
-
 
 void init_signal_c() {
   signal(SIGINT, signalHandler);
