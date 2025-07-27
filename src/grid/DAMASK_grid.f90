@@ -378,7 +378,7 @@ program DAMASK_grid
           print'(/,1x,a,1x,i0,1x,a)', 'increment', totalIncsCounter, 'NOT converged'
         end if; flush(IO_STDOUT)
 
-        call MPI_Allreduce(signal_SIGUSR1,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+        call MPI_Allreduce(logical(signal_SIGUSR1),sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
         call parallelization_chkerr(err_MPI)
         if (mod(inc,loadCases(l)%f_out) == 0 .or. sig) then
           print'(/,1x,a)', '... saving results ........................................................'
@@ -386,7 +386,8 @@ program DAMASK_grid
           call materialpoint_result(totalIncsCounter,t)
         end if
         if (sig) call signal_setSIGUSR1(.false.)
-        call MPI_Allreduce(signal_SIGUSR2,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+
+        call MPI_Allreduce(logical(signal_SIGUSR2),sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
         call parallelization_chkerr(err_MPI)
         if (mod(inc,loadCases(l)%f_restart) == 0 .or. sig) then
           fileHandle = HDF5_openFile(CLI_jobName//'_restart.hdf5','w')
@@ -405,7 +406,8 @@ program DAMASK_grid
           call materialpoint_restartWrite()
         end if
         if (sig) call signal_setSIGUSR2(.false.)
-        call MPI_Allreduce(signal_SIGINT,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+
+        call MPI_Allreduce(logical(signal_SIGINT),sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
         call parallelization_chkerr(err_MPI)
         if (sig) exit loadCaseLooping
       end if skipping
