@@ -85,6 +85,7 @@ implicit none(type,external)
     IO_error, &
     IO_warning, &
     IO_STDOUT, &
+    IO_STDERR, &
     tokenize
 
 contains
