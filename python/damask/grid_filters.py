@@ -33,6 +33,40 @@ class CellsSizeOriginTuple(_NamedTuple):
 
 
 
+def _unique(values: _FloatSequence,
+            atol: float = 0.0,
+            repeats: bool = True) -> _np.ndarray:
+    """
+    Recursively establish the (average) unique values that differ by more than the given tolerance.
+
+    Parameters
+    ----------
+    values : sequence of float
+        Input values.
+    atol : float, optional
+        Absolute tolerance to consider values equivalent.
+        Defaults to 0.0.
+    repeats : bool, optional
+        Assume repeating values. Defaults to True.
+
+    Returns
+    -------
+    uniques : np.ndarray
+        Unique values among input that differ by more than the tolerance.
+    """
+    v = _np.unique(values) if repeats else _np.asarray(values)
+    if atol == 0.0:
+        return v
+    else:
+        u = _np.unique(
+            _np.mean(
+                _np.ma.array(_np.broadcast_to(v,(v.size,v.size)),
+                             mask=~_np.isclose(v[:,None],v[None,:],atol=atol)),
+                axis=-1)
+        )
+        return _unique(u,atol=atol,repeats=False) if _np.any(_np.diff(u) < atol) else u
+
+
 def _ks(size: _FloatSequence,
         cells: _IntSequence,
         first_order: bool = False) -> _np.ndarray:
@@ -281,7 +315,8 @@ def coordinates_point(size: _FloatSequence,
 
 
 def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
-                                       ordered: bool = True) -> CellsSizeOriginTuple:
+                                       ordered: bool = True,
+                                       atol: float = 0.0) -> CellsSizeOriginTuple:
     """
     Return grid 'DNA', i.e. cells, size, and origin from 1D array of point positions.
 
@@ -292,23 +327,38 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
     ordered : bool, optional
         Expect coordinates0 data to be ordered (x fast, z slow).
         Defaults to True.
+    atol : float, optional
+        Absolute tolerance to consider coordinates equivalent.
+        Defaults to 0.0.
 
     Returns
     -------
     cells, size, origin : Three numpy.ndarray, each of shape (3)
         Information to reconstruct grid.
+
+    Notes
+    -----
+    Cell size along single-cell dimensions is set to the geometric mean of remaining cell sizes.
+
+    Examples
+    --------
+    Cells, size, and origin of a 1 × 1 × 3 grid.
+    Cell sizes along x and y result as (the geometric mean of) the cell size along z.
+
+    >>> import numpy as np
+    >>> import damask
+    >>> damask.grid_filters.cellsSizeOrigin_coordinates0_point(np.array([[0,0,0],[0,0,4],[0,0,8]]))
+    CellsSizeOriginTuple(cells=array([1, 1, 3]), size=array([ 4.,  4., 12.]), origin=array([-2., -2., -2.]))
     """
-    coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]
+    coords    = [_unique(coordinates0[:,i],atol=atol,repeats=True) for i in range(3)]
     mincorner = _np.array(list(map(min,coords)))
     maxcorner = _np.array(list(map(max,coords)))
     cells     = _np.array(list(map(len,coords)),_np.int64)
     size      = cells/_np.maximum(cells-1,1) * (maxcorner-mincorner)
+    size[_np.where(cells == 1)] = _np.exp(_np.average(_np.log(size [_np.where(cells > 1)]
+                                                             /cells[_np.where(cells > 1)])))
     delta     = size/cells
     origin    = mincorner - delta*.5
-
-    # 1D/2D: size/origin combination undefined, set origin to 0.0
-    size  [_np.where(cells == 1)] = origin[_np.where(cells == 1)]*2.
-    origin[_np.where(cells == 1)] = 0.0
 
     if cells.prod() != len(coordinates0):
         raise ValueError(f'data count {len(coordinates0)} does not match cells {cells}')
@@ -316,15 +366,13 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
     start = origin + delta*.5
     end   = origin - delta*.5 + size
 
-    atol = _np.max(size)*5e-2
-    if not (_np.allclose(coords[0],_np.linspace(start[0],end[0],cells[0]),atol=atol) and \
-            _np.allclose(coords[1],_np.linspace(start[1],end[1],cells[1]),atol=atol) and \
-            _np.allclose(coords[2],_np.linspace(start[2],end[2],cells[2]),atol=atol)):
+    if _np.any([not _np.allclose(coords[i],_np.linspace(start[i],end[i],cells[i]),atol=atol) for i in range(3)]):
         raise ValueError('non-uniform cell spacing')
 
     if ordered and not _np.allclose(coordinates0.reshape(tuple(cells)+(3,),order='F'),
-                                    coordinates0_point(list(cells),size,origin),atol=atol):
-        raise ValueError('input data is not ordered (x fast, z slow)')
+                                    coordinates0_point(list(cells),size,origin),
+                                    atol=atol):
+        raise ValueError('input data is not properly ordered (x fast, z slow)')
 
     return CellsSizeOriginTuple(cells,size,origin)
 
@@ -440,7 +488,8 @@ def coordinates_node(size: _FloatSequence,
 
 
 def cellsSizeOrigin_coordinates0_node(coordinates0: _np.ndarray,
-                                      ordered: bool = True) -> CellsSizeOriginTuple:
+                                      ordered: bool = True,
+                                      atol: float = 0.0) -> CellsSizeOriginTuple:
     """
     Return grid 'DNA', i.e. cells, size, and origin from 1D array of nodal positions.
 
@@ -451,13 +500,16 @@ def cellsSizeOrigin_coordinates0_node(coordinates0: _np.ndarray,
     ordered : bool, optional
         Expect coordinates0 data to be ordered (x fast, z slow).
         Defaults to True.
+    atol : float, optional
+        Absolute tolerance to consider coordinates equivalent.
+        Defaults to 0.0.
 
     Returns
     -------
     cells, size, origin : Three numpy.ndarray, each of shape (3)
         Information to reconstruct grid.
     """
-    coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]
+    coords    = [_unique(coordinates0[:,i],atol=atol,repeats=True) for i in range(3)]
     mincorner = _np.array(list(map(min,coords)))
     maxcorner = _np.array(list(map(max,coords)))
     cells     = _np.array(list(map(len,coords)),_np.int64) - 1
@@ -467,15 +519,13 @@ def cellsSizeOrigin_coordinates0_node(coordinates0: _np.ndarray,
     if (cells+1).prod() != len(coordinates0):
         raise ValueError(f'data count {len(coordinates0)} does not match cells {cells}')
 
-    atol = _np.max(size)*5e-2
-    if not (_np.allclose(coords[0],_np.linspace(mincorner[0],maxcorner[0],cells[0]+1),atol=atol) and \
-            _np.allclose(coords[1],_np.linspace(mincorner[1],maxcorner[1],cells[1]+1),atol=atol) and \
-            _np.allclose(coords[2],_np.linspace(mincorner[2],maxcorner[2],cells[2]+1),atol=atol)):
+    if _np.any([not _np.allclose(coords[i],_np.linspace(mincorner[i],maxcorner[i],cells[i]+1),atol=atol) for i in range(3)]):
         raise ValueError('non-uniform cell spacing')
 
     if ordered and not _np.allclose(coordinates0.reshape(tuple(cells+1)+(3,),order='F'),
-                                    coordinates0_node(list(cells),size,origin),atol=atol):
-        raise ValueError('input data is not ordered (x fast, z slow)')
+                                    coordinates0_node(list(cells),size,origin),
+                                    atol=atol):
+        raise ValueError('input data is not properly ordered (x fast, z slow)')
 
     return CellsSizeOriginTuple(cells,size,origin)
 
@@ -522,7 +572,8 @@ def node_to_point(node_data: _np.ndarray) -> _np.ndarray:
     return c[1:,1:,1:]
 
 
-def coordinates0_valid(coordinates0: _np.ndarray) -> bool:
+def coordinates0_valid(coordinates0: _np.ndarray,
+                       atol: float = 0.0) -> bool:
     """
     Check whether coordinates form a regular grid.
 
@@ -530,6 +581,9 @@ def coordinates0_valid(coordinates0: _np.ndarray) -> bool:
     ----------
     coordinates0 : numpy.ndarray, shape (:,3)
         Array of undeformed cell coordinates.
+    atol : float, optional
+        Absolute tolerance to consider coordinates equivalent.
+        Defaults to 0.0.
 
     Returns
     -------
@@ -537,7 +591,7 @@ def coordinates0_valid(coordinates0: _np.ndarray) -> bool:
         Whether the coordinates form a regular grid.
     """
     try:
-        cellsSizeOrigin_coordinates0_point(coordinates0,ordered=True)
+        cellsSizeOrigin_coordinates0_point(coordinates0,ordered=True,atol=atol)
         return True
     except ValueError:
         return False

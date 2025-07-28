@@ -27,14 +27,16 @@ def test_coord0(np_rng):
     assert np.allclose(c,n)
 
 @pytest.mark.parametrize('mode',['point','node'])
-def test_grid_DNA(np_rng,mode):
+@pytest.mark.parametrize('atol',[0.0,1.0e-5])
+def test_grid_DNA(np_rng,mode,atol):
     """Ensure that cellsSizeOrigin_coordinates0_xx is the inverse of coordinates0_xx."""
     cells  = np_rng.integers(8,32,(3))
     size   = np_rng.random(3)
     origin = np_rng.random(3)
-    coord0 = eval(f'grid_filters.coordinates0_{mode}(cells,size,origin)')                           # noqa
-    _cells,_size,_origin = eval(f'grid_filters.cellsSizeOrigin_coordinates0_{mode}(coord0.reshape(-1,3,order="F"))')
-    assert np.allclose(cells,_cells) and np.allclose(size,_size) and np.allclose(origin,_origin)
+    coord0 = eval(f'grid_filters.coordinates0_{mode}(cells,size,origin)')                         # noqa
+    coord0 += (np_rng.random(coord0.shape)-0.5) * atol                                            # add noise
+    _cells,_size,_origin = eval(f'grid_filters.cellsSizeOrigin_coordinates0_{mode}(coord0.reshape(-1,3,order="F"),atol={atol})')
+    assert np.allclose(cells,_cells) and np.allclose(size,_size,atol=atol) and np.allclose(origin,_origin,atol=atol)
 
 def test_displacement_fluct_periodic(np_rng):
     """Ensure that fluctuations are periodic."""
@@ -77,7 +79,7 @@ def test_coordinates0_origin(np_rng,mode):
         assert  np.allclose(shifted,unshifted+np.broadcast_to(origin,tuple(cells+1)+(3,)))
 
 @pytest.mark.parametrize('function',[grid_filters.displacement_avg_point,
-                                        grid_filters.displacement_avg_node])
+                                     grid_filters.displacement_avg_node])
 def test_displacement_avg_vanishes(np_rng,function):
     """Ensure that random fluctuations in F do not result in average displacement."""
     size = np_rng.random(3) + 1.0
@@ -101,7 +103,7 @@ def test_displacement_avg_vanishes_simple(np_rng,function):
     assert np.allclose(function(size,F_no_avg),0.0)
 
 @pytest.mark.parametrize('function',[grid_filters.displacement_fluct_point,
-                                        grid_filters.displacement_fluct_node])
+                                     grid_filters.displacement_fluct_node])
 def test_displacement_fluct_vanishes_avg(np_rng,function):
     """Ensure that constant F does not result in fluctuating displacement."""
     size = np_rng.random(3)
@@ -151,7 +153,7 @@ def test_coordinates(np_rng):
     assert np.corrcoef(epsilon_reconstructed,epsilon_direct)[0,1] > 0.99
 
 @pytest.mark.parametrize('function',[grid_filters.cellsSizeOrigin_coordinates0_point,
-                                        grid_filters.cellsSizeOrigin_coordinates0_node])
+                                     grid_filters.cellsSizeOrigin_coordinates0_node])
 def test_invalid_coordinates(np_rng,function):
     invalid_coordinates = np_rng.random((np_rng.integers(12,52),3))
     with pytest.raises(ValueError):
@@ -159,9 +161,12 @@ def test_invalid_coordinates(np_rng,function):
 
 @pytest.mark.parametrize('function',[grid_filters.coordinates0_point,
                                      grid_filters.coordinates0_node])
-def test_valid_coordinates_check(np_rng,function):
+@pytest.mark.parametrize('atol',[0.0,1.0e-5])
+def test_valid_coordinates_check(np_rng,function,atol):
     valid_coordinates = function(np_rng.integers(4,10,(3)),np_rng.random(3))
-    assert grid_filters.coordinates0_valid(valid_coordinates.reshape(-1,3,order='F'))
+    valid_coordinates += (np_rng.random(valid_coordinates.shape)-0.5) * atol                        # add noise
+
+    assert grid_filters.coordinates0_valid(valid_coordinates.reshape(-1,3,order='F'),atol=atol)
 
 def test_invalid_coordinates_check(np_rng):
     invalid_coordinates = np_rng.random((np_rng.integers(12,52),3))
