@@ -401,7 +401,8 @@ class GeomGrid:
     @staticmethod
     def from_table(table: Table,
                    coordinates: str,
-                   labels: Union[str, Sequence[str]]) -> 'GeomGrid':
+                   labels: Union[str, Sequence[str]],
+                   atol: float = 0.0) -> 'GeomGrid':
         """
         Create grid from ASCII table.
 
@@ -415,13 +416,16 @@ class GeomGrid:
         labels : (sequence of) str
             Label(s) of the columns containing the material definition.
             Each unique combination of values results in one material ID.
+        atol : float, optional
+            Absolute tolerance to consider grid coordinates equivalent.
+            Defaults to 0.0.
 
         Returns
         -------
         new : damask.GeomGrid
             Grid-based geometry from values in table.
         """
-        cells,size,origin = grid_filters.cellsSizeOrigin_coordinates0_point(table.get(coordinates))
+        cells,size,origin = grid_filters.cellsSizeOrigin_coordinates0_point(table.get(coordinates),atol=atol)
 
         labels_ = [labels] if isinstance(labels,str) else labels
         unique,unique_inverse = np.unique(np.hstack([table.get(l) for l in labels_]),return_inverse=True,axis=0)
