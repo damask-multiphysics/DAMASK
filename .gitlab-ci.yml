@@ -302,7 +302,6 @@ Marc_run:
   script:
     - cd ${CI_PROJECT_DIR}/PRIVATE/testing
     - pytest -k 'not compile and Marc'
-  allow_failure: true
 
 # Needs closer look
 # Phenopowerlaw_singleSlip:
