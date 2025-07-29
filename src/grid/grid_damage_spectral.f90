@@ -4,9 +4,9 @@
 !> @author Shaokang Zhang, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Spectral solver for nonlocal damage
 !--------------------------------------------------------------------------------------------------
-module grid_damage_spectral
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
+module grid_damage_spectral
   use PETScDMDA
   use PETScSNES
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY

@@ -6,12 +6,14 @@
 !> @author   Luv Sharma, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief    setting precision for real and int type
 !--------------------------------------------------------------------------------------------------
+#ifdef PETSC
+#include <petsc/finclude/petscsys.h>
+#endif
 module prec
   use, intrinsic :: IEEE_arithmetic
   use, intrinsic :: ISO_C_binding
 
 #ifdef PETSC
-#include <petsc/finclude/petscsys.h>
   use PETScSys
 #endif
 

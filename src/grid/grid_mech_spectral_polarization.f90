@@ -4,9 +4,9 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Grid solver for mechanics: Spectral Polarisation
 !--------------------------------------------------------------------------------------------------
-module grid_mech_spectral_polarization                                                              ! "mechanics" => "mech": workaround for ifx
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
+module grid_mech_spectral_polarization                                                              ! "mechanics" => "mech": workaround for ifx
   use PETScDMDA
   use PETScSNES
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY

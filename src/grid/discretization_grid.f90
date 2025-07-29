@@ -4,8 +4,8 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Parse geometry file to set up discretization and geometry for nonlocal model
 !--------------------------------------------------------------------------------------------------
-module discretization_grid
 #include <petsc/finclude/petscsys.h>
+module discretization_grid
   use PETScSys
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08

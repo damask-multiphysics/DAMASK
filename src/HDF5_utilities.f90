@@ -5,11 +5,13 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Michigan State University
 !--------------------------------------------------------------------------------------------------
+#ifdef PETSC
+#include <petsc/finclude/petscsys.h>
+#endif
 module HDF5_utilities
   use IO
   use HDF5
 #ifdef PETSC
-#include <petsc/finclude/petscsys.h>
   use PETScSys
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08

@@ -5,9 +5,9 @@
 !> @author Yi Hu, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Grid solver for mechanics: Spectral Galerkin
 !--------------------------------------------------------------------------------------------------
-module grid_mechanical_spectral_Galerkin
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
+module grid_mechanical_spectral_Galerkin
   use PETScDMDA
   use PETScSNES
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY

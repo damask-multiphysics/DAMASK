@@ -2,8 +2,8 @@
 !> @author Martin Diehl, KU Leuven
 !> @brief Utilities used by the grid solver variants
 !--------------------------------------------------------------------------------------------------
-module grid_utilities
 #include <petsc/finclude/petscsys.h>
+module grid_utilities
   use PETScSys
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08

@@ -4,6 +4,9 @@
 !> @author Jennifer Nastola, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !--------------------------------------------------------------------------------------------------
+#ifdef PETSC
+#include <petsc/finclude/petscsys.h>
+#endif
 module result
   use, intrinsic :: ISO_fortran_env
 
@@ -16,7 +19,6 @@ module result
 #ifdef PETSC
   use CLI
   use OS
-#include <petsc/finclude/petscsys.h>
   use PETScSys
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08

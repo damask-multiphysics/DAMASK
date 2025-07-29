@@ -4,9 +4,9 @@
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Grid solver for mechanics: FEM
 !--------------------------------------------------------------------------------------------------
-module grid_mechanical_FEM
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
+module grid_mechanical_FEM
   use PETScDMDA
   use PETScSNES
   use PETScMat

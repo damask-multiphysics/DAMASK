@@ -5,6 +5,9 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Mathematical library, including random number generation and tensor representations
 !--------------------------------------------------------------------------------------------------
+#ifdef PETSC
+#include <petsc/finclude/petscsys.h>
+#endif
 module math
   use prec
   use misc
@@ -15,7 +18,6 @@ module math
   use LAPACK_interface
 
 #ifdef PETSC
-#include <petsc/finclude/petscsys.h>
   use PETScSys
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08
