@@ -107,7 +107,7 @@ subroutine parallelization_init()
   print'(/,1x,a)', trim(MPI_library_version)
   call MPI_Get_version(version,subversion,err_MPI)
   print'(1x,a,i0,a,i0)', 'MPI standard: ',version,'.',subversion
-#ifdef _OPENMP
+#if defined(_OPENMP) && (__INTEL_COMPILER != 20250200)
   print'(1x,a,i0)',      'OpenMP version: ',openmp_version
 #endif
 
