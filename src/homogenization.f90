@@ -33,7 +33,9 @@ module homogenization
   enum, bind(c); enumerator :: &
     THERMAL_UNDEFINED_ID, &
     THERMAL_PASS_ID, &
-    THERMAL_ISOTEMPERATURE_ID
+    THERMAL_ISOTEMPERATURE_ID, &
+    CHEMICAL_UNDEFINED_ID, &
+    CHEMICAL_PASS_ID
   end enum
   integer(kind(THERMAL_UNDEFINED_ID)), dimension(:),   allocatable :: &
     thermal_type                                                                                    !< type of each homogenization
@@ -44,6 +46,7 @@ module homogenization
 
   logical,             allocatable, dimension(:) :: &
     thermal_active, &
+    chemical_active, &
     damage_active
 
 !--------------------------------------------------------------------------------------------------
@@ -64,6 +67,9 @@ module homogenization
     module subroutine thermal_init()
     end subroutine thermal_init
 
+    module subroutine chemical_init()
+    end subroutine chemical_init
+
     module subroutine damage_init()
     end subroutine damage_init
 
@@ -82,10 +88,14 @@ module homogenization
       integer,     intent(in) :: ce
     end subroutine damage_partition
 
+    module subroutine chemical_partition(Delta_t, ce)
+      real(pREAL), intent(in) :: Delta_t
+      integer,     intent(in) :: ce
+    end subroutine chemical_partition
+
     module subroutine mechanical_homogenize(Delta_t,ce)
-     real(pREAL), intent(in) :: Delta_t
-     integer, intent(in) :: &
-       ce                                                                                           !< cell
+      real(pREAL), intent(in) :: Delta_t
+      integer, intent(in) :: ce                                                                                           !< cell
     end subroutine mechanical_homogenize
 
     module subroutine mechanical_result(group_base,ho)
@@ -102,6 +112,11 @@ module homogenization
       integer,          intent(in) :: ho
       character(len=*), intent(in) :: group
     end subroutine thermal_result
+
+    module subroutine chemical_result(ho,group)
+      integer,          intent(in) :: ho
+      character(len=*), intent(in) :: group
+    end subroutine chemical_result
 
     module function mechanical_updateState(subdt,subF,ce) result(doneAndHappy)
       real(pREAL), intent(in) :: &
@@ -160,6 +175,36 @@ module homogenization
       real(pREAL), dimension(:), intent(in) :: phi
     end subroutine homogenization_set_phi
 
+    module function homogenization_chemical_active() result(active)
+      logical :: active
+    end function homogenization_chemical_active
+
+    module function homogenization_composition(mu, Delta_t, ce) result(comp)
+      real(pREAL), dimension(:), intent(in) :: mu
+      real(pREAL), intent(in) :: Delta_t
+      integer,     intent(in) :: ce
+      real(pREAL), dimension(:), allocatable :: comp
+    end function homogenization_composition
+
+    module function homogenization_compositionTangent(mu, Delta_t, ce) result(comp_tangent)
+      real(pREAL), dimension(:), intent(in) :: mu
+      real(pREAL), intent(in) :: Delta_t
+      integer,     intent(in) :: ce
+      real(pREAL), dimension(:,:),allocatable :: comp_tangent
+    end function homogenization_compositionTangent
+
+    module function homogenization_mobility(ce) result(mobility)
+      integer, intent(in) :: ce
+      real(pREAL), dimension(:,:), allocatable :: mobility
+    end function homogenization_mobility
+
+    module subroutine homogenization_chemical_setField(mu, comp, Delta_t, ce)
+      real(pREAL), dimension(:),  intent(in) :: mu
+      real(pREAL), dimension(:),  intent(in) :: comp
+      real(pREAL), intent(in) :: Delta_t
+      integer, intent(in) :: ce
+    end subroutine homogenization_chemical_setField
+
   end interface
 
   public ::  &
@@ -167,6 +212,7 @@ module homogenization
     homogenization_mechanical_response, &
     homogenization_thermal_response, &
     homogenization_thermal_active, &
+    homogenization_chemical_active, &
     homogenization_mu_T, &
     homogenization_K_T, &
     homogenization_f_T, &
@@ -176,6 +222,10 @@ module homogenization
     homogenization_K_phi, &
     homogenization_f_phi, &
     homogenization_set_phi, &
+    homogenization_composition, &
+    homogenization_compositionTangent, &
+    homogenization_mobility, &
+    homogenization_chemical_setField, &
     homogenization_forward, &
     homogenization_result, &
     homogenization_restartRead, &
@@ -199,6 +249,7 @@ subroutine homogenization_init()
   call mechanical_init()
   call thermal_init()
   call damage_init()
+  call chemical_init()
 
 end subroutine homogenization_init
 
@@ -337,6 +388,12 @@ subroutine homogenization_result()
       call thermal_result(ho,group)
     end if
 
+    if (chemical_active(ho)) then
+      group = trim(group_base)//'/chemical'
+      call result_closeGroup(result_addGroup(group))
+      call chemical_result(ho,group)
+    end if
+
  end do
 
 end subroutine homogenization_result
@@ -429,7 +486,8 @@ subroutine parseHomogenization
     material_homogenization, &
     homog, &
     homogThermal, &
-    homogDamage
+    homogDamage, &
+    homogChemical
 
   integer :: h
 
@@ -438,6 +496,7 @@ subroutine parseHomogenization
   allocate(thermal_type(size(material_name_homogenization)),source=THERMAL_UNDEFINED_ID)
   allocate(thermal_active(size(material_name_homogenization)),source=.false.)
   allocate(damage_active(size(material_name_homogenization)),source=.false.)
+  allocate(chemical_active(size(material_name_homogenization)),source=.false.)
 
   do h=1, size(material_name_homogenization)
     homog => material_homogenization%get_dict(h)
@@ -465,7 +524,18 @@ subroutine parseHomogenization
             call IO_error(500,ext_msg=homogDamage%get_asStr('type'))
         end select
     end if
+
+    if (homog%contains('chemical')) then
+      homogChemical => homog%get_dict('chemical')
+        select case (homogChemical%get_asStr('type'))
+          case('pass')
+            chemical_active(h) = .true.
+          case default
+            call IO_error(500,ext_msg=homogChemical%get_asStr('type'))
+        end select
+    end if
   end do
+
 
 end subroutine parseHomogenization
 
