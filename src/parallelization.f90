@@ -66,6 +66,7 @@ subroutine parallelization_init()
 !$ character(len=6) NumThreadsString
   PetscErrorCode :: err_PETSc
   integer(kind(STATUS_OK)) :: status
+  integer, dimension(8) :: date_time
 
 
 #ifdef _OPENMP
@@ -100,6 +101,11 @@ subroutine parallelization_init()
     open(OUTPUT_UNIT,encoding='UTF-8')                                                              ! for special characters in output
   end if
 #endif
+
+  call date_and_time(values = date_time)
+  write(OUTPUT_UNIT,'(/,a)') ' DAMASK started on:'
+  print'(3x,a,1x,2(i2.2,a),i4.4)', 'Date:',date_time(3),'/',date_time(2),'/',date_time(1)
+  print'(3x,a,1x,2(i2.2,a),i2.2)', 'Time:',date_time(5),':',date_time(6),':',date_time(7)
 
   print'(/,1x,a)', '<<<+-  parallelization init  -+>>>'
 
