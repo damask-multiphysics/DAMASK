@@ -719,7 +719,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
     call MatSetValuesStencil(Jac,24_pPETScInt,row,24_pPetscInt,col,K_ele,ADD_VALUES,err_PETSc)
 #else
-    call MatSetValuesStencil(Jac,24_pPETScInt,row,24_pPetscInt,col,reshape(K_ele,[24*24]),ADD_VALUES,err_PETSc)
+    call MatSetValuesStencil(Jac,24_pPETScInt,row,24_pPetscInt,col,reshape(K_ele,[size(K_ele)]),ADD_VALUES,err_PETSc)
 #endif
     CHKERRQ(err_PETSc)
   end do; end do; end do

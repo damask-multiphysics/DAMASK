@@ -34,6 +34,13 @@ module material
   integer, public, protected :: &
     homogenization_maxNconstituents                                                                 !< max number of grains in any homogenization
 
+! --- BAD
+  integer, dimension(:), allocatable, public :: &
+    homogenization_chemical_Ncomponents
+
+  integer, public:: &
+    homogenization_chemical_maxNcomponents
+! ---
   character(len=:), public, protected, allocatable, dimension(:) :: &
     material_name_phase, &                                                                          !< name of each phase
     material_name_homogenization                                                                    !< name of each homogenization
@@ -48,8 +55,13 @@ module material
   real(pREAL), dimension(:,:), allocatable, public, protected :: &
     material_v                                                                                      ! fraction
 
-  public :: &
+  character(len=:), dimension(:), public, allocatable :: &
+    material_name_species
+
+    public :: &
     material_init
+
+
 
 contains
 
@@ -81,10 +93,13 @@ subroutine parse()
   type(tList), pointer :: materials, &                                                              !> all materials
                           constituents                                                              !> all constituents of a material
   type(tDict), pointer :: phases, &                                                                 !> all phases
+                          phase, &                                                                  !> individual phase
                           homogenizations, &                                                        !> all homogenizations
                           material, &                                                               !> material definition
                           constituent, &                                                            !> constituent definition
-                          homogenization
+                          homogenization, &
+                          chemical, &
+                          components
 
   type(tItem), pointer :: item
   integer, dimension(:), allocatable :: &
@@ -112,6 +127,7 @@ subroutine parse()
 
   material_name_phase          = phases%keys()
   material_name_homogenization = homogenizations%keys()
+  material_name_species = get_chemical_species(phases)
 
   allocate(homogenization_Nconstituents(size(homogenizations)))
   do ho=1, size(homogenizations)
@@ -226,5 +242,32 @@ function getKeys(dict)
 
 end function getKeys
 #endif
+
+!--------------------------------------------------------------------------------------------------
+!> @brief get names of chemical species
+!--------------------------------------------------------------------------------------------------
+function get_chemical_species(phases)
+
+  type(tDict), intent(in) :: phases
+  character(len=:),       dimension(:), allocatable :: get_chemical_species
+
+  type(tDict), pointer :: phase, &
+                          chemical, &
+                          components
+  integer :: ph
+
+  ! SR: sanity check probably required if other phases have the same set of components defined or not
+
+  phase => phases%get_dict(material_name_phase(1))
+  if (phase%contains('chemical')) then
+    chemical => phase%get_dict('chemical')
+    components => chemical%get_dict('components')
+    get_chemical_species = components%keys()
+  else
+    get_chemical_species = emptyStrArray
+  end if
+
+end function get_chemical_species
+
 
 end module material

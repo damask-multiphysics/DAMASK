@@ -123,6 +123,9 @@ module phase
       type(tDict), pointer :: phases
     end subroutine thermal_init
 
+    module subroutine chemical_init(phases)
+      type(tDict), pointer :: phases
+    end subroutine chemical_init
 
     module subroutine mechanical_result(group,ph)
       character(len=*), intent(in) :: group
@@ -139,6 +142,11 @@ module phase
       integer,          intent(in) :: ph
     end subroutine thermal_result
 
+    module subroutine chemical_result(group,ph)
+      character(len=*), intent(in) :: group
+      integer,          intent(in) :: ph
+    end subroutine chemical_result
+
     module subroutine mechanical_forward()
     end subroutine mechanical_forward
 
@@ -147,6 +155,9 @@ module phase
 
     module subroutine thermal_forward()
     end subroutine thermal_forward
+
+    module subroutine chemical_forward()
+    end subroutine chemical_forward
 
 
     module subroutine mechanical_restore(ce,includeL)
@@ -341,6 +352,23 @@ module phase
         dL_i_dM_i                                                                                   !< derivative of L_i with respect to M_i
     end subroutine damage_anisobrittle_LiAndItsTangent
 
+    module function phase_calculate_composition(mu,co,ce) result(conc)
+      real(pREAL), intent(in), dimension(:) :: mu
+      integer, intent(in) :: co, ce
+      real(pREAL), dimension(:), allocatable :: conc
+    end function phase_calculate_composition
+
+    module function phase_get_mobility(co,ce) result(mobility)
+      integer, intent(in) :: co, ce
+      real(pREAL), dimension(:,:),allocatable :: mobility
+    end function phase_get_mobility
+
+    module function phase_compositionTangent(mu,co,ce) result(comp_tangent)
+      real(pREAL), dimension(:), intent(in) :: mu
+      integer, intent(in) :: co, ce
+      real(pREAL), dimension(:,:),allocatable :: comp_tangent
+    end function phase_compositionTangent
+
   end interface
 
   public :: &
@@ -369,7 +397,10 @@ module phase
     phase_set_phi, &
     phase_P, &
     phase_set_F, &
-    phase_F
+    phase_F, &
+    phase_calculate_composition, &
+    phase_get_mobility, &
+    phase_compositionTangent
 
 contains
 
@@ -429,6 +460,7 @@ subroutine phase_init()
   call mechanical_init(phases,num_mech)
   call damage_init()
   call thermal_init(phases)
+  call chemical_init(phases)
 
   call crystallite_init()
 
@@ -496,6 +528,7 @@ subroutine phase_forward()
   call mechanical_forward()
   call damage_forward()
   call thermal_forward()
+  call chemical_forward()
 
 end subroutine phase_forward
 
@@ -521,6 +554,7 @@ subroutine phase_result()
     call mechanical_result(group,ph)
     call damage_result(group,ph)
     call thermal_result(group,ph)
+    call chemical_result(group,ph)
 
   end do
 

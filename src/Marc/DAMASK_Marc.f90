@@ -248,6 +248,8 @@ end module DAMASK_interface
 #include "../phase_damage.f90"
 #include "../phase_damage_isobrittle.f90"
 #include "../phase_damage_anisobrittle.f90"
+#include "../phase_chemical.f90"
+#include "../phase_chemical_quadEnergy.f90"
 #include "../homogenization.f90"
 #include "../homogenization_mechanical.f90"
 #include "../homogenization_mechanical_pass.f90"
@@ -258,6 +260,8 @@ end module DAMASK_interface
 #include "../homogenization_thermal_isotemperature.f90"
 #include "../homogenization_damage.f90"
 #include "../homogenization_damage_pass.f90"
+#include "../homogenization_chemical.f90"
+#include "../homogenization_chemical_pass.f90"
 #include "materialpoint_Marc.f90"
 
 !--------------------------------------------------------------------------------------------------

@@ -29,6 +29,7 @@ program DAMASK_grid
   use grid_mech_spectral_polarization
   use grid_mechanical_spectral_Galerkin
   use grid_mechanical_FEM
+  use grid_chemical_FDM
   use grid_damage_spectral
   use grid_thermal_spectral
   use result
@@ -57,7 +58,8 @@ program DAMASK_grid
     FIELD_UNDEFINED_ID, &
     FIELD_MECH_ID, &
     FIELD_THERMAL_ID, &
-    FIELD_DAMAGE_ID
+    FIELD_DAMAGE_ID, &
+    FIELD_CHEMICAL_ID
   end enum
 
   integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
@@ -201,6 +203,7 @@ program DAMASK_grid
 ! initialize field solver information
   if (solver%get_asStr('thermal',defaultVal = 'n/a') == 'spectral') nActiveFields = nActiveFields + 1
   if (solver%get_asStr('damage', defaultVal = 'n/a') == 'spectral') nActiveFields = nActiveFields + 1
+  if (solver%get_asStr('chemical', defaultVal = 'n/a') == 'FDM')    nActiveFields = nActiveFields + 1
 
   allocate(solres(nActiveFields))
   allocate(    ID(nActiveFields))
@@ -217,6 +220,11 @@ program DAMASK_grid
     ID(field) = FIELD_DAMAGE_ID
     active_parabolic = .true.
   end if damageActive
+  chemicalActive: if (solver%get_asStr('chemical',defaultVal = 'n/a') == 'FDM') then
+    field = field + 1
+    ID(field) = FIELD_CHEMICAL_ID
+    active_parabolic = .true.
+  end if chemicalActive
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
@@ -230,6 +238,9 @@ program DAMASK_grid
 
       case (FIELD_DAMAGE_ID)
         call grid_damage_spectral_init(num_grid)
+
+      case (FIELD_CHEMICAL_ID)
+        call grid_chemical_FDM_init(num_grid)
 
     end select
   end do
@@ -312,7 +323,8 @@ program DAMASK_grid
                         rotation_BC    = loadCases(l)%rot)
 
               case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward(cutBack, Delta_t)
-              case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward(cutBack)
+              case(FIELD_DAMAGE_ID); call grid_damage_spectral_forward(cutBack)
+              case(FIELD_CHEMICAL_ID); call grid_chemical_FDM_forward(cutBack)
             end select
           end do
           if (.not. cutBack) call materialpoint_forward
@@ -332,6 +344,8 @@ program DAMASK_grid
                   solres(field) = grid_thermal_spectral_solution(Delta_t)
                 case(FIELD_DAMAGE_ID)
                   solres(field) = grid_damage_spectral_solution(Delta_t)
+                case(FIELD_CHEMICAL_ID)
+                  solres(field) = grid_chemical_FDM_solution(Delta_t)
               end select
 
               if (.not. solres(field)%converged) exit                                               ! no solution found
