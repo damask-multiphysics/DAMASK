@@ -5,7 +5,7 @@
 !> everything is fine. Exit code 1 signals an error, message according to IO_error.
 !--------------------------------------------------------------------------------------------------
 subroutine quit(stop_id)
-  use, intrinsic :: ISO_fortran_env, only: ERROR_UNIT
+  use, intrinsic :: ISO_fortran_env, only: ERROR_UNIT, OUTPUT_UNIT
 #include <petsc/finclude/petscsys.h>
   use PETScSys
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
@@ -21,7 +21,7 @@ subroutine quit(stop_id)
 
   integer, intent(in) :: stop_id
 
-  integer, dimension(8) :: dateAndTime
+  integer, dimension(8) :: date_time
   integer :: err_HDF5
   integer(MPI_INTEGER_KIND) :: err_MPI, worldsize
   PetscErrorCode :: err_PETSc
@@ -34,14 +34,10 @@ subroutine quit(stop_id)
 
   call PetscFinalize(err_PETSc)
 
-  call date_and_time(values = dateAndTime)
-  write(6,'(/,a)') ' DAMASK terminated on:'
-  write(6,'(a,2(i2.2,a),i4.4)') ' Date:               ',dateAndTime(3),'/',&
-                                                        dateAndTime(2),'/',&
-                                                        dateAndTime(1)
-  write(6,'(a,2(i2.2,a),i2.2)') ' Time:               ',dateAndTime(5),':',&
-                                                        dateAndTime(6),':',&
-                                                        dateAndTime(7)
+  call date_and_time(values = date_time)
+  write(OUTPUT_UNIT,'(/,a)') ' DAMASK terminated on:'
+  print'(3x,a,1x,2(i2.2,a),i4.4)', 'Date:',date_time(3),'/',date_time(2),'/',date_time(1)
+  print'(3x,a,1x,2(i2.2,a),i2.2)', 'Time:',date_time(5),':',date_time(6),':',date_time(7)
 
   if (stop_id == 0 .and. err_HDF5 == 0 .and. err_PETSC == 0) then
     call MPI_Finalize(err_MPI)

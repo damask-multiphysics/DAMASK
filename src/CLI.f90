@@ -90,8 +90,6 @@ subroutine CLI_init()
     workingDirArg                                                                                   !< -w CLI argument
   integer :: &
     i, s
-  integer, dimension(8) :: &
-    dateAndTime
 #ifdef PETSC_DOI
   character(len=*), parameter :: PETSc_DOI = PETSC_DOI
 #endif
@@ -142,11 +140,6 @@ subroutine CLI_init()
                    'PETSc version:',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.',PETSC_VERSION_SUBMINOR
 
   print'(/,1x,a)', 'Compiled at: '//__DATE__//' at '//__TIME__
-
-   call date_and_time(values = dateAndTime)
-  print'(/,1x,a,1x,2(i2.2,a),i4.4)', 'Date:',dateAndTime(3),'/',dateAndTime(2),'/',dateAndTime(1)
-  print'(1x,a,1x,2(i2.2,a),i2.2)',   'Time:',dateAndTime(5),':',dateAndTime(6),':',dateAndTime(7)
-
 
   if (command_argument_count() == 0) call help()
   do i = 1, command_argument_count()

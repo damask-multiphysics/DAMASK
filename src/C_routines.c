@@ -100,16 +100,16 @@ void get_username_c(char username[], int *stat){
 }
 #endif
 
-int isatty_stdout_c(){
-  return isatty(STDOUT_FILENO);
+bool isatty_stdout_c(){
+  return isatty(STDOUT_FILENO) == 1;
 }
 
-int isatty_stderr_c(){
-  return isatty(STDERR_FILENO);
+bool isatty_stderr_c(){
+  return isatty(STDERR_FILENO) == 1;
 }
 
-int isatty_stdin_c(){
-  return isatty(STDIN_FILENO);
+bool isatty_stdin_c(){
+  return isatty(STDIN_FILENO) == 1;
 }
 
 

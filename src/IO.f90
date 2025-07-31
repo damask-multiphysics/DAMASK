@@ -8,17 +8,41 @@
 module IO
   use, intrinsic :: ISO_fortran_env, only: &
     IO_STDOUT => OUTPUT_UNIT, &
-    IO_STDERR => ERROR_UNIT
+    IO_STDERR => ERROR_UNIT, &
+    IO_STDIN => INPUT_UNIT
 
   use prec
   use constants
   use misc
-#ifndef MARC_SOURCE
-  use OS
-#endif
 
 implicit none(type,external)
   private
+
+
+#ifndef MARC_SOURCE
+  interface
+    function isatty_stdout_C() bind(C)
+      use, intrinsic :: ISO_C_binding, only: C_BOOL
+
+      implicit none(type,external)
+      logical(C_BOOL) :: isatty_stdout_C
+    end function isatty_stdout_C
+
+    function isatty_stderr_C() bind(C)
+      use, intrinsic :: ISO_C_binding, only: C_BOOL
+
+      implicit none(type,external)
+      logical(C_BOOL) :: isatty_stderr_C
+    end function isatty_stderr_C
+
+    function isatty_stdin_C() bind(C)
+      use, intrinsic :: ISO_C_binding, only: C_BOOL
+
+      implicit none(type,external)
+      logical(C_BOOL) :: isatty_stdin_C
+    end function isatty_stdin_C
+  end interface
+#endif
 
   ! For transition period
   interface IO_error
@@ -38,6 +62,12 @@ implicit none(type,external)
     IO_EMPH = IO_ESC//'[3m', &                                                                      !< emphasize (italics)
     IO_QUOTES  = "'"//'"' , &                                                                       !< quotes for strings
     IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13)                            !< whitespace characters
+
+#ifndef MARC_SOURCE
+  logical :: &
+    IO_redirectedSTDOUT = .false., &                                                                !< STDOUT writes to file 'out.X' where X is the world rank
+    IO_redirectedSTDERR = .false.                                                                   !< STDERR writes to file 'err.X' where X is the world rank
+#endif
 
   public :: &
     IO_init, &
@@ -61,11 +91,22 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Do self test.
+!> @brief Inquire whether STDOUT/STDERR are redirected and do self test.
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init()
 
+  character(len=pSTRLEN) :: fname
+
+
   print'(/,1x,a)', '<<<+-  IO init  -+>>>'; flush(IO_STDOUT)
+
+#ifndef MARC_SOURCE
+  ! redirection occurs in parallelization_init before any output is written
+  inquire(unit=IO_STDOUT,name=fname)
+  IO_redirectedSTDOUT = fname(:4) == 'out.'
+  inquire(unit=IO_STDERR,name=fname)
+  IO_redirectedSTDERR = fname(:4) == 'err.'
+#endif
 
   call IO_selfTest()
 
@@ -297,8 +338,7 @@ function IO_color(fg,bg,unit)
 
   IO_color = ''
 
-#ifndef MARC_SOURCE
-  if (.not. OS_isaTTY(misc_optional(unit,IO_STDOUT))) return
+  if (.not. IO_isaTTY(misc_optional(unit,int(IO_STDOUT)))) return
 
   if (present(fg)) &
     IO_color = IO_color//IO_ESC//'[38;2;'//IO_intAsStr(fg(1))//';' &
@@ -310,7 +350,6 @@ function IO_color(fg,bg,unit)
                                          //IO_intAsStr(bg(3))//'m'
 
   if (.not. present(fg) .and. .not. present(bg)) IO_color = IO_FORMATRESET
-#endif
 
 end function IO_color
 
@@ -637,6 +676,32 @@ end subroutine IO_warning_old
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Test whether a file descriptor refers to a terminal.
+!> @detail A terminal is neither a file nor a redirected STDOUT/STDERR/STDIN.
+!>         This function cannot detect redirection when invoked via mpirun/mpiexec.
+!--------------------------------------------------------------------------------------------------
+logical function IO_isaTTY(unit)
+
+  integer, intent(in) :: unit
+
+
+  select case(unit)
+#ifndef MARC_SOURCE
+    case (IO_STDOUT)
+      IO_isaTTY = .not. IO_redirectedSTDOUT .and. logical(isatty_stdout_C())
+    case (IO_STDERR)
+      IO_isaTTY = .not. IO_redirectedSTDERR .and. logical(isatty_stderr_C())
+    case (IO_STDIN)
+      IO_isaTTY = logical(isatty_stdin_C())
+#endif
+    case default
+      IO_isaTTY = .false.
+  end select
+
+end function IO_isaTTY
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Convert Windows (CRLF) to Unix (LF) line endings.
 !--------------------------------------------------------------------------------------------------
 pure function CRLF2LF(str)
@@ -663,7 +728,7 @@ end function CRLF2LF
 
 #if ((defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || !defined(__INTEL_COMPILER))
 !--------------------------------------------------------------------------------------------------
-!> @brief Fortran 2023 tokenize (first form).
+!> @brief Fortran 2023 "tokenize" (first form, without optional argument).
 !--------------------------------------------------------------------------------------------------
 pure subroutine tokenize(string,set,tokens)
 
@@ -785,15 +850,11 @@ subroutine panel(paneltype,ID,msg, &
         end select
 
         if (emph) then
-#ifndef MARC_SOURCE
-          if (OS_isaTTY(IO_STDERR)) then
+          if (IO_isaTTY(IO_STDERR)) then
             as_str = IO_EMPH//as_str//IO_FORMATRESET
           else
             as_str = IO_QUOTES(2:2)//as_str//IO_QUOTES(2:2)
           end if
-#else
-          as_str = IO_QUOTES(2:2)//as_str//IO_QUOTES(2:2)
-#endif
         end if
         as_str = ' '//as_str
       else

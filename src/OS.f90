@@ -20,12 +20,11 @@ module OS
     OS_getUserName, &
 #ifdef OLD_STYLE_C_TO_FORTRAN_STRING
     free_C, &
-    c_f_string, &
 #endif
 #if (defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || (defined(__GFORTRAN__) && __GNUC__ < 15)
     f_c_string, &
 #endif
-    OS_isaTTY
+    c_f_string
 
 
   interface
@@ -96,26 +95,6 @@ module OS
       type(C_PTR), value :: ptr
     end subroutine free_C
 #endif
-    function isatty_stdout_C() bind(C)
-      use, intrinsic :: ISO_C_binding, only: C_INT
-
-      implicit none(type,external)
-      integer(C_INT) :: isatty_stdout_C
-    end function isatty_stdout_C
-
-    function isatty_stderr_C() bind(C)
-      use, intrinsic :: ISO_C_binding, only: C_INT
-
-      implicit none(type,external)
-      integer(C_INT) :: isatty_stderr_C
-    end function isatty_stderr_C
-
-    function isatty_stdin_C() bind(C)
-      use, intrinsic :: ISO_C_binding, only: C_INT
-
-      implicit none(type,external)
-      integer(C_INT) :: isatty_stdin_C
-    end function isatty_stdin_C
 
   end interface
 
@@ -254,7 +233,7 @@ end function c_f_string
 
 #if (defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || (defined(__GFORTRAN__) && __GNUC__ < 15)
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert Fortran string to C string.
+!> @brief Fortran 2023 "f_c_string" (without optional argument).
 !> @details: C string is NULL terminated and, hence, longer by one than the Fortran string.
 !--------------------------------------------------------------------------------------------------
 pure function f_c_string(f_string) result(c_string)
@@ -267,31 +246,6 @@ pure function f_c_string(f_string) result(c_string)
 
 end function f_c_string
 #endif
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Test whether a file descriptor refers to a terminal.
-!> @detail A terminal is neither a file nor a redirected STDOUT/STDERR/STDIN.
-!--------------------------------------------------------------------------------------------------
-logical function OS_isaTTY(unit)
-
-  integer, intent(in) :: unit
-
-
-  select case(unit)
-#ifndef LOGFILE
-    case (OUTPUT_UNIT)
-      OS_isaTTY = isatty_stdout_C()==1
-    case (ERROR_UNIT)
-      OS_isaTTY = isatty_stderr_C()==1
-#endif
-    case (INPUT_UNIT)
-      OS_isaTTY = isatty_stdin_C()==1
-    case default
-      OS_isaTTY = .false.
-  end select
-
-end function OS_isaTTY
 
 
 !--------------------------------------------------------------------------------------------------

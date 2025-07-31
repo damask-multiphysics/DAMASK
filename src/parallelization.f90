@@ -59,13 +59,15 @@ contains
 subroutine parallelization_init()
 
   integer(MPI_INTEGER_KIND) :: err_MPI, typeSize, version, subversion, devNull
-  character(len=4) :: rank_str
+  character(len=4) :: rank_str, logfile
   character(len=MPI_MAX_LIBRARY_VERSION_STRING) :: MPI_library_version
-!$ integer :: got_env, threadLevel
+  integer :: got_env
+!$ integer :: threadLevel
 !$ integer(pI32) :: OMP_NUM_THREADS
 !$ character(len=6) NumThreadsString
   PetscErrorCode :: err_PETSc
   integer(kind(STATUS_OK)) :: status
+  integer, dimension(8) :: date_time
 
 
 #ifdef _OPENMP
@@ -88,18 +90,24 @@ subroutine parallelization_init()
   if (err_MPI /= 0_MPI_INTEGER_KIND) &
     error stop 'Could not determine worldrank'
 
-#ifdef LOGFILE
-  write(rank_str,'(i4.4)') worldrank
-  open(OUTPUT_UNIT,file='out.'//rank_str,status='replace',encoding='UTF-8')
-  open(ERROR_UNIT,file='err.'//rank_str,status='replace',encoding='UTF-8')
-#else
-  if (worldrank /= 0) then
-    close(OUTPUT_UNIT)                                                                              ! disable output
-    open(OUTPUT_UNIT,file='/dev/null',status='replace')                                             ! close() alone will leave some temp files in cwd
+  call get_environment_variable(name='DAMASK_LOGFILE',value=logfile,status=got_env)
+  if (got_env == 0 .and. any(trim(logfile) == ['1   ', 'TRUE', 'True', 'true'])) then
+    write(rank_str,'(i4.4)') worldrank
+    open(OUTPUT_UNIT,file='out.'//rank_str,status='replace',encoding='UTF-8')
+    open(ERROR_UNIT,file='err.'//rank_str,status='replace',encoding='UTF-8')
   else
-    open(OUTPUT_UNIT,encoding='UTF-8')                                                              ! for special characters in output
+    if (worldrank == 0) then
+      open(OUTPUT_UNIT,encoding='UTF-8')                                                            ! for special characters in output
+    else
+      open(OUTPUT_UNIT,file='/dev/null',status='replace')                                           ! close() will leave some temp files in cwd
+    end if
+    open(ERROR_UNIT,encoding='UTF-8')
   end if
-#endif
+
+  call date_and_time(values = date_time)
+  write(OUTPUT_UNIT,'(/,a)') ' DAMASK started on:'
+  print'(3x,a,1x,2(i2.2,a),i4.4)', 'Date:',date_time(3),'/',date_time(2),'/',date_time(1)
+  print'(3x,a,1x,2(i2.2,a),i2.2)', 'Time:',date_time(5),':',date_time(6),':',date_time(7)
 
   print'(/,1x,a)', '<<<+-  parallelization init  -+>>>'
 
@@ -113,7 +121,8 @@ subroutine parallelization_init()
 
   call MPI_Comm_size(MPI_COMM_WORLD,worldsize,err_MPI)
   call parallelization_chkerr(err_MPI)
-  if (worldrank == 0) print'(/,1x,a,i0)', 'MPI processes: ',worldsize
+  print'(/,1x,a,i0)', 'MPI worldrank: ',worldrank
+  print'(1x,a,i0)',   'MPI worldsize: ',worldsize
 
   call MPI_Type_size(MPI_INTEGER,typeSize,err_MPI)
   call parallelization_chkerr(err_MPI)
@@ -135,8 +144,7 @@ subroutine parallelization_init()
   if (typeSize*8_MPI_INTEGER_KIND /= int(bit_size(status),MPI_INTEGER_KIND)) &
     error stop 'Mismatch between MPI_INTEGER and DAMASK status'
 
-
-!$ call get_environment_variable(name='OMP_NUM_THREADS',value=NumThreadsString,STATUS=got_env)
+!$ call get_environment_variable(name='OMP_NUM_THREADS',value=NumThreadsString,status=got_env)
 !$ if (got_env /= 0) then
 !$   print'(1x,a)', 'Could not get $OMP_NUM_THREADS, using default'
 !$   OMP_NUM_THREADS = 4_pI32
