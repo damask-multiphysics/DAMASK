@@ -282,7 +282,7 @@ Marc_compile:
     - cmake --build builddir --target install
     - cd PRIVATE/testing
   script:
-    - pytest -v -k configexamples
+    - python3 -X faulthandler -m pytest -p no:faulthandler -v -k configexamples                     # https://blog.xmatthias.com/post/pytest-debug-segfault/
 
 configexamples_debug_GCC:
   extends: .configexamples_debug
