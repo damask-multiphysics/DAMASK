@@ -3,6 +3,9 @@ submodule(phase:mechanical) eigen
   integer, dimension(:), allocatable :: &
     Nmodels
 
+  integer(kind(UNDEFINED)),  dimension(:,:), allocatable :: &
+    mechanical_eigen_kinematics_type
+
   interface
 
     module function thermalexpansion_init(kinematics_length) result(myKinematics)

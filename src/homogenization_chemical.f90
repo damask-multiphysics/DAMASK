@@ -150,7 +150,7 @@ module function homogenization_compositionTangent(mu,Delta_t,ce) result(comp_tan
     comp_tangent = comp_tangent + phase_compositionTangent(mu,co,ce)
   end do
 
-  comp_tangent = comp_tangent/homogenization_Nconstituents(material_ID_homogenization(ce))
+  comp_tangent = comp_tangent/real(homogenization_Nconstituents(material_ID_homogenization(ce)),pREAL)
 
 end function homogenization_compositionTangent
 
@@ -186,7 +186,6 @@ module subroutine homogenization_chemical_setField(mu, comp, Delta_t, ce)
   real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: ce
 
-  integer :: co
 
   current(material_ID_homogenization(ce))%mu(:,material_entry_homogenization(ce)) = mu
   current(material_ID_homogenization(ce))%comp(:,material_entry_homogenization(ce)) = comp  !NOTE: Average composition

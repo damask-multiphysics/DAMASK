@@ -25,6 +25,9 @@ submodule(phase) thermal
 
   integer :: thermal_source_maxSizeDotState
 
+  integer(kind(UNDEFINED)),  dimension(:,:), allocatable :: &
+    thermal_source_type
+
 
   interface
 

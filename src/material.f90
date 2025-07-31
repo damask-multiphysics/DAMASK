@@ -90,16 +90,13 @@ end subroutine material_init
 !--------------------------------------------------------------------------------------------------
 subroutine parse()
 
-  type(tList), pointer :: materials, &                                                              !> all materials
-                          constituents                                                              !> all constituents of a material
-  type(tDict), pointer :: phases, &                                                                 !> all phases
-                          phase, &                                                                  !> individual phase
-                          homogenizations, &                                                        !> all homogenizations
-                          material, &                                                               !> material definition
-                          constituent, &                                                            !> constituent definition
-                          homogenization, &
-                          chemical, &
-                          components
+  type(tList), pointer :: materials, &                                                              !< all materials
+                          constituents                                                              !< all constituents of a material
+  type(tDict), pointer :: phases, &                                                                 !< all phases
+                          homogenizations, &                                                        !< all homogenizations
+                          material, &                                                               !< material definition
+                          constituent, &                                                            !< constituent definition
+                          homogenization
 
   type(tItem), pointer :: item
   integer, dimension(:), allocatable :: &
@@ -244,7 +241,7 @@ end function getKeys
 #endif
 
 !--------------------------------------------------------------------------------------------------
-!> @brief get names of chemical species
+!> @brief Get names of chemical species.
 !--------------------------------------------------------------------------------------------------
 function get_chemical_species(phases)
 
@@ -254,10 +251,9 @@ function get_chemical_species(phases)
   type(tDict), pointer :: phase, &
                           chemical, &
                           components
-  integer :: ph
+
 
   ! SR: sanity check probably required if other phases have the same set of components defined or not
-
   phase => phases%get_dict(material_name_phase(1))
   if (phase%contains('chemical')) then
     chemical => phase%get_dict('chemical')
