@@ -788,15 +788,15 @@ subroutine panel(paneltype,ID,msg, &
 
   end select
 
-  info_extra = as_str(info_1,any(emph==1)) &
-            // as_str(info_2,any(emph==2)) &
-            // as_str(info_3,any(emph==3)) &
-            // as_str(info_4,any(emph==4)) &
-            // as_str(info_5,any(emph==5)) &
-            // as_str(info_6,any(emph==6)) &
-            // as_str(info_7,any(emph==7)) &
-            // as_str(info_8,any(emph==8)) &
-            // as_str(info_9,any(emph==9))
+  info_extra = as_str(info_1,is_emph(1)) &
+            // as_str(info_2,is_emph(2)) &
+            // as_str(info_3,is_emph(3)) &
+            // as_str(info_4,is_emph(4)) &
+            // as_str(info_5,is_emph(5)) &
+            // as_str(info_6,is_emph(6)) &
+            // as_str(info_7,is_emph(7)) &
+            // as_str(info_8,is_emph(8)) &
+            // as_str(info_9,is_emph(9))
 
 
   !$OMP CRITICAL (write2out)
@@ -862,6 +862,16 @@ subroutine panel(paneltype,ID,msg, &
       end if
 
     end function as_str
+
+    pure logical function is_emph(i)
+      integer, intent(in) :: i
+
+      if (present(emph)) then
+        is_emph = any(emph == i)
+      else
+        is_emph = .false.
+      end if
+    end function is_emph
 
 end subroutine panel
 
