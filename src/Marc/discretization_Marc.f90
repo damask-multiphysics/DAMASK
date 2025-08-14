@@ -452,7 +452,7 @@ subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
           i = i + 1
           chunkPos = strPos(fileContent(l+i))
           elemInCurrentSet = elemInCurrentSet + chunkPos(1) - 1                                     ! add line's count when assuming 'c'
-          if (IO_lc(strValue(fileContent(l+i),chunkPos,chunkPos(1))) /= 'c') then                ! line finished, read last value
+          if (IO_lc(strValue(fileContent(l+i),chunkPos,chunkPos(1))) /= 'c') then                   ! line finished, read last value
             elemInCurrentSet = elemInCurrentSet + 1                                                 ! data ended
             exit
           end if
@@ -515,29 +515,35 @@ subroutine inputRead_mapElems(FEM2DAMASK, &
 
   integer, dimension(2,nElems)       :: map_unsorted
   integer, allocatable, dimension(:) :: chunkPos
-  integer :: i,j,l,nNodesAlreadyRead
+  integer :: i,j,l,nNodesAlreadyRead,num,nElem,itotal
+  character(:), allocatable :: field
 
-
+  itotal = 0
   do l = 1, size(fileContent)
     chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
     if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'connectivity') then
       j = 0
-      do i = 1,nElems
+      i = 1
+      do while (itotal < nElems)
         chunkPos = strPos(fileContent(l+1+i+j))
-        map_unsorted(:,i) = [intValue(fileContent(l+1+i+j),chunkPos,1),i]
+        field = strValue(fileContent(l+1+i+j),chunkPos,1)
+        read(field,*,iostat = num) nElem
+        if (num /= 0) exit
+        itotal = itotal + 1
+        map_unsorted(:,itotal) = [nElem,itotal]
         nNodesAlreadyRead = chunkPos(1) - 2
         do while(nNodesAlreadyRead < nNodesPerElem)                                                 ! read on if not all nodes in one line
           j = j + 1
           chunkPos = strPos(fileContent(l+1+i+j))
           nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
         end do
+        i = i + 1
       end do
-      exit
+      if (itotal == nElems) exit
     end if
   end do
 
-  call math_sort(map_unsorted)
   allocate(FEM2DAMASK(minval(map_unsorted(1,:)):maxval(map_unsorted(1,:))),source=-1)
   do i = 1, nElems
     FEM2DAMASK(map_unsorted(1,i)) = map_unsorted(2,i)
@@ -619,30 +625,36 @@ end subroutine inputRead_elemNodes
 !> @brief Gets element type (and checks if the whole mesh comprises of only one type)
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_elemType(elem, &
-                              nElem,fileContent)
+                              nElems,fileContent)
 
   type(tElement),                 intent(out) :: elem
-  integer,                        intent(in)  :: nElem
+  integer,                        intent(in)  :: nElems
   character(len=*), dimension(:), intent(in)  :: fileContent                                        !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
-  integer :: i,j,t,t_,l,remainingChunks
+  integer :: i,j,t,t_,l,remainingChunks,num,nElem,itotal
+  character(:), allocatable :: field
 
-
+  itotal = 0
   t = -1
   do l = 1, size(fileContent)
     chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
     if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'connectivity') then
       j = 0
-      do i=1,nElem                                                                                  ! read all elements
+      i = 1
+      do while (itotal < nElems)
         chunkPos = strPos(fileContent(l+1+i+j))
         if (t == -1) then
           t = mapElemtype(strValue(fileContent(l+1+i+j),chunkPos,2))
           call elem%init(t)
         else
-          t_ = mapElemtype(strValue(fileContent(l+1+i+j),chunkPos,2))
-          if (t /= t_) call IO_error(191,strValue(fileContent(l+1+i+j),chunkPos,2),label1='type',ID1=t)
+          field = strValue(fileContent(l+1+i+j),chunkPos,1)
+          read(field,*,iostat = num) nElem
+          if (num /= 0) exit
+          field = strValue(fileContent(l+1+i+j),chunkPos,2)
+          t_ = mapElemtype(field)
+          if (t /= t_) call IO_error(191,field,label1='type',ID1=t)
         end if
         remainingChunks = elem%nNodes - (chunkPos(1) - 2)
         do while(remainingChunks > 0)
@@ -650,8 +662,10 @@ subroutine inputRead_elemType(elem, &
           chunkPos = strPos(fileContent(l+1+i+j))
           remainingChunks = remainingChunks - chunkPos(1)
         end do
+        i = i + 1
+        itotal = itotal + 1
       end do
-      exit
+      if (itotal == nElems) exit
     end if
   end do
 
@@ -705,30 +719,35 @@ end subroutine inputRead_elemType
 !--------------------------------------------------------------------------------------------------
 !> @brief Stores node IDs
 !--------------------------------------------------------------------------------------------------
-function inputRead_connectivityElem(nElem,nNodes,fileContent)
+function inputRead_connectivityElem(nElems,nNodes,fileContent)
 
   integer, intent(in) :: &
-    nElem, &
+    nElems, &
     nNodes                                                                                          !< number of nodes per element
   character(len=*), dimension(:), intent(in) :: fileContent                                         !< file content, separated per lines
 
-  integer, dimension(nNodes,nElem) :: &
+  integer, dimension(nNodes,nElems) :: &
     inputRead_connectivityElem
 
   integer, allocatable, dimension(:) :: chunkPos
 
-  integer, dimension(1+nElem) :: contInts
-  integer :: i,k,j,t,e,l,nNodesAlreadyRead
+  integer, dimension(1+nElems) :: contInts
+  integer :: i,k,j,t,e,l,nNodesAlreadyRead,num,nElem,itotal
+  character(:), allocatable :: field
 
-
+  itotal = 0
   do l = 1, size(fileContent)
     chunkPos = strPos(fileContent(l))
     if (chunkPos(1) < 1) cycle
     if (IO_lc(strValue(fileContent(l),chunkPos,1)) == 'connectivity') then
       j = 0
-      do i = 1,nElem
+      i = 1
+      do while (itotal < nElems)
         chunkPos = strPos(fileContent(l+1+i+j))
-        e = discretization_Marc_FEM2DAMASK_elem(intValue(fileContent(l+1+i+j),chunkPos,1))
+        field = strValue(fileContent(l+1+i+j),chunkPos,1)
+        read(field,*,iostat = num) nElem
+        if (num /= 0) exit
+        e = discretization_Marc_FEM2DAMASK_elem(nElem)
         if (e /= 0) then                                                                            ! disregard non CP elems
           do k = 1,chunkPos(1)-2
             inputRead_connectivityElem(k,e) = &
@@ -744,9 +763,11 @@ function inputRead_connectivityElem(nElem,nNodes,fileContent)
             end do
             nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
           end do
+          i = i + 1
+          itotal = itotal + 1
         end if
       end do
-      exit
+      if (itotal == nElems) exit
     end if
   end do
 
@@ -776,7 +797,7 @@ subroutine inputRead_material(materialAt,&
   integer :: i,j,t,sv,ID,e,nNodesAlreadyRead,l,k,m
 
 
-  allocate(materialAt(nElem))
+  allocate(materialAt(nElem), source=0)
 
   do l = 1, size(fileContent)
     chunkPos = strPos(fileContent(l))
