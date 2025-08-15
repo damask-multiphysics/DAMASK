@@ -1076,6 +1076,10 @@ class Rotation:
         """
         Initialize from pairs of two orthogonal basis vectors.
 
+        Basis vectors are expressed in a common global frame (active == False)
+        or constitute directions that are each expressed in their respective
+        frame (active == True).
+
         Parameters
         ----------
         source : numpy.ndarray, shape (...,2,3)
@@ -1096,12 +1100,20 @@ class Rotation:
         If rotations $A = [s_1,s_2,s_1 × s_2]^T$ and B = $[t_1,t_2,t_1 × t_2]^T$
         are considered "active", the resulting rotation will be $B^{-1}⋅A$ instead
         of the default result $B⋅A^{-1}$.
+        Use of "active" enables the definition of a rotation based on
+        two specific directions in each coordinate frame being parallel to each other.
 
         Examples
         --------
         >>> import damask
         >>> damask.Rotation.from_parallel([[2,0,0],[0,1,0]],[[1,0,0],[0,2,0]])
         array(( 1.,     0.,  0.,  0.))
+
+        Direction x and y of the specimen frame are parallel to
+        direction [ 1 1 1 ] and [ 1 -1 0 ] of the crystal frame, respectively.
+        >>> import damask
+        >>> damask.Rotation.from_parallel([[1,0,0],[0,1,0]],[[1,1,1],[1,-1,0]],active=True)
+        array((0.1159169 ,     0.88047624,  0.3647052 ,  0.27984814))
         """
         s_ = np.array(source,dtype=float)
         t_ = np.array(target,dtype=float)
