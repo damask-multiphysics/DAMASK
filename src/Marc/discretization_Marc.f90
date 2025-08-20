@@ -515,7 +515,7 @@ subroutine inputRead_mapElems(FEM2DAMASK, &
 
   integer, dimension(2,nElems)       :: map_unsorted
   integer, allocatable, dimension(:) :: chunkPos
-  integer :: i,j,l,nNodesAlreadyRead,num,nElem,itotal
+  integer :: i,j,l,nNodesAlreadyRead,readStatus,nElem,itotal
   character(:), allocatable :: field
 
   itotal = 0
@@ -528,8 +528,8 @@ subroutine inputRead_mapElems(FEM2DAMASK, &
       do while (itotal < nElems)
         chunkPos = strPos(fileContent(l+1+i+j))
         field = strValue(fileContent(l+1+i+j),chunkPos,1)
-        read(field,*,iostat = num) nElem
-        if (num /= 0) exit
+        read(field,*,iostat = readStatus) nElem
+        if (readStatus /= 0) exit
         itotal = itotal + 1
         map_unsorted(:,itotal) = [nElem,itotal]
         nNodesAlreadyRead = chunkPos(1) - 2
@@ -632,7 +632,7 @@ subroutine inputRead_elemType(elem, &
   character(len=*), dimension(:), intent(in)  :: fileContent                                        !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
-  integer :: i,j,t,t_,l,remainingChunks,num,nElem,itotal
+  integer :: i,j,t,t_,l,remainingChunks,readStatus,nElem,itotal
   character(:), allocatable :: field
 
   itotal = 0
@@ -650,8 +650,8 @@ subroutine inputRead_elemType(elem, &
           call elem%init(t)
         else
           field = strValue(fileContent(l+1+i+j),chunkPos,1)
-          read(field,*,iostat = num) nElem
-          if (num /= 0) exit
+          read(field,*,iostat = readStatus) nElem
+          if (readStatus /= 0) exit
           field = strValue(fileContent(l+1+i+j),chunkPos,2)
           t_ = mapElemtype(field)
           if (t /= t_) call IO_error(191,field,label1='type',ID1=t)
