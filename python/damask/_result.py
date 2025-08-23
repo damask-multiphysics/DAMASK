@@ -583,18 +583,18 @@ class Result:
         msg = []
         with h5py.File(self.fname,'r') as f:
             for inc in self._visible['increments']:
-                msg += [f'\n{inc} ({self._times[int(inc.split("_")[1])]} s)']
+                msg.append(f'\n{inc} ({self._times[int(inc.split("_")[1])]} s)')
                 for ty in ['phase','homogenization']:
-                    msg += [f'  {ty}']
+                    msg.append(f'  {ty}')
                     for label in self._visible[ty+'s']:
-                        msg += [f'    {label}']
+                        msg.append(f'    {label}')
                         for field in _match(self._visible['fields'],f['/'.join([inc,ty,label])].keys()):
-                            msg += [f'      {field}']
+                            msg.append(f'      {field}')
                             for d in f['/'.join([inc,ty,label,field])].keys():
                                 dataset = f['/'.join([inc,ty,label,field,d])]
                                 unit = dataset.attrs["unit"]
                                 description = dataset.attrs['description']
-                                msg += [f'        {d} / {unit}: {description}']
+                                msg.append(f'        {d} / {unit}: {description}')
 
         return msg
 
@@ -1991,7 +1991,7 @@ class Result:
         with h5py.File(self.fname,'r') as f:
             creator = f.attrs['creator']
             created = f.attrs['created']
-            v.comments += [f'{creator} ({created})']
+            v.comments.append(f'{creator} ({created})')
 
             for inc in util.show_progress(self._visible['increments']):
 
