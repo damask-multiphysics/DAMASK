@@ -1,6 +1,6 @@
 import re
 import copy
-from typing import Optional, Union, Mapping, Iterable
+from typing import Optional, Union, Mapping, Sequence, Iterable
 
 import pandas as pd
 import numpy as np
@@ -15,7 +15,8 @@ class Table:
     def __init__(self,
                  shapes: Mapping[str,Union[Union[int,np.integer],tuple[Union[int,np.integer],...]]] = {},
                  data: Optional[Union[np.ndarray,pd.DataFrame]] = None,
-                 comments: Union[None, str, Iterable[str]] = None):
+                 comments: Union[None, str, Iterable[str]] = None,
+                 dtypes: Optional[Mapping[str,Union[str,np.dtype]]] = None):
         """
         New spreadsheet.
 
@@ -28,6 +29,9 @@ class Table:
             Data. Existing column labels of a pandas.DataFrame will be replaced.
         comments : (iterable of) str, optional
             Additional, human-readable information.
+        dtypes : dict, optional
+            Data type of each column.
+            If given, overwrites existing data types inferred from numpy.ndarray or pandas.DataFrame.
         """
         self.comments = [] if comments is None else  \
                         [comments] if isinstance(comments,str) else \
@@ -35,6 +39,9 @@ class Table:
         self.shapes = { k:(v,) if isinstance(v,(np.integer,int)) else v for k,v in shapes.items() }
         self.data = pd.DataFrame(data=data)
         self._relabel('uniform')
+        if dtypes is not None:
+            self.data = self.data.astype({k:v for k,v in dtypes.items()
+                                          if k in set(self.shapes.keys())})
 
 
     def __repr__(self) -> str:
@@ -71,7 +78,7 @@ class Table:
 
 
     def __getitem__(self,
-                    item: Union[slice, tuple[slice, ...]]) -> 'Table':
+                    item) -> 'Table':
         """
         Return self[item].
 
@@ -113,15 +120,15 @@ class Table:
         """
         item_ = (item,slice(None,None,None)) if isinstance(item,(slice,np.ndarray)) else \
                 (np.array(item),slice(None,None,None)) if isinstance(item,list) and np.array(item).dtype == np.bool_ else \
-                (slice(item,item),slice(None,None,None)) if isinstance(item,int) else \
+                (slice(int(item),int(item)),slice(None,None,None)) if isinstance(item,(int,np.integer)) else \
                 (np.array(item[0]),item[1]) if isinstance(item[0],list) else \
                 (item[0], item[1]) if isinstance(item[0],(slice,np.ndarray)) else \
                 (slice(None,None,None),item)
         sliced = self.data.loc[item_]
         cols = np.array(sliced.columns if isinstance(sliced,pd.core.frame.DataFrame) else [item_[1]])
         _,idx = np.unique(cols,return_index=True)
-        return self.__class__(data=sliced,
-                              shapes={k:self.shapes[k] for k in cols[np.sort(idx)]},
+        return self.__class__(shapes={k:self.shapes[k] for k in cols[np.sort(idx)]},
+                              data=sliced,
                               comments=self.comments)
 
 
@@ -146,14 +153,14 @@ class Table:
 
 
     def _label(self,
-               what: Union[str, list[str]],
+               what: Union[str, Sequence[str]],
                how: str) -> list[str]:
         """
         Expand labels according to data shape.
 
         Parameters
         ----------
-        what : str or list
+        what : (sequence of) str
             Labels to expand.
         how : {'uniform, 'shapes', 'linear'}
             Mode of labeling.
@@ -426,7 +433,7 @@ class Table:
 
             dup.shapes[label] = data.shape[1:] if len(data.shape) > 1 else (1,)
             size = np.prod(data.shape[1:],dtype=np.int64)
-            new = pd.DataFrame(data=data.reshape(-1,size),
+            new = pd.DataFrame(data=data.reshape((-1,size)),
                                columns=[label]*size,
                               )
             new.index = new.index if dup.data.index.empty else dup.data.index
@@ -492,9 +499,9 @@ class Table:
 
         Parameters
         ----------
-        labels : str or list
+        labels : (list of) str
             Column labels for sorting.
-        ascending : bool or list, optional
+        ascending : (list of) bool, optional
             Set sort order. Defaults to True.
 
         Returns
@@ -502,7 +509,8 @@ class Table:
         updated : damask.Table
             Updated table.
         """
-        labels_ = [labels] if isinstance(labels,str) else labels.copy()
+        labels_ = util.to_list(labels)
+
         for i,l in enumerate(labels_):
             if m := re.match(r'(.*)\[((\d+,)*(\d+))\]',l):
                 idx = np.ravel_multi_index(tuple(map(int,m.group(2).split(','))),
@@ -515,6 +523,69 @@ class Table:
         dup._relabel('uniform')
         dup.comments.append(f'sorted {"ascending" if ascending else "descending"} by {labels}')
         return dup
+
+
+    def unique(self,
+               return_index: bool = False,
+               return_inverse: bool = False,
+               return_counts: bool = False,
+               ):
+        """
+        Return the unique elements across the table in order of appearance.
+
+        There are three optional outputs in addition to the unique elements:
+        * the indices of the input table that give the unique values
+        * the indices of the unique table that reconstruct the input table
+        * the number of times each unique value comes up in the input table
+
+        Parameters
+        ----------
+        return_index : bool, optional
+            If True, also return the indices that result in the unique table.
+            Defaults to False.
+        return_inverse : bool, optional
+            If True, also return the indices of the unique table
+            that can be used to reconstruct the original table.
+            Defaults to False.
+        return_counts : bool, optional
+            If True, also return the number of times each unique value combination appears.
+            Defaults to False.
+
+        Returns
+        -------
+        unique : damask.Table
+            Table containing the sorted unique value combinations of the selected columns.
+        unique_indices : numpy.ndarray of int, optional
+            The indices of the first occurrence of the unique values in the input table.
+            Only provided if return_index is True.
+        unique_inverse : numpy.ndarray of int, optional
+            The indices to reconstruct the input table from the unique table.
+            Only provided if return_inverse is True.
+        unique_counts : numpy.ndarray of int, optional
+            The number of times each unique value comes up in the input Table.
+            Only provided if return_counts is True.
+        """
+        _,idx,inv,cnt = np.unique(
+            np.hstack([self.get(l) for l in self.labels]),
+            return_index=True,
+            return_inverse=True,
+            return_counts=True,
+            axis=0,
+            )
+        s = np.sort(idx)
+        m = np.argsort(idx)
+        M = np.argsort(m)
+        dup = self[s]
+        dup.data.reset_index(drop=True,inplace=True)
+        dup.comments.append('selecting unique combinations')
+
+        if return_index or return_inverse or return_counts:
+            return (dup,) \
+                 + ((s,) if return_index else ()) \
+                 + ((M[inv.reshape(-1)],) if return_inverse else ()) \
+                 + ((cnt[m],) if return_counts else ())
+        else:
+            return dup
 
 
     def append(self,

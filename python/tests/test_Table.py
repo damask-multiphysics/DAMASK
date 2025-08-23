@@ -83,8 +83,10 @@ def test_allclose(default):
 @pytest.mark.parametrize('N',[1,3,4])
 def test_slice(np_rng,default,N):
     mask = np_rng.choice([True,False],len(default))
+    arr = np_rng.choice(len(default),N)
     assert len(default[N]) == 1
     assert len(default[1:N]) == N
+    assert len(default[arr]) == N
     assert len(default[:N]) == 1+N
     assert len(default[:N,['F','s']]) == 1+N
     assert len(default[mask,['F','s']]) == np.count_nonzero(mask)
@@ -237,3 +239,16 @@ def test_sort():
              .set('s',np.array(['b','a']))\
              .sort_by('s')
     assert np.all(t.get('v')[:,0] == np.array([2,0]))
+
+def test_unique(np_rng):
+    x = np_rng.choice([True,False],size=(np_rng.integers(12,18),2))
+    t = Table({'a':(1,),'b':(1,)},x,['random choices'])
+    u,idx,inv,cnt = t.unique(
+        return_index=True,
+        return_inverse=True,
+        return_counts=True,
+        )
+    assert len(inv.shape) == 1, f'return_inverse must be 1D but got {inv.shape=}'
+    assert u.allclose(t[idx])
+    assert t.allclose(u[inv])
+    assert (cnt[np.lexsort(u.data.to_numpy()[:, ::-1].T)] == np.unique(x,return_counts=True,axis=0)[1]).all()

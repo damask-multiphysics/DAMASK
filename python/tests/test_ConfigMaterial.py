@@ -94,7 +94,7 @@ def test_empty_homogenization(res_path):
 
 def test_from_table(np_rng):
     N = np_rng.integers(3,10)
-    a = np.vstack((np.hstack((np.arange(N),np.arange(N)[::-1])),
+    a = np.vstack((np.hstack((np.arange(N)[::-1],np.arange(N))),
                     np.zeros(N*2),np.ones(N*2),np.zeros(N*2),np.zeros(N*2),
                     np.ones(N*2),
                     )).T
@@ -102,7 +102,11 @@ def test_from_table(np_rng):
     c = ConfigMaterial.from_table(t,**{'phase':'varying','O':'constant','homogenization':'ones'})
     assert len(c['material']) == N
     for i,m in enumerate(c['material']):
-        assert m['homogenization'] == 1 and (m['constituents'][0]['O'] == [0,1,0,0]).all()
+        assert (
+             m['homogenization'] == 1
+        and  m['constituents'][0]['phase'] == N-1-i
+        and (m['constituents'][0]['O'] == [0,1,0,0]).all()
+        )
 
 def test_updated_dicts(res_path):
     m1 = ConfigMaterial().material_add(phase=['Aluminum'],O=[1.0,0.0,0.0,0.0],homogenization='SX')
