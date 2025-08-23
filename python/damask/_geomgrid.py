@@ -427,13 +427,9 @@ class GeomGrid:
         """
         cells,size,origin = grid_filters.cellsSizeOrigin_coordinates0_point(table.get(coordinates),atol=atol)
 
-        labels_ = [labels] if isinstance(labels,str) else labels
-        unique,unique_inverse = np.unique(np.hstack([table.get(l) for l in labels_]),return_inverse=True,axis=0)
+        unique,inverse = table[labels].unique(return_inverse=True)
 
-        ma = np.arange(cells.prod()) if len(unique) == cells.prod() else \
-             np.arange(unique.size)[np.argsort(pd.unique(unique_inverse.squeeze()))][unique_inverse]
-
-        return GeomGrid(material = ma.reshape(cells,order='F'),
+        return GeomGrid(material = np.arange(len(unique))[inverse].reshape(cells,order='F'),
                         size     = size,
                         origin   = origin,
                         comments = util.execution_stamp('GeomGrid','from_table'),

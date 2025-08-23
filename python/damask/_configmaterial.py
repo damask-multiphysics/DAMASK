@@ -234,16 +234,13 @@ class ConfigMaterial(YAML):
             v: 1.0
           homogenization: single_crystal
         """
-        kwargs = {}
-        for arg,val in zip(['homogenization','phase','v','O','V_e'],[homogenization,phase,v,O,V_e]):
-            if val is not None:
-                kwargs[arg] = table.get(val) if val in table.labels else np.atleast_2d([val]*len(table)).T # type: ignore[arg-type]
+        tbl = Table()
+        for k,v in filter(lambda kv: kv[1] is not None, zip(['homogenization','phase','v','O','V_e'], # type: ignore [assignment]
+                                                            [ homogenization,  phase,  v,  O,  V_e ])):
+            tbl = tbl.set(k, table.get(v) if v in table.labels else np.atleast_2d([v]*len(table)).T)  # type: ignore [arg-type]
+        tbl = tbl.unique()
 
-        _,idx = np.unique(np.hstack(list(kwargs.values())),return_index=True,axis=0)
-        idx = np.sort(idx)
-        kwargs = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs.items()}
-
-        return ConfigMaterial().material_add(**kwargs)
+        return ConfigMaterial().material_add(**dict(zip(tbl.labels, [tbl.get(l) for l in tbl.labels])))
 
 
     @property
@@ -591,7 +588,7 @@ class ConfigMaterial(YAML):
                     if np.min(total) < 0 or np.max(total) > 1:
                         raise ValueError('volume fraction "v" out of range')
             if k == 'O' and not np.allclose(1.0,np.linalg.norm(broadcasted,axis=-1)):
-                raise ValueError('orientation "O" is not a unit quaterion')
+                raise ValueError('orientation "O" is not a unit quaternion')
             elif k == 'V_e' and not np.allclose(broadcasted,tensor.symmetric(broadcasted)):
                 raise ValueError('elastic stretch "V_e" is not symmetric')
             for i in range(N_materials):

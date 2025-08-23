@@ -459,7 +459,7 @@ def hybrid_IA(dist: _FloatSequence,
     hist : numpy.ndarray, shape (N)
         Integer approximation of the distribution.
     """
-    N_opt_samples = max(_np.count_nonzero(dist),N)                                                  # random subsampling if too little samples requested
+    N_opt_samples = _np.maximum(_np.count_nonzero(dist),N)                                          # random subsampling if too little samples requested
     N_inv_samples = _np.int_(0)
 
     scale_,scale,inc_factor = (0.0,float(N_opt_samples),1.0)
