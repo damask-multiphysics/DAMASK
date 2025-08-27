@@ -16,9 +16,6 @@
 #undef unix
 #endif
 
-#define QUOTE(x) #x
-#define PASTE(x,y) x ## y
-
 #ifdef DAMASKVERSION
 #define DAMASK_VERSION DAMASKVERSION
 #endif
@@ -188,7 +185,7 @@ subroutine getOutputFrequency
       elseif (IO_lc(strValue(line,chunkPos,2)) == 'increment') then
         read (fileUnit,'(A)',END=200) line
         chunkPos = strPos(line)
-        if (IO_strAsInt(strValue(line,chunkPos,1)) /= 0) then              ! change output frequency only if specified by number of incs
+        if (IO_strAsInt(strValue(line,chunkPos,1)) /= 0) then                                       ! change output frequency only if specified by number of incs
           loadcase(i)%frequency = IO_strAsInt(strValue(line,chunkPos,1))
         end if
       end if
@@ -336,8 +333,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
 ! Marc common blocks are in fixed format so they have to be interpreted accordingly
 
 !DIR$ NOFREEFORM
-#include QUOTE(PASTE(MARC_SOURCE,/common/concom))                                                   ! concom is needed for inc, lovl
-#include QUOTE(PASTE(MARC_SOURCE,/common/creeps))                                                   ! creeps is needed for timinc (time increment)
+#include "concom"                                                                                   ! concom is needed for inc, lovl
+#include "creeps"                                                                                   ! creeps is needed for timinc (time increment)
 !DIR$ FREEFORM
 
   logical :: cutBack
@@ -477,9 +474,10 @@ subroutine uedinc(inc,incsub)
   real(pREAL), allocatable, dimension(:,:) :: d_n
   character(len=32), save :: old_loadcase
 
+! Marc common blocks are in fixed format so they have to be interpreted accordingly
 !DIR$ NOFREEFORM
-#include QUOTE(PASTE(MARC_SOURCE,/common/bclabel))                                                  ! bclabel is needed for ldcasename (load case name)
-#include QUOTE(PASTE(MARC_SOURCE,/common/creeps))                                                   ! creeps is needed for cptim (time at beginning of increment)
+#include "bclabel"                                                                                  ! bclabel is needed for ldcasename (load case name)
+#include "creeps"                                                                                   ! creeps is needed for cptim (time at beginning of increment)
 !DIR$ FREEFORM
 
 
@@ -530,9 +528,10 @@ subroutine uedjob(icall,iexit)
   integer :: n, nqncomp, nqdatatype
   real(pREAL), allocatable, dimension(:,:) :: d_n
 
+! Marc common blocks are in fixed format so they have to be interpreted accordingly
 !DIR$ NOFREEFORM
-#include QUOTE(PASTE(MARC_SOURCE,/common/concom))                                                   ! concom is needed for inc
-#include QUOTE(PASTE(MARC_SOURCE,/common/creeps))                                                   ! creeps is needed for cptim (time at beginning of increment)
+#include "concom"                                                                                   ! concom is needed for inc
+#include "creeps"                                                                                   ! creeps is needed for cptim (time at beginning of increment)
 !DIR$ FREEFORM
 
   if (icall == 0 .and. inc - 1 > inc_written) then                                                  ! write results for final inc unless already done
