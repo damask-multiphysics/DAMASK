@@ -75,7 +75,7 @@ module discretization_mesh
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
 
-#if PETSC_VERSION_MINOR < 16
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<16)
   external :: &
     DMDestroy
 #endif
@@ -114,13 +114,13 @@ subroutine discretization_mesh_init()
   PetscInt :: p_i
   integer:: dim
   type(tvec) :: coords_node0
-  real(pREAL), pointer, dimension(:) :: &
-    mesh_node0_temp
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18)
-  real(pREAL), pointer, dimension(:) :: &
-    qPointsP, &
-    PETSC_NULL_REAL_PTR => null()
+  real(pREAL), pointer, dimension(:) :: qPointsP
+#if (PETSC_VERSION_MINOR<23)
+  real(pREAL), pointer, dimension(:) :: PETSC_NULL_REAL_POINTER => NULL()
 #endif
+#endif
+  real(pREAL), pointer, dimension(:) :: mesh_node0_temp
 
 
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'
@@ -197,36 +197,36 @@ subroutine discretization_mesh_init()
   CHKERRQ(err_PETSc)
 
 ! Get initial nodal coordinates
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
-  mesh_maxNips = FEM_nQuadrature(dimPlex,p_i)
-
-  call mesh_FEM_build_ipCoordinates(dimPlex,FEM_quadrature_points(dimPlex,p_i)%p)
-  call mesh_FEM_build_ipVolumes(dimPlex)
-#else
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18)
   call PetscDTSimplexQuadrature(dimplex, p_i, PETSCDTSIMPLEXQUAD_DEFAULT, quadrature, err_PETSc)
   CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=22)
+#if (PETSC_VERSION_MINOR>=22)
   call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                              mesh_maxNips,qPointsP,PETSC_NULL_REAL_PTR,err_PETSc)
+                              mesh_maxNips,qPointsP,PETSC_NULL_REAL_POINTER,err_PETSc)
 #else
   call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
-                              mesh_maxNips,qPointsP,PETSC_NULL_REAL_PTR,err_PETSc)
+                              mesh_maxNips,qPointsP,PETSC_NULL_REAL_POINTER,err_PETSc)
 #endif
   CHKERRQ(err_PETSc)
 
   call mesh_FEM_build_ipCoordinates(dimPlex,qPointsP)
   call mesh_FEM_build_ipVolumes(dimPlex)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=22)
+#if (PETSC_VERSION_MINOR>=22)
   call PetscQuadratureRestoreData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                                  PETSC_NULL_INTEGER,qPointsP,PETSC_NULL_REAL_PTR,err_PETSc)
+                                  PETSC_NULL_INTEGER,qPointsP,PETSC_NULL_REAL_POINTER,err_PETSc)
 #else
   call PetscQuadratureRestoreData(quadrature,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
-                                  PETSC_NULL_INTEGER(1),qPointsP,PETSC_NULL_REAL_PTR,err_PETSc)
+                                  PETSC_NULL_INTEGER(1),qPointsP,PETSC_NULL_REAL_POINTER,err_PETSc)
 #endif
   CHKERRQ(err_PETSc)
   call PetscQuadratureDestroy(quadrature, err_PETSc)
   CHKERRQ(err_PETSc)
+#else
+  mesh_maxNips = FEM_nQuadrature(dimPlex,p_i)
+
+  call mesh_FEM_build_ipCoordinates(dimPlex,FEM_quadrature_points(dimPlex,p_i)%p)
+  call mesh_FEM_build_ipVolumes(dimPlex)
 #endif
 
   allocate(materialAt(mesh_NcpElems))

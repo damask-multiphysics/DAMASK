@@ -93,10 +93,10 @@ subroutine FEM_utilities_init(num_mesh)
   p_s = num_mesh%get_asInt('p_s',defaultVal = 2)
   p_i = num_mesh%get_asInt('p_i',defaultVal = p_s)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
-  if (p_s < 1 .or. p_s > size(FEM_nQuadrature,2)) &
-#else
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18)
   if (p_s < 1) &
+#else
+  if (p_s < 1 .or. p_s > size(FEM_nQuadrature,2)) &
 #endif
     call IO_error(821,ext_msg='shape function order (p_s) out of bounds')
   if (p_i < max(1,p_s-1) .or. p_i > p_s) &
