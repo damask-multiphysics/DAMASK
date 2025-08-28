@@ -26,6 +26,7 @@ def test_coord0(np_rng):
     n = grid_filters.coordinates0_node(cells,size) + size/cells*.5
     assert np.allclose(c,n)
 
+
 @pytest.mark.parametrize('mode',['point','node'])
 @pytest.mark.parametrize('atol',[0.0,1.0e-5])
 def test_grid_DNA(np_rng,mode,atol):
@@ -38,13 +39,6 @@ def test_grid_DNA(np_rng,mode,atol):
     _cells,_size,_origin = eval(f'grid_filters.cellsSizeOrigin_coordinates0_{mode}(coord0.reshape(-1,3,order="F"),atol={atol})')
     assert np.allclose(cells,_cells) and np.allclose(size,_size,atol=atol) and np.allclose(origin,_origin,atol=atol)
 
-def test_displacement_fluct_periodic(np_rng):
-    """Ensure that fluctuations are periodic."""
-    size  = np_rng.random(3)
-    cells = np_rng.integers(8,32,(3))
-    F     = np_rng.random(tuple(cells)+(3,3))
-    assert np.allclose(grid_filters.displacement_fluct_node(size,F),
-                       grid_filters.point_to_node(grid_filters.displacement_fluct_point(size,F)))
 
 def test_interpolation_to_node(np_rng):
     size  = np_rng.random(3)
@@ -65,6 +59,7 @@ def test_interpolation_to_cell(np_rng):
     cell_field   = np.broadcast_to(cell_field_x.reshape(-1,1,1),cells)
 
     assert np.allclose(cell_field,grid_filters.node_to_point(node_field))
+
 
 @pytest.mark.parametrize('mode',['point','node'])
 def test_coordinates0_origin(np_rng,mode):
@@ -135,8 +130,16 @@ def test_displacment_fluct_analytic(np_rng,F_def,u_def):
     F = np.stack([np.broadcast_to(eval(F,globals(),my_locals),cells) for F in F_def],axis=-1).reshape(tuple(cells) + (3,3))
     u = np.stack([np.broadcast_to(eval(u,globals(),my_locals),cells) for u in u_def],axis=-1).reshape(tuple(cells) + (3,))
 
-
     assert np.allclose(u,grid_filters.displacement_fluct_point(size,F))
+
+def test_displacement_fluct_periodic(np_rng):
+    """Ensure that fluctuations are periodic."""
+    size  = np_rng.random(3)
+    cells = np_rng.integers(8,32,(3))
+    F     = np_rng.random(tuple(cells)+(3,3))
+    assert np.allclose(grid_filters.displacement_fluct_node(size,F),
+                       grid_filters.point_to_node(grid_filters.displacement_fluct_point(size,F)))
+
 
 def test_coordinates(np_rng):
     cells = np.array([np_rng.integers(40,100)*2,2,2])
@@ -165,13 +168,11 @@ def test_invalid_coordinates(np_rng,function):
 def test_valid_coordinates_check(np_rng,function,atol):
     valid_coordinates = function(np_rng.integers(4,10,(3)),np_rng.random(3))
     valid_coordinates += (np_rng.random(valid_coordinates.shape)-0.5) * atol                        # add noise
-
     assert grid_filters.coordinates0_valid(valid_coordinates.reshape(-1,3,order='F'),atol=atol)
 
 def test_invalid_coordinates_check(np_rng):
     invalid_coordinates = np_rng.random((np_rng.integers(12,52),3))
     assert not grid_filters.coordinates0_valid(invalid_coordinates)
-
 
 @pytest.mark.parametrize('function',[grid_filters.cellsSizeOrigin_coordinates0_node,
                                      grid_filters.cellsSizeOrigin_coordinates0_point])
@@ -185,7 +186,6 @@ def test_uneven_spaced_coordinates(np_rng,function):
                         axis = -1).reshape((cells.prod(),3),order='F')
     with pytest.raises(ValueError):
         function(uneven)
-
 
 @pytest.mark.parametrize('mode',[True,False])
 @pytest.mark.parametrize('function',[grid_filters.cellsSizeOrigin_coordinates0_node,
@@ -201,11 +201,50 @@ def test_unordered_coordinates(np_rng,function,mode):
     else:
         function(unordered,mode)
 
+
 def test_regrid_identity(np_rng):
         size = np_rng.random(3)
         cells = np_rng.integers(8,32,(3))
         F = np.broadcast_to(np.eye(3), (*cells,3,3))
-        assert (grid_filters.regrid(size,F,cells).flatten() == np.arange(cells.prod())).all
+        assert (grid_filters.regrid(size,F,cells).flatten(order='F') == np.arange(cells.prod())).all()
+
+@pytest.mark.parametrize('factor',[2,3,4])
+def test_regrid_fractional_shear(np_rng,factor):
+        size = np.ones(3)
+        scaling = np.array([1,1,factor])
+        res = np_rng.integers(4,12)
+        cells = factor*np.array([res]*3)
+        F = np.broadcast_to([
+            [1.0,0.0,1/factor],
+            [0.0,1.0,1/factor],
+            [0.0,0.0,1.0],
+        ], (*cells,3,3))
+        idx,box = grid_filters.regrid(size,
+                                      F,
+                                      cells*scaling,
+                                      max_coeff=5,
+                                      max_candidates=1000,
+                                      return_size=True)
+        counts = np.unique(idx, return_counts=True)[1]
+        assert (counts == factor).all(), f'number of mismatches {np.count_nonzero(counts!=factor)}'
+        assert np.allclose(box,size*scaling)
+
+@pytest.mark.parametrize('factor',[1,2,3])
+@pytest.mark.parametrize('noise',[1.1,1.0,0.9])
+def test_regrid_stretch_with_shear(np_rng,factor,noise):
+        size = np_rng.random(3)
+        cells = np_rng.integers(8,32,(3))
+        stretch = np_rng.random()
+        F = np.broadcast_to([
+            [noise*stretch,0,factor*stretch*size[0]/size[2]],
+            [0,noise*stretch,factor*stretch*size[1]/size[2]],
+            [0,0,1],
+            ], (*cells,3,3))
+        if noise == 1.0:
+            assert set(grid_filters.regrid(size,F,cells).flatten()).issubset(np.arange(np.prod(cells)))
+        else:
+            with pytest.raises(ValueError):
+                grid_filters.regrid(size,F,cells)
 
 def test_regrid_double_cells(np_rng):
         size = np_rng.random(3)
@@ -213,6 +252,7 @@ def test_regrid_double_cells(np_rng):
         g = GeomGrid.from_Voronoi_tessellation(cells,size,seeds.from_random(size,10,rng_seed=np_rng))
         F = np.broadcast_to(np.eye(3), (*cells,3,3))
         assert g.scale(cells*2) == g.assemble(grid_filters.regrid(size,F,cells*2))
+
 
 @pytest.mark.parametrize('differential_operator',[grid_filters.curl,
                                                   grid_filters.divergence,
