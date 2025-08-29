@@ -64,7 +64,8 @@ subroutine discretization_grid_init()
     materialAt, materialAt_global
 
   integer :: &
-    j
+    j, &
+    n_labels                                                                                         !< number cell datasets in VTI file
   integer(MPI_INTEGER_KIND) :: err_MPI
   integer(C_INTPTR_T) :: &
     devNull, cells3_, cells3Offset_
@@ -72,6 +73,8 @@ subroutine discretization_grid_init()
     displs, sendcounts
   character(len=:), allocatable :: &
     fileContent, fname
+  character(len=pSTRLEN), dimension(:), allocatable :: &
+    labels                                                                                           !< cell data labels in VTI file
   integer(HID_T) :: handle
 
 
@@ -80,12 +83,13 @@ subroutine discretization_grid_init()
 
   if (worldrank == 0) then
     fileContent = IO_read(CLI_geomFile)
-    call VTI_readCellsSizeOrigin(cells,geomSize,origin,fileContent)
+    call VTI_readGeometry(cells,geomSize,origin,labels,fileContent)
+    n_labels = size(labels)
     materialAt_global = VTI_readDataset_int(fileContent,'material') + 1
     if (any(materialAt_global < 1)) &
-      call IO_error(180,ext_msg='material ID < 1')
+      call IO_error(180_pI16,'material ID < 1')
     if (size(materialAt_global) /= product(cells)) &
-      call IO_error(180,ext_msg='mismatch in # of material IDs and cells')
+      call IO_error(180_pI16,'mismatch in # of material IDs and cells')
     fname = CLI_geomFile
     if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call result_openJobFile(parallel=.false.)
@@ -95,27 +99,37 @@ subroutine discretization_grid_init()
     allocate(materialAt_global(0))                                                                  ! needed for IntelMPI
   end if
 
-
-  call MPI_Bcast(cells,3_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
+  call MPI_Bcast(cells,3_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
-  if (cells(1) < 2) call IO_error(844, ext_msg='cells(1) must be larger than 1')
-  call MPI_Bcast(geomSize,3_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
+  if (cells(1) < 2) call IO_error(844_pI16,'cells(1) must be larger than 1')
+  call MPI_Bcast(geomSize,3_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
-  call MPI_Bcast(origin,3_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
+  call MPI_Bcast(origin,3_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  call parallelization_chkerr(err_MPI)
+  call MPI_Bcast(n_labels,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
-  print'(/,1x,a,i0,a,i0,a,i0)',            'cells:  ', cells(1),    ' × ', cells(2),    ' × ', cells(3)
-  print  '(1x,a,es8.2,a,es8.2,a,es8.2,a)', 'size:   ', geomSize(1), ' × ', geomSize(2), ' × ', geomSize(3), ' m³'
-  print  '(1x,a,es9.2,a,es9.2,a,es9.2,a)', 'origin: ', origin(1),   ' ',   origin(2),   ' ',   origin(3), ' m'
+  if (worldrank /= 0) allocate(character(len=pSTRLEN) :: labels(n_labels))
+  call MPI_Bcast(labels,int(pSTRLEN*n_labels,MPI_INTEGER_KIND),MPI_CHARACTER, &
+                 0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
+  call parallelization_chkerr(err_MPI)
 
-  if (worldsize>cells(3)) call IO_error(894, ext_msg='number of processes exceeds cells(3)')
+  print'(/,1x,3(a,i0))',      'cells:   ', cells(1),    ' × ', cells(2),    ' × ', cells(3)
+  print'(  1x,3(a,es9.2),a)', 'size:   ',  geomSize(1), ' × ', geomSize(2), ' × ', geomSize(3), ' m³'
+  print'(  1x,3(a,es9.2),a)', 'origin: ',  origin(1),   '   ', origin(2),   '   ', origin(3),   ' m'
+  print'(/,1x,a)', 'cell data:'
+  do j = 1, n_labels
+    print '(2x,a,a)', '- ', trim(labels(j))
+  end do
+
+  if (worldsize>cells(3)) call IO_error(894_pI16,'number of processes exceeds cells(3)')
 
   call fftw_mpi_init()
   devNull = fftw_mpi_local_size_3d(int(cells(3),C_INTPTR_T),int(cells(2),C_INTPTR_T),int(cells(1)/2+1,C_INTPTR_T), &
                                    PETSC_COMM_WORLD, &
                                    cells3_, &                                                       ! domain cells size along z
                                    cells3Offset_)                                                   ! domain cells offset along z
-  if (cells3_==0_C_INTPTR_T) call IO_error(894, ext_msg='Cannot distribute MPI processes')
+  if (cells3_==0_C_INTPTR_T) call IO_error(894_pI16,'Cannot distribute MPI processes')
 
   cells3       = int(cells3_)
   cells3Offset = int(cells3Offset_)
