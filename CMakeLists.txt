@@ -41,6 +41,14 @@ if("${DAMASK_SOLVER_UPPER}" MATCHES "^(GRID|MESH|TEST)$")
 else()
   message(FATAL_ERROR "Invalid solver: DAMASK_SOLVER=${DAMASK_SOLVER}")
 endif()
+
+if(NOT ${CMAKE_C_COMPILER_ID} STREQUAL ${CMAKE_Fortran_COMPILER_ID})
+  message(FATAL_ERROR "C compiler (${CMAKE_C_COMPILER_ID}) does not match Fortran compiler (${CMAKE_Fortran_COMPILER_ID})")
+endif()
+if(NOT ${CMAKE_CXX_COMPILER_ID} STREQUAL ${CMAKE_Fortran_COMPILER_ID})
+  message(FATAL_ERROR "C++ compiler (${CMAKE_CXX_COMPILER_ID}) does not match Fortran compiler (${CMAKE_Fortran_COMPILER_ID})")
+endif()
+
 add_compile_definitions("-D${DAMASK_SOLVER_UPPER}")
 
 set(CMAKE_Fortran_PREPROCESS "ON")
