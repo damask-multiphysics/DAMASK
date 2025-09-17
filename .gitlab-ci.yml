@@ -282,7 +282,7 @@ Marc_compile:
     - cmake --build builddir --target install
     - cd PRIVATE/testing
   script:
-    - pytest -v -k configexamples
+    - python3 -X faulthandler -m pytest -p no:faulthandler -v -k configexamples                     # https://blog.xmatthias.com/post/pytest-debug-segfault/
 
 configexamples_debug_GCC:
   extends: .configexamples_debug
@@ -302,7 +302,6 @@ Marc_run:
   script:
     - cd ${CI_PROJECT_DIR}/PRIVATE/testing
     - pytest -k 'not compile and Marc'
-  allow_failure: true
 
 # Needs closer look
 # Phenopowerlaw_singleSlip:
@@ -324,7 +323,6 @@ grid_performance:
     - cp statistics/performance.txt .
   artifacts:
     paths: [performance.txt]
-    expire_in: 1 month
 
 
 ####################################################################################################
@@ -339,20 +337,18 @@ grid_performance:
   before_script:
     - git config --global user.name "testbot"
     - git config --global user.email "testbot@damask-multiphysics.org"
+  rules: [if: $CI_COMMIT_BRANCH == 'development']
 
 update_statistics:
   extends: .update
-  needs:
-    - job: grid_performance
-      artifacts: true
+  dependencies:
+    - grid_performance
   script:
     - git clone -q https://damask_user:${STATISTICS_TOKEN}@git.damask-multiphysics.org/damask/statistics.git
     - cp performance.txt statistics/
     - cd statistics
-    - git add performance.txt
-    - git commit -m ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
+    - git commit -m ${CI_PIPELINE_ID}_${CI_COMMIT_SHA} performance.txt
     - git push
-  rules: [if: $CI_COMMIT_BRANCH == 'development']
 
 update_revision:
   extends: .update
@@ -365,7 +361,6 @@ update_revision:
        git diff-index --quiet HEAD ||
        git commit VERSION -m "[skip ci] updated version information after successful test of $VERSION"
     - if [ ${CI_COMMIT_SHA} == $(git rev-parse HEAD^) ]; then git push --atomic --no-verify origin HEAD:development HEAD:master; fi
-  rules: [if: $CI_COMMIT_BRANCH == 'development']
 
 
 ####################################################################################################

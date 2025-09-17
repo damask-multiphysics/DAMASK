@@ -30,6 +30,10 @@ from vtkmodules.vtkCommonDataModel import (
     vtkRectilinearGrid,
     vtkUnstructuredGrid,
     vtkPolyData,
+    VTK_TRIANGLE,
+    VTK_QUAD,
+    VTK_TETRA,
+    VTK_HEXAHEDRON,
 )
 from vtkmodules.vtkIOLegacy import (
     vtkGenericDataObjectReader,
@@ -55,12 +59,6 @@ from vtkmodules.vtkRenderingCore import (
 )
 from vtkmodules.vtkRenderingAnnotation import (
     vtkScalarBarActor,
-)
-from vtkmodules.util.vtkConstants import (
-    VTK_TRIANGLE,
-    VTK_QUAD,
-    VTK_TETRA,
-    VTK_HEXAHEDRON,
 )
 from vtkmodules.util.numpy_support import (
     numpy_to_vtk,

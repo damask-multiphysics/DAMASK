@@ -16,6 +16,7 @@ Detailed instructions for each step are documented in the [wiki](https://git.dam
    - [ ] Arch Linux (PKGBUILD)
    - [ ] Ubuntu (Launchpad)
    - [ ] Flatpak (Flathub)
+   - [ ] Homebrew
    - Open build service
      - [ ] Debian
      - [ ] Fedora/Suse

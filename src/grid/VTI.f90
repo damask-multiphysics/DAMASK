@@ -13,7 +13,7 @@ module VTI
 
   public :: &
     VTI_readDataset_real, &
-    VTI_readDataset_int,  &
+    VTI_readDataset_int, &
     VTI_readGeometry
 
 contains
@@ -109,7 +109,7 @@ subroutine VTI_readDataset_raw(base64Str,dataType,headerType,compressed, &
                  getXMLValue(fileContent(startPos:endPos),'Name') == label ) then
 
               if (getXMLValue(fileContent(startPos:endPos),'format') /= 'binary') &
-                call IO_error(844_pI16, label, 'not in binary format', emph = [1])
+                call IO_error(844_pI16, 'dataset', label, 'not in binary format', emph = [2])
               dataType = getXMLValue(fileContent(startPos:endPos),'type')
 
               startPos = endPos + 2_pI64
@@ -193,8 +193,8 @@ subroutine VTI_readGeometry(cells,geomSize,origin,labels, &
 
   end do
 
-  if (any(geomSize <= 0)) call IO_error(844_pI16, 'one or more grid.size <= 0')
-  if (any(cells < 1))     call IO_error(844_pI16, 'one or more grid.cells < 1')
+  if (any(geomSize<=0)) call IO_error(844_pI16, 'one or more entries <= 0 for', 'size', emph=[2])
+  if (any(cells<1))     call IO_error(844_pI16, 'one or more entries < 1 for', 'cells', emph=[2])
 
 end subroutine VTI_readGeometry
 
@@ -215,11 +215,11 @@ subroutine cellsSizeOrigin(c,s,o,header)
 
   temp = [getXMLValue(header,'Direction')]
   if (temp(1) /= '1 0 0 0 1 0 0 0 1' .and. temp(1) /= '') &                                         ! https://discourse.vtk.org/t/vti-specification/6526
-    call IO_error(error_ID = 844, ext_msg = 'coordinate order')
+    call IO_error(844_pI16, 'wrong coordinate order', temp(1), emph=[2])
 
   call tokenize(getXMLValue(header,'WholeExtent'),' ',temp)
   if (any([(IO_strAsInt(temp(i)),i=1,5,2)] /= 0)) &
-    call IO_error(error_ID = 844, ext_msg = 'coordinate start not 0')
+    call IO_error(844_pI16, 'coordinate start not at 0', getXMLValue(header,'WholeExtent'), emph=[2])
   c = [(IO_strAsInt(temp(i)),i=2,6,2)]
 
   call tokenize(getXMLValue(header,'Spacing'),' ',temp)
@@ -288,7 +288,7 @@ function as_Int(base64Str,headerType,compressed,dataType)
     case('Float64')
       as_Int = int(prec_bytesToC_DOUBLE (asBytes(base64Str,headerType,compressed)))
     case default
-      call IO_error(844_pI16, 'unknown data type',trim(dataType),emph=[2])
+      call IO_error(844_pI16,'unknown data type',trim(dataType), emph=[2])
   end select
 
 end function as_Int
@@ -317,7 +317,7 @@ function as_real(base64Str,headerType,compressed,dataType)
     case('Float64')
       as_real = real(prec_bytesToC_DOUBLE (asBytes(base64Str,headerType,compressed)),pREAL)
     case default
-      call IO_error(844_pI16,'unknown data type',trim(dataType),emph=[2])
+      call IO_error(844_pI16,'unknown data type',trim(dataType), emph=[2])
   end select
 
 end function as_real
@@ -476,15 +476,15 @@ subroutine checkFileFormat(line)
 
   val = getXMLValue(line,'type')
   if (val /= 'ImageData') &
-    call IO_error(844_pI16, 'type',val,'is not "ImageData"',emph=[2])
+    call IO_error(844_pI16, 'type', val, 'is not', 'ImageData',emph=[2,4])
 
   val = getXMLValue(line,'byte_order')
   if (val /= 'LittleEndian') &
-    call IO_error(844_pI16, 'byte_order',val,'is not "LittleEndian"',emph=[2])
+    call IO_error(844_pI16, 'byte_order', val, 'is not', 'LittleEndian',emph=[2,4])
 
   val = getXMLValue(line,'compressor')
   if (val /= '' .and. val /= 'vtkZLibDataCompressor') &
-    call IO_error(844_pI16, 'compressor',val,'is not "vtkZLibDataCompressor"',emph=[2])
+    call IO_error(844_pI16, 'compressor', val, 'is not', 'vtkZLibDataCompressor',emph=[2,4])
 
 end subroutine checkFileFormat
 

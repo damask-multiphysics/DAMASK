@@ -196,6 +196,7 @@ def run(cmd: str,
 
     return stdioTuple(stdout, stderr)
 
+
 @_contextlib.contextmanager
 def open_text(fname: _FileHandle,
               mode: _Literal['r','w'] = 'r') -> _Generator[_TextIO, None, None]:                    # noqa
@@ -224,6 +225,7 @@ def open_text(fname: _FileHandle,
         fhandle.close()
     else:
         yield fname
+
 
 def time_stamp() -> str:
     """

@@ -6,8 +6,8 @@
 !> @details doing cutbacking, forwarding in case of restart, reporting statistics, writing
 !> results
 !--------------------------------------------------------------------------------------------------
-program DAMASK_grid
 #include <petsc/finclude/petscsys.h>
+program DAMASK_grid
   use PETScSys
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08

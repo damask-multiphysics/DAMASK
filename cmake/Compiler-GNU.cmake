@@ -109,6 +109,12 @@ set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wsuggest-attribute=noreturn")
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wconversion-extra")
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wimplicit-procedure")
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wunused-parameter")
+set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wimplicit-interface")
+
+# suppress many false positives
+set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wno-maybe-uninitialized")
+# suppress warnings resulting from MPI_f08
+set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wno-c-binding-type")
 
 # print summary of floating point exeptions (invalid,zero,overflow,underflow,inexact,denormal):
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -ffpe-summary=all")
@@ -119,7 +125,6 @@ set (COMPILE_FLAGS "${COMPILE_FLAGS} -frounding-math")
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -fsignaling-nans")
 
 # Additional options
-# -Wimplicit-interface:          no interfaces for lapack/MPI routines
 # -Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions
 
 #------------------------------------------------------------------------------------------------

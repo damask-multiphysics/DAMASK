@@ -2,6 +2,9 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Inquires variables related to parallelization (openMP, MPI)
 !--------------------------------------------------------------------------------------------------
+#ifdef PETSC
+#include <petsc/finclude/petscsys.h>
+#endif
 module parallelization
   use, intrinsic :: ISO_fortran_env, only: &
     OUTPUT_UNIT, &
@@ -10,7 +13,6 @@ module parallelization
   use constants
 
 #ifdef PETSC
-#include <petsc/finclude/petscsys.h>
   use PETScSys
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08

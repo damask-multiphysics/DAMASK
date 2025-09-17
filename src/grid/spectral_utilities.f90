@@ -4,8 +4,8 @@
 !> @author Yi Hu, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Utilities used by the different spectral solver variants
 !--------------------------------------------------------------------------------------------------
-module spectral_utilities
 #include <petsc/finclude/petscsys.h>
+module spectral_utilities
   use PETScSys
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08
