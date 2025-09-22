@@ -97,30 +97,6 @@ public:
    * @param[in] include_restart  Print restart help (only grid)
    */
   void help_print(const po::options_description& flags);
-
-private:
-  /**
-   * @brief Generate a random Boost UUID.
-   */
-  static std::string generate_uuid();
-
-  /**
-   * @brief Get stem for path.
-   * @param[in] path_str
-   */
-  static std::string stem(const std::string& path_str);
-
-  /* Call getpwuid to collect username */
-  static std::string get_username();
-
-  /**
-   * @brief Helper method to remove trailing equal from argument string.
-   *
-   * Required for backward compatibility, remove for DAMASK 4.0
-   *
-   * @param[in] path_str
-   */
-  static std::string remove_trailing_equal(const std::string& arg);
 };
 
 #endif
