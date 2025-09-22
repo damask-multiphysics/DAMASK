@@ -13,6 +13,11 @@ else()
   install(PROGRAMS ${nothing} DESTINATION ${black_hole})
 endif()
 
+if(Boost_FOUND)
+  add_definitions(-DBOOST)
+  target_link_libraries(${executable-name} PRIVATE Boost::program_options)
+endif()
+
 set_target_properties("DAMASK_${DAMASK_SOLVER_LOWER}" PROPERTIES LINKER_LANGUAGE Fortran)
 
 string(REPLACE ";" "\n" sources "${damask-sources};${solver-sources}")

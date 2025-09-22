@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.18.0)
+set(CMAKE_CXX_STANDARD 23)
 include(FindPkgConfig REQUIRED)
 
 if(DEFINED ENV{PETSC_DIR})
@@ -40,7 +41,7 @@ if("${DAMASK_SOLVER_UPPER}" MATCHES "^(GRID|MESH|TEST)$")
 else()
   message(FATAL_ERROR "Invalid solver: DAMASK_SOLVER=${DAMASK_SOLVER}")
 endif()
-add_definitions("-D${DAMASK_SOLVER_UPPER}")
+add_compile_definitions("-D${DAMASK_SOLVER_UPPER}")
 
 set(CMAKE_Fortran_PREPROCESS "ON")
 
@@ -49,7 +50,7 @@ set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/externalpackages:$ENV
 pkg_check_modules(HDF5 hdf5)
 pkg_check_modules(fYAML libfyaml)
 pkg_check_modules(LAPACK lapack)
-find_package(Boost)
+find_package(Boost COMPONENTS program_options)
 if(DAMASK_SOLVER_UPPER STREQUAL "GRID")
   pkg_check_modules(zlib zlib)
   pkg_check_modules(FFTW3 fftw3)
@@ -57,43 +58,45 @@ endif()
 
 message("\nBuilding ${CMAKE_PROJECT_NAME} ${DAMASK_VERSION_STRING}\n")
 
-add_definitions(-DPETSC)
-add_definitions(-DDAMASK_VERSION="${DAMASK_VERSION_STRING}")
-add_definitions(-DDAMASK_VERSION_MAJOR="${PROJECT_VERSION_MAJOR}")
-add_definitions(-DDAMASK_VERSION_MINOR="${PROJECT_VERSION_MINOR}")
-add_definitions(-DDAMASK_VERSION_PATCH="${PROJECT_VERSION_PATCH}")
+add_compile_definitions(-DPETSC)
+add_compile_definitions(-DDAMASK_VERSION="${DAMASK_VERSION_STRING}")
+add_compile_definitions(-DDAMASK_VERSION_MAJOR="${PROJECT_VERSION_MAJOR}")
+add_compile_definitions(-DDAMASK_VERSION_MINOR="${PROJECT_VERSION_MINOR}")
+add_compile_definitions(-DDAMASK_VERSION_PATCH="${PROJECT_VERSION_PATCH}")
 if(DEFINED PROJECT_VERSION_HASH)
-  add_definitions(-DDAMASK_VERSION_HASH="${PROJECT_VERSION_HASH}")
+  add_compile_definitions(-DDAMASK_VERSION_HASH="${PROJECT_VERSION_HASH}")
 endif()
 
-add_definitions(-DCMAKE_SYSTEM_NAME="${CMAKE_SYSTEM_NAME}")
-add_definitions(-DCMAKE_SYSTEM_PROCESSOR="${CMAKE_SYSTEM_PROCESSOR}")
+add_compile_definitions(-DCMAKE_SYSTEM_NAME="${CMAKE_SYSTEM_NAME}")
+add_compile_definitions(-DCMAKE_SYSTEM_PROCESSOR="${CMAKE_SYSTEM_PROCESSOR}")
 
 if(PETSC_VERSION VERSION_EQUAL 3.17.0)
-  add_definitions("-DCHKERRQ=PetscCall")
+  add_compile_definitions("-DCHKERRQ=PetscCall")
 endif()
 if(PETSC_VERSION VERSION_LESS 3.23.0)
-  add_definitions("-DVecGetArray=VecGetArrayF90")
-  add_definitions("-DVecRestoreArray=VecRestoreArrayF90")
+  add_compile_definitions(
+    $<$<COMPILE_LANGUAGE:Fortran>:VecGetArray=VecGetArrayF90>
+    $<$<COMPILE_LANGUAGE:Fortran>:VecRestoreArray=VecRestoreArrayF90>
 
-  add_definitions("-DVecGetArrayRead=VecGetArrayReadF90")
-  add_definitions("-DVecRestoreArrayRead=VecRestoreArrayReadF90")
+    $<$<COMPILE_LANGUAGE:Fortran>:VecGetArrayRead=VecGetArrayReadF90>
+    $<$<COMPILE_LANGUAGE:Fortran>:VecRestoreArrayRead=VecRestoreArrayReadF90>
 
-  add_definitions("-DDMDAVecGetArray=DMDAVecGetArrayF90")
-  add_definitions("-DDMDAVecRestoreArray=DMDAVecRestoreArrayF90")
+    $<$<COMPILE_LANGUAGE:Fortran>:DMDAVecGetArray=DMDAVecGetArrayF90>
+    $<$<COMPILE_LANGUAGE:Fortran>:DMDAVecRestoreArray=DMDAVecRestoreArrayF90>
 
-  add_definitions("-DDMDAVecGetArrayRead=DMDAVecGetArrayReadF90")
-  add_definitions("-DDMDAVecRestoreArrayRead=DMDAVecRestoreArrayReadF90")
+    $<$<COMPILE_LANGUAGE:Fortran>:DMDAVecGetArrayRead=DMDAVecGetArrayReadF90>
+    $<$<COMPILE_LANGUAGE:Fortran>:DMDAVecRestoreArrayRead=DMDAVecRestoreArrayReadF90>
 
-  add_definitions("-DISGetIndices=ISGetIndicesF90")
-  add_definitions("-DISRestoreIndices=ISRestoreIndicesF90")
+    $<$<COMPILE_LANGUAGE:Fortran>:ISGetIndices=ISGetIndicesF90>
+    $<$<COMPILE_LANGUAGE:Fortran>:ISRestoreIndices=ISRestoreIndicesF90>
 
-  add_definitions("-DSNES_CONVERGED_USER=7")
-  add_definitions("-DSNES_CONVERGED_ITERATING=0")
-  add_definitions("-DSNES_DIVERGED_USER=-12")
+    $<$<COMPILE_LANGUAGE:Fortran>:SNES_CONVERGED_USER=7>
+    $<$<COMPILE_LANGUAGE:Fortran>:SNES_CONVERGED_ITERATING=0>
+    $<$<COMPILE_LANGUAGE:Fortran>:SNES_DIVERGED_USER=-12>
 
-  add_definitions("-DPETSCDTSIMPLEXQUAD_DEFAULT=-1")
-  add_definitions("-DINSERT_ALL_VALUES=5")
+    $<$<COMPILE_LANGUAGE:Fortran>:PETSCDTSIMPLEXQUAD_DEFAULT=-1>
+    $<$<COMPILE_LANGUAGE:Fortran>:INSERT_ALL_VALUES=5>
+  )
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "")
@@ -172,9 +175,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
 endif()
 
 set(CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${PETSC_INCLUDES} ${BUILDCMD_POST}")
+set(CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}     "${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}}     ${PETSC_INCLUDES} ${BUILDCMD_POST}")
 
 set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} <LINK_FLAGS> <FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES> -L${PETSC_LIBRARY_DIRS} -lpetsc ${PETSC_EXTERNAL_LIB}")
-
 if(DAMASK_SOLVER_UPPER STREQUAL "GRID")
   set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} -lz")
 endif()
@@ -184,14 +187,9 @@ if(fYAML_FOUND STREQUAL "1")
   foreach(fYAML_LIBRARY ${fYAML_LIBRARIES})
     set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} -L${fYAML_LIBRARY_DIRS} -l${fYAML_LIBRARY}")
   endforeach()
-  add_definitions(-DFYAML)
+  add_compile_definitions(-DFYAML)
   pkg_get_variable(fYAML_INCLUDE_DIR libfyaml includedir) # fYAML_INCLUDE_DIRS and fYAML_CFLAGS are not working
   set(CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}} -I${fYAML_INCLUDE_DIR}")
-endif()
-
-if("${Boost_FOUND}" STREQUAL TRUE)
-  add_definitions(-DBOOST)
-  set(CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}} -I${Boost_INCLUDE_DIRS}")
 endif()
 
 # Link with Fortran compiler requires to add C++ standard library
