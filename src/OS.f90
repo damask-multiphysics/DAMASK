@@ -26,7 +26,6 @@ module OS
 #endif
     c_f_string
 
-
   interface
 
     function set_CWD_C(cwd) bind(C)
@@ -96,6 +95,11 @@ module OS
     end subroutine free_C
 #endif
 
+  end interface
+
+  interface c_f_string
+    module procedure c_f_string_scalar
+    module procedure c_f_string_array
   end interface
 
 contains
@@ -209,9 +213,10 @@ end function OS_getUserName
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert C string to Fortran string.
-!> @details: C string is NULL terminated and, hence, longer by one than the Fortran string.
+!> @details: C string is a fixed-size fortran array referencing a NULL terminated c string.
+!            Due to the NULL-termination, C string has one more element than the Fortran string.
 !--------------------------------------------------------------------------------------------------
-pure function c_f_string(c_string) result(f_string)
+pure function c_f_string_scalar(c_string) result(f_string)
 
   character(kind=C_CHAR,len=*), intent(in) :: c_string
   character(len=:), allocatable            :: f_string
@@ -229,7 +234,33 @@ pure function c_f_string(c_string) result(f_string)
     end if
   end do
 
-end function c_f_string
+end function c_f_string_scalar
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Convert C string pointer to Fortran string.
+!> @details: C string is an assumed-size fortran array referencing a NULL terminated c string.
+!--------------------------------------------------------------------------------------------------
+pure function c_f_string_array(c_string) result(f_string)
+
+  character(kind=C_CHAR), intent(in), dimension(*) :: c_string
+  character(len=:), allocatable                    :: f_string
+
+  integer :: n, i
+
+
+  n = 0
+  do
+    if (c_string(n+1) == C_NULL_CHAR) exit
+    n = n + 1
+  end do
+
+  allocate(character(len=n) :: f_string)
+  do i = 1, n
+    f_string(i:i) = c_string(i)
+  end do
+
+end function c_f_string_array
+
 
 #if (defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || (defined(__GFORTRAN__) && __GNUC__ < 15)
 !--------------------------------------------------------------------------------------------------

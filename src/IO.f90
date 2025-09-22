@@ -6,6 +6,7 @@
 !> @brief  input/output functions
 !--------------------------------------------------------------------------------------------------
 module IO
+  use, intrinsic :: ISO_C_binding
   use, intrinsic :: ISO_fortran_env, only: &
     IO_STDOUT => OUTPUT_UNIT, &
     IO_STDERR => ERROR_UNIT, &
@@ -14,7 +15,9 @@ module IO
   use prec
   use constants
   use misc
-
+#ifndef MARC_SOURCE
+  use OS
+#endif
 implicit none(type,external)
   private
 
@@ -64,9 +67,8 @@ implicit none(type,external)
     IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13)                            !< whitespace characters
 
 #ifndef MARC_SOURCE
-  logical :: &
-    IO_redirectedSTDOUT = .false., &                                                                !< STDOUT writes to file 'out.X' where X is the world rank
-    IO_redirectedSTDERR = .false.                                                                   !< STDERR writes to file 'err.X' where X is the world rank
+    logical(C_BOOL), bind(C, name='IO_redirectedSTDOUT') :: IO_redirectedSTDOUT = .false.           !< STDOUT writes to file 'out.X' where X is the world rank
+    logical(C_BOOL), bind(C, name='IO_redirectedSTDERR') :: IO_redirectedSTDERR = .false.           !< STDERR writes to file 'err.X' where X is the world rank
 #endif
 
   public :: &
@@ -104,9 +106,9 @@ subroutine IO_init()
 #ifndef MARC_SOURCE
   ! redirection occurs in parallelization_init before any output is written
   inquire(unit=IO_STDOUT,name=fname)
-  IO_redirectedSTDOUT = fname(:4) == 'out.'
+  IO_redirectedSTDOUT = logical(fname(:4) == 'out.',C_BOOL)
   inquire(unit=IO_STDERR,name=fname)
-  IO_redirectedSTDERR = fname(:4) == 'err.'
+  IO_redirectedSTDERR = logical(fname(:4) == 'err.',C_BOOL)
 #endif
 
   call IO_selfTest()
@@ -689,9 +691,9 @@ logical function IO_isaTTY(unit)
   select case(unit)
 #ifndef MARC_SOURCE
     case (IO_STDOUT)
-      IO_isaTTY = .not. IO_redirectedSTDOUT .and. logical(isatty_stdout_C())
+      IO_isaTTY = .not. logical(IO_redirectedSTDOUT) .and. logical(isatty_stdout_C())
     case (IO_STDERR)
-      IO_isaTTY = .not. IO_redirectedSTDERR .and. logical(isatty_stderr_C())
+      IO_isaTTY = .not. logical(IO_redirectedSTDERR) .and. logical(isatty_stderr_C())
     case (IO_STDIN)
       IO_isaTTY = logical(isatty_stdin_C())
 #endif
@@ -875,6 +877,21 @@ subroutine panel(paneltype,ID,msg, &
     end function is_emph
 
 end subroutine panel
+
+
+#ifndef MARC_SOURCE
+!--------------------------------------------------------------------------------------------------
+!> @brief Print C string to Fortran stdout.
+!--------------------------------------------------------------------------------------------------
+subroutine IO_printCppString(C_STR) bind(C, name='F_IO_printCppString')
+
+  character(kind=C_CHAR), intent(in), dimension(*) :: c_str
+
+
+  write (IO_STDOUT, '(a)', advance='no') c_f_string(c_str)
+
+end subroutine IO_printCppString
+#endif
 
 
 !--------------------------------------------------------------------------------------------------
