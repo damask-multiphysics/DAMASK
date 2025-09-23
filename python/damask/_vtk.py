@@ -30,10 +30,10 @@ from vtkmodules.vtkCommonDataModel import (
     vtkRectilinearGrid,
     vtkUnstructuredGrid,
     vtkPolyData,
-    VTK_TRIANGLE,
-    VTK_QUAD,
-    VTK_TETRA,
-    VTK_HEXAHEDRON,
+    VTK_LAGRANGE_TRIANGLE,
+    VTK_LAGRANGE_QUADRILATERAL,
+    VTK_LAGRANGE_TETRAHEDRON,
+    VTK_LAGRANGE_HEXAHEDRON,
 )
 from vtkmodules.vtkIOLegacy import (
     vtkGenericDataObjectReader,
@@ -242,11 +242,14 @@ class VTK:
     @staticmethod
     def from_unstructured_grid(nodes: np.ndarray,
                                connectivity: np.ndarray,
-                               cell_type: Literal['TRIANGLE', 'TETRA', 'QUAD', 'HEXAHEDRON']) -> 'VTK':
+                               cell_type: Literal['TRIANGLE', 'TETRAHEDRON', 'QUADRILATERAL', 'HEXAHEDRON']
+                              ) -> 'VTK':
         """
         Create VTK of type vtkUnstructuredGrid.
 
         This is the common type for mesh solver results.
+        Elements are of the Lagrange type and all elements
+        should have the same type and order.
 
         Parameters
         ----------
@@ -255,7 +258,7 @@ class VTK:
         connectivity : numpy.ndarray of np.dtype = np.int64
             Cell connectivity (0-based), first dimension determines #Cells,
             second dimension determines #Nodes/Cell.
-        cell_type : {'TRIANGLE', 'QUAD', 'TETRA', 'HEXAHEDRON'}
+        cell_type : {'TRIANGLE', 'QUADRILATERAL', 'TETRAHEDRON', 'HEXAHEDRON'}
             Name of the vtkCell subclass.
 
         Returns
@@ -273,9 +276,10 @@ class VTK:
 
         vtk_data = vtkUnstructuredGrid()
         vtk_data.SetPoints(vtk_nodes)
-        cell_types = {'TRIANGLE':VTK_TRIANGLE, 'QUAD':VTK_QUAD,
-                      'TETRA'   :VTK_TETRA,    'HEXAHEDRON':VTK_HEXAHEDRON}
-        vtk_data.SetCells(cell_types[cell_type.split("_",1)[-1].upper()],cells)
+        # gracefully accept 'VTK_QUAD', 'vtk_lagrange_quadrilateral', etc.
+        cell_types = {'TRIA':VTK_LAGRANGE_TRIANGLE,    'QUAD':VTK_LAGRANGE_QUADRILATERAL,
+                      'TETR':VTK_LAGRANGE_TETRAHEDRON, 'HEXA':VTK_LAGRANGE_HEXAHEDRON}
+        vtk_data.SetCells(cell_types[cell_type.split('_')[-1].upper()[:4]],cells)
 
         return VTK(vtk_data)
 

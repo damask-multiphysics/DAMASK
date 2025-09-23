@@ -1382,4 +1382,4 @@ class GeomGrid:
             connectivity.append(np.block([base_nodes + o[i][k] for k in range(4)]))
 
         coords = grid_filters.coordinates0_node(self.cells,self.size,self.origin).reshape(-1,3,order='F')
-        return VTK.from_unstructured_grid(coords,np.vstack(connectivity),'QUAD')
+        return VTK.from_unstructured_grid(coords,np.vstack(connectivity),'QUADRILATERAL')

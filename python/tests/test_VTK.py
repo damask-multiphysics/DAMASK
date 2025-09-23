@@ -83,14 +83,17 @@ def test_polyData_VTKHDF(np_rng,tmp_path):
     vtkhdf = VTK.load(tmp_path/'polyData.vtkhdf')
     assert (v.as_ASCII() == vtkhdf.as_ASCII())
 
-@pytest.mark.parametrize('cell_type,n',[
-                                        ('VTK_hexahedron',8),
-                                        ('TETRA',4),
-                                        ('quad',4),
-                                        ('VTK_TRIANGLE',3)
-                                       ]
+# https://defelement.org/elements/lagrange.html
+@pytest.mark.parametrize('cell_type,n_nodes',[
+                                              ('VTK_hexahedron',lambda k: (k+1)**3),
+                                              ('TETRA',lambda k: ((k+1)*(k+2)*(k+3))//6),
+                                              ('quad',lambda k: (k+1)**2),
+                                              ('VTK_TRIANGLE',lambda k: ((k+1)*(k+2))//2),
+                                             ]
                         )
-def test_unstructuredGrid(np_rng,tmp_path,cell_type,n):
+@pytest.mark.parametrize('order',[1,2,3,4,5])
+def test_unstructuredGrid(np_rng,tmp_path,cell_type,n_nodes,order):
+    n = n_nodes(order)
     nodes = np_rng.random((n,3))
     connectivity = np_rng.choice(np.arange(n),n,False).reshape(-1,n)
     v = VTK.from_unstructured_grid(nodes,connectivity,cell_type)
@@ -104,15 +107,17 @@ def test_unstructuredGrid(np_rng,tmp_path,cell_type,n):
     assert (string == vtu.as_ASCII() == vtk.as_ASCII())
 
 @pytest.mark.xfail(np.lib.NumpyVersion(vtkVersion.GetVTKVersion()) < '9.4.0',
-                    reason = 'not available in VTK < 9.4')
-@pytest.mark.parametrize('cell_type,n',[
-                                        ('VTK_hexahedron',8),
-                                        ('TETRA',4),
-                                        ('quad',4),
-                                        ('VTK_TRIANGLE',3)
-                                       ]
+                   reason = 'not available in VTK < 9.4')
+@pytest.mark.parametrize('cell_type,n_nodes',[
+                                              ('VTK_lagrange_hexa',lambda k: (k+1)**3),
+                                              ('VTK_LAGRANGE_TETRAHEDRON',lambda k: ((k+1)*(k+2)*(k+3))//6),
+                                              ('quadrilateral',lambda k: (k+1)**2),
+                                              ('TRIANGLE',lambda k: ((k+1)*(k+2))//2),
+                                             ]
                         )
-def test_unstructuredGrid_VTKHDF(np_rng,tmp_path,cell_type,n):
+@pytest.mark.parametrize('order',[1,2,3,4,5])
+def test_unstructuredGrid_VTKHDF(np_rng,tmp_path,cell_type,n_nodes,order):
+    n = n_nodes(order)
     nodes = np_rng.random((n,3))
     connectivity = np_rng.choice(np.arange(n),n,False).reshape(-1,n)
     v = VTK.from_unstructured_grid(nodes,connectivity,cell_type)

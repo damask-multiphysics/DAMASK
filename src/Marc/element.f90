@@ -763,10 +763,10 @@ subroutine tElement_init(self,elemType)
       self%vtkType  = 'TRIANGLE'
     case(2)
       self%cellFace = CELLFACE2
-      self%vtkType  = 'QUAD'
+      self%vtkType  = 'QUADRILATERAL'
     case(3)
       self%cellFace = CELLFACE3
-      self%vtkType  = 'TETRA'
+      self%vtkType  = 'TETRAHEDRON'
     case(4)
       self%cellFace = CELLFACE4
       self%vtkType  = 'HEXAHEDRON'

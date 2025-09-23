@@ -99,7 +99,7 @@ subroutine result_init(restart)
   if (.not. file_exists .or. .not. restart) then
     call result_createJobFile()
     call result_addAttribute('DADF5_version_major',1)
-    call result_addAttribute('DADF5_version_minor',2)
+    call result_addAttribute('DADF5_version_minor',3)
     call get_command_argument(0,commandLine)
     call result_addAttribute('creator',trim(commandLine)//' '//DAMASK_VERSION)
     call result_addAttribute('created',now())
