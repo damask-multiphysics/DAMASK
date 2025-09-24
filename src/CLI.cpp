@@ -61,17 +61,50 @@ CLI::CLI(int* argc, char* argv[], int* worldrank) {
   po::store(po::parse_command_line(*argc, argv, flags), vm);
   po::notify(vm);
 
+  /**
+   * @brief Helper method to remove leading equal from argument string.
+   *
+   * Required for backward compatibility, remove for DAMASK 4.0
+   *
+   * @param[in] path_str
+   */
+  auto remove_leading_equal = [](const std::string& arg) -> std::string {
+    return arg.length() > 0 && arg.at(0) == '=' ? arg.substr(1):arg;
+  };
+
+  /**
+   * @brief Get stem for path.
+   * @param[in] path_str
+   */
+  auto stem = [](const std::string& path_str) -> std::string {
+    fs::path p(path_str);
+    return p.stem().string();
+  };
+
+  /* Get username */
+  auto get_username = []() -> std::string {
+    struct passwd *pw = getpwuid(getuid());
+    return std::string(pw != nullptr ? pw->pw_name:"n/a (Error getting username)");
+  };
+
+  /**
+   * @brief Generate an UUID.
+   */
+  auto generate_uuid = []() -> std::string {
+    return boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+  };
+
   if (vm.count("help") || *argc == 1) {
     CLI::help_print(flags);
     std::exit(0);
   }
 
-  geom_path = remove_trailing_equal(arg_geom);
-  loadfile_path = remove_trailing_equal(arg_load);
-  material_path = remove_trailing_equal(arg_material);
+  geom_path = remove_leading_equal(arg_geom);
+  loadfile_path = remove_leading_equal(arg_load);
+  material_path = remove_leading_equal(arg_material);
 
   if (!arg_numerics.empty())
-    numerics_path = remove_trailing_equal(arg_numerics);
+    numerics_path = remove_leading_equal(arg_numerics);
 
   if (!arg_jobname.empty())
     jobname = arg_jobname;
@@ -82,7 +115,7 @@ CLI::CLI(int* argc, char* argv[], int* worldrank) {
   }
 
   if (!arg_wd.empty()) {
-    fs::current_path(remove_trailing_equal(arg_wd));
+    fs::current_path(remove_leading_equal(arg_wd));
   }
 
   if (arg_rs != -1)
@@ -270,31 +303,6 @@ Help:
 )" << std::endl;
 }
 
-std::string CLI::remove_trailing_equal(const std::string& arg) {
-  if (arg.length() > 0 && arg.at(0) == '=') {
-    return arg.substr(1);
-  }
-  return arg;
-}
-
-std::string CLI::stem(const std::string& path_str) {
-  fs::path p(path_str);
-  return p.stem().string();
-}
-
-std::string CLI::get_username() {
-  struct passwd *pw = getpwuid(getuid());
-  if (pw != nullptr) {
-    return std::string(pw->pw_name);
-  } else {
-    return "n/a (Error getting username)";
-  }
-}
-
-std::string CLI::generate_uuid() {
-  return boost::lexical_cast<std::string>(
-          boost::uuids::random_generator()());
-}
 
 extern "C" {
 
