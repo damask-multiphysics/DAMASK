@@ -49,7 +49,7 @@ if(NOT ${CMAKE_CXX_COMPILER_ID} STREQUAL ${CMAKE_Fortran_COMPILER_ID})
   message(FATAL_ERROR "C++ compiler (${CMAKE_CXX_COMPILER_ID}) does not match Fortran compiler (${CMAKE_Fortran_COMPILER_ID})")
 endif()
 
-add_compile_definitions("-D${DAMASK_SOLVER_UPPER}")
+add_compile_definitions("${DAMASK_SOLVER_UPPER}")
 
 set(CMAKE_Fortran_PREPROCESS "ON")
 
@@ -66,20 +66,20 @@ endif()
 
 message("\nBuilding ${CMAKE_PROJECT_NAME} ${DAMASK_VERSION_STRING}\n")
 
-add_compile_definitions(-DPETSC)
-add_compile_definitions(-DDAMASK_VERSION="${DAMASK_VERSION_STRING}")
-add_compile_definitions(-DDAMASK_VERSION_MAJOR="${PROJECT_VERSION_MAJOR}")
-add_compile_definitions(-DDAMASK_VERSION_MINOR="${PROJECT_VERSION_MINOR}")
-add_compile_definitions(-DDAMASK_VERSION_PATCH="${PROJECT_VERSION_PATCH}")
+add_compile_definitions(PETSC)
+add_compile_definitions(DAMASK_VERSION="${DAMASK_VERSION_STRING}")
+add_compile_definitions(DAMASK_VERSION_MAJOR="${PROJECT_VERSION_MAJOR}")
+add_compile_definitions(DAMASK_VERSION_MINOR="${PROJECT_VERSION_MINOR}")
+add_compile_definitions(DAMASK_VERSION_PATCH="${PROJECT_VERSION_PATCH}")
 if(DEFINED PROJECT_VERSION_HASH)
-  add_compile_definitions(-DDAMASK_VERSION_HASH="${PROJECT_VERSION_HASH}")
+  add_compile_definitions(DAMASK_VERSION_HASH="${PROJECT_VERSION_HASH}")
 endif()
 
-add_compile_definitions(-DCMAKE_SYSTEM_NAME="${CMAKE_SYSTEM_NAME}")
-add_compile_definitions(-DCMAKE_SYSTEM_PROCESSOR="${CMAKE_SYSTEM_PROCESSOR}")
+add_compile_definitions(CMAKE_SYSTEM_NAME="${CMAKE_SYSTEM_NAME}")
+add_compile_definitions(CMAKE_SYSTEM_PROCESSOR="${CMAKE_SYSTEM_PROCESSOR}")
 
 if(PETSC_VERSION VERSION_EQUAL 3.17.0)
-  add_compile_definitions("-DCHKERRQ=PetscCall")
+  add_compile_definitions("CHKERRQ=PetscCall")
 endif()
 if(PETSC_VERSION VERSION_LESS 3.23.0)
   add_compile_definitions(
@@ -195,7 +195,7 @@ if(fYAML_FOUND STREQUAL "1")
   foreach(fYAML_LIBRARY ${fYAML_LIBRARIES})
     set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} -L${fYAML_LIBRARY_DIRS} -l${fYAML_LIBRARY}")
   endforeach()
-  add_compile_definitions(-DFYAML)
+  add_compile_definitions(FYAML)
   pkg_get_variable(fYAML_INCLUDE_DIR libfyaml includedir) # fYAML_INCLUDE_DIRS and fYAML_CFLAGS are not working
   set(CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}} -I${fYAML_INCLUDE_DIR}")
 endif()
