@@ -124,8 +124,12 @@ class ConfigMaterial(YAML):
 
         Homogenization and phase entries are emtpy and need to be
         defined separately.
+
+        Versions 8.0 and later of the DREAM.3D file format are not yet supported.
         """
         with h5py.File(fname, 'r') as f:
+            if (file_version := np.lib.NumpyVersion(f.attrs['FileVersion'].decode()+'.0')) > '7.0.0':
+                raise ValueError(f'DREAM.3D file format {file_version} is not supported')
             b = util.DREAM3D_base_group(f) if base_group is None else base_group
             c = util.DREAM3D_cell_data_group(f) if cell_data is None else cell_data
 
