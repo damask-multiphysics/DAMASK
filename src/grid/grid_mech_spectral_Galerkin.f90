@@ -118,16 +118,16 @@ module grid_mechanical_spectral_Galerkin
       PetscErrorCode :: ierr
     end subroutine MatShellSetOperation
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<24)
     subroutine SNESSetUpdate(snes_mech,upd_callback,ierr)
       use petscsnes
       SNES :: snes_mech
       external :: upd_callback
       PetscErrorCode :: ierr
     end subroutine SNESSetUpdate
-  end interface
+#endif
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
-  interface
     subroutine MatShellSetContext(mat,ctx,ierr)
       use petscmat
       Mat :: mat
@@ -152,8 +152,8 @@ module grid_mechanical_spectral_Galerkin
       PetscErrorCode :: ierr
     end subroutine SNESSetJacobian
 #endif
-  end interface
 #endif
+  end interface
 
 contains
 
