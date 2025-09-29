@@ -1,6 +1,8 @@
----
-+++
-@@ -301,7 +301,23 @@
+diff --git "a/N:\\temp\\msc\\marc2025.1\\tools\\run_damask_lmp.orig" "b/N:\\temp\\msc\\marc2025.1\\tools\\run_damask_lmp"
+index b0cdc99..429c22b 100644
+--- "a/N:\\temp\\msc\\marc2025.1\\tools\\run_damask_lmp.orig"
++++ "b/N:\\temp\\msc\\marc2025.1\\tools\\run_damask_lmp"
+@@ -301,7 +301,23 @@ fi
  
  . "$DIR/getarch"
  
@@ -24,7 +26,7 @@
  #
  
  #
-@@ -405,7 +421,7 @@
+@@ -405,7 +421,7 @@ sid=
  did=
  vid=
  user=
@@ -33,7 +35,7 @@
  objs=
  qid=background
  cpu=
-@@ -676,50 +692,19 @@
+@@ -676,50 +692,19 @@ do
                          esac        
                  ;;
  		-u* | -U*)
@@ -90,7 +92,7 @@
  		;;
  		-obj | -OBJ)
  			objs="$value"
-@@ -1208,12 +1193,12 @@
+@@ -1208,12 +1193,12 @@ post file $DIRPID/$pid.t16 or $DIRPID/$pid.t19 or $DIRPID/$pid.h5 not accessible
  				fi
  			fi
  		fi
@@ -106,7 +108,7 @@
  			fi
  		fi
  		if test "$objs"
-@@ -1532,7 +1517,7 @@
+@@ -1532,7 +1517,7 @@ Program name         : $prog
  Marc shared lib      : $progdll
  Version type         : $mode
  Job ID               : $DIRJID/$jid$extra_job_info
@@ -115,7 +117,7 @@
  User objects/libs    : $objs
  Restart file job ID  : $rid
  Substructure file ID : $sid
-@@ -1565,7 +1550,7 @@
+@@ -1565,7 +1550,7 @@ Program name         : $prog
  Marc shared lib      : $progdll
  Version type         : $mode
  Job ID               : $DIRJID/$jid$extra_job_info
@@ -124,7 +126,7 @@
  User objects/libs    : $objs
  Restart file job ID  : $rid
  Substructure file ID : $sid
-@@ -1688,7 +1673,7 @@
+@@ -1688,7 +1673,7 @@ Program name ($prog)? $ECHOTXT"
                      ;;
                    esac        
                  fi
@@ -133,7 +135,7 @@
  		read value
  		if test "$value"
  		then
-@@ -1697,50 +1682,19 @@
+@@ -1697,50 +1682,19 @@ Program name ($prog)? $ECHOTXT"
                        user=
                      ;;
                      *)
@@ -190,12 +192,12 @@
                      ;;
                    esac
  		fi
-@@ -2275,11 +2229,12 @@
+@@ -2275,11 +2229,12 @@ fi
  #
  # user subroutine used
  #
 +# add DAMASK options for linking
-+  DAMASK="-lstdc++"
++  DAMASK="-lstdc++ -lfyaml"
  
    if test "$user"
    then
@@ -205,7 +207,7 @@
      case $program in
        \/* | \.\/*)
          bd=
-@@ -2392,7 +2347,7 @@
+@@ -2392,7 +2347,7 @@ fi
      fi
      if test "$user"
      then
@@ -214,7 +216,7 @@
       usersub=1
      fi
      export execpath      
-@@ -3275,33 +3231,16 @@
+@@ -3275,38 +3230,23 @@ then
      echo
      if test "$user"
      then
@@ -238,6 +240,7 @@
 -         ln -sf "$user.f" "$usersub"
 -        fi
 -        $FORTRAN $usersub -o $userobj || \
++        $DCCLOW $DAMASKROOT/src/C_routines.c -o C_routines.o
 +        $DFORTLOWMP $user -o $userobj || \
              {
 -            echo "$0: compile failed for $usersubname"
@@ -250,8 +253,15 @@
 -         /bin/rm -f "$usersub"
 -        fi
      fi
- 
-@@ -3323,6 +3261,7 @@
+-
++    
+     $LOAD $bd${program} $MARC_LIB/main.o \
+     $MARC_LIB/blkdta.o $MARC_LIB/comm?.o \
++    C_routines.o \
+     ${userobj-} \
+     $objs \
+     $SRCLIB \
+@@ -3323,6 +3263,7 @@ then
      $TKLIBS  \
      $MRCLIBS     \
      $METISLIBS \
@@ -259,17 +269,18 @@
      $SFLIB \
      $OPENSSL_LIB \
      $SYSLIBS  \
-@@ -3336,6 +3275,9 @@
+@@ -3336,6 +3277,10 @@ else
  	prgsav=yes
  fi
  /bin/rm $userobj 2>/dev/null
++/bin/rm $DIRJOB/*.o 2>/dev/null
 +/bin/rm $DIRJOB/*.mod 2>/dev/null
 +/bin/rm $DIRJOB/*.smod 2>/dev/null
 +/bin/rm $DIRJOB/*_genmod.f90 2>/dev/null
  
  #
  # run marc
-@@ -3383,7 +3325,7 @@
+@@ -3383,7 +3328,7 @@ if test $dllrun -eq 0; then
    fi
  else
    if test $cpdll = yes; then
@@ -278,16 +289,17 @@
       /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
    fi
    if test $rmdll = yes
-@@ -3549,7 +3491,7 @@
+@@ -3549,7 +3494,8 @@ then
                # first copy over the user sub if local directories
                if test ${dirstatus[$counter]} = "local"
                then
 -               $RCP $user.f $i:$DIR1/
++               $rcp -r $DAMASKROOT $i:$DIR1/
 +               $RCP $user $i:$DIR1/
                fi
                # do the compilation on the other machine
                if test ${dirstatus[$counter]} = "shared"
-@@ -3562,21 +3504,21 @@
+@@ -3562,21 +3508,21 @@ then
                remoteuser=$DIR1/`$BASENAME $user`
                $RSH $i /bin/rm $remoteprog 2> /dev/null
                echo
@@ -312,7 +324,7 @@
                fi
              fi
            fi
-@@ -3586,27 +3528,15 @@
+@@ -3586,32 +3532,22 @@ then
      if test "$userhost"
      then
        echo
@@ -328,8 +340,9 @@
 -     usersub=$usersubname
 +      echo "Compiling and linking user subroutine $user on host `hostname`"
      fi
-+    userobj=$usernoext.o
 -    $FORTRAN $usersub -o $userobj || \
++    userobj=$usernoext.o
++    $DCCLOW $DAMASKROOT/src/C_routines.c -o C_routines.o
 +    $DFORTLOWMP $user -o $userobj || \
          {
 -        echo "$0: compile failed for $usersubname"
@@ -344,7 +357,13 @@
 -    fi
    fi # if test $user
  
-@@ -3628,6 +3558,7 @@
+   $LOAD $bd${program} $MARC_LIB/main.o \
+   $MARC_LIB/blkdta.o $MARC_LIB/comm?.o \
++  C_routines.o \
+   ${userobj-} \
+   $objs \
+   $SRCLIB \
+@@ -3628,12 +3564,13 @@ then
    $TKLIBS  \
    $MRCLIBS     \
    $METISLIBS \
@@ -352,17 +371,25 @@
    $SFLIB \
    $OPENSSL_LIB \
    $SYSLIBS  \
-@@ -3669,6 +3600,9 @@
+   $SECLIBS  || \
+   {
+-    echo "$0: link failed for ${user:+$userobj }$objs"
++   echo "$0: link failed for ${user:+$userobj }$objs"
+     echo "         $PRODUCT Exit number 3"
+     exit 1
+   }
+@@ -3669,6 +3606,10 @@ else # if test $link
  	prgsav=yes
  fi   # if test $link
  /bin/rm $userobj 2>/dev/null
++/bin/rm $DIRJOB/*.o 2>/dev/null
 +/bin/rm $DIRJOB/*.mod 2>/dev/null
 +/bin/rm $DIRJOB/*.smod 2>/dev/null
 +/bin/rm $DIRJOB/*_genmod.f90 2>/dev/null
  
  #
  # run marc
-@@ -3763,7 +3697,7 @@
+@@ -3763,7 +3704,7 @@ fi
  else
  #dllrun >0
    if test $cpdll = yes; then
@@ -371,16 +398,17 @@
       /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
    fi
    if test $rmdll = yes;then
-@@ -3888,7 +3822,7 @@
+@@ -3888,7 +3829,8 @@ then
                # first copy over the user sub if local directories
                if test ${dirstatus[$counter]} = "local"
                then
 -               $RCP $user.f $i:$DIR1/
 +               $RCP $user $i:$DIR1/
++               $rcp -r $DAMASKROOT $i:$DIR1/
                fi
                # do the compilation on the other machine
                if test ${dirstatus[$counter]} = "shared"
-@@ -3901,20 +3835,20 @@
+@@ -3901,20 +3843,20 @@ then
                remoteuser=$DIR1/`$BASENAME $user`
                $RSH $i /bin/rm $remoteprog 2> /dev/null
                echo
@@ -404,12 +432,13 @@
                fi
              fi
            fi
-@@ -3924,26 +3858,14 @@
+@@ -3924,31 +3866,21 @@ then
      if test "$userhost"
      then
        echo
 -      echo "Compiling and linking user subroutine $user.f on host `hostname`"
--    fi
++      echo "Compiling and linking user subroutine $user on host `hostname`"
+     fi
 -    userobj=$DIRJOB/`$BASENAME $user .f`.o
 -    basefile=`$BASENAME $usersubname`
 -    if test ${basefile##*.} = f 
@@ -418,11 +447,11 @@
 -     ln -sf "$user.f" "$usersub"
 -    else
 -     usersub=$usersubname
-+      echo "Compiling and linking user subroutine $user on host `hostname`"
-     fi
-+    userobj=$usernoext.o
+-    fi
 -    $FORTRAN $usersub -o $userobj || \
-+    $DFORTLOWMP $user -o $userobj || \
++    userobj=$usernoext.o
++        $DCCLOW $DAMASKROOT/src/C_routines.c -o C_routines.o
++        $DFORTLOWMP $user -o $userobj || \
          {
 -        echo "$0: compile failed for $usersubname"
 +        echo "$0: compile failed for $user"
@@ -435,7 +464,13 @@
 -    fi
    fi # if test $user
  
-@@ -3965,6 +3887,7 @@
+   $LOAD $bd${program} $MARC_LIB/main.o \
+   $MARC_LIB/blkdta.o $MARC_LIB/comm?.o \
++  C_routines.o \
+   ${userobj-} \
+   $objs \
+   $SRCLIB \
+@@ -3965,6 +3897,7 @@ then
    $TKLIBS  \
    $MRCLIBS     \
    $METISLIBS \
@@ -443,18 +478,19 @@
    $SFLIB \
    $OPENSSL_LIB \
    $SYSLIBS \
-@@ -4005,7 +3928,9 @@
+@@ -4005,7 +3938,10 @@ else # if test $link
  	prgsav=yes
  fi   # if test $link
  /bin/rm $userobj 2>/dev/null
 -
++/bin/rm $DIRJOB/*.o 2>/dev/null
 +/bin/rm $DIRJOB/*.mod 2>/dev/null
 +/bin/rm $DIRJOB/*.smod 2>/dev/null
 +/bin/rm $DIRJOB/*_genmod.f90 2>/dev/null
  # done if no job id given
  if test -z "$jid"
  then
-@@ -4125,7 +4050,7 @@
+@@ -4125,7 +4061,7 @@ fi
  else
  #dllrun >0
    if test $cpdll = yes; then

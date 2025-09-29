@@ -1,9 +1,11 @@
----
-+++
-@@ -212,6 +212,17 @@
+diff --git "a/N:\\temp\\msc\\marc2024.1\\tools\\include_linux64.orig" "b/N:\\temp\\msc\\marc2024.1\\tools\\include_linux64"
+index e378e87..175d3e4 100644
+--- "a/N:\\temp\\msc\\marc2024.1\\tools\\include_linux64.orig"
++++ "b/N:\\temp\\msc\\marc2024.1\\tools\\include_linux64"
+@@ -212,6 +212,17 @@ if test -n "$MSCCOSIM_HOME"; then
   MARC_COSIM_LIB="$MSCCOSIM_HOME/CoSim$MSCCOSIM_VERSION/Dcosim$MSCCOSIM_VERSION/lib"
  fi
-
+ 
 +# DAMASK uses the HDF5 compiler wrapper around the Intel compiler
 +if test -n "$DAMASK_USER"; then
 +  H5FC=$(h5fc -shlib -show)
@@ -18,16 +20,28 @@
  # AEM
  if test "$MARCDLLOUTDIR" = ""; then
   DLLOUTDIR="$MARC_LIB"
-@@ -686,7 +697,7 @@
+@@ -660,6 +671,11 @@ CCHIGH="icc -c $CC_OPT -O3 $I8DEFINES -DLinux -DLINUX -DLinux_intel $CDEFINES $C
+ CC_TETMESH="icpc -c -O2 -I$TETMESHDIR/include -qopenmp -ansi-alias -m64 -pipe -fPIC -falign-functions=16 -fstrict-aliasing -fno-jump-tables -MMD -DLINUX -D_CRT_SECURE_NO_WARNINGS -DX64 -DMESHINGAPI_LIB -DNDEBUG"
+ CC_CAEFATIGUE="icpc -c -O2 -I$CAEFATIGUEDIR/linux64/include -qopenmp -ansi-alias -m64 -pipe -fPIC -falign-functions=16 -fstrict-aliasing -fno-jump-tables -MMD -DLINUX -D_CRT_SECURE_NO_WARNINGS -DX64 -DNDEBUG"
+ 
++# DAMASK compiler calls
++DCCLOW="icx -c $CC_OPT -O0 $I8DEFINES -DLinux -DLINUX -DLinux_intel -DFYAML -DMARC_SOURCE $CDEFINES $CINCL $SOLVERFLAGS $OPENSSL_INCLUDE "
++DCC="icx -c $CC_OPT -O1 $I8DEFINES -DLinux -DLINUX -DLinux_intel -DFYAML -DMARC_SOURCE $CDEFINES $CINCL $SOLVERFLAGS $OPENSSL_INCLUDE -I$MPI_ROOT/include"
++DCCHIGH="icx -c $CC_OPT -O3 $I8DEFINES -DLinux -DLINUX -DLinux_intel -DFYAML -DMARC_SOURCE $CDEFINES $CINCL $SOLVERFLAGS $OPENSSL_INCLUDE "
++
+ if test "$MARCDEBUG" = "ON"
+ then
+   CC="icc -c $CC_OPT -DLinux $I8DEFINES -DLINUX -DLinux_intel $CDEFINES $CINCL $SOLVERFLAGS $OPENSSL_INCLUDE -I$MPI_ROOT/include "
+@@ -686,7 +702,7 @@ then
  PROFILE=" $PROFILE -pg"
  fi
-
+ 
 -FORT_OPT="-c -assume byterecl -safe-cray-ptr -mp1 -WB -fp-model source"
 +FORT_OPT="-c -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name  -safe-cray-ptr -mp1 -WB -fp-model source"
  # FORT_OPT="-c -assume byterecl -safe-cray-ptr -mp1 -WB "
  if test "$MTHREAD" = "OPENMP"
  then
-@@ -700,7 +711,7 @@
+@@ -700,7 +716,7 @@ else
    FORT_OPT=" $FORT_OPT -save -zero"
  fi
  if test "$MARCHDF_HDF" = "HDF"; then
@@ -36,10 +50,10 @@
  fi
  if test "$NASTRAN_LIB" = "on" ; then
    FORT_OPT="$FORT_OPT -fPIC "
-@@ -717,6 +728,41 @@
+@@ -717,6 +733,41 @@ FORTNA="$FCOMP $FORT_OPT -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
  #  for compiling free form f90 files. high opt, integer(4)
  FORTF90="$FCOMP -c -O3"
-
+ 
 +# determine DAMASK version
 +if test -n "$DAMASK_USER"; then
 +  DAMASKROOT=`dirname $DAMASK_USER`/../..
@@ -63,27 +77,27 @@
 +
 +# DAMASK compiler calls
 +DFORTLOWMP="$FCOMP -c -O0 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DFYAML -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
 +DFORTRANMP="$FCOMP -c -O1 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DFYAML -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
 +DFORTHIGHMP="$FCOMP -c -O3 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DFYAML -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
 +
  if test "$MARCDEBUG" = "ON"
  then
    FORTLOW="$FCOMP $FORT_OPT $PROFILE $I8FFLAGS -I$MARC_SOURCE/common \
-@@ -883,7 +929,7 @@
-
+@@ -883,7 +934,7 @@ SECLIBS="-L$MARC_LIB -llapi"
+ 
  SOLVERLIBS="${BCSSOLVERLIBS} ${VKISOLVERLIBS} ${CASISOLVERLIBS} ${MF2SOLVERLIBS} \
    -L$MARC_MKL \
 -  $MARC_LIB/blas_src.a ${ACSI_LIB}/ACSI_MarcLib.a $KDTREE2_LIB/libkdtree2.a $MARC_LIB/libtetmeshinterface.a   $MARC_LIB/libcaefatigueinterface.a -L$MARC_LIB -lmkl_blacs_intelmpi_ilp64 -lmkl_scalapack_ilp64 -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -ltetmesh -ltetadapt -lmeshgems -lmg-tetra -lmeshgems_stubs -lCATMshMesherCore -lmg-hybrid -lmg-cadsurf -lmg-hexa $HDF_LIBS $SOLVER2LIBS $RTREE_LIB/librtree_lib.a $SFGEO_LIB/libgeo_lib.a"
 +    $MARC_LIB/blas_src.a ${ACSI_LIB}/ACSI_MarcLib.a $KDTREE2_LIB/libkdtree2.a $MARC_LIB/libtetmeshinterface.a   $MARC_LIB/libcaefatigueinterface.a -L$MARC_LIB -lmkl_blacs_intelmpi_ilp64 -lmkl_scalapack_ilp64 -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -ltetmesh -ltetadapt -lmeshgems -lmg-tetra -lmeshgems_stubs -lCATMshMesherCore -lmg-hybrid -lmg-cadsurf -lmg-hexa $HDF5_LIB $SOLVER2LIBS $RTREE_LIB/librtree_lib.a $SFGEO_LIB/libgeo_lib.a"
-
+ 
  SOLVERLIBS_DLL=${SOLVERLIBS}
  if test "$AEM_DLL" -eq 1

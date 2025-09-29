@@ -1,6 +1,8 @@
----
-+++
-@@ -6,18 +6,27 @@
+diff --git "a/N:\\temp\\msc\\marc2025.1\\tools\\comp_damask_lmp.orig" "b/N:\\temp\\msc\\marc2025.1\\tools\\comp_damask_lmp"
+index 8679bb0..c4cdd23 100644
+--- "a/N:\\temp\\msc\\marc2025.1\\tools\\comp_damask_lmp.orig"
++++ "b/N:\\temp\\msc\\marc2025.1\\tools\\comp_damask_lmp"
+@@ -6,23 +6,34 @@
  DIR=$1
  user=$3
  program=$4
@@ -20,6 +22,7 @@
 +echo "Compiling and linking user subroutine $user on host `hostname`"
  echo "program: $program"
 -        $FORTRAN $user.f || \
++        $DCCLOW $DIR/DAMASK/src/C_routines.c -o C_routines.o
 +        $DFORTRANLOWMP $user || \
  		{
 -		echo "$0: compile failed for $user.f"
@@ -32,7 +35,13 @@
  
  
      $LOAD ${program}  $DIR/lib/main.o\
-@@ -33,9 +42,13 @@
+     $DIR/lib/blkdta.o $DIR/lib/comm?.o \
+     ${userobj-} \
++    C_routines.o
+     $DIR/lib/srclib.a \
+     $MNFLIBS \
+     $MDUSER  \
+@@ -33,9 +44,14 @@ echo "program: $program"
      $TKLIBS \
      $MRCLIBS \
      $METISLIBS \
@@ -44,6 +53,7 @@
      exit 1
      }
      /bin/rm $userobj
++	/bin/rm $DIRJOB/*.o
 +	/bin/rm $DIRJOB/*.mod
 +	/bin/rm $DIRJOB/*.smod
-+   /bin/rm $DIRJOB/*_genmod.f90
++    /bin/rm $DIRJOB/*_genmod.f90
