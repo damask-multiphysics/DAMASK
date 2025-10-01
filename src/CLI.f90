@@ -115,7 +115,7 @@ subroutine CLI_init()
   print'(/,1x,a)', '<<<+-  CLI init  -+>>>'
 
 #if (defined(BOOST) && !defined(OLD_STYLE_C_TO_FORTRAN_STRING))
-  print'(a)', 'Using boost, experimental C++ feature'
+  print'(/,1x,a)', 'Using C++ parser'
 
   call cliArgs%copyCommandLineArgs()
   ! https://fortran-lang.discourse.group/t/c-interoperability-command-line-arguments/5773/7
@@ -125,7 +125,7 @@ subroutine CLI_init()
   if (stat /= 0) error stop 'could not collect parsed args from CLI.cpp'
   call parallelization_bcast_str(CLI_jobID)
 #else
-  print'(a)', 'Using classic Fortran CLI parser'
+  print'(/,1x,a)', 'Using Fortran parser'
   workingDirArg = OS_getCWD()
  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
 #ifdef DEBUG
