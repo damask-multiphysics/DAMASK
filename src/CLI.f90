@@ -6,7 +6,7 @@
 !> @brief Parse command line interface for PETSc-based solvers
 !--------------------------------------------------------------------------------------------------
 #define PETSC_MINOR_MIN 15
-#define PETSC_MINOR_MAX 23
+#define PETSC_MINOR_MAX 24
 
 module CLI
   use, intrinsic :: ISO_Fortran_env
@@ -70,8 +70,8 @@ public :: &
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initialize the solver by interpreting the command line arguments. Write
-!! information on computation to screen
+!> @brief Initialize the solver by interpreting the command line arguments and write
+!!        information on computation to screen.
 !--------------------------------------------------------------------------------------------------
 subroutine CLI_init()
 #include <petsc/finclude/petscsys.h>

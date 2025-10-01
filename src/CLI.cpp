@@ -186,7 +186,7 @@ void CLI::init_print() {
        << " https://doi.org/10.1016/j.commatsci.2018.04.030" << std::endl << std::endl;
 
 #define PETSC_MINOR_MIN 15
-#define PETSC_MINOR_MAX 23
+#define PETSC_MINOR_MAX 24
 #if PETSC_VERSION_MAJOR != 3 || PETSC_VERSION_MINOR < PETSC_MINOR_MIN || PETSC_VERSION_MINOR > PETSC_MINOR_MAX
 #error "--  UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION ---"
 #else
