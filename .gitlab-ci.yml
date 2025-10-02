@@ -11,7 +11,7 @@ variables:
   # GitLab Settings
   GIT_SUBMODULE_STRATEGY: normal
   # Shortcut names
-  MARC_VERSION: '2024.1'
+  MARC_VERSION: '2025.1'
   PETSC_GCC_LATEST: '2025.05.27'
   PETSC_ONEAPI_LATEST: '2025.06.12'
 
