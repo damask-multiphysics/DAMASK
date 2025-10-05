@@ -2,7 +2,7 @@ name: Grid and Mesh Solver
 on: [push]
 
 env:
-  PETSC_VERSION: '3.23.3'
+  PETSC_VERSION: '3.24.0'
   HOMEBREW_NO_ANALYTICS: 'ON'     # Make Homebrew installation a little quicker
   HOMEBREW_NO_AUTO_UPDATE: 'ON'
   HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK: 'ON'
@@ -17,7 +17,7 @@ jobs:
 
     strategy:
       matrix:
-        gcc_v: [11, 12, 13, 14, 15]
+        gcc_v: [11, 12, 13, 14]
       fail-fast: false
 
     env:
@@ -29,7 +29,6 @@ jobs:
 
       - name: GCC - Install
         run: |
-          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo apt-get update
           sudo apt-get install liblapack-dev
           sudo apt-get install -y gcc-${GCC_V} gfortran-${GCC_V} g++-${GCC_V}
