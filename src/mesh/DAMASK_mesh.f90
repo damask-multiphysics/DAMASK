@@ -181,7 +181,7 @@ program DAMASK_mesh
 
     do boundary = 1_pPETSCINT, mesh_Nboundaries
       BC_elem = merge('Vertex', merge('Edge  ', 'Face  ', dimplex == 2_pPETSCINT), &
-                      mesh_boundariesIdx(boundary) == 1_pPETSCINT)
+                      mesh_boundariesIdx(boundary) == mesh_BCTypeVertex)
       do component = 1_pPETSCINT, dimPlex
         if (loadCases(l)%mechBC(boundary)%active(component)) &
           print'(4x,a,1x,i0,T'//tagPrintFormat//',a,1x,i1,1x,a,1x,f12.7)', &
