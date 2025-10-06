@@ -136,7 +136,7 @@ core:
     - |
       COMMITS=$(git log --reverse --format=format:%H origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}..${CI_COMMIT_SHA}~)
       for COMMIT in ${COMMITS};do
-        echo ${COMMIT}
+        printf "%b" "\e[1;32m::\nchecking commit ${COMMIT}\n::.\e[0m\n"
         git checkout ${COMMIT}
         cmake -DGRID=ON -DMESH=ON -B build && cmake --build build --parallel 4 --target install
       done
@@ -149,7 +149,7 @@ processing:
       source env/DAMASK.sh
       COMMITS=$(git log --reverse --format=format:%H origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME..$CI_COMMIT_SHA)
       for COMMIT in ${COMMITS};do
-        echo ${COMMIT}
+        printf "%b" "\e[1;32m::\nchecking commit ${COMMIT}\n::.\e[0m\n"
         python -c 'import damask;print(damask.__version__)'
       done
 
@@ -270,8 +270,8 @@ unittest_oneapi_previous:
 .compile:
   stage: core
   before_script:
+    - ${PETSC_DIR}/lib/petsc/bin/petscversion
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
-    - head -n 10 /petsc/include/petscversion.h | tail -n 6
     - source env/DAMASK.sh
     - cd PRIVATE/testing
 
@@ -320,8 +320,8 @@ Marc_compile:
 .configexamples_debug:
   stage: core
   before_script:
+    - ${PETSC_DIR}/lib/petsc/bin/petscversion
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
-    - head -n 10 /petsc/include/petscversion.h | tail -n 6
     - source env/DAMASK.sh
     - cmake -B builddir -DGRID=ON -DCMAKE_BUILD_TYPE=DEBUG
     - cmake --build builddir --target install

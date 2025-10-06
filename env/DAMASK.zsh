@@ -79,7 +79,6 @@ fi
 export DAMASK_ROOT
 export PYTHONPATH=$DAMASK_ROOT/python:$PYTHONPATH
 
-for var in SOLVER BRANCH; do
+for var in SOLVER BRANCH ENV_ROOT; do
   unset "${var}"
 done
-unset "ENV_ROOT"

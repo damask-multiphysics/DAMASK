@@ -21,7 +21,9 @@ module OS
 #ifdef OLD_STYLE_C_TO_FORTRAN_STRING
     free_C, &
 #endif
-#if (defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || (defined(__GFORTRAN__) && __GNUC__ < 15)
+#if (defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) \
+ || (defined(__GFORTRAN__) && __GNUC__ < 15) \
+ || defined(__flang__)
     f_c_string, &
 #endif
     c_f_string
@@ -262,7 +264,9 @@ pure function c_f_string_array(c_string) result(f_string)
 end function c_f_string_array
 
 
-#if (defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || (defined(__GFORTRAN__) && __GNUC__ < 15)
+#if (defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) \
+ || (defined(__GFORTRAN__) && __GNUC__ < 15) \
+ || defined(__flang__)
 !--------------------------------------------------------------------------------------------------
 !> @brief Fortran 2023 "f_c_string" (without optional argument).
 !> @details: C string is NULL terminated and, hence, longer by one than the Fortran string.

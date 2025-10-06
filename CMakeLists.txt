@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.18.0)
 set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_C_STANDARD 17)
 include(FindPkgConfig REQUIRED)
 
 if(DEFINED ENV{PETSC_DIR})
@@ -39,17 +40,18 @@ project(DAMASK
         HOMEPAGE_URL https://damask-multiphysics.org
         LANGUAGES Fortran C CXX VERSION "${DAMASK_VERSION_CMAKE}")
 
-if(NOT ${CMAKE_C_COMPILER_ID} STREQUAL ${CMAKE_Fortran_COMPILER_ID})
-  message(FATAL_ERROR "C compiler (${CMAKE_C_COMPILER_ID}) does not match Fortran compiler (${CMAKE_Fortran_COMPILER_ID})")
-endif()
-if(NOT ${CMAKE_CXX_COMPILER_ID} STREQUAL ${CMAKE_Fortran_COMPILER_ID})
-  message(FATAL_ERROR "C++ compiler (${CMAKE_CXX_COMPILER_ID}) does not match Fortran compiler (${CMAKE_Fortran_COMPILER_ID})")
+if(NOT ${CMAKE_Fortran_COMPILER_ID} STREQUAL "LLVMFlang")
+  if(NOT ${CMAKE_C_COMPILER_ID} STREQUAL ${CMAKE_Fortran_COMPILER_ID})
+    message(FATAL_ERROR "C compiler (${CMAKE_C_COMPILER_ID}) does not match Fortran compiler (${CMAKE_Fortran_COMPILER_ID})")
+  endif()
+  if(NOT ${CMAKE_CXX_COMPILER_ID} STREQUAL ${CMAKE_Fortran_COMPILER_ID})
+    message(FATAL_ERROR "C++ compiler (${CMAKE_CXX_COMPILER_ID}) does not match Fortran compiler (${CMAKE_Fortran_COMPILER_ID})")
+  endif()
 endif()
 
 set(CMAKE_Fortran_PREPROCESS "ON")
 
 # EXPERIMENTAL: This might help to detect external packages in future if PETSc is not aware of them
-set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/externalpackages:$ENV{PKG_CONFIG_PATH}")
 pkg_check_modules(HDF5 hdf5)
 pkg_check_modules(fYAML libfyaml)
 pkg_check_modules(LAPACK lapack)

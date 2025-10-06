@@ -24,7 +24,7 @@ else()
 endif()
 
 if(CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 12)
-  add_definitions(-DOLD_STYLE_C_TO_FORTRAN_STRING)
+  add_compile_definitions(OLD_STYLE_C_TO_FORTRAN_STRING)
 endif()
 
 #------------------------------------------------------------------------------------------------

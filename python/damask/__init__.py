@@ -14,7 +14,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 name = 'damask'
-with open(_Path(__file__).parent/_Path('VERSION')) as _f:
+with open(_Path(__file__).parent/'VERSION') as _f:
     version = _re.sub(r'^v','',_f.readline().strip())
     __version__ = version
 
