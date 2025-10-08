@@ -234,18 +234,18 @@ program DAMASK_grid
     select case (ID(field))
 
       case (FIELD_THERMAL_ID)
-        call grid_thermal_spectral_init(num_grid)
+        call grid_thermal_spectral_init(num_grid%get_dict('thermal',defaultVal=emptyDict))
 
       case (FIELD_DAMAGE_ID)
-        call grid_damage_spectral_init(num_grid)
+        call grid_damage_spectral_init(num_grid%get_dict('damage',defaultVal=emptyDict))
 
       case (FIELD_CHEMICAL_ID)
-        call grid_chemical_FDM_init(num_grid)
+        call grid_chemical_FDM_init(num_grid%get_dict('chemical',defaultVal=emptyDict))
 
     end select
   end do
 
-  call grid_mechanical_init(num_grid)
+  call grid_mechanical_init(num_grid%get_dict('mechanical',defaultVal=emptyDict))
   call config_numerics_deallocate()
 
 !--------------------------------------------------------------------------------------------------

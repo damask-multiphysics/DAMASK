@@ -99,9 +99,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Allocate all necessary fields and fill them with data, potentially from restart info.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_FEM_init(num_grid)
+subroutine grid_mechanical_FEM_init(num_grid_mech)
 
-  type(tDict), pointer, intent(in) :: num_grid
+  type(tDict), pointer, intent(in) :: num_grid_mech
 
   real(pREAL), parameter :: HGCoeff = 0.0e-2_pREAL
   real(pREAL), parameter, dimension(4,8) :: &
@@ -122,8 +122,6 @@ subroutine grid_mechanical_FEM_init(num_grid)
     u,u_lastInc
   integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: cells3_global
   integer(HID_T) :: fileHandle, groupHandle
-  type(tDict), pointer :: &
-    num_grid_mech
   character(len=:), allocatable :: &
     extmsg, &
     petsc_options
@@ -133,8 +131,6 @@ subroutine grid_mechanical_FEM_init(num_grid)
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid_mech => num_grid%get_dict('mechanical',defaultVal=emptyDict)
-
   num%itmin           = num_grid_mech%get_asInt('N_iter_min',defaultVal=1)
   num%itmax           = num_grid_mech%get_asInt('N_iter_max',defaultVal=100)
   num%eps_div_atol    = num_grid_mech%get_asReal('eps_abs_div(P)',defaultVal=1.0e-4_pREAL)

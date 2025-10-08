@@ -160,9 +160,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Allocate all necessary fields and fill them with data, potentially from restart info.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_Galerkin_init(num_grid)
+subroutine grid_mechanical_spectral_Galerkin_init(num_grid_mech)
 
-  type(tDict), pointer, intent(in) :: num_grid
+  type(tDict), pointer, intent(in) :: num_grid_mech
 
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: P
   PetscErrorCode :: err_PETSc
@@ -172,9 +172,6 @@ subroutine grid_mechanical_spectral_Galerkin_init(num_grid)
   integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: cells3_global
   real(pREAL), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
   integer(HID_T) :: fileHandle, groupHandle
-  type(tDict), pointer :: &
-    num_grid_fft, &
-    num_grid_mech
   character(len=:), allocatable :: &
     extmsg, &
     petsc_options
@@ -196,9 +193,6 @@ subroutine grid_mechanical_spectral_Galerkin_init(num_grid)
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid_fft =>  num_grid%get_dict('FFT',defaultVal=emptyDict)
-  num_grid_mech => num_grid%get_dict('mechanical',defaultVal=emptyDict)
-
   num%itmin           = num_grid_mech%get_asInt('N_iter_min',defaultVal=1)
   num%itmax           = num_grid_mech%get_asInt('N_iter_max',defaultVal=100)
   num%eps_div_atol    = num_grid_mech%get_asReal('eps_abs_div(P)', defaultVal=1.0e-4_pREAL)
@@ -220,7 +214,7 @@ subroutine grid_mechanical_spectral_Galerkin_init(num_grid)
 ! set default and user defined options for PETSc
   petsc_options = &
     misc_prefixOptions('-snes_type newtonls -ksp_type gmres -snes_linesearch_type bt '// &
-                      num_grid_mech%get_asStr('PETSc_options',defaultVal=''), 'mechanical_')
+                       num_grid_mech%get_asStr('PETSc_options',defaultVal=''), 'mechanical_')
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
 

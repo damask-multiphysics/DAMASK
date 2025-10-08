@@ -69,9 +69,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Allocate all necessary fields and fill them with data, potentially from restart file.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_damage_spectral_init(num_grid)
+subroutine grid_damage_spectral_init(num_grid_damage)
 
-  type(tDict), pointer, intent(in) :: num_grid
+  type(tDict), pointer, intent(in) :: num_grid_damage
 
   integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: cells3_global
   DM :: DM_damage
@@ -81,8 +81,6 @@ subroutine grid_damage_spectral_init(num_grid)
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
   real(pREAL), dimension(1,product(cells(1:2))*cells3) :: tempN
-  type(tDict), pointer :: &
-    num_grid_damage
   character(len=pSTRLEN) :: &
     snes_type
   character(len=:), allocatable :: &
@@ -99,8 +97,6 @@ subroutine grid_damage_spectral_init(num_grid)
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid_damage => num_grid%get_dict('damage',defaultVal=emptyDict)
-
   num%itmax           = num_grid_damage%get_asInt ('N_iter_max', defaultVal=100)
   num%eps_damage_atol = num_grid_damage%get_asReal('eps_abs_phi',defaultVal=1.0e-2_pREAL)
   num%eps_damage_rtol = num_grid_damage%get_asReal('eps_rel_phi',defaultVal=1.0e-6_pREAL)

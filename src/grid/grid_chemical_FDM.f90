@@ -65,9 +65,9 @@ contains
 !> @brief Allocate all necessary fields and fill them with data.
 ! ToDo: Restart not implemented
 !--------------------------------------------------------------------------------------------------
-subroutine grid_chemical_FDM_init(num_grid)
+subroutine grid_chemical_FDM_init(num_grid_chemical)
 
-  type(tDict), pointer, intent(in) :: num_grid
+  type(tDict), pointer, intent(in) :: num_grid_chemical
 
   PetscInt, dimension(0:worldsize-1) :: cells3_global
   integer :: i, j , k, ce, com
@@ -75,8 +75,6 @@ subroutine grid_chemical_FDM_init(num_grid)
   PetscScalar, dimension(:,:,:,:), pointer :: mu
   PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
-  class(tDict), pointer :: &
-    num_grid_chemical
   real(pREAL), dimension(:,:,:,:), allocatable :: mu_0
   character(len=:), allocatable :: &
     extmsg, &
@@ -96,8 +94,6 @@ subroutine grid_chemical_FDM_init(num_grid)
   N_components = homogenization_chemical_maxNcomponents - 1
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid_chemical => num_grid%get_dict('chemical',defaultVal=emptyDict)
-
   num%itmax             = num_grid_chemical%get_asInt  ('itmax',           defaultVal=250)
   num%eps_chemical_atol = num_grid_chemical%get_asReal('eps_chemical_atol',defaultVal=1.0e-6_pREAL)
   num%eps_chemical_rtol = num_grid_chemical%get_asReal('eps_chemical_rtol',defaultVal=1.0e-6_pREAL)

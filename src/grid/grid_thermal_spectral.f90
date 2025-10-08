@@ -70,9 +70,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Allocate all necessary fields and fill them with data, potentially from restart info.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_thermal_spectral_init(num_grid)
+subroutine grid_thermal_spectral_init(num_grid_thermal)
 
-  type(tDict), pointer, intent(in) :: num_grid
+  type(tDict), pointer, intent(in) :: num_grid_thermal
 
   integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: cells3_global
   integer :: ce
@@ -82,8 +82,6 @@ subroutine grid_thermal_spectral_init(num_grid)
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
   real(pREAL), dimension(1,product(cells(1:2))*cells3) :: tempN
-  type(tDict), pointer :: &
-    num_grid_thermal
   character(len=:), allocatable :: &
     extmsg, &
     petsc_options
@@ -98,8 +96,6 @@ subroutine grid_thermal_spectral_init(num_grid)
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid_thermal => num_grid%get_dict('thermal',defaultVal=emptyDict)
-
   num%itmax            = num_grid_thermal%get_asInt('N_iter_max', defaultVal=100)
   num%eps_thermal_atol = num_grid_thermal%get_asReal('eps_abs_T', defaultVal=1.0e-2_pREAL)
   num%eps_thermal_rtol = num_grid_thermal%get_asReal('eps_rel_T', defaultVal=1.0e-6_pREAL)

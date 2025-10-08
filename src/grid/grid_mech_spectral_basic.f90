@@ -99,9 +99,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Allocate all necessary fields and fill them with data, potentially from restart info.
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_basic_init(num_grid)
+subroutine grid_mechanical_spectral_basic_init(num_grid_mech)
 
-  type(tDict), pointer, intent(in) :: num_grid
+  type(tDict), pointer, intent(in) :: num_grid_mech
 
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3) :: P
   PetscErrorCode :: err_PETSc
@@ -111,8 +111,6 @@ subroutine grid_mechanical_spectral_basic_init(num_grid)
   integer(MPI_INTEGER_KIND), dimension(0:worldsize-1) :: cells3_global
   real(pREAL), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
   integer(HID_T) :: fileHandle, groupHandle
-  type(tDict), pointer :: &
-    num_grid_mech
   character(len=:), allocatable :: &
     extmsg, &
     petsc_options
@@ -128,8 +126,6 @@ subroutine grid_mechanical_spectral_basic_init(num_grid)
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid_mech => num_grid%get_dict('mechanical',defaultVal=emptyDict)
-
   num%itmin           = num_grid_mech%get_asInt('N_iter_min',defaultVal=1)
   num%itmax           = num_grid_mech%get_asInt('N_iter_max',defaultVal=100)
   num%update_gamma    = num_grid_mech%get_asBool('update_gamma',defaultVal=.false.)
