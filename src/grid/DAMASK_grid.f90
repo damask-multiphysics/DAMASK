@@ -110,8 +110,6 @@ program DAMASK_grid
   procedure(grid_mechanical_spectral_basic_restartWrite), pointer :: &
     grid_mechanical_restartWrite
 
-  external :: &
-    quit
   type(tDict), pointer :: &
     load, &
     num_solver, &

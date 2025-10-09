@@ -16,7 +16,6 @@ program DAMASK_test
   use test_types
   use test_HDF5_utilities
 
-  external :: quit
 
   character(len=*), parameter :: &
     ok  = achar(27)//'[32mok'//achar(27)//'[0m', &

@@ -79,8 +79,6 @@ program DAMASK_mesh
   type(tSolutionState), allocatable, dimension(:) :: solres
   PetscInt :: boundary, dimPlex
   PetscErrorCode :: err_PETSc
-  external :: &
-    quit
   character(len=:), allocatable :: &
     fileContent, fname, tagPrintFormat
   character(len=6) :: BC_elem

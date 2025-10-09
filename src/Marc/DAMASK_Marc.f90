@@ -74,8 +74,6 @@ subroutine DAMASK_interface_init()
   integer                 :: ierr
   character(len=pPATHLEN) :: wd
 
-  external                :: quit
-
 
   print'(/,1x,a)', '<<<+-  DAMASK_Marc init -+>>>'
 

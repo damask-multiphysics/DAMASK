@@ -22,8 +22,8 @@ implicit none(type,external)
   private
 
 
-#ifndef MARC_SOURCE
   interface
+#ifndef MARC_SOURCE
     function isatty_stdout_C() bind(C)
       use, intrinsic :: ISO_C_binding, only: C_BOOL
 
@@ -44,8 +44,14 @@ implicit none(type,external)
       implicit none(type,external)
       logical(C_BOOL) :: isatty_stdin_C
     end function isatty_stdin_C
-  end interface
+#else
+    subroutine quit(stop_id)
+
+      implicit none(type,external)
+      integer, intent(in) :: stop_id
+    end subroutine quit
 #endif
+  end interface
 
   ! For transition period
   interface IO_error
@@ -72,6 +78,7 @@ implicit none(type,external)
 #endif
 
   public :: &
+    quit, &
     IO_init, &
     IO_selfTest, &
     IO_read, &
@@ -371,7 +378,6 @@ subroutine IO_error_new(error_ID, &
   integer, dimension(:), optional, intent(in) :: emph                                               !< which info(s) to emphasize
 
   character(len=:), allocatable :: msg
-  external :: quit
 
 
   select case (error_ID)
@@ -565,7 +571,6 @@ subroutine IO_error_old(error_ID,ext_msg,label1,ID1,label2,ID2)
   character(len=*), optional, intent(in) :: ext_msg,label1,label2
   integer,          optional, intent(in) :: ID1,ID2
 
-  external                      :: quit
   character(len=:), allocatable :: msg_extra
 
 
@@ -702,6 +707,187 @@ logical function IO_isaTTY(unit)
   end select
 
 end function IO_isaTTY
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check correctness of some IO functions.
+!--------------------------------------------------------------------------------------------------
+subroutine IO_selfTest()
+
+  character(len=:),      allocatable :: str
+  character(len=:), dimension(:), allocatable :: tokens
+
+
+  if (dNeq(1.0_pREAL, IO_strAsReal('1.0')))          error stop 'IO_strAsReal'
+  if (dNeq(1.0_pREAL, IO_strAsReal('1e0')))          error stop 'IO_strAsReal'
+  if (dNeq(0.1_pREAL, IO_strAsReal('1e-1')))         error stop 'IO_strAsReal'
+  if (dNeq(0.1_pREAL, IO_strAsReal('1.0e-1')))       error stop 'IO_strAsReal'
+  if (dNeq(0.1_pREAL, IO_strAsReal('1.00e-1')))      error stop 'IO_strAsReal'
+  if (dNeq(10._pREAL, IO_strAsReal(' 1.0e+1 ')))     error stop 'IO_strAsReal'
+
+  if (3112019  /= IO_strAsInt( '3112019'))           error stop 'IO_strAsInt'
+  if (3112019  /= IO_strAsInt(' 3112019'))           error stop 'IO_strAsInt'
+  if (-3112019 /= IO_strAsInt('-3112019'))           error stop 'IO_strAsInt'
+  if (3112019  /= IO_strAsInt('+3112019 '))          error stop 'IO_strAsInt'
+  if (3112019  /= IO_strAsInt('03112019 '))          error stop 'IO_strAsInt'
+  if (3112019  /= IO_strAsInt('+03112019'))          error stop 'IO_strAsInt'
+
+  if (.not. IO_strAsBool(' true'))                   error stop 'IO_strAsBool'
+  if (.not. IO_strAsBool(' True '))                  error stop 'IO_strAsBool'
+  if (      IO_strAsBool(' false'))                  error stop 'IO_strAsBool'
+  if (      IO_strAsBool('False'))                   error stop 'IO_strAsBool'
+
+  if ('1234' /= IO_intAsStr(1234))                   error stop 'IO_intAsStr'
+  if ('-12'  /= IO_intAsStr(-0012))                  error stop 'IO_intAsStr'
+
+  if ('-0.1200000' /= IO_realAsStr(-0.12_pREAL))        error stop 'IO_realAsStr'
+  if ('0.1234000E-31' /= IO_realAsStr(123.4e-34_pREAL)) error stop 'IO_realAsStr'
+
+  if (CRLF2LF('') /= '')                             error stop 'CRLF2LF/0'
+  if (CRLF2LF(LF)     /= LF)                         error stop 'CRLF2LF/1a'
+  if (CRLF2LF(CR//LF) /= LF)                         error stop 'CRLF2LF/1b'
+  if (CRLF2LF(' '//LF)     /= ' '//LF)               error stop 'CRLF2LF/2a'
+  if (CRLF2LF(' '//CR//LF) /= ' '//LF)               error stop 'CRLF2LF/2b'
+  if (CRLF2LF('A'//CR//LF//'B') /= 'A'//LF//'B')     error stop 'CRLF2LF/3'
+  if (CRLF2LF('A'//CR//LF//'B'//CR//LF) /= &
+              'A'//LF//'B'//LF)                      error stop 'CRLF2LF/4'
+  if (CRLF2LF('A'//LF//CR//'B') /= 'A'//LF//CR//'B') error stop 'CRLF2LF/5'
+
+  str='*(HiU!)3';if ('*(hiu!)3' /= IO_lc(str))       error stop 'IO_lc'
+
+  if ('abc, def' /= IO_wrapLines('abc, def')) &
+                                                     error stop 'IO_wrapLines/1'
+  if ('abc,'//IO_EOL//'def' /= IO_wrapLines('abc,def',length=3)) &
+                                                     error stop 'IO_wrapLines/2'
+  if ('abc,'//IO_EOL//'def' /= IO_wrapLines('abc,def',length=5)) &
+                                                     error stop 'IO_wrapLines/3'
+  if ('abc, def' /= IO_wrapLines('abc, def',length=3,separator='.')) &
+                                                     error stop 'IO_wrapLines/4'
+  if ('abc.'//IO_EOL//'def' /= IO_wrapLines('abc. def',length=3,separator='.')) &
+                                                     error stop 'IO_wrapLines/5'
+  if ('abc,'//IO_EOL//'defg,'//IO_EOL//'hij' /= IO_wrapLines('abc,defg,hij',length=4)) &
+                                                     error stop 'IO_wrapLines/6'
+  if ('abc,'//IO_EOL//'xxdefg,'//IO_EOL//'xxhij' /= IO_wrapLines('abc,defg, hij',filler='xx',length=4)) &
+                                                     error stop 'IO_wrapLines/7'
+
+#if ((defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || !defined(__INTEL_COMPILER))
+  call tokenize('','$',tokens)
+  if (size(tokens) /= 0 .or. len(tokens) /=0) error stop 'tokenize empty'
+  call tokenize('abcd','dcba',tokens)
+  if (size(tokens) /= 0 .or. len(tokens) /=0) error stop 'tokenize only separators'
+
+  tokens=['a']
+  call test_tokenize('a','#',tokens)
+  call test_tokenize('#a','#',tokens)
+  call test_tokenize('a#','#',tokens)
+
+  tokens=['aa']
+  call test_tokenize('aa','#',tokens)
+  call test_tokenize('$aa','$',tokens)
+  call test_tokenize('aa$','$',tokens)
+
+  tokens=['a','b']
+  call test_tokenize('a$b','$',tokens)
+  call test_tokenize('@a@$b@','$@',tokens)
+
+  tokens=['aa','bb']
+  call test_tokenize('aa$bb','$',tokens)
+  call test_tokenize('aa$$bb','$',tokens)
+  call test_tokenize('aa$bb$','$',tokens)
+
+  tokens=['aa  ','bbb ','cccc']
+  call test_tokenize('aa$bbb$cccc','$',tokens)
+  call test_tokenize('$aa$bbb$cccc$','$',tokens)
+  call tokenize('#aa@@bbb!!!cccc#','#@!',tokens)
+
+
+  contains
+  pure subroutine test_tokenize(input,delimiter,solution)
+    character(len=*), intent(in) :: input, delimiter
+    character(len=*), dimension(:), intent(in) :: solution
+
+    character(len=:), dimension(:), allocatable :: tok
+    integer :: i
+
+
+    call tokenize(input,delimiter,tok)
+    do i = 1,size(tok)
+      !if (solution(i) /= tok(i)) error stop 'tokenize "'//solution(i)//'" vs. "'//tok(i)//'"'      ! requires 2018 standard
+      if (solution(i) /= tok(i)) error stop 'tokenize'
+    end do
+
+  end subroutine test_tokenize
+#endif
+
+end subroutine IO_selfTest
+
+
+#ifndef MARC_SOURCE
+!--------------------------------------------------------------------------------------------------
+!> @brief Stop execution and report status.
+!> @details exits the program and reports current time and duration. Exit code 0 signals
+!> everything is fine. Exit code 1 signals an error, message according to IO_error.
+!--------------------------------------------------------------------------------------------------
+subroutine quit(stop_id)
+  use, intrinsic :: ISO_fortran_env, only: ERROR_UNIT, OUTPUT_UNIT
+#include <petsc/finclude/petscsys.h>
+  use PETScSys
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+  use MPI_f08
+#endif
+  use HDF5
+
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+  implicit none(type,external)
+#else
+  implicit none
+#endif
+
+  integer, intent(in) :: stop_id
+
+  integer, dimension(8) :: date_time
+  integer :: err_HDF5
+  integer(MPI_INTEGER_KIND) :: err_MPI, worldsize
+  PetscErrorCode :: err_PETSc
+
+
+  call H5Open_f(err_HDF5)                                                                           ! prevents error if not opened yet
+  if (err_HDF5 < 0) write(ERROR_UNIT,'(a,i0)') ' Error in H5Open_f ',err_HDF5
+  call H5Close_f(err_HDF5)
+  if (err_HDF5 < 0) write(ERROR_UNIT,'(a,i0)') ' Error in H5Close_f ',err_HDF5
+
+  call PetscFinalize(err_PETSc)
+
+  call date_and_time(values = date_time)
+  write(OUTPUT_UNIT,'(/,a)') ' DAMASK terminated on:'
+  print'(3x,a,1x,2(i2.2,a),i4.4)', 'Date:',date_time(3),'/',date_time(2),'/',date_time(1)
+  print'(3x,a,1x,2(i2.2,a),i2.2)', 'Time:',date_time(5),':',date_time(6),':',date_time(7)
+
+  if (stop_id == 0 .and. err_HDF5 == 0 .and. err_PETSC == 0) then
+    call MPI_Finalize(err_MPI)
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI_Finalize error'
+    stop 0                                                                                          ! normal termination
+  else
+    call MPI_Comm_size(MPI_COMM_WORLD,worldsize,err_MPI)
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI_Comm error'
+    if (stop_id /= 0 .and. worldsize > 1) call MPI_Abort(MPI_COMM_WORLD,1,err_MPI)
+    stop 1                                                                                          ! error (message from IO_error)
+  endif
+
+end subroutine quit
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Print C string to Fortran stdout.
+!--------------------------------------------------------------------------------------------------
+subroutine IO_printCppString(C_STR) bind(C, name='F_IO_printCppString')
+
+  character(kind=C_CHAR), intent(in), dimension(*) :: c_str
+
+
+  write (IO_STDOUT, '(a)', advance='no') c_f_string(c_str)
+
+end subroutine IO_printCppString
+#endif
 
 
 !--------------------------------------------------------------------------------------------------
@@ -878,132 +1064,5 @@ subroutine panel(paneltype,ID,msg, &
 
 end subroutine panel
 
-
-#ifndef MARC_SOURCE
-!--------------------------------------------------------------------------------------------------
-!> @brief Print C string to Fortran stdout.
-!--------------------------------------------------------------------------------------------------
-subroutine IO_printCppString(C_STR) bind(C, name='F_IO_printCppString')
-
-  character(kind=C_CHAR), intent(in), dimension(*) :: c_str
-
-
-  write (IO_STDOUT, '(a)', advance='no') c_f_string(c_str)
-
-end subroutine IO_printCppString
-#endif
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Check correctness of some IO functions.
-!--------------------------------------------------------------------------------------------------
-subroutine IO_selfTest()
-
-  character(len=:),      allocatable :: str
-  character(len=:), dimension(:), allocatable :: tokens
-
-
-  if (dNeq(1.0_pREAL, IO_strAsReal('1.0')))          error stop 'IO_strAsReal'
-  if (dNeq(1.0_pREAL, IO_strAsReal('1e0')))          error stop 'IO_strAsReal'
-  if (dNeq(0.1_pREAL, IO_strAsReal('1e-1')))         error stop 'IO_strAsReal'
-  if (dNeq(0.1_pREAL, IO_strAsReal('1.0e-1')))       error stop 'IO_strAsReal'
-  if (dNeq(0.1_pREAL, IO_strAsReal('1.00e-1')))      error stop 'IO_strAsReal'
-  if (dNeq(10._pREAL, IO_strAsReal(' 1.0e+1 ')))     error stop 'IO_strAsReal'
-
-  if (3112019  /= IO_strAsInt( '3112019'))           error stop 'IO_strAsInt'
-  if (3112019  /= IO_strAsInt(' 3112019'))           error stop 'IO_strAsInt'
-  if (-3112019 /= IO_strAsInt('-3112019'))           error stop 'IO_strAsInt'
-  if (3112019  /= IO_strAsInt('+3112019 '))          error stop 'IO_strAsInt'
-  if (3112019  /= IO_strAsInt('03112019 '))          error stop 'IO_strAsInt'
-  if (3112019  /= IO_strAsInt('+03112019'))          error stop 'IO_strAsInt'
-
-  if (.not. IO_strAsBool(' true'))                   error stop 'IO_strAsBool'
-  if (.not. IO_strAsBool(' True '))                  error stop 'IO_strAsBool'
-  if (      IO_strAsBool(' false'))                  error stop 'IO_strAsBool'
-  if (      IO_strAsBool('False'))                   error stop 'IO_strAsBool'
-
-  if ('1234' /= IO_intAsStr(1234))                   error stop 'IO_intAsStr'
-  if ('-12'  /= IO_intAsStr(-0012))                  error stop 'IO_intAsStr'
-
-  if ('-0.1200000' /= IO_realAsStr(-0.12_pREAL))        error stop 'IO_realAsStr'
-  if ('0.1234000E-31' /= IO_realAsStr(123.4e-34_pREAL)) error stop 'IO_realAsStr'
-
-  if (CRLF2LF('') /= '')                             error stop 'CRLF2LF/0'
-  if (CRLF2LF(LF)     /= LF)                         error stop 'CRLF2LF/1a'
-  if (CRLF2LF(CR//LF) /= LF)                         error stop 'CRLF2LF/1b'
-  if (CRLF2LF(' '//LF)     /= ' '//LF)               error stop 'CRLF2LF/2a'
-  if (CRLF2LF(' '//CR//LF) /= ' '//LF)               error stop 'CRLF2LF/2b'
-  if (CRLF2LF('A'//CR//LF//'B') /= 'A'//LF//'B')     error stop 'CRLF2LF/3'
-  if (CRLF2LF('A'//CR//LF//'B'//CR//LF) /= &
-              'A'//LF//'B'//LF)                      error stop 'CRLF2LF/4'
-  if (CRLF2LF('A'//LF//CR//'B') /= 'A'//LF//CR//'B') error stop 'CRLF2LF/5'
-
-  str='*(HiU!)3';if ('*(hiu!)3' /= IO_lc(str))       error stop 'IO_lc'
-
-  if ('abc, def' /= IO_wrapLines('abc, def')) &
-                                                     error stop 'IO_wrapLines/1'
-  if ('abc,'//IO_EOL//'def' /= IO_wrapLines('abc,def',length=3)) &
-                                                     error stop 'IO_wrapLines/2'
-  if ('abc,'//IO_EOL//'def' /= IO_wrapLines('abc,def',length=5)) &
-                                                     error stop 'IO_wrapLines/3'
-  if ('abc, def' /= IO_wrapLines('abc, def',length=3,separator='.')) &
-                                                     error stop 'IO_wrapLines/4'
-  if ('abc.'//IO_EOL//'def' /= IO_wrapLines('abc. def',length=3,separator='.')) &
-                                                     error stop 'IO_wrapLines/5'
-  if ('abc,'//IO_EOL//'defg,'//IO_EOL//'hij' /= IO_wrapLines('abc,defg,hij',length=4)) &
-                                                     error stop 'IO_wrapLines/6'
-  if ('abc,'//IO_EOL//'xxdefg,'//IO_EOL//'xxhij' /= IO_wrapLines('abc,defg, hij',filler='xx',length=4)) &
-                                                     error stop 'IO_wrapLines/7'
-
-#if ((defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) || !defined(__INTEL_COMPILER))
-  call tokenize('','$',tokens)
-  if (size(tokens) /= 0 .or. len(tokens) /=0) error stop 'tokenize empty'
-  call tokenize('abcd','dcba',tokens)
-  if (size(tokens) /= 0 .or. len(tokens) /=0) error stop 'tokenize only separators'
-
-  tokens=['a']
-  call test_tokenize('a','#',tokens)
-  call test_tokenize('#a','#',tokens)
-  call test_tokenize('a#','#',tokens)
-
-  tokens=['aa']
-  call test_tokenize('aa','#',tokens)
-  call test_tokenize('$aa','$',tokens)
-  call test_tokenize('aa$','$',tokens)
-
-  tokens=['a','b']
-  call test_tokenize('a$b','$',tokens)
-  call test_tokenize('@a@$b@','$@',tokens)
-
-  tokens=['aa','bb']
-  call test_tokenize('aa$bb','$',tokens)
-  call test_tokenize('aa$$bb','$',tokens)
-  call test_tokenize('aa$bb$','$',tokens)
-
-  tokens=['aa  ','bbb ','cccc']
-  call test_tokenize('aa$bbb$cccc','$',tokens)
-  call test_tokenize('$aa$bbb$cccc$','$',tokens)
-  call tokenize('#aa@@bbb!!!cccc#','#@!',tokens)
-
-
-  contains
-  pure subroutine test_tokenize(input,delimiter,solution)
-    character(len=*), intent(in) :: input, delimiter
-    character(len=*), dimension(:), intent(in) :: solution
-
-    character(len=:), dimension(:), allocatable :: tok
-    integer :: i
-
-
-    call tokenize(input,delimiter,tok)
-    do i = 1,size(tok)
-      !if (solution(i) /= tok(i)) error stop 'tokenize "'//solution(i)//'" vs. "'//tok(i)//'"'      ! requires 2018 standard
-      if (solution(i) /= tok(i)) error stop 'tokenize'
-    end do
-
-  end subroutine test_tokenize
-#endif
-
-end subroutine IO_selfTest
 
 end module IO
