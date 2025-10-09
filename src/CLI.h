@@ -8,8 +8,7 @@
  *   Max‑Planck‑Institut für Nachhaltige Materialien GmbH
  */
 
-#ifndef CLI_H
-#define CLI_H
+#pragma once
 
 #ifdef BOOST
 
@@ -100,4 +99,3 @@ public:
 };
 
 #endif
-#endif // CLI_H
