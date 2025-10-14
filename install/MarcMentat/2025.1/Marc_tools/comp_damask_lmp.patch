@@ -1,7 +1,5 @@
-diff --git "a/N:\\temp\\msc\\marc2025.1\\tools\\comp_damask_lmp.orig" "b/N:\\temp\\msc\\marc2025.1\\tools\\comp_damask_lmp"
-index 8679bb0..c4cdd23 100644
---- "a/N:\\temp\\msc\\marc2025.1\\tools\\comp_damask_lmp.orig"
-+++ "b/N:\\temp\\msc\\marc2025.1\\tools\\comp_damask_lmp"
+---
++++
 @@ -6,23 +6,34 @@
  DIR=$1
  user=$3

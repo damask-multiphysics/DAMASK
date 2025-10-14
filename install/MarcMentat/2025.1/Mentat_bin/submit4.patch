@@ -1,7 +1,5 @@
-diff --git "a/N:\\temp\\msc\\mentat2025.1\\bin\\submit4.orig" "b/N:\\temp\\msc\\mentat2025.1\\bin\\submit4"
-index 31de6f2..4129c1a 100644
---- "a/N:\\temp\\msc\\mentat2025.1\\bin\\submit4.orig"
-+++ "b/N:\\temp\\msc\\mentat2025.1\\bin\\submit4"
+---
++++
 @@ -91,6 +91,7 @@ if [ "$srcfile" != "" -a "$srcfile" != "-" ]; then
        srcfile="-u $srcfile -save y"
        ;;

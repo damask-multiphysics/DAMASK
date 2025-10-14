@@ -1,7 +1,5 @@
-diff --git "a/N:\\temp\\msc\\marc2025.1\\tools\\include_linux64.orig" "b/N:\\temp\\msc\\marc2025.1\\tools\\include_linux64"
-index 8318de6..8472d71 100644
---- "a/N:\\temp\\msc\\marc2025.1\\tools\\include_linux64.orig"
-+++ "b/N:\\temp\\msc\\marc2025.1\\tools\\include_linux64"
+---
++++
 @@ -208,6 +208,15 @@ if test -n "$MSCCOSIM_HOME"; then
   MARC_COSIM_LIB="$MSCCOSIM_HOME/CoSim$MSCCOSIM_VERSION/Dcosim$MSCCOSIM_VERSION/lib"
  fi

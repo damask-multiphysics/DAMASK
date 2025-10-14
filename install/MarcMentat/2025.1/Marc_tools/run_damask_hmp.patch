@@ -1,7 +1,5 @@
-diff --git "a/N:\\temp\\msc\\marc2025.1\\tools\\run_damask_hmp.orig" "b/N:\\temp\\msc\\marc2025.1\\tools\\run_damask_hmp"
-index b0cdc99..f311542 100644
---- "a/N:\\temp\\msc\\marc2025.1\\tools\\run_damask_hmp.orig"
-+++ "b/N:\\temp\\msc\\marc2025.1\\tools\\run_damask_hmp"
+---
++++
 @@ -62,7 +62,7 @@
  #                           =1,  element storage out-of-core                 #
  #  -dll              run marc using shared library libmarc.so and exe_marc   #

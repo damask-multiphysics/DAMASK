@@ -1,7 +1,5 @@
-diff --git "a/N:\\temp\\msc\\marc2024.2\\tools\\run_damask_mp.orig" "b/N:\\temp\\msc\\marc2024.2\\tools\\run_damask_mp"
-index 87385c5..0eb2155 100644
---- "a/N:\\temp\\msc\\marc2024.2\\tools\\run_damask_mp.orig"
-+++ "b/N:\\temp\\msc\\marc2024.2\\tools\\run_damask_mp"
+---
++++
 @@ -303,7 +303,23 @@ fi
  
  . "$DIR/getarch"
