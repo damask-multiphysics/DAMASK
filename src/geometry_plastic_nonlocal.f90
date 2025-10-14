@@ -31,7 +31,7 @@ module geometry_plastic_nonlocal
 contains
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Set the integration point (IP) neighborhood
+!> @brief Set the integration point (IP) neighborhood.
 !> @details: The IP neighborhood for element ID (last index), IP ID (second but last index) and
 !            face ID (second index) gives the element ID (1 @ first index), IP ID (2 @ first index)
 !            and face ID (3 @ first index).
@@ -42,19 +42,20 @@ subroutine geometry_plastic_nonlocal_setIPneighborhood(IPneighborhood)
 
   integer, dimension(:,:,:,:), intent(in) :: IPneighborhood
 
+
   geometry_plastic_nonlocal_IPneighborhood = IPneighborhood
   geometry_plastic_nonlocal_nIPneighbors   = size(IPneighborhood,2)
-
 
 end subroutine geometry_plastic_nonlocal_setIPneighborhood
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Set the initial volume associated with an integration point
+!> @brief Set the initial volume associated with an integration point.
 !---------------------------------------------------------------------------------------------------
 subroutine geometry_plastic_nonlocal_setIPvolume(IPvolume)
 
   real(pREAL), dimension(:,:), intent(in) :: IPvolume
+
 
   geometry_plastic_nonlocal_IPvolume0 = IPvolume
 
@@ -63,11 +64,12 @@ end subroutine geometry_plastic_nonlocal_setIPvolume
 
 !---------------------------------------------------------------------------------------------------
 !> @brief Set the initial areas of the unit triangle/unit quadrilateral/tetrahedron/hexahedron
-!         encompassing an integration point
+!         encompassing an integration point.
 !---------------------------------------------------------------------------------------------------
 subroutine geometry_plastic_nonlocal_setIParea(IParea)
 
   real(pREAL), dimension(:,:,:), intent(in) :: IParea
+
 
   geometry_plastic_nonlocal_IParea0 = IParea
 
@@ -82,13 +84,14 @@ subroutine geometry_plastic_nonlocal_setIPareaNormal(IPareaNormal)
 
   real(pREAL), dimension(:,:,:,:), intent(in) :: IPareaNormal
 
+
   geometry_plastic_nonlocal_IPareaNormal0 = IPareaNormal
 
 end subroutine geometry_plastic_nonlocal_setIPareaNormal
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Free memory used by variables only needed by plastic_nonlocal
+!> @brief Free memory used by variables only needed by plastic_nonlocal.
 !---------------------------------------------------------------------------------------------------
 subroutine geometry_plastic_nonlocal_disable
 
@@ -108,11 +111,12 @@ end subroutine geometry_plastic_nonlocal_disable
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Write geometry data to results file
+!> @brief Write geometry data to results file.
 !---------------------------------------------------------------------------------------------------
 subroutine geometry_plastic_nonlocal_result()
 
-  integer,     dimension(:),   allocatable :: shp
+  integer, dimension(:), allocatable :: shp
+
 
   call result_openJobFile()
 

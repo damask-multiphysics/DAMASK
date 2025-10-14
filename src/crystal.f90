@@ -2167,7 +2167,7 @@ end function getlabels
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Equivalent Poisson's ratio (ν).
-!> @details https://doi.org/10.1143/JPSJ.20.635
+!> @details https://doi.org/10.1088/0370-1298/65/5/307
 !--------------------------------------------------------------------------------------------------
 pure function crystal_isotropic_nu(C,assumption,lattice) result(nu)
 
@@ -2181,15 +2181,20 @@ pure function crystal_isotropic_nu(C,assumption,lattice) result(nu)
   real(pREAL), dimension(6,6)   :: S
 
 
-  if     (assumption == 'isostrain') then
-    K = sum(C(1:3,1:3)) / 9.0_pREAL
-  elseif (assumption == 'isostress') then
-    call math_invert(S,error,C)
-    if (error) error stop 'matrix inversion failed'
-    K = 1.0_pREAL / sum(S(1:3,1:3))
-  else
-    error stop 'invalid assumption'
-  end if
+  select case(misc_optional(lattice,''))
+    case('cF','cI')
+      K = (C(1,1) + C(1,2)*2.0_pREAL)/3.0_pREAL                                                     ! eq (9a)
+    case default
+      if     (assumption == 'isostrain') then
+        K = sum(C(1:3,1:3)) / 9.0_pREAL                                                             ! eq (6a)
+      elseif (assumption == 'isostress') then
+        call math_invert(S,error,C)
+        if (error) error stop 'matrix inversion failed'
+        K = 1.0_pREAL / sum(S(1:3,1:3))                                                             ! eq (7a)
+     else
+       error stop 'invalid assumption'
+     end if
+  end select
 
   mu = crystal_isotropic_mu(C,assumption,lattice)
   nu = (1.5_pREAL*K-mu)/(3.0_pREAL*K+mu)
@@ -2199,8 +2204,7 @@ end function crystal_isotropic_nu
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Equivalent shear modulus (μ).
-!> @details https://doi.org/10.1143/JPSJ.20.635
-!> @details Nonlinear Mechanics of Crystals 10.1007/978-94-007-0350-6, pp 563
+!> @details https://doi.org/10.1088/0370-1298/65/5/307
 !--------------------------------------------------------------------------------------------------
 pure function crystal_isotropic_mu(C,assumption,lattice) result(mu)
 
@@ -2214,27 +2218,27 @@ pure function crystal_isotropic_mu(C,assumption,lattice) result(mu)
 
 
   if     (assumption == 'isostrain') then
-      select case(misc_optional(lattice,''))
-        case('cF','cI')
-          mu = ( C(1,1) - C(1,2) + C(4,4)*3.0_pREAL) / 5.0_pREAL
-        case default
-          mu = (  C(1,1)+C(2,2)+C(3,3) &
-                - C(1,2)-C(2,3)-C(1,3) &
-                +(C(4,4)+C(5,5)+C(6,6)) * 3.0_pREAL &
-               ) / 15.0_pREAL
-      end select
+    select case(misc_optional(lattice,''))
+      case('cF','cI')
+        mu = ( C(1,1) - C(1,2) + C(4,4)*3.0_pREAL) / 5.0_pREAL                                      ! eq (9b)
+      case default
+        mu = (  C(1,1)+C(2,2)+C(3,3) &
+              - C(1,2)-C(2,3)-C(1,3) &
+              +(C(4,4)+C(5,5)+C(6,6)) * 3.0_pREAL &
+             ) / 15.0_pREAL                                                                         ! eq (6b)
+    end select
 
   elseif (assumption == 'isostress') then
-      select case(misc_optional(lattice,''))
-        case('cF','cI')
-          mu = 5.0_pREAL &
-               / (4.0_pREAL/(C(1,1)-C(1,2)) + 3.0_pREAL/C(4,4))
-        case default
-          call math_invert(S,error,C)
-          if (error) error stop 'matrix inversion failed'
-          mu = 15.0_pREAL &
-              / (4.0_pREAL*(S(1,1)+S(2,2)+S(3,3)-S(1,2)-S(2,3)-S(1,3)) + 3.0_pREAL*(S(4,4)+S(5,5)+S(6,6)))
-      end select
+    select case(misc_optional(lattice,''))
+      case('cF','cI')
+        mu = 5.0_pREAL &
+           / (4.0_pREAL/(C(1,1)-C(1,2)) + 3.0_pREAL/C(4,4))                                         ! eq (9c), (8a), (8c)
+      case default
+        call math_invert(S,error,C)
+        if (error) error stop 'matrix inversion failed'
+        mu = 15.0_pREAL &
+           / (4.0_pREAL*(S(1,1)+S(2,2)+S(3,3)-S(1,2)-S(2,3)-S(1,3)) + 3.0_pREAL*(S(4,4)+S(5,5)+S(6,6))) ! eq (7b)
+    end select
   else
     error stop 'invalid assumption'
   end if

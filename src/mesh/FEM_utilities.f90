@@ -77,13 +77,12 @@ subroutine FEM_utilities_init(num_mesh)
 
   type(tDict), pointer :: &
     num_mech
-  character(len=pSTRLEN) :: petsc_optionsOrder
   character(len=:), allocatable :: &
     petsc_options
   integer :: &
     p_s, &                                                                                          !< order of shape functions
     p_i                                                                                             !< integration order (quadrature rule)
-  PetscErrorCode :: err_PETSc
+  PetscErrorCode  :: err_PETSc
 
 
   print'(/,1x,a)',   '<<<+-  FEM_utilities init  -+>>>'
@@ -93,7 +92,7 @@ subroutine FEM_utilities_init(num_mesh)
   p_s = num_mesh%get_asInt('p_s',defaultVal = 2)
   p_i = num_mesh%get_asInt('p_i',defaultVal = p_s)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18)
+#if (PETSC_VERSION_MINOR>=18)
   if (p_s < 1) &
 #else
   if (p_s < 1 .or. p_s > size(FEM_nQuadrature,2)) &
@@ -105,13 +104,13 @@ subroutine FEM_utilities_init(num_mesh)
   flush(IO_STDOUT)
 
   petsc_options = misc_prefixOptions('-snes_type newtonls &
-                                     &-ksp_type gmres -ksp_max_it 25 &
+                                     &-ksp_type gmres -ksp_max_it 25 -pc_type eisenstat &
                                      &-snes_ksp_ew -snes_ksp_ew_rtol0 0.01 -snes_ksp_ew_rtolmax 0.01 &
-                                     &-pc_type eisenstat '//&
+                                     &-petscspace_degree ' // IO_intAsStr(p_s) // ' &
+                                     &-petscdualspace_lagrange_node_type equispaced &
+                                     &-petscdualspace_lagrange_node_endpoints 1 '// &
                                      num_mech%get_asStr('PETSc_options',defaultVal=''),&
                                      'mechanical_')
-  write(petsc_optionsOrder,'(a,i0)') '-mechanical_petscspace_degree ', p_s
-  petsc_options = petsc_options // ' ' // petsc_optionsOrder
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
 

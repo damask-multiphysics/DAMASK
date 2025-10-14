@@ -42,7 +42,7 @@ CLI::CLI(int* argc, char* argv[], int* worldrank) {
 
   init_print();
 
-  po::options_description flags("Flags");
+  po::options_description flags(" Valid command line flags");
   flags.add_options()
     ("help,h", "show help")
     ("geometry,g",         po::value<std::string>(&arg_geom)->value_name("[ --geom ]"),         "geometry file")
@@ -61,17 +61,50 @@ CLI::CLI(int* argc, char* argv[], int* worldrank) {
   po::store(po::parse_command_line(*argc, argv, flags), vm);
   po::notify(vm);
 
+  /**
+   * @brief Helper method to remove leading equal from argument string.
+   *
+   * Required for backward compatibility, remove for DAMASK 4.0
+   *
+   * @param[in] path_str
+   */
+  auto remove_leading_equal = [](const std::string& arg) -> std::string {
+    return arg.length() > 0 && arg.at(0) == '=' ? arg.substr(1):arg;
+  };
+
+  /**
+   * @brief Get stem for path.
+   * @param[in] path_str
+   */
+  auto stem = [](const std::string& path_str) -> std::string {
+    fs::path p(path_str);
+    return p.stem().string();
+  };
+
+  /* Get username */
+  auto get_username = []() -> std::string {
+    struct passwd *pw = getpwuid(getuid());
+    return std::string(pw != nullptr ? pw->pw_name:"n/a (Error getting username)");
+  };
+
+  /**
+   * @brief Generate an UUID.
+   */
+  auto generate_uuid = []() -> std::string {
+    return boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+  };
+
   if (vm.count("help") || *argc == 1) {
     CLI::help_print(flags);
     std::exit(0);
   }
 
-  geom_path = remove_trailing_equal(arg_geom);
-  loadfile_path = remove_trailing_equal(arg_load);
-  material_path = remove_trailing_equal(arg_material);
+  geom_path = remove_leading_equal(arg_geom);
+  loadfile_path = remove_leading_equal(arg_load);
+  material_path = remove_leading_equal(arg_material);
 
   if (!arg_numerics.empty())
-    numerics_path = remove_trailing_equal(arg_numerics);
+    numerics_path = remove_leading_equal(arg_numerics);
 
   if (!arg_jobname.empty())
     jobname = arg_jobname;
@@ -82,7 +115,7 @@ CLI::CLI(int* argc, char* argv[], int* worldrank) {
   }
 
   if (!arg_wd.empty()) {
-    fs::current_path(remove_trailing_equal(arg_wd));
+    fs::current_path(remove_leading_equal(arg_wd));
   }
 
   if (arg_rs != -1)
@@ -137,15 +170,15 @@ void CLI::init_print() {
 
 #ifdef GRID
   cout << IO_color({123,207,68});
-  cout << "Grid solver" << std::endl << std::endl;
+  cout << " Grid solver" << std::endl << std::endl;
 #elif defined(MESH)
   cout << IO_color({230,150,68});
-  cout << "Mesh solver" << std::endl << std::endl;
+  cout << " Mesh solver" << std::endl << std::endl;
 #endif
 
 #ifdef DEBUG
   cout << IO_color({255,0,0});
-  cout << "debug version - debug version - debug version - debug version - debug version" << std::endl << std::endl;
+  cout << " debug version - debug version - debug version - debug version - debug version" << std::endl << std::endl;
 #endif
 
   cout << IO_color_reset();
@@ -153,7 +186,7 @@ void CLI::init_print() {
        << " https://doi.org/10.1016/j.commatsci.2018.04.030" << std::endl << std::endl;
 
 #define PETSC_MINOR_MIN 15
-#define PETSC_MINOR_MAX 23
+#define PETSC_MINOR_MAX 24
 #if PETSC_VERSION_MAJOR != 3 || PETSC_VERSION_MINOR < PETSC_MINOR_MIN || PETSC_VERSION_MINOR > PETSC_MINOR_MAX
 #error "--  UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION ---"
 #else
@@ -180,13 +213,13 @@ cout << endl;
   cout << " Version: " << DAMASK_VERSION << std::endl << std::endl;
   cout << " Compiled with: ";
 #if defined(__clang__)
-  cout << "Clang version " << __clang_major__ << "." << __clang_minor__ << "."
+  cout << " Clang version " << __clang_major__ << "." << __clang_minor__ << "."
        << __clang_patchlevel__ << std::endl;
 #elif defined(__GNUC__)
-  cout << "GCC version " << __GNUC__ << "." << __GNUC_MINOR__ << "."
+  cout << " GCC version " << __GNUC__ << "." << __GNUC_MINOR__ << "."
        << __GNUC_PATCHLEVEL__ << std::endl;
 #elif defined(__INTEL_COMPILER)
-  cout << "Intel Compiler version "  << __INTEL_COMPILER << "."
+  cout << " Intel Compiler version "  << __INTEL_COMPILER << "."
        << __INTEL_COMPILER_UPDATE << std::endl;
 #endif
   F_printCompileOptions();
@@ -200,101 +233,77 @@ cout << endl;
 void CLI::help_print(const po::options_description& flags) {
   cout <<
 R"(
-#######################################################################
-DAMASK Command Line Interface:
-Düsseldorf Advanced Material Simulation Kit with PETSc-based solvers
-#######################################################################
+ #######################################################################
+ DAMASK Command Line Interface:
+ Düsseldorf Advanced Material Simulation Kit with PETSc-based solvers
+ #######################################################################
 
-Valid command line flags:
 )"
   << flags <<
 R"(
 
------------------------------------------------------------------------
-Mandatory flags:
+ -----------------------------------------------------------------------
+ Mandatory flags:
 
---geom GEOMFILE
+  --geom GEOMFILE
 )"
 #if defined(GRID)
-R"(      Relative or absolute path to a VTK image data file (*.vti)
-      with mandatory "material" field variable.
+R"(
+       Relative or absolute path to a VTK image data file (*.vti)
+       with mandatory "material" field variable.
 )"
 #elif defined(MESH)
-R"(      Relative or absolute path to a Gmsh file (*.msh)
-      with definitions of physical groups/tags for material IDs
-      and boundary conditions.
+R"(
+       Relative or absolute path to a Gmsh file (*.msh)
+       with definitions of physical groups/tags for material IDs
+       and boundary conditions.
 )"
 #endif
 R"(
---load LOADFILE
-      Relative or absolute path to a load case definition
-      in YAML format.
+  --load LOADFILE
+       Relative or absolute path to a load case definition
+       in YAML format.
 
---material MATERIALFILE
-      Relative or absolute path to a material configuration
-      in YAML format.
+  --material MATERIALFILE
+       Relative or absolute path to a material configuration
+       in YAML format.
 
------------------------------------------------------------------------
-Optional flags:
+ -----------------------------------------------------------------------
+ Optional flags:
 
---numerics NUMERICSFILE
-      Relative or absolute path to a numerics configuration
-      in YAML format.
+  --numerics NUMERICSFILE
+       Relative or absolute path to a numerics configuration
+       in YAML format.
 
---jobname JOBNAME
-      Job name, defaults to GEOM_LOAD_MATERIAL[_NUMERICS].
+  --jobname JOBNAME
+       Job name, defaults to GEOM_LOAD_MATERIAL[_NUMERICS].
 
---workingdir WORKINGDIRECTORY
-      Working directory, defaults to current directory and
-      serves as base directory of relative paths.
+  --workingdir WORKINGDIRECTORY
+       Working directory, defaults to current directory and
+       serves as base directory of relative paths.
 )"
 #ifdef GRID
 R"(
---restart N
-      Restart simulation from given increment.
-      Read in increment N and, based on this, continue with
-      calculating increments N+1, N+2, ...
-      Requires restart information for increment N to be present in
-      JOBNAME_restart.hdf5 and will append subsequent results to
-      existing file JOBNAME.hdf5.
+  --restart N
+       Restart simulation from given increment.
+       Read in increment N and, based on this, continue with
+       calculating increments N+1, N+2, ...
+       Requires restart information for increment N to be present in
+       JOBNAME_restart.hdf5 and will append subsequent results to
+       existing file JOBNAME.hdf5.
 )"
 #endif
 R"(
------------------------------------------------------------------------
-Help:
+ -----------------------------------------------------------------------
+ Help:
 
---help
-      Display help and exit.
+  --help
+       Display help and exit.
 
-#######################################################################
+ #######################################################################
 )" << std::endl;
 }
 
-std::string CLI::remove_trailing_equal(const std::string& arg) {
-  if (arg.length() > 0 && arg.at(0) == '=') {
-    return arg.substr(1);
-  }
-  return arg;
-}
-
-std::string CLI::stem(const std::string& path_str) {
-  fs::path p(path_str);
-  return p.stem().string();
-}
-
-std::string CLI::get_username() {
-  struct passwd *pw = getpwuid(getuid());
-  if (pw != nullptr) {
-    return std::string(pw->pw_name);
-  } else {
-    return "n/a (Error getting username)";
-  }
-}
-
-std::string CLI::generate_uuid() {
-  return boost::lexical_cast<std::string>(
-          boost::uuids::random_generator()());
-}
 
 extern "C" {
 

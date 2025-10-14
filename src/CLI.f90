@@ -6,10 +6,10 @@
 !> @brief Parse command line interface for PETSc-based solvers
 !--------------------------------------------------------------------------------------------------
 #define PETSC_MINOR_MIN 15
-#define PETSC_MINOR_MAX 23
+#define PETSC_MINOR_MAX 24
 
 module CLI
-  use, intrinsic :: ISO_fortran_env
+  use, intrinsic :: ISO_Fortran_env
   use, intrinsic :: ISO_C_binding
 
   use PETScSys
@@ -31,7 +31,7 @@ module CLI
     CLI_jobName, &                                                                                  !< name of the job (will be used for DADF5 result file)
     CLI_jobID                                                                                       !< unique job ID (UUID)
 
-#ifdef BOOST
+#if (defined(BOOST) && !defined(OLD_STYLE_C_TO_FORTRAN_STRING))
    type :: tCLIBuffer
       character(len=:, kind=C_CHAR), pointer :: buf
    end type tCLIBuffer
@@ -46,7 +46,7 @@ module CLI
 
 interface
   function C_CLI__new(argc, argv, worldrank) result(this) bind(C, name='CLI__new')
-    use, intrinsic :: iso_c_binding, only: C_INT, C_PTR
+    use, intrinsic :: ISO_C_binding, only: C_INT, C_PTR
     integer(C_INT), intent(in) :: argc
     type(C_PTR),    intent(in) :: argv(*) ! MD I think this should be dimension(:), but wait for working ifx
     integer(C_INT), intent(in) :: worldrank
@@ -55,7 +55,7 @@ interface
 
   subroutine C_CLI_getParsedArgs(cli, geom, load, material, numerics, jobname, uuid, restart, stat) &
       bind(C, name='CLI_getParsedArgs')
-    use iso_c_binding
+    use ISO_C_binding
     type(C_PTR), value :: cli
     character(kind=C_CHAR,len=:), allocatable, intent(out) :: geom, load, material, numerics, jobname, uuid
     integer(C_INT), intent(out) :: restart, stat
@@ -70,8 +70,8 @@ public :: &
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initialize the solver by interpreting the command line arguments. Write
-!! information on computation to screen
+!> @brief Initialize the solver by interpreting the command line arguments and write
+!!        information on computation to screen.
 !--------------------------------------------------------------------------------------------------
 subroutine CLI_init()
 #include <petsc/finclude/petscsys.h>
@@ -106,7 +106,7 @@ subroutine CLI_init()
 #ifdef PETSC_DOI
   character(len=*), parameter :: PETSc_DOI = PETSC_DOI
 #endif
-#ifdef BOOST
+#if (defined(BOOST) && !defined(OLD_STYLE_C_TO_FORTRAN_STRING))
   type(C_PTR) :: CLI_ = C_NULL_PTR
   type(tCLIArgs) :: cliArgs
   integer(C_INT) :: stat
@@ -114,8 +114,8 @@ subroutine CLI_init()
 
   print'(/,1x,a)', '<<<+-  CLI init  -+>>>'
 
-#ifdef BOOST
-  print'(a)', 'Using boost, experimental C++ feature'
+#if (defined(BOOST) && !defined(OLD_STYLE_C_TO_FORTRAN_STRING))
+  print'(/,1x,a)', 'Using C++ parser'
 
   call cliArgs%copyCommandLineArgs()
   ! https://fortran-lang.discourse.group/t/c-interoperability-command-line-arguments/5773/7
@@ -125,7 +125,7 @@ subroutine CLI_init()
   if (stat /= 0) error stop 'could not collect parsed args from CLI.cpp'
   call parallelization_bcast_str(CLI_jobID)
 #else
-  print'(a)', 'Using classic Fortran CLI parser'
+  print'(/,1x,a)', 'Using Fortran parser'
   workingDirArg = OS_getCWD()
  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
 #ifdef DEBUG
@@ -242,7 +242,7 @@ subroutine CLI_init()
   if (allocated(numericsArg)) &
     print'(1x,a)',      'Numerics config:    '//IO_glueDiffering(CLI_numericsFile,numericsArg)
   print'(1x,a)',        'Job name:           '//CLI_jobName
-#ifdef BOOST
+#if (defined(BOOST) && !defined(OLD_STYLE_C_TO_FORTRAN_STRING))
   print'(1x,a)',        'Job ID:             '//CLI_jobID
 #endif
   if (CLI_restartInc > 0) &
@@ -314,7 +314,7 @@ subroutine printCompileOptions() bind(C, name="F_printCompileOptions")
 
 end subroutine printCompileOptions
 
-#ifdef BOOST
+#if (defined(BOOST) && !defined(OLD_STYLE_C_TO_FORTRAN_STRING))
 !--------------------------------------------------------------------------------------------------
 !> @brief Copy command line args to c strings for boost-processing,
 !         allocate one extra element for the NULL termination.

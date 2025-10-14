@@ -12,8 +12,8 @@ variables:
   GIT_SUBMODULE_STRATEGY: normal
   # Shortcut names
   MARC_VERSION: '2025.1'
-  PETSC_GCC_LATEST: '2025.05.27'
-  PETSC_ONEAPI_LATEST: '2025.06.12'
+  PETSC_GCC_LATEST: '2025.09.30'
+  PETSC_ONEAPI_LATEST: '2025.09.30'
 
 
 ####################################################################################################
@@ -40,20 +40,46 @@ workflow:
 # Check Source
 ####################################################################################################
 
-core_compile_all_commits:
+.check_source:
+  extends: .on_merge_without_squash
   stage: check_source
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:${PETSC_GCC_LATEST}
   variables:
     GIT_DEPTH: 0
-  allow_failure: false
-  extends:
-    - .on_merge_without_squash
+  allow_failure: true
+
+
+.core:
+  extends: .check_source
   script:
     - |
-      for COMMIT in $(git log --reverse --format=format:%H origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME..$CI_COMMIT_SHA); do
-        echo $COMMIT
+      COMMITS=$(git log --reverse --format=format:%H origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME..$CI_COMMIT_SHA)
+      for COMMIT in ${COMMITS};do
+        echo ${COMMIT}
+        git checkout ${COMMIT}
+        cmake -DDAMASK_SOLVER=grid -B build/grid && cmake --build build/grid --parallel 4 --target install
+        cmake -DDAMASK_SOLVER=mesh -B build/mesh && cmake --build build/mesh --parallel 4 --target install
       done
 
+core_GCC:
+  extends: .core
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:${PETSC_GCC_LATEST}
+
+core_oneAPI:
+  extends: .core
+  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:${PETSC_ONEAPI_LATEST}
+
+
+processing:
+  extends: .check_source
+  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:${PETSC_GCC_LATEST}
+  script:
+    - |
+      source env/DAMASK.sh
+      COMMITS=$(git log --reverse --format=format:%H origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME..$CI_COMMIT_SHA)
+      for COMMIT in ${COMMITS};do
+        echo ${COMMIT}
+        python -c 'import damask;print(damask.__version__)'
+      done
 
 ####################################################################################################
 # Processing
