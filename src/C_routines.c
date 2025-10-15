@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
 #include <string.h>
@@ -14,6 +15,7 @@
 #include <libfyaml.h>
 #endif
 
+#ifndef MARC_SOURCE
 extern bool f_sigint, f_sigusr1, f_sigusr2;
 
 static void signalHandler(int signum) {
@@ -27,7 +29,7 @@ void init_signal_c() {
   signal(SIGUSR1, signalHandler);
   signal(SIGUSR2, signalHandler);
 }
-
+#endif
 
 int set_cwd_c(const char *cwd){
   return chdir(cwd);

@@ -1,6 +1,6 @@
 ---
 +++
-@@ -91,6 +91,7 @@
+@@ -91,6 +91,7 @@ if [ "$srcfile" != "" -a "$srcfile" != "-" ]; then
        srcfile="-u $srcfile -save y"
        ;;
      runsaved)
@@ -8,9 +8,7 @@
        srcfile="-prog $srcfile"
        ;;
    esac
-@@ -190,14 +191,14 @@
- unset LD_LIBRARY_PATH
- 
+@@ -192,12 +193,12 @@ unset LD_LIBRARY_PATH
  if [ "$slv" = "pch" ]; then # create pch file
    "${DIR}/tools/run_marc" -j $job $srcfile -b n -bdf 2
  elif [ "$doe_first" = "-" ]; then # submit of regular Marc job
