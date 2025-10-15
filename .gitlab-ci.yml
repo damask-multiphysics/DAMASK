@@ -14,7 +14,7 @@ variables:
   MARC_VERSION: '2024.1'
   PETSC_GCC_LATEST: '2025.09.30'
   PETSC_ONEAPI_LATEST: '2025.09.30'
-
+  PYTHON_LATEST: '2025.06.05'
 
 ####################################################################################################
 # https://docs.gitlab.com/ci/yaml/workflow
@@ -27,6 +27,9 @@ workflow:
   auto_cancel:
     on_job_failure: all
 
+
+####################################################################################################
+# reusable building blocks for common tasks
 .on_merge:
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
@@ -35,9 +38,89 @@ workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_SQUASH_ON_MERGE != 'true'
 
+.registry:
+  image: git.damask-multiphysics.org:5050/damask/damask/${IMAGE}
 
 ####################################################################################################
-# Check Source
+# images
+.petsc_gcc_default:
+  extends: .registry
+  variables:
+    IMAGE: gcc_petsc-default:${PETSC_GCC_LATEST}
+
+.petsc_gcc_debug:
+  extends: .registry
+  variables:
+    IMAGE: gcc_petsc-debug:${PETSC_GCC_LATEST}
+
+.petsc_gcc_debug_previous:
+  extends: .registry
+  parallel:
+    matrix:
+      - IMAGE:
+          - gcc_petsc-debug:2025.05.27
+          - gcc_petsc-debug:2025.03.10
+
+.petsc_oneapi_default:
+  extends: .registry
+  variables:
+    IMAGE: oneapi_petsc-default:${PETSC_ONEAPI_LATEST}
+
+.petsc_oneapi_debug:
+  extends: .registry
+  variables:
+    IMAGE: oneapi_petsc-debug:${PETSC_ONEAPI_LATEST}
+
+.petsc_oneapi_performance:
+  extends: .registry
+  variables:
+    IMAGE: oneapi_petsc-default:2025.09.30
+
+.petsc_oneapi_debug_previous:
+  extends: .registry
+  parallel:
+    matrix:
+      - IMAGE:
+          - oneapi_petsc-debug:2025.06.12
+          - oneapi_petsc-debug:2025.03.27
+
+.petsc:
+  extends: .registry
+  parallel:
+    matrix:
+      - IMAGE:
+          - gcc_petsc-default:${PETSC_GCC_LATEST}
+          - gcc_petsc-i64:${PETSC_GCC_LATEST}
+          - oneapi_petsc-default:${PETSC_ONEAPI_LATEST}
+
+.petsc_previous:
+  extends: .registry
+  parallel:
+    matrix:
+      - IMAGE:
+          - gcc_petsc-default:2025.05.27
+          - gcc_petsc-i64:2025.05.27
+          - oneapi_petsc-default:2025.06.12
+          - gcc_petsc-default:2025.03.10
+          - gcc_petsc-i64:2025.03.10
+          - oneapi_petsc-default:2025.03.27
+
+.python:
+  extends: .registry
+  variables:
+    IMAGE: python:${PYTHON_LATEST}
+
+.python_previous:
+  extends: .registry
+  parallel:
+    matrix:
+      - IMAGE:
+          - python:2025.01.05
+          - python:310_2412
+
+
+####################################################################################################
+# Check Source: compile (core) or import (processing) of each commit in a merge request w/o squash
 ####################################################################################################
 
 .check_source:
@@ -47,12 +130,11 @@ workflow:
     GIT_DEPTH: 0
   allow_failure: true
 
-
-.core:
-  extends: .check_source
+core:
+  extends: [.check_source, .petsc]
   script:
     - |
-      COMMITS=$(git log --reverse --format=format:%H origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME..$CI_COMMIT_SHA)
+      COMMITS=$(git log --reverse --format=format:%H origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}..${CI_COMMIT_SHA}~)
       for COMMIT in ${COMMITS};do
         echo ${COMMIT}
         git checkout ${COMMIT}
@@ -60,18 +142,9 @@ workflow:
         cmake -DDAMASK_SOLVER=mesh -B build/mesh && cmake --build build/mesh --parallel 4 --target install
       done
 
-core_GCC:
-  extends: .core
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:${PETSC_GCC_LATEST}
-
-core_oneAPI:
-  extends: .core
-  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:${PETSC_ONEAPI_LATEST}
-
 
 processing:
-  extends: .check_source
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:${PETSC_GCC_LATEST}
+  extends: [.check_source, .petsc_gcc_default]
   script:
     - |
       source env/DAMASK.sh
@@ -82,49 +155,37 @@ processing:
       done
 
 ####################################################################################################
-# Processing
+# Processing: pre- and post-processing tools written in Python
 ####################################################################################################
 
-.python_base:
+.processing:
   stage: processing
-  image: git.damask-multiphysics.org:5050/damask/damask/python:$PYTHON_IMAGE
   before_script:
     - python --version
     - pip list
 
-.python_default:
-  extends: .python_base
-  variables: {PYTHON_IMAGE: 2025.06.05}
-
-.python_earliest:
-  extends: .python_base
-  variables: {PYTHON_IMAGE: '310_2412'}
-
 mypy:
-  extends: .python_default
+  extends: [.processing, .python]
   script:
     - cd python
     - mypy damask
 
 .create_package:
+  extends: .processing
   script:
     - sed -i 's/-[[:digit:]]*-.*//' VERSION
     - cd python
     - python3 -m build --wheel --no-isolation
 
 create_package:
-  extends:
-    - .create_package
-    - .python_default
+  extends: [.create_package, .python]
 
-create_package_earliest:
-  extends:
-    - .create_package
-    - .python_earliest
-    - .on_merge
+create_package_previous:
+  extends: [.create_package, .python_previous, .on_merge]
 
 
 .pytest:
+  extends: .processing
   script:
     - export DAMASK_ROOT=$(pwd)
     - PYTHONPATH=${DAMASK_ROOT}/python:$PYTHONPATH
@@ -133,19 +194,14 @@ create_package_earliest:
     - coverage report --fail-under=90 --show-missing
 
 pytest:
-  extends:
-    - .pytest
-    - .python_default
+  extends: [.pytest, .python]
 
-pytest_earliest:
-  extends:
-    - .pytest
-    - .python_earliest
-    - .on_merge
+pytest_previous:
+  extends: [.pytest, .python_previous, .on_merge]
 
 
 doctest:
-  extends: .python_default
+  extends: [.processing, .python]
   script:
     - export DAMASK_ROOT=$(pwd)
     - PYTHONPATH=${DAMASK_ROOT}/python:${PYTHONPATH}
@@ -158,12 +214,12 @@ doctest:
 
 
 ####################################################################################################
-# Core
+# Core: DAMASK core written in Fortran, C++, and C
 ####################################################################################################
 
 open-source:
   stage: core
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:${PETSC_GCC_LATEST}
+  extends: .petsc_gcc_default
   tags:
     - long_running
   needs: []
@@ -186,65 +242,40 @@ open-source:
     matrix:
       - BUILD_TYPE: [DEBUG, RELEASE, PERFORMANCE]
 
-.unittest_GCC:
+.unittest_gcc:
   extends: .unittest
   before_script:
     - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=-coverage
     - cmake --build builddir --target install
 
-.unittest_oneAPI:
+.unittest_oneapi:
   extends: .unittest
   before_script:
     - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
     - cmake --build builddir --target install
 
 
-unittest_GCC:
-  extends: .unittest_GCC
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-debug:${PETSC_GCC_LATEST}
+unittest_gcc:
+  extends: [.unittest_gcc, .petsc_gcc_debug]
 
-unittest_oneAPI:
-  extends: .unittest_oneAPI
-  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-debug:${PETSC_ONEAPI_LATEST}
+unittest_oneapi:
+  extends: [.unittest_oneapi, .petsc_oneapi_debug]
 
 
-unittest_GCC_earliest:
-  extends:
-    - .unittest_GCC
-    - .on_merge
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-debug:2025.03.10
+unittest_gcc_previous:
+  extends: [.unittest_gcc, .petsc_gcc_debug_previous, .on_merge]
 
-unittest_oneAPI_earliest:
-  extends:
-    - .unittest_oneAPI
-    - .on_merge
-  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-debug:2025.03.27
+unittest_oneapi_previous:
+  extends: [.unittest_oneapi, .petsc_oneapi_debug_previous, .on_merge]
 
 
 .compile:
   stage: core
-  image: git.damask-multiphysics.org:5050/damask/damask/${PETSC_IMAGE}
   before_script:
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
     - head -n 10 /petsc/include/petscversion.h | tail -n 6
     - source env/DAMASK.sh
     - cd PRIVATE/testing
-
-.petsc_latest:
-  parallel:
-    matrix:
-      - PETSC_IMAGE:
-          - gcc_petsc-default:${PETSC_GCC_LATEST}
-          - gcc_petsc-i64:${PETSC_GCC_LATEST}
-          - oneapi_petsc-default:${PETSC_ONEAPI_LATEST}
-
-.petsc_earliest:
-  parallel:
-    matrix:
-      - PETSC_IMAGE:
-          - gcc_petsc-default:2025.03.10
-          - gcc_petsc-i64:2025.03.10
-          - oneapi_petsc-default:2025.03.27
 
 .compile_grid:
   extends: .compile
@@ -257,26 +288,16 @@ unittest_oneAPI_earliest:
     - pytest -v -k 'compile and mesh'
 
 compile_grid:
-  extends:
-    - .compile_grid
-    - .petsc_latest
+  extends: [.compile_grid, .petsc]
 
 compile_mesh:
-  extends:
-    - .compile_mesh
-    - .petsc_latest
+  extends: [.compile_mesh, .petsc]
 
-compile_grid_earliest:
-  extends:
-    - .compile_grid
-    - .petsc_earliest
-    - .on_merge
+compile_grid_previous:
+  extends: [.compile_grid, .petsc_previous, .on_merge]
 
-compile_mesh_earliest:
-  extends:
-    - .compile_mesh
-    - .petsc_earliest
-    - .on_merge
+compile_mesh_previous:
+  extends: [.compile_mesh, .petsc_previous, .on_merge]
 
 Marc_patch:
   stage: core
@@ -310,14 +331,11 @@ Marc_compile:
   script:
     - python3 -X faulthandler -m pytest -p no:faulthandler -v -k configexamples                     # https://blog.xmatthias.com/post/pytest-debug-segfault/
 
-configexamples_debug_GCC:
-  extends: .configexamples_debug
-  image: git.damask-multiphysics.org:5050/damask/damask/gcc_petsc-default:${PETSC_GCC_LATEST}
+configexamples_debug_gcc:
+  extends: [.configexamples_debug, .petsc_gcc_default]
 
-configexamples_debug_oneAPI:
-  extends: .configexamples_debug
-  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:${PETSC_ONEAPI_LATEST}
-
+configexamples_debug_oneapi:
+  extends: [.configexamples_debug, .petsc_oneapi_default]
 
 Marc_run:
   stage: core
@@ -336,7 +354,7 @@ Marc_run:
 
 grid_performance:
   stage: core
-  image: git.damask-multiphysics.org:5050/damask/damask/oneapi_petsc-default:${PETSC_ONEAPI_LATEST}
+  extends: .petsc_oneapi_performance
   tags:
     - matesting
   before_script:
