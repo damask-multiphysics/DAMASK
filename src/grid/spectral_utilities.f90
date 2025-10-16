@@ -363,32 +363,20 @@ subroutine utilities_updateGamma(C)
     !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,xiDyad_cmplx,A,A_inv,err)
     do j = cells2Offset+1, cells2Offset+cells2; do k = 1, cells(3); do i = 1, cells1Red
       if (any([i,j,k] /= 1)) then                                                                   ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
-#ifndef __INTEL_COMPILER
-        do concurrent(l = 1:3, m = 1:3)
+        do l = 1, 3; do m = 1, 3
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,k,j-cells2Offset))*xi1st(m,i,k,j-cells2Offset)
-        end do
-        do concurrent(l = 1:3, m = 1:3)
+        end do; end do
+        do l = 1, 3; do m = 1, 3
           temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pREAL,pREAL)*xiDyad_cmplx)
-        end do
-#else
-        forall(l = 1:3, m = 1:3) &
-          xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,k,j-cells2Offset))*xi1st(m,i,k,j-cells2Offset)
-        forall(l = 1:3, m = 1:3) &
-          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pREAL,pREAL)*xiDyad_cmplx)
-#endif
+        end do; end do
         A(1:3,1:3) = temp33_cmplx%re; A(4:6,4:6) =  temp33_cmplx%re
         A(1:3,4:6) = temp33_cmplx%im; A(4:6,1:3) = -temp33_cmplx%im
         if (abs(math_det33(A(1:3,1:3))) > 1.e-16_pREAL) then
           call math_invert(A_inv, err, A)
           temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pREAL)
-#ifndef __INTEL_COMPILER
-          do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
+          do l = 1, 3; do m = 1, 3; do n = 1, 3; do o = 1, 3
             Gamma_hat(l,m,n,o,i,k,j-cells2Offset) = temp33_cmplx(l,n) * xiDyad_cmplx(o,m)
-          end do
-#else
-          forall(l=1:3, m=1:3, n=1:3, o=1:3) &
-            Gamma_hat(l,m,n,o,i,k,j-cells2Offset) = temp33_cmplx(l,n) * xiDyad_cmplx(o,m)
-#endif
+          end do; end do; end do; end do
         end if
       end if
     end do; end do; end do
@@ -427,37 +415,23 @@ function utilities_GammaConvolution(field, fieldAim) result(gammaField)
     !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,xiDyad_cmplx,A,A_inv,err,Gamma_hat)
     do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
       if (any([i,j+cells2Offset,k] /= 1)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
-#ifndef __INTEL_COMPILER
-        do concurrent(l = 1:3, m = 1:3)
+        do l = 1, 3; do m = 1, 3
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,k,j))*xi1st(m,i,k,j)
-        end do
-        do concurrent(l = 1:3, m = 1:3)
+        end do; end do
+        do l = 1, 3; do m = 1, 3
           temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pREAL,pREAL)*xiDyad_cmplx)
-        end do
-#else
-        forall(l = 1:3, m = 1:3) &
-          xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,k,j))*xi1st(m,i,k,j)
-        forall(l = 1:3, m = 1:3) &
-          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pREAL,pREAL)*xiDyad_cmplx)
-#endif
+        end do; end do
         A(1:3,1:3) = temp33_cmplx%re; A(4:6,4:6) =  temp33_cmplx%re
         A(1:3,4:6) = temp33_cmplx%im; A(4:6,1:3) = -temp33_cmplx%im
         if (abs(math_det33(A(1:3,1:3))) > 1.e-16_pREAL) then
           call math_invert(A_inv, err, A)
           temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pREAL)
-#ifndef __INTEL_COMPILER
-          do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
+          do l = 1, 3; do m = 1, 3; do n = 1, 3; do o = 1, 3
             Gamma_hat(l,m,n,o,1,1,1) = temp33_cmplx(l,n)*xiDyad_cmplx(o,m)
-          end do
-          do concurrent(l = 1:3, m = 1:3)
+          end do; end do; end do; end do
+          do l = 1, 3; do m = 1, 3
             temp33_cmplx(l,m) = sum(Gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,k,j))
-          end do
-#else
-          forall(l=1:3, m=1:3, n=1:3, o=1:3) &
-            Gamma_hat(l,m,n,o,1,1,1) = temp33_cmplx(l,n)*xiDyad_cmplx(o,m)
-          forall(l = 1:3, m = 1:3) &
-            temp33_cmplx(l,m) = sum(Gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,k,j))
-#endif
+          end do; end do
           tensorField_fourier(1:3,1:3,i,k,j) = temp33_cmplx
         else
           tensorField_fourier(1:3,1:3,i,k,j) = cmplx(0.0_pREAL,0.0_pREAL,pREAL)
@@ -468,14 +442,9 @@ function utilities_GammaConvolution(field, fieldAim) result(gammaField)
   else memoryEfficient
     !$OMP PARALLEL DO PRIVATE(l,m,temp33_cmplx)
     do j = 1, cells2;  do k = 1, cells(3);  do i = 1,cells1Red
-#ifndef __INTEL_COMPILER
-      do concurrent(l = 1:3, m = 1:3)
+      do l = 1, 3; do m = 1, 3
         temp33_cmplx(l,m) = sum(Gamma_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
-      end do
-#else
-      forall(l = 1:3, m = 1:3) &
-        temp33_cmplx(l,m) = sum(Gamma_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
-#endif
+      end do; end do
       tensorField_fourier(1:3,1:3,i,k,j) = temp33_cmplx
     end do; end do; end do
     !$OMP END PARALLEL DO
@@ -510,15 +479,9 @@ function G_hat_init() result(G_hat_)
     if (any([i,j+cells2Offset,k] /= 1)) then                                                        ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
       xi_norm_2 = cmplx(abs(dot_product(xi1st(:,i,k,j), xi1st(:,i,k,j))),0.0_pREAL,pREAL)
       if (xi_norm_2%re > 1.e-16_pREAL) then
-#ifndef __INTEL_COMPILER
-        do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
-            G_hat_(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
-        end do
-#else
-        forall(l=1:3, m=1:3, n=1:3, o=1:3)
-            G_hat_(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
-        end forall
-#endif
+        do l = 1, 3; do m = 1, 3; do n = 1, 3; do o = 1, 3
+          G_hat_(l,m,n,o,i,k,j) = delta(l,n)*conjg(-xi1st(m,i,k,j))*xi1st(o,i,k,j)/xi_norm_2
+        end do; end do; end do; end do
       end if
     end if
   end do; end do; end do
@@ -556,15 +519,9 @@ function utilities_G_Convolution(field,stress_mask,fieldAim) result(G_Field)
   !$OMP PARALLEL DO PRIVATE(l,m,temp33_cmplx)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
     if (any([i,j+cells2Offset,k] /= 1)) then                                                        ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
-#ifndef __INTEL_COMPILER
-      do concurrent(l=1:3, m=1:3)
+      do l = 1, 3; do m = 1, 3
         temp33_cmplx(l,m) = sum(G_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
-      end do
-#else
-      forall(l=1:3, m=1:3)
-        temp33_cmplx(l,m) = sum(G_hat(l,m,1:3,1:3,i,k,j)*tensorField_fourier(1:3,1:3,i,k,j))
-      end forall
-#endif
+      end do; end do
       tensorField_fourier(1:3,1:3,i,k,j) = temp33_cmplx
     end if
   end do; end do; end do

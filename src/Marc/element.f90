@@ -151,7 +151,6 @@ module element
   integer, dimension(NIPNEIGHBOR(CELLTYPE(1)),NIP(1)),   parameter :: IPNEIGHBOR1 = &
     reshape([&
       -2,-3,-1  &
-! Note: This fix is for gfortran 9 only. gfortran 8 supports neither, gfortran > 9 both variants
     ],[NIPNEIGHBOR(CELLTYPE(1)),NIP(1)])
 
   integer, dimension(NIPNEIGHBOR(CELLTYPE(2)),NIP(2)),   parameter :: IPNEIGHBOR2 = &
