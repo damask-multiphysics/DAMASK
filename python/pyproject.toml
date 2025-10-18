@@ -72,3 +72,13 @@ exclude = [  # don't report on objects that match any of these regex
 
 [tool.ruff.lint]
 ignore = ['E701','E741']
+
+[tool.mypy]
+warn_redundant_casts = true
+no_implicit_optional = true
+warn_unused_ignores = true
+plugins = 'numpy.typing.mypy_plugin'
+
+[[tool.mypy.overrides]]
+module = ['h5py', 'vtkmodules.*', 'wx']
+ignore_missing_imports = true

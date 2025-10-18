@@ -136,7 +136,7 @@ core:
     - |
       COMMITS=$(git log --reverse --format=format:%H origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}..${CI_COMMIT_SHA}~)
       for COMMIT in ${COMMITS};do
-        printf "%b" "\e[1;32m::\nchecking commit ${COMMIT}\n::.\e[0m\n"
+        printf "%b" "\e[1;32m::\nchecking commit ${COMMIT}\n::\e[0m\n"
         git checkout ${COMMIT}
         cmake -DGRID=ON -DMESH=ON -B build && cmake --build build --parallel 4 --target install
       done

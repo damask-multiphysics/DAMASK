@@ -42,7 +42,7 @@ class MappingsTuple(NamedTuple):
 
 def _read(dataset: h5py._hl.dataset.Dataset) -> np.ndarray:
     """Read a dataset and its metadata into a numpy.ndarray."""
-    dtype = np.dtype(dataset.dtype, metadata=dict(dataset.attrs.items()))                           # type: ignore
+    dtype = np.dtype(dataset.dtype, metadata=dict(dataset.attrs.items()))
     return np.array(dataset, dtype=dtype)
 
 def _read_dt(dataset: h5py._hl.dataset.Dataset) -> np.dtype:
@@ -1597,7 +1597,7 @@ class Result:
 
 
         for group in util.show_progress(groups):
-            if not (result := job_pointwise(group, callback=func, datasets=datasets, args=args)):   # type: ignore
+            if not (result := job_pointwise(group, callback=func, datasets=datasets, args=args)):
                 continue
             with h5py.File(self.fname, 'a') as f:
                 try:
@@ -1740,10 +1740,10 @@ class Result:
         r: dict[str,Any] = {}
 
         constituents_ = map(int,constituents) if isinstance(constituents,Iterable) else \
-                      (range(self.N_constituents) if constituents is None else [constituents])      # type: ignore
+                      (range(self.N_constituents) if constituents is None else [constituents])
 
         suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
-                   [f'#{c}' for c in constituents_]                                                 # type: ignore
+                   [f'#{c}' for c in constituents_]
 
         at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
 
@@ -1780,7 +1780,7 @@ class Result:
                                                             self.N_materialpoints,fill_float,fill_int)
 
                                     for c,suffix in zip(constituents_,suffixes):
-                                        r[inc][ty][field][out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]] # type: ignore
+                                        r[inc][ty][field][out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
 
                                 if ty == 'homogenization':
                                     if out not in r[inc][ty][field].keys():
@@ -1978,7 +1978,7 @@ class Result:
         N_digits = int(np.floor(np.log10(max(1,self._incs[-1]))))+1
 
         constituents_ = constituents if isinstance(constituents,Iterable) else \
-                        (range(self.N_constituents) if constituents is None else [constituents])    # type: ignore
+                        (range(self.N_constituents) if constituents is None else [constituents])
 
         suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
                    [f'#{c}' for c in constituents_]

@@ -425,7 +425,7 @@ class Table:
                 idx = np.ravel_multi_index(tuple(map(int,m.group(2).split(","))),
                                            self.shapes[key])
                 iloc = dup.data.columns.get_loc(key).tolist().index(True) + idx                     # type: ignore
-                dup.data.iloc[:,iloc] = data                                                        # type: ignore
+                dup.data.iloc[:,iloc] = data
             else:
                 dup.data[label]       = data.reshape(dup.data[label].shape)
 
