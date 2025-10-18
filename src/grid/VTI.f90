@@ -436,9 +436,6 @@ pure function getXMLValue(line,key)
   character(len=:), allocatable :: getXMLValue
 
   integer :: s,e
-#ifdef __INTEL_COMPILER
-  character :: q
-#endif
 
 
   s = index(line," "//key,back=.true.)
@@ -450,13 +447,7 @@ pure function getXMLValue(line,key)
       getXMLValue = ''
     else
       s = e
-!https://community.intel.com/t5/Intel-Fortran-Compiler/ICE-for-merge-with-strings/m-p/1207204#M151657
-#ifdef __INTEL_COMPILER
-      q = line(s-1:s-1)
-      e = s + index(line(s:),q) - 1
-#else
       e = s + index(line(s:),merge("'",'"',line(s-1:s-1)=="'")) - 1
-#endif
       getXMLValue = line(s:e-1)
     end if
   end if
