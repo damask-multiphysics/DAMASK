@@ -495,8 +495,8 @@ end function G_hat_init
 !> @details G*field_real = Fourier_inv( G_hat : Fourier(field_real) )
 !> @details Yi: make tensor field compatible
 !> @details G_hat index according to S Lucarini et al. MSMSE 2021
-!> @details fieldAim is for impose dP of stress bc in formResidual
-!> @details fieldAim is not needed for stress bc in formJacobian GK_op
+!> @details fieldAim is for impose dP of stress bc in form_residual
+!> @details fieldAim is not needed for stress bc in form_jacobian GK_op
 !--------------------------------------------------------------------------------------------------
 function utilities_G_Convolution(field,stress_mask,fieldAim) result(G_Field)
 

@@ -38,17 +38,17 @@ module grid_chemical_FDM
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   SNES :: SNES_chemical
-  Vec :: solution_current, solution_lastInc
+  Vec :: mu_vec, mu_lastinc_vec
 
   type, private :: tScal
-    PetscScalar, pointer :: scal(:,:,:,:)
+    PetscReal, pointer :: scal(:,:,:,:)
   end type tScal
 
   real(pREAL), private :: delta(3)
   real(pREAL), dimension(:,:,:,:), allocatable :: &
-    conc_current, &
-    conc_lastInc, &
-    conc_stagInc
+    c, &
+    c_lastinc, &
+    c_staginc
 
   integer :: totalIter = 0                                                                          !< total iteration in current increment
   integer :: N_components
@@ -72,13 +72,11 @@ subroutine grid_chemical_FDM_init(num_grid_chemical)
   PetscInt, dimension(0:worldsize-1) :: cells3_global
   integer :: i, j , k, ce, com
   DM :: DM_chemical
-  PetscScalar, dimension(:,:,:,:), pointer :: mu
+  PetscReal, dimension(:,:,:,:), pointer :: mu
   PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
   real(pREAL), dimension(:,:,:,:), allocatable :: mu_0
-  character(len=:), allocatable :: &
-    extmsg, &
-    petsc_options
+  character(len=:), allocatable :: petsc_options
 
 
   print'(/,1x,a)', '<<<+-  grid_chemical_FDM init  -+>>>'
@@ -120,22 +118,22 @@ subroutine grid_chemical_FDM_init(num_grid_chemical)
   call DMDACreate3D(PETSC_COMM_WORLD, &
          DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, &                        ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
-         int(cells(1),pPetscInt),int(cells(2),pPetscInt),int(cells(3),pPetscInt), &                    ! global grid
+         int(cells(1),pPetscInt),int(cells(2),pPetscInt),int(cells(3),pPetscInt), &                 ! global grid
          1_pPetscInt, 1_pPetscInt, int(worldsize,pPetscInt), &
          int(N_components,pPetscInt), 1_pPetscInt, &                                                ! #dof (mu field), ghost boundary width (domain overlap)
          [int(cells(1),pPetscInt)],[int(cells(2),pPetscInt)],cells3_global, &                                ! local grid
-         DM_chemical,err_PETSc)                                                                   ! handle, error
+         DM_chemical,err_PETSc)                                                                     ! handle, error
   CHKERRQ(err_PETSc)
-  call SNESSetDM(SNES_chemical,DM_chemical,err_PETSc); CHKERRQ(err_PETSc)                         ! connect snes to da
+  call SNESSetDM(SNES_chemical,DM_chemical,err_PETSc); CHKERRQ(err_PETSc)                           ! connect snes to da
   call DMsetFromOptions(DM_chemical,err_PETSc); CHKERRQ(err_PETSc)
   call DMsetUp(DM_chemical,err_PETSc); CHKERRQ(err_PETSc)
-  call DMCreateGlobalVector(DM_chemical,solution_current,err_PETSc)
+  call DMCreateGlobalVector(DM_chemical,mu_vec,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMCreateGlobalVector(DM_chemical,solution_lastInc,err_PETSc)
+  call DMCreateGlobalVector(DM_chemical,mu_lastinc_vec,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMSNESSetFunctionLocal(DM_chemical,formResidual,PETSC_NULL_SNES,err_PETSc)                 ! residual vector of same shape as solution vector
+  call DMSNESSetFunctionLocal(DM_chemical,form_residual,PETSC_NULL_SNES,err_PETSc)                  ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
-  call DMSNESSetJacobianLocal(DM_chemical,formJacobian,PETSC_NULL_SNES,err_PETSc)                 ! function to evaluate stiffness matrix
+  call DMSNESSetJacobianLocal(DM_chemical,form_jacobian,PETSC_NULL_SNES,err_PETSc)                  ! function to evaluate stiffness matrix
   CHKERRQ(err_PETSc)
   call SNESSetMaxLinearSolveFailures(SNES_chemical, huge(1_pPetscInt), err_PETSc)
   CHKERRQ(err_PETSc)
@@ -143,27 +141,27 @@ subroutine grid_chemical_FDM_init(num_grid_chemical)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  call VecSet(solution_current,0.0_pREAL,err_PETSc); CHKERRQ(err_PETSc)
-  call VecSet(solution_lastInc,0.0_pREAL,err_PETSc); CHKERRQ(err_PETSc)
+  call VecSet(mu_vec,0.0_pREAL,err_PETSc); CHKERRQ(err_PETSc)
+  call VecSet(mu_lastinc_vec,0.0_pREAL,err_PETSc); CHKERRQ(err_PETSc)
 
-  allocate(conc_current(1:N_components+1,cells(1),cells(2),cells3),source=0.0_pREAL)
-  allocate(conc_stagInc(1:N_components+1,cells(1),cells(2),cells3),source=0.0_pREAL)
-  allocate(conc_lastInc(1:N_components+1,cells(1),cells(2),cells3),source=0.0_pREAL)
+  allocate(c(1:N_components+1,cells(1),cells(2),cells3),source=0.0_pREAL)
+  allocate(c_staginc(1:N_components+1,cells(1),cells(2),cells3),source=0.0_pREAL)
+  allocate(c_lastinc(1:N_components+1,cells(1),cells(2),cells3),source=0.0_pREAL)
 
-  call DMDAVecGetArray(DM_chemical,solution_current,mu,err_PETSc)
+  call DMDAVecGetArray(DM_chemical,mu_vec,mu,err_PETSc)
   CHKERRQ(err_PETSc)
   ce = 0
   do k = 1,cells3; do j = 1, cells(2); do i = 1, cells(1)
     ce = ce + 1
-    conc_current(:,i,j,k) = homogenization_composition(mu_0(:,i,j,k), 1.0_pREAL, ce)
-    conc_lastInc(:,i,j,k) = conc_current(:,i,j,k)
-    conc_stagInc(:,i,j,k) = conc_current(:,i,j,k)
-    call homogenization_chemical_setField(mu_0(:,i,j,k),conc_current(1:N_components+1,i,j,k), 1.0_pREAL, ce)
+    c(:,i,j,k) = homogenization_composition(mu_0(:,i,j,k), 1.0_pREAL, ce)
+    c_lastinc(:,i,j,k) = c(:,i,j,k)
+    c_staginc(:,i,j,k) = c(:,i,j,k)
+    call homogenization_chemical_setField(mu_0(:,i,j,k),c(1:N_components+1,i,j,k), 1.0_pREAL, ce)
   end do; end do; end do
   mu = mu_0
-  call DMDAVecRestoreArray(DM_chemical,solution_current,mu,err_PETSc)
+  call DMDAVecRestoreArray(DM_chemical,mu_vec,mu,err_PETSc)
   CHKERRQ(err_PETSc)
-  call VecCopy(solution_current,solution_lastInc,err_PETSc)
+  call VecCopy(mu_vec,mu_lastinc_vec,err_PETSc)
   CHKERRQ(err_PETSc)
 
   delta = geomSize/real(cells,pREAL)
@@ -180,7 +178,7 @@ function grid_chemical_FDM_solution(Delta_t) result(solution)
   type(tSolutionState) :: solution
 
   DM :: da_local
-  PetscScalar, pointer :: x_scal(:,:,:,:)
+  PetscReal, pointer :: mu(:,:,:,:)
   integer   :: i, j, k, ce, com
   real(pREAL), dimension(N_components+1) :: conc_min, conc_max, conc_avg, stagNorm
   PetscErrorCode :: err_PETSc
@@ -193,7 +191,7 @@ function grid_chemical_FDM_solution(Delta_t) result(solution)
 ! set module wide availabe data
   Delta_t_ = Delta_t
 
-  call SNESSolve(SNES_chemical,PETSC_NULL_VEC,solution_current,err_PETSc)
+  call SNESSolve(SNES_chemical,PETSC_NULL_VEC,mu_vec,err_PETSc)
   CHKERRQ(err_PETSc)
   call SNESGetConvergedReason(SNES_chemical,reason,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -207,7 +205,7 @@ function grid_chemical_FDM_solution(Delta_t) result(solution)
 
   call SNESGetDM(SNES_chemical,da_local,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArray(da_local,solution_current,x_scal,err_PETSc)
+  call DMDAVecGetArray(da_local,mu_vec,mu,err_PETSc)
   CHKERRQ(err_PETSc)
 
   conc_min(1:N_components+1) =  huge(1.0_pREAL)
@@ -218,12 +216,12 @@ function grid_chemical_FDM_solution(Delta_t) result(solution)
   ce = 0
   do k = 1+cells3offset, cells3+cells3offset; do j = 1, cells(2); do i = 1, cells(1)
     ce = ce + 1
-    conc_current(:,i,j,k-cells3offset) = homogenization_composition(x_scal(0:N_components-1,i-1,j-1,k-1), Delta_t_, ce)
+    c(:,i,j,k-cells3offset) = homogenization_composition(mu(0:N_components-1,i-1,j-1,k-1), Delta_t_, ce)
     do com = 1, N_components+1
-      conc_min(com) = min(conc_min(com),conc_current(com,i,j,k-cells3offset))
-      conc_max(com) = max(conc_max(com),conc_current(com,i,j,k-cells3offset))
-      conc_avg(com) = conc_avg(com) + conc_current(com,i,j,k-cells3offset)
-      stagNorm(com) = max(stagNorm(com),abs(conc_current(com,i,j,k-cells3offset) - conc_stagInc(com,i,j,k-cells3offset)))
+      conc_min(com) = min(conc_min(com),c(com,i,j,k-cells3offset))
+      conc_max(com) = max(conc_max(com),c(com,i,j,k-cells3offset))
+      conc_avg(com) = conc_avg(com) + c(com,i,j,k-cells3offset)
+      stagNorm(com) = max(stagNorm(com),abs(c(com,i,j,k-cells3offset) - c_staginc(com,i,j,k-cells3offset)))
     end do
   end do; end do; end do
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,N_components+1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD,err_MPI)
@@ -235,19 +233,19 @@ function grid_chemical_FDM_solution(Delta_t) result(solution)
   call MPI_Allreduce(MPI_IN_PLACE,conc_min,N_components+1,MPI_DOUBLE,MPI_MIN,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
   solution%stagConverged = all(stagNorm < num%eps_chemical_atol)
-  conc_stagInc = conc_current
+  c_staginc = c
 
 !--------------------------------------------------------------------------------------------------
 ! updating chemical state
   ce = 0
   do k = 1 + cells3offset, cells3+cells3offset; do j = 1, cells(2); do i = 1, cells(1)
     ce = ce + 1
-    call homogenization_chemical_setField(x_scal(0:N_components-1,i-1,j-1,k-1),&
-                                           conc_current(1:N_components+1,i,j,k-cells3offset), &
-                                           Delta_t_, ce)
+    call homogenization_chemical_setField(mu(0:N_components-1,i-1,j-1,k-1),&
+                                          c(1:N_components+1,i,j,k-cells3offset), &
+                                          Delta_t_, ce)
   end do; end do; end do
 
-  call DMDAVecRestoreArray(da_local,solution_current,x_scal,err_PETSc)
+  call DMDAVecRestoreArray(da_local,mu_vec,mu,err_PETSc)
   CHKERRQ(err_PETSc)
   if (solution%converged) then
     print'(/,1x,a)', '... chemical diffusion converged ..................................'
@@ -264,36 +262,76 @@ end function grid_chemical_FDM_solution
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief residual function
+!> @brief forwarding routine
 !--------------------------------------------------------------------------------------------------
-subroutine formResidual(da_local,solution_current_local,residual_current_local,dummy,err_PETSc)
+subroutine grid_chemical_FDM_forward(cutBack)
+
+  logical, intent(in) :: cutBack
+
+  integer :: i, j, k, ce
+  DM :: da_local
+  PetscReal, dimension(:,:,:,:), pointer :: mu
+  PetscErrorCode :: err_PETSc
+
+  if (cutBack) then
+    c = c_lastinc
+    c_staginc = c_lastinc
+
+    call SNESGetDM(SNES_chemical,da_local,err_PETSc)
+    CHKERRQ(err_PETSc)
+    call VecCopy(mu_lastinc_vec,mu_vec,err_PETSc)
+    CHKERRQ(err_PETSc)
+    call DMDAVecGetArray(da_local,mu_vec,mu,err_PETSc)
+    CHKERRQ(err_PETSc)
+    ce = 0
+    do k = 1, cells3offset, cells3+cells3offset; do j = 1, cells(2); do i = 1, cells(1)
+      ce = ce + 1
+      call homogenization_chemical_setField(mu(0:N_components-1,i-1,j-1,k-1),&
+                                           c(1:N_components+1,i,j,k-cells3offset), &
+                                           Delta_t_, ce)
+    end do; end do; end do
+    call DMDAVecRestoreArray(da_local,mu_vec,mu,err_PETSc)
+    CHKERRQ(err_PETSc)
+  else
+    c_lastinc = c
+    call VecCopy(mu_vec,mu_lastinc_vec,err_PETSc)
+    CHKERRQ(err_PETSc)
+  end if
+
+
+end subroutine grid_chemical_FDM_forward
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Construct the residual vector.
+!--------------------------------------------------------------------------------------------------
+subroutine form_residual(da_local,solution_current_local,r_vec,dummy,err_PETSc)
 
   DM  :: da_local
   Vec :: solution_current_local, &
-         residual_current_local
+         r_vec
   PetscObject :: dummy
   PetscErrorCode :: err_PETSc
 
   Vec, dimension(N_components) :: mobility_global, &
                                   mobility_local
   type(tScal),dimension(N_components) :: mobility_scal
-  PetscScalar, dimension(:,:,:,:), pointer :: solution_current_scal, &
-                                              residual_current_scal
-  real(pREAL),dimension(3,N_components)    :: solution_grad_forward, &
-                                              solution_grad_backward, &
-                                              flux_forward, &
-                                              flux_backward
-
+  PetscReal, dimension(:,:,:,:), pointer :: mu, &
+                                            r
+  real(pREAL),dimension(3,N_components) :: mu_grad_forward, &
+                                           mu_grad_backward, &
+                                           flux_forward, &
+                                           flux_backward
   real(pREAL), dimension(3,N_components,N_components) :: mobility_forward, &
                                                          mobility_backward
   integer :: ce, i, j, k, dir, com_i, com_j
-  real(pREAL), dimension(N_components,N_components) ::  mobility
-  real(pREAL) :: norm
+  real(pREAL), dimension(N_components,N_components) :: mobility
 
-  call VecSet(residual_current_local,0.0_pREAL,err_PETSc); CHKERRQ(err_PETSc)
-  call DMDAVecGetArray(da_local,residual_current_local,residual_current_scal,err_PETSc)
+
+  call VecSet(r_vec,0.0_pREAL,err_PETSc); CHKERRQ(err_PETSc)
+  call DMDAVecGetArray(da_local,r_vec,r,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArray(da_local,solution_current_local,solution_current_scal,err_PETSc)
+  call DMDAVecGetArray(da_local,solution_current_local,mu,err_PETSc)
   CHKERRQ(err_PETSc)
 
   do com_i = 1, N_components
@@ -351,18 +389,12 @@ subroutine formResidual(da_local,solution_current_local,residual_current_local,d
     end do
 
     ! get potential gradients
-    solution_grad_forward (1,:)  = (solution_current_scal(:,i+1,j  ,k  ) &
-                                 -  solution_current_scal(:,i  ,j  ,k  ))/delta(1)
-    solution_grad_forward (2,:)  = (solution_current_scal(:,i  ,j+1,k  ) &
-                                 -  solution_current_scal(:,i  ,j  ,k  ))/delta(2)
-    solution_grad_forward (3,:)  = (solution_current_scal(:,i  ,j  ,k+1) &
-                                 -  solution_current_scal(:,i  ,j  ,k  ))/delta(3)
-    solution_grad_backward(1,:)  = (solution_current_scal(:,i  ,j  ,k  ) &
-                                 -  solution_current_scal(:,i-1,j  ,k  ))/delta(1)
-    solution_grad_backward(2,:)  = (solution_current_scal(:,i  ,j  ,k  ) &
-                                 -  solution_current_scal(:,i  ,j-1,k  ))/delta(2)
-    solution_grad_backward(3,:)  = (solution_current_scal(:,i  ,j  ,k  ) &
-                                 -  solution_current_scal(:,i  ,j  ,k-1))/delta(3)
+    mu_grad_forward (1,:) = (mu(:,i+1,j  ,k  ) - mu(:,i  ,j  ,k  ))/delta(1)
+    mu_grad_forward (2,:) = (mu(:,i  ,j+1,k  ) - mu(:,i  ,j  ,k  ))/delta(2)
+    mu_grad_forward (3,:) = (mu(:,i  ,j  ,k+1) - mu(:,i  ,j  ,k  ))/delta(3)
+    mu_grad_backward(1,:) = (mu(:,i  ,j  ,k  ) - mu(:,i-1,j  ,k  ))/delta(1)
+    mu_grad_backward(2,:) = (mu(:,i  ,j  ,k  ) - mu(:,i  ,j-1,k  ))/delta(2)
+    mu_grad_backward(3,:) = (mu(:,i  ,j  ,k  ) - mu(:,i  ,j  ,k-1))/delta(3)
 
     ! get fluxes
     flux_forward  = 0.0_pREAL
@@ -372,10 +404,10 @@ subroutine formResidual(da_local,solution_current_local,residual_current_local,d
         do dir = 1, 3
           flux_forward (dir,com_i) = flux_forward (dir,com_i) &
                                    + mobility_forward(dir,com_i,com_j) &
-                                   * solution_grad_forward(dir,com_j)
+                                   * mu_grad_forward(dir,com_j)
           flux_backward(dir,com_i) = flux_backward(dir,com_i) &
                                    + mobility_backward(dir,com_i,com_j) &
-                                   * solution_grad_backward(dir,com_j)
+                                   * mu_grad_backward(dir,com_j)
         end do
       end do
     end do
@@ -383,13 +415,13 @@ subroutine formResidual(da_local,solution_current_local,residual_current_local,d
 
     ! form residual (c - c_0 - deltaT * div (M*grad(mu))). source (-fdt not included yet)
 
-    conc_current(:,i+1,j+1,k+1-cells3offset) = homogenization_composition(solution_current_scal(:,i,j,k), Delta_t_, ce)
-    residual_current_scal(0:N_components-1,i,j,k) = conc_current(1:N_components,i+1,j+1,k+1-cells3offset) - &
-                                      conc_lastInc(1:N_components,i+1,j+1,k+1-cells3offset)
+    c(:,i+1,j+1,k+1-cells3offset) = homogenization_composition(mu(:,i,j,k), Delta_t_, ce)
+    r(0:N_components-1,i,j,k) = c(1:N_components,i+1,j+1,k+1-cells3offset) &
+                              - c_lastinc(1:N_components,i+1,j+1,k+1-cells3offset)
     do com_i = 0, N_components-1
       do dir = 1, 3
-        residual_current_scal(com_i,i,j,k) =  residual_current_scal(com_i,i,j,k) &
-                                           -  (flux_forward (dir,com_i+1) - flux_backward(dir,com_i+1))*Delta_t_/delta(dir)
+        r(com_i,i,j,k) = r(com_i,i,j,k) &
+                       - (flux_forward (dir,com_i+1) - flux_backward(dir,com_i+1))*Delta_t_/delta(dir)
       end do
     end do
   end do; end do; end do
@@ -401,28 +433,29 @@ subroutine formResidual(da_local,solution_current_local,residual_current_local,d
     CHKERRQ(err_PETSc)
   end do
 
-  call DMDAVecRestoreArray(da_local,solution_current_local,solution_current_scal,err_PETSc)
+  call DMDAVecRestoreArray(da_local,solution_current_local,mu,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArray(da_local,residual_current_local,residual_current_scal,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call VecNorm(residual_current_local,NORM_INFINITY,norm,err_PETSc)
+  call DMDAVecRestoreArray(da_local,r_vec,r,err_PETSc)
   CHKERRQ(err_PETSc)
 
-end subroutine formResidual
+end subroutine form_residual
 
 
-subroutine formJacobian(da_local,solution_current_local,Jac,Jac_pre,dummy,err_PETSc) ! needed for periodic bc?
+!--------------------------------------------------------------------------------------------------
+!> @brief Form the FDM Jacobian matrix.
+!--------------------------------------------------------------------------------------------------
+subroutine form_jacobian(da_local,solution_current_local,Jac_mat,Jac_pre_mat,dummy,err_PETSc) ! needed for periodic bc?
 
   DM  :: da_local
   Vec :: solution_current_local
-  Mat :: Jac, Jac_pre
+  Mat :: Jac_mat, Jac_pre_mat
   PetscObject :: dummy
   PetscErrorCode :: err_PETSc
 
   Vec, dimension(N_components) :: mobility_global, &
                                   mobility_local
   type(tScal),dimension(N_components) :: mobility_scal
-  PetscScalar, dimension(:,:,:,:), pointer :: solution_current_scal
+  PetscReal, dimension(:,:,:,:), pointer :: mu
   real(pREAL), dimension(3,N_components,N_components) :: mobility_forward, &
                                                          mobility_backward
   integer :: ce, i, j, k, dir, com, com_i
@@ -434,7 +467,7 @@ subroutine formJacobian(da_local,solution_current_local,Jac,Jac_pre,dummy,err_PE
   MatStencil,dimension(7*N_components) :: col
   MatStencil,dimension(N_components) :: row
 #endif
-  PetscScalar :: stiffness(N_components,7*N_components)
+  PetscReal :: Jac(N_components,7*N_components)
 
 !--------------------------------------------------------------------------------------------------
 ! get mobilities
@@ -476,18 +509,18 @@ subroutine formJacobian(da_local,solution_current_local,Jac,Jac_pre,dummy,err_PE
 
 !--------------------------------------------------------------------------------------------------
 ! assemble matrix
-  call MatSetOption(Jac,MAT_KEEP_NONZERO_PATTERN,PETSC_TRUE,err_PETSc)
+  call MatSetOption(Jac_mat,MAT_KEEP_NONZERO_PATTERN,PETSC_TRUE,err_PETSc)
   CHKERRQ(err_PETSc)
-  call MatSetOption(Jac,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,err_PETSc)
+  call MatSetOption(Jac_mat,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,err_PETSc)
   CHKERRQ(err_PETSc)
-  call MatZeroEntries(Jac,err_PETSc)
+  call MatZeroEntries(Jac_mat,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArray(da_local,solution_current_local,solution_current_scal,err_PETSc)
+  call DMDAVecGetArray(da_local,solution_current_local,mu,err_PETSc)
   CHKERRQ(err_PETSc)
   ce = 0
   do k = cells3offset, cells3offset+cells3-1; do j = 0, cells(2)-1; do i = 0, cells(1)-1
     ce = ce + 1
-    stiffness = 0.0_pREAL
+    Jac = 0.0_pREAL
     do com = 0, N_components-1
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
       row(MatStencil_i,  com+1) = i
@@ -558,10 +591,6 @@ subroutine formJacobian(da_local,solution_current_local,Jac,Jac_pre,dummy,err_PE
 #endif
     end do
 
-    stiffness(1:N_components,1:7*N_components:7) = &
-             matmul(math_eye(N_components), &
-                    homogenization_compositionTangent(solution_current_scal(:,i,j,k),Delta_t_,ce))
-
     do com_i = 1, N_components
       mobility_forward(1,com_i,:)   =  (mobility_scal(com_i)%scal(:,i  ,j  ,k  ) &
                                       + mobility_scal(com_i)%scal(:,i+1,j  ,k  ))/2
@@ -577,37 +606,35 @@ subroutine formJacobian(da_local,solution_current_local,Jac,Jac_pre,dummy,err_PE
                                       + mobility_scal(com_i)%scal(:,i  ,j  ,k-1))/2
     end do
 
+    Jac(1:N_components,1:7*N_components:7) = &
+             matmul(math_eye(N_components),homogenization_compositionTangent(mu(:,i,j,k),Delta_t_,ce))
+
     do dir = 1, 3
-      stiffness(1    :N_components,1:7*N_components:7) = stiffness(1    :N_components,1:7*N_components:7) &
-                                                      + (  &
-                                                            mobility_forward (dir,:,:)   &
-                                                          + mobility_backward(dir,:,:)  &
-                                                         )* Delta_t_/delta(dir)/delta(dir)
-      stiffness(1:N_components,1+dir:7*N_components:7) = stiffness(1:N_components,1+dir:7*N_components:7) &
-                                                      - (  &
-                                                           mobility_forward (dir,:,:)   &
-                                                         )*Delta_t_/delta(dir)/delta(dir)
-      stiffness(1:N_components,4+dir:7*N_components:7) = stiffness(1:N_components,4+dir:7*N_components:7) &
-                                                      - (  &
-                                                           mobility_backward(dir,:,:)   &
-                                                         )*Delta_t_/delta(dir)/delta(dir)
+      Jac(1:N_components,1:    7*N_components:7) = Jac(1:N_components,1:7*N_components:7) &
+                                                 + (mobility_forward (dir,:,:) + mobility_backward(dir,:,:))  &
+                                                    * Delta_t_/delta(dir)**2
+      Jac(1:N_components,1+dir:7*N_components:7) = Jac(1:N_components,1+dir:7*N_components:7) &
+                                                 - mobility_forward (dir,:,:) * Delta_t_/delta(dir)**2
+      Jac(1:N_components,4+dir:7*N_components:7) = Jac(1:N_components,4+dir:7*N_components:7) &
+                                                 - mobility_backward(dir,:,:) * Delta_t_/delta(dir)**2
     end do
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
-    call MatSetValuesStencil(Jac,int(N_components,pPetscInt),row,int(7*N_components,pPetscInt),&
-                               col,transpose(stiffness),INSERT_VALUES,err_PETSc)
+    call MatSetValuesStencil(Jac_mat,int(N_components,pPetscInt),row,int(7*N_components,pPetscInt),&
+                             col,transpose(Jac),INSERT_VALUES,err_PETSc)
 #else
-    call MatSetValuesStencil(Jac,int(N_components,pPetscInt),row,int(7*N_components,pPetscInt),&
-                             col,reshape(transpose(stiffness),[size(stiffness)]),INSERT_VALUES,err_PETSc)
+    call MatSetValuesStencil(Jac_mat,int(N_components,pPetscInt),row,int(7*N_components,pPetscInt),&
+                             col,reshape(transpose(Jac),[size(Jac)]),INSERT_VALUES,err_PETSc)
 #endif
     CHKERRQ(err_PETSc)
   end do; end do; end do
-  call MatAssemblyBegin(Jac,MAT_FINAL_ASSEMBLY,err_PETSc)
+  call MatAssemblyBegin(Jac_mat,MAT_FINAL_ASSEMBLY,err_PETSc)
   CHKERRQ(err_PETSc)
-  call MatAssemblyEnd(Jac,MAT_FINAL_ASSEMBLY,err_PETSc)
+  call MatAssemblyEnd(Jac_mat,MAT_FINAL_ASSEMBLY,err_PETSc)
   CHKERRQ(err_PETSc)
-  call MatAssemblyBegin(Jac_pre,MAT_FINAL_ASSEMBLY,err_PETSc)
+  ! MD: Is anything done with Jac_pre_mat?
+  call MatAssemblyBegin(Jac_pre_mat,MAT_FINAL_ASSEMBLY,err_PETSc)
   CHKERRQ(err_PETSc)
-  call MatAssemblyEnd(Jac_pre,MAT_FINAL_ASSEMBLY,err_PETSc)
+  call MatAssemblyEnd(Jac_pre_mat,MAT_FINAL_ASSEMBLY,err_PETSc)
   CHKERRQ(err_PETSc)
 
   do com_i = 1, N_components
@@ -616,51 +643,9 @@ subroutine formJacobian(da_local,solution_current_local,Jac,Jac_pre,dummy,err_PE
     call DMRestoreLocalVector(da_local,mobility_local(com_i),err_PETSc)
     CHKERRQ(err_PETSc)
   end do
-  call DMDAVecRestoreArray(da_local,solution_current_local,solution_current_scal,err_PETSc)
+  call DMDAVecRestoreArray(da_local,solution_current_local,mu,err_PETSc)
   CHKERRQ(err_PETSc)
 
-end subroutine formJacobian
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief forwarding routine
-!--------------------------------------------------------------------------------------------------
-subroutine grid_chemical_FDM_forward(cutBack)
-
-  logical, intent(in) :: cutBack
-
-  integer :: i, j, k, ce
-  DM :: da_local
-  PetscScalar, dimension(:,:,:,:), pointer :: x_scal
-  PetscErrorCode :: err_PETSc
-
-  if (cutBack) then
-    conc_current = conc_lastInc
-    conc_stagInc = conc_lastInc
-
-    call SNESGetDM(SNES_chemical,da_local,err_PETSc)
-    CHKERRQ(err_PETSc)
-    call VecCopy(solution_lastInc,solution_current,err_PETSc)
-    CHKERRQ(err_PETSc)
-    call DMDAVecGetArray(da_local,solution_current,x_scal,err_PETSc)
-    CHKERRQ(err_PETSc)
-    ce = 0
-    do k = 1, cells3offset, cells3+cells3offset; do j = 1, cells(2); do i = 1, cells(1)
-      ce = ce + 1
-      call homogenization_chemical_setField(x_scal(0:N_components-1,i-1,j-1,k-1),&
-                                           conc_current(1:N_components+1,i,j,k-cells3offset), &
-                                           Delta_t_, ce)
-    end do; end do; end do
-    call DMDAVecRestoreArray(da_local,solution_current,x_scal,err_PETSc)
-    CHKERRQ(err_PETSc)
-  else
-    conc_lastInc = conc_current
-    call VecCopy(solution_current,solution_lastInc,err_PETSc)
-    CHKERRQ(err_PETSc)
-  end if
-
-
-end subroutine grid_chemical_FDM_forward
-
+end subroutine form_jacobian
 
 end module grid_chemical_FDM
