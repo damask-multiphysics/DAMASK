@@ -6,6 +6,7 @@ from typing import Optional, Union
 from itertools import chain
 
 import numpy as np
+from numpy import typing as npt
 import scipy.interpolate as interp
 import matplotlib as mpl
 if os.name == 'posix' and 'DISPLAY' not in os.environ:
@@ -618,7 +619,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def _hsv2rgb(hsv: np.ndarray) -> np.ndarray:
+    def _hsv2rgb(hsv: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Hue Saturation Value to Red Green Blue.
 
@@ -635,7 +636,7 @@ class Colormap(mpl.colors.ListedColormap):
         return np.array(colorsys.hsv_to_rgb(hsv[0]/360.,hsv[1],hsv[2]))
 
     @staticmethod
-    def _rgb2hsv(rgb: np.ndarray) -> np.ndarray:
+    def _rgb2hsv(rgb: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Red Green Blue to Hue Saturation Value.
 
@@ -654,7 +655,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def _hsl2rgb(hsl: np.ndarray) -> np.ndarray:
+    def _hsl2rgb(hsl: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Hue Saturation Luminance to Red Green Blue.
 
@@ -671,7 +672,7 @@ class Colormap(mpl.colors.ListedColormap):
         return np.array(colorsys.hls_to_rgb(hsl[0]/360.,hsl[2],hsl[1]))
 
     @staticmethod
-    def _rgb2hsl(rgb: np.ndarray) -> np.ndarray:
+    def _rgb2hsl(rgb: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Red Green Blue to Hue Saturation Luminance.
 
@@ -690,7 +691,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def _xyz2rgb(xyz: np.ndarray) -> np.ndarray:
+    def _xyz2rgb(xyz: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         CIEXYZ to Red Green Blue.
 
@@ -719,7 +720,7 @@ class Colormap(mpl.colors.ListedColormap):
         return np.clip(rgb,0.,1.)
 
     @staticmethod
-    def _rgb2xyz(rgb: np.ndarray) -> np.ndarray:
+    def _rgb2xyz(rgb: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Red Green Blue to CIEXYZ.
 
@@ -746,8 +747,8 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def _lab2xyz(lab: np.ndarray,
-                 ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
+    def _lab2xyz(lab: npt.NDArray[np.floating],
+                 ref_white: npt.NDArray[np.floating] = _REF_WHITE) -> npt.NDArray[np.floating]:
         """
         CIELAB to CIEXYZ.
 
@@ -778,8 +779,8 @@ class Colormap(mpl.colors.ListedColormap):
                         ])*ref_white
 
     @staticmethod
-    def _xyz2lab(xyz: np.ndarray,
-                 ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
+    def _xyz2lab(xyz: npt.NDArray[np.floating],
+                 ref_white: npt.NDArray[np.floating] = _REF_WHITE) -> npt.NDArray[np.floating]:
         """
         CIEXYZ to CIELAB.
 
@@ -812,7 +813,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def _lab2msh(lab: np.ndarray) -> np.ndarray:
+    def _lab2msh(lab: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         CIELAB to Msh.
 
@@ -839,7 +840,7 @@ class Colormap(mpl.colors.ListedColormap):
                         ])
 
     @staticmethod
-    def _msh2lab(msh: np.ndarray) -> np.ndarray:
+    def _msh2lab(msh: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Msh to CIELAB.
 
@@ -865,7 +866,7 @@ class Colormap(mpl.colors.ListedColormap):
                         ])
 
     @staticmethod
-    def _lab2rgb(lab: np.ndarray) -> np.ndarray:
+    def _lab2rgb(lab: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         CIELAB to Red Green Blue.
 
@@ -882,7 +883,7 @@ class Colormap(mpl.colors.ListedColormap):
         return Colormap._xyz2rgb(Colormap._lab2xyz(lab))
 
     @staticmethod
-    def _rgb2lab(rgb: np.ndarray) -> np.ndarray:
+    def _rgb2lab(rgb: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Red Green Blue to CIELAB.
 
@@ -899,7 +900,7 @@ class Colormap(mpl.colors.ListedColormap):
         return Colormap._xyz2lab(Colormap._rgb2xyz(rgb))
 
     @staticmethod
-    def _msh2rgb(msh: np.ndarray) -> np.ndarray:
+    def _msh2rgb(msh: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Msh to Red Green Blue.
 
@@ -916,7 +917,7 @@ class Colormap(mpl.colors.ListedColormap):
         return Colormap._lab2rgb(Colormap._msh2lab(msh))
 
     @staticmethod
-    def _rgb2msh(rgb: np.ndarray) -> np.ndarray:
+    def _rgb2msh(rgb: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Red Green Blue to Msh.
 
@@ -933,7 +934,7 @@ class Colormap(mpl.colors.ListedColormap):
         return Colormap._lab2msh(Colormap._rgb2lab(rgb))
 
     @staticmethod
-    def _hsv2msh(hsv: np.ndarray) -> np.ndarray:
+    def _hsv2msh(hsv: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Hue Saturation Value to msh.
 
@@ -950,7 +951,7 @@ class Colormap(mpl.colors.ListedColormap):
         return Colormap._rgb2msh(Colormap._hsv2rgb(hsv))
 
     @staticmethod
-    def _hsl2msh(hsl: np.ndarray) -> np.ndarray:
+    def _hsl2msh(hsl: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Hue Saturation Luminance to Msh.
 
@@ -967,7 +968,7 @@ class Colormap(mpl.colors.ListedColormap):
         return Colormap._rgb2msh(Colormap._hsl2rgb(hsl))
 
     @staticmethod
-    def _xyz2msh(xyz: np.ndarray) -> np.ndarray:
+    def _xyz2msh(xyz: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         CIEXYZ to Msh.
 

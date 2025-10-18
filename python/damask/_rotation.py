@@ -1510,7 +1510,7 @@ class Rotation:
 ####################################################################################################
     #---------- Quaternion ----------
     @staticmethod
-    def _qu2om(qu: np.ndarray) -> np.ndarray:
+    def _qu2om(qu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Quaternion to rotation matrix.
 
@@ -1543,7 +1543,7 @@ class Rotation:
         return om
 
     @staticmethod
-    def _qu2eu(qu: np.ndarray) -> np.ndarray:
+    def _qu2eu(qu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Quaternion to Bunge Euler angles.
 
@@ -1591,7 +1591,7 @@ class Rotation:
         return np.where(eu < 0., eu%(np.pi*np.array([2.,1.,2.])),eu)
 
     @staticmethod
-    def _qu2ax(qu: np.ndarray) -> np.ndarray:
+    def _qu2ax(qu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Quaternion to axis–angle pair.
 
@@ -1617,7 +1617,7 @@ class Rotation:
         return ax
 
     @staticmethod
-    def _qu2ro(qu: np.ndarray) -> np.ndarray:
+    def _qu2ro(qu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Quaternion to Rodrigues–Frank vector.
 
@@ -1643,7 +1643,7 @@ class Rotation:
         return ro
 
     @staticmethod
-    def _qu2ho(qu: np.ndarray) -> np.ndarray:
+    def _qu2ho(qu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Quaternion to homochoric vector.
 
@@ -1666,7 +1666,7 @@ class Rotation:
         return ho
 
     @staticmethod
-    def _qu2cu(qu: np.ndarray) -> np.ndarray:
+    def _qu2cu(qu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Quaternion to cubochoric vector.
 
@@ -1685,7 +1685,7 @@ class Rotation:
 
     #---------- Rotation matrix ----------
     @staticmethod
-    def _om2qu(om: np.ndarray) -> np.ndarray:
+    def _om2qu(om: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Rotation matrix to quaternion.
 
@@ -1737,7 +1737,7 @@ class Rotation:
         return qu
 
     @staticmethod
-    def _om2eu(om: np.ndarray) -> np.ndarray:
+    def _om2eu(om: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Rotation matrix to Bunge Euler angles.
 
@@ -1767,7 +1767,7 @@ class Rotation:
         return np.where(eu < 0., eu%(np.pi*np.array([2.,1.,2.])),eu)
 
     @staticmethod
-    def _om2ax(om: np.ndarray) -> np.ndarray:
+    def _om2ax(om: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Rotation matrix to axis–angle pair.
 
@@ -1800,7 +1800,7 @@ class Rotation:
         return ax
 
     @staticmethod
-    def _om2ro(om: np.ndarray) -> np.ndarray:
+    def _om2ro(om: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Rotation matrix to Rodrigues–Frank vector.
 
@@ -1817,7 +1817,7 @@ class Rotation:
         return Rotation._eu2ro(Rotation._om2eu(om))
 
     @staticmethod
-    def _om2ho(om: np.ndarray) -> np.ndarray:
+    def _om2ho(om: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Rotation matrix to homochoric vector.
 
@@ -1834,7 +1834,7 @@ class Rotation:
         return Rotation._ax2ho(Rotation._om2ax(om))
 
     @staticmethod
-    def _om2cu(om: np.ndarray) -> np.ndarray:
+    def _om2cu(om: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Rotation matrix to cubochoric vector.
 
@@ -1853,7 +1853,7 @@ class Rotation:
 
     #---------- Bunge Euler angles ----------
     @staticmethod
-    def _eu2qu(eu: np.ndarray) -> np.ndarray:
+    def _eu2qu(eu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Bunge Euler angles to quaternion.
 
@@ -1878,7 +1878,7 @@ class Rotation:
         return qu
 
     @staticmethod
-    def _eu2om(eu: np.ndarray) -> np.ndarray:
+    def _eu2om(eu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Bunge Euler angles to rotation matrix.
 
@@ -1908,7 +1908,7 @@ class Rotation:
         return om
 
     @staticmethod
-    def _eu2ax(eu: np.ndarray) -> np.ndarray:
+    def _eu2ax(eu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Bunge Euler angles to axis–angle pair.
 
@@ -1939,7 +1939,7 @@ class Rotation:
         return ax
 
     @staticmethod
-    def _eu2ro(eu: np.ndarray) -> np.ndarray:
+    def _eu2ro(eu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Bunge Euler angles to Rodrigues–Frank vector.
 
@@ -1960,7 +1960,7 @@ class Rotation:
         return ro
 
     @staticmethod
-    def _eu2ho(eu: np.ndarray) -> np.ndarray:
+    def _eu2ho(eu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Bunge Euler angles to homochoric vector.
 
@@ -1977,7 +1977,7 @@ class Rotation:
         return Rotation._ax2ho(Rotation._eu2ax(eu))
 
     @staticmethod
-    def _eu2cu(eu: np.ndarray) -> np.ndarray:
+    def _eu2cu(eu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Bunge Euler angles to cubochoric vector.
 
@@ -1996,7 +1996,7 @@ class Rotation:
 
     #---------- Axis angle pair ----------
     @staticmethod
-    def _ax2qu(ax: np.ndarray) -> np.ndarray:
+    def _ax2qu(ax: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Axis–angle pair to quaternion.
 
@@ -2016,7 +2016,7 @@ class Rotation:
         return qu
 
     @staticmethod
-    def _ax2om(ax: np.ndarray) -> np.ndarray:
+    def _ax2om(ax: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Axis-angle pair to rotation matrix.
 
@@ -2045,7 +2045,7 @@ class Rotation:
         return om if _P < 0. else np.swapaxes(om,-1,-2)
 
     @staticmethod
-    def _ax2eu(ax: np.ndarray) -> np.ndarray:
+    def _ax2eu(ax: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Rotation matrix to Bunge Euler angles.
 
@@ -2062,7 +2062,7 @@ class Rotation:
         return Rotation._om2eu(Rotation._ax2om(ax))
 
     @staticmethod
-    def _ax2ro(ax: np.ndarray) -> np.ndarray:
+    def _ax2ro(ax: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Axis–angle pair to Rodrigues–Frank vector.
 
@@ -2085,7 +2085,7 @@ class Rotation:
         return ro
 
     @staticmethod
-    def _ax2ho(ax: np.ndarray) -> np.ndarray:
+    def _ax2ho(ax: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Axis–angle pair to homochoric vector.
 
@@ -2103,7 +2103,7 @@ class Rotation:
         return ax[...,:3] * f
 
     @staticmethod
-    def _ax2cu(ax: np.ndarray) -> np.ndarray:
+    def _ax2cu(ax: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Axis–angle pair to cubochoric vector.
 
@@ -2122,7 +2122,7 @@ class Rotation:
 
     #---------- Rodrigues-Frank vector ----------
     @staticmethod
-    def _ro2qu(ro: np.ndarray) -> np.ndarray:
+    def _ro2qu(ro: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Rodrigues–Frank vector to quaternion.
 
@@ -2139,7 +2139,7 @@ class Rotation:
         return Rotation._ax2qu(Rotation._ro2ax(ro))
 
     @staticmethod
-    def _ro2om(ro: np.ndarray) -> np.ndarray:
+    def _ro2om(ro: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Rodgrigues–Frank vector to rotation matrix.
 
@@ -2156,7 +2156,7 @@ class Rotation:
         return Rotation._ax2om(Rotation._ro2ax(ro))
 
     @staticmethod
-    def _ro2eu(ro: np.ndarray) -> np.ndarray:
+    def _ro2eu(ro: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Rodrigues–Frank vector to Bunge Euler angles.
 
@@ -2173,7 +2173,7 @@ class Rotation:
         return Rotation._om2eu(Rotation._ro2om(ro))
 
     @staticmethod
-    def _ro2ax(ro: np.ndarray) -> np.ndarray:
+    def _ro2ax(ro: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Rodrigues–Frank vector to axis–angle pair.
 
@@ -2195,7 +2195,7 @@ class Rotation:
         return ax
 
     @staticmethod
-    def _ro2ho(ro: np.ndarray) -> np.ndarray:
+    def _ro2ho(ro: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Rodrigues–Frank vector to homochoric vector.
 
@@ -2214,7 +2214,7 @@ class Rotation:
                         np.zeros(3), ro[...,0:3]* (0.75*f)**(1./3.))
 
     @staticmethod
-    def _ro2cu(ro: np.ndarray) -> np.ndarray:
+    def _ro2cu(ro: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Rodrigues–Frank vector to cubochoric vector.
 
@@ -2233,7 +2233,7 @@ class Rotation:
 
     #---------- Homochoric vector----------
     @staticmethod
-    def _ho2qu(ho: np.ndarray) -> np.ndarray:
+    def _ho2qu(ho: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Homochoric vector to quaternion.
 
@@ -2250,7 +2250,7 @@ class Rotation:
         return Rotation._ax2qu(Rotation._ho2ax(ho))
 
     @staticmethod
-    def _ho2om(ho: np.ndarray) -> np.ndarray:
+    def _ho2om(ho: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Homochoric vector to rotation matrix.
 
@@ -2267,7 +2267,7 @@ class Rotation:
         return Rotation._ax2om(Rotation._ho2ax(ho))
 
     @staticmethod
-    def _ho2eu(ho: np.ndarray) -> np.ndarray:
+    def _ho2eu(ho: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Homochoric vector to Bunge Euler angles.
 
@@ -2284,7 +2284,7 @@ class Rotation:
         return Rotation._ax2eu(Rotation._ho2ax(ho))
 
     @staticmethod
-    def _ho2ax(ho: np.ndarray) -> np.ndarray:
+    def _ho2ax(ho: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Homochoric vector to axis–angle pair.
 
@@ -2313,7 +2313,7 @@ class Rotation:
                             np.block([ho/np.sqrt(hmag_squared),2.*np.arccos(np.clip(s,-1.,1.))]))
 
     @staticmethod
-    def _ho2ro(ho: np.ndarray) -> np.ndarray:
+    def _ho2ro(ho: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Homochoric vector to Rodrigues–Frank vector.
 
@@ -2330,7 +2330,7 @@ class Rotation:
         return Rotation._ax2ro(Rotation._ho2ax(ho))
 
     @staticmethod
-    def _ho2cu(ho: np.ndarray) -> np.ndarray:
+    def _ho2cu(ho: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Homochoric vector to cubochoric vector.
 
@@ -2377,7 +2377,7 @@ class Rotation:
 
     #---------- Cubochoric ----------
     @staticmethod
-    def _cu2qu(cu: np.ndarray) -> np.ndarray:
+    def _cu2qu(cu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Cubochoric vector to quaternion.
 
@@ -2394,7 +2394,7 @@ class Rotation:
         return Rotation._ho2qu(Rotation._cu2ho(cu))
 
     @staticmethod
-    def _cu2om(cu: np.ndarray) -> np.ndarray:
+    def _cu2om(cu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Cubochoric vector to rotation matrix.
 
@@ -2411,7 +2411,7 @@ class Rotation:
         return Rotation._ho2om(Rotation._cu2ho(cu))
 
     @staticmethod
-    def _cu2eu(cu: np.ndarray) -> np.ndarray:
+    def _cu2eu(cu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Cubochoric vector to Bunge Euler angles.
 
@@ -2428,7 +2428,7 @@ class Rotation:
         return Rotation._ho2eu(Rotation._cu2ho(cu))
 
     @staticmethod
-    def _cu2ax(cu: np.ndarray) -> np.ndarray:
+    def _cu2ax(cu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Cubochoric vector to axis–angle pair.
 
@@ -2445,7 +2445,7 @@ class Rotation:
         return Rotation._ho2ax(Rotation._cu2ho(cu))
 
     @staticmethod
-    def _cu2ro(cu: np.ndarray) -> np.ndarray:
+    def _cu2ro(cu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Cubochoric vector to Rodrigues–Frank vector.
 
@@ -2462,7 +2462,7 @@ class Rotation:
         return Rotation._ho2ro(Rotation._cu2ho(cu))
 
     @staticmethod
-    def _cu2ho(cu: np.ndarray) -> np.ndarray:
+    def _cu2ho(cu: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Cubochoric vector to homochoric vector.
 
