@@ -12,7 +12,7 @@ import contextlib as _contextlib
 from collections import abc as _abc
 from functools import reduce as _reduce, partial as _partial
 from pathlib import Path as _Path
-import logging
+import logging as _logging
 from typing import Optional as _Optional, Union as _Union, Iterable as _Iterable, \
                    Literal as _Literal, NamedTuple as _NamedTuple, \
                    Any as _Any, TextIO as _TextIO, Generator as _Generator
@@ -33,7 +33,9 @@ class stdioTuple(_NamedTuple):
     stderr: str
 
 
-logger = logging.getLogger(__name__)
+logger = _logging.getLogger(__name__)
+
+version = _np.lib.NumpyVersion
 
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
 # https://stackoverflow.com/questions/287871

@@ -106,7 +106,7 @@ class Rotation:
         self.quaternion: np.ndarray
 
         if (isinstance(rotation,ScipyRotation)):
-            if np.lib.NumpyVersion(scipy.__version__) >= '1.14.0':
+            if util.version(scipy.__version__) >= '1.14.0':
                 self.quaternion = rotation.as_quat(canonical=True,scalar_first=True)
             else:
                 quat = rotation.as_quat(canonical=True)
@@ -270,7 +270,7 @@ class Rotation:
                   *,
                   copy: Optional[bool] = None) -> np.ndarray:
         """Initializer for numpy."""
-        return self.quaternion.__array__(dtype) if np.lib.NumpyVersion(np.__version__) < '2.0.0' else \
+        return self.quaternion.__array__(dtype) if util.version(np.__version__) < '2.0.0' else \
                self.quaternion.__array__(dtype,copy=copy)                                           # type: ignore[arg-type]
 
 
@@ -1308,7 +1308,7 @@ class Rotation:
         probability densities, p, defined on grid points with ϕ = 0 will never
         result in reconstructed orientations as their dV/V = p dγ = p × 0.
         Hence, it is recommended to transform any such dataset to a
-        cell-centered version, which avoids grid points at ϕ = 0.
+        cell-centered variant, which avoids grid points at ϕ = 0.
 
         References
         ----------

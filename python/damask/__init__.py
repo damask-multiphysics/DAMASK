@@ -9,9 +9,9 @@ https://doi.org/10.21105/joss.07164
 
 from pathlib import Path as _Path
 import re as _re
-import logging
+import logging as _logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+_logging.basicConfig(level=_logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 name = 'damask'
 with open(_Path(__file__).parent/'VERSION') as _f:

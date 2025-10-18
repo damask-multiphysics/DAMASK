@@ -9,6 +9,7 @@ import numpy as np
 import numpy.ma as ma
 from vtkmodules.vtkCommonCore import vtkVersion
 
+from damask import util
 from damask import VTK
 from damask import Table
 from damask import Colormap
@@ -74,8 +75,8 @@ def test_polyData(np_rng,tmp_path):
     vtk = VTK.load(tmp_path/'polyData.vtk','polyData')
     assert (string == vtp.as_ASCII() == vtk.as_ASCII())
 
-@pytest.mark.xfail(np.lib.NumpyVersion(vtkVersion.GetVTKVersion()) < '9.4.0',
-                    reason = 'not available in VTK < 9.4')
+@pytest.mark.xfail(util.version(vtkVersion.GetVTKVersion()) < '9.4.0',
+                   reason = 'not available in VTK < 9.4')
 def test_polyData_VTKHDF(np_rng,tmp_path):
     points = np_rng.random((100,3))
     v = VTK.from_poly_data(points)
@@ -106,7 +107,7 @@ def test_unstructuredGrid(np_rng,tmp_path,cell_type,n_nodes,order):
     vtk = VTK.load(tmp_path/'unstructuredGrid.vtk','unstructuredgrid')
     assert (string == vtu.as_ASCII() == vtk.as_ASCII())
 
-@pytest.mark.xfail(np.lib.NumpyVersion(vtkVersion.GetVTKVersion()) < '9.4.0',
+@pytest.mark.xfail(util.version(vtkVersion.GetVTKVersion()) < '9.4.0',
                    reason = 'not available in VTK < 9.4')
 @pytest.mark.parametrize('cell_type,n_nodes',[
                                               ('VTK_lagrange_hexa',lambda k: (k+1)**3),
