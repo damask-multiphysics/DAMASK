@@ -390,7 +390,7 @@ function getPathRelCWD(path,fileType)
   getPathRelCWD = trim(relpath(getPathRelCWD,OS_getCWD()))
 
   inquire(file=getPathRelCWD, exist=file_exists)
-  if (.not. file_exists) call IO_error(100,ext_msg=fileType//' "'//trim(getPathRelCWD)//'"')
+  if (.not. file_exists) call IO_error(100_pI16, 'file does not exist',getPathRelCWD,emph=[2])
 
 end function getPathRelCWD
 

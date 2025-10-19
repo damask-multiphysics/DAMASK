@@ -225,7 +225,7 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
     call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   elseif (m == 'r') then
     inquire(file=fileName,exist=exist)
-    if (.not. exist) call IO_error(100,trim(fileName))
+    if (.not. exist) call IO_error(100_pI16,'file does not exist',trim(fileName),emph=[2])
     call H5Fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr,access_prp=plist_access_id)
     call HDF5_chkerr(hdferr,__FILE__//':'//IO_intAsStr(__LINE__))
   else

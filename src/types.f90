@@ -193,6 +193,11 @@ end subroutine types_init
 !--------------------------------------------------------------------------------------------------
 subroutine types_selfTest()
 
+  character(len=5), dimension(3), parameter :: array = ['ab   ', '12435', 'x    ']
+
+
+  if ('[ab, 12435, x]' /= join_str_array(array)) error stop 'join_str_array'
+
   scalar: block
     type(tScalar), target :: s
     type(tScalar), pointer :: s_pointer
@@ -394,7 +399,7 @@ function tNode_asScalar(self) result(scalar)
       scalar => self
     class default
       nullify(scalar)
-      call IO_error(706,'"'//trim(self%asFormattedStr())//'" is not a scalar')
+      call IO_error(706_pI16,trim(self%asFormattedStr()),'is not a scalar',emph=[1])
   end select
 
 end function tNode_asScalar
@@ -414,7 +419,7 @@ function tNode_asList(self) result(list)
       list => self
     class default
       nullify(list)
-      call IO_error(706,'"'//trim(self%asFormattedStr())//'" is not a list')
+      call IO_error(706_pI16,trim(self%asFormattedStr()),'is not a list',emph=[1])
   end select
 
 end function tNode_asList
@@ -434,7 +439,7 @@ function tNode_asDict(self) result(dict)
       dict => self
     class default
       nullify(dict)
-      call IO_error(706,'"'//trim(self%asFormattedStr())//'" is not a dict')
+      call IO_error(706_pI16,trim(self%asFormattedStr()),'is not a dict',emph=[1])
   end select
 
 end function tNode_asDict
@@ -536,8 +541,8 @@ end function tList_size
 !--------------------------------------------------------------------------------------------------
 subroutine tList_append(self,node)
 
-  class(tList), intent(inout)         :: self
-  class(tNode), intent(in), target    :: node
+  class(tList), intent(inout)      :: self
+  class(tNode), intent(in), target :: node
 
   type(tItem), pointer :: item
 
@@ -698,11 +703,11 @@ end function tList_as1dStr
 !-------------------------------------------------------------------------------------------------
 !> @brief Check for existence of (string) value.
 !-------------------------------------------------------------------------------------------------
-function tList_contains(self,k)  result(exists)
+function tList_contains(self,element) result(exists)
 
-  class(tList),     intent(in), target  :: self
-  character(len=*), intent(in)          :: k
-  logical                               :: exists
+  class(tList),     intent(in), target :: self
+  character(len=*), intent(in)         :: element                                                   !< value to search for
+  logical                              :: exists
 
   integer :: j
   type(tItem),   pointer :: item
@@ -714,7 +719,7 @@ function tList_contains(self,k)  result(exists)
   j = 1
   do while (j <= size(self) .and. .not. exists)
     scalar => item%node%asScalar()
-    exists = scalar%value == k
+    exists = scalar%value == element
     item => item%next
     j = j + 1
   end do
@@ -725,20 +730,20 @@ end function tList_contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Get by index.
 !--------------------------------------------------------------------------------------------------
-function tList_get(self,i) result(node)
+function tList_get(self,idx) result(node)
 
   class(tList), intent(in), target :: self
-  integer,      intent(in)         :: i
+  integer,      intent(in)         :: idx                                                           !< index
   class(tNode), pointer :: node
 
   type(tItem), pointer :: item
-  integer :: j
+  integer :: i
 
 
-  if (i < 1 .or. i > size(self)) call IO_error(150,ext_msg='tList_get @ '//IO_intAsStr(i) &
-                                                                  //' of '//IO_intAsStr(size(self)) )
+  if (idx < 1 .or. idx > size(self)) &
+    call IO_error(150,ext_msg='tList_get @ '//IO_intAsStr(i)//' of '//IO_intAsStr(size(self)) )
   item => self%first
-  do j = 2, i
+  do i = 2, idx
     item => item%next
   end do
   node => item%node
@@ -749,16 +754,16 @@ end function tList_get
 !--------------------------------------------------------------------------------------------------
 !> @brief Get scalar by index.
 !--------------------------------------------------------------------------------------------------
-function tList_get_scalar(self,i) result(nodeAsScalar)
+function tList_get_scalar(self,idx) result(nodeAsScalar)
 
   class(tList), intent(in) :: self
-  integer,      intent(in) :: i
+  integer,      intent(in) :: idx                                                                   !< index
   type(tScalar), pointer :: nodeAsScalar
 
   class(tNode),  pointer :: node
 
 
-  node => self%get(i)
+  node => self%get(idx)
   nodeAsScalar => node%asScalar()
 
 end function tList_get_scalar
@@ -767,16 +772,16 @@ end function tList_get_scalar
 !--------------------------------------------------------------------------------------------------
 !> @brief Get list by index.
 !--------------------------------------------------------------------------------------------------
-function tList_get_list(self,i) result(nodeAsList)
+function tList_get_list(self,idx) result(nodeAsList)
 
   class(tList), intent(in) :: self
-  integer,      intent(in) :: i
+  integer,      intent(in) :: idx                                                                   !< index
   type(tList),  pointer :: nodeAsList
 
   class(tNode),  pointer :: node
 
 
-  node => self%get(i)
+  node => self%get(idx)
   nodeAsList => node%asList()
 
 end function tList_get_list
@@ -785,16 +790,16 @@ end function tList_get_list
 !--------------------------------------------------------------------------------------------------
 !> @brief Get dict by index.
 !--------------------------------------------------------------------------------------------------
-function tList_get_dict(self,i) result(nodeAsDict)
+function tList_get_dict(self,idx) result(nodeAsDict)
 
   class(tList), intent(in) :: self
-  integer,      intent(in) :: i
+  integer,      intent(in) :: idx                                                                   !< index
   type(tDict),  pointer :: nodeAsDict
 
   class(tNode),  pointer :: node
 
 
-  node => self%get(i)
+  node => self%get(idx)
   nodeAsDict => node%asDict()
 
 end function tList_get_dict
@@ -803,16 +808,16 @@ end function tList_get_dict
 !--------------------------------------------------------------------------------------------------
 !> @brief Get scalar by index and convert to real.
 !--------------------------------------------------------------------------------------------------
-function tList_get_asReal(self,i) result(nodeAsReal)
+function tList_get_asReal(self,idx) result(nodeAsReal)
 
   class(tList), intent(in) :: self
-  integer,      intent(in) :: i
+  integer,      intent(in) :: idx                                                                   !< index
   real(pREAL) :: nodeAsReal
 
   type(tScalar),   pointer :: scalar
 
 
-  scalar => self%get_scalar(i)
+  scalar => self%get_scalar(idx)
   nodeAsReal = scalar%asReal()
 
 end function tList_get_asReal
@@ -821,16 +826,16 @@ end function tList_get_asReal
 !--------------------------------------------------------------------------------------------------
 !> @brief Get list by index and convert to real array (1D).
 !--------------------------------------------------------------------------------------------------
-function tList_get_as1dReal(self,i) result(nodeAs1dReal)
+function tList_get_as1dReal(self,idx) result(nodeAs1dReal)
 
   class(tList), intent(in) :: self
-  integer,      intent(in) :: i
+  integer,      intent(in) :: idx                                                                   !< index
   real(pREAL), dimension(:), allocatable :: nodeAs1dReal
 
   class(tList),  pointer :: list
 
 
-  list => self%get_list(i)
+  list => self%get_list(idx)
   nodeAs1dReal = list%as1dReal()
 
 end function tList_get_as1dReal
@@ -839,16 +844,16 @@ end function tList_get_as1dReal
 !--------------------------------------------------------------------------------------------------
 !> @brief Get scalar by index and convert to int.
 !--------------------------------------------------------------------------------------------------
-function tList_get_asInt(self,i) result(nodeAsInt)
+function tList_get_asInt(self,idx) result(nodeAsInt)
 
   class(tList), intent(in) :: self
-  integer,      intent(in) :: i
+  integer,      intent(in) :: idx                                                                   !< index
   integer :: nodeAsInt
 
   type(tScalar),   pointer :: scalar
 
 
-  scalar => self%get_scalar(i)
+  scalar => self%get_scalar(idx)
   nodeAsInt = scalar%asInt()
 
 end function tList_get_asInt
@@ -857,16 +862,16 @@ end function tList_get_asInt
 !--------------------------------------------------------------------------------------------------
 !> @brief Get list by index and convert to int array (1D).
 !--------------------------------------------------------------------------------------------------
-function tList_get_as1dInt(self,i) result(nodeAs1dInt)
+function tList_get_as1dInt(self,idx) result(nodeAs1dInt)
 
   class(tList), intent(in) :: self
-  integer,      intent(in) :: i
+  integer,      intent(in) :: idx                                                                   !< index
   integer, dimension(:), allocatable :: nodeAs1dInt
 
   class(tList),  pointer :: list
 
 
-  list => self%get_list(i)
+  list => self%get_list(idx)
   nodeAs1dInt = list%as1dInt()
 
 end function tList_get_as1dInt
@@ -875,16 +880,16 @@ end function tList_get_as1dInt
 !--------------------------------------------------------------------------------------------------
 !> @brief Get scalar by index and convert to bool
 !--------------------------------------------------------------------------------------------------
-function tList_get_asBool(self,i) result(nodeAsBool)
+function tList_get_asBool(self,idx) result(nodeAsBool)
 
   class(tList), intent(in) :: self
-  integer,      intent(in) :: i
+  integer,      intent(in) :: idx                                                                   !< index
   logical :: nodeAsBool
 
   type(tScalar),   pointer :: scalar
 
 
-  scalar => self%get_scalar(i)
+  scalar => self%get_scalar(idx)
   nodeAsBool = scalar%asBool()
 
 end function tList_get_asBool
@@ -1016,10 +1021,10 @@ end subroutine tDict_set
 !--------------------------------------------------------------------------------------------------
 !> @brief Return the index of a key.
 !--------------------------------------------------------------------------------------------------
-function tDict_index(self,key)  result(keyIndex)
+function tDict_index(self,key) result(keyIndex)
 
-  class(tDict),     intent(in), target  :: self
-  character(len=*), intent(in)          :: key
+  class(tDict),     intent(in), target :: self
+  character(len=*), intent(in)         :: key
 
   integer              :: keyIndex
   type(tItem), pointer :: item
@@ -1032,7 +1037,12 @@ function tDict_index(self,key)  result(keyIndex)
     keyIndex = keyIndex+1
   end do
 
-  if (item%key /= key) call IO_error(140,ext_msg=key)
+  if (item%key /= key) &
+#ifndef __GFORTRAN__
+    call IO_error(143_pI16,key,'not in',join_str_array(self%keys()),emph=[1,3])
+#else
+    call IO_error(143_pI16,key,'not found',emph=[1])
+#endif
 
 end function tDict_index
 
@@ -1040,20 +1050,20 @@ end function tDict_index
 !--------------------------------------------------------------------------------------------------
 !> @brief Get key of given index.
 !--------------------------------------------------------------------------------------------------
-function tDict_key(self,i)  result(key)
+function tDict_key(self,idx) result(key)
 
-  class(tDict),     intent(in), target  :: self
-  integer,          intent(in)          :: i
+  class(tDict),     intent(in), target :: self
+  integer,          intent(in)         :: idx                                                       !< index
 
-  character(len=:), allocatable         :: key
-  integer              :: j
+  character(len=:), allocatable        :: key
+  integer              :: i
   type(tItem), pointer :: item
 
 
-  if (i < 1 .or. i > size(self)) call IO_error(150,ext_msg='tDict_key @ '//IO_intAsStr(i) &
-                                                                  //' of '//IO_intAsStr(size(self)) )
+  if (idx < 1 .or. idx > size(self)) &
+    call IO_error(150,ext_msg='tDict_key @ '//IO_intAsStr(idx)//' of '//IO_intAsStr(size(self)) )
   item => self%first
-  do j = 2, i
+  do i = 2, idx
     item => item%next
   end do
 
@@ -1071,19 +1081,19 @@ function tDict_keys(self) result(keys)
   character(len=:), dimension(:), allocatable :: keys
 
   character(len=pSTRLEN), dimension(:), allocatable :: temp
-  integer :: j, l
+  integer :: i, l
 
 
   allocate(temp(size(self)))
   l = 0
-  do j = 1, size(self)
-    temp(j) = self%key(j)
-    l = max(len_trim(temp(j)),l)
+  do i = 1, size(self)
+    temp(i) = self%key(i)
+    l = max(len_trim(temp(i)),l)
   end do
 
   allocate(character(l)::keys(size(self)))
-  do j = 1, size(self)
-    keys(j) = trim(temp(j))
+  do i = 1, size(self)
+    keys(i) = trim(temp(i))
   end do
 
 end function tDict_keys
@@ -1092,19 +1102,19 @@ end function tDict_keys
 !-------------------------------------------------------------------------------------------------
 !> @brief Check whether a given key is present.
 !-------------------------------------------------------------------------------------------------
-function tDict_contains(self,k)  result(exists)
+function tDict_contains(self,element) result(exists)
 
-  class(tDict),     intent(in), target  :: self
-  character(len=*), intent(in)          :: k
-  logical                               :: exists
+  class(tDict),     intent(in), target :: self
+  character(len=*), intent(in)         :: element                                                    !< key to check for
+  logical                              :: exists
 
-  integer   :: j
+  integer :: j
 
 
   exists = .false.
   j = 1
   do while(j <= size(self) .and. .not. exists)
-    exists = self%key(j) == k
+    exists = self%key(j) == element
     j = j + 1
   end do
 
@@ -1114,10 +1124,10 @@ end function tDict_contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Get by key.
 !--------------------------------------------------------------------------------------------------
-function tDict_get(self,k,defaultVal) result(node)
+function tDict_get(self,key,defaultVal) result(node)
 
   class(tDict),     intent(in), target         :: self
-  character(len=*), intent(in)                 :: k
+  character(len=*), intent(in)                 :: key
   class(tNode),     intent(in),optional,target :: defaultVal
   class(tNode),     pointer :: node
 
@@ -1127,7 +1137,7 @@ function tDict_get(self,k,defaultVal) result(node)
   item => self%first
 
   do j=1, size(self)
-    if (item%key == k) then
+    if (item%key == key) then
       node => item%node
       return
     end if
@@ -1137,7 +1147,11 @@ function tDict_get(self,k,defaultVal) result(node)
   if (present(defaultVal)) then
     node => defaultVal
   else
-    call IO_error(143,ext_msg=k)
+#ifndef __GFORTRAN__
+    call IO_error(143_pI16,key,'not in',join_str_array(self%keys()),emph=[1,3])
+#else
+    call IO_error(143_pI16,key,'not found',emph=[1])
+#endif
   end if
 
 end function tDict_get
@@ -1146,17 +1160,17 @@ end function tDict_get
 !--------------------------------------------------------------------------------------------------
 !> @brief Get scalar by key.
 !--------------------------------------------------------------------------------------------------
-function tDict_get_scalar(self,k,defaultVal) result(nodeAsScalar)
+function tDict_get_scalar(self,key,defaultVal) result(nodeAsScalar)
 
   class(tDict),     intent(in) :: self
-  character(len=*), intent(in) :: k
+  character(len=*), intent(in) :: key
   type(tScalar),    intent(in), optional, target :: defaultVal
   type(tScalar), pointer :: nodeAsScalar
 
   class(tNode),  pointer :: node
 
 
-  node => self%get(k,defaultVal)
+  node => self%get(key,defaultVal)
   nodeAsScalar => node%asScalar()
 
 end function tDict_get_scalar
@@ -1165,17 +1179,17 @@ end function tDict_get_scalar
 !--------------------------------------------------------------------------------------------------
 !> @brief Get list by key.
 !--------------------------------------------------------------------------------------------------
-function tDict_get_list(self,k,defaultVal) result(nodeAsList)
+function tDict_get_list(self,key,defaultVal) result(nodeAsList)
 
   class(tDict),     intent(in) :: self
-  character(len=*), intent(in) :: k
+  character(len=*), intent(in) :: key
   type(tList),      intent(in), optional, target :: defaultVal
   type(tList),  pointer :: nodeAsList
 
   class(tNode), pointer :: node
 
 
-  node => self%get(k,defaultVal)
+  node => self%get(key,defaultVal)
   nodeAsList => node%asList()
 
 end function tDict_get_list
@@ -1184,17 +1198,17 @@ end function tDict_get_list
 !--------------------------------------------------------------------------------------------------
 !> @brief Get dict by key.
 !--------------------------------------------------------------------------------------------------
-function tDict_get_dict(self,k,defaultVal) result(nodeAsDict)
+function tDict_get_dict(self,key,defaultVal) result(nodeAsDict)
 
   class(tDict),     intent(in) :: self
-  character(len=*), intent(in) :: k
+  character(len=*), intent(in) :: key
   type(tDict),      intent(in), optional, target :: defaultVal
   type(tDict),  pointer :: nodeAsDict
 
   class(tNode), pointer :: node
 
 
-  node => self%get(k,defaultVal)
+  node => self%get(key,defaultVal)
   nodeAsDict => node%asDict()
 
 end function tDict_get_dict
@@ -1203,23 +1217,27 @@ end function tDict_get_dict
 !--------------------------------------------------------------------------------------------------
 !> @brief Get scalar by key and convert to real.
 !--------------------------------------------------------------------------------------------------
-function tDict_get_asReal(self,k,defaultVal) result(nodeAsReal)
+function tDict_get_asReal(self,key,defaultVal) result(nodeAsReal)
 
   class(tDict),     intent(in) :: self
-  character(len=*), intent(in) :: k
+  character(len=*), intent(in) :: key
   real(pREAL),      intent(in), optional :: defaultVal
   real(pREAL) :: nodeAsReal
 
   type(tScalar), pointer :: scalar
 
 
-  if (self%contains(k)) then
-    scalar => self%get_scalar(k)
+  if (self%contains(key)) then
+    scalar => self%get_scalar(key)
     nodeAsReal = scalar%asReal()
   elseif (present(defaultVal)) then
     nodeAsReal = defaultVal
   else
-    call IO_error(143,ext_msg=k)
+#ifndef __GFORTRAN__
+    call IO_error(143_pI16,key,'not in',join_str_array(self%keys()),emph=[1,3])
+#else
+    call IO_error(143_pI16,key,'not found',emph=[1])
+#endif
   end if
 
 end function tDict_get_asReal
@@ -1229,10 +1247,10 @@ end function tDict_get_asReal
 !> @brief Get list by key and convert to real array (1D).
 !> @details If a size is required, scalars are valid input and are broadcasted to the required size.
 !--------------------------------------------------------------------------------------------------
-function tDict_get_as1dReal_sized(self,k,defaultVal,requiredSize) result(nodeAs1dReal)
+function tDict_get_as1dReal_sized(self,key,defaultVal,requiredSize) result(nodeAs1dReal)
 
   class(tDict),     intent(in) :: self
-  character(len=*), intent(in) :: k
+  character(len=*), intent(in) :: key
   real(pREAL),      intent(in), dimension(:), optional :: defaultVal
   integer,          intent(in),               optional :: requiredSize
   real(pREAL), dimension(:), allocatable :: nodeAs1dReal
@@ -1240,14 +1258,14 @@ function tDict_get_as1dReal_sized(self,k,defaultVal,requiredSize) result(nodeAs1
   class(tNode), pointer :: content
 
 
-  if (self%contains(k)) then
-    content => self%get(k)
+  if (self%contains(key)) then
+    content => self%get(key)
     select type(content)
       class is(tScalar)
         if (present(requiredSize)) then
           allocate(nodeAs1dReal(requiredSize),source = content%asReal())
         else
-          call IO_error(706,'"'//trim(content%asFormattedStr())//'" is not a list of reals')
+          call IO_error(706_pI16,trim(content%asFormattedStr()),'is not a list of reals',emph=[1])
         end if
       class is(tList)
         nodeAs1dReal = content%as1dReal()
@@ -1255,12 +1273,16 @@ function tDict_get_as1dReal_sized(self,k,defaultVal,requiredSize) result(nodeAs1
   elseif (present(defaultVal)) then
     nodeAs1dReal = defaultVal
   else
-    call IO_error(143,ext_msg=k)
+#ifndef __GFORTRAN__
+    call IO_error(143_pI16,key,'not in',join_str_array(self%keys()),emph=[1,3])
+#else
+    call IO_error(143_pI16,key,'not found',emph=[1])
+#endif
   end if
 
   if (present(requiredSize)) then
     if (requiredSize /= size(nodeAs1dReal)) &
-      call IO_error(146,ext_msg=k, &
+      call IO_error(146,ext_msg=key, &
                     label1='actual',ID1=size(nodeAs1dReal), &
                     label2='required',ID2=requiredSize)
   end if
@@ -1273,10 +1295,10 @@ end function tDict_get_as1dReal_sized
 !> @details Values will be broadcasted. A List content can be composed from mixture of scalar
 !> or list entries. [2., [1., 3.]] with required chunks [3, 2] gives [2., 2., 2., 1., 3.].
 !--------------------------------------------------------------------------------------------------
-function tDict_get_as1dReal_chunked(self,k,defaultVal,requiredChunks) result(nodeAs1dReal)
+function tDict_get_as1dReal_chunked(self,key,defaultVal,requiredChunks) result(nodeAs1dReal)
 
   class(tDict),     intent(in) :: self
-  character(len=*), intent(in) :: k
+  character(len=*), intent(in) :: key
   real(pREAL),      intent(in), dimension(:), optional :: defaultVal
   integer,          intent(in), dimension(:)           :: requiredChunks
   real(pREAL),                  dimension(sum(requiredChunks)) :: nodeAs1dReal
@@ -1286,13 +1308,13 @@ function tDict_get_as1dReal_chunked(self,k,defaultVal,requiredChunks) result(nod
   integer :: i
 
 
-  if (self%contains(k)) then
-    node_outer => self%get(k)
+  if (self%contains(key)) then
+    node_outer => self%get(key)
     select type(node_outer)
       class is(tScalar)
         nodeAs1dReal = node_outer%asReal()
       class is(tList)
-        list_outer => self%get_list(k)
+        list_outer => self%get_list(key)
         if (size(list_outer) /= size(requiredChunks)) &
           call IO_error(709,'list "'//list_outer%asFormattedStr()//'" is not of length '//IO_intAsStr(size(requiredChunks)))
         do i = 1, size(requiredChunks)
@@ -1303,11 +1325,11 @@ function tDict_get_as1dReal_chunked(self,k,defaultVal,requiredChunks) result(nod
             class is(tList)
               list_inner => node_inner%asList()
               if (size(list_inner%as1dReal()) /= requiredChunks(i)) &
-                  call IO_error(709,'entry "'//k//'" is not of length '//IO_intAsStr(requiredChunks(i)),&
+                  call IO_error(709,'entry "'//key//'" is not of length '//IO_intAsStr(requiredChunks(i)),&
                                 'position',i)
               nodeAs1dReal(sum(requiredChunks(:i-1))+1:sum(requiredChunks(:i))) = list_inner%as1dReal()
             class default
-              call IO_error(706,'entry "'//k//'" is neither scalar nor list','position',i)
+              call IO_error(706_pI16,trim(node_inner%asFormattedStr()),'is neither a real nor a list of reals',emph=[1])
           end select
         end do
     end select
@@ -1322,7 +1344,11 @@ function tDict_get_as1dReal_chunked(self,k,defaultVal,requiredChunks) result(nod
       call IO_error(709,'default values not of required shape')
     end if
   else
-    call IO_error(143,ext_msg=k)
+#ifndef __GFORTRAN__
+    call IO_error(143_pI16,key,'not in',join_str_array(self%keys()),emph=[1,3])
+#else
+    call IO_error(143_pI16,key,'not found',emph=[1])
+#endif
   end if
 
 end function tDict_get_as1dReal_chunked
@@ -1332,10 +1358,10 @@ end function tDict_get_as1dReal_chunked
 !--------------------------------------------------------------------------------------------------
 !> @brief Get list of lists by key and convert to real array (2D).
 !--------------------------------------------------------------------------------------------------
-function tDict_get_as2dReal(self,k,defaultVal,requiredShape) result(nodeAs2dReal)
+function tDict_get_as2dReal(self,key,defaultVal,requiredShape) result(nodeAs2dReal)
 
   class(tDict),     intent(in) :: self
-  character(len=*), intent(in) :: k
+  character(len=*), intent(in) :: key
   real(pREAL),      intent(in), dimension(:,:), optional :: defaultVal
   integer,          intent(in), dimension(2),   optional :: requiredShape
   real(pREAL), dimension(:,:), allocatable :: nodeAs2dReal
@@ -1343,17 +1369,21 @@ function tDict_get_as2dReal(self,k,defaultVal,requiredShape) result(nodeAs2dReal
   type(tList), pointer :: list
 
 
-  if (self%contains(k)) then
-    list => self%get_list(k)
+  if (self%contains(key)) then
+    list => self%get_list(key)
     nodeAs2dReal = list%as2dReal()
   elseif (present(defaultVal)) then
     nodeAs2dReal = defaultVal
   else
-    call IO_error(143,ext_msg=k)
+#ifndef __GFORTRAN__
+    call IO_error(143_pI16,key,'not in',join_str_array(self%keys()),emph=[1,3])
+#else
+    call IO_error(143_pI16,key,'not found',emph=[1])
+#endif
   end if
 
   if (present(requiredShape)) then
-    if (any(requiredShape /= shape(nodeAs2dReal))) call IO_error(146,ext_msg=k)
+    if (any(requiredShape /= shape(nodeAs2dReal))) call IO_error(146,ext_msg=key)
   end if
 
 end function tDict_get_as2dReal
@@ -1369,25 +1399,29 @@ end function tDict_get_as2dReal
 !--------------------------------------------------------------------------------------------------
 !> @brief Get list of lists by key and convert to real array (2D).
 !--------------------------------------------------------------------------------------------------
-function tDict_get_as2dReal_a(self,k,requiredShape) result(nodeAs2dReal)
+function tDict_get_as2dReal_a(self,key,requiredShape) result(nodeAs2dReal)
 
   class(tDict),     intent(in) :: self
-  character(len=*), intent(in) :: k
+  character(len=*), intent(in) :: key
   integer,          intent(in), dimension(2),   optional :: requiredShape
   real(pREAL), dimension(:,:), allocatable :: nodeAs2dReal
 
   type(tList), pointer :: list
 
 
-  if (self%contains(k)) then
-    list => self%get_list(k)
+  if (self%contains(key)) then
+    list => self%get_list(key)
     nodeAs2dReal = list%as2dReal()
   else
-    call IO_error(143,ext_msg=k)
+#ifndef __GFORTRAN__
+    call IO_error(143_pI16,key,'not in',join_str_array(self%keys()),emph=[1,3])
+#else
+    call IO_error(143_pI16,key,'not found',emph=[1])
+#endif
   end if
 
   if (present(requiredShape)) then
-    if (any(requiredShape /= shape(nodeAs2dReal))) call IO_error(146,ext_msg=k)
+    if (any(requiredShape /= shape(nodeAs2dReal))) call IO_error(146,ext_msg=key)
   end if
 
 end function tDict_get_as2dReal_a
@@ -1396,10 +1430,10 @@ end function tDict_get_as2dReal_a
 !--------------------------------------------------------------------------------------------------
 !> @brief Get list of lists by key and convert to real array (2D).
 !--------------------------------------------------------------------------------------------------
-function tDict_get_as2dReal_b(self,k,defaultVal,requiredShape) result(nodeAs2dReal)
+function tDict_get_as2dReal_b(self,key,defaultVal,requiredShape) result(nodeAs2dReal)
 
   class(tDict),     intent(in) :: self
-  character(len=*), intent(in) :: k
+  character(len=*), intent(in) :: key
   real(pREAL),      intent(in), dimension(:,:) :: defaultVal
   integer,          intent(in), dimension(2),  optional :: requiredShape
   real(pREAL), dimension(:,:), allocatable :: nodeAs2dReal
@@ -1407,15 +1441,15 @@ function tDict_get_as2dReal_b(self,k,defaultVal,requiredShape) result(nodeAs2dRe
   type(tList), pointer :: list
 
 
-  if (self%contains(k)) then
-    list => self%get_list(k)
+  if (self%contains(key)) then
+    list => self%get_list(key)
     nodeAs2dReal = list%as2dReal()
   else
     nodeAs2dReal = defaultVal
   end if
 
   if (present(requiredShape)) then
-    if (any(requiredShape /= shape(nodeAs2dReal))) call IO_error(146,ext_msg=k)
+    if (any(requiredShape /= shape(nodeAs2dReal))) call IO_error(146,ext_msg=key)
   end if
 
 end function tDict_get_as2dReal_b
@@ -1424,23 +1458,27 @@ end function tDict_get_as2dReal_b
 !--------------------------------------------------------------------------------------------------
 !> @brief Get scalar by key and convert to int.
 !--------------------------------------------------------------------------------------------------
-function tDict_get_asInt(self,k,defaultVal) result(nodeAsInt)
+function tDict_get_asInt(self,key,defaultVal) result(nodeAsInt)
 
   class(tDict),     intent(in) :: self
-  character(len=*), intent(in) :: k
+  character(len=*), intent(in) :: key
   integer,          intent(in), optional :: defaultVal
   integer :: nodeAsInt
 
  type(tScalar), pointer :: scalar
 
 
-  if (self%contains(k)) then
-    scalar => self%get_scalar(k)
+  if (self%contains(key)) then
+    scalar => self%get_scalar(key)
     nodeAsInt = scalar%asInt()
   elseif (present(defaultVal)) then
     nodeAsInt = defaultVal
   else
-    call IO_error(143,ext_msg=k)
+#ifndef __GFORTRAN__
+    call IO_error(143_pI16,key,'not in',join_str_array(self%keys()),emph=[1,3])
+#else
+    call IO_error(143_pI16,key,'not found',emph=[1])
+#endif
   end if
 
 end function tDict_get_asInt
@@ -1450,10 +1488,10 @@ end function tDict_get_asInt
 !> @brief Get list by key and convert to int array (1D).
 !> @details If a size is required, scalars are valid input and are broadcasted to the required size.
 !--------------------------------------------------------------------------------------------------
-function tDict_get_as1dInt(self,k,defaultVal,requiredSize) result(nodeAs1dInt)
+function tDict_get_as1dInt(self,key,defaultVal,requiredSize) result(nodeAs1dInt)
 
   class(tDict),          intent(in) :: self
-  character(len=*),      intent(in) :: k
+  character(len=*),      intent(in) :: key
   integer, dimension(:), intent(in), optional :: defaultVal
   integer,               intent(in), optional :: requiredSize
   integer, dimension(:), allocatable :: nodeAs1dInt
@@ -1461,14 +1499,14 @@ function tDict_get_as1dInt(self,k,defaultVal,requiredSize) result(nodeAs1dInt)
   class(tNode), pointer :: content
 
 
-  if (self%contains(k)) then
-    content => self%get(k)
+  if (self%contains(key)) then
+    content => self%get(key)
     select type(content)
       class is(tScalar)
         if (present(requiredSize)) then
           allocate(nodeAs1dInt(requiredSize),source = content%asInt())
         else
-          call IO_error(706,'"'//trim(content%asFormattedStr())//'" is not a list of integers')
+          call IO_error(706_pI16,trim(content%asFormattedStr()),'is not a list of integers',emph=[1])
         end if
       class is(tList)
         nodeAs1dInt = content%as1dInt()
@@ -1476,12 +1514,16 @@ function tDict_get_as1dInt(self,k,defaultVal,requiredSize) result(nodeAs1dInt)
   elseif (present(defaultVal)) then
     nodeAs1dInt = defaultVal
   else
-    call IO_error(143,ext_msg=k)
+#ifndef __GFORTRAN__
+    call IO_error(143_pI16,key,'not in',join_str_array(self%keys()),emph=[1,3])
+#else
+    call IO_error(143_pI16,key,'not found',emph=[1])
+#endif
   end if
 
   if (present(requiredSize)) then
     if (requiredSize /= size(nodeAs1dInt)) &
-      call IO_error(146,ext_msg=k, &
+      call IO_error(146,ext_msg=key, &
                     label1='actual',ID1=size(nodeAs1dInt), &
                     label2='required',ID2=requiredSize)
   end if
@@ -1492,23 +1534,27 @@ end function tDict_get_as1dInt
 !--------------------------------------------------------------------------------------------------
 !> @brief Get scalar by key and convert to bool.
 !--------------------------------------------------------------------------------------------------
-function tDict_get_asBool(self,k,defaultVal) result(nodeAsBool)
+function tDict_get_asBool(self,key,defaultVal) result(nodeAsBool)
 
   class(tDict),     intent(in) :: self
-  character(len=*), intent(in) :: k
+  character(len=*), intent(in) :: key
   logical,          intent(in), optional :: defaultVal
   logical :: nodeAsBool
 
   type(tScalar), pointer :: scalar
 
 
-  if (self%contains(k)) then
-    scalar => self%get_scalar(k)
+  if (self%contains(key)) then
+    scalar => self%get_scalar(key)
     nodeAsBool = scalar%asBool()
   elseif (present(defaultVal)) then
     nodeAsBool = defaultVal
   else
-    call IO_error(143,ext_msg=k)
+#ifndef __GFORTRAN__
+    call IO_error(143_pI16,key,'not in',join_str_array(self%keys()),emph=[1,3])
+#else
+    call IO_error(143_pI16,key,'not found',emph=[1])
+#endif
   end if
 
 end function tDict_get_asBool
@@ -1517,23 +1563,27 @@ end function tDict_get_asBool
 !--------------------------------------------------------------------------------------------------
 !> @brief Get list by key and convert to bool array (1D).
 !--------------------------------------------------------------------------------------------------
-function tDict_get_as1dBool(self,k,defaultVal) result(nodeAs1dBool)
+function tDict_get_as1dBool(self,key,defaultVal) result(nodeAs1dBool)
 
   class(tDict),          intent(in) :: self
-  character(len=*),      intent(in) :: k
+  character(len=*),      intent(in) :: key
   logical, dimension(:), intent(in), optional :: defaultVal
   logical, dimension(:), allocatable          :: nodeAs1dBool
 
   type(tList), pointer :: list
 
 
-  if (self%contains(k)) then
-    list => self%get_list(k)
+  if (self%contains(key)) then
+    list => self%get_list(key)
     nodeAs1dBool = list%as1dBool()
   elseif (present(defaultVal)) then
     nodeAs1dBool = defaultVal
   else
-    call IO_error(143,ext_msg=k)
+#ifndef __GFORTRAN__
+    call IO_error(143_pI16,key,'not in',join_str_array(self%keys()),emph=[1,3])
+#else
+    call IO_error(143_pI16,key,'not found',emph=[1])
+#endif
   end if
 
 end function tDict_get_as1dBool
@@ -1542,23 +1592,27 @@ end function tDict_get_as1dBool
 !--------------------------------------------------------------------------------------------------
 !> @brief Get scalar by key and convert to string.
 !--------------------------------------------------------------------------------------------------
-function tDict_get_asStr(self,k,defaultVal) result(nodeAsStr)
+function tDict_get_asStr(self,key,defaultVal) result(nodeAsStr)
 
   class(tDict),     intent(in) :: self
-  character(len=*), intent(in) :: k
+  character(len=*), intent(in) :: key
   character(len=*), intent(in), optional :: defaultVal
   character(len=:), allocatable :: nodeAsStr
 
   type(tScalar), pointer :: scalar
 
 
-  if (self%contains(k)) then
-    scalar => self%get_scalar(k)
+  if (self%contains(key)) then
+    scalar => self%get_scalar(key)
     nodeAsStr = scalar%asStr()
   elseif (present(defaultVal)) then
     nodeAsStr = defaultVal
   else
-    call IO_error(143,ext_msg=k)
+#ifndef __GFORTRAN__
+    call IO_error(143_pI16,key,'not in',join_str_array(self%keys()),emph=[1,3])
+#else
+    call IO_error(143_pI16,key,'not found',emph=[1])
+#endif
   end if
 
 end function tDict_get_asStr
@@ -1567,23 +1621,27 @@ end function tDict_get_asStr
 !--------------------------------------------------------------------------------------------------
 !> @brief Get list by key and convert to string array (1D).
 !--------------------------------------------------------------------------------------------------
-function tDict_get_as1dStr(self,k,defaultVal) result(nodeAs1dStr)
+function tDict_get_as1dStr(self,key,defaultVal) result(nodeAs1dStr)
 
   class(tDict),     intent(in) :: self
-  character(len=*), intent(in) :: k
+  character(len=*), intent(in) :: key
   character(len=*), intent(in), dimension(:), optional :: defaultVal
   character(len=:), allocatable, dimension(:)          :: nodeAs1dStr
 
   type(tList), pointer :: list
 
 
-  if (self%contains(k)) then
-    list => self%get_list(k)
+  if (self%contains(key)) then
+    list => self%get_list(key)
     nodeAs1dStr = list%as1dStr()
   elseif (present(defaultVal)) then
     nodeAs1dStr = defaultVal
   else
-    call IO_error(143,ext_msg=k)
+#ifndef __GFORTRAN__
+    call IO_error(143_pI16,key,'not in',join_str_array(self%keys()),emph=[1,3])
+#else
+    call IO_error(143_pI16,key,'not found',emph=[1])
+#endif
   end if
 
 end function tDict_get_as1dStr
@@ -1593,13 +1651,14 @@ end function tDict_get_as1dStr
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns string output array (1D) (hack for GNU).
 !--------------------------------------------------------------------------------------------------
-function output_as1dStr(self)  result(output)
+function output_as1dStr(self) result(output)
 
   class(tDict), pointer,intent(in)   ::  self
   character(len=pSTRLEN), allocatable, dimension(:) :: output
 
   type(tList), pointer :: output_list
   integer :: o
+
 
   output_list => self%get_list('output',defaultVal=emptyList)
   allocate(output(size(output_list)))
@@ -1618,9 +1677,32 @@ recursive subroutine tItem_finalize(self)
 
   type(tItem),intent(inout) :: self
 
+
   deallocate(self%node)
   if (associated(self%next)) deallocate(self%next)
 
 end subroutine tItem_finalize
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Join strings from array.
+!> @details Separated by comma, enclosed by square brackets.
+!--------------------------------------------------------------------------------------------------
+pure function join_str_array(array) result(joined)
+
+  character(len=*), dimension(:), intent(in) :: array
+  character(len=:), allocatable :: joined
+
+  integer :: i
+
+
+  joined = '['
+  if (size(array) > 0) joined = joined//trim(array(1))
+  do i = 2, size(array)
+    joined = joined//', '//trim(array(i))
+  end do
+  joined = joined//']'
+
+end function join_str_array
 
 end module types

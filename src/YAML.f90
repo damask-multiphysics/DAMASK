@@ -232,14 +232,14 @@ function to_flow(mixed) result(flow)
 
 
   call to_flow_C(flow,f_c_string(mixed),stat)
-  if (stat /= 0_C_INT) call IO_error(703,ext_msg='libyfaml')
+  if (stat /= 0_C_INT) call IO_error(703_pI16,'libyfaml parser error')
 #else
   type(C_PTR) :: str_ptr
   integer(C_LONG) :: strlen
 
 
   call to_flow_C(str_ptr,strlen,f_c_string(mixed))
-  if (strlen < 1_C_LONG) call IO_error(703,ext_msg='libyfaml')
+  if (strlen < 1_C_LONG) call IO_error(703_pI16,'libyfaml parser error')
   allocate(character(len=strlen,kind=c_char) :: flow)
 
   block
@@ -548,7 +548,8 @@ recursive subroutine line_isFlow(flow,s_flow,line)
     s_flow = s_flow + 1_pI64
     do while (s < len_trim(line,pI64))
       dict_chunk = s + find_end(line(s+1_pI64:),'}')
-      if (.not. iskeyValue(line(s+1_pI64:dict_chunk-1_pI64))) call IO_error(705,ext_msg=line)
+      if (.not. iskeyValue(line(s+1_pI64:dict_chunk-1_pI64))) &
+        call IO_error(703_pI16,'unsupported feature')
       call keyValue_toFlow(flow,s_flow,line(s+1_pI64:dict_chunk-1_pI64))
       flow(s_flow:s_flow+1_pI64) = ', '
       s_flow = s_flow + 2_pI64
@@ -659,7 +660,7 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
         call skip_empty_lines(blck,s_blck)
         e_blck = s_blck + index(blck(s_blck:),IO_EOL,kind=pI64) - 2_pI64
         line = clean(blck(s_blck:e_blck))
-        if (trim(line) == '---') call IO_error(707,ext_msg=line)
+        if (trim(line) == '---') call IO_error(703_pI16,'unexpected end of file')
         if (indentDepth(line) < indent .or. indentDepth(line) == indent) &
           call IO_error(701,ext_msg=line)
 

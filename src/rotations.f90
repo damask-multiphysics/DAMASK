@@ -165,7 +165,7 @@ recursive subroutine fromQuaternion(self,qu)
   real(pREAL), dimension(4), intent(in) :: qu
 
 
-  if (dNeq(norm2(qu),1.0_pREAL,1.0e-8_pREAL)) call IO_error(402,ext_msg='fromQuaternion')
+  if (dNeq(norm2(qu),1.0_pREAL,1.0e-8_pREAL)) call IO_error(402_pI16,'fromQuaternion')
 
   self%q = qu
 
@@ -183,7 +183,7 @@ recursive subroutine fromEulers(self,eu,degrees)
   Eulers = merge(eu*INRAD,eu,misc_optional(degrees,.false.))
 
   if (any(Eulers<0.0_pREAL) .or. any(Eulers>TAU) .or. Eulers(2) > PI) &
-    call IO_error(402,ext_msg='fromEulers')
+    call IO_error(402_pI16,'fromEulers')
 
   self%q = eu2qu(Eulers)
 
@@ -201,12 +201,12 @@ recursive subroutine fromAxisAngle(self,ax,degrees,P)
 
 
   angle = merge(ax(4)*INRAD,ax(4),misc_optional(degrees,.false.))
-
   axis = ax(1:3) * merge(-1.0_pREAL,1.0_pREAL,misc_optional(P,-1) == 1)
-  if (abs(misc_optional(P,-1)) /= 1) call IO_error(402,ext_msg='fromAxisAngle (P)')
 
+  if (abs(misc_optional(P,-1)) /= 1) &
+    call IO_error(402_pI16,'fromAxisAngle (P)')
   if (dNeq(norm2(axis),1.0_pREAL) .or. angle < 0.0_pREAL .or. angle > PI) &
-    call IO_error(402,ext_msg='fromAxisAngle')
+    call IO_error(402_pI16,'fromAxisAngle')
 
   self%q = ax2qu([axis,angle])
 
@@ -219,7 +219,7 @@ recursive subroutine fromMatrix(self,om)
 
 
   if (dNeq(math_det33(om),1.0_pREAL,tol=1.0e-5_pREAL)) &
-    call IO_error(402,ext_msg='fromMatrix')
+    call IO_error(402_pI16,'fromMatrix')
 
   self%q = om2qu(om)
 

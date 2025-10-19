@@ -142,7 +142,7 @@ function IO_read(fileName) result(fileContent)
   inquire(file = fileName, size=fileLength)
   open(newunit=fileUnit, file=fileName, access='stream',&
        status='old', position='rewind', action='read',iostat=myStat)
-  if (myStat /= 0) call IO_error(100_pI16,trim(fileName),emph=[1])
+  if (myStat /= 0) call IO_error(100_pI16,'cannot open file',fileName,emph=[2])
   allocate(character(len=fileLength)::fileContent)
   if (fileLength==0) then
     close(fileUnit)
@@ -150,7 +150,7 @@ function IO_read(fileName) result(fileContent)
   end if
 
   read(fileUnit,iostat=myStat) fileContent
-  if (myStat /= 0) call IO_error(102_pI16,trim(fileName),emph=[1])
+  if (myStat /= 0) call IO_error(100_pI16,'cannot read from file',fileName,emph=[2])
   close(fileUnit)
 
   if (index(fileContent,CR//LF,kind=pI64) /= 0)     fileContent = CRLF2LF(fileContent)
@@ -385,9 +385,7 @@ subroutine IO_error_new(error_ID, &
 !--------------------------------------------------------------------------------------------------
 ! file handling errors
     case (100)
-      msg = 'could not open file:'
-    case (102)
-      msg = 'could not read file:'
+      msg = 'file error'
 
 !--------------------------------------------------------------------------------------------------
 ! file parsing errors
@@ -411,14 +409,12 @@ subroutine IO_error_new(error_ID, &
 
 !--------------------------------------------------------------------------------------------------
 ! errors related to the parsing of material.yaml
-    case (140)
-      msg = 'key not found'
     case (141)
       msg = 'number of chunks in string differs'
     case (142)
       msg = 'empty list'
     case (143)
-      msg = 'no value found for key'
+      msg = 'key error'
     case (144)
       msg = 'negative number systems requested'
     case (145)
@@ -500,12 +496,8 @@ subroutine IO_error_new(error_ID, &
       msg = 'invalid YAML'
     case (704)
       msg = 'space expected after a colon for <key>: <value> pair'
-    case (705)
-      msg = 'unsupported feature'
     case (706)
       msg = 'type mismatch in YAML data node'
-    case (707)
-      msg = 'abrupt end of file'
     case (708)
       msg = '"---" expected after YAML file header'
     case (709)
