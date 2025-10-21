@@ -49,7 +49,7 @@ module discretization_mesh
     mesh_boundariesIdx                                                                              !< BC Type index (BCType_Vertex, BCType_Face)
 
   PetscInt, public, protected :: &
-    mesh_nCells
+    mesh_nElems
 
 !!!! BEGIN DEPRECATED !!!!!
   PetscInt, public, protected :: &
@@ -68,7 +68,7 @@ module discretization_mesh
 
   DM, public :: geomMesh
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if (PETSC_VERSION_MINOR<23)
   external :: &
 #if (PETSC_VERSION_MINOR<16)
     DMDestroy, &
@@ -113,12 +113,12 @@ subroutine discretization_mesh_init()
   integer                   :: dim
   integer(MPI_INTEGER_KIND) :: err_MPI
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
-  PetscInt                  :: nPolytopes                                                           !< number of different polytopes in the mesh
+  PetscInt                  :: nPolytopes                                                           ! number of different polytopes in the mesh
 
-  PetscInt,    dimension(:),     pointer     :: pSets,     &                                        !< BC vertex/face set IS values
-                                                cellsIS                                             !< cell type IS values
+  PetscInt,    dimension(:),     pointer     :: pSets,     &                                        ! BC vertex/face set IS values
+                                                cellsIS                                             ! cell type IS values
 #else
-  PetscInt,    dimension(:),     pointer     :: pSets                                               !< BC vertex/face set IS values
+  PetscInt,    dimension(:),     pointer     :: pSets                                               ! BC vertex/face set IS values
 #endif
   PetscInt,    dimension(:),     allocatable :: materialAt                                          ! material ID per cell
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18)
@@ -127,10 +127,10 @@ subroutine discretization_mesh_init()
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<=23)
   real(pREAL), dimension(:),     pointer     :: PETSC_NULL_REAL_POINTER => NULL()
 #endif
-  real(pREAL), dimension(:,:),   allocatable :: v_0                                                 !< volume associated with IP (initially!)
-  real(pREAL), dimension(:,:,:), allocatable :: x_p                                                 !< IP x,y,z coordinates (after deformation!)
+  real(pREAL), dimension(:,:),   allocatable :: v_0                                                 ! volume associated with IP (initially!)
+  real(pREAL), dimension(:,:,:), allocatable :: x_p                                                 ! IP x,y,z coordinates (after deformation!)
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
-  PetscInt,    dimension(:,:),   allocatable :: T_e                                                 !< element connectivity (node numbers in each cell)
+  PetscInt,    dimension(:,:),   allocatable :: T_e                                                 ! element connectivity (node numbers in each cell)
 #endif
 
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'
@@ -160,7 +160,7 @@ subroutine discretization_mesh_init()
   CHKERRQ(err_PETSc)
   if (.not. isSimplex) p_i = p_i + 1_pPETSCINT                                                      ! adjust for quad/hex (non-simplex)
 #endif
-  call DMGetStratumSize(globalMesh,'depth',dimPlex,mesh_nCells,err_PETSc)
+  call DMGetStratumSize(globalMesh,'depth',dimPlex,mesh_nElems,err_PETSc)
   CHKERRQ(err_PETSc)
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
@@ -229,7 +229,7 @@ subroutine discretization_mesh_init()
   call DMDestroy(globalMesh,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  call DMGetStratumSize(geomMesh,'depth',dimPlex,mesh_nCells,err_PETSc)
+  call DMGetStratumSize(geomMesh,'depth',dimPlex,mesh_nElems,err_PETSc)
   CHKERRQ(err_PETSc)
 
 ! Get initial nodal coordinates
@@ -293,20 +293,20 @@ subroutine discretization_mesh_init()
   call build_nodes_and_connectivity(x_n,p_s)
 #endif
 
-  allocate(materialAt(mesh_nCells))
-  do j = 1, mesh_nCells
+  allocate(materialAt(mesh_nElems))
+  do j = 1, mesh_nElems
     call DMGetLabelValue(geomMesh,'Cell Sets',j-1,materialAt(j),err_PETSc)
     CHKERRQ(err_PETSc)
   end do
 
   call discretization_init(int(materialAt),&
-                           reshape(x_p,[3,int(mesh_maxNips*mesh_nCells)]), &
+                           reshape(x_p,[3,int(mesh_maxNips*mesh_nElems)]), &
                            x_n)
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>24)
-  call writeGeometry(reshape(x_p,[3,int(mesh_maxNips*mesh_nCells)]),x_n,T_e)
+  call writeGeometry(reshape(x_p,[3,int(mesh_maxNips*mesh_nElems)]),x_n,T_e)
 #else
-  call writeGeometry(reshape(x_p,[3,int(mesh_maxNips*mesh_nCells)]),x_n)
+  call writeGeometry(reshape(x_p,[3,int(mesh_maxNips*mesh_nElems)]),x_n)
 #endif
 
 end subroutine discretization_mesh_init
@@ -326,7 +326,7 @@ function build_volume_IP(dimPlex) result(v_0)
   PetscReal, pointer,dimension(:) :: pCent, pNorm
 
 
-  allocate(v_0(mesh_maxNips,mesh_nCells),source=0.0_pREAL)
+  allocate(v_0(mesh_maxNips,mesh_nElems),source=0.0_pREAL)
 
   call DMPlexGetHeightStratum(geomMesh,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -371,7 +371,7 @@ function build_coordinates_IP(dimPlex,qPoints) result(x_p)
   call DMPlexGetHeightStratum(geomMesh,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  allocate(x_p(3,mesh_maxNips,mesh_nCells),source=0.0_pREAL)
+  allocate(x_p(3,mesh_maxNips,mesh_nElems),source=0.0_pREAL)
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
   allocate(pV0(mesh_maxNips*dimPlex))
   allocate(pCellJ(mesh_maxNips*dimPlex**2))
@@ -396,8 +396,8 @@ function build_coordinates_IP(dimPlex,qPoints) result(x_p)
       do dirI = 1_pPETSCINT, dimPlex
         x_p(dirI,qPt,cell+1) = pV0(dirI)
         do dirJ = 1_pPETSCINT, dimPlex
-          x_p(dirI,qPt,cell+1) = x_p(dirI,qPt,cell+1) + &
-                                 pCellJ((dirI-1)*dimPlex+dirJ)*(qPoints(qOffset+dirJ) + 1.0_pREAL)
+          x_p(dirI,qPt,cell+1) = x_p(dirI,qPt,cell+1) &
+                               + pCellJ((dirI-1)*dimPlex+dirJ)*(qPoints(qOffset+dirJ) + 1.0_pREAL)
         end do
       end do
       qOffset = qOffset + dimPlex
@@ -598,89 +598,89 @@ function PETSc_to_VTK_node_order(cell_type, order) result(mapping)
 
   if (cell_type == DM_POLYTOPE_TRIANGLE) then
     select case (order)
-    case (1)
-      mapping = [ 1,  2,  3]
-    case (2)
-      mapping = [ 4,  5,  6,  1,  2,  3]
-    case (3)
-      mapping = [ 8,  9, 10,  2,  3,  4,  5,  6,  7,  1]
-    case (4)
-      mapping = [13, 14, 15,  4,  5,  6,  7,  8,  9, 10, 11, 12,  1,  2,  3]
-    case (5)
-      mapping = [19, 20, 21,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 1, &
-                  3,  6,  2,  5,  4]
+      case (1)
+        mapping = [  1,   2,   3]
+      case (2)
+        mapping = [  4,   5,   6,   1,   2,   3]
+      case (3)
+        mapping = [  8,   9,  10,   2,   3,   4,   5,   6,   7,   1]
+      case (4)
+        mapping = [ 13,  14,  15,   4,   5,   6,   7,   8,   9,  10,  11,  12,   1,   2,   3]
+      case (5)
+        mapping = [ 19,  20,  21,   7,   8,   9,  10,  11,  12,  13,  14,  15,  16,  17,  18,  1,  &
+                     3,   6,   2,   5,   4]
     end select
   else if (cell_type == DM_POLYTOPE_QUADRILATERAL) then
     select case (order)
-    case (1)
-      mapping = [ 1,  2,  3,  4]
-    case (2)
-      mapping = [ 2,  3,  4,  5,  6,  7,  8,  9,  1]
-    case (3)
-      mapping = [ 5,  6,  7,  8,  9, 10, 11, 12, 14, 13, 16, 15,  1,  2,  3,  4]
-    case (4)
-      mapping = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 22, 21, 20, 25, 24, 23, &
-                  1,  2,  3,  4,  5,  6,  7,  8,  9]
-    case (5)
-      mapping = [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 32, 31, 30, 29, &
-                 36, 35, 34, 33,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, &
-                 13, 14, 15, 16]
+      case (1)
+        mapping = [  1,   2,   3,   4]
+      case (2)
+        mapping = [  2,   3,   4,   5,   6,   7,   8,   9,   1]
+      case (3)
+        mapping = [  5,   6,   7,   8,   9,  10,  11,  12,  14,  13,  16,  15,   1,   2,   3,   4]
+      case (4)
+        mapping = [ 10,  11,  12,  13,  14,  15,  16,  17,  18,  19,  22,  21,  20,  25,  24,  23, &
+                     1,   2,   3,   4,   5,   6,   7,   8,   9]
+      case (5)
+        mapping = [ 17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27,  28,  32,  31,  30,  29, &
+                    36,  35,  34,  33,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12, &
+                    13,  14,  15,  16]
     end select
   else if (cell_type == DM_POLYTOPE_TETRAHEDRON) then
     select case (order)
-    case (1)
-      mapping = [ 2,  4,  1,  3]
-    case (2)
-      mapping = [ 8, 10,  7,  9,  5,  4,  1,  2,  6,  3]
-    case (3)
-      mapping = [18, 20, 17, 19, 14, 13, 12, 11,  5,  6,  7,  8, 16, 15, 10,  9, &
-                  4,  3,  1,  2]
-    case (4)
-      mapping = [33, 35, 32, 34, 28, 27, 26, 25, 24, 23, 14, 15, 16, 17, 18, 19, &
-                 31, 30, 29, 22, 21, 20, 12, 13, 11,  8,  9, 10,  3,  4,  2,  7, &
-                  5,  6,  1]
-    case (5)
-      mapping = [54, 56, 53, 55, 48, 47, 46, 45, 44, 43, 42, 41, 29, 30, 31, 32, &
-                 33, 34, 35, 36, 52, 51, 50, 49, 40, 39, 38, 37, 25, 28, 23, 27, &
-                 26, 24, 17, 19, 22, 18, 21, 20,  7, 10,  5,  9,  8,  6, 16, 11, &
-                 13, 14, 12, 15,  3,  4,  1,  2]
+      case (1)
+        mapping = [  2,   4,   1,   3]
+      case (2)
+        mapping = [  8,  10,   7,   9,   5,   4,   1,   2,   6,   3]
+      case (3)
+        mapping = [ 18,  20,  17,  19,  14,  13,  12,  11,   5,   6,   7,   8,  16,  15,  10,   9, &
+                     4,   3,   1,   2]
+      case (4)
+        mapping = [ 33,  35,  32,  34,  28,  27,  26,  25,  24,  23,  14,  15,  16,  17,  18,  19, &
+                    31,  30,  29,  22,  21,  20,  12,  13,  11,   8,   9,  10,   3,   4,   2,   7, &
+                     5,   6,   1]
+      case (5)
+        mapping = [ 54,  56,  53,  55,  48,  47,  46,  45,  44,  43,  42,  41,  29,  30,  31,  32, &
+                    33,  34,  35,  36,  52,  51,  50,  49,  40,  39,  38,  37,  25,  28,  23,  27, &
+                    26,  24,  17,  19,  22,  18,  21,  20,   7,  10,   5,   9,   8,   6,  16,  11, &
+                    13,  14,  12,  15,   3,   4,   1,   2]
     end select
   else if (cell_type == DM_POLYTOPE_HEXAHEDRON) then
     select case (order)
-    case (1)
-      mapping = [ 1,  2,  3,  4,  5,  6,  7,  8]
-    case (2)
-      mapping = [ 2,  3,  4,  5,  6,  7,  8,  9, 19, 18, 17, 16, 20, 21, 22, 23, &
-                 25, 24, 26, 27, 15, 14, 12, 13, 10, 11,  1]
-    case (3)
-      mapping = [ 9, 10, 11, 12, 13, 14, 15, 16, 48, 47, 46, 45, 43, 44, 41, 42, &
-                 49, 50, 51, 52, 54, 53, 56, 55, 60, 59, 57, 58, 61, 62, 64, 63, &
-                 37, 39, 38, 40, 33, 34, 35, 36, 25, 26, 27, 28, 30, 29, 32, 31, &
-                 17, 19, 18, 20, 21, 22, 23, 24,  1,  2,  3,  4,  5,  6,  7,  8]
-    case (4)
-      mapping = [ 28,  29,  30,  31,  32,  33,  34,  35, 101, 100,  99,  98,  97,  96,  93,  94, &
-                  95,  90,  91,  92, 102, 103, 104, 105, 106, 107, 110, 109, 108, 113, 112, 111, &
-                 119, 118, 117, 114, 115, 116, 120, 121, 122, 125, 124, 123,  81,  84,  87,  82, &
-                  85,  88,  83,  86,  89,  72,  73,  74,  75,  76,  77,  78,  79,  80,  54,  55, &
-                  56,  57,  58,  59,  60,  61,  62,  65,  64,  63,  68,  67,  66,  71,  70,  69, &
-                  36,  39,  42,  37,  40,  43,  38,  41,  44,  45,  46,  47,  48,  49,  50,  51, &
-                  52,  53,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13,  14, &
-                  15,  16,  17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27]
-    case (5)
-      mapping = [ 65,  66,  67,  68,  69,  70,  71,  72, 184, 183, 182, 181, 180, 179, 178, 177, &
-                 173, 174, 175, 176, 169, 170, 171, 172, 185, 186, 187, 188, 189, 190, 191, 192, &
-                 196, 195, 194, 193, 200, 199, 198, 197, 208, 207, 206, 205, 201, 202, 203, 204, &
-                 209, 210, 211, 212, 216, 215, 214, 213, 153, 157, 161, 165, 154, 158, 162, 166, &
-                 155, 159, 163, 167, 156, 160, 164, 168, 137, 138, 139, 140, 141, 142, 143, 144, &
-                 145, 146, 147, 148, 149, 150, 151, 152, 105, 106, 107, 108, 109, 110, 111, 112, &
-                 113, 114, 115, 116, 117, 118, 119, 120, 124, 123, 122, 121, 128, 127, 126, 125, &
-                 132, 131, 130, 129, 136, 135, 134, 133,  73,  77,  81,  85,  74,  78,  82,  86, &
-                  75,  79,  83,  87,  76,  80,  84,  88,  89,  90,  91,  92,  93,  94,  95,  96, &
-                  97,  98,  99, 100, 101, 102, 103, 104,   1,   2,   3,   4,   5,   6,   7,   8, &
-                   9,  10,  11,  12,  13,  14,  15,  16,  17,  18,  19,  20,  21,  22,  23,  24, &
-                  25,  26,  27,  28,  29,  30,  31,  32,  33,  34,  35,  36,  37,  38,  39,  40, &
-                  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  51,  52,  53,  54,  55,  56, &
-                  57,  58,  59,  60,  61,  62,  63,  64]
+      case (1)
+        mapping = [  1,   2,   3,   4,   5,   6,   7,   8]
+      case (2)
+        mapping = [  2,   3,   4,   5,   6,   7,   8,   9,  19,  18,  17,  16,  20,  21,  22,  23, &
+                    25,  24,  26,  27,  15,  14,  12,  13,  10,  11,   1]
+      case (3)
+        mapping = [  9,  10,  11,  12,  13,  14,  15,  16,  48,  47,  46,  45,  43,  44,  41,  42, &
+                    49,  50,  51,  52,  54,  53,  56,  55,  60,  59,  57,  58,  61,  62,  64,  63, &
+                    37,  39,  38,  40,  33,  34,  35,  36,  25,  26,  27,  28,  30,  29,  32,  31, &
+                    17,  19,  18,  20,  21,  22,  23,  24,   1,   2,   3,   4,   5,   6,   7,   8]
+      case (4)
+        mapping = [ 28,  29,  30,  31,  32,  33,  34,  35, 101, 100,  99,  98,  97,  96,  93,  94, &
+                    95,  90,  91,  92, 102, 103, 104, 105, 106, 107, 110, 109, 108, 113, 112, 111, &
+                   119, 118, 117, 114, 115, 116, 120, 121, 122, 125, 124, 123,  81,  84,  87,  82, &
+                    85,  88,  83,  86,  89,  72,  73,  74,  75,  76,  77,  78,  79,  80,  54,  55, &
+                    56,  57,  58,  59,  60,  61,  62,  65,  64,  63,  68,  67,  66,  71,  70,  69, &
+                    36,  39,  42,  37,  40,  43,  38,  41,  44,  45,  46,  47,  48,  49,  50,  51, &
+                    52,  53,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13,  14, &
+                    15,  16,  17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27]
+      case (5)
+        mapping = [ 65,  66,  67,  68,  69,  70,  71,  72, 184, 183, 182, 181, 180, 179, 178, 177, &
+                   173, 174, 175, 176, 169, 170, 171, 172, 185, 186, 187, 188, 189, 190, 191, 192, &
+                   196, 195, 194, 193, 200, 199, 198, 197, 208, 207, 206, 205, 201, 202, 203, 204, &
+                   209, 210, 211, 212, 216, 215, 214, 213, 153, 157, 161, 165, 154, 158, 162, 166, &
+                   155, 159, 163, 167, 156, 160, 164, 168, 137, 138, 139, 140, 141, 142, 143, 144, &
+                   145, 146, 147, 148, 149, 150, 151, 152, 105, 106, 107, 108, 109, 110, 111, 112, &
+                   113, 114, 115, 116, 117, 118, 119, 120, 124, 123, 122, 121, 128, 127, 126, 125, &
+                   132, 131, 130, 129, 136, 135, 134, 133,  73,  77,  81,  85,  74,  78,  82,  86, &
+                    75,  79,  83,  87,  76,  80,  84,  88,  89,  90,  91,  92,  93,  94,  95,  96, &
+                    97,  98,  99, 100, 101, 102, 103, 104,   1,   2,   3,   4,   5,   6,   7,   8, &
+                     9,  10,  11,  12,  13,  14,  15,  16,  17,  18,  19,  20,  21,  22,  23,  24, &
+                    25,  26,  27,  28,  29,  30,  31,  32,  33,  34,  35,  36,  37,  38,  39,  40, &
+                    41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  51,  52,  53,  54,  55,  56, &
+                    57,  58,  59,  60,  61,  62,  63,  64]
     end select
   end if
 

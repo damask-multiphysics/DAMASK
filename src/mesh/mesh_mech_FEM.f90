@@ -963,7 +963,7 @@ subroutine FEM_mechanical_updateCoords()
   PetscReal, pointer, dimension(:,:) :: &
     nodeCoords                                                                                      !< nodal coordinates (3,nNodes)
   real(pREAL), pointer, dimension(:,:,:) :: &
-    ipCoords                                                                                        !< ip coordinates (3,nQuadrature,mesh_nCells)
+    ipCoords                                                                                        !< ip coordinates (3,nQuadrature,mesh_nElems)
 
   integer :: &
     qPt, &
@@ -1016,7 +1016,7 @@ subroutine FEM_mechanical_updateCoords()
   call PetscDSGetTabulation(mechDS,0_pPETSCINT,basisField,dev_null,err_PETSc)
 #endif
   CHKERRQ(err_PETSc)
-  allocate(ipCoords(3,nQuadrature,mesh_nCells),source=0.0_pREAL)
+  allocate(ipCoords(3,nQuadrature,mesh_nElems),source=0.0_pREAL)
   do c = cellStart, cellEnd - 1_pPETSCINT
     qOffset=0
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
@@ -1054,7 +1054,7 @@ subroutine FEM_mechanical_updateCoords()
 #endif
     CHKERRQ(err_PETSc)
   end do
-  call discretization_setIPcoords(reshape(ipCoords,[3,int(mesh_nCells*nQuadrature)]))
+  call discretization_setIPcoords(reshape(ipCoords,[3,int(mesh_nElems*nQuadrature)]))
   call DMRestoreLocalVector(dm_local,x_local,err_PETSc)
   CHKERRQ(err_PETSc)
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)

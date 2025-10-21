@@ -117,7 +117,7 @@ subroutine FEM_utilities_init(num_mesh)
   call PetscOptionsSetValue(PETSC_NULL_OPTIONS,'-petscds_force_quad','0',err_PETSc)
   CHKERRQ(err_PETSc)
 
-  wgt = real(mesh_maxNips*mesh_nCells,pREAL)**(-1)
+  wgt = real(mesh_maxNips*mesh_nElems,pREAL)**(-1)
 
 end subroutine FEM_utilities_init
 
@@ -137,7 +137,7 @@ subroutine utilities_constitutiveResponse(status, Delta_t,P_av,forwardData)
 
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
 
-  call homogenization_mechanical_response(status,Delta_t,1,int(mesh_maxNips*mesh_nCells))         ! calculate P field
+  call homogenization_mechanical_response(status,Delta_t,1,int(mesh_maxNips*mesh_nElems))         ! calculate P field
   cutBack = .false.
 
   P_av = sum(homogenization_P,dim=3) * wgt
