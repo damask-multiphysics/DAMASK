@@ -92,7 +92,7 @@ subroutine FEM_utilities_init(num_mesh)
   p_s = num_mesh%get_asInt('p_s',defaultVal = 2)
   p_i = num_mesh%get_asInt('p_i',defaultVal = p_s)
 
-#if (PETSC_VERSION_MINOR>=18)
+#if (PETSC_VERSION_MINOR>17)
   if (p_s < 1) &
 #else
   if (p_s < 1 .or. p_s > size(FEM_nQuadrature,2)) &

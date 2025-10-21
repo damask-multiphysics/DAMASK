@@ -78,7 +78,7 @@ module mesh_mechanical_FEM
   integer(kind(STATUS_OK)) :: status
   real(pREAL), parameter :: eps = 1.0e-18_pREAL
 
-#if (PETSC_VERSION_MAJOR==3 && (PETSC_VERSION_MINOR>=15 && PETSC_VERSION_MINOR<23))
+#if (PETSC_VERSION_MAJOR==3 && (PETSC_VERSION_MINOR>14 && PETSC_VERSION_MINOR<23))
   external :: &                                                                                     ! ToDo: write interfaces
 #if (PETSC_VERSION_MINOR<16)
     ISDestroy, &
@@ -120,13 +120,13 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
               component, boundary, topologDim, &
               cellStart, cellEnd, &
               nCoords
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   PetscBool       :: isSimplex
 #endif
   PetscSection    :: section
   PetscQuadrature :: mechQuad
   PetscDualSpace  :: mechDualSpace
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
   PetscObject     :: obj
 #endif
   PetscErrorCode  :: err_PETSc
@@ -136,7 +136,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   IS,        dimension(:), pointer     :: pBcComps, pBcPoints
   PetscInt,  dimension(:), pointer     :: pNumComp, pNumDof, pBcField, pBcPoint
   PetscInt,  dimension(:), allocatable :: idx
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>17)
   PetscReal, dimension(:), pointer     :: qWeightsP
 #else
   PetscReal, dimension(:), pointer     :: qPointsP, qWeightsP
@@ -177,7 +177,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   CHKERRQ(err_PETSc)
   call DMSetFromOptions(mechanical_mesh,err_PETSc)
   CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   call DMPlexIsSimplex(mechanical_mesh,isSimplex,err_PETSc)
   CHKERRQ(err_PETSc)
   if (.not. isSimplex) num%p_i = num%p_i + 1_pPETSCINT                                              ! adjust for quad/hex (non-simplex)
@@ -185,8 +185,8 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech discretization
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18)
-#if (PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>17)
+#if (PETSC_VERSION_MINOR>=24)
   if (isSimplex) then
     call PetscDTSimplexQuadrature(dimPlex,num%p_i,PETSCDTSIMPLEXQUAD_DEFAULT, &
                                   mechQuad,err_PETSc)
@@ -215,7 +215,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   CHKERRQ(err_PETSc)
 #endif
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=22)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>21)
   call PetscQuadratureGetData(mechQuad,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                               nQuadrature,PETSC_NULL_REAL_POINTER,qWeightsP,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -233,11 +233,11 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
                                   err_PETSc)
 #endif
   CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   if (.not. isSimplex) qWeights = [(qWeights(nc), nc=1,size(qWeights),int(dimPlex))]
 #endif
   nc = dimPlex
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   call PetscFECreateDefault(PETSC_COMM_SELF,dimPlex,nc,isSimplex,prefix, &
 #else
   call PetscFECreateDefault(PETSC_COMM_SELF,dimPlex,nc,PETSC_TRUE,prefix, &
@@ -249,7 +249,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   call PetscFEGetDimension(mechFE,nBasis,err_PETSc)
   CHKERRQ(err_PETSc)
   nBasis = nBasis/nc
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
   call DMAddField(mechanical_mesh,PETSC_NULL_DMLABEL,PetscObjectCast(mechFE),err_PETSc)
 #else
   call DMAddField(mechanical_mesh,PETSC_NULL_DMLABEL,mechFE,err_PETSc)
@@ -356,7 +356,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   CHKERRQ(err_PETSc)
   call VecSet(solution_rate,0.0_pREAL,err_PETSc)
   CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
   call PetscDSGetDiscretization(mechDS,0_pPETSCINT,obj,err_PETSc)
   PetscObjectSpecificCast(mechFE,obj)
 #else
@@ -409,7 +409,7 @@ type(tSolutionState) function FEM_mechanical_solution( &
   call SNESGetConvergedReason(mechanical_snes,reason,err_PETSc)                                     ! solution converged?
   CHKERRQ(err_PETSc)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
   if (reason%v <= SNES_CONVERGED_ITERATING%v) then
 #else
   if (reason < 1) then                                                                              ! 0: still iterating (will not occur), negative -> convergence error
@@ -442,20 +442,20 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
   PetscDS                            :: prob
   Vec                                :: x_local
   PetscSection                       :: section
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   PetscQuadrature                    :: quadrature
 #endif
   real(pREAL), dimension(:), pointer      :: x_scal, pf_scal
   real(pREAL), dimension(cellDof), target :: f_scal
   PetscReal,   dimension(dimPlex,dimPlex) :: invCellJ
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   PetscReal, dimension(:), pointer :: pCellJ, pInvCellJ, pDetJ
 #else
   PetscReal, dimension(:), pointer :: pV0, pCellJ, pInvCellJ
   PetscReal                        :: detJ
 #endif
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
   PetscTabulation, pointer :: tab(:)
 #else
   PetscReal, dimension(:), pointer :: basisFieldDer, &
@@ -466,11 +466,11 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
                numFields, m,i
   PetscReal :: detFAvg
   PetscReal, dimension(dimPlex*dimPlex,cellDof) :: BMat
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   PetscBool :: isSimplex
 #endif
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   allocate(pCellJ(nQuadrature*dimPlex**2))
   allocate(pInvCellJ(nQuadrature*dimPlex**2))
   allocate(pDetJ(nQuadrature))
@@ -485,7 +485,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
   CHKERRQ(err_PETSc)
   call DMPlexGetHeightStratum(dm_local,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   call DMPlexIsSimplex(dm_local,isSimplex,err_PETSc)
   CHKERRQ(err_PETSc)
 #endif
@@ -501,14 +501,14 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
 ! evaluate field derivatives
   call DMGetDS(dm_local,prob,err_PETSc)
   CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
   call PetscDSGetTabulation(prob,tab,err_PETSc)
 #else
   call PetscDSGetTabulation(prob,0_pPETSCINT,dev_null,basisFieldDer,err_PETSc)
 #endif
   CHKERRQ(err_PETSc)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   if (isSimplex) then
     call PetscDTSimplexQuadrature(dimPlex,num%p_i,PETSCDTSIMPLEXQUAD_DEFAULT, &
                                   quadrature,err_PETSc)
@@ -522,26 +522,26 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
   do cell = cellStart, cellEnd-1_pPETSCINT                                                          !< loop over all elements
     call PetscSectionGetNumFields(section,numFields,err_PETSc)
     CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
     call DMPlexVecGetClosure(dm_local,section,x_local,cell,PETSC_NULL_INTEGER,x_scal,err_PETSc)     ! get Dofs belonging to element
 #else
     call DMPlexVecGetClosure(dm_local,section,x_local,cell,x_scal,err_PETSc)                        ! get Dofs belonging to element
 #endif
     CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
     call DMPlexComputeCellGeometryFEM(dm_local,cell,quadrature,PETSC_NULL_REAL_ARRAY,pCellJ, &
                                       pInvCellJ,pDetJ,err_PETSc)
 #else
     call DMPlexComputeCellGeometryAffineFEM(dm_local,cell,pV0,pCellJ,pInvCellJ,detJ,err_PETSc)
 #endif
     CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<24)
     invCellJ = reshape(pInvCellJ, shape=[dimPlex,dimPlex])
 #endif
     do qPt = 0_pPETSCINT, nQuadrature-1_pPETSCINT
       m = cell*nQuadrature + qPt+1_pPETSCINT
       BMat = 0.0_pREAL
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
       invCellJ = reshape(pInvCellJ(qPt*dimPlex**2+1_pPETSCINT:(qPt+1_pPETSCINT)*dimPlex**2), &
                          shape=[dimPlex,dimPlex])
 #endif
@@ -550,7 +550,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
           cidx = basis*dimPlex+comp
           i = ((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp
           BMat(comp*dimPlex+1_pPETSCINT:(comp+1_pPETSCINT)*dimPlex,basis*dimPlex+comp+1_pPETSCINT) = &
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
             matmul(invCellJ,tab(1)%ptr%T(2)%ptr(i*dimPlex+1_pPETSCINT:(i+1_pPETSCINT)*dimPlex))
 #else
             matmul(invCellJ,basisFieldDer(i*dimPlex+1_pPETSCINT:(i+1_pPETSCINT)*dimPlex))
@@ -569,7 +569,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
 
       end do
     end if
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,PETSC_NULL_INTEGER,x_scal,err_PETSc)
 #else
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,x_scal,err_PETSc)
@@ -587,27 +587,27 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
 !--------------------------------------------------------------------------------------------------
 ! integrating residual
   do cell = cellStart, cellEnd-1_pPETSCINT                                                          ! loop over all elements
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
     call DMPlexVecGetClosure(dm_local,section,x_local,cell,PETSC_NULL_INTEGER,x_scal,err_PETSc)     ! get Dofs belonging to element
 #else
     call DMPlexVecGetClosure(dm_local,section,x_local,cell,x_scal,err_PETSc)                        ! get Dofs belonging to element
 #endif
     CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
     call DMPlexComputeCellGeometryFEM(dm_local,cell,quadrature,PETSC_NULL_REAL_ARRAY,pCellJ, &
                                       pInvCellJ,pDetJ,err_PETSc)
 #else
     call DMPlexComputeCellGeometryAffineFEM(dm_local,cell,pV0,pCellJ,pInvCellJ,detJ,err_PETSc)
 #endif
     CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<24)
     invCellJ = reshape(pInvCellJ, shape=[dimPlex,dimPlex])
 #endif
     f_scal = 0.0_pREAL
     do qPt = 0_pPETSCINT, nQuadrature-1_pPETSCINT
       m = cell*nQuadrature + qPt+1_pPETSCINT
       BMat = 0.0_pREAL
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
       invCellJ = reshape(pInvCellJ(qPt*dimPlex**2+1_pPETSCINT:(qPt+1_pPETSCINT)*dimPlex**2), &
                          shape=[dimPlex,dimPlex])
 #endif
@@ -616,14 +616,14 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
           cidx = basis*dimPlex+comp
           i = ((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp
           BMat(comp*dimPlex+1_pPETSCINT:(comp+1_pPETSCINT)*dimPlex,basis*dimPlex+comp+1_pPETSCINT) = &
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
             matmul(invCellJ,tab(1)%ptr%T(2)%ptr(i*dimPlex+1_pPETSCINT:(i+1_pPETSCINT)*dimPlex))
 #else
             matmul(invCellJ,basisFieldDer(i*dimPlex+1_pPETSCINT:(i+1_pPETSCINT)*dimPlex))
 #endif
         end do
       end do
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
       f_scal = f_scal + pDetJ(qPt+1_pPETSCINT) * qWeights(qPt+1_pPETSCINT) &
 #else
       f_scal = f_scal + abs(detJ) * qWeights(qPt+1_pPETSCINT) &
@@ -635,14 +635,14 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
     pf_scal => f_scal
     call DMPlexVecSetClosure(dm_local,section,f_local,cell,pf_scal,ADD_VALUES,err_PETSc)
     CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,PETSC_NULL_INTEGER,x_scal,err_PETSc)
 #else
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,x_scal,err_PETSc)
 #endif
     CHKERRQ(err_PETSc)
   end do
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
   call PetscDSRestoreTabulation(prob,tab,err_PETSc)
 #else
   call PetscDSRestoreTabulation(prob,0_pPETSCINT,dev_null,basisFieldDer,err_PETSc)
@@ -667,7 +667,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
   PetscDS      :: prob
   Vec          :: x_local, xx_local
   PetscSection :: section, gSection
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   PetscQuadrature :: quadrature
 #endif
 
@@ -675,13 +675,13 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
   PetscReal, dimension(dimPlex**2,cellDof) :: BMat, BMatAvg, MatA
   PetscReal, dimension(3,3) :: F, FAvg, FInv
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   real(pREAL), dimension(:), pointer :: pCellJ, pInvCellJ, pDetJ
 #else
   real(pREAL), dimension(:), pointer :: pV0, pCellJ, pInvCellJ
   PetscReal :: detJ
 #endif
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
   PetscTabulation, pointer :: tab(:)
 #else
   PetscReal,   dimension(:), pointer :: basisFieldDer, &
@@ -695,12 +695,12 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
 
   PetscInt :: cellStart, cellEnd, cell, &
               qPt, basis, comp, cidx, ce, i
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   PetscBool :: isSimplex
 #endif
 
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   allocate(pCellJ(nQuadrature*dimPlex**2))
   allocate(pInvcellJ(nQuadrature*dimPlex**2))
   allocate(pDetJ(nQuadrature))
@@ -729,7 +729,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
   CHKERRQ(err_PETSc)
 
   call utilities_projectBCValues(dm_local,x_local,section,params%mechBC,params%Delta_t,dimPlex)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
   call PetscDSGetTabulation(prob,tab,err_PETSc)
 #else
   call PetscDSGetTabulation(prob,0_pPETSCINT,dev_null,basisFieldDer,err_PETSc)
@@ -737,7 +737,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMPlexGetHeightStratum(dm_local,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   call DMPlexIsSimplex(dm_local,isSimplex,err_PETSc)
   CHKERRQ(err_PETSc)
   if (isSimplex) then
@@ -750,13 +750,13 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
   CHKERRQ(err_PETSc)
 #endif
   do cell = cellStart, cellEnd-1                                                                    !< loop over all elements
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
     call DMPlexVecGetClosure(dm_local,section,x_local,cell,PETSC_NULL_INTEGER,x_scal,err_PETSc)     !< get Dofs belonging to el
 #else
     call DMPlexVecGetClosure(dm_local,section,x_local,cell,x_scal,err_PETSc)                        !< get Dofs belonging to element
 #endif
     CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
     call DMPlexComputeCellGeometryFEM(dm_local,cell,quadrature,PETSC_NULL_REAL_ARRAY,pCellJ, &
                                       pInvCellJ,pDetJ,err_PETSc)
 #else
@@ -768,13 +768,13 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
     MatB = 0.0_pREAL
     FAvg = 0.0_pREAL
     BMatAvg = 0.0_pREAL
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<24)
     invCellJ = reshape(pInvCellJ, shape=[dimPlex,dimPlex])
 #endif
     do qPt = 0_pPETSCINT, nQuadrature-1_pPETSCINT
       ce = cell*nQuadrature + qPt + 1_pPETSCINT
       BMat = 0.0_pREAL
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
       invCellJ = reshape(pInvCellJ(qPt*dimPlex**2+1_pPETSCINT:(qPt+1_pPETSCINT)*dimPlex**2), &
                          shape=[dimPlex,dimPlex])
 #endif
@@ -783,14 +783,14 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
           cidx = basis*dimPlex+comp
           i = ((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp
           BMat(comp*dimPlex+1_pPETSCINT:(comp+1_pPETSCINT)*dimPlex,basis*dimPlex+comp+1_pPETSCINT) = &
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
             matmul(invCellJ,tab(1)%ptr%T(2)%ptr(i*dimPlex+1_pPETSCINT:(i+1_pPETSCINT)*dimPlex))
 #else
             matmul(invCellJ,basisFieldDer(i*dimPlex+1_pPETSCINT:(i+1_pPETSCINT)*dimPlex))
 #endif
         end do
       end do
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
       MatA = qWeights(qPt+1_pPETSCINT) * pDetJ(qPt+1_pPETSCINT) &
 #else
       MatA = qWeights(qPt+1_pPETSCINT) * abs(detJ) &
@@ -833,7 +833,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
 #endif
     call DMPlexMatSetClosure(dm_local,section,gSection,Jp,cell,pK_e,ADD_VALUES,err_PETSc)
     CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,PETSC_NULL_INTEGER,x_scal,err_PETSc)
 #else
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,x_scal,err_PETSc)
@@ -850,7 +850,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMRestoreLocalVector(dm_local,x_local,err_PETSc)
   CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
   call PetscDSRestoreTabulation(prob,tab,err_PETSc)
 #else
   call PetscDSRestoreTabulation(prob,0_pPETSCINT,dev_null,basisFieldDer,err_PETSc)
@@ -977,7 +977,7 @@ subroutine FEM_mechanical_updateCoords()
   PetscInt :: nNodes, cellStart, cellEnd, q, c, n
   PetscSection :: section
   PetscDS :: mechDS
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
   PetscTabulation, pointer :: tab(:)
 #else
   PetscReal,   dimension(:), pointer :: basisField, &
@@ -1010,7 +1010,7 @@ subroutine FEM_mechanical_updateCoords()
   ! write ip displacements
   call DMPlexGetHeightStratum(dm_local,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
   call PetscDSGetTabulation(mechDS,tab,err_PETSc)
 #else
   call PetscDSGetTabulation(mechDS,0_pPETSCINT,basisField,dev_null,err_PETSc)
@@ -1019,14 +1019,14 @@ subroutine FEM_mechanical_updateCoords()
   allocate(ipCoords(3,nQuadrature,mesh_nElems),source=0.0_pREAL)
   do c = cellStart, cellEnd - 1_pPETSCINT
     qOffset=0
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
     call DMPlexVecGetClosure(dm_local,section,x_local,c,PETSC_NULL_INTEGER,x_scal,err_PETSc)        ! get nodal coordinates of each element
 #else
     call DMPlexVecGetClosure(dm_local,section,x_local,c,x_scal,err_PETSc)                           ! get nodal coordinates of each element
 #endif
     CHKERRQ(err_PETSc)
     do qPt=0,nQuadrature-1
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
       qOffset = qPt * (size(tab(1)%ptr%T(1)%ptr)/nQuadrature)
 #else
       qOffset = qPt * (size(basisField)/nQuadrature)
@@ -1036,7 +1036,7 @@ subroutine FEM_mechanical_updateCoords()
         q = comp
         do n=0,nBasis-1
           ipCoords(comp+1,qPt+1,c+1)=ipCoords(comp+1,qPt+1,c+1)+&
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
                                      sum(tab(1)%ptr%T(1)%ptr(qOffset+(q*dimPlex)+1:qOffset+(q*dimPlex)+dimPlex)*&
 #else
                                      sum(basisField(qOffset+(q*dimPlex)+1:qOffset+(q*dimPlex)+dimPlex)*&
@@ -1047,7 +1047,7 @@ subroutine FEM_mechanical_updateCoords()
         end do
       end do
     end do
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
     call DMPlexVecRestoreClosure(dm_local,section,x_local,c,PETSC_NULL_INTEGER,x_scal,err_PETSc)
 #else
     call DMPlexVecRestoreClosure(dm_local,section,x_local,c,x_scal,err_PETSc)
@@ -1057,7 +1057,7 @@ subroutine FEM_mechanical_updateCoords()
   call discretization_setIPcoords(reshape(ipCoords,[3,int(mesh_nElems*nQuadrature)]))
   call DMRestoreLocalVector(dm_local,x_local,err_PETSc)
   CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=23)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
   call PetscDSRestoreTabulation(mechDS,tab,err_PETSc)
 #else
   call PetscDSRestoreTabulation(mechDS,0_pPETSCINT,basisField,dev_null,err_PETSc)
