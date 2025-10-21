@@ -171,13 +171,13 @@ subroutine discretization_mesh_init()
     call ISGetIndices(cellTypeIS, cellsIS, err_PETSc)
     if (any(cellsIS == DM_POLYTOPE_SEG_PRISM_TENSOR%v .or. &
             cellsIS >  DM_POLYTOPE_HEXAHEDRON%v)) then
-      call IO_error(801_pI16, 'mesh contains elements other than tri/quad/tet/hex')
+      call IO_error(800_pI16, 'mesh contains elements other than tri/quad/tet/hex')
     else if (count(cellsIS == DM_POLYTOPE_TRIANGLE%v .and. &
                    cellsIS == DM_POLYTOPE_QUADRILATERAL%v, dim = 1) > 1) then
-      call IO_error(801_pI16, 'mixed triangles and quadrilaterals elements')
+      call IO_error(800_pI16, 'mixed triangles and quadrilaterals elements')
     else if (count(cellsIS == DM_POLYTOPE_TRIANGLE%v .and. &
                    cellsIS == DM_POLYTOPE_QUADRILATERAL%v, dim = 1) > 1) then
-      call IO_error(801_pI16, 'mixed tetrahedra and hexahedra elements')
+      call IO_error(800_pI16, 'mixed tetrahedra and hexahedra elements')
     end if
   end if
   call ISDestroy(cellTypeIS, err_PETSc)

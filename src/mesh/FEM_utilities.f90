@@ -97,9 +97,9 @@ subroutine FEM_utilities_init(num_mesh)
 #else
   if (p_s < 1 .or. p_s > size(FEM_nQuadrature,2)) &
 #endif
-    call IO_error(821,ext_msg='shape function order (p_s) out of bounds')
+    call IO_error(301,ext_msg='shape function order (p_s) out of bounds')
   if (p_i < max(1,p_s-1) .or. p_i > p_s) &
-    call IO_error(821,ext_msg='integration order (p_i) out of bounds')
+    call IO_error(301,ext_msg='integration order (p_i) out of bounds')
 
   flush(IO_STDOUT)
 

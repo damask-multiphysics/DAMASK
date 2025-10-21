@@ -509,10 +509,8 @@ subroutine IO_error_new(error_ID, &
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the mesh solver
-    case (801)
-      msg = 'mesh elements not supported'
-    case (821)
-      msg = 'order not supported'
+    case (800)
+      msg = 'invalid mesh'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
