@@ -92,14 +92,14 @@ subroutine FEM_utilities_init(num_mesh)
   p_s = num_mesh%get_asInt('p_s',defaultVal = 2)
   p_i = num_mesh%get_asInt('p_i',defaultVal = p_s)
 
-#if (PETSC_VERSION_MINOR>=18)
+#if (PETSC_VERSION_MINOR>17)
   if (p_s < 1) &
 #else
   if (p_s < 1 .or. p_s > size(FEM_nQuadrature,2)) &
 #endif
-    call IO_error(821,ext_msg='shape function order (p_s) out of bounds')
+    call IO_error(301,ext_msg='shape function order (p_s) out of bounds')
   if (p_i < max(1,p_s-1) .or. p_i > p_s) &
-    call IO_error(821,ext_msg='integration order (p_i) out of bounds')
+    call IO_error(301,ext_msg='integration order (p_i) out of bounds')
 
   flush(IO_STDOUT)
 
@@ -117,7 +117,7 @@ subroutine FEM_utilities_init(num_mesh)
   call PetscOptionsSetValue(PETSC_NULL_OPTIONS,'-petscds_force_quad','0',err_PETSc)
   CHKERRQ(err_PETSc)
 
-  wgt = real(mesh_maxNips*mesh_NcpElemsGlobal,pREAL)**(-1)
+  wgt = real(mesh_maxNips*mesh_nElems,pREAL)**(-1)
 
 end subroutine FEM_utilities_init
 
@@ -137,7 +137,7 @@ subroutine utilities_constitutiveResponse(status, Delta_t,P_av,forwardData)
 
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
 
-  call homogenization_mechanical_response(status,Delta_t,1,int(mesh_maxNips*mesh_NcpElems))         ! calculate P field
+  call homogenization_mechanical_response(status,Delta_t,1,int(mesh_maxNips*mesh_nElems))         ! calculate P field
   cutBack = .false.
 
   P_av = sum(homogenization_P,dim=3) * wgt
