@@ -12,7 +12,7 @@ endif()
 # Dummy project to determine compiler names and version
 project(Prerequisites LANGUAGES)
 set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
-set(PETSC_VERSION_MINOR_MIN "15")
+set(PETSC_VERSION_MINOR_MIN "19")
 set(PETSC_VERSION_MINOR_MAX "24")
 
 pkg_check_modules(PETSC_MIN REQUIRED PETSc>=3.${PETSC_VERSION_MINOR_MIN}.0 QUIET) #CMake does not support version range

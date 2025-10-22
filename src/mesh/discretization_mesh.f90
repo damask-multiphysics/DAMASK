@@ -268,7 +268,7 @@ subroutine discretization_mesh_init()
 #endif
   v_0 = build_volume_IP(dimPlex)
 
-#if (PETSC_VERSION_MINOR>24)
+#if (PETSC_VERSION_MINOR>24 || (PETSC_VERSION_MINOR==24 && PETSC_VERSION_SUBMINOR>=1))
   call build_nodes_and_connectivity(x_n,T_e,p_s,geomMesh)
 #else
   call build_nodes_and_connectivity(x_n,p_s)

@@ -196,7 +196,7 @@ function grid_chemical_FDM_solution(Delta_t) result(solution)
   call SNESGetConvergedReason(SNES_chemical,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
   solution%converged = reason > SNES_CONVERGED_ITERATING ! .and. status == STATUS_OK
 #else
   solution%converged = reason%v > SNES_CONVERGED_ITERATING%v ! .and. status == STATUS_OK
@@ -460,7 +460,7 @@ subroutine form_jacobian(da_local,solution_current_local,Jac_mat,Jac_pre_mat,dum
                                                          mobility_backward
   integer :: ce, i, j, k, dir, com, com_i
   real(pREAL), dimension(N_components,N_components) ::  mobility
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
   MatStencil,dimension(4,7*N_components) :: col
   MatStencil,dimension(4,N_components) :: row
 #else
@@ -522,7 +522,7 @@ subroutine form_jacobian(da_local,solution_current_local,Jac_mat,Jac_pre_mat,dum
     ce = ce + 1
     Jac = 0.0_pREAL
     do com = 0, N_components-1
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
       row(MatStencil_i,  com+1) = i
       row(MatStencil_j,  com+1) = j
       row(MatStencil_k,  com+1) = k
@@ -618,7 +618,7 @@ subroutine form_jacobian(da_local,solution_current_local,Jac_mat,Jac_pre_mat,dum
       Jac(1:N_components,4+dir:7*N_components:7) = Jac(1:N_components,4+dir:7*N_components:7) &
                                                  - mobility_backward(dir,:,:) * Delta_t_/delta(dir)**2
     end do
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
     call MatSetValuesStencil(Jac_mat,int(N_components,pPetscInt),row,int(7*N_components,pPetscInt),&
                              col,transpose(Jac),INSERT_VALUES,err_PETSc)
 #else

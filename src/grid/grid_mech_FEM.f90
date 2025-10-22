@@ -318,7 +318,7 @@ function grid_mechanical_FEM_solution(incInfoIn) result(solution)
   call SNESGetConvergedReason(SNES_mech,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
   solution%converged = reason > SNES_CONVERGED_ITERATING
 #else
   solution%converged = reason%v > SNES_CONVERGED_ITERATING%v
@@ -632,25 +632,25 @@ end subroutine form_residual
 !--------------------------------------------------------------------------------------------------
 subroutine form_jacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
 
-  DM                                   :: da_local
-  Vec                                  :: x_local
-  Mat                                  :: Jac_pre, Jac
-  PetscObject                          :: dummy
-  PetscErrorCode                       :: err_PETSc
+  DM             :: da_local
+  Vec            :: x_local
+  Mat            :: Jac_pre, Jac
+  PetscObject    :: dummy
+  PetscErrorCode :: err_PETSc
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
-  MatStencil,dimension(4,24)           :: row, col
+#if PETSC_VERSION_MINOR<23
+  MatStencil,dimension(4,24) :: row, col
 #else
-  MatStencil,dimension(24)             :: row, col
+  MatStencil,dimension(24)   :: row, col
 #endif
   real(pREAL),pointer,dimension(:,:,:,:) :: x_scal
-  PetscReal,dimension(24,24)         :: K_ele
-  real(pREAL),dimension(9,24)          :: BMatFull
-  PetscInt                             :: i, ii, j, jj, k, kk, ctr, ce
-  PetscInt,dimension(3),parameter      :: rows = [0, 1, 2]
-  real(pREAL)                          :: diag
-  MatNullSpace                         :: matnull
-  Vec                                  :: coordinates
+  PetscReal,dimension(24,24)             :: K_ele
+  real(pREAL),dimension(9,24)            :: BMatFull
+  PetscInt                               :: i, ii, j, jj, k, kk, ctr, ce
+  PetscInt,dimension(3),parameter        :: rows = [0, 1, 2]
+  real(pREAL)                            :: diag
+  MatNullSpace                           :: matnull
+  Vec                                    :: coordinates
 
 
   BMatFull = 0.0_pREAL
@@ -668,7 +668,7 @@ subroutine form_jacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
     ctr = 0
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
       col(MatStencil_i,ctr   ) = i+ii
       col(MatStencil_j,ctr   ) = j+jj
       col(MatStencil_k,ctr   ) = k+kk
@@ -712,7 +712,7 @@ subroutine form_jacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
             matmul(transpose(BMatFull), &
                    matmul(reshape(reshape(homogenization_dPdF(1:3,1:3,1:3,1:3,ce), &
                                           shape=[3,3,3,3], order=[2,1,4,3]),shape=[9,9]),BMatFull))*detJ
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
     call MatSetValuesStencil(Jac,24_pPETScInt,row,24_pPetscInt,col,K_ele,ADD_VALUES,err_PETSc)
 #else
     call MatSetValuesStencil(Jac,24_pPETScInt,row,24_pPetscInt,col,reshape(K_ele,[size(K_ele)]),ADD_VALUES,err_PETSc)

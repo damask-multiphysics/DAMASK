@@ -185,24 +185,24 @@ void CLI::init_print() {
   cout << " F. Roters et al., Computational Materials Science 158:420–478, 2019" << std::endl
        << " https://doi.org/10.1016/j.commatsci.2018.04.030" << std::endl << std::endl;
 
-#define PETSC_MINOR_MIN 15
+#define PETSC_MINOR_MIN 19
 #define PETSC_MINOR_MAX 24
 #if PETSC_VERSION_MAJOR != 3 || PETSC_VERSION_MINOR < PETSC_MINOR_MIN || PETSC_VERSION_MINOR > PETSC_MINOR_MAX
 #error "--  UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION ---"
 #else
   cout << " S. Balay et al., PETSc/TAO User Manual Revision " << PETSC_VERSION_MAJOR << "." << PETSC_VERSION_MINOR << std::endl;
-#if    PETSC_VERSION_MAJOR == 3 && PETSC_VERSION_MINOR == 18
-#define PETSC_DOI "10.2172/1893326"
-#elif  PETSC_VERSION_MAJOR == 3 && PETSC_VERSION_MINOR == 19
+#if   PETSC_VERSION_MINOR == 19
 #define PETSC_DOI "10.2172/1968587"
-#elif  PETSC_VERSION_MAJOR == 3 && PETSC_VERSION_MINOR == 20
+#elif PETSC_VERSION_MINOR == 20
 #define PETSC_DOI "10.2172/2205494"
-#elif  PETSC_VERSION_MAJOR == 3 && PETSC_VERSION_MINOR == 21
+#elif PETSC_VERSION_MINOR == 21
 #define PETSC_DOI "10.2172/2337606"
-#elif  PETSC_VERSION_MAJOR == 3 && PETSC_VERSION_MINOR == 22
+#elif PETSC_VERSION_MINOR == 22
 #define PETSC_DOI "10.2172/2476320"
-#elif  PETSC_VERSION_MAJOR == 3 && PETSC_VERSION_MINOR == 23
+#elif PETSC_VERSION_MINOR == 23
 #define PETSC_DOI "10.2172/2565610"
+#elif PETSC_VERSION_MINOR == 24
+#define PETSC_DOI "10.2172/2998643"
 #endif
 #ifdef PETSC_DOI
   cout << " https://doi.org/" << PETSC_DOI << endl;

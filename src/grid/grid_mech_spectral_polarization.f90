@@ -313,7 +313,7 @@ function grid_mech_spectral_polarization_solution(incInfoIn) result(solution)
   call SNESGetConvergedReason(SNES_mech,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
   solution%converged = reason > SNES_CONVERGED_ITERATING
 #else
   solution%converged = reason%v > SNES_CONVERGED_ITERATING%v
@@ -543,7 +543,7 @@ end subroutine converged
 subroutine form_residual(residual_subdomain, FandF_tau, &
                          r, dummy,err_PETSc)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<22)
+#if PETSC_VERSION_MINOR<22
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
 #else
   DMDALocalInfo :: &

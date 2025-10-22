@@ -223,7 +223,7 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
   call SNESGetConvergedReason(SNES_damage,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
   solution%converged = reason > SNES_CONVERGED_ITERATING
 #else
   solution%converged = reason%v > SNES_CONVERGED_ITERATING%v
@@ -330,7 +330,7 @@ end subroutine grid_damage_spectral_restartWrite
 !--------------------------------------------------------------------------------------------------
 subroutine form_residual(residual_subdomain,phi,r,dummy,err_PETSc)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<22)
+#if PETSC_VERSION_MINOR<22
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
 #else
   DMDALocalInfo :: &

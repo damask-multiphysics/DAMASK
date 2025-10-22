@@ -5,7 +5,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Parse command line interface for PETSc-based solvers
 !--------------------------------------------------------------------------------------------------
-#define PETSC_MINOR_MIN 15
+#define PETSC_MINOR_MIN 19
 #define PETSC_MINOR_MAX 24
 
 module CLI
@@ -79,18 +79,18 @@ subroutine CLI_init()
 #if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR<PETSC_MINOR_MIN || PETSC_VERSION_MINOR>PETSC_MINOR_MAX
 --  UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION ---
 #endif
-#if    PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==18
-#define PETSC_DOI '10.2172/1893326'
-#elif  PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==19
+#if   PETSC_VERSION_MINOR==19
 #define PETSC_DOI '10.2172/1968587'
-#elif  PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==20
+#elif PETSC_VERSION_MINOR==20
 #define PETSC_DOI '10.2172/2205494'
-#elif  PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==21
+#elif PETSC_VERSION_MINOR==21
 #define PETSC_DOI '10.2172/2337606'
-#elif  PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==22
+#elif PETSC_VERSION_MINOR==22
 #define PETSC_DOI '10.2172/2476320'
-#elif  PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR==23
+#elif PETSC_VERSION_MINOR==23
 #define PETSC_DOI '10.2172/2565610'
+#elif PETSC_VERSION_MINOR==24
+#define PETSC_DOI '10.2172/2998643'
 #endif
   character(len=:), allocatable :: &
     commandLine, &                                                                                  !< command line call as string
@@ -151,13 +151,11 @@ subroutine CLI_init()
 #endif
   print'(a)', IO_color()
 
-  print'(1x,a)', 'F. Roters et al., Computational Materials Science 158:420–478, 2019'
-  print'(1x,a)', 'https://doi.org/10.1016/j.commatsci.2018.04.030'//IO_EOL
-#if PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=18
-  print'(1x,a,i0,a,i0)', 'S. Balay et al., PETSc/TAO User Manual Revision ',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR
+  print'(1x,a)',           'F. Roters et al., Computational Materials Science 158:420–478, 2019'
+  print'(1x,a)',           'https://doi.org/10.1016/j.commatsci.2018.04.030'
+  print'(/,1x,a,i0,a,i0)', 'S. Balay et al., PETSc/TAO User Manual Revision ',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR
 #ifdef PETSC_DOI
-  print'(1x,a)', 'https://doi.org/'//PETSc_DOI
-#endif
+  print'(1x,a)',           'https://doi.org/'//PETSc_DOI
 #endif
   print'(/,1x,a)', 'Version: '//DAMASK_VERSION
 

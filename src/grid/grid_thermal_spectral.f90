@@ -204,7 +204,7 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   call SNESGetConvergedReason(SNES_thermal,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
   solution%converged = reason > SNES_CONVERGED_ITERATING .and. status == STATUS_OK
 #else
   solution%converged = reason%v > SNES_CONVERGED_ITERATING%v .and. status == STATUS_OK
@@ -316,7 +316,7 @@ end subroutine grid_thermal_spectral_restartWrite
 !--------------------------------------------------------------------------------------------------
 subroutine form_residual(residual_subdomain,T,r,dummy,err_PETSc)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<22)
+#if PETSC_VERSION_MINOR<22
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
 #else
   DMDALocalInfo :: &

@@ -109,7 +109,7 @@ module grid_mechanical_spectral_Galerkin
     subroutine MatShellSetOperation(mat,op_num,op_callback,ierr)
       use petscmat
       Mat :: mat
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
       PetscEnum :: op_num
 #else
       TYPE(ematoperation) :: op_num
@@ -118,7 +118,7 @@ module grid_mechanical_spectral_Galerkin
       PetscErrorCode :: ierr
     end subroutine MatShellSetOperation
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<24)
+#if PETSC_VERSION_MINOR<24
     subroutine SNESSetUpdate(snes_mech,upd_callback,ierr)
       use petscsnes
       SNES :: snes_mech
@@ -127,7 +127,7 @@ module grid_mechanical_spectral_Galerkin
     end subroutine SNESSetUpdate
 #endif
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
     subroutine MatShellSetContext(mat,ctx,ierr)
       use petscmat
       Mat :: mat
@@ -142,7 +142,7 @@ module grid_mechanical_spectral_Galerkin
       PetscErrorCode :: ierr
     end subroutine MatShellGetContext
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<22)
+#if PETSC_VERSION_MINOR<22
     subroutine SNESSetJacobian(snes_mech,A,P,jac_callback,ctx,ierr)
       use petscsnes
       SNES :: snes_mech
@@ -359,7 +359,7 @@ function grid_mechanical_spectral_Galerkin_solution(incInfoIn) result(solution)
   call SNESGetConvergedReason(SNES_mech,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
   solution%converged = reason > SNES_CONVERGED_ITERATING
 #else
   solution%converged = reason%v > SNES_CONVERGED_ITERATING%v
@@ -555,7 +555,7 @@ end subroutine converged
 subroutine form_residual(residual_subdomain, F, &
                          r, dummy, err_PETSc)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<22)
+#if PETSC_VERSION_MINOR<22
    DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
 #else
   DMDALocalInfo :: &
