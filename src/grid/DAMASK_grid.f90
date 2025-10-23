@@ -488,16 +488,18 @@ function parseLoadsteps(load_steps) result(loadCases)
     loadCases(l)%stress%myType=''
     readMech: do m = 1, size(step_mech)
       select case (step_mech%key(m))
-        case ('L','dot_F','F')                                                                      ! assign values for the deformation BC matrix
+        case ('L','dot_F','F_dot','F')                                                              ! assign values for the deformation BC matrix
           loadCases(l)%deformation%myType = step_mech%key(m)
+          if (loadCases(l)%deformation%myType == 'F_dot') loadCases(l)%deformation%myType = 'dot_F'
 #ifdef __INTEL_LLVM_COMPILER
           tensor => step_mech%get_list(m)
           call getMaskedTensor(loadCases(l)%deformation%values,loadCases(l)%deformation%mask,tensor)
 #else
           call getMaskedTensor(loadCases(l)%deformation%values,loadCases(l)%deformation%mask,step_mech%get_list(m))
 #endif
-        case ('dot_P','P')
+        case ('dot_P','P','P_dot')
           loadCases(l)%stress%myType = step_mech%key(m)
+          if (loadCases(l)%stress%myType == 'P_dot') loadCases(l)%stress%myType = 'dot_P'
 #ifdef __INTEL_LLVM_COMPILER
           tensor => step_mech%get_list(m)
           call getMaskedTensor(loadCases(l)%stress%values,loadCases(l)%stress%mask,tensor)
@@ -507,7 +509,8 @@ function parseLoadsteps(load_steps) result(loadCases)
       end select
       call loadCases(l)%rot%fromAxisAngle(step_mech%get_as1dReal('R',defaultVal = real([0.0,0.0,1.0,0.0],pREAL)),degrees=.true.)
     end do readMech
-    if (.not. allocated(loadCases(l)%deformation%myType)) call IO_error(error_ID=837,ext_msg = 'L/dot_F/F missing')
+    if (.not. allocated(loadCases(l)%deformation%myType)) &
+      call IO_error(error_ID=837,ext_msg = 'L, F_dot/dot_F, or F missing')
 
     step_discretization => load_step%get_dict('discretization')
     loadCases(l)%t = step_discretization%get_asReal('t')
