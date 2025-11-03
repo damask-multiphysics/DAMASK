@@ -33,17 +33,11 @@ if(CHUNKS GREATER 2)
 else()
   set(DAMASK_VERSION_CMAKE "${DAMASK_VERSION_STRING}")
 endif()
-# Solver determines name of project
-string(TOUPPER "${DAMASK_SOLVER}" DAMASK_SOLVER_UPPER)
-string(TOLOWER "${DAMASK_SOLVER}" DAMASK_SOLVER_LOWER)
-if("${DAMASK_SOLVER_UPPER}" MATCHES "^(GRID|MESH|TEST)$")
-  project("damask-${DAMASK_SOLVER_LOWER}"
-          DESCRIPTION "${DAMASK_SOLVER_LOWER} solver for DAMASK"
-          HOMEPAGE_URL https://damask-multiphysics.org
-          LANGUAGES Fortran C CXX VERSION "${DAMASK_VERSION_CMAKE}")
-else()
-  message(FATAL_ERROR "Invalid solver: DAMASK_SOLVER=${DAMASK_SOLVER}")
-endif()
+
+project(DAMASK
+        DESCRIPTION "DAMASK multi-physics crystal plasticity simulation package"
+        HOMEPAGE_URL https://damask-multiphysics.org
+        LANGUAGES Fortran C CXX VERSION "${DAMASK_VERSION_CMAKE}")
 
 if(NOT ${CMAKE_C_COMPILER_ID} STREQUAL ${CMAKE_Fortran_COMPILER_ID})
   message(FATAL_ERROR "C compiler (${CMAKE_C_COMPILER_ID}) does not match Fortran compiler (${CMAKE_Fortran_COMPILER_ID})")
@@ -51,8 +45,6 @@ endif()
 if(NOT ${CMAKE_CXX_COMPILER_ID} STREQUAL ${CMAKE_Fortran_COMPILER_ID})
   message(FATAL_ERROR "C++ compiler (${CMAKE_CXX_COMPILER_ID}) does not match Fortran compiler (${CMAKE_Fortran_COMPILER_ID})")
 endif()
-
-add_compile_definitions("${DAMASK_SOLVER_UPPER}")
 
 set(CMAKE_Fortran_PREPROCESS "ON")
 
@@ -63,7 +55,7 @@ pkg_check_modules(fYAML libfyaml)
 pkg_check_modules(LAPACK lapack)
 set(Boost_DEBUG ON)
 find_package(Boost COMPONENTS program_options HINTS "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/cmake")
-if(DAMASK_SOLVER_UPPER STREQUAL "GRID")
+if(${GRID})
   pkg_check_modules(zlib zlib)
   pkg_check_modules(FFTW3 fftw3)
 endif()
@@ -190,7 +182,7 @@ set(CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD
 set(CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}     "${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}}     ${PETSC_INCLUDES} ${BUILDCMD_POST}")
 
 set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} <LINK_FLAGS> <FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES> -L${PETSC_LIBRARY_DIRS} -lpetsc ${PETSC_EXTERNAL_LIB}")
-if(DAMASK_SOLVER_UPPER STREQUAL "GRID")
+if(${GRID})
   set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} -lz")
 endif()
 
