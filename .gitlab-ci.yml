@@ -138,8 +138,7 @@ core:
       for COMMIT in ${COMMITS};do
         echo ${COMMIT}
         git checkout ${COMMIT}
-        cmake -DDAMASK_SOLVER=grid -B build/grid && cmake --build build/grid --parallel 4 --target install
-        cmake -DDAMASK_SOLVER=mesh -B build/mesh && cmake --build build/mesh --parallel 4 --target install
+        cmake -DGRID=ON -DMESH=ON -B build && cmake --build build --parallel 4 --target install
       done
 
 
@@ -224,8 +223,7 @@ open-source:
     - long_running
   needs: []
   before_script:
-    - cmake -DDAMASK_SOLVER=grid -B build/grid && cmake --build build/grid --parallel 4 --target install
-    - cmake -DDAMASK_SOLVER=mesh -B build/mesh && cmake --build build/mesh --parallel 4 --target install
+    - cmake -DGRID=ON -DMESH=ON -B build && cmake --build build --parallel 4 --target install
     - source env/DAMASK.sh
   script:
     - cd PRIVATE/testing
@@ -245,13 +243,13 @@ open-source:
 .unittest_gcc:
   extends: .unittest
   before_script:
-    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=-coverage
+    - cmake -B builddir -DTEST=ON -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=-coverage
     - cmake --build builddir --target install
 
 .unittest_oneapi:
   extends: .unittest
   before_script:
-    - cmake -B builddir -DDAMASK_SOLVER=test -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
+    - cmake -B builddir -DTEST=ON -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
     - cmake --build builddir --target install
 
 
@@ -325,7 +323,7 @@ Marc_compile:
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
     - head -n 10 /petsc/include/petscversion.h | tail -n 6
     - source env/DAMASK.sh
-    - cmake -B builddir -DDAMASK_SOLVER=grid -DCMAKE_BUILD_TYPE=DEBUG
+    - cmake -B builddir -DGRID=ON -DCMAKE_BUILD_TYPE=DEBUG
     - cmake --build builddir --target install
     - cd PRIVATE/testing
   script:
@@ -358,8 +356,8 @@ grid_performance:
   tags:
     - matesting
   before_script:
-    - cmake -DDAMASK_SOLVER=grid -DOPTIMIZATION=AGGRESSIVE -B build/grid
-    - cmake --build build/grid --parallel 4 --target install
+    - cmake -DGRID=ON -DOPTIMIZATION=AGGRESSIVE -B build
+    - cmake --build build --parallel 4 --target install
     - source env/DAMASK.sh
   script:
     - git clone -q https://damask_user:${STATISTICS_TOKEN}@git.damask-multiphysics.org/damask/statistics.git

@@ -74,12 +74,9 @@ jobs:
 
       - name: DAMASK - Compile
         run: |
-          cmake -B build/grid -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=${PWD}
-          cmake --build build/grid --parallel
-          cmake --install build/grid
-          cmake -B build/mesh -DDAMASK_SOLVER=mesh -DCMAKE_INSTALL_PREFIX=${PWD}
-          cmake --build build/mesh --parallel
-          cmake --install build/mesh
+          cmake -B build -DGRID=ON -DMESH=ON -DCMAKE_INSTALL_PREFIX=${PWD}
+          cmake --build build --parallel
+          cmake --install build
 
       - name: DAMASK - Run
         run: |
@@ -151,12 +148,9 @@ jobs:
 
       - name: DAMASK - Compile
         run: |
-          cmake -B build/grid -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=${PWD}
-          cmake --build build/grid --parallel
-          cmake --install build/grid
-          cmake -B build/mesh -DDAMASK_SOLVER=mesh -DCMAKE_INSTALL_PREFIX=${PWD}
-          cmake --build build/mesh --parallel
-          cmake --install build/mesh
+          cmake -B build -DGRID=ON -DMESH=ON -DCMAKE_INSTALL_PREFIX=${PWD}
+          cmake --build build --parallel
+          cmake --install build
 
       - name: DAMASK - Run
         run: |
