@@ -26,8 +26,8 @@
         <DataArray type="Int64" Name="offsets" format="binary" RangeMin="4" RangeMax="960">
           AQAAAACAAACABwAAegEAAA==eF4txRGAGgAAAMC2BUEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBA8PQRAEQfDwEARBMOhOLhj4CDnsiKOOOe6Ek0457YyzzjnvgosuueyKq6657oabbrntjrvuue+Bhx557ImnnnnuhZdeee2Nt95574OP/vK3Tz774qtvvvvHv3746ZffDvz5FHTIYUccdcxxJ5x0ymlnnHXOeRdcdMllV1x1zXU33HTLbXfcdc99Dzz0yGNPPPXMcy+89Mprb7z1znsffPSXv33y2RdfffPdP/71w0+//Hbg76egQw474qhjjjvhpFNOO+Osc8674KJLLrviqmuuu+GmW26746577nvgoUcee+KpZ5574aVXXnvjrXfe++Cjv/ztk8+++Oqb7/7xrx9++uW3A/8+BR1y2BFHHXPcCSedctoZZ51z3gUXXXLZFVddc90NN91y2x133XPfAw898tgTTz3z3AsvvfLaG2+9894H/wc8C3I0
         </DataArray>
-        <DataArray type="UInt8" Name="types" format="binary" RangeMin="9" RangeMax="9">
-          AQAAAACAAADwAAAADAAAAA==eF7j5BxZAAD51Qhx
+        <DataArray type="UInt8" Name="types" format="binary" RangeMin="70" RangeMax="70">
+          AQAAAACAAADwAAAADAAAAA==eF5zcxtZAADmgkGh
         </DataArray>
       </Cells>
     </Piece>

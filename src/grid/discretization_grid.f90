@@ -44,7 +44,8 @@ module discretization_grid
 
   public :: &
     discretization_grid_init, &
-    discretization_grid_getInitialCondition
+    discretization_grid_getScalarInitialCondition, &
+    discretization_grid_getVectorInitialCondition
 
 contains
 
@@ -332,39 +333,79 @@ end function IPneighborhood
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Read scalar initial condition from VTI file.
+!--------------------------------------------------------------------------------------------------
+function discretization_grid_getScalarInitialCondition(label) result(ic)
+
+  character(len=*), intent(in) :: label                                                              !< dataset label
+  real(pREAL), dimension(cells(1),cells(2),cells3) :: ic                                             !< scalar field of initial conditions
+
+
+  ic = reshape(get_initial_condition(label),[cells(1),cells(2),cells3])
+
+end function discretization_grid_getScalarInitialCondition
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Read vector initial condition from VTI file.
+!--------------------------------------------------------------------------------------------------
+function discretization_grid_getVectorInitialCondition(label) result(ic)
+
+  character(len=*), intent(in) :: label                                                              !< dataset label
+  real(pREAL), dimension(:,:,:,:), allocatable :: ic                                                 !< vector field of initial conditions
+
+  real(pREAL), dimension(:), allocatable :: ic_flat
+  integer :: width
+
+
+  ic_flat = get_initial_condition(label)
+  width = size(ic_flat) / (product(cells(1:2))*cells3)
+  ic = reshape(ic_flat,[width,cells(1),cells(2),cells3])
+
+end function discretization_grid_getVectorInitialCondition
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Read initial condition from VTI file.
 !--------------------------------------------------------------------------------------------------
-function discretization_grid_getInitialCondition(label) result(ic)
+function get_initial_condition(label) result(ic_local)
 
-  character(len=*), intent(in) :: label
-  real(pREAL), dimension(cells(1),cells(2),cells3) :: ic
+  character(len=*), intent(in) :: label                                                              !< dataset label
+  real(pREAL), dimension(:), allocatable :: ic_local                                                 !< flattened initial conditions
 
-  real(pREAL), dimension(:), allocatable :: ic_global, ic_local
+  real(pREAL), dimension(:), allocatable :: ic_global
   integer(MPI_INTEGER_KIND) :: err_MPI
   integer, dimension(worldsize) :: &
     displs, sendcounts
+  integer :: width
 
 
   if (worldrank == 0) then
     ic_global = VTI_readDataset_real(IO_read(CLI_geomFile),label)
+    width = size(ic_global) / product(cells)
   else
     allocate(ic_global(0))                                                                          ! needed for IntelMPI
   end if
 
-  call MPI_Gather(product(cells(1:2))*cells3Offset, 1_MPI_INTEGER_KIND,MPI_INTEGER,displs,&
-                  1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  call MPI_Bcast(width,1_MPI_INTEGER_KIND,MPI_INTEGER,&
+                 0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
-  call MPI_Gather(product(cells(1:2))*cells3,      1_MPI_INTEGER_KIND,MPI_INTEGER,sendcounts,&
-                  1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  call MPI_Gather(product(cells(1:2))*width*cells3Offset,1_MPI_INTEGER_KIND,MPI_INTEGER,&
+                  displs,1_MPI_INTEGER_KIND,MPI_INTEGER,&
+                  0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  call parallelization_chkerr(err_MPI)
+  call MPI_Gather(product(cells(1:2))*width*cells3,1_MPI_INTEGER_KIND,MPI_INTEGER,&
+                  sendcounts,1_MPI_INTEGER_KIND,MPI_INTEGER,&
+                  0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
-  allocate(ic_local(product(cells(1:2))*cells3))
-  call MPI_Scatterv(ic_global,sendcounts,displs,MPI_DOUBLE,ic_local,size(ic_local),&
-                    MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  allocate(ic_local(product(cells(1:2))*cells3*width))
+  call MPI_Scatterv(ic_global,sendcounts,displs,MPI_DOUBLE,&
+                    ic_local,size(ic_local),MPI_DOUBLE,&
+                    0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
-  ic = reshape(ic_local,[cells(1),cells(2),cells3])
+end function get_initial_condition
 
-end function discretization_grid_getInitialCondition
 
 end module discretization_grid

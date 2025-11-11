@@ -29,6 +29,8 @@ from vtkmodules.vtkCommonDataModel import (
     vtkImageData,
     vtkRectilinearGrid,
     vtkUnstructuredGrid,
+    vtkPointData,
+    vtkCellData,
     vtkPolyData,
     VTK_LAGRANGE_TRIANGLE,
     VTK_LAGRANGE_QUADRILATERAL,
@@ -597,25 +599,21 @@ class VTK:
         data : numpy.ndarray
             Data stored under the given label.
         """
-        cell_data = self.vtk_data.GetCellData()
-        if label in [cell_data.GetArrayName(a) for a in range(cell_data.GetNumberOfArrays())]:
-            try:
-                return vtk_to_numpy(cell_data.GetArray(label))
-            except AttributeError:
-                vtk_array = cell_data.GetAbstractArray(label)                                       # string array
+        cell_data: vtkCellData = self.vtk_data.GetCellData()
+        point_data: vtkPointData = self.vtk_data.GetPointData()
 
-        point_data = self.vtk_data.GetPointData()
-        if label in [point_data.GetArrayName(a) for a in range(point_data.GetNumberOfArrays())]:
-            try:
-                return vtk_to_numpy(point_data.GetArray(label))
-            except AttributeError:
-                vtk_array = point_data.GetAbstractArray(label)                                      # string array
+        if label in [cell_data.GetArrayName(i) for i in range(cell_data.GetNumberOfArrays())]:
+            vtk_container: Union[vtkPointData,vtkCellData] = cell_data
+        elif label in [point_data.GetArrayName(i) for i in range(point_data.GetNumberOfArrays())]:
+            vtk_container = point_data
+        else:
+            raise KeyError(f'array "{label}" not found in cell or point data')
 
         try:
-            # string array
+            return vtk_to_numpy(vtk_container.GetArray(label))
+        except AttributeError:                                                                       # assume string array
+            vtk_array = vtk_container.GetAbstractArray(label)
             return np.array([vtk_array.GetValue(i) for i in range(vtk_array.GetNumberOfValues())]).astype(str)
-        except UnboundLocalError:
-            raise KeyError(f'array "{label}" not found')
 
 
     def delete(self,
