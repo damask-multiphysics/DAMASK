@@ -26,8 +26,8 @@
         <DataArray type="Int64" Name="offsets" format="binary" RangeMin="4" RangeMax="720">
           AQAAAACAAACgBQAALAEAAA==eF4txRFwAgAAAMC2C4IgCIIgCIIgCIIgCIIgCIIgCIIgCIIgCIIgCIIgCIIgCIIgCIIgCAaDIAiCwWAQDPqXDwbeQg474qhjjjvhpFNOO+Osc8674KJLLrviqmuuu+GmW26746577nvgoUcee+KpZ5574aVXXnvjrXfe++CjTz774qu//O2b73746R//+s8vBz7eBR1y2BFHHXPcCSedctoZZ51z3gUXXXLZFVddc90NN91y2x133XPfAw898tgTTz3z3AsvvfLaG2+9894HH33y2Rdf/eVv33z3w0//+Nd/fjnw+S7okMOOOOqY40446ZTTzjjrnPMuuOiSy6646prrbrjpltvuuOue+x546JHHnnjqmedeeOmV19546533Pvjok8+++B8y91Uz
         </DataArray>
-        <DataArray type="UInt8" Name="types" format="binary" RangeMin="9" RangeMax="9">
-          AQAAAACAAAC0AAAADAAAAA==eF7j5Bx6AAA9hAZV
+        <DataArray type="UInt8" Name="types" format="binary" RangeMin="70" RangeMax="70">
+          AQAAAACAAAC0AAAADAAAAA==eF5zcxt6AABn/zE5
         </DataArray>
       </Cells>
     </Piece>

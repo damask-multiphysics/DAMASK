@@ -186,7 +186,7 @@ subroutine grid_damage_spectral_init(num_grid)
     phi_lastInc = reshape(tempN,[cells(1),cells(2),cells3])
     phi_stagInc = phi_lastInc
   else
-    phi = discretization_grid_getInitialCondition('phi')
+    phi = discretization_grid_getScalarInitialCondition('phi')
     phi_lastInc = phi(0:,0:,lbound(phi,3):)
     phi_stagInc = phi_lastInc
   end if restartRead

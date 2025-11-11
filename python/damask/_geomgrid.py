@@ -1,5 +1,6 @@
 import os
 import copy
+import numbers
 import multiprocessing as mp
 from functools import partial
 from typing import Optional, Union, Sequence
@@ -17,14 +18,66 @@ from . import Rotation
 from . import Table
 from . import Colormap
 from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
-try:
-    import numba as nb                                                                              # type: ignore[import-not-found]
-except ImportError:
-    nb = False
 
 
-def numba_njit_wrapper(**kwargs):
-    return (lambda function: nb.njit(function) if nb else function)
+class IcDict(dict):
+    """Dict that validates and broadcasts initial conditions on assignment."""
+
+    def __init__(self, cells: tuple[int, int, int]):
+        """
+        New initial condition dictionary.
+
+        Parameters
+        ----------
+        cells : tuple of int, len (3)
+            Cell counts along x,y,z direction.
+        """
+        super().__init__()
+        self.cells = cells
+
+    def __setitem__(self, k: str, v: Union[int, float, np.ndarray]):
+        """
+        Set a single initial condition key with validation and broadcasting.
+
+        Parameters
+        ----------
+        k : str
+            Name of the initial condition field.
+        v : int, float, or np.ndarray
+            Value to assign to the field. Allowed types and shapes:
+            - Scalars (`int` or `float`)
+              → broadcast to `cells`.
+            - Small arrays (`np.ndarray`) of shape (), (1,), or (3,)
+              → broadcast to `cells + value.shape`.
+            - Full-field arrays (`np.ndarray`) with leading dimensions matching `cells` and trailing shape (), (1,), or (3,)
+              → copied as-is.
+
+        Raises
+        ------
+        ValueError
+            If `v` has an invalid shape that does not match the allowed rules.
+
+        Notes
+        -----
+        Broadcasting ensures that all initial condition fields conform to the
+        grid defined by `cells`.
+        This method is called both for full-property assignment (via the parent setter)
+        and per-key assignment (`GeomGrid.initial_conditions[key] = value`), so all
+        validation and broadcasting logic is centralized here.
+        """
+        if not (    isinstance(v, numbers.Real)
+                or (isinstance(v, np.ndarray) and v.shape in [(), (1,), (3,)])
+                or (isinstance(v, np.ndarray) and len(v.shape) >= 3 and
+                    v.shape[:3] == self.cells and v.shape[3:] in [(), (1,), (3,)])
+               ):
+            raise ValueError(f'initial condition "{k}" must be [a field of] scalars or three-dimensional vectors')
+
+        super().__setitem__(k,
+                            v if isinstance(v, np.ndarray) and len(v.shape) >= 3 and v.shape[:3] == self.cells else
+                            np.broadcast_to(v, self.cells + v.shape) if isinstance(v, np.ndarray) else
+                            np.broadcast_to(v, self.cells)
+                            )
+
 
 class GeomGrid:
     """
@@ -56,12 +109,15 @@ class GeomGrid:
             Coordinates of grid origin in meter. Defaults to [0.0,0.0,0.0].
         initial_conditions : dictionary, optional
             Initial condition label and field values at each grid point.
+            If leading shape deviates from material shape,
+            the (constant) value is broadcast across the grid.
         comments : (sequence of) str, optional
             Additional, human-readable information, e.g. history of operations.
         """
         self.material = material
-        self.size = size                                                                            # type: ignore[assignment]
-        self.origin = origin                                                                        # type: ignore[assignment]
+        self.size = size
+        self.origin = origin
+        self._ic = IcDict(tuple(self.cells))
         self.initial_conditions = {} if initial_conditions is None else initial_conditions
         self.comments = [] if comments is None else \
                         [comments] if isinstance(comments,str) else \
@@ -82,7 +138,8 @@ class GeomGrid:
                f'origin: {util.srepr(self.origin,"   ")} m',
                f'# materials: {mat_N}' + ('' if mat_min == 0 and mat_max == mat_N-1 else
                                           f' (min: {mat_min}, max: {mat_max})')
-               ]+(['initial_conditions:']+[f'  - {f}' for f in self.initial_conditions] if self.initial_conditions else []))
+               ]+(['initial_conditions:']+[f'  - {f}'+(f' {data.shape[3:]}' if len(data.shape)>3 else '')
+                                           for f,data in self.initial_conditions.items()] if self.initial_conditions else []))
 
 
     def __copy__(self) -> 'GeomGrid':
@@ -115,10 +172,38 @@ class GeomGrid:
         """
         if not isinstance(other, GeomGrid):
             return NotImplemented
+        return self.match(other) and bool(    other.initial_conditions.keys() == self.initial_conditions.keys()
+                                          and all(np.allclose(other.initial_conditions[k], self.initial_conditions[k])
+                                                  for k in self.initial_conditions)
+                                         )
+
+
+    def match(self,
+              other: object) -> bool:
+        """
+        Test geometric equality of other, i.e., ignoring initial conditions.
+
+        Parameters
+        ----------
+        other : damask.GeomGrid
+            GeomGrid to compare self against.
+
+        Returns
+        -------
+        match : bool
+            Whether both arguments are geometrically equal.
+
+        Notes
+        -----
+        This comparison does not consider initial conditions.
+        """
+        if not isinstance(other, GeomGrid):
+            return NotImplemented
         return bool(    np.allclose(other.size,self.size)
                     and np.allclose(other.origin,self.origin)
                     and np.all(other.cells == self.cells)
-                    and np.all(other.material == self.material))
+                    and np.all(other.material == self.material)
+                   )
 
 
     @property
@@ -149,7 +234,7 @@ class GeomGrid:
     @size.setter
     def size(self,
              size: FloatSequence):
-        if len(size) != 3 or any(np.array(size) < 0):
+        if len(size) != 3 or any(np.asarray(size) < 0):
             raise ValueError(f'invalid size {size}')
 
         self._size = np.array(size,np.float64)
@@ -167,21 +252,22 @@ class GeomGrid:
 
         self._origin = np.array(origin,np.float64)
 
+
     @property
-    def initial_conditions(self) -> dict[str,np.ndarray]:
+    def initial_conditions(self) -> dict[str, np.ndarray]:
         """Fields of initial conditions."""
-        self._ic = dict(zip(self._ic.keys(),                                                        # type: ignore[has-type]
-                        [v if isinstance(v,np.ndarray) else
-                         np.broadcast_to(v,self.cells) for v in self._ic.values()]))                # type: ignore[has-type]
         return self._ic
 
     @initial_conditions.setter
-    def initial_conditions(self,
-                           ic: dict[str,np.ndarray]):
-        if not isinstance(ic,dict):
-            raise TypeError('initial conditions is not a dictionary')
+    def initial_conditions(self, ic: dict[str, np.ndarray]):
+        """Set initial conditions, broadcasting to the cell grid shape if necessary."""
+        if not isinstance(ic, dict):
+            raise TypeError('initial conditions must be a dictionary')
 
-        self._ic = ic
+        self._ic.clear()
+        for k, v in ic.items():
+            self._ic[k] = v
+
 
     @property
     def cells(self) -> np.ndarray:
@@ -214,9 +300,9 @@ class GeomGrid:
             Grid-based geometry from file.
         """
         v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
-        cells = np.array(v.vtk_data.GetDimensions())-1                                              # type: ignore[attr-defined]
+        cells = tuple(np.array(v.vtk_data.GetDimensions())-1)                                       # type: ignore[attr-defined]
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
-        ic = {l:v.get(l).reshape(cells,order='F') for l in set(v.labels['Cell Data']) - {label}}
+        ic = {l:v.get(l).reshape(cells+v.get(l).shape[1:],order='F') for l in set(v.labels['Cell Data']) - {label}}
 
         return GeomGrid(material = v.get(label).reshape(cells,order='F'),
                         size     = bbox[1] - bbox[0],
@@ -714,7 +800,7 @@ class GeomGrid:
         v = VTK.from_image_data(self.cells,self.size,self.origin)\
                .set('material',self.material.flatten(order='F'))
         for label,data in self.initial_conditions.items():
-            v = v.set(label,data.flatten(order='F'))
+            v = v.set(label,data.reshape((-1,)+data.shape[3:],order='F'))
         v.comments = self.comments
 
         v.save(fname,parallel=False,compress=compress)
@@ -758,6 +844,10 @@ class GeomGrid:
         -------
         updated : damask.GeomGrid
             Updated grid-based geometry.
+
+        Notes
+        -----
+        Existing initial condition fields will be removed.
 
         Examples
         --------
@@ -839,22 +929,29 @@ class GeomGrid:
         >>> g.mirror('xy') == g.mirror(['y','x'])
         True
         """
-        if not set(directions).issubset(valid := ['x', 'y', 'z']):
+        valid = 'xyz'
+        if not set(directions).issubset(valid):
             raise ValueError(f'invalid direction "{set(directions).difference(valid)}" specified')
 
         limits: Sequence[Optional[int]] = [None,None] if reflect else [-2,0]
+        selection = (slice(limits[0],limits[1],-1),slice(None),slice(None))
         mat = self.material.copy()
+        ic = self.initial_conditions.copy()
 
-        if 'x' in directions:
-            mat = np.concatenate([mat,mat[limits[0]:limits[1]:-1,:,:]],0)
-        if 'y' in directions:
-            mat = np.concatenate([mat,mat[:,limits[0]:limits[1]:-1,:]],1)
-        if 'z' in directions:
-            mat = np.concatenate([mat,mat[:,:,limits[0]:limits[1]:-1]],2)
+        for i,d in enumerate(valid):
+            if d in directions:
+                mat = np.concatenate([mat,
+                                      mat[selection[0-i],selection[1-i],selection[2-i]]],
+                                      axis=i)
+                for label in ic:
+                    ic[label] = np.concatenate([ic[label],
+                                                ic[label][selection[0-i],selection[1-i],selection[2-i]]],
+                                                axis=i)
 
         return GeomGrid(material = mat,
                         size     = self.size/self.cells*np.asarray(mat.shape),
                         origin   = self.origin,
+                        initial_conditions = ic,
                         comments = self.comments+[util.execution_stamp('GeomGrid','mirror')],
                        )
 
@@ -893,14 +990,18 @@ class GeomGrid:
         >>> g.mirror('x',reflect=True) == g.mirror('x',reflect=True).flip('x')
         True
         """
-        if not set(directions).issubset(valid := ['x', 'y', 'z']):
+        valid = 'xyz'
+        if not set(directions).issubset(valid):
             raise ValueError(f'invalid direction "{set(directions).difference(valid)}" specified')
 
         mat = np.flip(self.material, [valid.index(d) for d in directions if d in valid])
-
+        ic = {}
+        for label in self.initial_conditions:
+            ic[label] = np.flip(self.initial_conditions[label],[valid.index(d) for d in directions if d in valid])
         return GeomGrid(material = mat,
                         size     = self.size,
                         origin   = self.origin,
+                        initial_conditions = ic,
                         comments = self.comments+[util.execution_stamp('GeomGrid','flip')],
                        )
 
@@ -923,6 +1024,10 @@ class GeomGrid:
         -------
         updated : damask.GeomGrid
             Updated grid-based geometry.
+
+        Notes
+        -----
+        Existing initial condition fields will be removed.
 
         Examples
         --------
@@ -1023,7 +1128,8 @@ class GeomGrid:
         """
         cells = idx.shape[:3]
         flat = (idx if len(idx.shape)==3 else grid_filters.ravel_index(idx)).flatten(order='F')
-        ic = {k: v.flatten(order='F')[flat].reshape(cells,order='F') for k,v in self.initial_conditions.items()}
+        ic = {k: v.reshape((-1,)+v.shape[3:],order='F')[flat]
+                  .reshape(cells+v.shape[3:],order='F') for k,v in self.initial_conditions.items()}
 
         return GeomGrid(material = self.material.flatten(order='F')[flat].reshape(cells,order='F'),
                         size     = self.size,
@@ -1306,7 +1412,7 @@ class GeomGrid:
         updated : damask.GeomGrid
             Updated grid-based geometry.
         """
-        @numba_njit_wrapper()
+        @util.numba_njit_wrapper()
         def tainted_neighborhood(stencil: np.ndarray,
                                  selection: Optional[np.ndarray] = None):
             me = stencil[stencil.size//2]
@@ -1361,7 +1467,8 @@ class GeomGrid:
         grain_boundaries : damask.VTK
             VTK-based geometry of grain boundary network.
         """
-        if not set(directions).issubset(valid := ['x', 'y', 'z']):
+        valid = 'xyz'
+        if not set(directions).issubset(valid):
             raise ValueError(f'invalid direction "{set(directions).difference(valid)}" specified')
 
         o = [[0, self.cells[0]+1,           np.prod(self.cells[:2]+1)+self.cells[0]+1, np.prod(self.cells[:2]+1)],
@@ -1369,7 +1476,7 @@ class GeomGrid:
              [0, 1,                         self.cells[0]+1+1,                         self.cells[0]+1]] # offset for connectivity
 
         connectivity = []
-        for i,d in enumerate(['x','y','z']):
+        for i,d in enumerate(valid):
             if d not in directions: continue
             mask = self.material != np.roll(self.material,1,i)
             for j in [0,1,2]:
@@ -1378,8 +1485,8 @@ class GeomGrid:
             if i == 1 and not periodic: mask[:,0,:] = mask[:,-1,:] = False
             if i == 2 and not periodic: mask[:,:,0] = mask[:,:,-1] = False
 
-            base_nodes = np.argwhere(mask.flatten(order='F')).reshape(-1,1)
+            base_nodes = np.argwhere(mask.flatten(order='F')).reshape((-1,1))
             connectivity.append(np.block([base_nodes + o[i][k] for k in range(4)]))
 
-        coords = grid_filters.coordinates0_node(self.cells,self.size,self.origin).reshape(-1,3,order='F')
+        coords = grid_filters.coordinates0_node(self.cells,self.size,self.origin).reshape((-1,3),order='F')
         return VTK.from_unstructured_grid(coords,np.vstack(connectivity),'QUADRILATERAL')

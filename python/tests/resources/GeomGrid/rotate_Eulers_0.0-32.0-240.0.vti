@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <VTKFile type="ImageData" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">
-  <ImageData WholeExtent="0 8 0 10 0 8" Origin="0 -0.0000025 -0.000002" Spacing="0.000001 0.0000010000000000000002 0.000001" Direction="1 0 0 0 1 0 0 0 1">
+  <ImageData WholeExtent="0 8 0 10 0 8" Origin="0 -0.0000024999999999999998 -0.000002" Spacing="0.000001 0.000001 0.000001" Direction="1 0 0 0 1 0 0 0 1">
     <FieldData>
       <Array type="String" Name="comments" NumberOfTuples="1" format="binary">
-        AQAAAACAAAA/AAAAQgAAAA==eF5LScxNLM7Wc0/Nz9Uryi9JLElVKLO01AMjXUsg0C2oLEktLlHQMDIwtNQ1NNQ1MFIwNLQytbAyMNBkAAB1BxEy
+        AQAAAACAAABDAAAARgAAAA==eF5LScxNLM7Wc0/Nz3UvykzRK8ovSSxJVSiztNQDI11LINAtqCxJLS5R0DAyMLTUNTTUNTBSMDS0MrWwMjDQZAAA2IcSuA==
       </Array>
     </FieldData>
   <Piece Extent="0 8 0 10 0 8">

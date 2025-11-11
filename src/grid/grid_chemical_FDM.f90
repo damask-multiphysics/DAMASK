@@ -90,7 +90,7 @@ subroutine grid_chemical_FDM_init(num_grid)
 
   allocate(mu_0(homogenization_chemical_maxNcomponents-1,cells(1),cells(2),cells3),source=0.0_pREAL)
   do com = 1, homogenization_chemical_maxNcomponents - 1
-    mu_0(com,:,:,:) = discretization_grid_getInitialCondition(material_name_species(com))
+    mu_0(com,:,:,:) = discretization_grid_getScalarInitialCondition(material_name_species(com))
   end do
 
   N_components = homogenization_chemical_maxNcomponents - 1

@@ -18,6 +18,7 @@ from damask import grid_filters
 @pytest.fixture
 def default():
     """Simple geometry."""
+    rng = np.random.default_rng(42)
     g = np.array([8,5,4])
     l = np.prod(g[:2])
     return GeomGrid(np.concatenate((np.ones  (l,dtype=int),
@@ -25,7 +26,13 @@ def default():
                                     np.ones  (l,dtype=int)*2,
                                     np.arange(l,dtype=int)+1)
                                   ).reshape(g,order='F'),
-                    g*1e-6)
+                    g*1e-6,
+                    initial_conditions={'scalar_constant': rng.random(),
+                                        'scalar_field': rng.random(g)*1000,
+                                        'vector_constant': rng.random((3,)),
+                                        'vector_field': rng.random(tuple(g)+(3,)),
+                                        },
+                                        )
 
 @pytest.fixture
 def random(np_rng):
@@ -98,13 +105,13 @@ def test_invalid_origin(default):
                  size=np.ones(3),
                  origin=np.ones(4))
 
-def test_invalid_materials_shape(default):
+def test_invalid_materials_shape():
     material = np.ones((3,3))
     with pytest.raises(ValueError):
         GeomGrid(material,
                  size=np.ones(3))
 
-def test_invalid_materials_type(np_rng,default):
+def test_invalid_materials_type(np_rng):
     material = np_rng.integers(1,300,(3,4,5))==1
     with pytest.raises(TypeError):
         GeomGrid(material)
@@ -113,7 +120,7 @@ def test_invalid_materials_type(np_rng,default):
                                                (['x'],        False),
                                                (['x','y','z'],True),
                                                (['z','x','y'],False),
-                                               (['y','z'],    False)
+                                               ('yz',         False)
                                               ]
                         )
 def test_mirror(default,update,res_path,directions,reflect):
@@ -161,7 +168,7 @@ def test_flip_equal_halfspin(np_rng,default):
     direction = ['x','y','z']
     i = np_rng.choice(3)
     assert default.rotate(Rotation.from_axis_angle(np.hstack((np.identity(3)[i],180)),degrees=True)) \
-        == default.flip(direction[:i]+direction[i+1:])
+    .match(default.flip(direction[:i]+direction[i+1:]))
 
 @pytest.mark.parametrize('direction',[['x'],['x','y']])
 def test_flip_double(default,direction):
@@ -217,7 +224,8 @@ def test_renumber(np_rng,default):
     default.material -= 1
     modified = GeomGrid(material,
                         default.size,
-                        default.origin)
+                        default.origin,
+                        initial_conditions=default.initial_conditions)
     assert not default == modified
     assert     default == modified.renumber()
 
@@ -232,7 +240,8 @@ def test_substitute(np_rng,default):
     offset = np_rng.integers(1,500)
     modified = GeomGrid(default.material + offset,
                         default.size,
-                        default.origin)
+                        default.origin,
+                        initial_conditions=default.initial_conditions)
     assert not default == modified
     assert     default == modified.substitute(np.arange(default.material.max())+1+offset,
                                                 np.arange(default.material.max())+1)
@@ -477,7 +486,7 @@ def test_get_grain_boundaries(update,res_path,periodic,direction):
     grid = GeomGrid.load(res_path/'get_grain_boundaries_8g12x15x20.vti')
     current = grid.get_grain_boundaries(periodic,direction)
     if update:
-        current.save(res_path/f'get_grain_boundaries_8g12x15x20_{direction}_{periodic}.vtu',parallel=False)
+        current.save(res_path/f'get_grain_boundaries_8g12x15x20_{"".join(direction)}_{periodic}.vtu',parallel=False)
     reference = VTK.load(res_path/f'get_grain_boundaries_8g12x15x20_{"".join(direction)}_{periodic}.vtu')
     assert current.__repr__() == reference.__repr__()
 
