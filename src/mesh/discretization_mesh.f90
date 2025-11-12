@@ -303,7 +303,7 @@ subroutine discretization_mesh_init()
                            reshape(x_p,[3,int(mesh_maxNips*mesh_nElems)]), &
                            x_n)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>24)
+#if (PETSC_VERSION_MINOR>24 || (PETSC_VERSION_MINOR==24 && PETSC_VERSION_SUBMINOR>=1))
   call writeGeometry(reshape(x_p,[3,int(mesh_maxNips*mesh_nElems)]),x_n,T_e)
 #else
   call writeGeometry(reshape(x_p,[3,int(mesh_maxNips*mesh_nElems)]),x_n)
