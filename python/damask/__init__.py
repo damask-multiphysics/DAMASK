@@ -15,7 +15,7 @@ _logging.basicConfig(level=_logging.INFO, format='%(asctime)s - %(levelname)s - 
 
 name = 'damask'
 with open(_Path(__file__).parent/'VERSION') as _f:
-    version = _f.readline().strip().removeprefix('v')
+    version = _f.readline().strip()
     __version__ = version
 
 from .                 import _typehints       # noqa
