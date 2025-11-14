@@ -196,22 +196,23 @@ subroutine spectral_utilities_init(active_Gamma, active_G, active_parabolic)
     case ('FWBW_difference')
       spectral_derivative_ID = DERIVATIVE_FWBW_DIFF_ID
     case default
-      call IO_error(892,ext_msg=trim(num_grid_fft%get_asStr('derivative')))
+      call IO_error(601_pI16,trim(num_grid_fft%get_asStr('derivative')), &
+                    'is not a valid approach for calculation of derivatives',emph=[1])
   end select
 
 
   select case(num_grid_fft%get_asStr('FFTW_plan_mode',defaultVal='FFTW_MEASURE'))
-    case('FFTW_ESTIMATE')                                                                           ! ordered from slow execution (but fast plan creation) to fast execution
+    case ('FFTW_ESTIMATE')                                                                          ! ordered from slow execution (but fast plan creation) to fast execution
       FFTW_planner_flag = FFTW_ESTIMATE
-    case('FFTW_MEASURE')
+    case ('FFTW_MEASURE')
       FFTW_planner_flag = FFTW_MEASURE
-    case('FFTW_PATIENT')
+    case ('FFTW_PATIENT')
       FFTW_planner_flag = FFTW_PATIENT
-    case('FFTW_EXHAUSTIVE')
+    case ('FFTW_EXHAUSTIVE')
       FFTW_planner_flag = FFTW_EXHAUSTIVE
     case default
-      call IO_warning(47,'using default FFTW_MEASURE instead of "'//trim(num_grid_fft%get_asStr('FFTW_plan_mode'))//'"')
-      FFTW_planner_flag = FFTW_MEASURE
+      call IO_error(601_pI16,trim(num_grid_fft%get_asStr('FFTW_plan_mode')), &
+                    'is not a valid planner flag for FFTW',emph=[1])
   end select
 
 !--------------------------------------------------------------------------------------------------

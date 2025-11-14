@@ -77,7 +77,7 @@ module subroutine elastic_init(phases)
 
     C66 = crystal_symmetrize_C66(C66,phase_lattice(ph))
     if (.not. stable_stiffness(C66,phase_lattice(ph))) &
-      call IO_warning(601_pI16, 'phase', ph, 'has unstable stiffness matrix at T =', T_ROOM, emph=[2])
+      call IO_warning(601, 'phase', ph, 'has unstable stiffness matrix at T =', T_ROOM, emph=[2])
   end do
 
 end subroutine elastic_init

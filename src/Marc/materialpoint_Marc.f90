@@ -197,7 +197,7 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
   end if
 
   if (all(abs(materialpoint_dcsdE(1:6,1:6,ip,elCP)) < 1e-10_pREAL)) &
-    call IO_warning(601_pI16,'integration point', ip, 'of element (CP)',elCP, 'has stiffness close to 0.0', &
+    call IO_warning(601,'integration point', ip, 'of element (CP)', elCP, 'has stiffness close to 0.0', &
                     emph = [2,4] )
 
   cauchyStress = materialpoint_cs   (1:6,    ip,elCP)
