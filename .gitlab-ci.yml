@@ -247,7 +247,7 @@ c++-linter:
   script:
     - source env/DAMASK.sh
     - ./bin/DAMASK_test
-    - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \;
+    - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \; | grep src/.\*.f90 -A+1 || true
     - ctest --test-dir build/src/test/cpp --output-on-failure -j"$(nproc)" --no-tests=ignore
   parallel:
     matrix:
