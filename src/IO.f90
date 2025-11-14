@@ -612,7 +612,7 @@ subroutine IO_warning_new(warning_ID, &
     case (600)
       msg = 'crystallite responds elastically'
     case (601)
-      msg = 'stiffness close to zero'
+      msg = 'unexpected stiffness'
     case (709)
       msg = 'read only the first document'
 
