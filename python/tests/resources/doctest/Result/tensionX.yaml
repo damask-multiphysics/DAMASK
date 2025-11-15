@@ -13,6 +13,6 @@ loadstep:
             [x, 0, x],
             [x, x, 0]]
     discretization:
-      t: 5
+      t: 4.0
       N: 20
-    f_out: 5
+    f_out: 4

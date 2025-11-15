@@ -86,7 +86,7 @@ def _empty_like(dataset_shape: tuple[int],
 
 
 class Result:
-    r"""
+    """
     Add data to and export data from a DADF5 (DAMASK HDF5) file.
 
     A DADF5 file contains DAMASK results.
@@ -99,16 +99,19 @@ class Result:
 
     Examples
     --------
-    Open 'my_file.hdf5', which is assumed to contain deformation gradient 'F'
-    and first Piola-Kirchhoff stress 'P', add the von Mises equivalent of the
-    Cauchy stress, and export it to VTK (file) and numpy.ndarray (memory).
+    Open 'my_file.hdf5' and view its content:
 
     >>> import damask
     >>> r = damask.Result('my_file.hdf5')
     >>> r
-    \x1b[2mCreated by DAMASK_grid ...
+    \x1b[2mCreated by DAMASK_...
             on ...
      executing "..."\x1b[0m
+    <BLANKLINE>
+    increment_0 (0.0 s)
+      phase
+    ...
+      homogenization
     ...
     """
 
@@ -498,7 +501,7 @@ class Result:
     def rename(self,
                name_src: str,
                name_dst: str):
-        r"""
+        """
         Rename/move datasets (within the same group/folder).
 
         This operation is discouraged because the history of the
@@ -518,7 +521,6 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r_unprotected = r.view(protected=False)
-        \x1b[93m\x1b[1mWarning: Modification of existing datasets allowed!\x1b[0m\x1b[0m
         >>> r_unprotected.rename('F','def_grad')
         """
         if self._protected:
@@ -538,7 +540,7 @@ class Result:
 
 
     def remove(self, name: str):
-        r"""
+        """
         Remove/delete datasets.
 
         This operation is discouraged because the history of the
@@ -556,7 +558,6 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r_unprotected = r.view(protected=False)
-        \x1b[93m\x1b[1mWarning: Modification of existing datasets allowed!\x1b[0m\x1b[0m
         >>> r_unprotected.remove('F')
         """
         if self._protected:
@@ -707,7 +708,8 @@ class Result:
         ----------
         formula : str
             Formula to calculate resulting dataset.
-            Existing datasets are referenced by '#TheirName#'.
+            Existing datasets are referenced by their name enclosed
+            in pound signs, e.g. '#TheirName#'.
         name : str
             Name of resulting dataset.
         unit : str, optional
@@ -725,13 +727,10 @@ class Result:
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_calculation('np.sum(#rho_mob#,axis=1)','rho_mob_total',
         ...                    '1/m²','total mobile dislocation density')
-        [...]
         >>> r.add_calculation('np.sum(#rho_dip#,axis=1)','rho_dip_total',
         ...                    '1/m²','total dislocation dipole density')
-        [...]
         >>> r.add_calculation('#rho_dip_total#+#rho_mob_total#','rho_total',
         ...                    '1/m²','total dislocation density')
-        [...]
 
         Add von Mises equivalent of the Cauchy stress without storage of
         intermediate results. Define a user function for better readability:
@@ -742,10 +741,8 @@ class Result:
         ...     return damask.mechanics.equivalent_stress_Mises(sigma)
         >>> r = damask.Result('my_file.hdf5')
         >>> r.enable_user_function(equivalent_stress)
-        Function equivalent_stress enabled in add_calculation.
         >>> r.add_calculation('equivalent_stress(#F#,#P#)','sigma_vM','Pa',
         ...                   'von Mises equivalent of the Cauchy stress')
-        [...]
         """
         def calculation(**kwargs) -> DADF5Dataset:
             formula = kwargs['formula']
@@ -791,7 +788,6 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_determinant('F_p')
-        [...]
         """
         def determinant(T: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -827,7 +823,6 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_deviator('sigma')
-        [...]
         """
         def deviator(T: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -867,7 +862,6 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_eigenvalue('sigma','min')
-        [...]
         """
         def eigenval(T_sym: DADF5Dataset, eigenvalue: Literal['max', 'mid', 'min']) -> DADF5Dataset:
             if   eigenvalue == 'max':
@@ -960,14 +954,12 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_equivalent_Mises('sigma')
-        [...]
 
         Add the von Mises equivalent of the spatial logarithmic strain 'epsilon_V^0.0(F)':
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_equivalent_Mises('epsilon_V^0.0(F)')
-        [...]
         """
         def equivalent_Mises(T_sym: DADF5Dataset, kind: str) -> DADF5Dataset:
             k = kind
@@ -1018,7 +1010,6 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_IPF_color(l = [1,0,0], q = 'O')
-        [...]
         """
         def IPF_color(l: FloatSequence, q: DADF5Dataset) -> DADF5Dataset:
             m = util.scale_to_coprime(np.array(l))
@@ -1081,7 +1072,7 @@ class Result:
 
         Notes
         -----
-        For details refer to numpy.linalg.norm.
+        For details refer to ``numpy.linalg.norm``.
         """
         def norm(x: DADF5Dataset, ord: Union[int, float, Literal['fro', 'nuc']]) -> DADF5Dataset:
             o = ord
@@ -1186,7 +1177,6 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_rotation('F')
-        [...]
         """
         def rotation(F: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -1222,7 +1212,6 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_spherical('sigma')
-        [...]
         """
         def spherical(T: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -1242,7 +1231,7 @@ class Result:
                    F: str = 'F',
                    t: Literal['V', 'U'] = 'V',
                    m: float = 0.0):
-        r"""
+        """
         Add strain tensor (Seth-Hill family) of a deformation gradient.
 
         By default, the logarithmic strain based on the
@@ -1269,14 +1258,12 @@ class Result:
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_strain(t='V',m=-1.0)
-        [...]
 
         Add the plastic Biot strain:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_strain('F_p','U',0.5)
-        [...]
         """
         def strain(F: DADF5Dataset, t: Literal['V', 'U'], m: float) -> DADF5Dataset:
             side = 'left' if t == 'V' else 'right'
@@ -1332,7 +1319,7 @@ class Result:
     def add_stress_second_Piola_Kirchhoff(self,
                                           P: str = 'P',
                                           F: str = 'F'):
-        r"""
+        """
         Add second Piola-Kirchhoff stress calculated from first Piola-Kirchhoff stress and deformation gradient.
 
         Parameters
@@ -1437,7 +1424,7 @@ class Result:
 
         Notes
         -----
-        For details refer to :func: `damask.grid_filters.divergence`.
+        For details refer to :func:`damask.grid_filters.divergence`.
 
         This function is implemented only for structured grids
         with one constituent and a single phase.
