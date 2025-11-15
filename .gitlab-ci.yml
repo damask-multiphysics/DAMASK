@@ -205,12 +205,11 @@ doctest:
   extends: [.processing, .python]
   script:
     - cd python
-    - PYTHONPATH=${PWD}:${PYTHONPATH}
     - cp tests/resources/doctest/*.* .
     # pretend neper to be present such that call to /bin/neper does not fail
     - echo '#!/usr/bin/env bash' > /bin/neper
     - chmod +x /bin/neper
-    - python3 -m pytest -v --doctest-modules damask
+    - PYTHONPATH=${PWD}:${PYTHONPATH} NO_COLOR=1 python3 -m pytest -v --doctest-modules damask
 
 
 ####################################################################################################

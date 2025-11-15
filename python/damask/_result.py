@@ -86,7 +86,7 @@ def _empty_like(dataset_shape: tuple[int],
 
 
 class Result:
-    """
+    r"""
     Add data to and export data from a DADF5 (DAMASK HDF5) file.
 
     A DADF5 file contains DAMASK results.
@@ -104,9 +104,9 @@ class Result:
     >>> import damask
     >>> r = damask.Result('my_file.hdf5')
     >>> r
-    \x1b[2mCreated by DAMASK_...
+    Created by DAMASK_...
             on ...
-     executing "..."\x1b[0m
+     executing "..."
     <BLANKLINE>
     increment_0 (0.0 s)
       phase

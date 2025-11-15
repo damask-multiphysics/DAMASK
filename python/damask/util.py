@@ -9,7 +9,7 @@ import re as _re
 import signal as _signal
 import fractions as _fractions
 import contextlib as _contextlib
-from collections import abc as _abc
+from collections import abc as _abc, defaultdict as _defaultdict
 from functools import reduce as _reduce, partial as _partial
 from pathlib import Path as _Path
 import logging as _logging
@@ -39,18 +39,22 @@ version = _np.lib.NumpyVersion
 
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
 # https://stackoverflow.com/questions/287871
-_colors = {
-           'header' :   '\033[95m',
-           'OK_blue':   '\033[94m',
-           'OK_green':  '\033[92m',
-           'warning':   '\033[93m',
-           'fail':      '\033[91m',
-           'bold':      '\033[1m',
-           'dim':       '\033[2m',
-           'underline': '\033[4m',
-           'crossout':  '\033[9m',
-           'end_color': '\033[0m'
-          }
+if 'NO_COLOR' not in _os.environ:
+   _colors = _defaultdict(str,
+             {
+              'header' :   '\033[95m',
+              'OK_blue':   '\033[94m',
+              'OK_green':  '\033[92m',
+              'warning':   '\033[93m',
+              'fail':      '\033[91m',
+              'bold':      '\033[1m',
+              'dim':       '\033[2m',
+              'underline': '\033[4m',
+              'crossout':  '\033[9m',
+              'end_color': '\033[0m'
+             })
+else:
+   _colors = _defaultdict(str)
 
 ####################################################################################################
 # Functions

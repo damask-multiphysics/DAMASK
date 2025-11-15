@@ -72,6 +72,7 @@ implicit none(type,external)
     logical(C_BOOL), bind(C, name='IO_redirectedSTDOUT') :: IO_redirectedSTDOUT = .false.           !< STDOUT writes to file 'out.X' where X is the world rank
     logical(C_BOOL), bind(C, name='IO_redirectedSTDERR') :: IO_redirectedSTDERR = .false.           !< STDERR writes to file 'err.X' where X is the world rank
 #endif
+   logical :: IO_colored = .true.                                                                   !< status of colored output
 
   public :: &
     quit, &
@@ -97,11 +98,12 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Inquire whether STDOUT/STDERR are redirected and do self test.
+!> @brief Set options related to use of ANSI escape codes and do self test.
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init()
 
   character(len=pSTRLEN) :: fname
+  integer :: status
 
 
   print'(/,1x,a)', '<<<+-  IO init  -+>>>'; flush(IO_STDOUT)
@@ -113,6 +115,8 @@ subroutine IO_init()
   inquire(unit=IO_STDERR,name=fname)
   IO_redirectedSTDERR = logical(fname(:4) == 'err.',C_BOOL)
 #endif
+  call get_environment_variable('NO_COLOR',status=status)                                           !< https://no-color.org
+  IO_colored = 0 /= status
 
   call IO_selfTest()
 
@@ -344,7 +348,7 @@ function IO_color(fg,bg,unit)
 
   IO_color = ''
 
-  if (.not. IO_isaTTY(misc_optional(unit,int(IO_STDOUT)))) return
+  if (.not. IO_colored .or. .not. IO_isaTTY(misc_optional(unit,int(IO_STDOUT)))) return
 
   if (present(fg)) &
     IO_color = IO_color//IO_ESC//'[38;2;'//IO_intAsStr(fg(1))//';' &
@@ -979,7 +983,7 @@ function as_str(info,emph)
     end select
 
     if (emph) then
-      if (IO_isaTTY(IO_STDERR)) then
+      if (IO_colored .and. IO_isaTTY(IO_STDERR)) then
         as_str = IO_EMPH//as_str//IO_FORMATRESET
       else
         as_str = IO_QUOTES(2:2)//as_str//IO_QUOTES(2:2)
