@@ -223,7 +223,7 @@ open-source:
     - long_running
   needs: []
   before_script:
-    - cmake -DGRID=ON -DMESH=ON -B build && cmake --build build --parallel 4 --target install
+    - cmake -DGRID=ON -DMESH=ON -B build -G Ninja && cmake --build build --parallel 4 --target install
     - source env/DAMASK.sh
   script:
     - cd PRIVATE/testing
