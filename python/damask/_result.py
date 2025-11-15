@@ -191,6 +191,7 @@ class Result:
             header = [f'Created by {f.attrs["creator"]}',
                       f'        on {f.attrs["created"]}',
                       f' executing "{f.attrs["call"]}"']
+        header = list(map(util.deemph,header))
         visible_increments = self._visible['increments']
 
         first = self.view(increments=visible_increments[0:1]).list_data()
@@ -201,7 +202,7 @@ class Result:
         in_between = [] if len(visible_increments) < 3 else \
                      [f'\n{inc}\n  ...' for inc in visible_increments[1:-1]]
 
-        return util.srepr([util.deemph(header)] + first + in_between + last)
+        return util.srepr(header + first + in_between + last)
 
 
     def __bool__(self) -> bool:
@@ -395,7 +396,7 @@ class Result:
         dup = self._manage_view('set',increments,times,phases,homogenizations,fields)
         if protected is not None:
             if not protected:
-                logger.warning(util.warn('Modification of existing datasets allowed!'))
+                logger.warning('Modification of existing datasets allowed!')
             dup._protected = protected
 
         return dup
