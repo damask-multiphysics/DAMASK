@@ -607,7 +607,7 @@ subroutine IO_warning(warning_ID, &
     case (207)
       msg = 'line truncated'
     case (600)
-      msg = 'crystallite responds elastically'
+      msg = 'failed to converge'
     case (601)
       msg = 'unexpected stiffness'
     case (709)
@@ -907,6 +907,9 @@ subroutine panel(paneltype,ID,msg, &
              i
 
 
+  ! Needed to avoid output glitches observed with Gfortran.
+  ! see https://fortran-lang.discourse.group/t/openmp-and-thread-safety-of-i-os-write-read/4567/19
+  !$OMP CRITICAL (internal_IO)
   heading = paneltype//' '//IO_intAsStr(ID)
 
   select case (paneltype)
@@ -929,9 +932,9 @@ subroutine panel(paneltype,ID,msg, &
             // as_str(info_7,is_emph(7,emph)) &
             // as_str(info_8,is_emph(8,emph)) &
             // as_str(info_9,is_emph(9,emph))
+  !$OMP END CRITICAL (internal_IO)
 
-
-  !$OMP CRITICAL (write2out)
+  !$OMP CRITICAL (output_to_screen)
   write(IO_STDERR,'(/,a)')                ' ┌'       //DIVIDER//        '┐'
   write(formatString,'(a,i2,a)') '(a,24x,a,',max(1,panelwidth-24-len_trim(heading)),'x,a)'
   write(IO_STDERR,formatString)           ' │',    trim(heading),       '│'
@@ -955,7 +958,7 @@ subroutine panel(paneltype,ID,msg, &
   endif
   write(IO_STDERR,'(a)')                  ' └'       //DIVIDER//        '┘'
   flush(IO_STDERR)
-  !$OMP END CRITICAL (write2out)
+  !$OMP END CRITICAL (output_to_screen)
 
 end subroutine panel
 

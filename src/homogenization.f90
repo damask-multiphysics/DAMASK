@@ -298,14 +298,15 @@ subroutine homogenization_mechanical_response(status,Delta_t,cell_start,cell_end
       end if
     end do convergenceLooping
     if (.not. converged) then
-      if (status == STATUS_OK) print*, ' Cell ', ce, ' failed (mechanics)'
+      if (status == STATUS_OK) &
+        call IO_warning(600,'mechanical response of cell', ce, 'on MPI rank', worldrank, emph=[2,4])
       status = STATUS_FAIL_PHASE_MECHANICAL
     end if
     converged = converged .and. all([(phase_damage_constitutive(Delta_t,co,ce)==STATUS_OK,co=1,homogenization_Nconstituents(ho))])
 
     if (.not. converged) then
       if (status == STATUS_OK) then
-        print*, ' Cell ', ce, ' failed (damage)'
+        call IO_warning(600,'damage response of cell', ce, 'on MPI rank', worldrank, emph=[2,4])
         status = STATUS_FAIL_PHASE_DAMAGE
       end if
     end if
@@ -349,7 +350,8 @@ subroutine homogenization_thermal_response(status, &
     ho = material_ID_homogenization(ce)
     do co = 1, homogenization_Nconstituents(ho)
       if (phase_thermal_constitutive(Delta_t,material_ID_phase(co,ce),material_entry_phase(co,ce)) /= STATUS_OK) then
-        if (status == STATUS_OK) print*, ' Cell ', ce, ' failed (thermal)'
+        if (status == STATUS_OK) &
+          call IO_warning(600,'thermal response of cell', ce, 'on MPI rank', worldrank, emph=[2,4])
         status = STATUS_FAIL_PHASE_THERMAL
       end if
     end do
