@@ -110,7 +110,7 @@ subroutine math_init()
     seed = num_generic%get_as1dInt('random_seed',requiredSize=randSize) &
          + worldrank*42_MPI_INTEGER_KIND
   else
-    call random_seed()
+    call random_init(.false.,.false.)
     call random_seed(get = seed)
   end if
 

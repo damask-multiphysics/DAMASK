@@ -95,15 +95,10 @@ subroutine parallelization_init()
   call get_environment_variable(name='DAMASK_LOGFILE',value=logfile,status=got_env)
   if (got_env == 0 .and. any(trim(logfile) == ['1   ', 'TRUE', 'True', 'true'])) then
     write(rank_str,'(i4.4)') worldrank
-    open(OUTPUT_UNIT,file='out.'//rank_str,status='replace',encoding='UTF-8')
-    open(ERROR_UNIT,file='err.'//rank_str,status='replace',encoding='UTF-8')
+    open(OUTPUT_UNIT,file='out.'//rank_str,status='replace')
+    open(ERROR_UNIT,file='err.'//rank_str,status='replace')
   else
-    if (worldrank == 0) then
-      open(OUTPUT_UNIT,encoding='UTF-8')                                                            ! for special characters in output
-    else
-      open(OUTPUT_UNIT,file='/dev/null',status='replace')                                           ! close() will leave some temp files in cwd
-    end if
-    open(ERROR_UNIT,encoding='UTF-8')
+    if (worldrank /= 0) open(OUTPUT_UNIT,file='/dev/null',status='replace')
   end if
 
   call date_and_time(values = date_time)

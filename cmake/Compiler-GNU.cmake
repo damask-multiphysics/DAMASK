@@ -18,9 +18,9 @@ elseif(OPTIMIZATION STREQUAL "AGGRESSIVE")
 endif()
 
 if(CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 14)
-  set(STANDARD_CHECK "-std=f2018 -pedantic-errors" )
+  set(STANDARD_CHECK "-std=f2018 -pedantic-errors")
 else()
-  set(STANDARD_CHECK "-std=f2023 -pedantic-errors" )
+  set(STANDARD_CHECK "-std=f2023 -pedantic-errors")
 endif()
 
 if(CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 12)
