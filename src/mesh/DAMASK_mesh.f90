@@ -11,6 +11,7 @@ program DAMASK_mesh
   use PetscDM
   use prec
   use CLI
+  use IO
   use parallelization
   use materialpoint
   use discretization_mesh
@@ -40,10 +41,11 @@ program DAMASK_mesh
   logical :: &
     guess, &                                                                                        !< guess along former trajectory
     stagIterate
+  logical, allocatable, dimension(:) :: &
+    read_BC_entries
   integer :: &
     l, &
     m, &
-    errorID, &
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
     stepFraction = 0, &                                                                             !< fraction of current time interval
     inc, &                                                                                          !< current increment in current load case
@@ -64,24 +66,21 @@ program DAMASK_mesh
     mech_u, &
     step_mech
   character(len=pSTRLEN) :: &
-    incInfo, &
-    loadcase_string
+    incInfo
   integer :: &
+    bc_tag, &
     stagItMax, &                                                                                    !< max number of field level staggered iterations
     maxCutBack, &                                                                                   !< max number of cutbacks
-    skipBCTagDigits, &                                                                              !< number of characters to skip to print BC tag (T descriptor)
-    BCTag                                                                                           !< tag value read from YAML load file
-  integer, allocatable, dimension(:) :: &
-    knownBCTags                                                                                     !< array of read BC tags (check for duplicates)
-
+    skip_T1, skip_T2                                                                                !< number of characters to skip (T descriptor)
 
   type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
   type(tSolutionState), allocatable, dimension(:) :: solres
   PetscInt :: boundary, dimPlex
   PetscErrorCode :: err_PETSc
   character(len=:), allocatable :: &
-    fileContent, fname, tagPrintFormat
-  character(len=6) :: BC_elem
+    fileContent, fname
+  character(len=pSTRLEN) :: &
+    bc_label_name
 
 
 !--------------------------------------------------------------------------------------------------
@@ -89,7 +88,7 @@ program DAMASK_mesh
   call materialpoint_initAll()
   print'(/,1x,a)', '<<<+-  DAMASK_mesh init  -+>>>'; flush(IO_STDOUT)
 
-!---------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! reading field information from numerics file and do sanity checks
   num_solver => config_numerics%get_dict('solver',defaultVal=emptyDict)
   num_mesh   => num_solver%get_dict('mesh',defaultVal=emptyDict)
@@ -99,8 +98,10 @@ program DAMASK_mesh
   if (stagItMax < 0)  call IO_error(301,ext_msg='N_staggered_iter_max')
   if (maxCutBack < 0) call IO_error(301,ext_msg='N_cutback_max')
 
-! reading basic information from load case file and allocate data structure containing load cases
-  call DMGetDimension(geomMesh,dimPlex,err_PETSc)                                                   !< dimension of mesh (2D or 3D)
+!--------------------------------------------------------------------------------------------------
+! reading basic information from load case file, allocate data structure containing load cases
+! and some checks for invalid tags/labels use
+  call DMGetDimension(geomMesh,dimPlex,err_PETSc)                                                   ! dimension of mesh (2D or 3D)
   CHKERRA(err_PETSc)
   allocate(solres(1))
 
@@ -117,31 +118,45 @@ program DAMASK_mesh
   load => YAML_str_asDict(fileContent)
   load_steps => load%get_list('loadstep')
 
+  allocate(read_BC_entries(mesh_nBoundaries), source = .false.)
   allocate(loadCases(size(load_steps)))
   do l = 1, size(load_steps)
     load_step => load_steps%get_dict(l)
     step_bc   => load_step%get_dict('boundary_conditions')
     step_mech => step_bc%get_list('mechanical')
     allocate(loadCases(l)%mechBC(mesh_Nboundaries))
-    loadCases(l)%mechBC(:)%nComponents = dimPlex                                                   !< X, Y (, Z) displacements
+    loadCases(l)%mechBC(:)%nComponents = dimPlex                                                    ! X, Y (, Z) displacements
     do boundary = 1_pPETSCINT, mesh_Nboundaries
       allocate(loadCases(l)%mechBC(boundary)%dot_u(dimPlex),  source = 0.0_pREAL)
       allocate(loadCases(l)%mechBC(boundary)%active(dimPlex), source = .false.)
     end do
 
-    allocate(knownBCTags(size(step_mech)), source = -1)
     do m = 1, size(step_mech)
       mech_BC => step_mech%get_dict(m)
-      BCTag = mech_BC%get_asInt('tag')
-      boundary = findloc(mesh_boundariesIS, BCtag, dim = 1)
-      if (boundary == 0) then                                                                      !< tag not defined in mesh file
-        call IO_error(error_ID = 837, ext_msg = 'BC tag '//mech_BC%get_asStr('tag')// &
-                                                ' refers to inexistent node/edge/face mesh group')
-      else if (findloc(knownBCTags, BCTag, dim = 1) /= 0) then                                     !< duplicated tag
-        call IO_error(error_ID = 837, ext_msg = 'BC redefinition not allowed (tag '// &
-                                                mech_BC%get_asStr('tag')//')')
+      if (mech_BC%contains('label')) then
+        bc_label_name = mech_BC%get_asStr('label')
+        boundary = findloc(mesh_BCLabels, bc_label_name, dim = 1)
+        if (boundary == 0) &                                                                        ! label not defined in mesh file
+          call IO_error(812_pI16, 'label', trim(bc_label_name), 'not defined', emph = [2])
+        if (read_BC_entries(boundary)) &                                                            ! duplicated label/tag
+          call IO_error(812_pI16, 'duplicated entries: label', trim(bc_label_name), "and tag", &
+                        mesh_boundariesIS(boundary), emph = [2,4])
+        read_BC_entries(boundary) = .true.
+        loadCases(l)%mechBC(boundary)%use_label = .true.
+      else if (mech_BC%contains('tag')) then
+        bc_tag = mech_BC%get_asInt('tag')
+        boundary = findloc(mesh_boundariesIS, bc_tag, dim = 1)
+        if (boundary == 0) &                                                                        ! tag not defined in mesh file
+          call IO_error(812_pI16, 'tag', bc_tag, 'not defined', emph = [2])
+        if (read_BC_entries(boundary)) &                                                            ! duplicated tag/label
+          call IO_error(812_pI16, 'duplicated entries: tag', bc_tag, 'and label', &
+                        trim(mesh_BCLabels(boundary)), emph = [2, 4])
+        read_BC_entries(boundary) = .true.
+        loadCases(l)%mechBC(boundary)%use_label = .false.
+      else
+        call IO_error(837_pI16, 'entry'//IO_intAsStr(m)//': at least one of   &
+                      & "tag/label"   required')
       end if
-      knownBCTags(m) = BCTag
       mech_u => mech_BC%get_list('dot_u')
       do component = 1, dimPlex
         if (mech_u%get_asStr(component) /= 'x') then
@@ -150,7 +165,7 @@ program DAMASK_mesh
         end if
       end do
     end do
-    deallocate(knownBCTags)
+    read_BC_entries = .false.
 
     step_discretization => load_step%get_dict('discretization')
     loadCases(l)%t = step_discretization%get_asReal('t')
@@ -163,38 +178,45 @@ program DAMASK_mesh
     end if
     loadCases(l)%estimate_rate = (load_step%get_asBool('estimate_rate',defaultVal=.true.) .and. l>1)
   end do
+  deallocate(read_BC_entries)
 
 !--------------------------------------------------------------------------------------------------
-! consistency checks and output of load case
-  errorID = 0
-  skipBCTagDigits = 4+6+1+floor(log10(real(maxval(mesh_boundariesIS))))+1+2                        !< Indentation(4)+BC_elem(6)+blank(1)+descriptor T(1)+NumDigits(floor(..)+1)+2(start printing after 1 blank)
-  allocate(character(len=skipBCTagDigits) :: tagPrintFormat)
-  write(tagPrintFormat,'(i0)') skipBCTagDigits
+! loadcase parameters checks and output of load case information
+  skip_T1 = 4+max(len(PETSC_GENERIC_LABELS), maxval(len_trim(mesh_BCLabels)))+2                     ! indentation(4)+length_longest_label+blank
+  skip_T2 = skip_T1+1+floor(log10(real(maxval(mesh_boundariesIS))))+1+1+1                           ! T1+"("+NumDigits(floor()+1)+")"+blank
   checkLoadcases: do l = 1, size(load_steps)
-    write (loadcase_string, '(i0)' ) l
+    if (loadCases(l)%N < 1) &
+      call IO_error(813_pI16, 'loadcase', IO_intAsStr(l)//':', 'N', &
+                    'must be positive', emph = [3])
+    if (loadCases(l)%f_out < 1) &
+      call IO_error(813_pI16, 'loadcase', IO_intAsStr(l)//':', 'f_out', &
+                    'must be positive', emph = [3])
+
     print'(/,1x,a,1x,i0)', 'load case:', l
-    if (.not. loadCases(l)%estimate_rate) &
-      print'(2x,a)', 'drop guessing along trajectory'
+    if (.not. loadCases(l)%estimate_rate) print'(2x,a)', 'drop guessing along trajectory'
     print'(2x,a)', 'Field '//trim(FIELD_MECH_label)
 
     do boundary = 1_pPETSCINT, mesh_Nboundaries
-      BC_elem = merge('Vertex', merge('Edge  ', 'Face  ', dimplex == 2_pPETSCINT), &
-                      mesh_boundariesIdx(boundary) == mesh_BCTypeVertex)
+      if (loadCases(l)%mechBC(boundary)%use_label) then
+        bc_label_name = trim(mesh_BCLabels(boundary))
+      else
+        m = mesh_boundariesIdx(boundary)
+        if (dimPlex == 2_pPETSCINT .and. m < 4) m = m + 1
+        bc_label_name = PETSC_GENERIC_LABELS(m)
+      end if
       do component = 1_pPETSCINT, dimPlex
         if (loadCases(l)%mechBC(boundary)%active(component)) &
-          print'(4x,a,1x,i0,T'//tagPrintFormat//',a,1x,i1,1x,a,1x,f12.7)', &
-          BC_elem, mesh_boundariesIS(boundary), &
-          'Component', component, &
-          'Value', loadCases(l)%mechBC(boundary)%dot_u(component)
+          print'(4x,a,T'//IO_intAsStr(skip_T1)//',a,i0,a,'// &
+                'T'//IO_intAsStr(skip_T2)//',a,1x,i1,1x,a,1x,f12.7)', &
+            trim(bc_label_name), "(", mesh_boundariesIS(boundary), ")", &
+            'Component', component, &
+            'Value', loadCases(l)%mechBC(boundary)%dot_u(component)
       end do
     end do
 
-    print'(2x,a,T21,g0.6)', 'time:', loadCases(l)%t
-    if (loadCases(l)%N < 1) errorID = 835                                                          ! non-positive incs count
-    print'(2x,a,T21,i0)',   'increments:', loadCases(l)%N
-    if (loadCases(l)%f_out < 1) errorID = 836                                                      ! non-positive result frequency
+    print'(2x,a,T21,g0.6)', 'time:',             loadCases(l)%t
+    print'(2x,a,T21,i0)',   'increments:',       loadCases(l)%N
     print'(2x,a,T21,i0)',   'output frequency:', loadCases(l)%f_out
-    if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                  ! exit with error message
   end do checkLoadcases
 
 !--------------------------------------------------------------------------------------------------
@@ -213,8 +235,8 @@ program DAMASK_mesh
   call materialpoint_result(0,0.0_pREAL)
 
   loadCaseLooping: do l = 1, size(load_steps)
-    t_0 = t                                                                                        ! load case start time
-    guess = loadCases(l)%estimate_rate                                                             ! change of load case? homogeneous guess for the first inc
+    t_0 = t                                                                                         ! load case start time
+    guess = loadCases(l)%estimate_rate                                                              ! change of load case? homogeneous guess for the first inc
 
     incLooping: do inc = 1, loadCases(l)%N
       totalIncsCounter = totalIncsCounter + 1
@@ -292,7 +314,7 @@ program DAMASK_mesh
         print'(/,1x,a,1x,i0,1x,a)', 'increment', totalIncsCounter, 'NOT converged'
       end if; flush(IO_STDOUT)
 
-      if (mod(inc,loadCases(l)%f_out) == 0) then                            ! at output frequency
+      if (mod(inc,loadCases(l)%f_out) == 0) then                                                    ! at output frequency
         print'(/,1x,a)', '... saving results ........................................................'
         call FEM_mechanical_updateCoords()
         call materialpoint_result(totalIncsCounter,t)

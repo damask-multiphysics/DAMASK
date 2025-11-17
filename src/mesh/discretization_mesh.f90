@@ -46,7 +46,8 @@ module discretization_mesh
 
   PetscInt, dimension(:), allocatable, public, protected :: &
     mesh_boundariesIS, &                                                                            !< Index Set (tag values) of BC in mesh file
-    mesh_boundariesIdx                                                                              !< BC Type index (BCType_Vertex, BCType_Face)
+    mesh_boundariesIdx, &                                                                           !< PETSC_BC_TYPE_X
+    mesh_labelsIS
 
   PetscInt, public, protected :: &
     mesh_nElems
@@ -63,8 +64,22 @@ module discretization_mesh
   real(pREAL), dimension(:,:), allocatable, public, protected :: &
     x_n                                                                                             !< node x,z,y coordinates
 
-  character(len=*), dimension(2), public, parameter :: &
-    mesh_BCTypeLabel = ['Face Sets  ', 'Vertex Sets']                                               !< PETSc default BC labels
+  character(len=pSTRLEN), allocatable, public, protected :: &
+    mesh_BCLabels(:)                                                                                !< all mesh BC labels
+
+  integer, parameter :: &
+    PETSC_BC_TYPE_CELL   = 1, &
+    PETSC_BC_TYPE_FACE   = 2, &
+    PETSC_BC_TYPE_EDGE   = 3, &
+    PETSC_BC_TYPE_VERTEX = 4, &
+    N_PETSC_BC_TYPES     = 4
+
+  integer, dimension(N_PETSC_BC_TYPES), parameter, public :: &
+    PETSC_BC_TYPES = [PETSC_BC_TYPE_CELL, PETSC_BC_TYPE_FACE, &
+                      PETSC_BC_TYPE_EDGE, PETSC_BC_TYPE_VERTEX]
+
+  character(len=*), dimension(N_PETSC_BC_TYPES), parameter, public :: &
+    PETSC_GENERIC_LABELS = ['Cell Sets  ', 'Face Sets  ', 'Edge Sets  ', 'Vertex Sets']             ! PETSc generic labels
 
   DM, public :: geomMesh
 
@@ -73,9 +88,9 @@ module discretization_mesh
 #if (PETSC_VERSION_MINOR<16)
     DMDestroy, &
 #endif
+    PetscFEDestroy, &
     PetscFEGetDimension, &
     PetscFEGetDualSpace, &
-    PetscFEDestroy, &
     PetscDualSpaceGetFunctional
 #endif
 
@@ -90,15 +105,18 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_mesh_init()
 
-  DM :: globalMesh
-  PetscInt :: dimPlex,      &                                                                       ! mesh dimension
-              p_s, p_i,     &                                                                       ! shape function/integration order
-              label, j
-  IS       :: setIS                                                                                 ! BC label IS
+  DM        :: globalMesh
+  PetscInt  :: dimPlex, &                                                                           ! mesh dimension
+               p_s, p_i, &                                                                          ! shape function/integration order
+               n_mesh_labels, &                                                                     ! total number of labels in mesh file
+               cellStart, cellEnd, pointStart, &
+               j
+  IS        :: label_values_IS                                                                      ! BC label values IS
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
-  IS       :: cellTypeIS                                                                            ! 'celltype' label IS
+  IS        :: celltype_IS                                                                          ! 'celltype' label IS
 #endif
-  PetscSF  :: sf
+  DMLabel   :: dm_label
+  PetscSF   :: sf
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   PetscBool :: isSimplex                                                                            ! reduced integration, simplex mesh
 #endif
@@ -110,18 +128,17 @@ subroutine discretization_mesh_init()
   type(tDict), pointer :: &
     num_solver, &
     num_mesh
-  integer                   :: dim
-  integer(MPI_INTEGER_KIND) :: err_MPI
+  integer                                    :: dim, n, m
+  integer(MPI_INTEGER_KIND)                  :: err_MPI
+  integer,     dimension(:),     allocatable :: bc_set_idx                                          ! index for PETSc set labels (no 'edges' in 2D)
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
-  PetscInt                  :: nPolytopes                                                           ! number of different polytopes in the mesh
-
-  PetscInt,    dimension(:),     pointer     :: pSets,     &                                        ! BC vertex/face set IS values
-                                                cellsIS                                             ! cell type IS values
-#else
-  PetscInt,    dimension(:),     pointer     :: pSets                                               ! BC vertex/face set IS values
+  PetscInt                                   :: nPolytopes                                          ! number of different polytopes in the mesh
+  PetscInt,    dimension(:),     pointer     :: cells_IS                                            ! celltype IS values
 #endif
-  PetscInt,    dimension(:),     allocatable :: materialAt                                          ! material ID per cell
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>17)
+  PetscInt,    dimension(:),     pointer     :: label_values                                        ! BC label values (from IS)
+  PetscInt,    dimension(:),     allocatable :: label_sizes, &                                      ! BC label sizes (number of values it assigns)
+                                                materialAt                                          ! material ID per cell
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<24)
   real(pREAL), dimension(:),     pointer     :: qPointsP
 #endif
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<24)
@@ -132,6 +149,11 @@ subroutine discretization_mesh_init()
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   PetscInt,    dimension(:,:),   allocatable :: T_e                                                 ! element connectivity (node numbers in each cell)
 #endif
+
+  character(pSTRLEN) :: &
+    bc_label                                                                                        ! label (string, defined in mesh file)
+  character(len=*), dimension(4), parameter :: &
+    PETSC_GENERIC_LABELS = ['Cell Sets  ', 'Face Sets  ', 'Edge Sets  ', 'Vertex Sets']             ! PETSc generic labels
 
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'
 
@@ -145,6 +167,8 @@ subroutine discretization_mesh_init()
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,                        &
                                 ' -dm_plex_filename ' // CLI_geomFile // ' &
                                 & -dm_plex_interpolate 1                   &
+                                & -dm_plex_gmsh_use_generic                &
+                                & -dm_plex_gmsh_use_regions                &
                                 & -dm_plex_gmsh_mark_vertices ',           &
                                 err_PETSc)
   call DMCreate(PETSC_COMM_WORLD, globalMesh, err_PETSc)
@@ -155,33 +179,103 @@ subroutine discretization_mesh_init()
   CHKERRQ(err_PETSc)
   call DMGetDimension(globalMesh,dimPlex,err_PETSc)
   CHKERRQ(err_PETSc)
+  call DMGetStratumSize(globalMesh,'depth',dimPlex,mesh_nElems,err_PETSc)
+  CHKERRQ(err_PETSc)
+
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   call DMPlexIsSimplex(globalMesh,isSimplex,err_PETSc)
   CHKERRQ(err_PETSc)
   if (.not. isSimplex) p_i = p_i + 1_pPETSCINT                                                      ! adjust for quad/hex (non-simplex)
 #endif
-  call DMGetStratumSize(globalMesh,'depth',dimPlex,mesh_nElems,err_PETSc)
-  CHKERRQ(err_PETSc)
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
 ! check invalid mesh (mixed or unsupported elements)
-  call DMGetLabelIdIS(globalMesh, 'celltype', cellTypeIS, err_PETSc)
-  call ISGetSize(cellTypeIS, nPolytopes, err_PETSc)
+  call DMGetLabelIdIS(globalMesh, 'celltype', celltype_IS, err_PETSc)
+  call ISGetSize(celltype_IS, nPolytopes, err_PETSc)
   if (nPolytopes /= dimPlex + 1_pPETSCINT) then                                                     ! at most one polytope type per dimension (0..dimPlex)
-    call ISGetIndices(cellTypeIS, cellsIS, err_PETSc)
-    if (any(cellsIS == DM_POLYTOPE_SEG_PRISM_TENSOR%v .or. &
-            cellsIS >  DM_POLYTOPE_HEXAHEDRON%v)) then
+    call ISGetIndices(celltype_IS, cells_IS, err_PETSc)
+    if (any(cells_IS == DM_POLYTOPE_SEG_PRISM_TENSOR%v .or. &
+            cells_IS >  DM_POLYTOPE_HEXAHEDRON%v)) then
       call IO_error(800_pI16, 'mesh contains elements other than tri/quad/tet/hex')
-    else if (count(cellsIS == DM_POLYTOPE_TRIANGLE%v .and. &
-                   cellsIS == DM_POLYTOPE_QUADRILATERAL%v, dim = 1) > 1) then
+    else if (count(cells_IS == DM_POLYTOPE_TRIANGLE%v .and. &
+                   cells_IS == DM_POLYTOPE_QUADRILATERAL%v, dim = 1) > 1) then
       call IO_error(800_pI16, 'mixed triangles and quadrilaterals elements')
-    else if (count(cellsIS == DM_POLYTOPE_TRIANGLE%v .and. &
-                   cellsIS == DM_POLYTOPE_QUADRILATERAL%v, dim = 1) > 1) then
+    else if (count(cells_IS == DM_POLYTOPE_TRIANGLE%v .and. &
+                   cells_IS == DM_POLYTOPE_QUADRILATERAL%v, dim = 1) > 1) then
       call IO_error(800_pI16, 'mixed tetrahedra and hexahedra elements')
     end if
   end if
-  call ISDestroy(cellTypeIS, err_PETSc)
+  call ISDestroy(celltype_IS, err_PETSc)
 #endif
+
+!--------------------------------------------------------------------------------
+! read mesh groups for BC and material ID assignment
+  if (dimPlex == 2_pPETSCINT) then
+    allocate(bc_set_idx, source = [PETSC_BC_TYPE_FACE, PETSC_BC_TYPE_VERTEX])
+  else
+    allocate(bc_set_idx, source = [PETSC_BC_TYPE_FACE, PETSC_BC_TYPE_EDGE, PETSC_BC_TYPE_VERTEX])
+  end if
+  allocate(mesh_boundariesIS(0))
+  allocate(label_sizes(size(bc_set_idx)), source = 0_pPETSCINT)
+
+  mesh_nBoundaries = 0_pPETSCINT
+  do n = 1, size(bc_set_idx)
+    call DMGetLabelSize(globalMesh,PETSC_GENERIC_LABELS(bc_set_idx(n)),label_sizes(n),err_PETSc)
+    CHKERRQ(err_PETSc)
+    call DMGetLabelIdIS(globalMesh,PETSC_GENERIC_LABELS(bc_set_idx(n)),label_values_IS,err_PETSc)
+    CHKERRQ(err_PETSc)
+    if (label_sizes(n) > 0_pPETSCINT) then
+      call ISGetIndices(label_values_IS,label_values,err_PETSc)
+      CHKERRQ(err_PETSc)
+      mesh_boundariesIS = [mesh_boundariesIS, label_values]
+      call ISRestoreIndices(label_values_IS,label_values,err_PETSc)
+      CHKERRQ(err_PETSc)
+      mesh_nBoundaries = mesh_nBoundaries + label_sizes(n)
+    end if
+  end do
+  allocate(mesh_boundariesIdx(mesh_nBoundaries))
+  m = 0
+  do n = 1, size(bc_set_idx)
+    mesh_boundariesIdx(m+1:m+label_sizes(n)) = PETSC_BC_TYPES(bc_set_idx(n))
+    m = m + label_sizes(n)
+  end do
+
+!--------------------------------------------------------------------------------
+! read mesh labels (for boundary conditions)
+  call DMGetNumLabels(globalMesh, n_mesh_labels, err_PETSc)
+  CHKERRQ(err_PETSc)
+  if (n_mesh_labels > 2_pPETSCINT) then                                                             ! there are user-defined labels (for BC/material ID)
+    allocate(mesh_labelsIS(mesh_nBoundaries), source = -1_pPETSCINT)
+    allocate(character(len=pSTRLEN) :: mesh_BCLabels(mesh_nBoundaries))
+    mesh_BCLabels = ''
+
+    call DMPlexGetHeightStratum(globalMesh,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
+    do j = 2_pPETSCINT, n_mesh_labels - 1_pPETSCINT                                                 ! skip 'celltype' and 'depth' labels; 0-indexing in PETSc
+      call DMGetLabelName(globalMesh, j, bc_label, err_PETSc)
+      CHKERRQ(err_PETSc)
+      if (any(bc_label == PETSC_GENERIC_LABELS)) cycle
+      call DMGetLabel(globalMesh, bc_label, dm_label, err_PETSc)
+      call DMLabelGetBounds(dm_label, pointStart, PETSC_NULL_INTEGER, err_PETSc)
+      if (pointStart < cellEnd) cycle
+      call DMGetLabelSize(globalMesh, bc_label, label_sizes(1), err_PETSc)
+      CHKERRQ(err_PETSc)
+      if (label_sizes(1) > 0_pPETSCINT) then
+        call DMGetLabelIdIS(globalMesh,bc_label,label_values_IS,err_PETSc)                          ! get values the label assigns (i.e. the tag)
+        CHKERRQ(err_PETSc)
+        call ISGetIndices(label_values_IS,label_values,err_PETSc)
+        CHKERRQ(err_PETSc)
+        n = findloc(mesh_boundariesIS, label_values(1), dim = 1)
+        mesh_BCLabels(n) = bc_label
+        mesh_labelsIS(n) = label_values(1)
+        call ISRestoreIndices(label_values_IS,label_values,err_PETSc)
+        CHKERRQ(err_PETSc)
+      end if
+    end do
+  else
+    mesh_BCLabels = emptyStrArray
+    mesh_labelsIS = emptyIntArray
+  end if
+  deallocate(label_sizes)
 
   dim = int(dimPlex)
   call MPI_Bcast(dim,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
@@ -195,41 +289,20 @@ subroutine discretization_mesh_init()
   end if
   CHKERRQ(err_PETSc)
 
-  mesh_Nboundaries = 0_pPETSCINT
-  allocate(mesh_boundariesIS(mesh_Nboundaries))
-  mesh_BCTypeSetSize = 0_pPETSCINT
-  do label = 1_pPETSCINT, size(mesh_BCTypeLabel)
-    call DMGetLabelSize(globalMesh,mesh_BCTypeLabel(label),mesh_BCTypeSetSize(label),err_PETSc)
-    CHKERRQ(err_PETSc)
-    call DMGetLabelIdIS(globalMesh,mesh_BCTypeLabel(label),setIS,err_PETSc)
-    CHKERRQ(err_PETSc)
-    if (mesh_BCTypeSetSize(label) > 0_pPETSCINT) then
-      call ISGetIndices(setIS,pSets,err_PETSc)
-      CHKERRQ(err_PETSc)
-      mesh_boundariesIS = [mesh_boundariesIS, pSets]
-      call ISRestoreIndices(setIS,pSets,err_PETSc)
-      CHKERRQ(err_PETSc)
-      mesh_Nboundaries = mesh_Nboundaries+mesh_BCTypeSetSize(label)
-    end if
-  end do
-  allocate(mesh_boundariesIdx(mesh_Nboundaries), source = mesh_BCTypeFace)
-  mesh_boundariesIdx(mesh_BCTypeSetSize(mesh_BCTypeFace)+1_pPETSCINT:mesh_Nboundaries) = mesh_BCTypeVertex
-
-  call MPI_Bcast(mesh_BCTypeSetSize,int(size(mesh_BCTypeSetSize),kind=MPI_INTEGER_KIND),MPI_INTEGER,0_MPI_INTEGER_KIND, &
-                 MPI_COMM_WORLD,err_MPI)
-  call parallelization_chkerr(err_MPI)
   call MPI_Bcast(mesh_Nboundaries,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
-  call MPI_Bcast(mesh_boundariesIdx,int(mesh_Nboundaries,kind=MPI_INTEGER_KIND),MPI_INTEGER,0_MPI_INTEGER_KIND, &
-                 MPI_COMM_WORLD,err_MPI)
+  call MPI_Bcast(mesh_labelsIS,int(size(mesh_labelsIS),MPI_INTEGER_KIND),MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
-  call MPI_Bcast(mesh_boundariesIS,int(mesh_Nboundaries),MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  call MPI_Bcast(mesh_boundariesIS,int(mesh_Nboundaries,MPI_INTEGER_KIND),MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  call parallelization_chkerr(err_MPI)
+  call MPI_Bcast(mesh_boundariesIdx,int(mesh_Nboundaries,MPI_INTEGER_KIND),MPI_INTEGER,0_MPI_INTEGER_KIND, &
+                 MPI_COMM_WORLD,err_MPI)
+  if (worldrank /= 0) allocate(character(len=pSTRLEN) :: mesh_BCLabels(mesh_Nboundaries))
+  call MPI_Bcast(mesh_BCLabels,int(pSTRLEN*size(mesh_BCLabels),MPI_INTEGER_KIND),MPI_CHARACTER, &
+                 0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
   call DMDestroy(globalMesh,err_PETSc)
-  CHKERRQ(err_PETSc)
-
-  call DMGetStratumSize(geomMesh,'depth',dimPlex,mesh_nElems,err_PETSc)
   CHKERRQ(err_PETSc)
 
 ! Get initial nodal coordinates
@@ -269,7 +342,7 @@ subroutine discretization_mesh_init()
   v_0 = build_volume_IP(dimPlex)
 
 #if (PETSC_VERSION_MINOR>24 || (PETSC_VERSION_MINOR==24 && PETSC_VERSION_SUBMINOR>=1))
-  call build_nodes_and_connectivity(x_n,T_e,p_s,geomMesh)
+  call build_nodes_and_connectivity(x_n,T_e,p_s)
 #else
   call build_nodes_and_connectivity(x_n,p_s)
 #endif
@@ -364,9 +437,11 @@ function build_coordinates_IP(dimPlex,qPoints) result(x_p)
 #else
   PetscReal, pointer, dimension(:) :: pV0, pCellJ, pInvcellJ
   PetscReal      :: detJ
+  PetscInt       :: qPt, dirI, dirJ, qOffset
 #endif
-  PetscInt       :: cellStart, cellEnd, cell, qPt, dirI, dirJ, qOffset
+  PetscInt       :: cellStart, cellEnd, cell
   PetscErrorCode :: err_PETSc
+
 
   call DMPlexGetHeightStratum(geomMesh,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -387,6 +462,9 @@ function build_coordinates_IP(dimPlex,qPoints) result(x_p)
   allocate(pV0(dimPlex))
   allocate(pCellJ(dimPlex**2))
   allocate(pinvCellJ(dimPlex**2))
+
+  call DMPlexGetHeightStratum(geomMesh,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
+  CHKERRQ(err_PETSc)
 
   do cell = cellStart, cellEnd - 1_pPETSCINT                                                        ! loop over all elements
     call DMPlexComputeCellGeometryAffineFEM(geomMesh,cell,pV0,pCellJ,pInvcellJ,detJ,err_PETSc)
@@ -412,7 +490,7 @@ end function build_coordinates_IP
 !> @brief Get mesh node coordinates and element connectivity matrix.
 !--------------------------------------------------------------------------------------------------
 #if (PETSC_VERSION_MINOR>24 || (PETSC_VERSION_MINOR==24 && PETSC_VERSION_SUBMINOR>=1))
-subroutine build_nodes_and_connectivity(x_n, T_e, p_s, geomMesh)
+subroutine build_nodes_and_connectivity(x_n, T_e, p_s)
 #else
 subroutine build_nodes_and_connectivity(x_n, p_s)
 #endif
@@ -425,10 +503,6 @@ subroutine build_nodes_and_connectivity(x_n, p_s)
 #endif
   PetscInt, intent(in) :: &
     p_s                                                                                             !< order of approximation space
-#if (PETSC_VERSION_MINOR>24 || (PETSC_VERSION_MINOR==24 && PETSC_VERSION_SUBMINOR>=1))
-  DM,       intent(in) :: &
-    geomMesh
-#endif
 
   DM       :: coordDM                                                                               ! approximation space DM
   Vec      :: coordVec                                                                              ! local nodes coordinates
@@ -465,7 +539,6 @@ subroutine build_nodes_and_connectivity(x_n, p_s)
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   PetscBool :: isSimplex
 #endif
-  character(len=2) :: degree                                                                        ! approximation space order
 
 
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS, &

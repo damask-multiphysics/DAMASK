@@ -113,13 +113,14 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
 
   DM       :: mechanical_mesh
   IS       :: bcPoint
-  DMLabel  :: BCLabel
+  DMLabel  :: dm_label
   PetscFE  :: mechFE
   PetscDS  :: mechDS
   PetscInt :: numActiveBC, bcSize, nc, &
               component, boundary, topologDim, &
               cellStart, cellEnd, &
               nCoords
+  PetscBool       :: has_label
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
   PetscBool       :: isSimplex
 #endif
@@ -146,8 +147,9 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
 #endif
   real(pREAL), dimension(:), allocatable :: nodeCoords
 
+  integer                     :: n
   character(len=*), parameter :: prefix = 'mechanical_'
-  character(len=11)           :: setLabel
+  character(len=pSTRLEN)      :: bc_label
 
   real(pREAL), dimension(3,3) :: devNull
   type(tDict), pointer        :: num_mech
@@ -268,51 +270,64 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech boundary conditions
-  call DMGetLabel(mechanical_mesh,'Face Sets',BCLabel,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call DMPlexLabelComplete(mechanical_mesh,BCLabel,err_PETSc)
-  CHKERRQ(err_PETSc)
+  do n = 1, size(PETSC_GENERIC_LABELS) - 1
+    call DMHasLabel(mechanical_mesh, PETSC_GENERIC_LABELS(n), has_label, err_PETSc)
+    if (has_label) then
+      call DMGetLabel(mechanical_mesh, PETSC_GENERIC_LABELS(n), dm_label, err_PETSc)
+      CHKERRQ(err_PETSc)
+      call DMPlexLabelComplete(mechanical_mesh, dm_label, err_PETSc)
+      CHKERRQ(err_PETSc)
+    end if
+  end do
+
   call DMGetLocalSection(mechanical_mesh,section,err_PETSc)
   CHKERRQ(err_PETSc)
   allocate(pnumComp(1), source=dimPlex)
   allocate(pnumDof(0:dimPlex), source = 0_pPETSCINT)
-  do topologDim = 0, dimPlex
-    call DMPlexGetDepthStratum(mechanical_mesh,topologDim,cellStart,cellEnd,err_PETSc)
+  do topologDim = 0_pPETSCINT, dimPlex
+    call DMPlexGetDepthStratum(mechanical_mesh, topologDim, cellStart, cellEnd, err_PETSc)
     CHKERRQ(err_PETSc)
-    call PetscSectionGetDof(section,cellStart,pnumDof(topologDim),err_PETSc)
+    call PetscSectionGetDof(section, cellStart, pnumDof(topologDim), err_PETSc)
     CHKERRQ(err_PETSc)
   end do
-  numActiveBC = sum([(count(mechBC(boundary)%active), boundary = 1, size(mechBC))])                ! Number of active DOF in BC
+  numActiveBC = sum([(count(mechBC(boundary)%active), boundary = 1, size(mechBC))])                 ! number of active DOF in BC
   allocate(pbcField(numActiveBC), source = 0_pPETSCINT)
   allocate(pbcComps(numActiveBC))
   allocate(pbcPoints(numActiveBC))
   numActiveBC = 0_pPETSCINT
-  do boundary = 1_pPETSCINT, mesh_Nboundaries; do component = 1_pPETSCINT, dimPlex
-    if (mechBC(boundary)%active(component)) then
-      numActiveBC = numActiveBC + 1_pPETSCINT
-      setLabel = mesh_BCTypeLabel(mesh_boundariesIdx(boundary))
-      call ISCreateGeneral(PETSC_COMM_WORLD,1_pPETSCINT,[component-1_pPETSCINT],PETSC_COPY_VALUES, &
-                           pbcComps(numActiveBC),err_PETSc)
-      CHKERRQ(err_PETSc)
-      call DMGetStratumSize(mechanical_mesh,setLabel,mesh_boundariesIS(boundary),bcSize,err_PETSc)
-      CHKERRQ(err_PETSc)
-      if (bcSize > 0) then
-        call DMGetStratumIS(mechanical_mesh,setLabel,mesh_boundariesIS(boundary),bcPoint,err_PETSc)
+  do boundary = 1_pPETSCINT, mesh_Nboundaries;
+    bc_label = PETSC_GENERIC_LABELS(mesh_boundariesIdx(boundary))
+    do component = 1_pPETSCINT, dimPlex
+      if (mechBC(boundary)%active(component)) then
+        numActiveBC = numActiveBC + 1_pPETSCINT
+        call ISCreateGeneral(PETSC_COMM_WORLD,1_pPETSCINT,[component-1_pPETSCINT],PETSC_COPY_VALUES, &
+                             pbcComps(numActiveBC),err_PETSc)
         CHKERRQ(err_PETSc)
-        call ISGetIndices(bcPoint,pBcPoint,err_PETSc)
+        call DMGetStratumSize(mechanical_mesh,bc_label,mesh_boundariesIS(boundary), &
+                              bcSize,err_PETSc)
         CHKERRQ(err_PETSc)
-        call ISCreateGeneral(PETSC_COMM_WORLD,bcSize,pBcPoint,PETSC_COPY_VALUES,pbcPoints(numActiveBC),err_PETSc)
-        CHKERRQ(err_PETSc)
-        call ISRestoreIndices(bcPoint,pBcPoint,err_PETSc)
-        CHKERRQ(err_PETSc)
-        call ISDestroy(bcPoint,err_PETSc)
-        CHKERRQ(err_PETSc)
-      else
-        call ISCreateGeneral(PETSC_COMM_WORLD,0_pPETSCINT,[0_pPETSCINT],PETSC_COPY_VALUES,pbcPoints(numActiveBC),err_PETSc)
-        CHKERRQ(err_PETSc)
+        if (bcSize > 0) then
+          call DMGetStratumIS(mechanical_mesh,bc_label,mesh_boundariesIS(boundary), &
+                              bcPoint,err_PETSc)
+          CHKERRQ(err_PETSc)
+          call ISGetIndices(bcPoint,pBcPoint,err_PETSc)
+          CHKERRQ(err_PETSc)
+          call ISCreateGeneral(PETSC_COMM_WORLD,bcSize,pBcPoint,PETSC_COPY_VALUES, &
+                               pbcPoints(numActiveBC),err_PETSc)
+          CHKERRQ(err_PETSc)
+          call ISRestoreIndices(bcPoint,pBcPoint,err_PETSc)
+          CHKERRQ(err_PETSc)
+          call ISDestroy(bcPoint,err_PETSc)
+          CHKERRQ(err_PETSc)
+        else
+          call ISCreateGeneral(PETSC_COMM_WORLD,0_pPETSCINT,[0_pPETSCINT],PETSC_COPY_VALUES, &
+                               pbcPoints(numActiveBC),err_PETSc)
+          CHKERRQ(err_PETSc)
+        end if
       end if
-    end if
-  end do; end do
+    end do
+  end do
+
   call DMPlexCreateSection(mechanical_mesh,PETSC_NULL_DMLABEL_ARRAY,pNumComp,pNumDof, &
                            numActiveBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,err_PETSc)
   CHKERRQ(err_PETSc)

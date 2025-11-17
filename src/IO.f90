@@ -508,6 +508,8 @@ subroutine IO_error_new(error_ID, &
 ! errors related to the mesh solver
     case (800)
       msg = 'invalid mesh'
+    case (812)
+      msg = 'invalid boundary conditions'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
