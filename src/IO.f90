@@ -372,7 +372,6 @@ subroutine IO_error_new(error_ID, &
                         info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9, &
                         emph)
 
-
   integer(pI16),      intent(in) :: error_ID        ! should go back to default integer after completed migration.
   class(*), optional, intent(in) :: info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9
   integer, dimension(:), optional, intent(in) :: emph                                               !< which info(s) to emphasize
@@ -594,7 +593,6 @@ end subroutine IO_error_old
 subroutine IO_warning_new(warning_ID, &
                           info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9, &
                           emph)
-
 
   integer(pI16),      intent(in) :: warning_ID        ! should go back to default integer after completed migration.
   class(*), optional, intent(in) :: info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9
@@ -969,15 +967,15 @@ subroutine panel(paneltype,ID,msg, &
 
   end select
 
-  info_extra = as_str(info_1,is_emph(1)) &
-            // as_str(info_2,is_emph(2)) &
-            // as_str(info_3,is_emph(3)) &
-            // as_str(info_4,is_emph(4)) &
-            // as_str(info_5,is_emph(5)) &
-            // as_str(info_6,is_emph(6)) &
-            // as_str(info_7,is_emph(7)) &
-            // as_str(info_8,is_emph(8)) &
-            // as_str(info_9,is_emph(9))
+  info_extra = as_str(info_1,is_emph(1,emph)) &
+            // as_str(info_2,is_emph(2,emph)) &
+            // as_str(info_3,is_emph(3,emph)) &
+            // as_str(info_4,is_emph(4,emph)) &
+            // as_str(info_5,is_emph(5,emph)) &
+            // as_str(info_6,is_emph(6,emph)) &
+            // as_str(info_7,is_emph(7,emph)) &
+            // as_str(info_8,is_emph(8,emph)) &
+            // as_str(info_9,is_emph(9,emph))
 
 
   !$OMP CRITICAL (write2out)
@@ -1006,55 +1004,61 @@ subroutine panel(paneltype,ID,msg, &
   flush(IO_STDERR)
   !$OMP END CRITICAL (write2out)
 
-  contains
-
-    !-----------------------------------------------------------------------------------------------
-    !> @brief Convert to string with white space prefix and optional emphasis.
-    !-----------------------------------------------------------------------------------------------
-    function as_str(info,emph)
-
-      character(len=:), allocatable :: as_str
-      class(*), optional, intent(in) :: info
-      logical, intent(in) :: emph
-
-
-      if (present(info)) then
-        select type(info)
-          type is (character(*))
-            as_str = info
-          type is (integer)
-            as_str = IO_intAsStr(info)
-          type is (real(pREAL))
-            as_str = IO_realAsStr(info)
-          class default
-            error stop 'cannot convert info argument to string'
-        end select
-
-        if (emph) then
-          if (IO_isaTTY(IO_STDERR)) then
-            as_str = IO_EMPH//as_str//IO_FORMATRESET
-          else
-            as_str = IO_QUOTES(2:2)//as_str//IO_QUOTES(2:2)
-          end if
-        end if
-        as_str = ' '//as_str
-      else
-        as_str = ''
-      end if
-
-    end function as_str
-
-    pure logical function is_emph(i)
-      integer, intent(in) :: i
-
-      if (present(emph)) then
-        is_emph = any(emph == i)
-      else
-        is_emph = .false.
-      end if
-    end function is_emph
-
 end subroutine panel
+
+
+!-----------------------------------------------------------------------------------------------
+!> @brief Convert to string with white space prefix and optional emphasis.
+!-----------------------------------------------------------------------------------------------
+function as_str(info,emph)
+
+  character(len=:), allocatable :: as_str
+  class(*), optional, intent(in) :: info
+  logical, intent(in) :: emph
+
+
+  if (present(info)) then
+    select type(info)
+      type is (character(*))
+        as_str = info
+      type is (integer)
+        as_str = IO_intAsStr(info)
+      type is (real(pREAL))
+        as_str = IO_realAsStr(info)
+      class default
+        error stop 'cannot convert info argument to string'
+    end select
+
+    if (emph) then
+      if (IO_isaTTY(IO_STDERR)) then
+        as_str = IO_EMPH//as_str//IO_FORMATRESET
+      else
+        as_str = IO_QUOTES(2:2)//as_str//IO_QUOTES(2:2)
+      end if
+    end if
+    as_str = ' '//as_str
+  else
+    as_str = ''
+  end if
+
+end function as_str
+
+!-----------------------------------------------------------------------------------------------
+!> @brief Convert to string with white space prefix and optional emphasis.
+!-----------------------------------------------------------------------------------------------
+pure logical function is_emph(idx,emph)
+
+  integer, intent(in) :: idx
+  integer, dimension(:), optional, intent(in) :: emph                                               !< which info(s) to emphasize
+
+
+  if (present(emph)) then
+    is_emph = any(emph == idx)
+  else
+    is_emph = .false.
+  end if
+
+end function is_emph
 
 
 end module IO

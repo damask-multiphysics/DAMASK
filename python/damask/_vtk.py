@@ -232,6 +232,20 @@ class VTK:
         -------
         new : damask.VTK
             VTK-based geometry without nodal or cell data.
+
+        Examples
+        --------
+        Create image data with larger spacing along z-direction:
+
+        >>> import damask
+        >>> cells = (16,8,4)
+        >>> size = (1.0,0.5,.4)
+        >>> print(v := damask.VTK.from_image_data(cells=cells,size=size))
+        vtkImageData
+        <BLANKLINE>
+        # cells: 512
+        <BLANKLINE>
+        # points: 765
         """
         vtk_data = vtkImageData()
         vtk_data.SetDimensions(*(np.array(cells)+1))
@@ -267,6 +281,21 @@ class VTK:
         -------
         new : damask.VTK
             VTK-based geometry without nodal or cell data.
+
+        Examples
+        --------
+        Create a first-order tetrahedron:
+
+        >>> import damask
+        >>> import numpy as np
+        >>> nodes = np.array([[0,0,0],[1,0,0],[1,1,0],[0,0,1]])
+        >>> connectivity = np.array([[0,1,2,3]])
+        >>> print(v := damask.VTK.from_unstructured_grid(nodes,connectivity,'TETRAHEDRON'))
+        vtkUnstructuredGrid
+        <BLANKLINE>
+        # cells: 1
+        <BLANKLINE>
+        # points: 4
         """
         vtk_nodes = vtkPoints()
         vtk_nodes.SetData(numpy_to_vtk(np.ascontiguousarray(nodes)))
@@ -529,6 +558,24 @@ class VTK:
         Notes
         -----
         If the number of cells equals the number of points, the data is added to both.
+
+
+        Examples
+        --------
+        Add a constant tensor field called 'F' to image data:
+
+        >>> import numpy as np
+        >>> import damask
+        >>> cells = (16,8,16)
+        >>> size = (1.0,0.5,1.0)
+        >>> v = damask.VTK.from_image_data(cells=cells,size=size)
+        >>> print(v := v.set(label='F',data=np.broadcast_to(np.eye(3),(np.prod(cells),3,3))))
+        vtkImageData
+        <BLANKLINE>
+        # cells: 2048
+          - F
+        <BLANKLINE>
+        # points: 2601
         """
 
         def _add_array(vtk_data,

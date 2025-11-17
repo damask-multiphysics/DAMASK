@@ -7,12 +7,7 @@ submodule(phase) chemical
     real(pREAL) ::                 V_m = 0.0_pREAL                                                  !< molar volume
   end type tChemicalParameters
 
-  enum, bind(c); enumerator :: &
-    CHEMICAL_UNDEFINED_ID ,&
-    CHEMICAL_QUADENERGY_ID
-  end enum
-
-  integer(kind(CHEMICAL_UNDEFINED_ID)),  dimension(:), allocatable :: &
+  integer(kind(UNDEFINED)),  dimension(:), allocatable :: &
     chemical_energy
 
   type :: tDataContainer             ! ?? not very telling name. Better: "fieldQuantities" ??
@@ -85,8 +80,7 @@ module subroutine chemical_init(phases)
   print'(/,a)', ' <<<+-  phase:chemical init  -+>>>'
 
   allocate(current(size(phases)))
-  !allocate(chemicalState(size(phases)))
-  allocate(chemical_energy(size(phases)),source=CHEMICAL_UNDEFINED_ID)
+  allocate(chemical_energy(size(phases)),source=UNDEFINED)
   allocate(param(size(phases)))
 
   phases => config_material%get_dict('phase')
@@ -97,11 +91,11 @@ module subroutine chemical_init(phases)
   end do
 
   !initialize chemical energy model
-  where(quadEnergy_init())       chemical_energy = CHEMICAL_QUADENERGY_ID
+  where(quadEnergy_init())       chemical_energy = CHEMICAL_QUADENERGY
 
   do ph = 1,size(phases)
     Nmembers = count(material_ID_phase == ph)
-    if (chemical_energy(ph) == CHEMICAL_UNDEFINED_ID) then
+    if (chemical_energy(ph) == UNDEFINED) then
       allocate(current(ph)%C(1,Nmembers),source=0.0_pREAL)
       allocate(current(ph)%dot_C(1,Nmembers),source=0.0_pREAL)
       allocate(current(ph)%C0(1,Nmembers),source=0.0_pREAL)
@@ -116,6 +110,7 @@ end subroutine chemical_init
 !< @brief Calculates composition for constituent.
 !----------------------------------------------------------------------------------------------
 module function phase_calculate_composition(mu,co,ce) result(conc)
+
   real(pREAL), intent(in), dimension(:) :: mu
   integer, intent(in) :: co, ce
   real(pREAL), dimension(:), allocatable :: conc
@@ -124,16 +119,15 @@ module function phase_calculate_composition(mu,co,ce) result(conc)
   integer :: &
     ph, en
 
+
   ph = material_ID_phase(co,ce)
   en = material_entry_phase(co,ce)
 
   mu_chemical = mu
   chemicalEnergyType: select case (chemical_energy(ph))
 
-    case (CHEMICAL_QUADENERGY_ID)
-      conc =  quadEnergy_composition(mu_chemical,ph,en)
-    case default
-      conc = [0.0_pREAL]
+    case (CHEMICAL_QUADENERGY)
+      conc = quadEnergy_composition(mu_chemical,ph,en)
 
   end select chemicalEnergyType
 
@@ -141,22 +135,24 @@ end function phase_calculate_composition
 
 
 !----------------------------------------------------------------------------------------------
-!< @brief Retrieves composition for constituent
+!< @brief Retrieves composition for constituent.
 !----------------------------------------------------------------------------------------------
 module function phase_get_mobility(co,ce) result(mobility)
+
   integer, intent(in) :: co, ce
   real(pREAL), dimension(:,:),allocatable :: mobility
 
   integer :: &
     ph, en
 
+
   ph = material_ID_phase(co,ce)
   en = material_entry_phase(co,ce)
 
   chemicalEnergyType: select case (chemical_energy(ph))
 
-    case (CHEMICAL_QUADENERGY_ID)
-      mobility =  quadEnergy_mobility(ph,en)
+    case (CHEMICAL_QUADENERGY)
+      mobility = quadEnergy_mobility(ph,en)
 
   end select chemicalEnergyType
 
@@ -164,9 +160,10 @@ end function phase_get_mobility
 
 
 !----------------------------------------------------------------------------------------------
-!< @brief Retrieves composition tangent for constituent
+!< @brief Retrieves composition tangent for constituent.
 !----------------------------------------------------------------------------------------------
 module function phase_compositionTangent(mu,co,ce) result(comp_tangent)
+
   real(pREAL), dimension(:), intent(in) :: mu
   integer, intent(in) :: co, ce
   real(pREAL), dimension(:,:),allocatable :: comp_tangent
@@ -175,14 +172,15 @@ module function phase_compositionTangent(mu,co,ce) result(comp_tangent)
   integer :: &
     ph, en
 
+
   ph = material_ID_phase(co,ce)
   en = material_entry_phase(co,ce)
 
   mu_chemical = mu
   chemicalEnergyType: select case (chemical_energy(ph))
 
-    case (CHEMICAL_QUADENERGY_ID)
-      comp_tangent =  quadEnergy_compositionTangent(mu_chemical,ph,en)
+    case (CHEMICAL_QUADENERGY)
+      comp_tangent = quadEnergy_compositionTangent(mu_chemical,ph,en)
 
   end select chemicalEnergyType
 
@@ -212,12 +210,12 @@ module subroutine chemical_result(group,ph)
   integer,          intent(in) :: ph
 
 
-  if (chemical_energy(ph) /= CHEMICAL_UNDEFINED_ID) &
+  if (chemical_energy(ph) /= UNDEFINED) &
     call result_closeGroup(result_addGroup(group//'chemical'))
 
   chemicalEnergyType: select case (chemical_energy(ph))
 
-    case (CHEMICAL_QUADENERGY_ID)
+    case (CHEMICAL_QUADENERGY)
       call quadEnergy_results(ph,current(ph)%C,group//'chemical/')
 
   end select chemicalEnergyType

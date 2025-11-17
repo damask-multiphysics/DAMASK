@@ -303,7 +303,7 @@ subroutine discretization_mesh_init()
                            reshape(x_p,[3,int(mesh_maxNips*mesh_nElems)]), &
                            x_n)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>24)
+#if (PETSC_VERSION_MINOR>24 || (PETSC_VERSION_MINOR==24 && PETSC_VERSION_SUBMINOR>=1))
   call writeGeometry(reshape(x_p,[3,int(mesh_maxNips*mesh_nElems)]),x_n,T_e)
 #else
   call writeGeometry(reshape(x_p,[3,int(mesh_maxNips*mesh_nElems)]),x_n)
@@ -561,7 +561,7 @@ subroutine build_nodes_and_connectivity(x_n, p_s)
 #if (PETSC_VERSION_MINOR>24 || (PETSC_VERSION_MINOR==24 && PETSC_VERSION_SUBMINOR>=1))
   PetscCall(DMPlexGetHeightStratum(coordDM, 0_pPETSCINT, cellStart, cellEnd, ierr))
   PetscCall(DMPlexGetCellType(coordDM, cellStart, cell_type, ierr))
-  node_map = PETSc_to_VTK_node_order(cell_type, p_s)
+  node_map = PETSc_to_VTK_node_order(cell_type, int(p_s))
 
   allocate(T_e(nCellNodes, cellEnd - cellStart), source = -1_pPETSCINT)
   do cell = cellStart, cellEnd - 1_pPETSCINT
