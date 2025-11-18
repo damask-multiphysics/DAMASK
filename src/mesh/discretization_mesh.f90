@@ -2,7 +2,7 @@
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Javier Velo, KU Leuven
 !--------------------------------------------------------------------------------------------------
 module discretization_mesh
 #include <petsc/finclude/petscdmplex.h>
@@ -71,14 +71,13 @@ module discretization_mesh
     PETSC_BC_TYPE_CELL   = 1, &
     PETSC_BC_TYPE_FACE   = 2, &
     PETSC_BC_TYPE_EDGE   = 3, &
-    PETSC_BC_TYPE_VERTEX = 4, &
-    N_PETSC_BC_TYPES     = 4
+    PETSC_BC_TYPE_VERTEX = 4
 
-  integer, dimension(N_PETSC_BC_TYPES), parameter, public :: &
+  integer, dimension(*), parameter, public :: &
     PETSC_BC_TYPES = [PETSC_BC_TYPE_CELL, PETSC_BC_TYPE_FACE, &
                       PETSC_BC_TYPE_EDGE, PETSC_BC_TYPE_VERTEX]
 
-  character(len=*), dimension(N_PETSC_BC_TYPES), parameter, public :: &
+  character(len=*), dimension(size(PETSC_BC_TYPES)), parameter, public :: &
     PETSC_GENERIC_LABELS = ['Cell Sets  ', 'Face Sets  ', 'Edge Sets  ', 'Vertex Sets']             ! PETSc generic labels
 
   DM, public :: geomMesh
@@ -152,8 +151,7 @@ subroutine discretization_mesh_init()
 
   character(pSTRLEN) :: &
     bc_label                                                                                        ! label (string, defined in mesh file)
-  character(len=*), dimension(4), parameter :: &
-    PETSC_GENERIC_LABELS = ['Cell Sets  ', 'Face Sets  ', 'Edge Sets  ', 'Vertex Sets']             ! PETSc generic labels
+
 
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'
 
@@ -188,7 +186,7 @@ subroutine discretization_mesh_init()
   if (.not. isSimplex) p_i = p_i + 1_pPETSCINT                                                      ! adjust for quad/hex (non-simplex)
 #endif
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
+#if (PETSC_VERSION_MINOR>=24)
 ! check invalid mesh (mixed or unsupported elements)
   call DMGetLabelIdIS(globalMesh, 'celltype', celltype_IS, err_PETSc)
   call ISGetSize(celltype_IS, nPolytopes, err_PETSc)
@@ -432,7 +430,7 @@ function build_coordinates_IP(dimPlex,qPoints) result(x_p)
   real(pREAL), dimension(:,:,:), allocatable :: x_p
 
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
+#if (PETSC_VERSION_MINOR>=24)
   PetscReal, pointer, dimension(:) :: pV0, pCellJ, pInvcellJ, pDetJ
 #else
   PetscReal, pointer, dimension(:) :: pV0, pCellJ, pInvcellJ

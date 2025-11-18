@@ -81,8 +81,8 @@ subroutine FEM_utilities_init(num_mesh)
   character(len=:), allocatable :: &
     PETSc_options
   integer :: &
-    p_s, &                                                                                          ! order of shape functions
-    p_i                                                                                             ! integration order (quadrature rule)
+    p_s, &                                                                                          !< order of shape functions
+    p_i                                                                                             !< integration order (quadrature rule)
   PetscErrorCode :: err_PETSc
 
 

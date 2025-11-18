@@ -139,7 +139,7 @@ program DAMASK_mesh
         if (boundary == 0) &                                                                        ! label not defined in mesh file
           call IO_error(812_pI16, 'label', trim(bc_label_name), 'not defined', emph = [2])
         if (read_BC_entries(boundary)) &                                                            ! duplicated label/tag
-          call IO_error(812_pI16, 'duplicated entries: label', trim(bc_label_name), "and tag", &
+          call IO_error(812_pI16, 'duplicated entries: label', trim(bc_label_name), 'and tag', &
                         mesh_boundariesIS(boundary), emph = [2,4])
         read_BC_entries(boundary) = .true.
         loadCases(l)%mechBC(boundary)%use_label = .true.
@@ -154,8 +154,7 @@ program DAMASK_mesh
         read_BC_entries(boundary) = .true.
         loadCases(l)%mechBC(boundary)%use_label = .false.
       else
-        call IO_error(837_pI16, 'entry'//IO_intAsStr(m)//': at least one of   &
-                      & "tag/label"   required')
+        call IO_error(812_pI16, 'neither "label" nor "tag" given for boundary condition', m, emph=[2])
       end if
       mech_u => mech_BC%get_list('dot_u')
       do component = 1, dimPlex
@@ -186,11 +185,9 @@ program DAMASK_mesh
   skip_T2 = skip_T1+1+floor(log10(real(maxval(mesh_boundariesIS))))+1+1+1                           ! T1+"("+NumDigits(floor()+1)+")"+blank
   checkLoadcases: do l = 1, size(load_steps)
     if (loadCases(l)%N < 1) &
-      call IO_error(813_pI16, 'loadcase', IO_intAsStr(l)//':', 'N', &
-                    'must be positive', emph = [3])
+      call IO_error(813_pI16, 'loadcase', l, 'has non-positive number of steps ("N")', emph = [2])
     if (loadCases(l)%f_out < 1) &
-      call IO_error(813_pI16, 'loadcase', IO_intAsStr(l)//':', 'f_out', &
-                    'must be positive', emph = [3])
+      call IO_error(813_pI16, 'loadcase', l, 'has non-positive output frequency ("f_out")', emph = [2])
 
     print'(/,1x,a,1x,i0)', 'load case:', l
     if (.not. loadCases(l)%estimate_rate) print'(2x,a)', 'drop guessing along trajectory'
@@ -208,7 +205,7 @@ program DAMASK_mesh
         if (loadCases(l)%mechBC(boundary)%active(component)) &
           print'(4x,a,T'//IO_intAsStr(skip_T1)//',a,i0,a,'// &
                 'T'//IO_intAsStr(skip_T2)//',a,1x,i1,1x,a,1x,f12.7)', &
-            trim(bc_label_name), "(", mesh_boundariesIS(boundary), ")", &
+            trim(bc_label_name), '(', mesh_boundariesIS(boundary), ')', &
             'Component', component, &
             'Value', loadCases(l)%mechBC(boundary)%dot_u(component)
       end do
