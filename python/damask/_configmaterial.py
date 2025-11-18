@@ -332,7 +332,8 @@ class ConfigMaterial(YAML):
             for k,v in self['phase'].items():
                 if v is not None and 'lattice' in v:
                     try:
-                        Orientation(lattice=v['lattice'])
+                        Orientation(lattice=v['lattice'],
+                                    c=v.get('c/a',None))
                     except KeyError:
                         logger.warning(f"Invalid lattice '{v['lattice']}' in phase '{k}'")
                         ok = False
