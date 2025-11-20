@@ -37,5 +37,6 @@ from ._vtk             import VTK              # noqa
 from ._yaml            import YAML             # noqa
 from ._configmaterial  import ConfigMaterial   # noqa
 from ._loadcasegrid    import LoadcaseGrid     # noqa
+from ._loadcasemesh    import LoadcaseMesh     # noqa
 from ._geomgrid        import GeomGrid         # noqa
 from ._result          import Result           # noqa
