@@ -211,7 +211,7 @@ cout << endl;
 #endif
 
   cout << " Version: " << DAMASK_VERSION << std::endl << std::endl;
-  cout << " Compiled with: ";
+  cout << " Compiled with:";
 #if defined(__clang__)
   cout << " Clang version " << __clang_major__ << "." << __clang_minor__ << "."
        << __clang_patchlevel__ << std::endl;
@@ -223,6 +223,7 @@ cout << endl;
        << __INTEL_COMPILER_UPDATE << std::endl;
 #endif
   F_printCompileOptions();
+  cout << std::endl;
   cout << " PETSc version: " << PETSC_VERSION_MAJOR << "."
                              << PETSC_VERSION_MINOR << "."
                              << PETSC_VERSION_SUBMINOR << std::endl << std::endl;

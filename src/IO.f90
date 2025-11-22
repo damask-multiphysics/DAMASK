@@ -877,6 +877,7 @@ subroutine IO_printCppString(C_STR) bind(C, name='F_IO_printCppString')
 
 
   write (IO_STDOUT, '(a)', advance='no') c_f_string(c_str)
+  flush(IO_STDOUT)
 
 end subroutine IO_printCppString
 #endif
