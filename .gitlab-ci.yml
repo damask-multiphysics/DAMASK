@@ -58,8 +58,8 @@ workflow:
   parallel:
     matrix:
       - IMAGE:
-          - gcc_petsc-debug:2025.05.27
-          - gcc_petsc-debug:2025.03.10
+          - gcc_petsc-debug:2025.05.27a
+          - gcc_petsc-debug:2025.03.10a
 
 .petsc_oneapi_default:
   extends: .registry
@@ -81,8 +81,8 @@ workflow:
   parallel:
     matrix:
       - IMAGE:
-          - oneapi_petsc-debug:2025.06.12
-          - oneapi_petsc-debug:2025.03.27
+          - oneapi_petsc-debug:2025.06.12a
+          - oneapi_petsc-debug:2025.03.27a
 
 .petsc:
   extends: .registry
@@ -98,12 +98,12 @@ workflow:
   parallel:
     matrix:
       - IMAGE:
-          - gcc_petsc-default:2025.05.27
-          - gcc_petsc-i64:2025.05.27
-          - oneapi_petsc-default:2025.06.12
-          - gcc_petsc-default:2025.03.10
-          - gcc_petsc-i64:2025.03.10
-          - oneapi_petsc-default:2025.03.27
+          - gcc_petsc-default:2025.05.27a
+          - gcc_petsc-i64:2025.05.27a
+          - oneapi_petsc-default:2025.06.12a
+          - gcc_petsc-default:2025.03.10a
+          - gcc_petsc-i64:2025.03.10a
+          - oneapi_petsc-default:2025.03.27a
 
 .python:
   extends: .registry
@@ -232,12 +232,23 @@ open-source:
     - export OMP_NUM_THREADS=2
     - pytest -v -x -n 3 --dist=loadscope --durations=20 -k 'not compile and not Marc'
 
+c++-linter:
+  stage: core
+  extends: .petsc_gcc_default
+  script:
+    # for now only capture non-solver and test modules
+    - cmake -B build -DTEST=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="include-what-you-use"
+    - cmake --build build --parallel --target install
+    - find src -name '*.cpp' -print0 |  xargs -0 -r -P8 -I{} clang-tidy -p build {}
+       -- -isystem "$(gcc -print-file-name=include)"
+
 .unittest:
   stage: core
   script:
     - source env/DAMASK.sh
     - ./bin/DAMASK_test
     - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \;
+    - ctest --test-dir build/src/test/cpp --output-on-failure -j"$(nproc)" --no-tests=ignore
   parallel:
     matrix:
       - BUILD_TYPE: [DEBUG, RELEASE, PERFORMANCE]
@@ -245,14 +256,14 @@ open-source:
 .unittest_gcc:
   extends: .unittest
   before_script:
-    - cmake -B builddir -DTEST=ON -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=-coverage
-    - cmake --build builddir --target install
+    - cmake -B build -DTEST=ON -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=-coverage
+    - cmake --build build --target install
 
 .unittest_oneapi:
   extends: .unittest
   before_script:
-    - cmake -B builddir -DTEST=ON -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
-    - cmake --build builddir --target install
+    - cmake -B build -DTEST=ON -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
+    - cmake --build build --target install
 
 
 unittest_gcc:
@@ -325,8 +336,8 @@ Marc_compile:
     - ${PETSC_DIR}/lib/petsc/bin/petscversion
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
     - source env/DAMASK.sh
-    - cmake -B builddir -DGRID=ON -DCMAKE_BUILD_TYPE=DEBUG
-    - cmake --build builddir --target install
+    - cmake -B build -DGRID=ON -DCMAKE_BUILD_TYPE=DEBUG
+    - cmake --build build --target install
     - cd PRIVATE/testing
   script:
     - python3 -X faulthandler -m pytest -p no:faulthandler -v -k configexamples                     # https://blog.xmatthias.com/post/pytest-debug-segfault/
