@@ -52,7 +52,7 @@ CLI::CLI(int* argc, char* argv[], int* worldrank) {
     ("jobname,j",          po::value<std::string>(&arg_jobname)->value_name("[ --job ]"),       "job name")
     ("workingdirectory,w", po::value<std::string>(&arg_wd)->value_name("[ --wd ]"),             "working directory")
     ("wd",                 po::value<std::string>(&arg_wd),                                     "alias")
-#ifdef GRID
+#if defined(GRID) || defined(TEST)
     ("restart,r",          po::value<int>(&arg_rs)->value_name("[ --rs ]"),                     "restart increment")
     ("rs",                 po::value<std::string>(&arg_wd),                                     "alias")
 #endif
@@ -283,7 +283,7 @@ R"(
        Working directory, defaults to current directory and
        serves as base directory of relative paths.
 )"
-#ifdef GRID
+#if defined(GRID) || defined(TEST)
 R"(
   --restart N
        Restart simulation from given increment.
