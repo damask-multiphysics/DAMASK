@@ -10,12 +10,12 @@ module signal
   implicit none(type,external)
   private
 
-   logical(C_BOOL), public, protected, volatile, &
-        bind(C, name="f_sigint" ) :: signal_SIGINT  = .false._C_BOOL
-   logical(C_BOOL), public, protected, volatile, &
-        bind(C, name="f_sigusr1") :: signal_SIGUSR1 = .false._C_BOOL
-   logical(C_BOOL), public, protected, volatile, &
-        bind(C, name="f_sigusr2") :: signal_SIGUSR2 = .false._C_BOOL
+  logical(C_BOOL), public, protected, volatile, bind(C, name='f_sigint') :: &
+    signal_SIGINT  = .false._C_BOOL
+  logical(C_BOOL), public, protected, volatile, bind(C, name='f_sigusr1') :: &
+    signal_SIGUSR1 = .false._C_BOOL
+  logical(C_BOOL), public, protected, volatile, bind(C, name='f_sigusr2') :: &
+    signal_SIGUSR2 = .false._C_BOOL
   public :: &
     signal_init, &
     signal_setSIGINT, &

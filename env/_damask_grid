@@ -1,0 +1,14 @@
+#compdef DAMASK_grid
+
+local ign
+(( $#words > 2 )) && ign='!'
+
+_arguments \
+    '(-g --geom --geomfile)'{-g,--geom,--geomfile}'[geometry file]:file:_files -g "**/*.vti"' \
+    '(-l --load --loadcase)'{-l,--load,--loadcase}'[load case]:file:_files -g "**/*.yaml"' \
+    '(-m --material --materialconfig)'{-m,--material,--materialconfig}'[material config]:file:_files -g "**/*.yaml"' \
+    '(-n --numerics --numericsconfig)'{-n,--numerics,--numericsconfig}'[numerics config (optional)]::file:_files -g "**/*.yaml"' \
+    '(-j --job --jobname)'{-j,--job,--jobname}'[job name (optional)]::string' \
+    '(-w --wd --workingdirectory)'{-w,--wd,--workingdirectory}'[working directory (optional)]::directory:_directories' \
+    '(-r --rs --restart)'{-r,--rs,--restart}'[restart increment (optional)]::number' \
+    "${ign}(- 1 *)"{-h,--help}'[show help]'
