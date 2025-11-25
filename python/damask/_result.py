@@ -189,10 +189,11 @@ class Result:
         Give short, human-readable summary.
         """
         with h5py.File(self.fname,'r') as f:
-            header = [f'Created by {f.attrs["creator"]}',
-                      f'        on {f.attrs["created"]}',
-                      f' executing "{f.attrs["call"]}"']
-        header = list(map(util.deemph,header))
+            header = list(map(util.deemph,[
+                f'Created by {f.attrs["creator"]}',
+                f'        on {f.attrs["created"]}',
+                f' executing "{f.attrs["call"]}"',
+                ]))
         visible_increments = self._visible['increments']
 
         first = self.view(increments=visible_increments[0:1]).list_data()
