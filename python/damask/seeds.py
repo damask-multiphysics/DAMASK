@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Functionality for generation of seed points for Voronoi or Laguerre tessellation."""
 
 from typing import Optional as _Optional, NamedTuple as _NamedTuple

@@ -1,3 +1,4 @@
+! SPDX-License-Identifier: AGPL-3.0-or-later
 !--------------------------------------------------------------------------------------------------
 !> @author Vitesh Shah, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Yi-Chin Yang, Max-Planck-Institut für Eisenforschung GmbH

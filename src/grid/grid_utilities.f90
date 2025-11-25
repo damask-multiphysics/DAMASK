@@ -1,3 +1,4 @@
+! SPDX-License-Identifier: AGPL-3.0-or-later
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, KU Leuven
 !> @brief Utilities used by the grid solver variants

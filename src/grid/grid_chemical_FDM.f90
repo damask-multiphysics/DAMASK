@@ -1,3 +1,4 @@
+! SPDX-License-Identifier: AGPL-3.0-or-later
 module grid_chemical_FDM
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>

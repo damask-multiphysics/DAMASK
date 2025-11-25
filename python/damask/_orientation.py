@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 import copy
 import warnings
 from typing import Optional, Union, TypeVar, Literal, Sequence, NamedTuple, overload

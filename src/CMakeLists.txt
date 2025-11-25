@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 foreach(VARIANT GRID MESH TEST)
   if(${VARIANT})
     string(TOLOWER "${VARIANT}" VARIANT_LOWER)

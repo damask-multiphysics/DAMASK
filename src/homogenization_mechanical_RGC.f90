@@ -1,3 +1,4 @@
+! SPDX-License-Identifier: AGPL-3.0-or-later
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Denny Tjahjanto, Max-Planck-Institut für Eisenforschung GmbH

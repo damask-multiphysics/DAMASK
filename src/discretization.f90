@@ -1,3 +1,4 @@
+! SPDX-License-Identifier: AGPL-3.0-or-later
 !--------------------------------------------------------------------------------------------------
 !> @brief spatial discretization
 !> @details serves as an abstraction layer between the different solvers and DAMASK

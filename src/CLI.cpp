@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * @file CLI.cpp
  * @brief DAMASK C++ commandline interface for PETSc-based solvers
