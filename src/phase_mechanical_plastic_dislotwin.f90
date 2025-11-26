@@ -1,3 +1,4 @@
+! SPDX-License-Identifier: AGPL-3.0-or-later
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Su Leen Wong, Max-Planck-Institut für Eisenforschung GmbH
@@ -194,8 +195,8 @@ module function plastic_dislotwin_init() result(myPlasticity)
 #else
     prm%output = pl%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
-   if (any(prm%output == 'f_tw')) call IO_warning(10_pI16,'f_tw (twinned volume fraction)',IO_EOL, &
-                                                          'use gamma_tw (twinning shear)')
+   if (any(prm%output == 'f_tw')) call IO_warning(10,'f_tw (twinned volume fraction)',IO_EOL, &
+                                                     'use gamma_tw (twinning shear)')
 
    prm%isotropic_bound = pl%get_asStr('isotropic_bound',defaultVal='isostrain')
 

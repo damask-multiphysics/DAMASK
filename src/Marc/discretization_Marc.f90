@@ -1,3 +1,4 @@
+! SPDX-License-Identifier: AGPL-3.0-or-later
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
@@ -283,7 +284,7 @@ function readlines(fileName) result(fileContent)
     if (endPos - startPos > pSTRLEN-1) then
       line = rawData(startPos:startPos+pSTRLEN-1)
       if (.not. warned) then
-        call IO_warning(207,trim(fileName),label1='line',ID1=l)
+        call IO_warning(207,'line', l, 'in file', trim(fileName), emph =[2,4])
         warned = .true.
       end if
     else

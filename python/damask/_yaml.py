@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 import copy
 from io import StringIO
 from collections.abc import Iterable
@@ -5,6 +6,7 @@ import abc
 from typing import Optional, Union, Any, Type, TypeVar
 
 import numpy as np
+from numpy import ma
 import yaml
 try:
     from yaml import CSafeLoader as SafeLoader
@@ -54,6 +56,15 @@ class NiceDumper(SafeDumper):
                         flow: bool = False,
                         indentless: bool = False):                                                  # not for CSafeDumper
         return super().increase_indent(flow, False)                                                 # type: ignore[misc]
+
+
+class MaskedMatrixDumper(NiceDumper):
+    """Format masked matrices."""
+
+    def represent_data(self, data: Any):
+        return super().represent_data(data.astype(object).filled('x')                               # type: ignore[attr-defined]
+                                      if isinstance(data, ma.core.MaskedArray) else
+                                      data)
 
 
 class YAML(dict):

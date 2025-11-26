@@ -1,3 +1,4 @@
+! SPDX-License-Identifier: AGPL-3.0-or-later
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
@@ -197,7 +198,8 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
   end if
 
   if (all(abs(materialpoint_dcsdE(1:6,1:6,ip,elCP)) < 1e-10_pREAL)) &
-    call IO_warning(601,label1='element (CP)',ID1=elCP,label2='IP',ID2=ip)
+    call IO_warning(601,'integration point', ip, 'of element (CP)', elCP, 'has stiffness close to 0.0', &
+                    emph = [2,4] )
 
   cauchyStress = materialpoint_cs   (1:6,    ip,elCP)
   jacobian     = materialpoint_dcsdE(1:6,1:6,ip,elCP)

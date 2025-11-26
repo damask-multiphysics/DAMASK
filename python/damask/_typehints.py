@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Functionality for typehints."""
 
 from typing import Sequence, Union, TypedDict, Literal, TextIO

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>

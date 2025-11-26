@@ -1,3 +1,4 @@
+! SPDX-License-Identifier: AGPL-3.0-or-later
 !--------------------------------------------------------------------------------------------------
 !> @author Philip Eisenlohr, Michigan State University
 !> @author Zhuowen Zhao, Michigan State University

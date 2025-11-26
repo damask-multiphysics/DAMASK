@@ -1,3 +1,4 @@
+! SPDX-License-Identifier: AGPL-3.0-or-later
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
@@ -110,7 +111,7 @@ subroutine math_init()
     seed = num_generic%get_as1dInt('random_seed',requiredSize=randSize) &
          + worldrank*42_MPI_INTEGER_KIND
   else
-    call random_seed()
+    call random_init(.false.,.false.)
     call random_seed(get = seed)
   end if
 

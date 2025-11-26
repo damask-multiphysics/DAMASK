@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 ###################################################################################################
 # IntelLLVM Compiler
 ###################################################################################################
@@ -15,14 +16,12 @@ elseif(OPTIMIZATION STREQUAL "AGGRESSIVE")
   set(OPTIMIZATION_FLAGS "-O3 -fp-model strict -xHost -align array64byte") # -ipo/-flto give linker error
 endif()
 
-# set(STANDARD_CHECK "-stand f23 -standard-semantics -assume nostd_mod_proc_name")
-# -assume std_mod_proc_name (included in -standard-semantics) causes problems if other modules
-#  (PETSc, HDF5) are not compiled with this option
-#  https://community.intel.com/t5/Intel-Fortran-Compiler/building-and-linking-against-a-Fortran-dynamic-library-on-Linux/td-p/1178514
-# -standard-semantics causes a bizzare increase in runtime on matesting (Intel(R) Xeon(R) CPU X5670)
-#  so use only -fpscomp logicals.
-#  https://fortran-lang.discourse.group/t/performance-drop-when-using-intel-oneapi-with-standard-sematics-option/9944/5
-set(STANDARD_CHECK "-stand f23 -fpscomp logicals")
+set(STANDARD_CHECK "-stand f23 -fpscomp logicals -assume noold_unit_star")
+# -standard-semantics causes a bizzare increase in runtime on matesting (Intel(R) Xeon(R) CPU
+# X5670), o only enforce a logical representation that is compatible with C and enable to close the
+# output unit.
+# https://fortran-lang.discourse.group/t/performance-drop-when-using-intel-oneapi-with-standard-sematics-option/9944/5
+# https://community.intel.com/t5/Intel-Fortran-Compiler/Redirecting-File-STDOUT-and-STDERR-in-Intel-Fortran-Without/m-p/1550590
 
 # Link against shared Intel libraries instead of static ones:
 set(LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel")

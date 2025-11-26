@@ -15,22 +15,22 @@ authors:
     orcid: 'https://orcid.org/0000-0002-3738-7363'
   - given-names: Philip
     family-names: Eisenlohr
-    orcid: 'https://orcid.org/0000-0002-8220-5995'
     email: pe@msu.edu
     affiliation: Michigan State University
+    orcid: 'https://orcid.org/0000-0002-8220-5995'
   - given-names: Sharan
     family-names: Roongta
+    email: s.roongta@mpi-susmat.de
     affiliation: Max-Planck-Institut für Nachhaltige Materialien GmbH
-    email: s.roongta@mpie.de
     orcid: 'https://orcid.org/0000-0001-5754-068X'
   - given-names: Daniel
     family-names: Otto de Mentock
-    email: d.mentock@mpie.de
+    email: d.mentock@mpi-susmat.de
     affiliation: Max-Planck-Institut für Nachhaltige Materialien GmbH
     orcid: 'https://orcid.org/0009-0005-8363-6112'
   - given-names: Yi
     family-names: Hu
-    email: y.hu@mpie.de
+    email: y.hu@mpi-susmat.de
     affiliation: Max-Planck-Institut für Nachhaltige Materialien GmbH
     orcid: 'https://orcid.org/0000-0003-2775-6169'
   - given-names: Nikhil
@@ -40,12 +40,12 @@ authors:
     orcid: 'https://orcid.org/0000-0003-0843-3903'
   - given-names: Pratheek
     family-names: Shanthraj
+    email: pratheek.shanthraj@ukaea.uk
     affiliation: United Kingdom Atomic Energy Authority
     orcid: 'https://orcid.org/0000-0002-6324-0306'
-    email: pratheek.shanthraj@ukaea.uk
   - given-names: Franz
     family-names: Roters
-    email: f.roters@mpie.de
+    email: f.roters@mpi-susmat.de
     affiliation: Max-Planck-Institut für Nachhaltige Materialien GmbH
     orcid: 'https://orcid.org/0000-0002-9098-9566'
 identifiers:

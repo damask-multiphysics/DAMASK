@@ -1,4 +1,5 @@
-# sets up an environment for DAMASK on zsh
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# set up an environment for DAMASK on zsh
 # usage:  source DAMASK.zsh
 
 function canonicalPath {

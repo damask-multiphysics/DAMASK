@@ -204,14 +204,12 @@ pytest_previous:
 doctest:
   extends: [.processing, .python]
   script:
-    - export DAMASK_ROOT=$(pwd)
-    - PYTHONPATH=${DAMASK_ROOT}/python:${PYTHONPATH}
     - cd python
-    - cp tests/resources/doctest/* .
+    - cp tests/resources/doctest/*.* .
     # pretend neper to be present such that call to /bin/neper does not fail
     - echo '#!/usr/bin/env bash' > /bin/neper
     - chmod +x /bin/neper
-    - python3 -m pytest -v --doctest-modules -k 'not result' damask
+    - PYTHONPATH=${PWD}:${PYTHONPATH} NO_COLOR=1 python3 -m pytest -v --doctest-modules damask
 
 
 ####################################################################################################
@@ -225,7 +223,7 @@ open-source:
     - long_running
   needs: []
   before_script:
-    - cmake -DGRID=ON -DMESH=ON -B build && cmake --build build --parallel 4 --target install
+    - cmake -DGRID=ON -DMESH=ON -B build -G Ninja && cmake --build build --parallel 4 --target install
     - source env/DAMASK.sh
   script:
     - cd PRIVATE/testing
@@ -247,7 +245,7 @@ c++-linter:
   script:
     - source env/DAMASK.sh
     - ./bin/DAMASK_test
-    - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \;
+    - find . -name '*.gcda' -not -path "**/test/*" -exec gcov {} \; | grep src/.\*.f90 -A+1 || true
     - ctest --test-dir build/src/test/cpp --output-on-failure -j"$(nproc)" --no-tests=ignore
   parallel:
     matrix:

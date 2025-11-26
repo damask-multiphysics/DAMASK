@@ -1,3 +1,4 @@
+! SPDX-License-Identifier: AGPL-3.0-or-later
 !----------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Sharan Roongta, Max-Planck-Institut für Eisenforschung GmbH
@@ -879,7 +880,7 @@ function to_flow(blck)
     call decide(blck,to_flow,s_blck,s_flow,offset)
   end if
   line = clean(blck(s_blck:s_blck+index(blck(s_blck:),IO_EOL,kind=pI64)-2_pI64))
-  if (trim(line)== '---') call IO_warning(709,ext_msg=line)
+  if (trim(line)== '---') call IO_warning(709,'YAML file contains "---" after first line')
   to_flow = trim(to_flow(:s_flow-1_pI64))
   end_line = index(to_flow,IO_EOL,kind=pI64)
   if (end_line > 0_pI64) to_flow = to_flow(:end_line-1_pI64)

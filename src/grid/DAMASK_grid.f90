@@ -1,3 +1,4 @@
+! SPDX-License-Identifier: AGPL-3.0-or-later
 !--------------------------------------------------------------------------------------------------
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
@@ -193,7 +194,7 @@ program DAMASK_grid
       grid_mechanical_restartWrite => grid_mechanical_FEM_restartWrite
 
     case default
-      call IO_error(error_ID = 891, ext_msg = trim(solver%get_asStr('mechanical')))
+      call IO_error(601_pI16,trim(solver%get_asStr('mechanical')), 'is not a valid grid solver type', emph=[1])
 
   end select
 

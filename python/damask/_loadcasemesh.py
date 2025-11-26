@@ -6,35 +6,29 @@ from ._yaml import MaskedMatrixDumper
 from . import YAML
 
 
-class LoadcaseGrid(YAML):
-    """Load case for grid solver."""
+class LoadcaseMesh(YAML):
+    """Load case for mesh solver."""
 
     def __init__(self,
                  config: Optional[Union[str,dict[str,Any]]] = None,
                  *,
-                 solver: Optional[dict[str,str]] = None,
                  loadstep: Optional[list[dict[str,Any]]] = None):
         """
-        New grid solver load case.
+        New mesh solver load case.
 
         Parameters
         ----------
         config : dict or str, optional
-            Grid solver load case. String needs to be valid YAML.
-        solver : dict, optional
-            Solver configuration.
-            Defaults to an empty dict if 'config' is not given.
+            Mesh solver load case. String needs to be valid YAML.
         loadstep : list of dict, optional
             Load step configuration.
             Defaults to an empty list if 'config' is not given.
         """
         kwargs: dict[str,Union[dict[str,str],list[dict[str,Any]]]] = {}
-        default: Union[list,dict]
-        for arg,value,default in [('solver',solver,{}),('loadstep',loadstep,[])]:                   # type: ignore[assignment]
-            if value is not None:
-                kwargs[arg] = value
-            elif config is None:
-                kwargs[arg] = default
+        if loadstep is not None:
+            kwargs['loadstep'] = loadstep
+        elif config is None:
+            kwargs['loadstep'] = []
 
         super().__init__(config,**kwargs)
 

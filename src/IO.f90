@@ -1,3 +1,4 @@
+! SPDX-License-Identifier: AGPL-3.0-or-later
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
@@ -58,10 +59,6 @@ implicit none(type,external)
     module procedure IO_error_new
     module procedure IO_error_old
   end interface IO_error
-  interface IO_warning
-    module procedure IO_warning_new
-    module procedure IO_warning_old
-  end interface IO_warning
 
   character, parameter, public :: &
     IO_ESC = achar(27), &                                                                           !< escape character
@@ -76,6 +73,7 @@ implicit none(type,external)
     logical(C_BOOL), bind(C, name='IO_redirectedSTDOUT') :: IO_redirectedSTDOUT = .false.           !< STDOUT writes to file 'out.X' where X is the world rank
     logical(C_BOOL), bind(C, name='IO_redirectedSTDERR') :: IO_redirectedSTDERR = .false.           !< STDERR writes to file 'err.X' where X is the world rank
 #endif
+   logical :: IO_colored = .true.                                                                   !< status of colored output
 
   public :: &
     quit, &
@@ -101,11 +99,12 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Inquire whether STDOUT/STDERR are redirected and do self test.
+!> @brief Set options related to use of ANSI escape codes and do self test.
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init()
 
   character(len=pSTRLEN) :: fname
+  integer :: status
 
 
   print'(/,1x,a)', '<<<+-  IO init  -+>>>'; flush(IO_STDOUT)
@@ -117,6 +116,8 @@ subroutine IO_init()
   inquire(unit=IO_STDERR,name=fname)
   IO_redirectedSTDERR = logical(fname(:4) == 'err.',C_BOOL)
 #endif
+  call get_environment_variable('NO_COLOR',status=status)                                           !< https://no-color.org
+  IO_colored = 0 /= status
 
   call IO_selfTest()
 
@@ -348,7 +349,7 @@ function IO_color(fg,bg,unit)
 
   IO_color = ''
 
-  if (.not. IO_isaTTY(misc_optional(unit,int(IO_STDOUT)))) return
+  if (.not. IO_colored .or. .not. IO_isaTTY(misc_optional(unit,int(IO_STDOUT)))) return
 
   if (present(fg)) &
     IO_color = IO_color//IO_ESC//'[38;2;'//IO_intAsStr(fg(1))//';' &
@@ -371,6 +372,7 @@ end function IO_color
 subroutine IO_error_new(error_ID, &
                         info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9, &
                         emph)
+
 
   integer(pI16),      intent(in) :: error_ID        ! should go back to default integer after completed migration.
   class(*), optional, intent(in) :: info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9
@@ -471,6 +473,8 @@ subroutine IO_error_new(error_ID, &
 ! user errors
     case (600)
       msg = 'only one source entry allowed'
+    case (601)
+      msg = 'invalid option'
     case (603)
       msg = 'invalid data for table'
     case (610)
@@ -531,10 +535,6 @@ subroutine IO_error_new(error_ID, &
       msg = 'non-positive restart frequency in grid load case'
     case (844)
       msg = 'invalid VTI file'
-    case (891)
-      msg = 'unknown solver type selected'
-    case (892)
-      msg = 'unknown filter type selected'
     case (894)
       msg = 'MPI error'
 
@@ -590,29 +590,27 @@ end subroutine IO_error_old
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write warning statements.
-!> @details Should become "IO_warning" after completed migration.
 !--------------------------------------------------------------------------------------------------
-subroutine IO_warning_new(warning_ID, &
-                          info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9, &
-                          emph)
+subroutine IO_warning(warning_ID, &
+                      info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9, &
+                      emph)
 
-  integer(pI16),      intent(in) :: warning_ID        ! should go back to default integer after completed migration.
-  class(*), optional, intent(in) :: info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9
-  integer, dimension(:), optional, intent(in) :: emph                                              !< which info(s) to emphasize
+  integer,                         intent(in) :: warning_ID
+  class(*),              optional, intent(in) :: info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9
+  integer, dimension(:), optional, intent(in) :: emph                                               !< which info(s) to emphasize
 
   character(len=:), allocatable :: msg
+
 
   select case (warning_ID)
     case (10)
       msg = 'deprecated keyword'
-    case (47)
-      msg = 'invalid parameter for FFTW'
     case (207)
       msg = 'line truncated'
     case (600)
-      msg = 'crystallite responds elastically'
+      msg = 'failed to converge'
     case (601)
-      msg = 'stiffness close to zero'
+      msg = 'unexpected stiffness'
     case (709)
       msg = 'read only the first document'
 
@@ -624,55 +622,7 @@ subroutine IO_warning_new(warning_ID, &
              info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9, &
              emph)
 
-end subroutine IO_warning_new
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Write warning statements.
-!--------------------------------------------------------------------------------------------------
-subroutine IO_warning_old(warning_ID,ext_msg,label1,ID1,label2,ID2)
-
-  integer,                    intent(in) :: warning_ID
-  character(len=*), optional, intent(in) :: ext_msg,label1,label2
-  integer,          optional, intent(in) :: ID1,ID2
-
-  character(len=:), allocatable :: msg,msg_extra
-
-
-  if (.not. present(label1) .and. present(ID1)) error stop 'missing label for value 1'
-  if (.not. present(label2) .and. present(ID2)) error stop 'missing label for value 2'
-
-  select case (warning_ID)
-    case (47)
-      msg = 'invalid parameter for FFTW'
-    case (207)
-      msg = 'line truncated'
-    case (600)
-      msg = 'crystallite responds elastically'
-    case (601)
-      msg = 'stiffness close to zero'
-    case (709)
-      msg = 'read only the first document'
-
-    case default
-      error stop 'invalid warning number'
-  end select
-
-  msg_extra = ''
-  if (present(ext_msg)) msg_extra = msg_extra//ext_msg//IO_EOL
-  if (present(label1)) then
-    msg_extra = msg_extra//'at '//label1
-    if (present(ID1)) msg_extra = msg_extra//' '//IO_intAsStr(ID1)
-    msg_extra = msg_extra//IO_EOL
-  end if
-  if (present(label2)) then
-    msg_extra = msg_extra//'at '//label2
-    if (present(ID2)) msg_extra = msg_extra//' '//IO_intAsStr(ID2)
-    msg_extra = msg_extra//IO_EOL
-  end if
-  call panel('warning',warning_ID,msg,msg_extra,IO_EOL)
-
-end subroutine IO_warning_old
+end subroutine IO_warning
 
 
 !--------------------------------------------------------------------------------------------------
@@ -943,9 +893,10 @@ subroutine panel(paneltype,ID,msg, &
                  info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9, &
                  emph)
 
-  character(len=*),           intent(in) :: paneltype, msg
-  integer,                    intent(in) :: ID
-  class(*),         optional, intent(in) :: info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9
+  character(len=*),           intent(in) :: paneltype, &                                            !< either 'error' or 'warning'
+                                            msg                                                     !< general error/warning message
+  integer,                    intent(in) :: ID                                                      !< error/warning ID
+  class(*),         optional, intent(in) :: info_1,info_2,info_3,info_4,info_5,info_6,info_7,info_8,info_9 !< extra info
   integer, dimension(:), optional, intent(in) :: emph                                               !< which info(s) to emphasize
 
   integer, parameter :: panelwidth = 69
@@ -957,6 +908,9 @@ subroutine panel(paneltype,ID,msg, &
              i
 
 
+  ! Needed to avoid output glitches observed with Gfortran.
+  ! see https://fortran-lang.discourse.group/t/openmp-and-thread-safety-of-i-os-write-read/4567/19
+  !$OMP CRITICAL (internal_IO)
   heading = paneltype//' '//IO_intAsStr(ID)
 
   select case (paneltype)
@@ -979,9 +933,9 @@ subroutine panel(paneltype,ID,msg, &
             // as_str(info_7,is_emph(7,emph)) &
             // as_str(info_8,is_emph(8,emph)) &
             // as_str(info_9,is_emph(9,emph))
+  !$OMP END CRITICAL (internal_IO)
 
-
-  !$OMP CRITICAL (write2out)
+  !$OMP CRITICAL (output_to_screen)
   write(IO_STDERR,'(/,a)')                ' ┌'       //DIVIDER//        '┐'
   write(formatString,'(a,i2,a)') '(a,24x,a,',max(1,panelwidth-24-len_trim(heading)),'x,a)'
   write(IO_STDERR,formatString)           ' │',    trim(heading),       '│'
@@ -1005,7 +959,7 @@ subroutine panel(paneltype,ID,msg, &
   endif
   write(IO_STDERR,'(a)')                  ' └'       //DIVIDER//        '┘'
   flush(IO_STDERR)
-  !$OMP END CRITICAL (write2out)
+  !$OMP END CRITICAL (output_to_screen)
 
 end subroutine panel
 
@@ -1016,8 +970,8 @@ end subroutine panel
 function as_str(info,emph)
 
   character(len=:), allocatable :: as_str
-  class(*), optional, intent(in) :: info
-  logical, intent(in) :: emph
+  class(*), optional, intent(in) :: info                                                           !< info message
+  logical, intent(in) :: emph                                                                      !< whether info should be emphasized
 
 
   if (present(info)) then
@@ -1033,7 +987,7 @@ function as_str(info,emph)
     end select
 
     if (emph) then
-      if (IO_isaTTY(IO_STDERR)) then
+      if (IO_colored .and. IO_isaTTY(IO_STDERR)) then
         as_str = IO_EMPH//as_str//IO_FORMATRESET
       else
         as_str = IO_QUOTES(2:2)//as_str//IO_QUOTES(2:2)
@@ -1047,11 +1001,11 @@ function as_str(info,emph)
 end function as_str
 
 !-----------------------------------------------------------------------------------------------
-!> @brief Convert to string with white space prefix and optional emphasis.
+!> @brief Determine whether info at given position has to be emphasized.
 !-----------------------------------------------------------------------------------------------
 pure logical function is_emph(idx,emph)
 
-  integer, intent(in) :: idx
+  integer, intent(in) :: idx                                                                        !< index of considered info
   integer, dimension(:), optional, intent(in) :: emph                                               !< which info(s) to emphasize
 
 

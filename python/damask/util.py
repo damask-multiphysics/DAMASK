@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Miscellaneous helper functionality."""
 
 import sys as _sys
@@ -9,7 +10,7 @@ import re as _re
 import signal as _signal
 import fractions as _fractions
 import contextlib as _contextlib
-from collections import abc as _abc
+from collections import abc as _abc, defaultdict as _defaultdict
 from functools import reduce as _reduce, partial as _partial
 from pathlib import Path as _Path
 import logging as _logging
@@ -39,18 +40,22 @@ version = _np.lib.NumpyVersion
 
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
 # https://stackoverflow.com/questions/287871
-_colors = {
-           'header' :   '\033[95m',
-           'OK_blue':   '\033[94m',
-           'OK_green':  '\033[92m',
-           'warning':   '\033[93m',
-           'fail':      '\033[91m',
-           'end_color': '\033[0m',
-           'bold':      '\033[1m',
-           'dim':       '\033[2m',
-           'underline': '\033[4m',
-           'crossout':  '\033[9m'
-          }
+if 'NO_COLOR' not in _os.environ:
+   _formats = _defaultdict(str,
+              {
+               'header' :    '\033[95m',
+               'OK_blue':    '\033[94m',
+               'OK_green':   '\033[92m',
+               'warning':    '\033[93m',
+               'fail':       '\033[91m',
+               'bold':       '\033[1m',
+               'dim':        '\033[2m',
+               'underline':  '\033[4m',
+               'crossout':   '\033[9m',
+               'end_format': '\033[0m'
+              })
+else:
+   _formats = _defaultdict(str)
 
 ####################################################################################################
 # Functions
@@ -90,15 +95,15 @@ def emph(msg) -> str:
 
     Parameters
     ----------
-    msg : (sequence of) object with __repr__
+    msg : object with __repr__
         Message to format.
 
     Returns
     -------
     formatted : str
-        Formatted string representation of the joined items.
+        Formatted string representation of the message.
     """
-    return _colors['bold']+srepr(msg)+_colors['end_color']
+    return _formats['bold']+(msg if isinstance(msg,str) else repr(msg))+_formats['end_format']
 
 def deemph(msg) -> str:
     """
@@ -106,15 +111,15 @@ def deemph(msg) -> str:
 
     Parameters
     ----------
-    msg : (sequence of) object with __repr__
+    msg : object with __repr__
         Message to format.
 
     Returns
     -------
     formatted : str
-        Formatted string representation of the joined items.
+        Formatted string representation of the message.
     """
-    return _colors['dim']+srepr(msg)+_colors['end_color']
+    return _formats['dim']+(msg if isinstance(msg,str) else repr(msg))+_formats['end_format']
 
 def warn(msg) -> str:
     """
@@ -122,15 +127,15 @@ def warn(msg) -> str:
 
     Parameters
     ----------
-    msg : (sequence of) object with __repr__
+    msg :object with __repr__
         Message to format.
 
     Returns
     -------
     formatted : str
-        Formatted string representation of the joined items.
+        Formatted string representation of the message.
     """
-    return _colors['warning']+emph(msg)+_colors['end_color']
+    return _formats['warning']+emph(msg)+_formats['end_format']
 
 def strikeout(msg) -> str:
     """
@@ -138,15 +143,15 @@ def strikeout(msg) -> str:
 
     Parameters
     ----------
-    msg : (iterable of) object with __repr__
+    msg : object with __repr__
         Message to format.
 
     Returns
     -------
     formatted : str
-        Formatted string representation of the joined items.
+        Formatted string representation of the message.
     """
-    return _colors['crossout']+srepr(msg)+_colors['end_color']
+    return _formats['crossout']+(msg if isinstance(msg,str) else repr(msg))+_formats['end_format']
 
 
 def run(cmd: str,
