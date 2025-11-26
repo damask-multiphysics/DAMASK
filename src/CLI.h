@@ -14,12 +14,12 @@
 #ifdef BOOST
 
 #include <stdio.h>
+#include <ostream>
+#include <span>
 #include <string>
-#include <filesystem>
 
 namespace boost { namespace program_options { class options_description; } }
 namespace po = boost::program_options;
-namespace fs = std::filesystem;
 using namespace std;
 
 extern "C" {
@@ -86,7 +86,7 @@ public:
    * @param[in]     argv        Argument vector
    * @param[in]     worldrank   MPI rank
    */
-  CLI(int* argc, char* argv[], int* worldrank);
+  CLI(std::span<const char*> args, int* worldrank);
 
   /** Print initialization text. */
   void init_print();

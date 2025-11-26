@@ -235,10 +235,11 @@ c++-linter:
   extends: .petsc_gcc_default
   script:
     # for now only capture non-solver and test modules
-    - cmake -B build -DTEST=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="include-what-you-use"
+    - BOOST_MAPPINGS=/usr/share/include-what-you-use/boost-all.imp
+    - cmake -B build -DTEST=ON
+       -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="include-what-you-use;-Xiwyu;--error;-Xiwyu;--mapping_file=${BOOST_MAPPINGS}"
+       -DCMAKE_CXX_CLANG_TIDY='clang-tidy;--checks=cppcoreguidelines*,bugprone*;--warnings-as-errors=cppcoreguidelines*,bugprone*'
     - cmake --build build --parallel --target install
-    - find src -name '*.cpp' -print0 |  xargs -0 -r -P8 -I{} clang-tidy -p build {}
-       -- -isystem "$(gcc -print-file-name=include)"
 
 .unittest:
   stage: core

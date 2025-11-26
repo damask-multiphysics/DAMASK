@@ -6,9 +6,6 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Parse command line interface for PETSc-based solvers
 !--------------------------------------------------------------------------------------------------
-#define PETSC_MINOR_MIN 19
-#define PETSC_MINOR_MAX 24
-
 module CLI
   use, intrinsic :: ISO_Fortran_env
   use, intrinsic :: ISO_C_binding

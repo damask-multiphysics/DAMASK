@@ -66,6 +66,8 @@ endif()
 message("\nBuilding ${CMAKE_PROJECT_NAME} ${DAMASK_VERSION_STRING}\n")
 
 add_compile_definitions(PETSC)
+add_compile_definitions(PETSC_MINOR_MAX=${PETSC_VERSION_MINOR_MAX})
+add_compile_definitions(PETSC_MINOR_MIN=${PETSC_VERSION_MINOR_MIN})
 add_compile_definitions(DAMASK_VERSION="${DAMASK_VERSION_STRING}")
 add_compile_definitions(DAMASK_VERSION_MAJOR="${PROJECT_VERSION_MAJOR}")
 add_compile_definitions(DAMASK_VERSION_MINOR="${PROJECT_VERSION_MINOR}")
