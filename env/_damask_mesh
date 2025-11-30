@@ -1,4 +1,4 @@
-#compdef DAMASK_mesh
+#compdef damask_mesh
 
 local ign
 (( $#words > 2 )) && ign='!'

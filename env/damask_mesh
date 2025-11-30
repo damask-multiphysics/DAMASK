@@ -1,7 +1,7 @@
 shopt -s extglob
 shopt -s nocaseglob
 
-_damask_grid() {
+_damask_mesh() {
     local cur prev
     COMPREPLY=()
 
@@ -12,7 +12,7 @@ _damask_grid() {
     case "$prev" in
         -g|--geom|--geomfile)
             compopt -o plusdirs 2>/dev/null
-            COMPREPLY=( $(compgen -G "${cur}*.vti") )
+            COMPREPLY=( $(compgen -G "${cur}*.msh") )
             return
             ;;
         -l|--load|--loadcase|-m|--material|--materialconfig|-n|--numerics|--numericsconfig)
@@ -32,7 +32,6 @@ _damask_grid() {
                  -n --numerics --numericsconfig
                  -j --job --jobname
                  -w --wd --workingdir --workingdirectory
-                 -r --rs --restart
                  -h --help)
     if (( COMP_CWORD == 1 )) || [[ $cur == -* ]] || [[ -z $cur ]]; then
         COMPREPLY=($(compgen -W "${flags[*]}" -- "$cur"))
@@ -41,4 +40,5 @@ _damask_grid() {
     fi
 }
 
-complete -F _damask_grid DAMASK_grid
+complete -F _damask_mesh DAMASK_mesh
+complete -F _damask_mesh damask_mesh

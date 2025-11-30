@@ -1,4 +1,4 @@
-#compdef DAMASK_grid
+#compdef damask_grid
 
 local ign
 (( $#words > 2 )) && ign='!'

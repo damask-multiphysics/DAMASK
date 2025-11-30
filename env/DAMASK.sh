@@ -89,8 +89,8 @@ fi
 
 export DAMASK_ROOT
 export PYTHONPATH=$DAMASK_ROOT/python:$PYTHONPATH
-source "$ENV_ROOT/_damask_grid.sh"
-source "$ENV_ROOT/_damask_mesh.sh"
+source "$ENV_ROOT/damask_grid"
+source "$ENV_ROOT/damask_mesh"
 
 for var in BASE STAT SOLVER BRANCH ENV_ROOT; do
   unset "${var}"
