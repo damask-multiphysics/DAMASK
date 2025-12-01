@@ -150,7 +150,7 @@ subroutine spectral_utilities_init(active_Gamma, active_G, active_parabolic)
   print'(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2014.02.006'//IO_EOL
 
   print'(  1x,a)', 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
-  print'(  1x,a)', 'https://doi.org/10.1007/978-981-10-6855-3_80'//IO_EOL
+  print'(  1x,a)', 'https://doi.org/10.1007/978-981-10-6884-3_80'//IO_EOL
 
   print'(  1x,a)', 'M. Frigo and S.G. Johnson, Proceedings of the IEEE 93(2):216–231, 2005'
   print'(  1x,a)', 'https://doi.org/10.1109/jproc.2004.840301'
