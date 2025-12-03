@@ -1,0 +1,1123 @@
+---
++++
+@@ -62,7 +62,7 @@
+ #                           =1,  element storage out-of-core                 #
+ #  -dll              run marc using shared library libmarc.so and exe_marc   #
+ #                           =1, used                                         #
+-#                           =2, do not free streaming input memory           # 
++#                           =2, do not free streaming input memory           #
+ #                           =3, run with marc input deck                     #
+ #  -trk              run marc for post-tracking                              #
+ #  -gpuid            run marc using GPGPU capability                         #
+@@ -132,7 +132,7 @@
+ #  -dl y|n           delete log file, if "yes" an old exisitng log file is   #
+ #                    deleted, no new log is created. If "no" a new log file  #
+ #                    is created. For job running in the background, the log  #
+-#                    file is always created. Default is "yes"                # 
++#                    file is always created. Default is "yes"                #
+ ##############################################################################
+ # set DIR to the directory in which this script is
+ REALCOM="`/bin/ls -l $0 |awk '{ print $NF; }'`"
+@@ -178,7 +178,7 @@ fi
+ #         MARC_MODE i8
+ #    it can also be set by the environmental variable MARC_INTEGER_SIZE
+ #    and by the command line option "-mo"
+-#    
++#
+ mode=
+ modeerror=
+ modeoption=
+@@ -186,9 +186,9 @@ exitcode=
+ if test -f $DIRSCRIPT/run_marc_defaults; then
+  line=`$AWK '{if ($1 == "MARC_MODE") {print $1}}' $DIRSCRIPT/run_marc_defaults`
+  if test "$line" = "MARC_MODE"; then
+-  echo 
++  echo
+   echo warning: the option MARC_MODE is deprecated, as of Marc 2015, only the integer*8 version is available
+-  echo 
++  echo
+   line=
+  fi
+  line=`$AWK '{if ($1 == "MARC_MODE") {print $2}}' $DIRSCRIPT/run_marc_defaults`
+@@ -205,7 +205,7 @@ fi
+ if test -f $HOME/run_marc_defaults; then
+  line=`$AWK '{if ($1 == "MARC_MODE") {print $1}}' $HOME/run_marc_defaults`
+  if test "$line" = "MARC_MODE"; then
+-  echo 
++  echo
+   echo warning: the option MARC_MODE is deprecated, as of Marc 2015, only the integer*8 version is available
+   echo
+   line=
+@@ -228,7 +228,7 @@ if test -z "$mode" ; then
+  mode=i8
+ fi
+ case $mode in
+-    i4) 
++    i4)
+     modeerror="bad value for MARC_INTEGER_SIZE variable; only i8 is supported."
+     modeoption=error
+     echo $modeerror
+@@ -248,7 +248,7 @@ for arg in $* ; do
+  if $setmode ; then
+      mode=$arg
+      case $mode in
+-	 i4) 
++	 i4)
+      modeerror="bad value for mode option; only i8 is supported."
+      modeoption=error
+      echo
+@@ -271,7 +271,7 @@ for arg in $* ; do
+      setmode=false
+  fi
+  if [ ${arg}X = -moX -o ${arg}X = -MOX ] ; then
+-  echo  
++  echo
+   echo warning: the option -mo is deprecated, as of Marc 2015, only the integer*8 version is available
+   echo
+   setmode=true
+@@ -301,7 +301,23 @@ fi
+ 
+ . "$DIR/getarch"
+ 
++
++# getting user subroutine file name
++found=0
++for i in "$@"; do
++  if test $found = 1; then
++    DAMASK_USER=$i
++    found=0
++  fi
++  case $i in
++    -u* | -U*)
++      found=1
++    ;;
++  esac
++done
++# sourcing include_linux64 (needs DAMASK_USER to be set)
+ . $MARC_INCLUDE
++
+ #
+ 
+ #
+@@ -319,7 +335,7 @@ case "`echo '\c'`" in
+       ;;
+ esac
+ 
+-#  
++#
+ #  Variables for the MARC environment
+ #
+ 
+@@ -377,7 +393,7 @@ LD_LIBRARYN32_PATH=$MARC_LIB:$LD_LIBRARYN32_PATH
+ export LD_LIBRARY_PATH
+ export LD_LIBRARY64_PATH
+ export LD_LIBRARYN32_PATH
+- 
++
+ atexit() {
+ kill -15 $$
+ #
+@@ -405,7 +421,7 @@ sid=
+ did=
+ vid=
+ user=
+-usersubname=
++usernoext=
+ objs=
+ qid=background
+ cpu=
+@@ -488,7 +504,7 @@ MDSRCLIB=$MARC_LIB/mdsrc.a
+ #    or in the user's home directory
+ #      format:
+ #         MARC_MPI <mpiversion>
+-#    
++#
+ value=
+ file=
+ if test -f $DIRSCRIPT/run_marc_defaults; then
+@@ -513,7 +529,7 @@ if test -n "$value"; then
+      notok=false
+    fi
+   done
+-  if test "$MARC_MPITYPE" = "$MPI_DEFAULT"; then 
++  if test "$MARC_MPITYPE" = "$MPI_DEFAULT"; then
+    notok=false
+   fi
+   if $notok; then
+@@ -533,7 +549,7 @@ if test -n "$value"; then
+     fi
+   fi
+ fi
+-# 
++#
+ #
+ # allow scratch directory to be specified with environmental variable
+ # MARCSCRATCH
+@@ -603,7 +619,7 @@ do
+                            *)
+                             DIRJID=`pwd`/$DIRJID
+                              ;;
+-                        esac        
++                        esac
+ 		;;
+ 		-r* | -R*)
+ 			rid=`$BASENAME $value .t08`
+@@ -614,7 +630,7 @@ do
+                            *)
+                             DIRRID=`pwd`/$DIRRID
+                              ;;
+-                        esac        
++                        esac
+ 		;;
+ 		-si* | -SI*)
+ 			sid=$value
+@@ -625,7 +641,7 @@ do
+                            *)
+                             DIRSID=`pwd`/$DIRSID
+                              ;;
+-                        esac        
++                        esac
+ 		;;
+ 		-pi* | -PI*)
+                         if test  ${value##*.} = h5
+@@ -648,7 +664,7 @@ do
+                            *)
+                             DIRPID=`pwd`/$DIRPID
+                              ;;
+-                        esac        
++                        esac
+ 		;;
+                 -bdf | -BDF)
+                         makebdf=$value
+@@ -662,7 +678,7 @@ do
+                            *)
+                             DIRDID=`pwd`/$DIRDID
+                              ;;
+-                        esac        
++                        esac
+                 ;;
+                 -vf  | -VF)
+                         vid=`$BASENAME $value .vfs`
+@@ -673,53 +689,22 @@ do
+                            *)
+                             DIRVID=`pwd`/$DIRVID
+                              ;;
+-                        esac        
++                        esac
+                 ;;
+ 		-u* | -U*)
+-                        user=`dirname $value`/`$BASENAME $value .f`
+-                        usersubname=$user
+-                        basefile=`$BASENAME $value`
+-                        if test ${basefile##*.} = f
+-                        then
+-                         user=`dirname $value`/`$BASENAME $value .f`
+-                         usersubname=$user.f
+-                        elif test ${basefile##*.} = F
+-                        then
+-                         user=`dirname $value`/`$BASENAME $value .F`
+-                         usersubname=$user.F
+-                        elif test ${basefile##*.} = f90
+-                        then
+-                         user=`dirname $value`/`$BASENAME $value .f90`
+-                         usersubname=$user.f90
+-                        elif test ${basefile##*.} = F90
+-                        then
+-                         user=`dirname $value`/`$BASENAME $value .F90`
+-                         usersubname=$user.F90
+-                        fi
++                        user=$value
+                         case $user in
+                            \/*)
+                              ;;
+                            *)
+                             user=`pwd`/$user
+-                            usersubname=`pwd`/$usersubname
+                              ;;
+                         esac
+-                        if test ! -f $usersubname
+-                        then
+-                         if test -f $usersubname.f 
+-                         then
+-                          usersubname=$usersubname.f 
+-                         elif test -f $usersubname.F 
+-                         then
+-                          usersubname=$usersubname.F
+-                         elif test -f $usersubname.f90
+-                         then
+-                          usersubname=$usersubname.f90
+-                         elif test -f $usersubname.F90
+-                         then
+-                          usersubname=$usersubname.F90
+-                         fi
+-                        fi
++						usernoext=$user
++						usernoext=`dirname $usernoext`/`$BASENAME $usernoext .f`
++						usernoext=`dirname $usernoext`/`$BASENAME $usernoext .F`
++						usernoext=`dirname $usernoext`/`$BASENAME $usernoext .for`
++						usernoext=`dirname $usernoext`/`$BASENAME $usernoext .f90`
+ 		;;
+ 		-obj | -OBJ)
+ 			objs="$value"
+@@ -819,7 +804,7 @@ do
+ 		;;
+                 -au* | -AU*)
+                         nauto=$value
+-                        echo  
++                        echo
+                         echo warning: the option -au is no longer supported and will be ignored
+                         echo
+                 ;;
+@@ -892,7 +877,7 @@ do
+                            *)
+                             DIRSCR=`pwd`/$DIRSCR
+                              ;;
+-                        esac        
++                        esac
+                 ;;
+ 		-ho*  | -HO*)
+ 			host=$value
+@@ -943,7 +928,7 @@ fi
+ 
+ if test $nsolver -gt 0
+ then
+-  if test $nsolver -gt $nprocd 
++  if test $nsolver -gt $nprocd
+   then
+   nprocd=$nsolver
+   fi
+@@ -985,7 +970,7 @@ fi
+ ntprint=$nt
+ nteprint=$nte
+ # copy from -nprocd[s]
+-if test $nprocdddm -gt 1 
++if test $nprocdddm -gt 1
+ then
+   nteprint=$nprocdddm
+ fi
+@@ -994,7 +979,7 @@ if test $nte -ne 0
+ then
+ nteprint=$nte
+ fi
+-# check for minimum 1 threads per processes for DDM 
++# check for minimum 1 threads per processes for DDM
+ if test $nprocdddm -gt 1
+ then
+   if test $nteprint -lt $nprocdddm
+@@ -1049,24 +1034,24 @@ export OMP_STACKSIZE=7M
+ # deprecate  -nthread option at arugment of marc
+ nt=0
+ # Reset nprocdddmm, nsolver and threads if not given.
+-if test $nprocdddm -eq 0 
+-then 
++if test $nprocdddm -eq 0
++then
+   nprocdarg=
+-fi  
+-if test $nprocdddm -eq 0 
+-then 
++fi
++if test $nprocdddm -eq 0
++then
+   nprocdddmprint=
+-fi  
+-if test $nprocdddm -eq 0 
+-then 
++fi
++if test $nprocdddm -eq 0
++then
+   nprocdddm=
+-fi  
++fi
+ 
+ nsolverprint=$nsolver
+-if test $nsolver -eq 0 
+-then 
++if test $nsolver -eq 0
++then
+   nsolverprint=
+-fi  
++fi
+ # end of threads setting.
+ gpuoption=
+ if test "$gpuids" = "" ; then
+@@ -1081,7 +1066,7 @@ else
+  MARCCUDALIBS=$MARCCUDALIBS2
+  export LD_LIBRARY_PATH=$CUDALIB2:$LD_LIBRARY_PATH
+ fi
+-# Linux 64 + HPMPI, Below code is taken from include_linux64 
++# Linux 64 + HPMPI, Below code is taken from include_linux64
+ if test $MPITYPE = hpmpi -a "$ARCHITECTURE" = "linux_amd64"
+ then
+  export MPIHPSPECIAL="$MPIHPSPECIAL -e LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+@@ -1113,7 +1098,7 @@ if test "$dllrun" -gt 0; then
+   fi
+ 
+   if test "$progdll"; then
+-    /bin/cp ${progdll}_$marcdll $DIRJOB/$marcdll 
++    /bin/cp ${progdll}_$marcdll $DIRJOB/$marcdll
+     rmdll=yes
+     pathdll=yes
+     progdll=${progdll}_$marcdll
+@@ -1147,14 +1132,14 @@ while test forever; do
+ if test $nprocdddm -gt 1 -a $icreated -eq 0; then
+  if test ! -f $DIRJID/1$jid$dotdat; then
+   if test "$jid" != "" ; then
+-    error="$error 
++    error="$error
+ input file $DIRJID/1$jid$dotdat not accessible"
+   fi
+  fi
+ else
+  if test ! -f $DIRJID/$jid$dotdat; then
+   if test "$jid" != "" ; then
+-    error="$error 
++    error="$error
+ input file $DIRJID/$jid$dotdat not accessible"
+   fi
+  fi
+@@ -1162,7 +1147,7 @@ fi
+           if test $nprocd -gt 1; then
+             if test "$host" ; then
+               if test ! -f $host; then
+-                error="$error 
++                error="$error
+ host name file $host not accessible"
+               fi
+             fi
+@@ -1208,12 +1193,12 @@ post file $DIRPID/$pid.t16 or $DIRPID/$pid.t19 or $DIRPID/$pid.h5 not accessible
+ 				fi
+ 			fi
+ 		fi
+-		if test "$usersubname"
++		if test "$user"
+ 		then
+-			if test ! -f $usersubname
++			if test ! -f $user
+ 			then
+ 		   		error="$error
+-user subroutine file $usersubname not accessible"
++user subroutine file $user not accessible"
+ 			fi
+ 		fi
+ 		if test "$objs"
+@@ -1279,11 +1264,11 @@ view factor file $DIRVID/$vid.vfs not accessible"
+                         notok=false
+                       fi
+                     done
+-                    if test "$MARC_MPITYPE" = "$MPI_DEFAULT"; then 
++                    if test "$MARC_MPITYPE" = "$MPI_DEFAULT"; then
+                       notok=false
+                     fi
+                     if $notok; then
+-                        error="$error 
++                        error="$error
+ incorrect option for -mpi option: $MARC_MPITYPE  (valid: $MPI_OTHER $MPI_DEFAULT)"
+                     fi
+                 fi
+@@ -1348,7 +1333,7 @@ defaults file $DIRDID/$did$dotdat not accessible"
+                 then
+                     if test $ndcoup -gt 3
+                     then
+-                        error="$error 
++                        error="$error
+ incorrect option for contact decoupling "
+                     fi
+                 fi
+@@ -1356,7 +1341,7 @@ incorrect option for contact decoupling "
+                 then
+                     if test $ndytran -gt 1
+                     then
+-                        error="$error 
++                        error="$error
+ incorrect option for Marc-Dytran Switch  "
+                     fi
+                 fi
+@@ -1364,7 +1349,7 @@ incorrect option for Marc-Dytran Switch  "
+                 then
+                     if test ! -x $MARC_BIN/$exefile
+                     then
+-                        error="$error 
++                        error="$error
+ incorrect option for -mpi option: $MARC_MPITYPE  "
+                     fi
+                 fi
+@@ -1532,7 +1517,7 @@ Program name         : $prog
+ Marc shared lib      : $progdll
+ Version type         : $mode
+ Job ID               : $DIRJID/$jid$extra_job_info
+-User subroutine name : $usersubname
++User subroutine name : $user
+ User objects/libs    : $objs
+ Restart file job ID  : $rid
+ Substructure file ID : $sid
+@@ -1565,7 +1550,7 @@ Program name         : $prog
+ Marc shared lib      : $progdll
+ Version type         : $mode
+ Job ID               : $DIRJID/$jid$extra_job_info
+-User subroutine name : $usersubname
++User subroutine name : $user
+ User objects/libs    : $objs
+ Restart file job ID  : $rid
+ Substructure file ID : $sid
+@@ -1686,9 +1671,9 @@ Program name ($prog)? $ECHOTXT"
+                     *)
+                       DIRJID=`pwd`/$DIRJID
+                     ;;
+-                  esac        
++                  esac
+                 fi
+-		$ECHO "User subroutine name ($usersubname)? $ECHOTXT"
++		$ECHO "User subroutine name ($user)? $ECHOTXT"
+ 		read value
+ 		if test "$value"
+ 		then
+@@ -1697,50 +1682,19 @@ Program name ($prog)? $ECHOTXT"
+                       user=
+                     ;;
+                     *)
+-                      user=`dirname $value`/`$BASENAME $value .f`
+-                      usersubname=$user
+-                      basefile=`$BASENAME $value`
+-                      if test ${basefile##*.} = f
+-                      then
+-                       user=`dirname $value`/`$BASENAME $value .f`
+-                       usersubname=$user.f
+-                      elif test ${basefile##*.} = F
+-                      then
+-                       user=`dirname $value`/`$BASENAME $value .F`
+-                       usersubname=$user.F
+-                      elif test ${basefile##*.} = f90
+-                      then
+-                       user=`dirname $value`/`$BASENAME $value .f90`
+-                       usersubname=$user.f90
+-                      elif test ${basefile##*.} = F90
+-                      then
+-                       user=`dirname $value`/`$BASENAME $value .F90`
+-                       usersubname=$user.F90
+-                      fi
++                      user=$value
+                       case $user in
+                          \/*)
+                            ;;
+                          *)
+                           user=`pwd`/$user
+-                          usersubname=`pwd`/$usersubname
+                            ;;
+                       esac
+-                      if test ! -f $usersubname
+-                      then
+-                       if test -f $usersubname.f 
+-                       then
+-                        usersubname=$usersubname.f 
+-                       elif test -f $usersubname.F 
+-                       then
+-                        usersubname=$usersubname.F
+-                       elif test -f $usersubname.f90
+-                       then
+-                        usersubname=$usersubname.f90
+-                       elif test -f $usersubname.F90
+-                       then
+-                        usersubname=$usersubname.F90
+-                       fi
+-                      fi
++					  usernoext=$user
++					  usernoext=`dirname $usernoext`/`$BASENAME $usernoext .f`
++					  usernoext=`dirname $usernoext`/`$BASENAME $usernoext .F`
++					  usernoext=`dirname $usernoext`/`$BASENAME $usernoext .for`
++					  usernoext=`dirname $usernoext`/`$BASENAME $usernoext .f90`
+                     ;;
+                   esac
+ 		fi
+@@ -1858,7 +1812,7 @@ Program name ($prog)? $ECHOTXT"
+                         *)
+                           DIRVID=`pwd`/$DIRVID
+                         ;;
+-                      esac        
++                      esac
+                     ;;
+                   esac
+                 fi
+@@ -1900,7 +1854,7 @@ Program name ($prog)? $ECHOTXT"
+ 		fi
+ 		if test $nsolver -gt 0
+ 		then
+-		  if test $nsolver -gt $nprocd 
++		  if test $nsolver -gt $nprocd
+ 		  then
+ 		  nprocd=$nsolver
+ 		  fi
+@@ -2050,7 +2004,7 @@ Program name ($prog)? $ECHOTXT"
+ 		then
+ 			qid=$value
+ 		fi
+-		case $qid in 
++		case $qid in
+ 			s* | S* | l* | L* | v* | V* )
+ 			$ECHO "Queue priority ($priority)? $ECHOTXT"
+ 			read value
+@@ -2108,42 +2062,42 @@ esac
+ 
+ done
+ #
+-if test $nt -eq 0 
+-then 
++if test $nt -eq 0
++then
+   ntarg=
+-fi  
+-if test $nt -eq 0 
+-then 
++fi
++if test $nt -eq 0
++then
+   ntprint=
+-fi  
+-if test $nt -eq 0 
+-then 
++fi
++if test $nt -eq 0
++then
+   nt=
+ fi
+ 
+-if test $nte -eq 0 
+-then 
++if test $nte -eq 0
++then
+   ntearg=
+-fi  
+-if test $nte -eq 0 
+-then 
++fi
++if test $nte -eq 0
++then
+   nteprint=
+-fi  
+-if test $nte -eq 0 
+-then 
++fi
++if test $nte -eq 0
++then
+   nte=
+ fi
+ 
+-if test $nts -eq 0 
+-then 
++if test $nts -eq 0
++then
+   ntsarg=
+-fi  
+-if test $nts -eq 0 
+-then 
++fi
++if test $nts -eq 0
++then
+   ntsprint=
+-fi  
+-if test $nts -eq 0 
+-then 
++fi
++if test $nts -eq 0
++then
+   nts=
+ fi
+ #
+@@ -2275,11 +2229,12 @@ fi
+ #
+ # user subroutine used
+ #
++# add DAMASK options for linking
++  DAMASK="-lstdc++ -lfyaml"
+ 
+   if test "$user"
+   then
+-#    program=$user.marc
+-    program=$DIRJOB/`$BASENAME $user .f`.marc
++    program=$usernoext.marc
+     case $program in
+       \/* | \.\/*)
+         bd=
+@@ -2392,10 +2347,10 @@ fi
+     fi
+     if test "$user"
+     then
+-     execpath=$DIRJOB/`$BASENAME $user .f`.marc
++     execpath=$usernoext.marc
+      usersub=1
+     fi
+-    export execpath      
++    export execpath
+     execname=`$BASENAME $execpath`
+ 
+     if test "$host"
+@@ -2428,7 +2383,7 @@ fi
+         exit 1
+       fi
+ 
+-# check for Myrinet that the number of processes per host is 
++# check for Myrinet that the number of processes per host is
+ # less than number of available user ports, 5
+ # .gmpi directory must exist in user's home directory
+ # and must have write permission from remote hosts
+@@ -2542,9 +2497,9 @@ fi
+       then
+ #   Intel MPI
+         if test -f $jid.mfile
+-        then 
++        then
+           /bin/rm $jid.mfile 2> /dev/null
+-        fi 
++        fi
+ 	/bin/cp $host $jid.host
+         grep -v '^#' $host | $AWK '{host=$1;num=$2;for (i=1;i<=num;i++) print host}' > $jid.mfile
+ #   end Intel MPI for DMP
+@@ -2628,7 +2583,7 @@ fi
+       else
+         host=$jid.host
+         host_filt=$host
+-        if test $MACHINENAME = "LINUX" -a $MPITYPE = "intelmpi" 
++        if test $MACHINENAME = "LINUX" -a $MPITYPE = "intelmpi"
+         then
+           host_filt=$jid.mfile
+         fi
+@@ -2637,7 +2592,7 @@ fi
+ # or distributed and set the variable "dirstatus" accordingly.
+ # only perform the check if user subroutine is used
+ # or a user subroutine executable is used
+- 
++
+       numfield=1
+       if test $MPITYPE = hpmpi -o $MACHINENAME = HP -a $MPITYPE = hardware
+       then
+@@ -2797,7 +2752,7 @@ fi
+       fi
+ # modify new host file if NFS mounted heterogeneous machine
+       doit=
+-      if test $program = $prog.marc 
++      if test $program = $prog.marc
+       then
+         doit=yes
+       fi
+@@ -2821,23 +2776,23 @@ if ($1 ~ hst) {if ( fnr == 1 ) printf("%s\n",$0); else \
+ printf("%s %s %s_%s\n",$1,$2,$3,$1) } else print}' $jid.host > $jid.host{$$}
+         /bin/mv $jid.host{$$} $jid.host
+               host=$jid.host
+-            fi            
++            fi
+           fi
+-        done        
++        done
+       fi
+       fi  #   if test $program = $prog.marc -o $user -o $obj
+- 
++
+     else   # if test $host
+       # assume shared memory machine if no hostfile given and
+       # MPITYPE is set to mpich or Myrinet
+-      # check for Myrinet that the total number of processes is 
++      # check for Myrinet that the total number of processes is
+       # less than number of available user ports, 5
+       if test $MPITYPE = "mpich" -o $MPITYPE = "scali"
+       then
+         numproc=`echo $nprocd | $AWK '{sum=$1-1}; {print sum}'`
+         echo `hostname` $numproc $execpath > $jid.host
+         host=$jid.host
+-      elif test $MPITYPE = "myrinet" 
++      elif test $MPITYPE = "myrinet"
+       then
+         if test $nprocd -gt 5
+         then
+@@ -2877,7 +2832,7 @@ printf("%s %s %s_%s\n",$1,$2,$3,$1) } else print}' $jid.host > $jid.host{$$}
+     fi     # if test $host
+ 
+   fi  # if test $nprocd -gt 1
+- 
++
+ fi    # if test $program = $exefile -o $program = $prog.marc
+ 
+ ##############################################################################
+@@ -2927,7 +2882,7 @@ else
+  nsolverarg="$nsolverarg $nsolver"
+ fi
+ if test $nprocdddm -lt 2 -a $nsolver -eq 0
+-then 
++then
+ nprocd=0
+ fi
+ if test $nprocd -gt 0
+@@ -2938,7 +2893,7 @@ then
+    then
+     echo " "
+     echo "error: parallel job attempted on non-parallel version,"
+-    echo "       or, if parallel version is installed, the include " 
++    echo "       or, if parallel version is installed, the include "
+     echo "       file is probably corrupted"
+     echo " "
+     if test "$deletelog" = no
+@@ -3043,7 +2998,7 @@ $ntearg $nte $ntsarg $nts $gpuoption -dirjob $DIRJOB "
+    then
+     echo " "
+     echo "error: parallel job attempted on non-parallel version,"
+-    echo "       or, if parallel version is installed, the include " 
++    echo "       or, if parallel version is installed, the include "
+     echo "       file is probably corrupted"
+     echo " "
+     if test "$deletelog" = no
+@@ -3275,38 +3230,23 @@ then
+     echo
+     if test "$user"
+     then
+-        userobj=$DIRJOB/`$BASENAME $user .f`.o
+-        basefile=`$BASENAME $usersubname`
+-        if test ${basefile##*.} = f 
+-        then
+-         usersub=$DIRJOB/`$BASENAME $user .f`.F
+-         ln -sf "$user.f" "$usersub"
+-        else
+-         usersub=$usersubname
+-        fi
+-
++        userobj=$usernoext.o
+     fi
+     cat > $jid.runmarcscript << END4
+     if test "$user"
+     then
+-        if test ${basefile##*.} = f 
+-        then
+-         ln -sf "$user.f" "$usersub"
+-        fi
+-        $FORTRAN $usersub -o $userobj || \
++        $DCCHIGH $DAMASKROOT/src/C_routines.c -o C_routines.o
++        $DFORTHIGHMP $user -o $userobj || \
+             {
+-            echo "$0: compile failed for $usersubname"
++            echo "$0: compile failed for $user"
+             exit 1
+             }
+         /bin/rm $program 2>/dev/null
+-        if test ${basefile##*.} = f 
+-        then
+-         /bin/rm -f "$usersub"
+-        fi
+     fi
+ 
+     $LOAD $bd${program} $MARC_LIB/main.o \
+     $MARC_LIB/blkdta.o $MARC_LIB/comm?.o \
++    C_routines.o \
+     ${userobj-} \
+     $objs \
+     $SRCLIB \
+@@ -3323,6 +3263,7 @@ then
+     $TKLIBS  \
+     $MRCLIBS     \
+     $METISLIBS \
++    $DAMASK   \
+     $SFLIB \
+     $OPENSSL_LIB \
+     $SYSLIBS  \
+@@ -3336,6 +3277,10 @@ else
+ 	prgsav=yes
+ fi
+ /bin/rm $userobj 2>/dev/null
++/bin/rm $DIRJOB/*.o 2>/dev/null
++/bin/rm $DIRJOB/*.mod 2>/dev/null
++/bin/rm $DIRJOB/*.smod 2>/dev/null
++/bin/rm $DIRJOB/*_genmod.f90 2>/dev/null
+ 
+ #
+ # run marc
+@@ -3379,19 +3324,19 @@ exitcode=$?
+ if test $dllrun -eq 0; then
+   if test $prgsav = no
+   then
+-      /bin/rm -f $bd$program 2>/dev/null	
++      /bin/rm -f $bd$program 2>/dev/null
+   fi
+ else
+   if test $cpdll = yes; then
+-     filename=`basename $usersubname .f`
++     filename=$usernoext
+      /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
+   fi
+   if test $rmdll = yes
+   then
+-     /bin/rm -f $DIRJOB/$marcdll 2>/dev/null	
++     /bin/rm -f $DIRJOB/$marcdll 2>/dev/null
+   fi
+ fi
+- 
++
+ if test $nprocdddm -gt 1
+ then
+   numdom=$nprocdddm
+@@ -3459,15 +3404,15 @@ else
+ #
+ QUENAME=qsub
+ SUBMCMD="-q $qid -o /dev/null -e $jid.batch_err_log -x -r $jid"
+-if test "$priority" 
++if test "$priority"
+ then
+ 	SUBMCMD=$SUBMCMD" -p $priority"
+ fi
+-if test "$att" 
++if test "$att"
+ then
+ 	SUBMCMD=$SUBMCMD" -a $att"
+ fi
+-if test "$cpu" 
++if test "$cpu"
+ then
+ 	SUBMCMD=$SUBMCMD" -lt $cpu"
+ fi
+@@ -3549,7 +3494,8 @@ then
+               # first copy over the user sub if local directories
+               if test ${dirstatus[$counter]} = "local"
+               then
+-               $RCP $user.f $i:$DIR1/
++               $rcp -r $DAMASKROOT $i:$DIR1/
++               $RCP $user $i:$DIR1/
+               fi
+               # do the compilation on the other machine
+               if test ${dirstatus[$counter]} = "shared"
+@@ -3562,21 +3508,21 @@ then
+               remoteuser=$DIR1/`$BASENAME $user`
+               $RSH $i /bin/rm $remoteprog 2> /dev/null
+               echo
+-              $RSH $i $DIR2/tools/comp_user $DIR2 $DIR1 $remoteuser $remoteprog
++              $RSH $i $DIR2/tools/comp_damask_hmp $DIR2 $DIR1 $remoteuser $remoteprog
+               # check if successful, the new executable should be there
+               line=`$RSH $i /bin/ls $remoteprog 2> /dev/null`
+               if test "$line"
+               then
+                 echo compilation and linking successful on host $i
+               else
+-                echo "$0: compile failed for $usersubname on host $i"
++                echo "$0: compile failed for $user on host $i"
+                 echo "         $PRODUCT Exit number 3"
+                 exit 1
+               fi
+               # remove the user subroutine on remote machine
+               if test ${dirstatus[$counter]} = "local"
+               then
+-               $RSH $i /bin/rm $remoteuser.f 2> /dev/null
++               $RSH $i /bin/rm $remoteuser 2> /dev/null
+               fi
+             fi
+           fi
+@@ -3586,32 +3532,22 @@ then
+     if test "$userhost"
+     then
+       echo
+-      echo "Compiling and linking user subroutine $user.f on host `hostname`"
+-    fi
+-    userobj=$DIRJOB/`$BASENAME $user .f`.o
+-    basefile=`$BASENAME $usersubname`
+-    if test ${basefile##*.} = f 
+-    then
+-     usersub=$DIRJOB/`$BASENAME $user .f`.F
+-     ln -sf "$user.f" "$usersub"
+-    else
+-     usersub=$usersubname
++      echo "Compiling and linking user subroutine $user on host `hostname`"
+     fi
+-    $FORTRAN $usersub -o $userobj || \
++    userobj=$usernoext.o
++    $DCCHIGH $DAMASKROOT/src/C_routines.c -o C_routines.o
++    $DFORTHIGHMP $user -o $userobj || \
+         {
+-        echo "$0: compile failed for $usersubname"
++        echo "$0: compile failed for $user"
+         echo "         $PRODUCT Exit number 3"
+         exit 1
+         }
+     /bin/rm $program 2>/dev/null
+-    if test ${basefile##*.} = f 
+-    then
+-     /bin/rm -f "$usersub"
+-    fi
+   fi # if test $user
+ 
+   $LOAD $bd${program} $MARC_LIB/main.o \
+   $MARC_LIB/blkdta.o $MARC_LIB/comm?.o \
++  C_routines.o \
+   ${userobj-} \
+   $objs \
+   $SRCLIB \
+@@ -3628,6 +3564,7 @@ then
+   $TKLIBS  \
+   $MRCLIBS     \
+   $METISLIBS \
++  $DAMASK \
+   $SFLIB \
+   $OPENSSL_LIB \
+   $SYSLIBS  \
+@@ -3650,7 +3587,7 @@ then
+           then
+             counter=$((counter+1))
+             if test ${dirstatus[$counter]} = "local" -a ${compstatus[$counter]} = "yes"
+-            then            
++            then
+               DIR1=$DIRJOB
+               line=`grep -v '^#' $userhost | grep "^$ibase "`
+               workdir=`echo $line | $AWK '{print $3}'`
+@@ -3669,6 +3606,10 @@ else # if test $link
+ 	prgsav=yes
+ fi   # if test $link
+ /bin/rm $userobj 2>/dev/null
++/bin/rm $DIRJOB/*.o 2>/dev/null
++/bin/rm $DIRJOB/*.mod 2>/dev/null
++/bin/rm $DIRJOB/*.smod 2>/dev/null
++/bin/rm $DIRJOB/*_genmod.f90 2>/dev/null
+ 
+ #
+ # run marc
+@@ -3718,7 +3659,7 @@ fi
+ if test $dllrun -eq 0; then
+ if test $prgsav = no
+ then
+-  /bin/rm -f $bd$program 2>/dev/null	
++  /bin/rm -f $bd$program 2>/dev/null
+   # for network run, remove executable on remote machines
+   # and executables with modified name
+   if test $nprocd -gt 1
+@@ -3763,11 +3704,11 @@ fi
+ else
+ #dllrun >0
+   if test $cpdll = yes; then
+-     filename=`basename $usersubname .f`
++     filename=$usernoext
+      /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
+   fi
+   if test $rmdll = yes;then
+-     /bin/rm -f $DIRJOB/$marcdll 2>/dev/null	
++     /bin/rm -f $DIRJOB/$marcdll 2>/dev/null
+   fi
+ fi
+ if test $nprocdddm -gt 1
+@@ -3888,8 +3829,9 @@ then
+               # first copy over the user sub if local directories
+               if test ${dirstatus[$counter]} = "local"
+               then
+-               $RCP $user.f $i:$DIR1/
+-              fi
++               $RCP $user $i:$DIR1/
++               $rcp -r $DAMASKROOT $i:$DIR1/
++               fi
+               # do the compilation on the other machine
+               if test ${dirstatus[$counter]} = "shared"
+               then
+@@ -3901,20 +3843,20 @@ then
+               remoteuser=$DIR1/`$BASENAME $user`
+               $RSH $i /bin/rm $remoteprog 2> /dev/null
+               echo
+-              $RSH $i $DIR2/tools/comp_user $DIR2 $DIR1 $remoteuser $remoteprog
++              $RSH $i $DIR2/tools/comp_damask_hmp $DIR2 $DIR1 $remoteuser $remoteprog
+               # check if successful, the new executable should be there
+               line=`$RSH $i /bin/ls $remoteprog 2> /dev/null`
+               if test "$line"
+               then
+                 echo compilation and linking successful on host $i
+               else
+-                echo "$0: compile failed for $usersubname on host $i"
++                echo "$0: compile failed for $user on host $i"
+                 exit 1
+               fi
+               # remove the user subroutine on remote machine
+               if test ${dirstatus[$counter]} = "local"
+               then
+-               $RSH $i /bin/rm $remoteuser.f 2> /dev/null
++               $RSH $i /bin/rm $remoteuser 2> /dev/null
+               fi
+             fi
+           fi
+@@ -3924,31 +3866,21 @@ then
+     if test "$userhost"
+     then
+       echo
+-      echo "Compiling and linking user subroutine $user.f on host `hostname`"
++      echo "Compiling and linking user subroutine $user on host `hostname`"
+     fi
+-    userobj=$DIRJOB/`$BASENAME $user .f`.o
+-    basefile=`$BASENAME $usersubname`
+-    if test ${basefile##*.} = f 
+-    then
+-     usersub=$DIRJOB/`$BASENAME $user .f`.F
+-     ln -sf "$user.f" "$usersub"
+-    else
+-     usersub=$usersubname
+-    fi
+-    $FORTRAN $usersub -o $userobj || \
++    userobj=$usernoext.o
++        $DCCHIGH $DAMASKROOT/src/C_routines.c -o C_routines.o
++        $DFORTHIGHMP $user -o $userobj || \
+         {
+-        echo "$0: compile failed for $usersubname"
++        echo "$0: compile failed for $user"
+         exit 1
+         }
+     /bin/rm $program 2>/dev/null
+-    if test ${basefile##*.} = f 
+-    then
+-     /bin/rm -f "$usersub"
+-    fi
+   fi # if test $user
+ 
+   $LOAD $bd${program} $MARC_LIB/main.o \
+   $MARC_LIB/blkdta.o $MARC_LIB/comm?.o \
++  C_routines.o \
+   ${userobj-} \
+   $objs \
+   $SRCLIB \
+@@ -3965,6 +3897,7 @@ then
+   $TKLIBS  \
+   $MRCLIBS     \
+   $METISLIBS \
++  $DAMASK \
+   $SFLIB \
+   $OPENSSL_LIB \
+   $SYSLIBS \
+@@ -3986,7 +3919,7 @@ then
+           then
+             counter=$((counter+1))
+             if test ${dirstatus[$counter]} = "local" -a ${compstatus[$counter]} = "yes"
+-            then            
++            then
+               DIR1=$DIRJOB
+               line=`grep -v '^#' $userhost | grep "^$ibase "`
+               workdir=`echo $line | $AWK '{print $3}'`
+@@ -4005,7 +3938,10 @@ else # if test $link
+ 	prgsav=yes
+ fi   # if test $link
+ /bin/rm $userobj 2>/dev/null
+-
++/bin/rm $DIRJOB/*.o 2>/dev/null
++/bin/rm $DIRJOB/*.mod 2>/dev/null
++/bin/rm $DIRJOB/*.smod 2>/dev/null
++/bin/rm $DIRJOB/*_genmod.f90 2>/dev/null
+ # done if no job id given
+ if test -z "$jid"
+ then
+@@ -4045,7 +3981,7 @@ if test $ddm_arc -gt 0; then
+   RUN_JOB="$BINDIR/exeddm $RUN_JOB -ddm $ddm_arc "
+ fi
+ 
+-$RUN_JOB 
++$RUN_JOB
+ exitcode=$?
+ 
+ if test $nprocd -gt 1
+@@ -4125,11 +4061,11 @@ fi
+ else
+ #dllrun >0
+   if test $cpdll = yes; then
+-     filename=`basename $usersubname .f`
++     filename=$usernoext
+      /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
+   fi
+   if test $rmdll = yes;then
+-     /bin/rm -f $DIRJOB/$marcdll 2>/dev/null	
++     /bin/rm -f $DIRJOB/$marcdll 2>/dev/null
+   fi
+ fi
+ 
