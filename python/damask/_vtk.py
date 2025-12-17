@@ -291,7 +291,8 @@ class VTK:
         >>> import numpy as np
         >>> nodes = np.array([[0,0,0],[1,0,0],[1,1,0],[0,0,1]])
         >>> connectivity = np.array([[0,1,2,3]])
-        >>> print(v := damask.VTK.from_unstructured_grid(nodes,connectivity,'TETRAHEDRON'))
+        >>> print(v := damask.VTK.from_unstructured_grid(nodes=nodes,connectivity=connectivity,
+        ...                                              cell_type='TETRAHEDRON'))
         vtkUnstructuredGrid
         <BLANKLINE>
         # cells: 1

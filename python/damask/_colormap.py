@@ -239,7 +239,8 @@ class Colormap(mpl.colors.ListedColormap):
         Examples
         --------
         >>> import damask
-        >>> damask.Colormap.from_range((0,0,1),(0,0,0),'blue_to_black')
+        >>> damask.Colormap.from_range(low=(0,0,1),high=(0,0,0),
+        ...                            name='blue_to_black')
         Colormap: blue_to_black
         """
         toMsh = dict(
@@ -303,7 +304,7 @@ class Colormap(mpl.colors.ListedColormap):
         Examples
         --------
         >>> import damask
-        >>> damask.Colormap.from_predefined('strain')
+        >>> damask.Colormap.from_predefined(name='strain')
         Colormap: strain
         """
         if name in cm.__dict__:
@@ -340,7 +341,7 @@ class Colormap(mpl.colors.ListedColormap):
         >>> cmap = damask.Colormap.from_predefined('gray')
         >>> cmap.at(0.5)
         array([0.5, 0.5, 0.5, 1. ])
-        >>> 'rgb({},{},{})'.format(*cmap.at(0.5))
+        >>> 'rgb({},{},{})'.format(*cmap.at(fraction=0.5))
         'rgb(0.5,0.5,0.5)'
         """
         return interp.interp1d(np.linspace(0,1,self.N),
@@ -411,7 +412,7 @@ class Colormap(mpl.colors.ListedColormap):
         Examples
         --------
         >>> import damask
-        >>> damask.Colormap.from_predefined('stress').reversed()
+        >>> damask.Colormap.from_predefined(name='stress').reversed()
         Colormap: stress_r
         """
         rev = super().reversed(name)

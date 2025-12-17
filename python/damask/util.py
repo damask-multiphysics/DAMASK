@@ -519,7 +519,7 @@ def shapeshifter(fro: tuple[int, ...],
     >>> from damask import util
     >>> a = np.ones((3,4,2))
     >>> b = np.ones(4)
-    >>> b_extended = b.reshape(util.shapeshifter(b.shape,a.shape))
+    >>> b_extended = b.reshape(util.shapeshifter(fro=b.shape,to=a.shape))
     >>> (a * np.broadcast_to(b_extended,a.shape)).shape
     (3, 4, 2)
     """
@@ -566,19 +566,19 @@ def shapeblender(a: tuple[int, ...],
 
     Examples
     --------
-    >>> shapeblender((3,2),(3,2))
+    >>> shapeblender(a=(3,2),b=(3,2))
     (3, 2)
-    >>> shapeblender((4,3),(3,2))
+    >>> shapeblender(a=(4,3),b=(3,2))
     (4, 3, 2)
-    >>> shapeblender((4,4),(3,2))
+    >>> shapeblender(a=(4,4),b=(3,2))
     (4, 4, 3, 2)
-    >>> shapeblender((1,2),(1,2,3))
+    >>> shapeblender(a=(1,2),b=(1,2,3))
     (1, 2, 3)
-    >>> shapeblender((),(2,2,1))
+    >>> shapeblender(a=(),b=(2,2,1))
     (2, 2, 1)
-    >>> shapeblender((1,),(2,2,1))
+    >>> shapeblender(a=(1,),b=(2,2,1))
     (2, 2, 1)
-    >>> shapeblender((1,),(2,2,1),True)
+    >>> shapeblender(a=(1,),b=(2,2,1),keep_ones=True)
     (1, 2, 2, 1)
     """
     def is_broadcastable(a,b):

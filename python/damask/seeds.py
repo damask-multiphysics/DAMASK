@@ -153,19 +153,20 @@ def from_grid(grid,
 
     Examples
     --------
-    Recreate seeds from Voronoi tessellation.
+    Recreate seeds from Voronoi tessellation approximately.
 
     >>> import numpy as np
     >>> import scipy.spatial
     >>> import damask
-    >>> seeds = damask.seeds.from_random(np.ones(3),29,[128]*3,rng_seed=20191102)
-    >>> (g := damask.GeomGrid.from_Voronoi_tessellation([128]*3,np.ones(3),seeds))
+    >>> seeds = damask.seeds.from_random(size=np.ones(3),N_seeds=29,cells=[128]*3,
+    ...                                  rng_seed=20191102)
+    >>> (g := damask.GeomGrid.from_Voronoi_tessellation(cells=[128]*3,size=np.ones(3),seeds=seeds))
     cells:  128 × 128 × 128
     size:   1.0 × 1.0 × 1.0 m³
     origin: 0.0   0.0   0.0 m
     # materials: 29
-    >>> COG,matID = damask.seeds.from_grid(g,average=True)
-    >>> distance,ID = scipy.spatial.KDTree(COG,boxsize=g.size).query(seeds)
+    >>> COG,matID = damask.seeds.from_grid(grid=g,average=True)
+    >>> distance,ID = scipy.spatial.KDTree(data=COG,boxsize=g.size).query(seeds)
     >>> print(np.max(distance) / np.linalg.norm(g.size/g.cells))
     10.1
     >>> print((ID == matID).all())
