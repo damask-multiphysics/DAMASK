@@ -1,18 +1,17 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import os
 import multiprocessing as mp
-from pathlib import Path
 import logging
+import contextlib
+from pathlib import Path
 from typing import Optional, Union, Literal, Sequence
 
 import numpy as np
 
 # needed for visualization but might not be available everywhere
 # https://gitlab.kitware.com/vtk/vtk/-/issues/19687
-try:
+with contextlib.suppress(ImportError):
     import vtkmodules.vtkRenderingOpenGL2                                                           # noqa
-except ImportError:
-    pass
 
 from vtkmodules.vtkCommonCore import (
     vtkVersion,
