@@ -3,5 +3,5 @@ references:
 
 output: [T]
 
-K_11: 320.0
-C_p: 128.0
+K_11: 320.
+C_p: 128.

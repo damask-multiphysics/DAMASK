@@ -1,0 +1,7 @@
+references:
+  - https://en.wikipedia.org/wiki/Cadmium,
+    2026-01-14
+
+lattice: hP
+c/a: 1.8854 # T=200°C (c=561.66pm, a=297.89pm)
+rho: 8659.
