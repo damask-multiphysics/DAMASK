@@ -258,12 +258,16 @@ class Rotation:
 
 
     @property
-    def size(self) -> int:
-        return self.quaternion[...,0].size
+    def ndim(self) -> int:
+        return self.quaternion[...,0].ndim
 
     @property
     def shape(self) -> tuple[int, ...]:
         return self.quaternion[...,0].shape
+
+    @property
+    def size(self) -> int:
+        return self.quaternion[...,0].size
 
 
     def __array__(self: MyType,

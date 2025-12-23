@@ -904,14 +904,19 @@ def test_equal_ambiguous(np_rng):
 def test_inversion(multidim_rotations):
     assert (multidim_rotations == ~~multidim_rotations).all()
 
-@pytest.mark.parametrize('shape',[1,(1,),(4,2),(1,1,1),tuple(np.random.randint(0,10,4))])
-def test_size(np_rng,shape):
-    assert Rotation.from_random(shape,rng_seed=np_rng).size == np.prod(shape)
+@pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(1,1,1),tuple(np.random.randint(0,10,4))])
+def test_ndim(np_rng,shape):
+    r = Rotation.from_random(shape=shape,rng_seed=np_rng)
+    assert r.ndim == (len(shape) if isinstance(shape,tuple) else 1 if shape else 0)
 
 @pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(1,1,1),tuple(np.random.randint(0,10,4))])
 def test_shape(np_rng,shape):
     r = Rotation.from_random(shape=shape,rng_seed=np_rng)
     assert r.shape == (shape if isinstance(shape,tuple) else (shape,) if shape else ())
+
+@pytest.mark.parametrize('shape',[1,(1,),(4,2),(1,1,1),tuple(np.random.randint(0,10,4))])
+def test_size(np_rng,shape):
+    assert Rotation.from_random(shape,rng_seed=np_rng).size == np.prod(shape)
 
 @pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(3,3,2)])
 def test_append(np_rng,shape):
