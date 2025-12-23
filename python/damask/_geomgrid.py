@@ -1188,8 +1188,9 @@ class GeomGrid:
             Updated grid-based geometry.
         """
         material = self.material.copy()
-        for f,t in zip(from_material if isinstance(from_material,(Sequence,np.ndarray)) else [from_material],
-                       to_material if isinstance(to_material,(Sequence,np.ndarray)) else [to_material]): # ToDo Python 3.10 has strict mode for zip
+        f_material = from_material if isinstance(from_material,(Sequence,np.ndarray)) else [from_material]
+        t_material = to_material if isinstance(to_material,(Sequence,np.ndarray)) else [to_material]*len(f_material)
+        for f,t in zip(f_material,t_material,strict=True):
             material[self.material==f] = t
 
         return GeomGrid(material = material,

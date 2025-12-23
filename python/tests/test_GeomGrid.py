@@ -252,6 +252,11 @@ def test_substitute_integer_list(np_rng,random):
     t = np_rng.integers(30)
     assert random.substitute(f,t) == random.substitute([f],[t])
 
+def test_substitute_integers_list(np_rng,random):
+    f = np_rng.integers(30,size=np_rng.integers(10))
+    t = np_rng.integers(30)
+    assert random.substitute(f,t) == random.substitute(f,[t]*len(f))
+
 def test_substitute_invariant(np_rng,default):
     f = np.unique(default.material.flatten())[:np_rng.integers(1,default.material.max())]
     t = np_rng.permutation(f)
