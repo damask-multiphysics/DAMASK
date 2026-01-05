@@ -66,7 +66,7 @@ module discretization_mesh
     x_n                                                                                             !< node x,z,y coordinates
 
   character(len=pSTRLEN), allocatable, public, protected :: &
-    mesh_BCLabels(:)                                                                                !< all mesh BC labels
+    mesh_bcLabels(:)                                                                                !< all mesh BC labels
 
   integer, parameter :: &
     PETSC_BC_TYPE_CELL   = 1, &
@@ -240,13 +240,13 @@ subroutine discretization_mesh_init()
   end do
 
 !--------------------------------------------------------------------------------
-! read mesh labels (for boundary conditions)
+! read mesh labels
   call DMGetNumLabels(globalMesh, n_mesh_labels, err_PETSc)
   CHKERRQ(err_PETSc)
   if (n_mesh_labels > 2_pPETSCINT) then                                                             ! there are user-defined labels (for BC/material ID)
     allocate(mesh_labelsIS(mesh_nBoundaries), source = -1_pPETSCINT)
-    allocate(character(len=pSTRLEN) :: mesh_BCLabels(mesh_nBoundaries))
-    mesh_BCLabels = ''
+    allocate(character(len=pSTRLEN) :: mesh_bcLabels(mesh_nBoundaries))
+    mesh_bcLabels = ''
 
     call DMPlexGetHeightStratum(globalMesh,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
     do j = 2_pPETSCINT, n_mesh_labels - 1_pPETSCINT                                                 ! skip 'celltype' and 'depth' labels; 0-indexing in PETSc
@@ -264,14 +264,14 @@ subroutine discretization_mesh_init()
         call ISGetIndices(label_values_IS,label_values,err_PETSc)
         CHKERRQ(err_PETSc)
         n = findloc(mesh_boundariesIS, label_values(1), dim = 1)
-        mesh_BCLabels(n) = bc_label
+        mesh_bcLabels(n) = bc_label
         mesh_labelsIS(n) = label_values(1)
         call ISRestoreIndices(label_values_IS,label_values,err_PETSc)
         CHKERRQ(err_PETSc)
       end if
     end do
   else
-    mesh_BCLabels = emptyStrArray
+    mesh_bcLabels = emptyStrArray
     mesh_labelsIS = emptyIntArray
   end if
   deallocate(label_sizes)
@@ -296,8 +296,8 @@ subroutine discretization_mesh_init()
   call parallelization_chkerr(err_MPI)
   call MPI_Bcast(mesh_boundariesIdx,int(mesh_Nboundaries,MPI_INTEGER_KIND),MPI_INTEGER,0_MPI_INTEGER_KIND, &
                  MPI_COMM_WORLD,err_MPI)
-  if (worldrank /= 0) allocate(character(len=pSTRLEN) :: mesh_BCLabels(mesh_Nboundaries))
-  call MPI_Bcast(mesh_BCLabels,int(pSTRLEN*size(mesh_BCLabels),MPI_INTEGER_KIND),MPI_CHARACTER, &
+  if (worldrank /= 0) allocate(character(len=pSTRLEN) :: mesh_bcLabels(mesh_Nboundaries))
+  call MPI_Bcast(mesh_bcLabels,int(pSTRLEN*size(mesh_bcLabels),MPI_INTEGER_KIND),MPI_CHARACTER, &
                  0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
@@ -461,9 +461,6 @@ function build_coordinates_IP(dimPlex,qPoints) result(x_p)
   allocate(pV0(dimPlex))
   allocate(pCellJ(dimPlex**2))
   allocate(pinvCellJ(dimPlex**2))
-
-  call DMPlexGetHeightStratum(geomMesh,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
-  CHKERRQ(err_PETSc)
 
   do cell = cellStart, cellEnd - 1_pPETSCINT                                                        ! loop over all elements
     call DMPlexComputeCellGeometryAffineFEM(geomMesh,cell,pV0,pCellJ,pInvcellJ,detJ,err_PETSc)
