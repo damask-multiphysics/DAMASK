@@ -4,7 +4,7 @@ import numpy as np
 
 from damask import tensor
 
-def deviatoric(T):
+def traceless(T):
     return T - spherical(T)
 
 def eigenvalues(T_sym):
@@ -30,7 +30,7 @@ def spherical(T,tensor=True):
 
 n = 1000
 
-@pytest.mark.parametrize('vectorized,single',[(tensor.deviatoric,   deviatoric),
+@pytest.mark.parametrize('vectorized,single',[(tensor.traceless,    traceless),
                                               (tensor.eigenvalues,  eigenvalues),
                                               (tensor.eigenvectors, eigenvectors),
                                               (tensor.symmetric,    symmetric),
@@ -77,10 +77,10 @@ def test_eigenvectors_RHS(np_rng):
     RHS  = np.linalg.det(tensor.eigenvectors(A,RHS=True))
     assert np.allclose(np.abs(LRHS),RHS)
 
-def test_spherical_deviatoric_part(np_rng):
-    """Ensure that full tensor is sum of spherical and deviatoric part."""
+def test_spherical_traceless_part(np_rng):
+    """Ensure that full tensor is sum of spherical and traceless part."""
     x = np_rng.random((n,3,3))
-    assert np.allclose(tensor.spherical(x,True) + tensor.deviatoric(x),
+    assert np.allclose(tensor.spherical(x,True) + tensor.traceless(x),
                        x)
 def test_spherical_mapping(np_rng):
     """Ensure that mapping to tensor is correct."""
@@ -90,7 +90,11 @@ def test_spherical_mapping(np_rng):
     assert np.allclose(np.linalg.det(tnsr),
                        scalar**3.0)
 
-def test_deviatoric(np_rng):
+def test_traceless(np_rng):
+    T = np_rng.random((n,3,3))
+    assert (np.trace(tensor.traceless(T),axis1=1,axis2=2) < 5.e-16).all()
+
+def test_traceless_diagonal(np_rng):
     I_n = np.broadcast_to(np.eye(3),(n,3,3))
     r   = np.logical_not(I_n)*np_rng.random((n,3,3))
-    assert np.allclose(tensor.deviatoric(I_n+r),r)
+    assert np.allclose(tensor.traceless(I_n+r),r)

@@ -965,18 +965,17 @@ class Result:
         >>> r.add_equivalent_Mises(T_sym='epsilon_V^0.0(F)')
         """
         def equivalent_Mises(T_sym: DADF5Dataset, kind: str) -> DADF5Dataset:
-            k = kind
-            if k is None:
-                if T_sym['meta']['unit'] == '1':
-                    k = 'strain'
-                elif T_sym['meta']['unit'] == 'Pa':
-                    k = 'stress'
-            if k not in ['stress', 'strain']:
-                raise ValueError(f'invalid von Mises kind "{kind}"')
+            if (k := kind) is None:
+                match T_sym['meta']['unit']:
+                    case '1':  k = 'strain'
+                    case 'Pa': k = 'stress'
+            match k:
+                case 'strain': s = 2./3.
+                case 'stress': s = 3./2.
+                case _: raise ValueError(f'invalid von Mises kind "{kind}"')
 
             return {
-                    'data':  mechanics._equivalent_Mises(T_sym['data'],
-                                                        2./3. if k == 'strain' else 3./2.),
+                    'data': mechanics._equivalent_Mises(T_sym['data'],s),
                     'label': f"{T_sym['label']}_vM",
                     'meta':  {
                               'unit':        T_sym['meta']['unit'],

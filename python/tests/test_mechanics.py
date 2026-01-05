@@ -86,9 +86,9 @@ def polar_decomposition(T,requested):
     return tuple(output)
 
 def equivalent_Mises(T_sym,s):
-    return np.sqrt(s*(np.sum(deviatoric(T_sym)**2.0)))
+    return np.sqrt(s*(np.sum(traceless(T_sym)**2.0)))
 
-def deviatoric(T):
+def traceless(T):
     return T - np.eye(3)*np.trace(T)/3.0
 
 n = 1000
@@ -198,13 +198,25 @@ def test_rotation_determinant(np_rng,assert_allclose):
     assert_allclose(np.abs(np.linalg.det(mechanics._polar_decomposition(x,'R')[0])),
                     1.0)
 
-def test_deviatoric_Mises(np_rng,assert_allclose):
+def test_deviatoric_Mises_stress(np_rng,assert_allclose):
     """Ensure that Mises equivalent stress depends only on deviatoric part."""
     x = np_rng.random((n,3,3))
     full = mechanics.equivalent_stress_Mises(x)
-    dev  = mechanics.equivalent_stress_Mises(tensor.deviatoric(x))
-    assert_allclose(full,
-                    dev)
+    dev  = mechanics.equivalent_stress_Mises(mechanics.deviatoric(x))
+    assert_allclose(full,dev)
+
+def test_isochoric_Mises_strain(np_rng,assert_allclose):
+    """Ensure that Mises equivalent strain depends only on isochoric part."""
+    x = np_rng.random((n,3,3))
+    full = mechanics.equivalent_strain_Mises(x)
+    dev  = mechanics.equivalent_strain_Mises(mechanics.isochoric(x))
+    assert_allclose(full,dev)
+
+def test_traceless_isochoric_deviatoric(np_rng,assert_allclose):
+    x = np_rng.random((n,3,3))
+    traceless = tensor.traceless(x)
+    assert_allclose(traceless,mechanics.isochoric(x))
+    assert_allclose(traceless,mechanics.deviatoric(x))
 
 @pytest.mark.parametrize('Mises_equivalent',[mechanics.equivalent_strain_Mises,
                                              mechanics.equivalent_stress_Mises])
