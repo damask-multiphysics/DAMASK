@@ -338,8 +338,8 @@ class Colormap(mpl.colors.ListedColormap):
         Examples
         --------
         >>> import damask
-        >>> cmap = damask.Colormap.from_predefined('gray')
-        >>> cmap.at(0.5)
+        >>> cmap = damask.Colormap.from_predefined(name='gray')
+        >>> cmap.at(fraction=0.5)
         array([0.5, 0.5, 0.5, 1. ])
         >>> 'rgb({},{},{})'.format(*cmap.at(fraction=0.5))
         'rgb(0.5,0.5,0.5)'

@@ -77,7 +77,7 @@ class Rotation:
     >>> import damask
     >>> from scipy.spatial.transform import Rotation as ScipyRotation
     >>> R_SciPy = ScipyRotation.random()
-    >>> R_DAMASK = damask.Rotation(R_SciPy)
+    >>> R_DAMASK = damask.Rotation(rotation=R_SciPy)
     >>> v = np.random.rand(3)
     >>> np.allclose(R_DAMASK@v, R_SciPy.apply(v,inverse=True))
     True

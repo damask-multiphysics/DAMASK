@@ -390,11 +390,11 @@ def project_equal_angle(vector: _np.ndarray,
     --------
     >>> import damask
     >>> import numpy as np
-    >>> project_equal_angle(np.ones(3))
+    >>> project_equal_angle(vector=np.ones(3))
     array([0.3660, 0.3660])
-    >>> project_equal_angle(np.ones(3),direction='x',normalize=False,keepdims=True)
+    >>> project_equal_angle(vector=np.ones(3),direction='x',normalize=False,keepdims=True)
     array([0. , 0.5, 0.5])
-    >>> project_equal_angle([0,1,1],direction='y',normalize=True,keepdims=False)
+    >>> project_equal_angle(vector=[0,1,1],direction='y',normalize=True,keepdims=False)
     array([0.4142, 0. ])
     """
     shift = 'zyx'.index(direction)
@@ -437,11 +437,11 @@ def project_equal_area(vector: _np.ndarray,
     --------
     >>> import damask
     >>> import numpy as np
-    >>> project_equal_area(np.ones(3))
+    >>> project_equal_area(vector=np.ones(3))
     array([0.4597, 0.4597])
-    >>> project_equal_area(np.ones(3),direction='x',normalize=False,keepdims=True)
+    >>> project_equal_area(vector=np.ones(3),direction='x',normalize=False,keepdims=True)
     array([0. , 0.7071, 0.7071])
-    >>> project_equal_area([0,1,1],direction='y',normalize=True,keepdims=False)
+    >>> project_equal_area(vector=[0,1,1],direction='y',normalize=True,keepdims=False)
     array([0.5412, 0. ])
     """
     shift = 'zyx'.index(direction)

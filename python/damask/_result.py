@@ -392,8 +392,8 @@ class Result:
         Get a view that shows all results between simulation times of 10 to 40:
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r_t10to40 = r.view(times=r.times_in_range(10.0,40.0))
+        >>> r = damask.Result(fname='my_file.hdf5')
+        >>> r_t10to40 = r.view(times=r.times_in_range(start=10.0,end=40.0))
         """
         dup = self._manage_view('set',increments,times,phases,homogenizations,fields)
         if protected is not None:
@@ -742,10 +742,10 @@ class Result:
         >>> def equivalent_stress(F,P):
         ...     sigma = damask.mechanics.stress_Cauchy(F=F,P=P)
         ...     return damask.mechanics.equivalent_stress_Mises(sigma)
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.enable_user_function(equivalent_stress)
-        >>> r.add_calculation('equivalent_stress(#F#,#P#)','sigma_vM','Pa',
-        ...                   'von Mises equivalent of the Cauchy stress')
+        >>> r = damask.Result(fname='my_file.hdf5')
+        >>> r.enable_user_function(func=equivalent_stress)
+        >>> r.add_calculation(formula='equivalent_stress(#F#,#P#)',name='sigma_vM',
+        ...                   unit='Pa',description='von Mises equivalent of the Cauchy stress')
         """
         def calculation(**kwargs) -> DADF5Dataset:
             formula = kwargs['formula']
@@ -961,8 +961,8 @@ class Result:
         Add the von Mises equivalent of the spatial logarithmic strain 'epsilon_V^0.0(F)':
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_equivalent_Mises('epsilon_V^0.0(F)')
+        >>> r = damask.Result(fname='my_file.hdf5')
+        >>> r.add_equivalent_Mises(T_sym='epsilon_V^0.0(F)')
         """
         def equivalent_Mises(T_sym: DADF5Dataset, kind: str) -> DADF5Dataset:
             k = kind

@@ -382,7 +382,7 @@ class GeomGrid:
         >>> import damask
         >>> N_grains = 20
         >>> cells = (32,32,32)
-        >>> damask.util.run(f'neper -T -n {N_grains} -tesrsize {cells[0]}:{cells[1]}:{cells[2]} -periodicity all -format vtk')
+        >>> damask.util.run(cmd=f'neper -T -n {N_grains} -tesrsize {cells[0]}:{cells[1]}:{cells[2]} -periodicity all -format vtk')
         stdioTuple(stdout=...
         >>> damask.GeomGrid.load_Neper(fname=f'n{N_grains}-id1.vtk').renumber()
         cells:  32 × 32 × 32
@@ -863,7 +863,7 @@ class GeomGrid:
         >>> import damask
         >>> g = damask.GeomGrid(material=np.zeros([32]*3,int),
         ...                     size=np.ones(3)*1e-3)
-        >>> g.canvas([32,32,16],[0,0,16])
+        >>> g.canvas(cells=[32,32,16],offset=[0,0,16])
         cells:  32 × 32 × 16
         size:   0.001 × 0.001 × 0.0005 m³
         origin: 0.0   0.0   0.0005 m
@@ -1050,7 +1050,7 @@ class GeomGrid:
         size:   1.0 × 1.0 × 1.0 m³
         origin: 0.0   0.0   0.0 m
         # materials: 120
-        >>> g.rotate(R=damask.Rotation.from_axis_angle([0,0,1,180],degrees=True)) == g.flip('xy')
+        >>> g.rotate(R=damask.Rotation.from_axis_angle(n_omega=[0,0,1,180],degrees=True)) == g.flip(directions='xy')
         True
         """
         material = self.material
