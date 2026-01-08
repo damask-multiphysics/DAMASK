@@ -103,7 +103,7 @@ class Result:
     Open 'my_file.hdf5' and view its content:
 
     >>> import damask
-    >>> r = damask.Result('my_file.hdf5')
+    >>> r = damask.Result(fname='my_file.hdf5')
     >>> r
     Created by DAMASK_...
             on ...
@@ -386,14 +386,14 @@ class Result:
         Get a view that shows only results from the initial configuration:
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
+        >>> r = damask.Result(fname='my_file.hdf5')
         >>> r_first = r.view(increments=0)
 
         Get a view that shows all results between simulation times of 10 to 40:
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r_t10to40 = r.view(times=r.times_in_range(10.0,40.0))
+        >>> r = damask.Result(fname='my_file.hdf5')
+        >>> r_t10to40 = r.view(times=r.times_in_range(start=10.0,end=40.0))
         """
         dup = self._manage_view('set',increments,times,phases,homogenizations,fields)
         if protected is not None:
@@ -440,7 +440,7 @@ class Result:
         Get a view that shows only results from first and last increment:
 
         >>> import damask
-        >>> r_empty = damask.Result('my_file.hdf5').view(increments=False)
+        >>> r_empty = damask.Result(fname='my_file.hdf5').view(increments=False)
         >>> r_first = r_empty.view_more(increments=0)
         >>> r_first_and_last = r_first.view_more(increments=-1)
         """
@@ -483,7 +483,7 @@ class Result:
         Get a view that omits the undeformed configuration:
 
         >>> import damask
-        >>> r_all = damask.Result('my_file.hdf5')
+        >>> r_all = damask.Result(fname='my_file.hdf5')
         >>> r_deformed = r_all.view_less(increments=0)
         """
         return self._manage_view('del',increments,times,phases,homogenizations,fields)
@@ -522,9 +522,9 @@ class Result:
         Rename datasets containing the deformation gradient from 'F' to 'def_grad':
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
+        >>> r = damask.Result(fname='my_file.hdf5')
         >>> r_unprotected = r.view(protected=False)
-        >>> r_unprotected.rename('F','def_grad')
+        >>> r_unprotected.rename(name_src='F',name_dst='def_grad')
         """
         if self._protected:
             raise PermissionError('rename datasets')
@@ -559,9 +559,9 @@ class Result:
         Delete the deformation gradient 'F':
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
+        >>> r = damask.Result(fname='my_file.hdf5')
         >>> r_unprotected = r.view(protected=False)
-        >>> r_unprotected.remove('F')
+        >>> r_unprotected.remove(name='F')
         """
         if self._protected:
             raise PermissionError('delete datasets')
@@ -727,13 +727,13 @@ class Result:
         all slip systems:
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_calculation('np.sum(#rho_mob#,axis=1)','rho_mob_total',
-        ...                    '1/m²','total mobile dislocation density')
-        >>> r.add_calculation('np.sum(#rho_dip#,axis=1)','rho_dip_total',
-        ...                    '1/m²','total dislocation dipole density')
-        >>> r.add_calculation('#rho_dip_total#+#rho_mob_total#','rho_total',
-        ...                    '1/m²','total dislocation density')
+        >>> r = damask.Result(fname='my_file.hdf5')
+        >>> r.add_calculation(formula='np.sum(#rho_mob#,axis=1)',name='rho_mob_total',
+        ...                   unit='1/m²',description='total mobile dislocation density')
+        >>> r.add_calculation(formula='np.sum(#rho_dip#,axis=1)',name='rho_dip_total',
+        ...                   unit='1/m²',description='total dislocation dipole density')
+        >>> r.add_calculation(formula='#rho_dip_total#+#rho_mob_total#',name='rho_total',
+        ...                   unit='1/m²',description='total dislocation density')
 
         Add von Mises equivalent of the Cauchy stress without storage of
         intermediate results. Define a user function for better readability:
@@ -742,10 +742,10 @@ class Result:
         >>> def equivalent_stress(F,P):
         ...     sigma = damask.mechanics.stress_Cauchy(F=F,P=P)
         ...     return damask.mechanics.equivalent_stress_Mises(sigma)
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.enable_user_function(equivalent_stress)
-        >>> r.add_calculation('equivalent_stress(#F#,#P#)','sigma_vM','Pa',
-        ...                   'von Mises equivalent of the Cauchy stress')
+        >>> r = damask.Result(fname='my_file.hdf5')
+        >>> r.enable_user_function(func=equivalent_stress)
+        >>> r.add_calculation(formula='equivalent_stress(#F#,#P#)',name='sigma_vM',
+        ...                   unit='Pa',description='von Mises equivalent of the Cauchy stress')
         """
         def calculation(**kwargs) -> DADF5Dataset:
             formula = kwargs['formula']
@@ -789,8 +789,8 @@ class Result:
         Add the determinant of plastic deformation gradient 'F_p':
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_determinant('F_p')
+        >>> r = damask.Result(fname='my_file.hdf5')
+        >>> r.add_determinant(T='F_p')
         """
         def determinant(T: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -824,8 +824,8 @@ class Result:
         Add the deviatoric part of Cauchy stress 'sigma':
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_deviator('sigma')
+        >>> r = damask.Result(fname='my_file.hdf5')
+        >>> r.add_deviator(T='sigma')
         """
         def deviator(T: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -863,8 +863,8 @@ class Result:
         Add the minimum eigenvalue of Cauchy stress 'sigma':
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_eigenvalue('sigma','min')
+        >>> r = damask.Result(fname='my_file.hdf5')
+        >>> r.add_eigenvalue(T_sym='sigma',eigenvalue='min')
         """
         def eigenval(T_sym: DADF5Dataset, eigenvalue: Literal['max', 'mid', 'min']) -> DADF5Dataset:
             if   eigenvalue == 'max':
@@ -955,14 +955,14 @@ class Result:
         Add the von Mises equivalent of the Cauchy stress 'sigma':
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_equivalent_Mises('sigma')
+        >>> r = damask.Result(fname='my_file.hdf5')
+        >>> r.add_equivalent_Mises(T_sym='sigma')
 
         Add the von Mises equivalent of the spatial logarithmic strain 'epsilon_V^0.0(F)':
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_equivalent_Mises('epsilon_V^0.0(F)')
+        >>> r = damask.Result(fname='my_file.hdf5')
+        >>> r.add_equivalent_Mises(T_sym='epsilon_V^0.0(F)')
         """
         def equivalent_Mises(T_sym: DADF5Dataset, kind: str) -> DADF5Dataset:
             k = kind
@@ -1011,7 +1011,7 @@ class Result:
         Add the IPF color along x-direction for orientation 'O':
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
+        >>> r = damask.Result(fname='my_file.hdf5')
         >>> r.add_IPF_color(l = [1,0,0], q = 'O')
         """
         def IPF_color(l: FloatSequence, q: DADF5Dataset) -> DADF5Dataset:
@@ -1178,8 +1178,8 @@ class Result:
         Add the rotational part of deformation gradient 'F':
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_rotation('F')
+        >>> r = damask.Result(fname='my_file.hdf5')
+        >>> r.add_rotation(F='F')
         """
         def rotation(F: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -1213,8 +1213,8 @@ class Result:
         Add the hydrostatic part of the Cauchy stress 'sigma':
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_spherical('sigma')
+        >>> r = damask.Result(fname='my_file.hdf5')
+        >>> r.add_spherical(T='sigma')
         """
         def spherical(T: DADF5Dataset) -> DADF5Dataset:
             return {
@@ -1259,14 +1259,14 @@ class Result:
         Add the Euler-Almansi strain:
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
+        >>> r = damask.Result(fname='my_file.hdf5')
         >>> r.add_strain(t='V',m=-1.0)
 
         Add the plastic Biot strain:
 
         >>> import damask
-        >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_strain('F_p','U',0.5)
+        >>> r = damask.Result(fname='my_file.hdf5')
+        >>> r.add_strain(F='F_p',t='U',m=0.5)
         """
         def strain(F: DADF5Dataset, t: Literal['V', 'U'], m: float) -> DADF5Dataset:
             side = 'left' if t == 'V' else 'right'

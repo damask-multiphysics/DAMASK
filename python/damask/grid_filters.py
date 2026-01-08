@@ -355,7 +355,7 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
 
     >>> import numpy as np
     >>> import damask
-    >>> damask.grid_filters.cellsSizeOrigin_coordinates0_point(np.array([[0,0,0],[0,0,4],[0,0,8]]))
+    >>> damask.grid_filters.cellsSizeOrigin_coordinates0_point(coordinates0=np.array([[0,0,0],[0,0,4],[0,0,8]]))
     CellsSizeOriginTuple(cells=array([1, 1, 3]), size=array([ 4.,  4., 12.]), origin=array([-2., -2., -2.]))
     """
     coords    = [_unique(coordinates0[:,i],atol=atol,repeats=True) for i in range(3)]
@@ -630,7 +630,7 @@ def ravel_index(idx: _np.ndarray) -> _np.ndarray:
             [[0, 1, 0]]],
            [[[1, 0, 0]],
             [[0, 0, 0]]]])
-    >>> (flat_idx := damask.grid_filters.ravel_index(rev))
+    >>> (flat_idx := damask.grid_filters.ravel_index(idx=rev))
     array([[[3],
             [2]],
            [[1],
@@ -663,7 +663,7 @@ def unravel_index(idx: _np.ndarray) -> _np.ndarray:
     >>> import numpy as np
     >>> import damask
     >>> seq = np.arange(6).reshape((3,2,1),order='F')
-    >>> (coord_idx := damask.grid_filters.unravel_index(seq))
+    >>> (coord_idx := damask.grid_filters.unravel_index(idx=seq))
     array([[[[0, 0, 0]],
             [[0, 1, 0]]],
            [[[1, 0, 0]],

@@ -382,9 +382,9 @@ class GeomGrid:
         >>> import damask
         >>> N_grains = 20
         >>> cells = (32,32,32)
-        >>> damask.util.run(f'neper -T -n {N_grains} -tesrsize {cells[0]}:{cells[1]}:{cells[2]} -periodicity all -format vtk')
+        >>> damask.util.run(cmd=f'neper -T -n {N_grains} -tesrsize {cells[0]}:{cells[1]}:{cells[2]} -periodicity all -format vtk')
         stdioTuple(stdout=...
-        >>> damask.GeomGrid.load_Neper(f'n{N_grains}-id1.vtk').renumber()
+        >>> damask.GeomGrid.load_Neper(fname=f'n{N_grains}-id1.vtk').renumber()
         cells:  32 × 32 × 32
         size:   1.0 × 1.0 × 1.0 m³
         origin: 0.0   0.0   0.0 m
@@ -761,7 +761,8 @@ class GeomGrid:
 
         >>> import numpy as np
         >>> import damask
-        >>> damask.GeomGrid.from_minimal_surface([64]*3,np.ones(3)*1.e-4,'Gyroid')
+        >>> damask.GeomGrid.from_minimal_surface(cells=[64]*3,size=np.ones(3)*1.e-4,
+        ...                                      surface='Gyroid')
         cells:  64 × 64 × 64
         size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
@@ -771,8 +772,8 @@ class GeomGrid:
 
         >>> import numpy as np
         >>> import damask
-        >>> damask.GeomGrid.from_minimal_surface([80]*3,np.ones(3)*5.e-4,
-        ...                                  'Neovius',materials=(1,5))
+        >>> damask.GeomGrid.from_minimal_surface(cells=[80]*3,size=np.ones(3)*5.e-4,
+        ...                                      surface='Neovius',materials=(1,5))
         cells:  80 × 80 × 80
         size:   0.0005 × 0.0005 × 0.0005 m³
         origin: 0.0   0.0   0.0 m
@@ -860,8 +861,9 @@ class GeomGrid:
 
         >>> import numpy as np
         >>> import damask
-        >>> g = damask.GeomGrid(np.zeros([32]*3,int),np.ones(3)*1e-3)
-        >>> g.canvas([32,32,16],[0,0,16])
+        >>> g = damask.GeomGrid(material=np.zeros([32]*3,int),
+        ...                     size=np.ones(3)*1e-3)
+        >>> g.canvas(cells=[32,32,16],offset=[0,0,16])
         cells:  32 × 32 × 16
         size:   0.001 × 0.001 × 0.0005 m³
         origin: 0.0   0.0   0.0005 m
@@ -910,12 +912,13 @@ class GeomGrid:
 
         >>> import numpy as np
         >>> import damask
-        >>> (g := damask.GeomGrid(np.arange(4*5*6).reshape([4,5,6]),np.ones(3)))
+        >>> (g := damask.GeomGrid(material=np.arange(4*5*6).reshape([4,5,6]),
+        ...                       size=np.ones(3)))
         cells:  4 × 5 × 6
         size:   1.0 × 1.0 × 1.0 m³
         origin: 0.0   0.0   0.0 m
         # materials: 120
-        >>> g.mirror('y')
+        >>> g.mirror(directions='y')
         cells:  4 × 8 × 6
         size:   1.0 × 1.6 × 1.0 m³
         origin: 0.0   0.0   0.0 m
@@ -923,7 +926,7 @@ class GeomGrid:
 
         Reflect along x- and y-direction.
 
-        >>> g.mirror('xy',reflect=True)
+        >>> g.mirror(directions='xy',reflect=True)
         cells:  8 × 10 × 6
         size:   2.0 × 2.0 × 1.0 m³
         origin: 0.0   0.0   0.0 m
@@ -931,7 +934,7 @@ class GeomGrid:
 
         Independence of mirroring order.
 
-        >>> g.mirror('xy') == g.mirror(['y','x'])
+        >>> g.mirror(directions='xy') == g.mirror(directions=['y','x'])
         True
         """
         valid = 'xyz'
@@ -982,7 +985,8 @@ class GeomGrid:
 
         >>> import numpy as np
         >>> import damask
-        >>> (g := damask.GeomGrid(np.arange(4*5*6).reshape([4,5,6]),np.ones(3)))
+        >>> (g := damask.GeomGrid(material=np.arange(4*5*6).reshape([4,5,6]),
+        ...                       size=np.ones(3)))
         cells:  4 × 5 × 6
         size:   1.0 × 1.0 × 1.0 m³
         origin: 0.0   0.0   0.0 m
@@ -1040,12 +1044,13 @@ class GeomGrid:
 
         >>> import numpy as np
         >>> import damask
-        >>> (g := damask.GeomGrid(np.arange(4*5*6).reshape([4,5,6]),np.ones(3)))
+        >>> (g := damask.GeomGrid(material=np.arange(4*5*6).reshape([4,5,6]),
+        ...                       size=np.ones(3)))
         cells:  4 × 5 × 6
         size:   1.0 × 1.0 × 1.0 m³
         origin: 0.0   0.0   0.0 m
         # materials: 120
-        >>> g.rotate(damask.Rotation.from_axis_angle([0,0,1,180],degrees=True)) == g.flip('xy')
+        >>> g.rotate(R=damask.Rotation.from_axis_angle(n_omega=[0,0,1,180],degrees=True)) == g.flip(directions='xy')
         True
         """
         material = self.material
@@ -1089,12 +1094,13 @@ class GeomGrid:
 
         >>> import numpy as np
         >>> import damask
-        >>> (g := damask.GeomGrid(np.zeros([32]*3,int),np.ones(3)*1e-4))
+        >>> (g := damask.GeomGrid(material=np.zeros([32]*3,int),
+        ...                       size=np.ones(3)*1e-4))
         cells:  32 × 32 × 32
         size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
         # materials: 1
-        >>> g.scale(g.cells*2)
+        >>> g.scale(cells=g.cells*2)
         cells:  64 × 64 × 64
         size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
@@ -1182,8 +1188,9 @@ class GeomGrid:
             Updated grid-based geometry.
         """
         material = self.material.copy()
-        for f,t in zip(from_material if isinstance(from_material,(Sequence,np.ndarray)) else [from_material],
-                       to_material if isinstance(to_material,(Sequence,np.ndarray)) else [to_material]): # ToDo Python 3.10 has strict mode for zip
+        f_material = from_material if isinstance(from_material,(Sequence,np.ndarray)) else [from_material]
+        t_material = to_material if isinstance(to_material,(Sequence,np.ndarray)) else [to_material]*len(f_material)
+        for f,t in zip(f_material,t_material,strict=True):
             material[self.material==f] = t
 
         return GeomGrid(material = material,
@@ -1337,8 +1344,11 @@ class GeomGrid:
 
         >>> import numpy as np
         >>> import damask
-        >>> g = damask.GeomGrid(np.zeros([64]*3,int), np.ones(3)*1e-4)
-        >>> g.add_primitive(np.ones(3)*5e-5,np.ones(3)*5e-5,1)
+        >>> g = damask.GeomGrid(material=np.zeros([64]*3,int),
+        ...                     size=np.ones(3)*1e-4)
+        >>> g.add_primitive(dimension=np.ones(3)*5e-5,
+        ...                 center=np.ones(3)*5e-5,
+        ...                 exponent=1)
         cells:  64 × 64 × 64
         size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m
@@ -1348,8 +1358,11 @@ class GeomGrid:
 
         >>> import numpy as np
         >>> import damask
-        >>> g = damask.GeomGrid(np.zeros([64]*3,int), np.ones(3)*1e-4)
-        >>> g.add_primitive(np.ones(3,int)*32,np.zeros(3),np.inf)
+        >>> g = damask.GeomGrid(material=np.zeros([64]*3,int),
+        ...                     size=np.ones(3)*1e-4)
+        >>> g.add_primitive(dimension=np.ones(3,int)*32,
+        ...                 center=np.zeros(3),
+        ...                 exponent=np.inf)
         cells:  64 × 64 × 64
         size:   0.0001 × 0.0001 × 0.0001 m³
         origin: 0.0   0.0   0.0 m

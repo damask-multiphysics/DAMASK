@@ -32,6 +32,11 @@ foreach(VARIANT GRID MESH TEST)
       endif()
       target_link_libraries(${executable_name} PRIVATE damask_c_${VARIANT_LOWER})
       install(TARGETS ${executable_name} RUNTIME DESTINATION bin)
+      INSTALL(CODE "execute_process( \
+        COMMAND ${CMAKE_COMMAND} -E create_symlink \
+        ${executable_name} \
+        ${CMAKE_INSTALL_PREFIX}/bin/damask_${VARIANT_LOWER} \
+        )")
     else()
       add_library(${executable_name} OBJECT ${damask_fortran} ${damask_c})
       exec_program(mktemp OUTPUT_VARIABLE nothing)

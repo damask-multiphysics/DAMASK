@@ -473,7 +473,7 @@ subroutine grid_mech_spectral_polarization_restartWrite()
   if (worldrank == 0) then
     fileHandle  = HDF5_openFile(CLI_jobName//'_restart.hdf5','a',.false.)
     groupHandle = HDF5_openGroup(fileHandle,'solver')
-    call HDF5_write(F_aim,groupHandle,'P_aim',.false.)
+    call HDF5_write(P_aim,groupHandle,'P_aim',.false.)
     call HDF5_write(F_aim,groupHandle,'F_aim',.false.)
     call HDF5_write(F_aim_lastinc,groupHandle,'F_aim_lastinc',.false.)
     call HDF5_write(F_aimDot,groupHandle,'F_aimDot',.false.)

@@ -11,23 +11,38 @@
 
 #ifdef BOOST
 
-#include <ISO_Fortran_binding.h>
-#include "petscversion.h"
-#include <pwd.h>
-
-#include <boost/program_options.hpp>
-#include <boost/asio/ip/host_name.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
 #include "CLI.h"
+#include <ISO_Fortran_binding.h>
+#include <pwd.h>
+#include <unistd.h>
+#include <array>
+#include <boost/asio/ip/host_name.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/parsers.hpp>
+#include <boost/program_options/value_semantic.hpp>
+#include <boost/program_options/variables_map.hpp>
+#include <boost/system/detail/error_code.hpp>
+#include <boost/version.hpp>
+#if BOOST_VERSION >= 108600
+#include <boost/uuid/basic_random_generator.hpp>
+#endif
+#include <boost/uuid/random_generator.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <cstdlib>
+#include <cstring>
+#include <filesystem>
+#include <stdexcept>
+#include <utility>
+#include "petscversion.h"
+
+namespace fs = std::filesystem;
 
 std::string IO_color(const std::array<int, 3>& rgb) {
   if (isatty(STDOUT_FILENO) && !IO_redirectedSTDOUT) {
-    return "\033[38;2;" + std::to_string(*(rgb.begin())) + ";" +
-        std::to_string(*(rgb.begin() + 1)) + ";" +
-        std::to_string(*(rgb.begin() + 2)) + "m";
+    return "\033[38;2;" + std::to_string(rgb.at(0)) + ";" +
+        std::to_string(rgb.at(1)) + ";" +
+        std::to_string(rgb.at(2)) + "m";
   }
   return {};
 }
@@ -36,7 +51,7 @@ std::string IO_color_reset() {
   return isatty(STDOUT_FILENO) && !IO_redirectedSTDOUT ? "\033[0m" : "";
 }
 
-CLI::CLI(int* argc, char* argv[], int* worldrank) {
+CLI::CLI(std::span<const char*> args, int* worldrank) {
   std::string arg_geom, arg_load, arg_material, arg_numerics, arg_wd;
   std::string arg_jobname;
   int arg_rs = -1;
@@ -59,7 +74,7 @@ CLI::CLI(int* argc, char* argv[], int* worldrank) {
 #endif
   ;
   po::variables_map vm;
-  po::store(po::parse_command_line(*argc, argv, flags), vm);
+  po::store(po::parse_command_line(int(args.size()), args.data(), flags), vm);
   po::notify(vm);
 
   /**
@@ -95,7 +110,7 @@ CLI::CLI(int* argc, char* argv[], int* worldrank) {
     return boost::lexical_cast<std::string>(boost::uuids::random_generator()());
   };
 
-  if (vm.count("help") || *argc == 1) {
+  if (vm.count("help") || args.size() == 1) {
     CLI::help_print(flags);
     std::exit(0);
   }
@@ -133,8 +148,8 @@ CLI::CLI(int* argc, char* argv[], int* worldrank) {
   cout << " Host name: " << hostname << std::endl;
   cout << " User name: " << get_username() << std::endl << std::endl;
   cout << " Command line call:  ";
-  for (int i = 0; i < *argc; ++i) {
-    cout << argv[i] << " ";
+  for (auto& arg : args){
+    cout << arg << " ";
   }
   cout << std::endl;
   cout << " Working directory:  " << fs::current_path().string() << std::endl;
@@ -151,14 +166,15 @@ CLI::CLI(int* argc, char* argv[], int* worldrank) {
   }
 }
 
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
 void CLI::init_print() {
-  std::stringstream output;
-
 #ifdef DEBUG
-  cout << IO_color({255,0,0});
+  std::array<int,3> red = {255,0,0};
+  cout << IO_color(red);
   cout << "debug version - debug version - debug version - debug version - debug version" << std::endl;
 #else
-  cout << IO_color({67,128,208});
+  std::array<int,3> DAMASK_blue = {67,128,208};
+  cout << IO_color(DAMASK_blue);
 #endif
   cout << R"(
      _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/    _/_/_/
@@ -170,43 +186,41 @@ void CLI::init_print() {
 )";
 
 #ifdef GRID
-  cout << IO_color({123,207,68});
+  std::array<int,3> DAMASK_green = {123,207,68};
+  cout << IO_color(DAMASK_green);
   cout << " Grid solver" << std::endl << std::endl;
 #elif defined(MESH)
-  cout << IO_color({230,150,68});
+  std::array<int,3> DAMASK_orange = {230,150,68};
+  cout << IO_color(DAMASK_orange);
   cout << " Mesh solver" << std::endl << std::endl;
 #endif
 
 #ifdef DEBUG
-  cout << IO_color({255,0,0});
+  cout << IO_color(red);
   cout << " debug version - debug version - debug version - debug version - debug version" << std::endl << std::endl;
 #endif
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
 
   cout << IO_color_reset();
   cout << " F. Roters et al., Computational Materials Science 158:420–478, 2019" << std::endl
        << " https://doi.org/10.1016/j.commatsci.2018.04.030" << std::endl << std::endl;
 
-#define PETSC_MINOR_MIN 19
-#define PETSC_MINOR_MAX 24
 #if PETSC_VERSION_MAJOR != 3 || PETSC_VERSION_MINOR < PETSC_MINOR_MIN || PETSC_VERSION_MINOR > PETSC_MINOR_MAX
 #error "--  UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION ---"
 #else
   cout << " S. Balay et al., PETSc/TAO User Manual Revision " << PETSC_VERSION_MAJOR << "." << PETSC_VERSION_MINOR << std::endl;
 #if   PETSC_VERSION_MINOR == 19
-#define PETSC_DOI "10.2172/1968587"
+cout << " https://doi.org/10.2172/1968587" << endl;
 #elif PETSC_VERSION_MINOR == 20
-#define PETSC_DOI "10.2172/2205494"
+cout << " https://doi.org/10.2172/2205494" << endl;
 #elif PETSC_VERSION_MINOR == 21
-#define PETSC_DOI "10.2172/2337606"
+cout << " https://doi.org/10.2172/2337606" << endl;
 #elif PETSC_VERSION_MINOR == 22
-#define PETSC_DOI "10.2172/2476320"
+cout << " https://doi.org/10.2172/2476320" << endl;
 #elif PETSC_VERSION_MINOR == 23
-#define PETSC_DOI "10.2172/2565610"
+cout << " https://doi.org/10.2172/2565610" << endl;
 #elif PETSC_VERSION_MINOR == 24
-#define PETSC_DOI "10.2172/2998643"
-#endif
-#ifdef PETSC_DOI
-  cout << " https://doi.org/" << PETSC_DOI << endl;
+cout << " https://doi.org/10.2172/2998643" << endl;
 #endif
 cout << endl;
 #endif
@@ -323,8 +337,11 @@ extern "C" {
    * @param[in]     worldrank  MPI rank
    * @return CLI*              CLI object pointer
    */
-  CLI* CLI__new(int* argc, char* argv[], int* worldrank) {
-    return new CLI(argc, argv, worldrank);
+  // NOLINTNEXTLINE(bugprone-reserved-identifier)
+  CLI* CLI__new(int* argc, const char* argv[], int* worldrank) {
+    auto args = std::span(argv,*argc);
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
+    return new CLI(args, worldrank);
   }
 
 #ifndef OLD_STYLE_C_TO_FORTRAN_STRING
@@ -345,6 +362,7 @@ extern "C" {
    * @param[out] restart   Restart increment (only relevant for grid solver)
    * @param[out] stat      Status flag: 0 on success, 1 on allocation/copy failure
    */
+  // NOLINTBEGIN(bugprone-easily-swappable-parameters)
   void CLI_getParsedArgs (CLI *cli,
                           CFI_cdesc_t *geom,
                           CFI_cdesc_t *load,
@@ -361,9 +379,10 @@ extern "C" {
      * @param[out] dest  Destination Fortran descriptor to reallocate
      * @return           status int 0 on success, 1 on failure
      */
+  // NOLINTEND(bugprone-easily-swappable-parameters)
     auto put_string = [](const std::string &src, CFI_cdesc_t *dest) -> int {
       const char *src_c = src.c_str();
-      int len = std::strlen(src_c);
+      size_t len = std::strlen(src_c);
       if (len != 0) {
         if (CFI_allocate(dest, (CFI_index_t *)0, (CFI_index_t *)0, len) == 0) {
           std::memcpy(dest->base_addr, src_c, len);

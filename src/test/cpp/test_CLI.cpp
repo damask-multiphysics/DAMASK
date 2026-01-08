@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gtest/gtest.h>
 #include <filesystem>
-#include <string>
-#include <vector>
 #include <fstream>
 #include <iterator>
+#include <span>
+#include <string>
+#include <vector>
 #include <system_error>
 
 #ifdef BOOST
@@ -23,6 +24,7 @@ extern "C" {
 }
 
 // Use object lifespan to ensure clean fortran buffer across tests
+// NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
 struct FortranBufferGuard {
   FortranBufferGuard()  { fortran_mock_buffer.clear(); }
   ~FortranBufferGuard() { fortran_mock_buffer.clear(); }
@@ -30,7 +32,7 @@ struct FortranBufferGuard {
 
 // Fixture to ensure we go back to the testdir after a test changes our cwd
 class CwdGuard : public ::testing::Test {
-protected:
+private:
   FortranBufferGuard prints_;
   fs::path saved_cwd_;
   void SetUp() override { saved_cwd_ = fs::current_path(); }
@@ -47,19 +49,15 @@ TEST(TestSetup, ValidateFortranMockbuffer) {
 
 TEST_F(CwdGuard, SimpleInitialization) {
   int mpi_world_rank = 0;
-  const char* argv_literals[] = {
+  std::vector<const char*> argv = {
     "dummysolver",
     "--geometry", "=geom.vti", // Test for trailing equal until 4.0
     "--loadcase", "load.yaml",
     "--materialconfig", "material.yaml"
   };
-  int argc = static_cast<int>(std::size(argv_literals));
-  std::vector<char*> argv;
-  argv.reserve(argc);
-  for (auto* s : argv_literals)
-    argv.push_back(const_cast<char*>(s));
+  auto args = std::span(argv.data(),std::size(argv));
 
-  CLI cli(&argc, argv.data(), &mpi_world_rank);
+  CLI cli(args, &mpi_world_rank);
 
   EXPECT_EQ(cli.geom_path, fs::path("geom.vti"));
   EXPECT_EQ(cli.loadfile_path, fs::path("load.yaml"));
@@ -76,7 +74,7 @@ TEST_F(CwdGuard, InitializationWorkingdirNumerics) {
   std::error_code ec;
   fs::create_directories(test_workdir, ec);
 
-  const char* argv_literals[] = {
+  std::vector<const char*> argv = {
     "dummysolver",
     "-g", "geom.vti",
     "-l", "load.yaml",
@@ -84,13 +82,9 @@ TEST_F(CwdGuard, InitializationWorkingdirNumerics) {
     "-n", "numerics.yaml",
     "-w", test_workdir.c_str()
   };
-  int argc = static_cast<int>(std::size(argv_literals));
-  std::vector<char*> argv;
-  argv.reserve(argc);
-  for (auto* s : argv_literals)
-    argv.push_back(const_cast<char*>(s));
+  auto args = std::span(argv.data(),std::size(argv));
 
-  CLI cli(&argc, argv.data(), &mpi_world_rank);
+  CLI cli(args, &mpi_world_rank);
 
   EXPECT_EQ(cli.numerics_path, fs::path("numerics.yaml"));
   EXPECT_EQ(cli.jobname, "geom_load_material_numerics");
@@ -101,20 +95,16 @@ TEST_F(CwdGuard, InitializationWorkingdirNumerics) {
 
 TEST_F(CwdGuard, InitializationRestart) {
   int mpi_world_rank = 0;
-  const char* argv_literals[] = {
+  std::vector<const char*> argv = {
     "dummysolver",
     "--geometry", "geom.vti",
     "--loadcase", "load.yaml",
     "--materialconfig", "material.yaml",
     "--restart", "7"
   };
-  int argc = static_cast<int>(std::size(argv_literals));
-  std::vector<char*> argv;
-  argv.reserve(argc);
-  for (auto* s : argv_literals)
-    argv.push_back(const_cast<char*>(s));
+  auto args = std::span(argv.data(),std::size(argv));
 
-  CLI cli(&argc, argv.data(), &mpi_world_rank);
+  CLI cli(args, &mpi_world_rank);
   EXPECT_EQ(cli.jobname, "geom_load_material");
   EXPECT_EQ(cli.restart_inc, 7);
 }

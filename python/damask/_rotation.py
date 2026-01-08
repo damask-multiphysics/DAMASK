@@ -77,7 +77,7 @@ class Rotation:
     >>> import damask
     >>> from scipy.spatial.transform import Rotation as ScipyRotation
     >>> R_SciPy = ScipyRotation.random()
-    >>> R_DAMASK = damask.Rotation(R_SciPy)
+    >>> R_DAMASK = damask.Rotation(rotation=R_SciPy)
     >>> v = np.random.rand(3)
     >>> np.allclose(R_DAMASK@v, R_SciPy.apply(v,inverse=True))
     True
@@ -258,12 +258,16 @@ class Rotation:
 
 
     @property
-    def size(self) -> int:
-        return self.quaternion[...,0].size
+    def ndim(self) -> int:
+        return self.quaternion[...,0].ndim
 
     @property
     def shape(self) -> tuple[int, ...]:
         return self.quaternion[...,0].shape
+
+    @property
+    def size(self) -> int:
+        return self.quaternion[...,0].size
 
 
     def __array__(self: MyType,
@@ -722,10 +726,10 @@ class Rotation:
 
         Examples
         --------
-        Cube orientation as Bunge Euler angles.
+        Cube orientation (quaternion = [1,0,0,0]) as Bunge Euler angles.
 
         >>> import damask
-        >>> damask.Rotation([1,0,0,0]).as_Euler_angles()
+        >>> damask.Rotation(rotation=[1,0,0,0]).as_Euler_angles()
         array([0., 0., 0.])
         """
         eu = Rotation._qu2eu(self.quaternion)
@@ -752,10 +756,10 @@ class Rotation:
 
         Examples
         --------
-        Cube orientation as axis–angle pair.
+        Cube orientation (quaternion = [1,0,0,0]) as axis–angle pair.
 
         >>> import damask
-        >>> damask.Rotation([1,0,0,0]).as_axis_angle(pair=True)
+        >>> damask.Rotation(rotation=[1,0,0,0]).as_axis_angle(pair=True)
         AxisAngleTuple(axis=array([0., 0., 1.]), angle=array(0.))
         """
         ax: np.ndarray = Rotation._qu2ax(self.quaternion)
@@ -776,10 +780,10 @@ class Rotation:
 
         Examples
         --------
-        Cube orientation as rotation matrix.
+        Cube orientation (quaternion = [1,0,0,0]) as rotation matrix.
 
         >>> import damask
-        >>> damask.Rotation([1,0,0,0]).as_matrix()
+        >>> damask.Rotation(rotation=[1,0,0,0]).as_matrix()
         array([[1., 0., 0.],
                [0., 1., 0.],
                [0., 0., 1.]])
@@ -805,10 +809,11 @@ class Rotation:
 
         Examples
         --------
-        Cube orientation as three-component Rodrigues–Frank vector.
+        Cube orientation (quaternion = [1,0,0,0] as three-component
+        Rodrigues–Frank vector.
 
         >>> import damask
-        >>> damask.Rotation([1,0,0,0]).as_Rodrigues_vector(compact=True)
+        >>> damask.Rotation(rotation=[1,0,0,0]).as_Rodrigues_vector(compact=True)
         array([ 0.,  0., 0.])
         """
         ro = Rotation._qu2ro(self.quaternion)
@@ -829,10 +834,10 @@ class Rotation:
 
         Examples
         --------
-        Cube orientation as homochoric vector.
+        Cube orientation (quaternion = [1,0,0,0]) as homochoric vector.
 
         >>> import damask
-        >>> damask.Rotation([1,0,0,0]).as_homochoric()
+        >>> damask.Rotation(rotation=[1,0,0,0]).as_homochoric()
         array([0., 0., 0.])
         """
         return Rotation._qu2ho(self.quaternion)
@@ -848,10 +853,10 @@ class Rotation:
 
         Examples
         --------
-        Cube orientation as cubochoric vector.
+        Cube orientation (quaternion = [1,0,0,0]) as cubochoric vector.
 
         >>> import damask
-        >>> damask.Rotation([1,0,0,0]).as_cubochoric()
+        >>> damask.Rotation(rotation=[1,0,0,0]).as_cubochoric()
         array([0., 0., 0.])
         """
         return Rotation._qu2cu(self.quaternion)
@@ -887,7 +892,7 @@ class Rotation:
         Examples
         --------
         >>> import damask
-        >>> damask.Rotation.from_quaternion([[1,0,0,0],[0,1,0,0]])
+        >>> damask.Rotation.from_quaternion(q=[[1,0,0,0],[0,1,0,0]])
         array([(1.,     0.,  0.,  0.),
                (0.,     1.,  0.,  0.)])
         """
@@ -936,7 +941,7 @@ class Rotation:
         Examples
         --------
         >>> import damask
-        >>> damask.Rotation.from_Euler_angles([180,0,0],degrees=True)
+        >>> damask.Rotation.from_Euler_angles(phi=[180,0,0],degrees=True)
         array((0.,     0.,  0.,  1.))
         """
         eu = np.array(phi,dtype=float)
@@ -977,7 +982,7 @@ class Rotation:
         Examples
         --------
         >>> import damask
-        >>> damask.Rotation.from_axis_angle([[0,0,1,90],[1,0,0,90]],degrees=True)
+        >>> damask.Rotation.from_axis_angle(n_omega=[[0,0,1,90],[1,0,0,90]],degrees=True)
         array([(0.707,   0.   ,  0. , 0.707),
                (0.707,   0.707,  0. , 0.   )])
         """
@@ -1063,7 +1068,7 @@ class Rotation:
         Examples
         --------
         >>> import damask
-        >>> damask.Rotation.from_matrix([[1,0,0],[0,0,-1],[0,1,0]])
+        >>> damask.Rotation.from_matrix(R=[[1,0,0],[0,0,-1],[0,1,0]])
         array(( 0.707,    -0.707, -0. , -0. ))
         """
         return Rotation.from_basis(np.array(R,dtype=float) * (np.linalg.det(R)**(-1./3.))[...,np.newaxis,np.newaxis]
@@ -1107,13 +1112,15 @@ class Rotation:
         Examples
         --------
         >>> import damask
-        >>> damask.Rotation.from_parallel([[2,0,0],[0,1,0]],[[1,0,0],[0,2,0]])
+        >>> damask.Rotation.from_parallel(source=[[2,0,0],[0,1,0]],
+        ...                               target=[[1,0,0],[0,2,0]])
         array(( 1.,     0.,  0.,  0.))
 
         Direction x and y of the specimen frame are parallel to
         direction [ 1 1 1 ] and [ 1 -1 0 ] of the crystal frame, respectively.
         >>> import damask
-        >>> damask.Rotation.from_parallel([[1,0,0],[0,1,0]],[[1,1,1],[1,-1,0]],active=True)
+        >>> damask.Rotation.from_parallel(source=[[1,0,0],[0,1,0]],
+        ...                               target=[[1,1,1],[1,-1,0]],active=True)
         array((0.1159169 ,     0.88047624,  0.3647052 ,  0.27984814))
         """
         s_ = np.array(source,dtype=float)
@@ -1159,7 +1166,7 @@ class Rotation:
         Examples
         --------
         >>> import damask
-        >>> damask.Rotation.from_Rodrigues_vector([0,0,1,1])
+        >>> damask.Rotation.from_Rodrigues_vector(rho=[0,0,1,1])
         array((0.707,     0. ,  0. ,  0.707))
         """
         ro = np.array(rho,dtype=float)
@@ -1364,14 +1371,14 @@ class Rotation:
         200 orientations:
 
         >>> import damask
-        >>> center = damask.Rotation.from_Euler_angles([35.,45.,0.],degrees=True)
+        >>> center = damask.Rotation.from_Euler_angles(phi=[35.,45.,0.],degrees=True)
         >>> brass = damask.Rotation.from_spherical_component(center=center,sigma=3.,shape=200,degrees=True)
 
         Create a Goss texture consisting of
         100 orientations:
 
         >>> import damask
-        >>> center = damask.Rotation.from_Euler_angles([0.,45.,0.],degrees=True)
+        >>> center = damask.Rotation.from_Euler_angles(phi=[0.,45.,0.],degrees=True)
         >>> goss = damask.Rotation.from_spherical_component(center=center,sigma=3.,shape=100,degrees=True)
         """
         rng = np.random.default_rng(rng_seed)
@@ -1442,17 +1449,20 @@ class Rotation:
 
         >>> import damask
         >>> import numpy as np
-        >>> alpha = damask.Rotation.from_fiber_component([np.pi/4.,0.],[np.pi/2.,0.],shape=600)
+        >>> alpha = damask.Rotation.from_fiber_component(crystal=[np.pi/4.,0.],sample=[np.pi/2.,0.],
+        ...                                              shape=600)
 
         Create an ideal γ-fiber texture ([1 1 1] ǀǀ z=ND) consisting of 250 orientations:
 
         >>> import damask
-        >>> gamma = damask.Rotation.from_fiber_component([54.736,45.],[0.,0.],shape=250,degrees=True)
+        >>> gamma = damask.Rotation.from_fiber_component(crystal=[54.736,45.],sample=[0.,0.],
+        ...                                              shape=250,degrees=True)
 
         Create a relatively strong basal texture ([0 0 0 1] ǀǀ z=ND) consisting of 320 orientations:
 
         >>> import damask
-        >>> basal = damask.Rotation.from_fiber_component([0.,0.],[0.,0.],shape=320,sigma=.15)
+        >>> basal = damask.Rotation.from_fiber_component(crystal=[0.,0.],sample=[0.,0.],
+        ...                                              shape=320,sigma=.15)
         """
         rng = np.random.default_rng(rng_seed)
         sigma_,alpha,beta = (np.radians(c) for c in (sigma,crystal,sample)) if degrees else \

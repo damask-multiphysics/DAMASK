@@ -128,7 +128,7 @@ program DAMASK_grid
   print'(/,1x,a)', '<<<+-  DAMASK_grid init  -+>>>'; flush(IO_STDOUT)
 
   print'(/,1x,a)', 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
-  print'(  1x,a)', 'https://doi.org/10.1007/978-981-10-6855-3_80'
+  print'(  1x,a)', 'https://doi.org/10.1007/978-981-10-6884-3_80'
 
 
 !-------------------------------------------------------------------------------------------------
