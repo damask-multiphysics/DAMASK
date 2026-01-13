@@ -1,0 +1,56 @@
+---
+homogenization:
+  SX:
+    N_constituents: 1
+    mechanical: {type: pass}
+    chemical:
+      N_components: 2
+      type: pass
+      output: [mu, comp]
+
+phase:
+  Aluminum_1:
+    lattice: cF
+    mechanical:
+      elastic: {type: Hooke, C_11: 106.75e+9, C_12: 60.41e+9, C_44: 28.34e+9}
+    chemical:
+      V_m: 1.0e-5
+      type: quadEnergy
+      components:
+        Li:
+          M: 1.0
+          c_0: 0.1
+          G,c: 0.0
+          G,c^2: 0.5
+        Al:
+          M: 0.0
+          c_0: 0.9
+
+  Aluminum_2:
+    lattice: cF
+    mechanical:
+      elastic: {type: Hooke, C_11: 106.75e+9, C_12: 60.41e+9, C_44: 28.34e+9}
+    chemical:
+      V_m: 1.0e-5
+      type: quadEnergy
+      components:
+        Li:
+          M: 1.0
+          c_0: 0.08
+          G,c: 0.0
+          G,c^2: 0.5
+        Al:
+          M: 0.0
+          c_0: 0.92
+
+material:
+  - homogenization: SX
+    constituents:
+      - phase: Aluminum_1
+        v: 1.0
+        O: [1.0, 0.0, 0.0, 0.0]
+  - homogenization: SX
+    constituents:
+      - phase: Aluminum_2
+        v: 1.0
+        O: [1.0, 0.0, 0.0, 0.0]

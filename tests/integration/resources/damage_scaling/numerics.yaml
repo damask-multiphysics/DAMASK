@@ -1,0 +1,4 @@
+solver:
+  grid:
+    FFT:
+      derivative: FWBW_difference   # Approximation used for derivatives in Fourier space

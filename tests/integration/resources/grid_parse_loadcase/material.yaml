@@ -1,0 +1,36 @@
+homogenization:
+  SX:
+    N_constituents: 1
+    mechanical:
+      type: isostrain
+
+material:
+  - homogenization: SX
+    constituents:
+      - phase: Aluminum_J2isotropic
+        v: 1.0
+        O:  [0.06817485875515444, 0.03985506619537109, -0.5032054951163741, 0.8605509816489446]
+
+phase:
+  Aluminum_J2isotropic:
+    lattice: cF
+    mechanical:
+      output: [F, P]
+      elastic: {C_11: 110.9e9, C_12: 58.34e9, C_44: 26.28e9, type: Hooke}
+      plastic:
+        type: isotropic
+        M: 3
+        xi_0: 31e6
+        dot_gamma_0: 0.001
+        n: 20
+        h_0: 75e6
+        xi_inf: 63e6
+#---- if tausat == 0.0 --------!!!VALUES HERE ARE NOT FOR ALUMINUM!!!
+        c_1: 2.4175e-7
+        c_4: 5.9804e-8
+        c_3: 1.0
+        c_2: 3.9
+# h0_slope
+#---------------------------#
+        a: 2.25
+        output: [xi]

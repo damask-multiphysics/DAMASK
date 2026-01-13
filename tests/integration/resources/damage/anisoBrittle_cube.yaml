@@ -1,0 +1,32 @@
+---
+
+solver:
+  mechanical: spectral_basic
+  damage: spectral
+
+loadstep:
+  - boundary_conditions:
+      mechanical:
+        dot_F: [[1.0e-3, x, x],
+                [0,      x, x],
+                [0,      0, x]]
+        P: [[x, 0, 0],
+            [x, 0, 0],
+            [x, x, 0]]
+    discretization:
+      t: 4.0
+      N: 120
+    f_out: 121
+
+  - boundary_conditions:
+      mechanical:
+        dot_F: [[1.0e-3, x, x],
+                [0,      x, x],
+                [0,      0, x]]
+        P: [[x, 0, 0],
+            [x, 0, 0],
+            [x, x, 0]]
+    discretization:
+      t: 2.0
+      N: 400
+    f_out: 40

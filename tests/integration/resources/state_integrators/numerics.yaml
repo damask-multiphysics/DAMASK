@@ -1,0 +1,9 @@
+solver:
+  grid:
+    N_iter_min: 5
+    FFT:
+      memory_efficient: true                  # Do not precalculate Gamma-operator (81 double per point)
+phase:
+  mechanical:
+    plastic:
+      integrator_state: n/a

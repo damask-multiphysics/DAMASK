@@ -1,0 +1,6 @@
+solver:
+  mesh:
+    p_s: 1
+    p_i: 1
+    mechanical:
+      PETSc_options: -ksp_type fgmres -ksp_max_it 25

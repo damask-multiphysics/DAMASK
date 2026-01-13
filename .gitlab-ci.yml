@@ -226,7 +226,7 @@ open-source:
     - cmake -DGRID=ON -DMESH=ON -B build -G Ninja && cmake --build build --parallel 4 --target install
     - source env/DAMASK.sh
   script:
-    - cd PRIVATE/testing
+    - cd tests/integration
     - export OMP_NUM_THREADS=2
     - pytest -v -x -n 3 --dist=loadscope --durations=20 -k 'not compile and not Marc'
 
@@ -285,7 +285,7 @@ unittest_oneapi_previous:
     - ${PETSC_DIR}/lib/petsc/bin/petscversion
     - tail +$(grep -n 'Configure Actions.*' /petsc/configure.log | cut -f 1 -d:) /petsc/configure.log
     - source env/DAMASK.sh
-    - cd PRIVATE/testing
+    - cd tests/integration
 
 .compile_grid:
   extends: .compile
@@ -325,7 +325,7 @@ Marc_compile:
   image: git.damask-multiphysics.org:5050/damask/damask/marc_patched:${MARC_VERSION}
   script:
     - source env/DAMASK.sh
-    - cd PRIVATE/testing
+    - cd tests/integration
     - pytest -k 'compile and Marc'
 
 
@@ -337,7 +337,7 @@ Marc_compile:
     - source env/DAMASK.sh
     - cmake -B build -DGRID=ON -DCMAKE_BUILD_TYPE=DEBUG
     - cmake --build build --target install
-    - cd PRIVATE/testing
+    - cd tests/integration
   script:
     - python3 -X faulthandler -m pytest -p no:faulthandler -v -k configexamples                     # https://blog.xmatthias.com/post/pytest-debug-segfault/
 
@@ -354,7 +354,7 @@ Marc_run:
     - source env/DAMASK.sh
     - cd examples/Marc && python3 -c "import damask;damask.solver.Marc(version=${MARC_VERSION}).submit_job('r-value','texture',True,'h')"
   script:
-    - cd ${CI_PROJECT_DIR}/PRIVATE/testing
+    - cd ${CI_PROJECT_DIR}/tests/integration
     - pytest -k 'not compile and Marc'
 
 # Needs closer look

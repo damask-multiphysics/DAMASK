@@ -1,0 +1,16 @@
+---
+
+solver:
+  mechanical: spectral_basic
+  thermal: spectral
+
+loadstep:
+  - boundary_conditions:
+      mechanical:
+        F: [[1, 0, 0],
+            [0, 1, 0],
+            [0, 0, 1]]
+    discretization:
+      t: 1000
+      N: 100
+      r: 1.05

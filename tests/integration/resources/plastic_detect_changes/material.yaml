@@ -1,0 +1,340 @@
+homogenization:
+  SX:
+    N_constituents: 1
+    mechanical: {type: pass}
+
+material:
+  - constituents:
+      - v: 1.0
+        O: [1.0, 0.0, 0.0, 0.0]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.7936696712125002, -0.28765777461664166, -0.3436487135089419, 0.4113964260949434]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.3986143167493579, -0.7014883552495493, 0.2154871765709027, 0.5500781677772945]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.28645844315788244, -0.022571491243423537, -0.467933059311115, -0.8357456192708106]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.33012772942625784, -0.6781865350268957, 0.6494525351030648, 0.09638521992649676]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.43596817439583935, -0.5982537129781701, 0.046599032277502436, 0.6707106499919265]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.169734823419553, -0.699615227367322, -0.6059581215838098, -0.33844257746495854]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.9698864809294915, 0.1729052643205874, -0.15948307917616958, 0.06315956884687175]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.46205660912967883, 0.3105054068891252, -0.617849551030653, 0.555294529545738]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.4512443497461787, -0.7636045534540555, -0.04739348426715133, -0.45939142396805815]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.2161856212656443, -0.6581450184826598, -0.5498086209601588, 0.4667112513346289]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.8753220715350803, -0.4561599367657419, -0.13298279533852678, -0.08969369719975541]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.11908260752431069, 0.18266024809834172, -0.7144822594012615, -0.664807992845101]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.751104669484278, 0.5585633382623958, -0.34579336397009175, 0.06538900566860861]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.08740438971703973, 0.8991264096610437, -0.4156704205935976, 0.10559485570696363]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.5584325870096193, 0.6016408353068798, -0.14280340445801173, 0.5529814994483859]
+        phase: n/a
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.4052725440888093, 0.25253073423599154, 0.5693263597910454, -0.669215876471182]
+        phase: n/a
+    homogenization: SX
+
+phase:
+  dislotungsten:
+    lattice: cI
+    mechanical:
+      elastic: {C_11: 523.0e9, C_12: 202.0e9, C_44: 161.0e9, type: Hooke}
+      plastic:
+        type: dislotungsten
+        output: [rho_mob, rho_dip, gamma_sl, Lambda_sl, tau_pass]
+        N_sl: [12]
+        b_sl: [2.72e-10]
+        f_edge: [1.0]
+        rho_mob_0: [1.0e+9]  # estimated from section 3.2
+        rho_dip_0: [1.0]     # not given
+        Q_s: [2.61154e-19]   # 1.63 eV, Delta_H0
+        B: [8.3e-5]
+        omega: [9.1e+11]     # nu_0
+        p_sl: [0.86]
+        q_sl: [1.69]
+        tau_Peierls: [2.03e+9]
+        h: [2.566e-10]
+        h_sl-sl: [0.009, 0.72, 0.009, 0.05, 0.05, 0.06, 0.09]
+        w: [2.992e-09] # 11b
+        i_sl: [23.3]
+        D: 40.0e-6
+        D_a: 1.0 # d_edge = D_a*b
+        D_0: 0.0 # disable climb
+        f_at: 1
+        Q_cl: 1.0
+  dislotungsten_nonSchmid:
+    lattice: cI
+    mechanical:
+      elastic: {C_11: 523.0e9, C_12: 202.0e9, C_44: 161.0e9, type: Hooke}
+      plastic:
+        type: dislotungsten
+        output: [rho_mob, rho_dip, gamma_sl, Lambda_sl, tau_pass]
+        N_sl: [12]
+        b_sl: [2.72e-10]
+        f_edge: [1.0]
+        rho_mob_0: [1.0e+9]  # estimated from section 3.2
+        rho_dip_0: [1.0]     # not given
+        Q_s: [2.61154e-19]   # 1.63 eV, Delta_H0
+        B: [8.3e-5]
+        omega: [9.1e+11]     # nu_0
+        p_sl: [0.86]
+        q_sl: [1.69]
+        tau_Peierls: [2.03e+9]
+        h: [2.566e-10]
+        h_sl-sl: [0.009, 0.72, 0.009, 0.05, 0.05, 0.06, 0.09]
+        w: [2.992e-09] # 11b
+        i_sl: [23.3]
+        D: 40.0e-6
+        D_a: 1.0 # d_edge = D_a*b
+        a_non-Schmid: [[0.45, 0.2, 0.4]] # Table 1
+        D_0: 0.0 # disable climb
+        f_at: 1
+        Q_cl: 1.0
+  dislotwin:
+    lattice: cF
+    mechanical:
+      elastic: {C_11: 175.0e9, C_12: 115.0e9, C_44: 135.0e9, type: Hooke}
+      plastic:
+        B: [0.1]
+        D: 2.0e-05
+        D_a: 1.0
+        N_sl: [12]
+        Q_cl: 4.5e-19
+        Q_sl: [3.7e-19]
+        Q_sb: 3.7e-19
+        b_sl: [2.56e-10]
+        f_at: 1.0
+        h_sl-sl: [0.122, 0.122, 0.625, 0.07, 0.137, 0.137, 0.122]
+        i_sl: [10.0]
+        output: [rho_mob, rho_dip, gamma_sl, Lambda_sl, tau_pass]
+        p_sb: 1.0
+        p_sl: [0.32]
+        q_sb: 1.0
+        q_sl: [1.46]
+        f_edge: [1.0]
+        rho_dip_0: [1.0]
+        rho_mob_0: [1.0e12]
+        tau_0: [1.5e8]
+        type: dislotwin
+        v_0: [10000.0]
+        gamma_0_sb: 0.0001
+        tau_sb: 180.0e6
+  kinehardening:
+    lattice: cF
+    mechanical:
+      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: Hooke}
+      plastic:
+        N_sl: [12]
+        type: kinehardening
+        output: [xi, chi, chi_flip, gamma_flip, gamma, sgn(gamma)]
+        atol_gamma: 1e-8
+        dot_gamma_0: [0.001]
+        n: [20]
+        xi_0: [31e6]
+        xi_inf: [63e6]
+        chi_inf: [10e6]
+        h_0_xi: [43e6]
+        h_0_chi: [1000e6]
+        h_inf_xi: [20e6]
+        h_inf_chi: [0]
+        h_sl-sl: [1, 1, 1.4, 1.4, 1.4, 1.4, 1.4]
+  nonlocalbcc:
+    lattice: cI
+    mechanical:
+      elastic: {C_11: 523.0e9, C_12: 202.0e9, C_44: 161.0e9, type: Hooke}
+      plastic:
+        D_0: 0.00019
+        N_sl: [12]
+        Q_cl: 5.1e-19
+        Q_sol: 1.8e-19
+        V_at: 1.2e-29
+        a_non-Schmid: [[0.1, 0.1, 0.1, 0.1, 0.1, 0.1]]
+        atol_gamma: 1e10
+        atol_rho: 1e100
+        b_sl: [2.48e-10]
+        c_sol: 5e-7
+        chi_GB: 0.0
+        chi_surface: 1.0
+        d_ed: [2.6e-09]
+        d_sc: [1.2e-08]
+        B: 1e-3
+        f_F: 0.8
+        f_ed: 0.01
+        f_ed_mult: 0.1
+        f_sol: 1.0
+        h_sl-sl: [0, 0.625, 0, 0.07, 0.07, 0.122, 0.137]
+        i_sl: [45]
+        nu_a: 50e9
+        output: [rho_u_ed_pos, rho_b_ed_pos, rho_u_ed_neg, rho_b_ed_neg, rho_u_sc_pos, rho_b_sc_pos, rho_u_sc_neg, rho_b_sc_neg, rho_d_ed, rho_d_sc, rho_f, gamma, tau_pass, v_ed_pos, v_ed_neg, v_sc_pos, v_sc_neg]
+        p_sl: 1
+        q_sl: 1
+        r: 1
+        rho_d_ed_0: [0]
+        rho_d_sc_0: [0]
+        rho_min: 1
+        rho_significant: 1e8
+        rho_u_ed_neg_0: [6e10]
+        rho_u_ed_pos_0: [6e10]
+        rho_u_sc_neg_0: [6e10]
+        rho_u_sc_pos_0: [6e10]
+        short_range_stress_correction: true
+        sigma_rho_u: 0
+        tau_Peierls_ed: [1e5]
+        tau_Peierls_sc: [1e5]
+        type: nonlocal
+        w: 10
+  nonlocalfcc:
+    lattice: cF
+    mechanical:
+      elastic: {C_11: 246.5e9, C_12: 147.3e9, C_44: 124.7e9, type: Hooke}
+      plastic:
+        D_0: 0.00019
+        N_sl: [12]
+        Q_cl: 5.1e-19
+        Q_sol: 1.8e-19
+        V_at: 1.2e-29
+        atol_gamma: 1e10
+        atol_rho: 1e100
+        b_sl: [2.48e-10]
+        c_sol: 5e-7
+        chi_GB: 0.0
+        chi_surface: 1.0
+        d_ed: [2.6e-09]
+        d_sc: [1.2e-08]
+        B: 1e-3
+        f_F: 0.8
+        f_ed: 0.01
+        f_ed_mult: 0.1
+        f_sol: 1.0
+        h_sl-sl: [0, 0, 0.625, 0.07, 0.137, 0.137, 0.122]
+        i_sl: [45]
+        nu_a: 50e9
+        output: [rho_u_ed_pos, rho_b_ed_pos, rho_u_ed_neg, rho_b_ed_neg, rho_u_sc_pos, rho_b_sc_pos, rho_u_sc_neg, rho_b_sc_neg, rho_d_ed, rho_d_sc, rho_f, gamma, tau_pass, v_ed_pos, v_ed_neg, v_sc_pos, v_sc_neg]
+        p_sl: 1
+        q_sl: 1
+        r: 1
+        rho_d_ed_0: [0]
+        rho_d_sc_0: [0]
+        rho_min: 1
+        rho_significant: 1e8
+        rho_u_ed_neg_0: [6e10]
+        rho_u_ed_pos_0: [6e10]
+        rho_u_sc_neg_0: [6e10]
+        rho_u_sc_pos_0: [6e10]
+        short_range_stress_correction: true
+        sigma_rho_u: 0
+        tau_Peierls_ed: [1e5]
+        tau_Peierls_sc: [1e5]
+        type: nonlocal
+        w: 10
+  phenopowerlawbcc:
+    lattice: cI
+    mechanical:
+      elastic: {C_11: 417.4e9, C_12: 242.4e9, C_44: 211.1e9, type: Hooke}
+      plastic:
+        type: phenopowerlaw
+        output: [xi_sl, gamma_sl]
+        N_sl: [12]
+        a_non-Schmid: [[0.1, 0.1, 0.1, 0.1, 0.1, 0.1]]
+        dot_gamma_0_sl: [0.001]
+        n_sl: [20]
+        a_sl: [2.0]
+        xi_0_sl: [405.8e6]
+        xi_inf_sl: [872.9e6]
+        h_0_sl-sl: [563.0e9]
+        h_sl-sl: [1, 1.4, 1, 1.4, 1.4, 1.4, 1.4]
+  phenopowerlawhex:
+    lattice: hP
+    c/a: 1.6235
+    mechanical:
+      elastic: {C_11: 59.3e9, C_12: 25.7e9, C_13: 21.4e9, C_33: 61.5e9, C_44: 16.4e9, type: Hooke}
+      plastic:
+        type: phenopowerlaw
+        output: [xi_sl, gamma_sl, xi_tw, gamma_tw]
+        N_sl: [3, 3, 6, 0, 6]
+        N_tw: [6, 0, 0, 6]
+        dot_gamma_0_sl: [0.001, 0.001, 0.001, 0, 0.001]
+        dot_gamma_0_tw: [0.001, 0, 0, 0.001]
+        n_sl: [20, 20, 20, 1, 20]
+        n_tw: [20, 1, 1, 20]
+        a_sl: [2.25, 2.25, 2.25, 1.0, 2.25]
+        f_sat_sl-tw: [10.0, 10.0, 10.0, 0, 10.0]
+        c_1: [0, 0, 0, 0, 0]
+        c_2: [0, 0, 0, 0, 0]
+        c_3: [20, 0, 0, 20]
+        c_4: [20, 0, 0, 20]
+        xi_0_sl:   [10.0e6,  55.0e6,  60.0e6, 0.0,  60.0e6]
+        xi_inf_sl: [40.0e6, 135.0e6, 150.0e6, 0.0, 150.0e6]
+        h_0_sl-sl: [0.5e9, 0.5e9, 0.5e9, 0.0, 0.5e9]
+        h_sl-sl: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1]
+        h_sl-tw: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        xi_0_tw: [40.0e6, 0.0, 0.0, 60.0e6]
+        h_0_tw-sl: [0.15e9, 0.0, 0.0, 0.15e9]
+        h_tw-sl: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        h_0_tw-tw: [50.0e6, 0.0, 0.0, 50.0e6]
+        h_tw-tw: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1]

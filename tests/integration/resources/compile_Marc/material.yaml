@@ -1,0 +1,28 @@
+homogenization:
+  SX:
+    N_constituents: 1
+    mechanical:
+      type: pass
+
+phase:
+  Aluminum_J2isotropic:
+    lattice: cF
+    mechanical:
+      elastic: {type: Hooke, C_11: 110.9e9, C_12: 58.34e9, C_44: 26.28e9}
+      plastic:
+        type: isotropic
+        M:            3
+        xi_0:         31e6
+        dot_gamma_0:  0.001
+        n:            20
+        h_0:          75e6
+        xi_inf:       63e6
+        a:            2.25
+        output:       [xi]
+
+material:
+  - homogenization: SX
+    constituents:
+      - phase: Aluminum_J2isotropic
+        v: 1.0
+        O:  [0.08740438971703973, 0.8991264096610437, -0.4156704205935976, 0.10559485570696363]

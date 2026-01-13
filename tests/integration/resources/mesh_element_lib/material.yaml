@@ -1,0 +1,31 @@
+homogenization:
+  SX:
+    N_constituents: 1
+    mechanical: {type: pass}
+
+material:
+  - constituents:
+      - v: 1.0
+        O: [1.0, 0.0, 0.0, 0.0]
+        phase: Aluminum
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [1.0, 0.0, 0.0, 0.0]
+        phase: Copper
+    homogenization: SX
+
+phase:
+  Copper:
+    lattice: cF
+    mechanical:
+      elastic: {C_11: 168.3e9, C_12: 122.1e9, C_44: 75.7e9, type: Hooke}
+      output: [F, P]
+      plastic: {type: none}
+
+  Aluminum:
+    lattice: cF
+    mechanical:
+      elastic: {C_11: 107.3e9, C_12: 60.8e9, C_44: 28.3e9, type: Hooke}
+      output: [F, P]
+      plastic: {type: none}
