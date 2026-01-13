@@ -10,7 +10,7 @@
 
 #ifdef BOOST
 
-#include "../../CLI.h"
+#include "../../src/CLI.h"
 
 namespace fs = std::filesystem;
 
