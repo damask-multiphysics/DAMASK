@@ -7,6 +7,10 @@ import numpy as np
 import pytest
 from PIL import Image
 from PIL import ImageChops
+import matplotlib as mpl
+if os.name == 'posix' and 'DISPLAY' not in os.environ:
+    mpl.use('Agg')
+import matplotlib.pyplot as plt
 
 from damask import Colormap
 
@@ -15,9 +19,17 @@ def res_path(res_path_base):
     """Directory containing testing resources."""
     return res_path_base/'Colormap'
 
+
 @pytest.fixture(autouse=True)
 def _patch_execution_stamp(patch_execution_stamp):
     print('patched damask.util.execution_stamp')
+
+
+@pytest.fixture
+def patch_plt_show(monkeypatch):
+    def _None(block=None):
+        pass
+    monkeypatch.setattr(plt, 'show', _None, raising=True)
 
 
 def test_repr(patch_plt_show):
@@ -35,32 +47,20 @@ def test_conversion(np_rng):
                         ])
     rgbs = np.vstack((specials,np_rng.random((100,3))))
     for rgb in rgbs:
-        print('rgb',rgb)
-
         # rgb2hsv2rgb
-        hsv = Colormap._rgb2hsv(rgb)
-        print('hsv',hsv)
-        assert np.allclose(Colormap._hsv2rgb(hsv),rgb)
+        assert np.allclose(Colormap._hsv2rgb(hsv := Colormap._rgb2hsv(rgb)),rgb)
 
         # rgb2hsl2rgb
-        hsl = Colormap._rgb2hsl(rgb)
-        print('hsl',hsl)
-        assert np.allclose(Colormap._hsl2rgb(hsl),rgb)
+        assert np.allclose(Colormap._hsl2rgb(hsl := Colormap._rgb2hsl(rgb)),rgb)
 
         # rgb2xyz2rgb
-        xyz = Colormap._rgb2xyz(rgb)
-        print('xyz',xyz)
-        assert np.allclose(Colormap._xyz2rgb(xyz),rgb,atol=1.e-6,rtol=0)
+        assert np.allclose(Colormap._xyz2rgb(xyz := Colormap._rgb2xyz(rgb)),rgb,atol=1.e-6,rtol=0)
 
         # xyz2lab2xyz
-        lab = Colormap._xyz2lab(xyz)
-        print('lab',lab)
-        assert np.allclose(Colormap._lab2xyz(lab),xyz)
+        assert np.allclose(Colormap._lab2xyz(lab := Colormap._xyz2lab(xyz)),xyz)
 
         # lab2msh2lab
-        msh = Colormap._lab2msh(lab)
-        print('msh',msh)
-        assert np.allclose(Colormap._msh2lab(msh),lab)
+        assert np.allclose(Colormap._msh2lab(msh := Colormap._lab2msh(lab)),lab)
 
         # lab2rgb2lab
         assert np.allclose(Colormap._rgb2lab(Colormap._lab2rgb(lab)),lab,atol=1.e-6,rtol=0)
