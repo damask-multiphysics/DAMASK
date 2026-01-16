@@ -1,0 +1,60 @@
+homogenization:
+  direct:
+    N_constituents: 1
+    mechanical: {type: pass}
+    thermal:
+      type: pass
+      output: [T]
+
+phase:
+  matrix:
+    lattice: cI
+    rho: 1
+    mechanical:
+      output: [F, P, F_i]
+      elastic:
+        type: Hooke
+        C_11: 100.0e+9
+        C_12: 40.0e+9
+        C_13: 30.0e+9
+        C_33: 34.0e+9
+        C_44: 52.0e+9
+        C_66: 48.0e+9
+    thermal:
+      C_p: 1
+      K_11: DAMASK
+      K_33: DAMASK
+
+  heatsource:
+    lattice: cI
+    rho: 1
+    mechanical:
+      output: [F, P]
+      elastic:
+        type: Hooke
+        C_11: 100.0e+9
+        C_12: 0.0e+9
+        C_13: 0.0e+9
+        C_33: 50.0e+9
+        C_44: 50.0e+9
+        C_66: 50.0e+9
+    thermal:
+      C_p: 1
+      K_11: DAMASK
+      K_33: DAMASK
+      source:
+        - type: externalheat
+          f: [1, 1, 0, 0]
+          t: [0, 500, 500.001, 1000]
+
+material:
+  - constituents:
+      - phase: matrix
+        v: 1.0
+        O: [1.0, 0.0, 0.0, 0.0]
+    homogenization: direct
+  - constituents:
+      - phase: heatsource
+        v: 1.0
+        O: [1.0, 0.0, 0.0, 0.0]
+    homogenization: direct

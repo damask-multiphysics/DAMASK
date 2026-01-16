@@ -1,0 +1,24 @@
+homogenization:
+  SX:
+    N_constituents: 1
+    mechanical: {type: pass}
+
+material:
+  - homogenization: SX
+    constituents:
+      - v: 1.0
+
+phase:
+  cubic:
+    lattice: cF
+    mechanical:
+      elastic: {type: Hooke, C_11: 170.00e9, C_12: 122.50e9, C_44: 75.80e9}
+      plastic: {type: none}
+      output: [F, P]
+  hex:
+    lattice: hP
+    c/a: 1.629
+    mechanical:
+      elastic: {type: Hooke, C_11: 162.4e9, C_12: 92.0e9, C_13: 69.0e9, C_33: 180.7e9, C_44: 49.7e9}
+      plastic: {type: none}
+      output: [F, P]

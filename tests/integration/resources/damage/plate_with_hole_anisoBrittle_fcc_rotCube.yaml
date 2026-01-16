@@ -1,0 +1,54 @@
+homogenization:
+  SX:
+    N_constituents: 1
+    damage:
+      output: [phi]
+      type: pass
+    mechanical: {type: pass}
+
+material:
+  - constituents:
+      - v: 1.0
+        O: [0.9238795325112867, 0.0, 0.0, 0.3826834323650898]
+        phase: damage-anisobrittle
+    homogenization: SX
+    label: upper
+  - constituents:
+      - v: 1.0
+        O: [0.9238795325112867, 0.0, 0.0, 0.3826834323650898]
+        phase: damage-anisobrittle
+    homogenization: SX
+    label: lower
+  - constituents:
+      - v: 1.0
+        O: [0.9238795325112867, 0.0, 0.0, 0.3826834323650898]
+        phase: elastic-only
+    homogenization: SX
+    label: hole
+
+phase:
+  damage-anisobrittle:
+    lattice: cF
+    mechanical:
+      output: [F, F_i, P]
+      elastic: {C_11: 110.9e9, C_12: 58.34e9, C_44: 26.28e9, type: Hooke}
+      plastic: {type: none}
+    damage:
+      N_cl: [3]
+      dot_o_0: 1e-3
+      g_crit: [0.50e7]
+      p: 20
+      type: anisobrittle
+      s_crit: [0.013332]
+      l_c: 1.0
+      mu: 0.001
+
+  elastic-only:
+    lattice: cF
+    damage:
+      l_c: 1.0
+      mu: 0.001
+    mechanical:
+      elastic: {C_11: 110.9e8, C_12: 58.34e8, C_44: 26.28e8, type: Hooke}
+      output: [F, F_i, P]
+      plastic: {type: none}

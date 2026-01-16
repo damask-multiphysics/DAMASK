@@ -1,0 +1,50 @@
+homogenization:
+  RGC:
+    N_constituents: 8
+    mechanical:
+      D_alpha: [4.0e-06, 4.0e-06, 2.0e-06]
+      a_g: [0.0, 0.0, 0.0]
+      c_alpha: 2.0
+      cluster_size: [2, 2, 2]
+      type: RGC
+      xi_alpha: 10.0
+  SX:
+    N_constituents: 1
+    mechanical: {type: isostrain}
+  Taylor2:
+    N_constituents: 2
+    mechanical: {type: isostrain}
+  none:
+    N_constituents: 1
+    mechanical: {type: pass}
+
+phase:
+  Elastic:
+    lattice: cF
+    mechanical:
+      output: [F, P]
+      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: Hooke}
+      plastic: {type: none}
+  Isotropic:
+    lattice: cF
+    mechanical:
+      output: [F, P]
+      elastic: {C_11: 110.9e9, C_12: 58.34e9, C_44: 26.28e9, type: Hooke}
+      plastic: {M: 3, a: 2.25,
+                dot_gamma_0: 0.001, h_0: 75e6, n: 20, type: isotropic, xi_0: 31e6, xi_inf: 63e6,
+                c_1: 2.4175e-07, c_2: 3.9, c_3: 1.0, c_4: 5.9804e-08}
+  Phenopowerlaw:
+    lattice: cF
+    mechanical:
+      output: [F, P]
+      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: Hooke}
+      plastic:
+        type: phenopowerlaw
+        N_sl: [12]
+        a_sl: [2.25]
+        dot_gamma_0_sl: [0.001]
+        h_0_sl-sl: [75e6]
+        h_sl-sl: [1, 1, 1.4, 1.4, 1.4, 1.4, 1.4]
+        n_sl: [20]
+        xi_0_sl: [31e6]
+        xi_inf_sl: [63e6]

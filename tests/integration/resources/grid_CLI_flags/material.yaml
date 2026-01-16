@@ -1,0 +1,19 @@
+homogenization:
+  SX:
+    N_constituents: 1
+    mechanical: {type: isostrain}
+
+material:
+  - constituents:
+      - v: 1.0
+        O: [0.06817485875515444, 0.03985506619537109, -0.5032054951163741, 0.8605509816489446]
+        phase: Aluminum_elastic_only
+    homogenization: SX
+
+phase:
+  Aluminum_elastic_only:
+    lattice: cF
+    mechanical:
+      output: [F, P]
+      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: Hooke}
+      plastic: {type: none}

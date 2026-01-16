@@ -1,0 +1,104 @@
+homogenization:
+  SX:
+    N_constituents: 1
+    mechanical: {type: isostrain}
+
+material:
+  - constituents:
+      - v: 1.0
+        O: [0.9238795325112867, 0.0, -0.0, 0.3826834323650898]
+        phase: Aluminum
+    homogenization: SX
+  - constituents:
+      - v: 1.0
+        O: [0.9238795325112867, 0.0, -0.0, 0.3826834323650898]
+        phase: Aluminum_empty
+    homogenization: SX
+
+phase:
+  Aluminum:
+    lattice: cF
+    mechanical:
+      output: [F, P]
+      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: Hooke}
+      plastic:
+        type: nonlocal
+        D_0: 1e-4
+        N_sl: [1]
+        Q_cl: 1e100
+        Q_sol: 1e-100
+        V_at: 1.7e-29
+        b_sl: [2.86e-10]
+        c_sol: 1e-100
+        chi_GB: 0.0
+        chi_surface: 1.0
+        d_ed: [0]
+        d_sc: [0]
+        B: 10000
+        f_F: 0.0
+        f_ed: 0.0
+        f_ed_mult: 0
+        f_sol: 1e100
+        h_sl-sl: [0, 0, 0.625, 0.07, 0.137, 0.137, 0.122]
+        i_sl: [1e100]
+        nu_a: 50e9
+        output: [rho_u_ed_pos, rho_b_ed_pos, rho_u_ed_neg, rho_b_ed_neg, rho_u_sc_pos, rho_b_sc_pos, rho_u_sc_neg, rho_b_sc_neg, rho_d_ed, rho_d_sc]
+        p_sl: 1
+        q_sl: 1
+        r: 1e-3
+        random_multiplication: 0
+        rho_d_ed_0: [0]
+        rho_d_sc_0: [0]
+        rho_significant: 1e6
+        rho_u_ed_neg_0: [1e14]
+        rho_u_ed_pos_0: [1e14]
+        rho_u_sc_neg_0: [1e14]
+        rho_u_sc_pos_0: [1e14]
+        short_range_stress_correction: false
+        sigma_rho_u: 0
+        tau_Peierls_ed: [1e-100]
+        tau_Peierls_sc: [1e-100]
+        w: 1e100
+  Aluminum_empty:
+    lattice: cF
+    mechanical:
+      output: [F, P]
+      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: Hooke}
+      plastic:
+        type: nonlocal
+        D_0: 1e-4
+        N_sl: [1]
+        Q_cl: 1e100
+        Q_sol: 2e-19
+        V_at: 1.7e-29
+        b_sl: [2.86e-10]
+        c_sol: 1e-6
+        chi_GB: 0.0
+        chi_surface: 1.0
+        d_ed: [0]
+        d_sc: [0]
+        B: 1e-4
+        f_F: 0.0
+        f_ed: 0.0
+        f_ed_mult: 0
+        f_sol: 2
+        h_sl-sl: [0, 0, 0.625, 0.07, 0.137, 0.122]
+        i_sl: [1e100]
+        nu_a: 50e9
+        output: [rho_u_ed_pos, rho_b_ed_pos, rho_u_ed_neg, rho_b_ed_neg, rho_u_sc_pos, rho_b_sc_pos, rho_u_sc_neg, rho_b_sc_neg, rho_d_ed, rho_d_sc]
+        p_sl: 1
+        q_sl: 1
+        r: 1e-3
+        random_multiplication: 0
+        rho_d_ed_0: [0]
+        rho_d_sc_0: [0]
+        rho_significant: 1e6
+        rho_u_ed_neg_0: [0]
+        rho_u_ed_pos_0: [0]
+        rho_u_sc_neg_0: [0]
+        rho_u_sc_pos_0: [0]
+        short_range_stress_correction: false
+        sigma_rho_u: 0
+        tau_Peierls_ed: [1e5]
+        tau_Peierls_sc: [1e5]
+        w: 10

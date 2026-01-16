@@ -1,0 +1,16 @@
+---
+
+solver:
+  mechanical: spectral_basic
+  chemical: FDM
+
+loadstep:
+  - boundary_conditions:
+      mechanical:
+        F: [[1., 0., 0.],
+            [0., 1., 0.],
+            [0., 0., 1.]]
+    discretization:
+      t: 150.
+      N: 1000
+    f_out: 1

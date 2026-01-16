@@ -1,0 +1,4 @@
+solver:
+  mesh:
+    p_s: 1
+    p_i: 1

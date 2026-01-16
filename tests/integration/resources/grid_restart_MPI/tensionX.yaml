@@ -1,0 +1,20 @@
+---
+
+solver:
+  mechanical: n/a
+
+loadstep:
+  - boundary_conditions:
+      mechanical:
+        dot_F: [[0.5e-3, 0, 0],
+                [0,      x, 0],
+                [0,      0, 0]]
+        P: [[x, x, x],
+            [x, 0, x],
+            [x, x, x]]
+    discretization:
+      t: 20
+      N: 25
+    f_restart: 17
+    f_out: 25
+    estimate_rate: False

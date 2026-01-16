@@ -1,0 +1,282 @@
+|+++++++++++++++++++++++++++++++++++++++++++++
+|  MPIE PROCEDURE FILE
+|  FOR USE WITH MSC.MARC/MENTAT
+|=============================================
+|        TITLE: check_compile
+|       AUTHOR: C. Zambaldi, P. Eisenlohr
+|+++++++++++++++++++++++++++++++++++++++++++++
+| USAGE IN MENTAT: 
+|   /!\ Save current model /!\, then
+|   UTILS > PROCEDURES > LOAD > START/CONT
+|+++++++++++++++++++++++++++++++++++++++++++++
+
+|+++++++++++++++++++++++++++++++++++++++++++++
+*new_model yes
+*select_reset
+*plot_reset
+*expand_reset
+*move_reset
+
+|+++++++++++++++++++++++++++++++++++++++++++++
+| PARAMETER-DEFINITION
+|+++++++++++++++++++++++++++++++++++++++++++++
+|++ GEOMETRY ++++++
+*define smv 0.001000      | Small_value
+*define ax 100.000000     | Element size
+*define ay 100.000000
+*define az 100.000000
+*define divix 1
+*define diviy 1
+*define diviz 1
+
+|++ DEFORMATION +++
+*define eps_max 0.01      | Maximum engineering strain
+*define def_time 100.00   | Time for loadcase
+*define nr_incr 2         | Number of increments
+*renumber_all
+*sweep_all
+
+
+
+|+++++++++++++++++++++++++++++++++++++++++++++
+| SAMPLE-MODELING AND MESHING
+|+++++++++++++++++++++++++++++++++++++++++++++
+*add_nodes
+0  0  0
+ax 0  0
+ax ay 0
+0  ay 0
+0  0  az
+ax 0  az
+ax ay az
+0  ay az
+*set_node_labels on
+*set_element_class hex8
+| Add first element
+*add_elements       
+1 2 3 4 5 6 7 8 #
+
+| Subdivide Element 1
+*sub_divisions 
+divix diviy diviz
+
+*subdivide_elements
+all_existing
+*sweep_all
+*renumber_all
+
+|+++++++++++++++++++++++++++++++++++++++++++++
+| GEOMETRIC PROPERTIES
+|+++++++++++++++++++++++++++++++++++++++++++++
+*geometry_type mech_three_solid
+*geometry_option cdilatation:on
+*geometry_option assumedstrn:off
+*geometry_option ctemperature:on
+*geometry_option red_integ_capacity:off
+*add_geometry_elements
+all_existing
+
+
+|+++++++++++++++++++++++++++++++++++++++++++++
+| TABLE DEFINITION
+|+++++++++++++++++++++++++++++++++++++++++++++
+*new_table
+*table_name
+displacement
+
+*set_table_type
+time
+
+*table_add
+0.0  0.0
+def_time  eps_max*az
+*show_table
+*table_fit
+*table_filled
+
+
+|+++++++++++++++++++++++++++++++++++++++++++++
+| ASSIGN BOUNDARY CONDITIONS
+|+++++++++++++++++++++++++++++++++++++++++++++
+*new_apply
+*apply_name
+x0_fix
+*apply_dof x *apply_dof_value x
+0
+*add_apply_nodes
+|x0_nodes
+1 4 5 8
+#
+
+*new_apply
+*apply_name
+y0_fix
+*apply_dof y *apply_dof_value y
+0
+*add_apply_nodes
+|y0_nodes
+1 2 5 6
+#
+
+*new_apply
+*apply_name
+z0_fix
+*apply_dof z *apply_dof_value z
+0
+*add_apply_nodes
+|z0_nodes
+1 2 3 4
+#
+
+*new_apply
+*apply_name
+deform
+*apply_dof_value z
+1
+*apply_dof_table z
+displacement
+*add_apply_nodes
+5 6 7 8
+#
+
+*select_reset
+
+*new_icond    
+*icond_name
+ic_temperature
+*icond_type state_variable
+*icond_param_value state_var_id
+1
+*icond_dof var *icond_dof_value var
+300
+*add_icond_elements
+all_existing
+
+
+*new_icond    
+*icond_name
+ic_microstructure
+*icond_type state_variable
+*icond_param_value state_var_id
+2
+*icond_dof var *icond_dof_value var
+1
+*add_icond_elements
+all_existing
+
+|+++++++++++++++++++++++++++++++++++++++++++++
+| MATERIAL DATA       
+|+++++++++++++++++++++++++++++++++++++++++++++
+*material_name hypela2
+*material_type mechanical:hypoelastic
+*material_option hypoelastic:method:hypela2
+*material_option hypoelastic:pass:def_rot
+*add_material_elements
+all_existing
+
+
+|+++++++++++++++++++++++++++++++++++++++++++++
+| LOADCASES DEFINITION
+|+++++++++++++++++++++++++++++++++++++++++++++
+*loadcase_name
+deform
+*loadcase_type static
+*loadcase_value force  | convergence criterium, default: 0.1, too wide
+0.01
+*loadcase_value time
+def_time
+*loadcase_value nsteps
+nr_incr
+*loadcase_value minrec | minimum number of recycles, set to 1 for 1-element calculations
+1
+*loadcase_value maxrec
+20
+*loadcase_value ntime_cuts | Number of timestep cutbacks
+30
+
+
+|+++++++++++++++++++++++++++++++++++++++++++++
+| JOB DEFINITION
+|+++++++++++++++++++++++++++++++++++++++++++++
+*sweep_all
+*surfaces_wireframe *regen
+*prog_use_current_job on *new_job structural
+*add_job_iconds ic_temperature
+*add_job_iconds ic_microstructure
+
+
+|++++++++++++
+| ANALYSIS OPTIONS
+|++++++++++++
+|| Large Displacement
+*job_option large:on
+|| Plasticity Procedure: Large strain additive
+*job_option plasticity:l_strn_mn_add
+|| Advanced Options
+||| CONSTANT DILATATION (moved to Geometric Properties Section in Marc 2008r1)
+*job_option cdilatation:on
+||| Updated Lagrange Procedure
+*job_option update:on
+||| Large Strains
+*job_option finite:on
+||| Multiplicative Decomposition (large stra =2)
+*job_option plas_proc:multiplicative
+
+|++++++++++++
+| JOB PARAMETERS
+|++++++++++++
+|| Solver: Nonsymmetrical Solution
+*job_option solver_nonsym:on
+
+|++++++++++++
+| SOUBROUTINE DEFINITION
+|++++++++++++
+*job_usersub_file ../DAMASK/src/DAMASK_marc.f90
+
+*job_option user_source:compile_save
+|*job_option user_source:run_saved
+
+*add_job_loadcases deform
+
+|++++++++++++
+| JOB RESULTS
+|++++++++++++
+|*job_option post ascii/binary | Write Result File as formatted ASCII or binary
+*job_param post 1 | write each ith increment to *.t16 (binary) or *.t19 (ascii)
+*add_post_tensor stress
+*add_post_tensor strain
+*add_post_tensor cauchy
+*add_post_var temperature
+*add_post_var state2         | Homogenization ID of MPIE crystal-plasticity (old material ID)
+*add_post_var state3         | Microstructure ID of MPIE crystal-plasticity
+*add_post_var von_mises
+*add_post_var eel_strain
+*add_post_var ecauchy
+*add_post_var te_energy
+*add_post_var tepl_strain
+*add_post_var thickness
+*add_post_var eq/yl_stress
+*add_post_var volume         | volume (initial)
+*add_post_var cur_volume     | volume (current)
+*add_post_var user1
+
+
+|++++ CLEAN UP +++++++    
+*sweep_all
+*remove_unused_nodes
+*renumber_all
+
+*show_all_views
+*view_perspective
+*show_view 4
+*rot_model_cspace_y_for
+*fill_view
+
+|+++++++++++++++++++++++
+| SAVE MODEL
+|+++++++++++++++++++++++
+*sweep_all
+*renumber_all
+*save_as_model check_compile.mfd yes
+*job_write_input yes
+

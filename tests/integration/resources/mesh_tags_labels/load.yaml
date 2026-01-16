@@ -1,0 +1,12 @@
+---
+loadstep:
+  - boundary_conditions:
+      mechanical:
+        - label: 'fixed'
+          dot_u: [0.0, 0.0, 0.0]
+        - label: 'label'
+          dot_u: [x, x, x]
+    discretization:
+      t: 1.0
+      N: 1
+    f_out: 1

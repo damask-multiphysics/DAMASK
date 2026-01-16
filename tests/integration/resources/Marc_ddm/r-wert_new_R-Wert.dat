@@ -1,0 +1,19 @@
+title               R-Wert
+$....MARC input file produced by Marc Mentat 2024.1 (64bit)
+$...................................
+$....input file using extended precision
+extended
+$...................................
+sizing                                 0         0         0         0
+alloc                       25
+version                     15         1         0         1
+table                        0         0         2         1         1         0         0         1         1
+processor                    1         1         1         0
+$no list
+unit                        -3         0
+large stra                   2         1         0         0         0         0         0         0
+all points
+no echo                      1         2         3         4
+state vars                   3
+end
+$...................

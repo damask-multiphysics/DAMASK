@@ -1,0 +1,18 @@
+---
+
+solver:
+  mechanical: n/a
+
+loadstep:
+  - boundary_conditions:
+      mechanical:
+        F: [[x, 0,    0],
+            [0, 1.05, 0],
+            [0, 0,    x]]
+        P: [[0, x, x],
+            [x, x, x],
+            [x, x, 0]]
+    discretization:
+      t: 25
+      N: 25
+    f_out: 25

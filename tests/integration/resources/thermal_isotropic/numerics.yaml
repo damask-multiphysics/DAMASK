@@ -1,0 +1,8 @@
+solver:
+  grid:
+    mechanical:
+      eps_abs_div(P):  10.e5
+      eps_abs_curl(F): 10.e5
+      eps_rel_div(P):  10.e5
+      eps_rel_curl(F): 10.e5
+      eps_abs_P:       20.e5

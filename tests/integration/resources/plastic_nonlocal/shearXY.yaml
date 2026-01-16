@@ -1,0 +1,105 @@
+---
+
+solver:
+  mechanical: spectral_basic
+
+loadstep:
+  - boundary_conditions:
+      mechanical:
+        F: [[1, 1.0e-3, 0],
+            [0, 1,      0],
+            [0, 0,      1]]
+    discretization:
+      t: 1
+      N: 10
+    estimate_rate: False
+
+  - boundary_conditions:
+      mechanical:
+        F: [[1, -1.0e-3, 0],
+            [0,  1,      0],
+            [0,  0,      1]]
+    discretization:
+      t: 2
+      N: 20
+    estimate_rate: False
+
+  - boundary_conditions:
+      mechanical:
+        F: [[1, 1.0e-3, 0],
+            [0, 1,      0],
+            [0, 0,      1]]
+    discretization:
+      t: 2
+      N: 20
+    estimate_rate: False
+
+  - boundary_conditions:
+      mechanical:
+        F: [[1, -1.0e-3, 0],
+            [0,  1,      0],
+            [0,  0,      1]]
+    discretization:
+      t: 2
+      N: 20
+    estimate_rate: False
+
+  - boundary_conditions:
+      mechanical:
+        F: [[1, 1.0e-3, 0],
+            [0, 1,      0],
+            [0, 0,      1]]
+    discretization:
+      t: 2
+      N: 20
+    estimate_rate: False
+
+  - boundary_conditions:
+      mechanical:
+        F: [[1, -1.0e-3, 0],
+            [0,  1,      0],
+            [0,  0,      1]]
+    discretization:
+      t: 2
+      N: 20
+    estimate_rate: False
+
+  - boundary_conditions:
+      mechanical:
+        F: [[1, 1.0e-3, 0],
+            [0, 1,      0],
+            [0, 0,      1]]
+    discretization:
+      t: 2
+      N: 20
+    estimate_rate: False
+
+  - boundary_conditions:
+      mechanical:
+        F: [[1, -1.0e-3, 0],
+            [0,  1,      0],
+            [0,  0,      1]]
+    discretization:
+      t: 2
+      N: 20
+    estimate_rate: False
+
+  - boundary_conditions:
+      mechanical:
+        F: [[1, 1.0e-3, 0],
+            [0, 1,      0],
+            [0, 0,      1]]
+    discretization:
+      t: 2
+      N: 20
+    estimate_rate: False
+
+  - boundary_conditions:
+      mechanical:
+        F: [[1, 0, 0],
+            [0, 1, 0],
+            [0, 0, 1]]
+    discretization:
+      t: 1
+      N: 10
+    estimate_rate: False

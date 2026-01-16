@@ -1,0 +1,11 @@
+---
+loadstep:
+  - boundary_conditions:
+      mechanical:
+        - label: 'tensionX'
+          dot_u: [0.01, 'x', 'x']
+        - label: 'fixed'
+          dot_u: [0.0, 0.0, 0.0]
+    discretization:
+      t: 5
+      N: 200

@@ -1,0 +1,17 @@
+---
+homogenization:
+  SX:
+    N_constituents: 1
+    mechanical: {type: pass}
+phase:
+  Aluminum:
+    lattice: cF
+    mechanical:
+      output: [F, P]
+      elastic: {type: Hooke, C_11: 1.2, C_12: 0.4, C_44: 0.4}
+material:
+  - constituents:
+      - phase: Aluminum
+        O: [1.0, 0.0, 0.0, 0.0]
+        v: 1.0
+    homogenization: SX

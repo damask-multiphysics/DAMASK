@@ -1,0 +1,4 @@
+phase:
+  eps_rel_state: 1e-2
+  r_cutback_min: 1e-4
+  integrator_state: n/a

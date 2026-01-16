@@ -1,0 +1,4 @@
+solver:
+  grid:
+    FFT:
+      memory_efficient: true                       # Do not precalculate Gamma-operator (81 double per point)

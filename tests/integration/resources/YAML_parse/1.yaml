@@ -1,0 +1,20 @@
+%YAML 1.2
+---
+homogenization:
+  SX:
+    N_constituents: 1
+    mechanical: {type: pass}
+
+material:
+  - constituents:
+      - v: 1.0
+        O: [1.0, 0.0, 0.0, 0.0]
+        phase: elastic
+    homogenization: SX
+
+phase:
+  elastic:
+    lattice: cF
+    mechanical:
+      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: Hooke}
+      plastic: {type: none}

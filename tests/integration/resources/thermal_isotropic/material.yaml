@@ -1,0 +1,72 @@
+homogenization:
+  direct:
+    N_constituents: 1
+    mechanical: {type: pass}
+    thermal:
+      type: pass
+
+phase:
+  matrix:
+    lattice: tI
+    c/a: 0.5458
+    rho: 7265.0
+    mechanical:
+      output: [O]
+      elastic:
+        type: Hooke
+        C_11: 72.90e+9
+        C_11,T: -4.399e+7
+        C_11,T^2: -2.645e+4
+
+        C_12: 59.27e+9
+        C_12,T: 1.058e+7
+        C_12,T^2: 1.002e+4
+
+        C_13: 35.80e+9
+        C_13,T: -2.870e+6
+
+        C_33: 88.78e+9
+        C_33,T: -5.250e+7
+        C_33,T^2: 3.546e+3
+
+        C_44: 22.26e+9
+        C_44,T: -1.982e+7
+        C_44,T^2: -8.711e+3
+
+        C_66: 24.18e+9
+        C_66,T: -1.806e+7
+        C_66,T^2: -4.112e+3
+
+        T_ref: 293.15
+    thermal:
+      C_p: 210.0
+      K_11: 7.414e+1
+      K_33: 7.414e+1
+      output: [T]
+
+  inclusion:
+    lattice: cF
+    rho: 7937.0
+    mechanical:
+      output: [O]
+      elastic:
+        type: Hooke
+        C_11: 204.6e+9
+        C_12: 137.7e+9
+        C_44: 126.2e+9
+    thermal:
+      C_p: 470.0
+      K_11: 14.34
+      output: [T]
+
+material:
+  - constituents:
+      - phase: matrix
+        v: 1.0
+        O: [1.0, 0.0, 0.0, 0.0]
+    homogenization: direct
+  - constituents:
+      - phase: inclusion
+        v: 1.0
+        O: [1.0, 0.0, 0.0, 0.0]
+    homogenization: direct

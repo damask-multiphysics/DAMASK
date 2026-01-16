@@ -1,0 +1,4 @@
+solver:
+  grid:
+    mechanical:
+      N_iter_min: 10
