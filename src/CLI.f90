@@ -90,6 +90,7 @@ subroutine CLI_init()
 #elif PETSC_VERSION_MINOR==24
 #define PETSC_DOI '10.2172/2998643'
 #endif
+#if !(defined(BOOST))
   character(len=:), allocatable :: &
     commandLine, &                                                                                  !< command line call as string
     flag, &                                                                                         !< individual flag
@@ -101,6 +102,7 @@ subroutine CLI_init()
     workingDirArg                                                                                   !< -w CLI argument
   integer :: &
     i, s
+#endif
 #ifdef PETSC_DOI
   character(len=*), parameter :: PETSc_DOI = PETSC_DOI
 #endif
@@ -213,11 +215,11 @@ subroutine CLI_init()
   if (.not. allocated(materialArg)) call IO_error(612,ext_msg='--material')
 
   call setWorkingDirectory(trim(workingDirArg))
-  CLI_geomFile = getPathRelCWD(geomArg,'geometry')
-  CLI_loadFile = getPathRelCWD(loadArg,'load case')
-  CLI_materialFile = getPathRelCWD(materialArg,'material configuration')
+  CLI_geomFile = getPathRelCWD(geomArg)
+  CLI_loadFile = getPathRelCWD(loadArg)
+  CLI_materialFile = getPathRelCWD(materialArg)
   if (allocated(numericsArg)) &
-    CLI_numericsFile = getPathRelCWD(numericsArg,'numerics configuration')
+    CLI_numericsFile = getPathRelCWD(numericsArg)
 
   if (.not. allocated(CLI_jobName)) then
     CLI_jobName = jobname(CLI_geomFile,CLI_loadFile,CLI_materialFile,CLI_numericsFile)
@@ -372,11 +374,10 @@ end function jobname
 !--------------------------------------------------------------------------------------------------
 !> @brief Translate path as relative to CWD and check for existence.
 !--------------------------------------------------------------------------------------------------
-function getPathRelCWD(path,fileType)
+function getPathRelCWD(path)
 
   character(len=:), allocatable :: getPathRelCWD
   character(len=*),  intent(in) :: path
-  character(len=*),  intent(in) :: fileType
 
   logical                       :: file_exists
 

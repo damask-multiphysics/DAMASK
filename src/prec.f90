@@ -271,7 +271,7 @@ subroutine prec_selfTest()
   real(pREAL),   dimension(2) :: r
   real(pREAL)                 :: NaN
 #ifdef PETSC
-  PetscScalar :: dummy_scalar
+  PetscReal :: dummy_scalar
 
 
   if (pREAL /= kind(dummy_scalar))          error stop 'PETSc and DAMASK scalar datatypes do not match'
