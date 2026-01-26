@@ -18,7 +18,7 @@ def deviatoric(T: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
     Deprecation warning
     -------------------
     .. deprecated:: 3.1.0
-        `deviatoric` will be removed in DAMASK 4.0, it is replaced by
+        `deviatoric` will be removed in DAMASK 4.0 and replaced by
         `traceless`, `mechanics.deviatoric`, and `mechanics.isochoric`.
 
     Parameters
@@ -204,7 +204,7 @@ def traceless(T: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
 
     Notes
     -----
-    A stress tensor without trace is called deviatoric,
+    A stress tensor without trace is called deviatoric;
     a strain tensor without trace is called isochoric.
     """
     return T - spherical(T,tensor=True)
