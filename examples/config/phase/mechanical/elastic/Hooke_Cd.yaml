@@ -1,0 +1,33 @@
+type: Hooke
+
+references:
+  - C.W. Garland and J. Silverman,
+    Physical Review 119:1218-1222, 1960,
+    https://doi.org/10.1103/PhysRev.119.1218,
+    fit to Tab. I (T_min=100K, T_max=300K)
+  - Y.A Chang and L. Himmel,
+    Journal of Applied Physics 37:3787–3790, 1966,
+    https://doi.org/10.1063/1.1707925,
+    fit to Tab. I (T_min=300K, T_max=575K)
+
+C_11: 115.7e+9
+C_11,T: -8.052e+07
+C_11,T^2: -9.205e+04
+
+C_12: 39.6e+9
+C_12,T: -2.680e+06
+C_12,T^2: 1.071e+04
+
+C_44: 20.0e+9
+C_44,T: -2.318e+07
+C_44,T^2: -2.325e+04
+
+C_33: 51.2e+9
+C_33,T: -2.334e+07
+C_33,T^2: -6.364e+03
+
+C_13: 40.4e+9
+C_13,T: -5.133e+06
+C_13,T^2: 6.500e+03
+
+T_ref: 293.15

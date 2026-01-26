@@ -3,16 +3,24 @@ references:
     Thermal Conductivity of Aluminum, Copper, Iron, and Tungsten from 1K to the Melting Point,
     US Department of Commerce, Boulder, Colorado, 1984,
     fit to Tab. 2.4.1 (RRR=300, T_min=150K, T_max=1000K)
-  - https://www.mit.edu/~6.777/matprops/copper.htm
+  - G.K. White and S.J. Collocott,
+    Journal of Physical and Chemical Reference Data 13:1251-1257, 1984,
+    https://doi.org/10.1063/1.555728,
+    fit to Tab. 2 (T_min=150K, T_max=1000K)
 
 output: [T]
 
-K_11: 4.005e+2
-K_11,T: -1.075e-1
-K_11,T^2: 3.293e-4
-K_11,T^3: -7.533e-7
-K_11,T^4: 5.223e-10
-
 T_ref: 293.15
 
-C_p: 385.0
+K_11: 400.51
+K_11,T: -1.075e-01
+K_11,T^2: 3.293e-04
+K_11,T^3: -7.533e-07
+K_11,T^4: 5.223e-10
+
+C_p: 384.61
+C_p,T: 1.979e-01
+C_p,T^2: -9.882e-04
+C_p,T^3: 3.772e-06
+C_p,T^4: -6.200e-09
+C_p,T^5: 3.606e-12

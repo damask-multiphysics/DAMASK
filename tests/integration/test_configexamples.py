@@ -37,6 +37,7 @@ config_phase = \
     ('bct', 'Hooke_Sn-beta', None, None, None, None, None, None),
     ('hcp', 'Hooke_SiC-6H', None, None, None, None, None, None),
     ('Al', 'Hooke_Al', None, None, None, None, None, None),
+    ('Cd', 'Hooke_Cd', None, None, None, None, None, None),
     ('Fe', 'Hooke_C50E-martensite', None, None, None, None, None, None),
     ('Mg', 'Hooke_Mg', None, None, None, None, None, None),
     ('Ni', 'Hooke_Ni', None, None, None, None, None, None),
@@ -77,8 +78,9 @@ config_phase = \
     ('Cu', 'Hooke_Cu', 'phenopowerlaw_Cu', None, 'isobrittle_generic', None, None, None),
     ('Fe', 'Hooke_Fe', 'dislotwin_IF-steel', None, 'anisobrittle_cubic', None, None, None),
     # elastic + thermal
-    ('Al', 'Hooke_Al', None, None, None, 'fast-convection', None, None),
-    ('Ag', 'Hooke_Ag', None, None, None, 'fast-convection', None, None),
+    ('Al', 'Hooke_Al', None, None, None, 'Al', None, None),
+    ('Ag', 'Hooke_Ag', None, None, None, 'Ag', None, None),
+    ('Pt', 'Hooke_Pt', None, None, None, 'Pt', None, None),
     # elastic + thermal + source
     ('Fe', 'Hooke_Fe', None, None, None, 'Fe', 'externalheat_ramp-and-hold', None),
     ('Ni', 'Hooke_Ni', None, None, None, 'Ni', 'externalheat_ramp-and-hold', None),

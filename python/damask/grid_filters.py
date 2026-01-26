@@ -100,15 +100,11 @@ def _ks(size: _FloatSequence,
     Complex conjugate symmetry is considered. Hence,
     the last dimension is cells[2]//2+1.
     """
-    k_sk = _np.where(_np.arange(cells[0])>cells[0]//2,
-                     _np.arange(cells[0])-cells[0],_np.arange(cells[0]))/size[0]
+    k_sk = _np.fft.fftfreq(cells[0],size[0]/cells[0])
     if cells[0]%2 == 0 and first_order: k_sk[cells[0]//2] = 0                                       # Nyquist freq=0 for even cells (Johnson, MIT, 2011)
-
-    k_sj = _np.where(_np.arange(cells[1])>cells[1]//2,
-                     _np.arange(cells[1])-cells[1],_np.arange(cells[1]))/size[1]
+    k_sj = _np.fft.fftfreq(cells[1],size[1]/cells[1])
     if cells[1]%2 == 0 and first_order: k_sj[cells[1]//2] = 0                                       # Nyquist freq=0 for even cells (Johnson, MIT, 2011)
-
-    k_si = _np.arange(cells[2]//2+1)/size[2]
+    k_si = _np.fft.rfftfreq(cells[2],size[2]/cells[2])
 
     return _np.stack(_np.meshgrid(k_sk,k_sj,k_si,indexing = 'ij'), axis=-1)
 

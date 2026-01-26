@@ -86,6 +86,40 @@ def deformation_Cauchy_Green_right(F: _npt.NDArray[_np.floating]) -> _npt.NDArra
     return _np.matmul(_tensor.transpose(F),F)
 
 
+def deviatoric(sigma: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
+    r"""
+    Calculate deviatoric part of a stress tensor.
+
+    Parameters
+    ----------
+    sigma : numpy.ndarray, shape (...,3,3)
+        Cauchy stress tensor of which the deviatoric part is computed.
+
+    Returns
+    -------
+    sigma' : numpy.ndarray, shape (...,3,3)
+        Deviatoric part of sigma.
+
+    See Also
+    --------
+    isochoric: Equivalent function for strain.
+    tensor.traceless : Same function with a generic name.
+    tensor.spherical : Calculate spherical part of a tensor.
+
+    Notes
+    -----
+    The deviatoric part of a stress tensor is defined as:
+
+    .. math::
+
+        \vb{sigma}' = \vb{sigma} - \vb{I}_\text{p},
+
+    where :math:`\vb{I}_\text{p}` is the spherical
+    part of the stress tensor mapped onto identity.
+    """
+    return _tensor.traceless(sigma)
+
+
 def equivalent_strain_Mises(epsilon: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
     r"""
     Calculate the von Mises equivalent of a strain tensor.
@@ -150,6 +184,40 @@ def equivalent_stress_Mises(sigma: _npt.NDArray[_np.floating]) -> _npt.NDArray[_
     of the stress tensor.
     """
     return _equivalent_Mises(sigma,3.0/2.0)
+
+
+def isochoric(epsilon: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
+    r"""
+    Calculate isochoric part of a strain tensor.
+
+    Parameters
+    ----------
+    epsilon : numpy.ndarray, shape (...,3,3)
+        Strain tensor of which the isochoric part is computed.
+
+    Returns
+    -------
+    epsilon' : numpy.ndarray, shape (...,3,3)
+        Isochoric part of epsilon.
+
+    See Also
+    --------
+    deviatoric: Equivalent function for stress.
+    tensor.traceless : Same function with a generic name.
+    tensor.spherical : Calculate spherical part of a tensor.
+
+    Notes
+    -----
+    The deviatoric part of a strain tensor is defined as:
+
+    .. math::
+
+        \vb{epsilon}' = \vb{epsilon} - \vb{I}_\text{p},
+
+    where :math:`\vb{I}_\text{p}` is the spherical
+    part of the epsilon tensor mapped onto identity.
+    """
+    return _tensor.traceless(epsilon)
 
 
 def maximum_shear(T_sym: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
@@ -466,5 +534,5 @@ def _equivalent_Mises(T_sym: _npt.NDArray[_np.floating],
     eq : numpy.ndarray, shape (...)
         Scaled second invariant of the deviatoric part of T_sym.
     """
-    d = _tensor.deviatoric(T_sym)
+    d = _tensor.traceless(T_sym)
     return _np.sqrt(s*_np.sum(d**2.0,axis=(-1,-2)))

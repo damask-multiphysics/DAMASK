@@ -5,6 +5,8 @@ Tensor mathematics.
 All routines operate on numpy.ndarrays of shape (...,3,3).
 """
 
+from warnings import warn as _warn
+
 import numpy as _np
 from numpy import typing as _npt
 
@@ -12,6 +14,12 @@ from numpy import typing as _npt
 def deviatoric(T: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
     r"""
     Calculate deviatoric part of a tensor.
+
+    Deprecation warning
+    -------------------
+    .. deprecated:: 3.1.0
+        `deviatoric` will be removed in DAMASK 4.0 and replaced by
+        `traceless`, `mechanics.deviatoric`, and `mechanics.isochoric`.
 
     Parameters
     ----------
@@ -38,7 +46,9 @@ def deviatoric(T: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
     where :math:`\vb{I}_\text{p}` is the spherical
     part of the tensor mapped onto identity.
     """
-    return T - spherical(T,tensor=True)
+    _warn('tensor.deviatoric will be removed in DAMASK 4.0',
+          DeprecationWarning, stacklevel=2)
+    return traceless(T)
 
 
 def eigenvalues(T_sym: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
@@ -168,6 +178,36 @@ def symmetric(T: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
         \vb{T}_\text{sym} = \left( \vb{T}+ \vb{T}^\text{T} \right)/2
     """
     return (T+transpose(T))*0.5
+
+
+def traceless(T: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
+    r"""
+    Remove the trace from a tensor.
+
+    Parameters
+    ----------
+    T : numpy.ndarray, shape (...,3,3)
+        Tensor of which the trace is removed.
+
+    Returns
+    -------
+    T' : numpy.ndarray, shape (...,3,3)
+        Tensor T without its trace.
+
+    See Also
+    --------
+    spherical : Calculate spherical part of a tensor.
+    mechanics.deviatoric : Calculate deviatoric part of a
+        stress tensor.
+    mechanics.isochoric : Calculate isochoric part of a
+        strain tensor.
+
+    Notes
+    -----
+    A stress tensor without trace is called deviatoric;
+    a strain tensor without trace is called isochoric.
+    """
+    return T - spherical(T,tensor=True)
 
 
 def transpose(T: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:

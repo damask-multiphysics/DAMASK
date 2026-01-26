@@ -139,7 +139,12 @@ void inflate_c(const uLong *s_deflated, const uLong *s_inflated,
 #ifndef OLD_STYLE_C_TO_FORTRAN_STRING
 void to_flow_c(CFI_cdesc_t *flow, const char *mixed, int *stat){
   struct fy_document *fyd = NULL;
-  enum fy_emitter_cfg_flags emit_flags = FYECF_MODE_FLOW_ONELINE | FYECF_STRIP_LABELS | FYECF_STRIP_TAGS | FYECF_STRIP_DOC;
+  enum fy_emitter_cfg_flags emit_flags = FYECF_MODE_FLOW_ONELINE
+                                       | FYECF_WIDTH_INF
+                                       | FYECF_STRIP_LABELS
+                                       | FYECF_STRIP_TAGS
+                                       | FYECF_STRIP_DOC
+                                       | FYECF_DOC_START_MARK_OFF;
 
   fyd = fy_document_build_from_string(NULL, mixed, -1);
   if (!fyd) {
@@ -169,7 +174,12 @@ void to_flow_c(CFI_cdesc_t *flow, const char *mixed, int *stat){
 #else
 void to_flow_c(char **flow, long* length_flow, const char *mixed){
   struct fy_document *fyd = NULL;
-  enum fy_emitter_cfg_flags emit_flags = FYECF_MODE_FLOW_ONELINE | FYECF_STRIP_LABELS | FYECF_STRIP_TAGS | FYECF_STRIP_DOC;
+  enum fy_emitter_cfg_flags emit_flags = FYECF_MODE_FLOW_ONELINE
+                                       | FYECF_WIDTH_INF
+                                       | FYECF_STRIP_LABELS
+                                       | FYECF_STRIP_TAGS
+                                       | FYECF_STRIP_DOC
+                                       | FYECF_DOC_START_MARK_OFF;
 
   fyd = fy_document_build_from_string(NULL, mixed, -1);
   if (!fyd) {

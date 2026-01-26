@@ -62,6 +62,7 @@ end function polynomial_from_coef
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Initialize a polynomial from a dictionary with coefficients.
+!> @details Coefficients up to order 8 are considered.
 !--------------------------------------------------------------------------------------------------
 function polynomial_from_dict(dict,y,x) result(p)
 
@@ -77,7 +78,7 @@ function polynomial_from_dict(dict,y,x) result(p)
   allocate(coef(1),source=dict%get_asReal(y))
 
   if (dict%contains(y//','//x)) coef = [coef,dict%get_asReal(y//','//x)]
-  do o = 2,4
+  do o = 2,8
     write(o_s,'(I0.0)') o
     if (dict%contains(y//','//x//'^'//o_s)) &
       coef = [coef,[(0.0_pREAL,i=size(coef),o-1)],dict%get_asReal(y//','//x//'^'//o_s)]

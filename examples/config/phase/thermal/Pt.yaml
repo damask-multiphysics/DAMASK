@@ -1,0 +1,7 @@
+references:
+  - https://de.wikipedia.org/wiki/Platin
+
+output: [T]
+
+K_11: 72.
+C_p: 130.
