@@ -468,6 +468,7 @@ function parseLoadsteps(load_steps) result(loadCases)
   type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
 
   integer :: l,m
+  logical :: rotation_specified, mech_is_spectral_Galerkin
   type(tDict), pointer :: &
     load_step, &
     step_bc, &
@@ -475,11 +476,13 @@ function parseLoadsteps(load_steps) result(loadCases)
     step_discretization
 
 
+  mech_is_spectral_Galerkin = solver%get_asStr('mechanical') == 'spectral_Galerkin'
   allocate(loadCases(size(load_steps)))
   do l = 1, size(load_steps)
     load_step => load_steps%get_dict(l)
     step_bc   => load_step%get_dict('boundary_conditions')
     step_mech => step_bc%get_dict('mechanical')
+    rotation_specified = step_mech%contains('R')
     loadCases(l)%stress%myType=''
     readMech: do m = 1, size(step_mech)
       select case (step_mech%key(m))
@@ -547,6 +550,7 @@ function parseLoadsteps(load_steps) result(loadCases)
         write(IO_STDOUT,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'R:',&
                  transpose(loadCases(l)%rot%asMatrix())
 
+      if (rotation_specified .and. mech_is_spectral_Galerkin) errorID = 840
       if (loadCases(l)%r <= 0.0_pREAL) errorID = 833
       if (loadCases(l)%t <= 0.0_pREAL) errorID = 834
       if (loadCases(l)%N < 1)          errorID = 835

@@ -533,6 +533,8 @@ subroutine IO_error_new(error_ID, &
       msg = 'mixed boundary conditions allow rotation'
     case (839)
       msg = 'non-positive restart frequency in grid load case'
+    case (840)
+      msg = 'loading with R is not supported with spectral_Galerkin solver'
     case (844)
       msg = 'invalid VTI file'
     case (894)
