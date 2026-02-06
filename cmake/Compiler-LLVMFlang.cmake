@@ -4,18 +4,19 @@
 ###################################################################################################
 set(Fortran_COMPILER_VERSION_MIN 22)
 
-if(OPENMP)
-  set(OPENMP_FLAGS "-fopenmp")
+set(_OPTIMIZATION_OFF        "-O0")
+set(_OPTIMIZATION_DEBUG      "${_OPTIMIZATION_OFF}")
+set(_OPTIMIZATION_DEFENSIVE  "-O2 -mtune=native")
+set(_OPTIMIZATION_AGGRESSIVE "-O3 -march=native -funroll-loops -ftree-vectorize -flto")
+
+if(DEFINED _OPTIMIZATION_${OPTIMIZATION})
+  set(OPTIMIZATION_FLAGS "${_OPTIMIZATION_${OPTIMIZATION}}")
+else()
+  message(FATAL_ERROR "Unknown OPTIMIZATION level: ${OPTIMIZATION}")
 endif()
 
-if(OPTIMIZATION STREQUAL "DEBUG")
-  set(OPTIMIZATION_FLAGS "-O0")
-elseif(OPTIMIZATION STREQUAL "OFF")
-  set(OPTIMIZATION_FLAGS "-O0")
-elseif(OPTIMIZATION STREQUAL "DEFENSIVE")
-  set(OPTIMIZATION_FLAGS "-O2 -mtune=native")
-elseif(OPTIMIZATION STREQUAL "AGGRESSIVE")
-  set(OPTIMIZATION_FLAGS "-O3 -march=native -funroll-loops -ftree-vectorize -flto")
+if(OPENMP)
+  set(OPENMP_FLAGS "-fopenmp")
 endif()
 
 set(STANDARD_CHECK "-std=f2018 -pedantic")
@@ -24,5 +25,6 @@ set(STANDARD_CHECK "-std=f2018 -pedantic")
 # Fine tuning compilation options
 #------------------------------------------------------------------------------------------------
 
-# position independent code:
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -fPIE")
+string(APPEND COMPILE_FLAGS
+  " -fPIE"                          # position independent code
+)

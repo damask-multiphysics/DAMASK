@@ -52,12 +52,13 @@ endif()
 
 set(CMAKE_Fortran_PREPROCESS "ON")
 
-# EXPERIMENTAL: This might help to detect external packages in future if PETSc is not aware of them
-pkg_check_modules(HDF5 hdf5)
 pkg_check_modules(fYAML libfyaml)
-pkg_check_modules(LAPACK lapack)
 set(Boost_DEBUG ON)
 find_package(Boost COMPONENTS program_options HINTS "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/cmake")
+
+# EXPERIMENTAL: This might help to detect external packages in future if PETSc is not aware of them
+pkg_check_modules(LAPACK lapack)
+pkg_check_modules(HDF5 hdf5)
 if(${GRID})
   pkg_check_modules(zlib zlib)
   pkg_check_modules(FFTW3 fftw3)

@@ -4,18 +4,19 @@
 ###################################################################################################
 set(Fortran_COMPILER_VERSION_MIN 11.1)
 
-if(OPENMP)
-  set(OPENMP_FLAGS "-fopenmp")
+set(_OPTIMIZATION_DEBUG      "-Og")
+set(_OPTIMIZATION_OFF        "-O0")
+set(_OPTIMIZATION_DEFENSIVE  "-O2 -mtune=native")
+set(_OPTIMIZATION_AGGRESSIVE "-O3 -march=native -funroll-loops -ftree-vectorize -flto")
+
+if(DEFINED _OPTIMIZATION_${OPTIMIZATION})
+  set(OPTIMIZATION_FLAGS "${_OPTIMIZATION_${OPTIMIZATION}}")
+else()
+  message(FATAL_ERROR "Unknown OPTIMIZATION level: ${OPTIMIZATION}")
 endif()
 
-if(OPTIMIZATION STREQUAL "DEBUG")
-  set(OPTIMIZATION_FLAGS "-Og")
-elseif(OPTIMIZATION STREQUAL "OFF")
-  set(OPTIMIZATION_FLAGS "-O0")
-elseif(OPTIMIZATION STREQUAL "DEFENSIVE")
-  set(OPTIMIZATION_FLAGS "-O2 -mtune=native")
-elseif(OPTIMIZATION STREQUAL "AGGRESSIVE")
-  set(OPTIMIZATION_FLAGS "-O3 -march=native -funroll-loops -ftree-vectorize -flto")
+if(OPENMP)
+  set(OPENMP_FLAGS "-fopenmp")
 endif()
 
 if(CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 14)
@@ -32,14 +33,27 @@ endif()
 # Fine tuning compilation options
 #------------------------------------------------------------------------------------------------
 
-# position independent code:
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -fPIE")
-
-# PETSc macros are long, line length is enforced in pre-receive hook:
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -ffree-line-length-none")
-
-# assume "implicit none" even if not present in source:
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -fimplicit-none")
+string(APPEND COMPILE_FLAGS
+  " -fPIE"                          # position independent code
+  " -ffree-line-length-none"        # PETSc macros exceed line-length limits
+  " -fimplicit-none"                # assume implicit none if not present
+  " -Wall"                          # enable common warnings
+  " -Wextra"                        # enable extra warnings
+  " -Wcharacter-truncation"         # warn on string truncation
+  " -Wunderflow"                    # warn on compile-time underflow
+  " -Wsuggest-attribute=pure"       # suggest PURE where applicable
+  " -Wsuggest-attribute=noreturn"   # suggest NORETURN where applicable
+  " -Wconversion-extra"             # extra conversion warnings
+  " -Wimplicit-procedure"           # warn on implicit procedure calls
+  " -Wunused-parameter"             # warn on unused parameters
+  " -Wimplicit-interface"           # warn on missing explicit interfaces
+  " -Wno-maybe-uninitialized"       # suppress false positives
+  " -Wno-c-binding-type"            # suppress MPI_f08 warnings
+  " -ffpe-summary=all"              # report FP exceptions summary
+  " -fno-unsafe-math-optimizations" # required for IEEE semantics
+  " -frounding-math"                # honor rounding mode
+  " -fsignaling-nans"               # enable signaling NaNs
+)
 
 # set the following Fortran options:
 #   -Waliasing:                   warn about possible aliasing of dummy arguments. Specifically, it warns if the same actual argument is associated with a dummy argument with "INTENT(IN)" and a dummy argument with "INTENT(OUT)" in a call with an explicit interface.
@@ -80,7 +94,6 @@ set(COMPILE_FLAGS "${COMPILE_FLAGS} -fimplicit-none")
 #   -Wunused-value
 #   -Wunused-variable
 #   -Wvolatile-register-var
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wall")
 
 # set the following Fortran options:
 #   -Wunuses-parameter:
@@ -96,34 +109,6 @@ set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wall")
 #   -Wuninitialized
 #   -Wunused-but-set-parameter (only with -Wunused or -Wall)
 #   -Wno-globals
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wextra")
-
-# warn if character expressions (strings) are truncated:
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wcharacter-truncation")
-
-# produce a warning when numerical constant expressions are encountered, which yield an UNDERFLOW
-# during compilation:
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wunderflow")
-
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wsuggest-attribute=pure")
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wsuggest-attribute=noreturn")
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wconversion-extra")
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wimplicit-procedure")
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wunused-parameter")
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wimplicit-interface")
-
-# suppress many false positives
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wno-maybe-uninitialized")
-# suppress warnings resulting from MPI_f08
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wno-c-binding-type")
-
-# print summary of floating point exeptions (invalid,zero,overflow,underflow,inexact,denormal):
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -ffpe-summary=all")
-
-# https://gcc.gnu.org/onlinedocs/gfortran/IEEE-modules.html:
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -fno-unsafe-math-optimizations")
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -frounding-math")
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -fsignaling-nans")
 
 # Additional options
 # -Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions
@@ -132,29 +117,22 @@ set(COMPILE_FLAGS "${COMPILE_FLAGS} -fsignaling-nans")
 # Runtime debugging
 #------------------------------------------------------------------------------------------------
 
-# stop execution if floating point exception is detected (NaN is silent)
-# Additional options
-# -ffpe-trap=precision,denormal,underflow
-set(DEBUG_FLAGS "${DEBUG_FLAGS} -ffpe-trap=invalid,zero,overflow")
+string(APPEND DEBUG_FLAGS
+  " -ffpe-trap=invalid,zero,overflow"  # stop on FP exceptions (NaN remains silent)
+  # " -ffpe-trap=precision,denormal,underflow"  # optional, more aggressive traps
 
-# Generate symbolic debugging information in the object file:
-set(DEBUG_FLAGS "${DEBUG_FLAGS} -g")
+  " -g"                               # generate debug symbols
+  " -Og"                              # optimize for debugging experience
 
-# Optimize debugging experience:
-set(DEBUG_FLAGS "${DEBUG_FLAGS} -Og")
+  " -fbacktrace"                      # runtime backtrace on error
+  " -fdump-core"                      # generate core dump
+  " -fcheck=all"                      # runtime checks (bounds, pointers, etc.)
 
-# checks for (array-temps,bounds,do,mem,pointer,recursion):
-set(DEBUG_FLAGS "${DEBUG_FLAGS} -fbacktrace")
-set(DEBUG_FLAGS "${DEBUG_FLAGS} -fdump-core")
-set(DEBUG_FLAGS "${DEBUG_FLAGS} -fcheck=all")
+  " -fstack-protector-all"            # guard variables on all stack frames
 
-# Inserts a guard variable onto the stack frame for all functions:
-set(DEBUG_FLAGS "${DEBUG_FLAGS} -fstack-protector-all")
+  " -finit-real=snan"                 # initialize REALs to signaling NaN
+  " -finit-integer=-2147483648"       # initialize INTEGERs to sentinel value
 
-# "strange" values to simplify debugging:
-set(DEBUG_FLAGS "${DEBUG_FLAGS} -finit-real=snan -finit-integer=-2147483648")
-
-# detect undefined behavior
-# Additional options
-# -fsanitize=address,leak,thread
-set(DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=undefined")
+  " -fsanitize=undefined"             # detect undefined behavior
+  # " -fsanitize=address,leak,thread" # optional, heavier sanitizers
+)
