@@ -34,7 +34,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <utility>
-#include "petscversion.h"
+#include <petscversion.h>
 
 namespace fs = std::filesystem;
 

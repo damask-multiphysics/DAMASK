@@ -2,7 +2,7 @@ name: Grid and Mesh Solver
 on: [push]
 
 env:
-  PETSC_VERSION: '3.24.2'
+  PETSC_VERSION: '3.24.4'
   HOMEBREW_NO_ANALYTICS: 'ON'     # Make Homebrew installation a little quicker
   HOMEBREW_NO_AUTO_UPDATE: 'ON'
   HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK: 'ON'
@@ -25,12 +25,13 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v4
+      - name: DAMASK - Checkout
+        uses: actions/checkout@v4
 
       - name: GCC - Install
         run: |
           sudo apt-get update
-          sudo apt-get install liblapack-dev
+          sudo apt-get install liblapack-dev libbz2-dev libfyaml-dev
           sudo apt-get install -y gcc-${GCC_V} gfortran-${GCC_V} g++-${GCC_V}
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_V} 100 \
           --slave /usr/bin/gfortran gfortran /usr/bin/gfortran-${GCC_V} \
@@ -66,8 +67,10 @@ jobs:
       - name: PETSc - Installation
         run: |
           cd petsc-${PETSC_VERSION}
-          ./configure --with-fc=gfortran --with-cc=gcc --with-cxx=g++ \
-          --download-openmpi --download-fftw --download-hdf5 --with-hdf5-fortran-bindings=1 --download-zlib \
+          sed -i 's/self.getCompiler().lower()/self.getCompiler()/g' config/BuildSystem/config/packages/boost.py # https://gitlab.com/petsc/petsc/-/merge_requests/9012
+          ./configure \
+          --with-fc=gfortran --with-cc=gcc --with-cxx=g++ \
+          --download-openmpi --download-fftw --download-hdf5 --with-hdf5-fortran-bindings=1 --download-zlib --download-boost \
           --with-mpi-f90module-visibility=1
           make all
 
@@ -91,7 +94,9 @@ jobs:
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v4
+
+      - name: DAMASK - Checkout
+        uses: actions/checkout@v4
 
       - name: Intel - Install
         run: |
@@ -104,7 +109,7 @@ jobs:
           | sudo tee /etc/apt/sources.list.d/oneAPI.list
           sudo apt-get update
           sudo apt-get install \
-          intel-basekit intel-hpckit
+          intel-basekit intel-hpckit libbz2-dev libfyaml-dev
           source /opt/intel/oneapi/setvars.sh
           printenv >> $GITHUB_ENV
 
@@ -138,16 +143,74 @@ jobs:
         run: |
           cd petsc-${PETSC_VERSION}
           ./configure \
-          --with-fc=mpiifx \
-          --with-cc=mpiicx \
-          --with-cxx=mpiicpx \
+          --with-fc=mpiifx --with-cc=mpiicx --with-cxx=mpiicpx \
           --with-x=0 \
-          --download-fftw --download-hdf5 --with-hdf5-fortran-bindings=1 --download-zlib
+          --download-fftw --download-hdf5 --with-hdf5-fortran-bindings=1 --download-zlib --download-boost
           make all
 
       - name: DAMASK - Compile
         run: |
           cmake -B build -DGRID=ON -DMESH=ON -DCMAKE_INSTALL_PREFIX=${PWD}
+          cmake --build build --parallel
+          cmake --install build
+
+      - name: DAMASK - Run
+        run: |
+          ./bin/DAMASK_grid -l tensionX.yaml -g 20grains16x16x16.vti -m material.yaml -w examples/grid
+          ./bin/DAMASK_mesh -l tensionZ_3g.yaml -g cube_3grains.msh -m material.yaml -w examples/mesh
+
+
+  macos_homebrew:
+
+    runs-on: macos-26
+
+    steps:
+
+      - name: DAMASK - Checkout
+        uses: actions/checkout@v4
+
+      - name: GCC - Install
+        uses: gerlero/brew-install@v1
+        with:
+          packages: gcc open-mpi bzip2 libfyaml
+
+      - name: PETSc - Cache download
+        id: petsc-download
+        uses: actions/cache@v4
+        with:
+          path: download
+          key: petsc-${{ env.PETSC_VERSION }}.tar.gz
+
+      - name: PETSc - Download
+        if: steps.petsc-download.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc-${PETSC_VERSION}.tar.gz -P download
+
+      - name: PETSc - Prepare
+        run: |
+          tar -xf download/petsc-${PETSC_VERSION}.tar.gz -C .
+          export PETSC_DIR=${PWD}/petsc-${PETSC_VERSION}
+          export PETSC_ARCH=macos${GCC_V}
+          printenv >> $GITHUB_ENV
+
+      - name: PETSc - Cache Installation
+        id: petsc-install
+        uses: actions/cache@v4
+        with:
+          path: petsc-${{ env.PETSC_VERSION }}
+          key: petsc-${{ env.PETSC_VERSION }}-macos-${{ hashFiles('**/petscversion.h') }}
+
+      - name: PETSc - Installation
+        run: |
+          ln -s /opt/homebrew/bin/gfortran-15 /opt/homebrew/bin/gfortran
+          cd petsc-${PETSC_VERSION}
+          ./configure --with-fc=mpifort --with-cc=mpicc --with-cxx=mpic++ \
+          --download-fftw --download-hdf5 --with-hdf5-fortran-bindings=1 --download-zlib --download-boost
+          make all
+
+      - name: DAMASK - Compile
+        run: |
+          cmake -B build -DGRID=ON -DMESH=ON -DCMAKE_INSTALL_PREFIX=${PWD} -DBUILDCMD_POST="--include-directory-after=$(gfortran -print-file-name=include)"
           cmake --build build --parallel
           cmake --install build
 
