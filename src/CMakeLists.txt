@@ -49,6 +49,23 @@ foreach(VARIANT GRID MESH TEST)
         add_compile_definitions(BOOST)
       endif()
       target_link_libraries(${executable_name} PRIVATE damask_c_${VARIANT_LOWER})
+      target_link_directories(${executable_name} PRIVATE ${PETSC_LIBRARY_DIRS})
+      target_link_libraries(${executable_name} PRIVATE
+        ${PETSC_LIBRARIES}
+        ${PETSC_EXTERNAL_LIB}
+      )
+
+      # Link with Fortran compiler requires to add C++ standard library
+      check_cxx_symbol_exists(__GLIBCXX__ "iostream" IS_GNU)
+      check_cxx_symbol_exists(_LIBCPP_VERSION "iostream" IS_LLVM)
+      if(${IS_GNU})
+        target_link_libraries(${executable_name} PRIVATE stdc++)
+      elseif(${IS_LLVM})
+        target_link_libraries(${executable_name} PRIVATE c++)
+      else()
+        message(FATAL_ERROR "Could not determine C++ standard library")
+      endif()
+
       install(TARGETS ${executable_name} RUNTIME DESTINATION bin)
       fs_case_sensitive(${CMAKE_INSTALL_PREFIX}/bin fs_is_case_sensitive)
       if(fs_is_case_sensitive)
