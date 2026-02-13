@@ -33,7 +33,7 @@ def test_coord0(np_rng):
 def test_grid_DNA(np_rng,mode,atol):
     """Ensure that cellsSizeOrigin_coordinates0_xx is the inverse of coordinates0_xx."""
     cells  = np_rng.integers(8,32,(3))
-    size   = np_rng.random(3)
+    size   = np_rng.random(3) + atol*100.
     origin = np_rng.random(3)
     coord0 = eval(f'grid_filters.coordinates0_{mode}(cells,size,origin)')                         # noqa
     coord0 += (np_rng.random(coord0.shape)-0.5) * atol                                            # add noise

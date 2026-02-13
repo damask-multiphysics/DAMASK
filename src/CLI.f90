@@ -90,7 +90,11 @@ subroutine CLI_init()
 #elif PETSC_VERSION_MINOR==24
 #define PETSC_DOI '10.2172/2998643'
 #endif
-#if !(defined(BOOST))
+#if (defined(BOOST) && !defined(OLD_STYLE_C_TO_FORTRAN_STRING))
+  type(C_PTR) :: CLI_ = C_NULL_PTR
+  type(tCLIArgs) :: cliArgs
+  integer(C_INT) :: stat
+#else
   character(len=:), allocatable :: &
     commandLine, &                                                                                  !< command line call as string
     flag, &                                                                                         !< individual flag
@@ -105,11 +109,6 @@ subroutine CLI_init()
 #endif
 #ifdef PETSC_DOI
   character(len=*), parameter :: PETSc_DOI = PETSC_DOI
-#endif
-#if (defined(BOOST) && !defined(OLD_STYLE_C_TO_FORTRAN_STRING))
-  type(C_PTR) :: CLI_ = C_NULL_PTR
-  type(tCLIArgs) :: cliArgs
-  integer(C_INT) :: stat
 #endif
 
   print'(/,1x,a)', '<<<+-  CLI init  -+>>>'

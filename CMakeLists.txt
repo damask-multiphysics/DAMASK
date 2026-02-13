@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.18.0)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD 17)
 include(FindPkgConfig REQUIRED)
+include(CheckCXXSymbolExists REQUIRED)
 
 if(DEFINED ENV{PETSC_DIR})
   message("PETSC_DIR:\n$ENV{PETSC_DIR}\n")
@@ -41,16 +42,12 @@ project(DAMASK
         HOMEPAGE_URL https://damask-multiphysics.org
         LANGUAGES Fortran C CXX VERSION "${DAMASK_VERSION_CMAKE}")
 
-if(NOT ${CMAKE_Fortran_COMPILER_ID} STREQUAL "LLVMFlang")
-  if(NOT ${CMAKE_C_COMPILER_ID} STREQUAL ${CMAKE_Fortran_COMPILER_ID})
-    message(FATAL_ERROR "C compiler (${CMAKE_C_COMPILER_ID}) does not match Fortran compiler (${CMAKE_Fortran_COMPILER_ID})")
-  endif()
-  if(NOT ${CMAKE_CXX_COMPILER_ID} STREQUAL ${CMAKE_Fortran_COMPILER_ID})
-    message(FATAL_ERROR "C++ compiler (${CMAKE_CXX_COMPILER_ID}) does not match Fortran compiler (${CMAKE_Fortran_COMPILER_ID})")
-  endif()
-endif()
-
 set(CMAKE_Fortran_PREPROCESS "ON")
+# https://gitlab.kitware.com/cmake/community/-/wikis/doc/cmake/RPATH-handling
+set(CMAKE_MACOSX_RPATH TRUE)
+set(CMAKE_SKIP_BUILD_RPATH TRUE)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 pkg_check_modules(fYAML libfyaml)
 set(Boost_DEBUG ON)
@@ -185,9 +182,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
 endif()
 
 set(CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${PETSC_INCLUDES} ${BUILDCMD_POST}")
+set(CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}       "${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}}       ${PETSC_INCLUDES} ${BUILDCMD_POST}")
 set(CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}     "${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}}     ${PETSC_INCLUDES} ${BUILDCMD_POST}")
 
-set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} <LINK_FLAGS> <FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES> -L${PETSC_LIBRARY_DIRS} -lpetsc ${PETSC_EXTERNAL_LIB}")
+set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} <LINK_FLAGS> <FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
 if(${GRID})
   set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} -lz")
 endif()
@@ -202,8 +200,6 @@ if(fYAML_FOUND STREQUAL "1")
   set(CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}} -I${fYAML_INCLUDE_DIR}")
 endif()
 
-# Link with Fortran compiler requires to add C++ standard library
-set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} -lstdc++ ${BUILDCMD_POST}")
 
 message("Fortran Compiler Flags:\n${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}}\n")
 message("C Compiler Flags:\n${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}}\n")
