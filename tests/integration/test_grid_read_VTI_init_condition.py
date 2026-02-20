@@ -24,7 +24,7 @@ def test_grid_read_VTI_init_phi(res_path,tmp_path,copy_files,assert_allclose,np_
 
     copy_files(res_path,tmp_path)
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',
                     wd=tmp_path)
 
     result = damask.Result(tmp_path/f'{job}.hdf5')

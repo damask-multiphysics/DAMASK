@@ -28,9 +28,9 @@ cd $DAMASK_ROOT >/dev/null; BRANCH=$(git branch 2>/dev/null| grep -E '^\* '); cd
 
 PATH=${DAMASK_ROOT}/bin:$PATH
 
-SOLVER_GRID=$(type -p DAMASK_grid || true 2>/dev/null)
+SOLVER_GRID=$(type -p damask_grid || true 2>/dev/null)
 [ "x$SOLVER_GRID" == "x" ] && SOLVER_GRID=$(blink 'Not found!')
-SOLVER_MESH=$(type -p DAMASK_mesh || true 2>/dev/null)
+SOLVER_MESH=$(type -p damask_mesh || true 2>/dev/null)
 [ "x$SOLVER_MESH" == "x" ] && SOLVER_MESH=$(blink 'Not found!')
 
 

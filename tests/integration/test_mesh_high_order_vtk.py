@@ -75,7 +75,7 @@ def test_mesh_high_order_VTK(res_path, copy_files, tmp_path, polytope, order, nE
     numerics['solver']['mesh']['p_i'] = order
     numerics.save(tmp_path/f'{num}.yaml')
 
-    damask.util.run(f'DAMASK_mesh -l {load}.yaml -g {mesh}.msh -m {mat}.yaml ' +
+    damask.util.run(f'damask_mesh -l {load}.yaml -g {mesh}.msh -m {mat}.yaml ' +
                     f'-n {num}.yaml -j {job}', wd = tmp_path)
 
     """Create unstructured grid data."""

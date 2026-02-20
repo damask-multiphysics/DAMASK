@@ -28,7 +28,7 @@ def test_density_conservation(res_path,tmp_path,copy_files,integrator):
    config_numerics['phase']['integrator_state'] = integrator
    config_numerics.save(tmp_path/'numerics.yaml')
 
-   stdout,stderr = damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml '+
+   stdout,stderr = damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml '+
                                    f'-n numerics.yaml -j {job}',wd=tmp_path)
    print(f'{stdout}\n{stderr}')
 
@@ -68,7 +68,7 @@ def test_Hall_Petch(res_path,tmp_path,copy_files,assert_allclose,np_rng,flux):
       grid.size = np.array([size]*3)
       grid.save(tmp_path/f'{size}.vti')
 
-      damask.util.run(f'DAMASK_grid -l {load}.yaml -g {size}.vti -m material.yaml --wd {tmp_path} -j {size}_{load}')
+      damask.util.run(f'damask_grid -l {load}.yaml -g {size}.vti -m material.yaml --wd {tmp_path} -j {size}_{load}')
       r = damask.Result(tmp_path/f'{size}_{load}.hdf5')
       stress = np.array([np.average(P[:,1,1]) for P in r.view(increments=[40,50,60]).get('P').values()])
 
@@ -105,7 +105,7 @@ def test_density_initialization(res_path,tmp_path,np_rng):
    config_material.save(tmp_path/f'{material}.yaml')
 
 
-   stdout,stderr = damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load}',
+   stdout,stderr = damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load}',
                                    wd=tmp_path)
 
    r = damask.Result(tmp_path/f'{grid}_{load}.hdf5').view(increments=0)

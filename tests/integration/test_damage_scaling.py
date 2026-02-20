@@ -16,7 +16,7 @@ def test_resolution(res_path,tmp_path,copy_files):
         load = f'tension{grid}'
         material = 'material'
         job = f'{grid}_{load}'
-        damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job} -n numerics.yaml',
+        damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job} -n numerics.yaml',
                         wd=tmp_path)
         r = damask.Result(f'{tmp_path}/{job}.hdf5')
         P = [np.average(P_[:,0,0]) for P_ in r.place('P').values()]

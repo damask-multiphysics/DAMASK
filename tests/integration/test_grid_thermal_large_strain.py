@@ -54,7 +54,7 @@ def test_grid_thermal_large_strain(res_path,tmp_path,copy_files,assert_allclose,
     load.save('none.yaml')
 
 
-    damask.util.run('DAMASK_grid -l none.yaml -g equispaced.vti -m material.yaml -j equispaced_none')
+    damask.util.run('damask_grid -l none.yaml -g equispaced.vti -m material.yaml -j equispaced_none')
 
     compress = yaml.safe_load(
               '''
@@ -75,7 +75,7 @@ def test_grid_thermal_large_strain(res_path,tmp_path,copy_files,assert_allclose,
     load.save('pre-compress.yaml')
     g.size *= (2,1,.5)
     g.save('distorted')
-    damask.util.run('DAMASK_grid -l pre-compress.yaml -g distorted.vti -m material.yaml '\
+    damask.util.run('damask_grid -l pre-compress.yaml -g distorted.vti -m material.yaml '\
                     '-j distorted_pre-compress')
 
     with h5py.File('distorted_pre-compress_restart.hdf5','a') as f:
@@ -86,7 +86,7 @@ def test_grid_thermal_large_strain(res_path,tmp_path,copy_files,assert_allclose,
         for inc in range(11,61):
             del(f[f'increment_{inc}'])
 
-    damask.util.run('DAMASK_grid -l pre-compress.yaml -g distorted.vti -m material.yaml '\
+    damask.util.run('damask_grid -l pre-compress.yaml -g distorted.vti -m material.yaml '\
                     '-j distorted_pre-compress --restart 10')
 
     r_equispaced = damask.Result('equispaced_none.hdf5')

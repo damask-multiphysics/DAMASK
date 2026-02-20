@@ -67,7 +67,7 @@ def test_cubic(res_path,tmp_path,copy_files,assert_allclose,E,eulers,lattice):
     config['material'][0]['constituents'][0]['O']=damask.Rotation.from_Euler_angles(eulers,degrees=True)
     config.save(tmp_path/f'{material}.yaml')
 
-    damask.util.run(f'DAMASK_mesh -l {load}.yaml -g {grid}.msh -m {material}.yaml -j {job}',
+    damask.util.run(f'damask_mesh -l {load}.yaml -g {grid}.msh -m {material}.yaml -j {job}',
                     wd=tmp_path)
     add_derived_quantities(tmp_path/f'{job}.hdf5')
 
@@ -110,7 +110,7 @@ def test_hex(res_path,tmp_path,copy_files,assert_allclose,E,eulers):
     config['material'][0]['constituents'][0]['O']=damask.Rotation.from_Euler_angles(eulers,degrees=True)
     config.save(tmp_path/f'{material}.yaml')
 
-    damask.util.run(f'DAMASK_mesh -l {load}.yaml -g {grid}.msh -m {material}.yaml -j {job}',wd=tmp_path)
+    damask.util.run(f'damask_mesh -l {load}.yaml -g {grid}.msh -m {material}.yaml -j {job}',wd=tmp_path)
     add_derived_quantities(tmp_path/f'{job}.hdf5')
 
     assert 0.995 < strain_energy_density_ratio(tmp_path/f'{job}.hdf5') <= 1.0

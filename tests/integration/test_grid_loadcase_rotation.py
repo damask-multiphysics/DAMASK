@@ -53,7 +53,7 @@ def test_grid_loadcase_rotation(res_path,tmp_path,copy_files,h5py_dataset_iterat
 
     grid = 'simple'
     material = 'material'
-    cmd_base = f'DAMASK_grid -g {grid}.vti -m {material}.yaml'
+    cmd_base = f'damask_grid -g {grid}.vti -m {material}.yaml'
 
     copy_files(res_path,tmp_path)
     if solver == 'FEM':

@@ -184,7 +184,7 @@ def test_homogenization(damask_root,tmp_path,
     load_case.save(tmp_path/f'{load}.yaml')
     g.save(tmp_path/f'{grid}.vti')
 
-    out,err = damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load}',
+    out,err = damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load}',
                               wd=tmp_path)
     print(out)
     print(err)
@@ -280,7 +280,7 @@ def test_phase(damask_root,tmp_path,
     load_case.save(tmp_path/f'{load}.yaml')
     g.save(tmp_path/f'{grid}.vti')
 
-    out, err = damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load}',
+    out, err = damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load}',
                                wd=tmp_path)
     print(out)
     print(err)

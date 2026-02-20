@@ -41,7 +41,7 @@ def test_aniso_brittle(res_path,tmp_path,copy_files,h5py_dataset_iterator,assert
     mat_config = damask.ConfigMaterial.load(res_path/f'{grid}_anisoBrittle_{struct}_{ori}.yaml')
     mat_config.save(tmp_path/f'{material}.yaml')
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',
                     wd=tmp_path)
 
     if update:
@@ -64,7 +64,7 @@ def test_iso_brittle(res_path,tmp_path,copy_files,h5py_dataset_iterator,assert_a
     mat_config = damask.ConfigMaterial.load(res_path/f'{job}_{ori}.yaml')
     mat_config.save(tmp_path/f'{material}.yaml')
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',
                     wd=tmp_path)
     if update:
         shutil.copyfile(tmp_path/f'{job}.hdf5',res_path/f'{job}.hdf5')

@@ -395,7 +395,7 @@ def test_mesh_patch_test(res_path, copy_files, tmp_path, np_rng,
     except EnvironmentError:
         pass
 
-    damask.util.run(f'DAMASK_mesh -m {mat}.yaml -l {load}.yaml -g {mesh}.msh ' +
+    damask.util.run(f'damask_mesh -m {mat}.yaml -l {load}.yaml -g {mesh}.msh ' +
                     f'-n numerics.yaml -j {job}', wd = tmp_path)
     uvw_damask, F_damask, P_damask = damask_results(tmp_path, job)
 

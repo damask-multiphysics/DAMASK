@@ -59,7 +59,7 @@ def test_grid_restart_MPI(res_path,tmp_path,copy_files,mpi_launcher,h5py_dataset
 
     for mode in ['normal','restart']:
 
-        cmd = f'{mpi_launcher} -n {N_proc} DAMASK_grid -l {load} -g {grid} -m {material} '\
+        cmd = f'{mpi_launcher} -n {N_proc} damask_grid -l {load} -g {grid} -m {material} '\
                 f'-n {numerics} -j {mode} --wd {str(tmp_path)}'
         out, _ = damask.util.run(cmd,env=env)
         assert solver in out

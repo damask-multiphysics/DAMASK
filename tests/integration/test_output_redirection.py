@@ -7,7 +7,7 @@ import difflib
 
 import pytest
 
-@pytest.mark.parametrize('solver',['DAMASK_mesh','DAMASK_grid'])
+@pytest.mark.parametrize('solver',['damask_mesh','damask_grid'])
 def test_output_redirection(tmp_path,mpi_launcher,solver):
 
     env['DAMASK_LOGFILE'] = '0'

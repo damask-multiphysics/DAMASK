@@ -150,7 +150,7 @@ def test_grid_parse_loadcase(tmp_path,res_path,copy_files,
     load_config = damask.YAML({'solver': {'mechanical': solver}, 'loadstep': loadcase})
     load_config.save(tmp_path/f'{load}.yaml')
 
-    cmd = f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m material.yaml -j {job}'
+    cmd = f'damask_grid -l {load}.yaml -g {grid}.vti -m material.yaml -j {job}'
     if solver == 'FEM':
         petsc_options = '-pc_type none -snes_type newtontr'
         damask.YAML({'solver': {'grid': {'mechanical': {'PETSc_options':petsc_options}}}}).save(tmp_path/'numerics.yaml')

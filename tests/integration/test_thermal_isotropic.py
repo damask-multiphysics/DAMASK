@@ -20,7 +20,7 @@ def test_thermal_isotropic(res_path,tmp_path,copy_files,np_rng):
     g.initial_conditions['T']=np.where(g.material==0,np_rng.random()*400,np_rng.random()*400)+200.
     g.save(tmp_path/f'{grid}.vti')
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load} -n numerics.yaml',
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load} -n numerics.yaml',
                     wd=tmp_path)
     r_cube = damask.Result(tmp_path/f'{grid}_{load}.hdf5').place(['T','O']).values()
 
@@ -29,7 +29,7 @@ def test_thermal_isotropic(res_path,tmp_path,copy_files,np_rng):
     m['material'][1]['constituents'][0]['O'] = damask.Rotation.from_random(rng_seed=np_rng)
     m.save(tmp_path/f'{material}.yaml')
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load} -n numerics.yaml',
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load} -n numerics.yaml',
                     wd=tmp_path)
     r_random = damask.Result(tmp_path/f'{grid}_{load}.hdf5').place(['T','O']).values()
 

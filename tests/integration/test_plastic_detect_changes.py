@@ -57,7 +57,7 @@ def test_plastic_detect_changes(tmp_path,res_path,copy_files,assert_allclose,upd
     m = damask.ConfigMaterial.load(tmp_path/f'{material}.yaml')
     m.material_rename_phase({'n/a':model}).save(tmp_path/f'{material}.yaml')
 
-    stdout,stderr = damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -n numerics.yaml -j {job}',
+    stdout,stderr = damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -n numerics.yaml -j {job}',
                                     wd=tmp_path)
 
     if update:

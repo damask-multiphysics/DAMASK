@@ -45,7 +45,7 @@ def test_homogenization_equivalent(res_path,tmp_path,copy_files,phase,homogeniza
 
     material_config.save(tmp_path/f'{material}.yaml')
 
-    stdout,stderr = damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',
+    stdout,stderr = damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',
                                     wd=tmp_path)
     print(f'{stdout}\n{stderr}')
 
@@ -73,7 +73,7 @@ def test_homogenization_many(tmp_path,res_path,copy_files,np_rng):
     m.material_add(homogenization='Taylor',O=O.reshape((1,-1)),phase='Elastic').save(tmp_path/'material.yaml')
 
     copy_files(res_path,tmp_path,['none.yaml'])
-    damask.util.run(f'DAMASK_grid -l none.yaml -g small.vti -m material.yaml --wd {tmp_path}')
+    damask.util.run(f'damask_grid -l none.yaml -g small.vti -m material.yaml --wd {tmp_path}')
 
 
 def test_homogenization_fraction(tmp_path,assert_allclose,np_rng):
@@ -121,7 +121,7 @@ def test_homogenization_fraction(tmp_path,assert_allclose,np_rng):
 
     load_case.save(tmp_path/f'{load}.yaml')
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml --wd {tmp_path} -j {job}')
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml --wd {tmp_path} -j {job}')
 
     result = damask.Result(tmp_path/f'{job}.hdf5').view(increments=-1)
 

@@ -53,6 +53,6 @@ def test_grid_CLI_flags(res_path,tmp_path,cmd):
     shutil.copy2(res_path/'4x4x4homog.vti',geom_path+'/'+geom_file)
     shutil.copy2(res_path/'tensionX.yaml', load_path+'/'+load_file)
     shutil.copy2(res_path/'material.yaml', material_path+'/'+material_file)
-    damask.util.run(f'DAMASK_grid {cmd} -j {job}',wd=tmp_path)
+    damask.util.run(f'damask_grid {cmd} -j {job}',wd=tmp_path)
 
     assert os.path.isfile(os.path.join(cwd,f'{job}.hdf5'))

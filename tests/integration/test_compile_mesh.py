@@ -38,7 +38,7 @@ def test_compile_mesh(damask_root,res_path,tmp_path,copy_files,h5py_dataset_iter
     mesh = 'singleCrystal'
     material = 'material'
     job = f'{mesh}_{load}'
-    damask.util.run(f'./bin/DAMASK_mesh -l {load}.yaml -g {mesh}.msh -m {material}.yaml -j {job}',wd=tmp_path)
+    damask.util.run(f'./bin/damask_mesh -l {load}.yaml -g {mesh}.msh -m {material}.yaml -j {job}',wd=tmp_path)
 
     if ref_file is None:
         print('stored reference')
