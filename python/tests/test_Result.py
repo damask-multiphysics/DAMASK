@@ -26,6 +26,7 @@ from damask import VTK
 from damask import tensor
 from damask import mechanics
 from damask import grid_filters
+from damask import util
 
 
 @pytest.fixture
@@ -457,10 +458,11 @@ def test_export_vtk(request,tmp_path,res_path,update,patch_execution_stamp,patch
     v.save(tmp_path/fname,parallel=False)
     with open(tmp_path/fname,'rb') as f:
         cur = hashlib.md5(f.read()).hexdigest()
+    path = res_path/('export_VTK_old' if util.version(vtkVersion.GetVTKVersion()) < '9.6.0' else 'export_VTK')
     if update:
-        with open((res_path/'export_VTK'/request.node.name).with_suffix('.md5'),'w') as f:
+        with open((path/request.node.name).with_suffix('.md5'),'w') as f:
             f.write(cur+'\n')
-    with open((res_path/'export_VTK'/request.node.name).with_suffix('.md5')) as f:
+    with open((path/request.node.name).with_suffix('.md5')) as f:
         assert cur == f.read().strip('\n')
 
 @pytest.mark.parametrize('mode',['point','cell'])
