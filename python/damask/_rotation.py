@@ -275,8 +275,8 @@ class Rotation:
                   *,
                   copy: Optional[bool] = None) -> np.ndarray:
         """Initializer for numpy."""
-        return self.quaternion.__array__(dtype) if util.version(np.__version__) < '2.0.0' else \
-               self.quaternion.__array__(dtype,copy=copy)                                           # type: ignore[arg-type]
+        return np.asarray(self.quaternion,dtype) if util.version(np.__version__) < '2.0.0' else \
+               np.asarray(self.quaternion,dtype,copy=copy)
 
 
     def __len__(self: MyType) -> int:
@@ -693,7 +693,7 @@ class Rotation:
     ################################################################################################
     # convert to different orientation representations (numpy arrays)
 
-    def as_quaternion(self) -> np.ndarray:
+    def as_quaternion(self) -> npt.NDArray[np.floating]:
         """
         Represent as unit quaternion.
 
@@ -705,7 +705,7 @@ class Rotation:
         return self.quaternion.copy()
 
     def as_Euler_angles(self,
-                        degrees: bool = False) -> np.ndarray:
+                        degrees: bool = False) -> npt.NDArray[np.floating]:
         """
         Represent as Bunge Euler angles.
 
@@ -769,7 +769,7 @@ class Rotation:
         else:
             return ax
 
-    def as_matrix(self) -> np.ndarray:
+    def as_matrix(self) -> npt.NDArray[np.floating]:
         """
         Represent as rotation matrix.
 
@@ -791,7 +791,7 @@ class Rotation:
         return Rotation._qu2om(self.quaternion)
 
     def as_Rodrigues_vector(self,
-                            compact: bool = False) -> np.ndarray:
+                            compact: bool = False) -> npt.NDArray[np.floating]:
         """
         Represent as Rodrigues–Frank vector with separate axis and angle argument.
 
@@ -823,7 +823,7 @@ class Rotation:
         else:
             return ro
 
-    def as_homochoric(self) -> np.ndarray:
+    def as_homochoric(self) -> npt.NDArray[np.floating]:
         """
         Represent as homochoric vector.
 
@@ -842,7 +842,7 @@ class Rotation:
         """
         return Rotation._qu2ho(self.quaternion)
 
-    def as_cubochoric(self) -> np.ndarray:
+    def as_cubochoric(self) -> npt.NDArray[np.floating]:
         """
         Represent as cubochoric vector.
 
