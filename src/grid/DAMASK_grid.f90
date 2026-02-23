@@ -82,7 +82,6 @@ program DAMASK_grid
     sig
   integer :: &
     i, j, field, &
-    errorID = 0, &
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
     stepFraction = 0, &                                                                             !< fraction of current time interval
     l = 0, &                                                                                        !< current load case
@@ -495,7 +494,7 @@ function parseLoadsteps(load_steps) result(loadCases)
       call loadCases(l)%rot%fromAxisAngle(step_mech%get_as1dReal('R',defaultVal = real([0.0,0.0,1.0,0.0],pREAL)),degrees=.true.)
     end do readMech
     if (.not. allocated(loadCases(l)%deformation%myType)) &
-      call IO_error(error_ID=837,ext_msg = 'L, F_dot/dot_F, or F missing')
+      call IO_error(830_pI16, 'load case', l, 'is incomplete: L, F_dot/dot_F, or F missing', emph=[2])
 
     step_discretization => load_step%get_dict('discretization')
     loadCases(l)%t = step_discretization%get_asReal('t')
@@ -526,9 +525,10 @@ function parseLoadsteps(load_steps) result(loadCases)
         end if
         end do; write(IO_STDOUT,'(/)',advance='no')
       end do
-      if (any(loadCases(l)%stress%mask .eqv. loadCases(l)%deformation%mask)) errorID = 831
+      if (any(loadCases(l)%stress%mask .eqv. loadCases(l)%deformation%mask)) &
+        call IO_error(830_pI16, 'mask consistency violated in load case', l, emph=[2])
       if (any(.not.(loadCases(l)%stress%mask .or. transpose(loadCases(l)%stress%mask)) .and. (math_I3<1))) &
-        errorID = 838                                                                               ! no rotation is allowed by stress BC
+        call IO_error(830_pI16, 'mixed boundary conditions allow rotation in load case', l, emph=[2])
 
       if (loadCases(l)%stress%myType == 'P')     print'(2x,a)', 'P / MPa:'
       if (loadCases(l)%stress%myType == 'dot_P') print'(2x,a)', 'dot_P / MPa/s:'
@@ -547,11 +547,19 @@ function parseLoadsteps(load_steps) result(loadCases)
         write(IO_STDOUT,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'R:',&
                  transpose(loadCases(l)%rot%asMatrix())
 
-      if (loadCases(l)%r <= 0.0_pREAL) errorID = 833
-      if (loadCases(l)%t <= 0.0_pREAL) errorID = 834
-      if (loadCases(l)%N < 1)          errorID = 835
-      if (loadCases(l)%f_out < 1)      errorID = 836
-      if (loadCases(l)%f_restart < 1)  errorID = 839
+      if (solver%get_asStr('mechanical') == 'spectral_Galerkin' .and. step_mech%contains('R')) &
+        call IO_error(830_pI16, 'load case', l, 'contains rotation', 'R', &
+                      'which is not supported when using the Galerkin solver', emph=[2,4])
+      if (loadCases(l)%r <= 0.0_pREAL) &
+        call IO_error(830_pI16, 'non-positive ratio for geometric progression in load case', l, emph=[2])
+      if (loadCases(l)%t <= 0.0_pREAL) &
+        call IO_error(830_pI16, 'negative time increment in load case', l, emph=[2])
+      if (loadCases(l)%N < 1) &
+        call IO_error(830_pI16, 'non-positive number of increments in load case', l, emph=[2])
+      if (loadCases(l)%f_out < 1) &
+        call IO_error(830_pI16, 'non-positive result frequency in load case', l, emph=[2])
+      if (loadCases(l)%f_restart < 1) &
+        call IO_error(830_pI16, 'non-positive restart frequency in load case', l, emph=[2])
 
       if (dEq(loadCases(l)%r,1.0_pREAL,1.e-9_pREAL)) then
         print'(2x,a)', 'r: 1 (constant step width)'
@@ -564,8 +572,6 @@ function parseLoadsteps(load_steps) result(loadCases)
         print'(2x,a,1x,i0)',   'f_out:', loadCases(l)%f_out
       if (loadCases(l)%f_restart < huge(0)) &
         print'(2x,a,1x,i0)',   'f_restart:', loadCases(l)%f_restart
-
-      if (errorID > 0) call IO_error(errorID,label1='line',ID1=l)
 
     end if reportAndCheck
   end do

@@ -517,22 +517,8 @@ subroutine IO_error_new(error_ID, &
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
-    case (831)
-      msg = 'mask consistency violated in grid load case'
-    case (833)
-      msg = 'non-positive ratio for geometric progression'
-    case (834)
-      msg = 'negative time increment in grid load case'
-    case (835)
-      msg = 'non-positive increments in grid load case'
-    case (836)
-      msg = 'non-positive result frequency in grid load case'
-    case (837)
-      msg = 'incomplete loadcase'
-    case (838)
-      msg = 'mixed boundary conditions allow rotation'
-    case (839)
-      msg = 'non-positive restart frequency in grid load case'
+    case (830)
+      msg = 'invalid load case'
     case (844)
       msg = 'invalid VTI file'
     case (894)
