@@ -38,7 +38,7 @@ def test_state_integrators_detect_changes(integrator,increments,
     l['loadstep'][1]['f_out']=increments
     l.save(tmp_path/f'{load}.yaml')
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml '+
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml '+
                     f'-n numerics.yaml -j {job}',wd=tmp_path)
 
     if ref_file is None:

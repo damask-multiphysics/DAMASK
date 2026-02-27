@@ -2020,7 +2020,7 @@ class Result:
 
                         for grp_label,dataset in outs.items():
                             v = v.set(' / '.join(['/'.join([grp_type,grp_field,grp_label]),
-                                                 dataset.dtype.metadata.get('unit')]),dataset)
+                                                 dataset.dtype.metadata['unit']]),dataset)          # type: ignore[index]
 
                 v.save(out_dir/f'{self.fname.stem}_inc{grp_inc.split(prefix_inc)[-1].zfill(N_digits)}',
                        parallel=parallel)
@@ -2083,14 +2083,14 @@ class Result:
                     for grp_label in self._visible['phases']:
                         try:
                             data = _read(f['/'.join([grp_inc,'phase',grp_label,'mechanical',q])])
-                            lattice = data.dtype.metadata['lattice']
                             # Map to DREAM.3D IDs
-                            if lattice == 'hP':
-                                crystal_structure.append(0)
-                            elif lattice in ['cI','cF']:
-                                crystal_structure.append(1)
-                            elif lattice == 'tI':
-                                crystal_structure.append(8)
+                            match data.dtype.metadata['lattice']:                                   # type: ignore[index]
+                                case 'hP':
+                                    crystal_structure.append(0)
+                                case 'cI' | 'cF':
+                                    crystal_structure.append(1)
+                                case 'tI':
+                                    crystal_structure.append(8)
 
                             cell_orientation[at_cell_ph[c][grp_label],:] = \
                                 Rotation(data[in_data_ph[c][grp_label],:]).as_Euler_angles().astype(np.float32)

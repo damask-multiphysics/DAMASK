@@ -39,7 +39,7 @@ def test_conduction(res_path,tmp_path,copy_files,assert_allclose,
     g.save(tmp_path/grid)
 
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
     m = damask.GeomGrid.load(tmp_path/grid).material.flatten(order='F')
     r = damask.Result(tmp_path/f'{job}.hdf5')
     T = r.view(increments=10).get('T')
@@ -72,7 +72,7 @@ def test_linear_expansion(res_path,tmp_path,copy_files,assert_allclose,np_rng,
     mat['material'][0]['constituents'][0]['O'] = damask.Rotation.from_random(rng_seed=np_rng)
     mat.save(tmp_path/f'{material}.yaml')
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
     r = damask.Result(tmp_path/f'{job}.hdf5')
     r.add_strain()
     l = {}
@@ -116,7 +116,7 @@ def test_1D_expansion(res_path,tmp_path,copy_files,assert_allclose,np_rng):
     g.initial_conditions['T'] = T_0
     g.save(tmp_path/grid)
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
     r = damask.Result(tmp_path/f'{job}.hdf5').view(increments=-1)
     r.add_strain()
     T_1 = np.average(r.get('T'))
@@ -168,9 +168,9 @@ def test_temperature_dependent_stiffness(res_path,tmp_path,copy_files,assert_all
     f.initial_conditions['T'] = T_ref
     f.save(tmp_path/'fixed')
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g variable.vti -m {material}.yaml -j variable_{load}',
+    damask.util.run(f'damask_grid -l {load}.yaml -g variable.vti -m {material}.yaml -j variable_{load}',
                     wd=tmp_path)
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g fixed.vti -m {material}.yaml -j fixed_{load}',
+    damask.util.run(f'damask_grid -l {load}.yaml -g fixed.vti -m {material}.yaml -j fixed_{load}',
                     wd=tmp_path)
 
     r_v = damask.Result(f'{tmp_path}/variable_{load}.hdf5').view(increments=-1)
@@ -220,7 +220,7 @@ def test_heat_capacity(res_path,tmp_path,np_rng):
     g.initial_conditions['T'] = T_0
     g.save(tmp_path/grid)
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
     T_1_sim = np.average(damask.Result(tmp_path/f'{job}.hdf5').view(increments=-1).get('T'))
 
     c_0 = - (f*t/rho + (C_p[0]*(T_0-T_ref) + C_p[1]/2.0*(T_0-T_ref)**2 + C_p[2]/3.0*(T_0-T_ref)**3))
@@ -285,7 +285,7 @@ def test_thermal_conductivity(res_path,tmp_path,np_rng,assert_allclose):
     l['loadstep'][0]['discretization']['N'] = 200
     l.save(tmp_path/f'{load}.yaml')
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
 
     r = damask.Result(tmp_path/f'{job}.hdf5')
     T = [np.average(_.reshape((-1,2,2),order='F'),axis=(1,2)) for _ in r.get('T').values()]
@@ -336,7 +336,7 @@ def test_thermal_dissipation(res_path,tmp_path,np_rng,assert_allclose):
     g.initial_conditions['T'] = T_0
     g.save(tmp_path/grid)
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
     r = damask.Result(tmp_path/f'{job}.hdf5')
     T_sim = np.array([np.average(_) for _ in r.get('T').values()])
     L_p = np.array([x.data for x in r.place('L_p').values()])

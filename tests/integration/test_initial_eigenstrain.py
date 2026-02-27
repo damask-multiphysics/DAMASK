@@ -46,7 +46,7 @@ def test_initial_eigenstrain(tmp_path,assert_allclose,np_rng):
                              'discretization':{'t':1.,'N':1}}])\
             .save(tmp_path/f'{load}.yaml')
 
-      damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
+      damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
       r = damask.Result(tmp_path/f'{job}.hdf5').view(increments=0)
 
       F_e = r.get('F_e')

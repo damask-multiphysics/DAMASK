@@ -717,6 +717,9 @@ class VTK:
         (this includes tensor datasets as they are flattened).
         """
         # See http://compilatrix.com/article/vtk-1 for possible improvements.
+        if os.name == 'posix' and 'DISPLAY' not in os.environ:
+            logger.warning('Found no rendering device')
+            return
         try:
             import wx
             _ = wx.App(False)                                                                       # noqa
@@ -769,8 +772,5 @@ class VTK:
 
         iren = vtkRenderWindowInteractor()
         iren.SetRenderWindow(window)
-        if os.name == 'posix' and 'DISPLAY' not in os.environ:
-            logger.warning('Found no rendering device')
-        else:
-            window.Render()
-            iren.Start()
+        window.Render()
+        iren.Start()

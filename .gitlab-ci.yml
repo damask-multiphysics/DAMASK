@@ -14,7 +14,7 @@ variables:
   MARC_VERSION: '2025.1'
   PETSC_GCC_LATEST: '2025.11.13'
   PETSC_ONEAPI_LATEST: '2025.11.13'
-  PYTHON_LATEST: '2025.06.05'
+  PYTHON_LATEST: '2026.02.24'
 
 ####################################################################################################
 # https://docs.gitlab.com/ci/yaml/workflow
@@ -115,6 +115,7 @@ workflow:
   parallel:
     matrix:
       - IMAGE:
+          - python:2025.06.05
           - python:2025.01.05
           - python:310_2412
 

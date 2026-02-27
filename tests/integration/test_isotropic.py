@@ -70,7 +70,7 @@ def test_phenopowerlaw_equivalence(res_path,tmp_path,copy_files,mat_configs,np_r
         mat_config.save(tmp_path/model/'material.yaml')
         copy_files(res_path,tmp_path/model)
 
-        damask.util.run(f'DAMASK_grid -l {load}.yaml -g {cell**3}.vti -m material.yaml '\
+        damask.util.run(f'damask_grid -l {load}.yaml -g {cell**3}.vti -m material.yaml '\
                         f'--wd {tmp_path/model} --job {cell**3}_{load}')
 
         r = damask.Result(tmp_path/model/f'{cell**3}_{load}.hdf5')
@@ -109,7 +109,7 @@ def test_analytic_reference(res_path,tmp_path,copy_files,mat_configs,np_rng):
 
     copy_files(res_path,tmp_path)
 
-    damask.util.run(f'DAMASK_grid -l tensionX.yaml -g homogeneous.vti -m material.yaml --wd {tmp_path} '\
+    damask.util.run(f'damask_grid -l tensionX.yaml -g homogeneous.vti -m material.yaml --wd {tmp_path} '\
                         '--job homogeneous_tensionX')
 
     r = damask.Result(tmp_path/'homogeneous_tensionX.hdf5')

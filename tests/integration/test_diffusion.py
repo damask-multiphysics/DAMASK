@@ -52,7 +52,7 @@ def test_chemical_diffusion(res_path,tmp_path,np_rng,assert_allclose):
     l['loadstep'][0]['discretization']['N'] = 500
     l.save(tmp_path/f'{load}.yaml')
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
 
     r = damask.Result(tmp_path/f'{job}.hdf5')
     Li_homog = np.array([x['homogenization'] for x in r.get('Li').values()])

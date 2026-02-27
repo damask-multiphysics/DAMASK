@@ -472,7 +472,7 @@ function crystal_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
       end do myFamilies
 
     case default
-      call IO_error(137,ext_msg='crystal_characteristicShear_Twin: '//trim(lattice))
+      call IO_error(130_pI16, 'invalid lattice', lattice, emph=[2])
 
   end select
 
@@ -506,7 +506,7 @@ function crystal_C66_twin(Ntwin,C66,lattice,CoverA)
       coordinateSystem = buildCoordinateSystem(Ntwin,HP_NTWINSYSTEM,HP_SYSTEMTWIN,&
                                                lattice,cOverA)
     case default
-      call IO_error(137,ext_msg='crystal_C66_twin: '//trim(lattice))
+      call IO_error(130_pI16, 'invalid lattice', lattice, emph=[2])
   end select
 
   do i = 1, sum(Ntwin)
@@ -560,14 +560,14 @@ function crystal_C66_trans(Ntrans,C_parent66,lattice_target, &
     C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2/(0.5_pREAL*(C_bar66(1,1) - C_bar66(1,2)))
     C_target_unrotated66 = crystal_symmetrize_C66(C_target_unrotated66,'hP')
   elseif (all(lattice_target /= ['cI','hP'])) then
-    call IO_error(130_pI16,'invalid target lattice',lattice_target,emph=[2])
+    call IO_error(130_pI16, 'invalid target lattice', lattice_target, emph=[2])
   else
-    call IO_error(130_pI16,'lattice parameters for target lattice not given', lattice_target, emph=[2])
+    call IO_error(130_pI16, 'lattice parameters for target lattice not given', lattice_target, emph=[2])
   end if
 
   do i = 1,6
     if (abs(C_target_unrotated66(i,i))<tol_math_check) &
-      call IO_error(130_pI16,'zero entry in elasticity matrix at', i, i, emph=[2,3])
+      call IO_error(130_pI16, 'zero entry in elasticity matrix at', i, i, emph=[2,3])
   end do
 
   call buildTransformationSystem(Q,S,Ntrans,cOverA_trans,a_cF,a_cI)
@@ -892,7 +892,7 @@ function crystal_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(
       interactionTypes = TI_INTERACTIONSLIPSLIP
       NslipMax         = TI_NSLIPSYSTEM
     case default
-      call IO_error(137,ext_msg='crystal_interaction_SlipBySlip: '//trim(lattice))
+      call IO_error(130_pI16, 'invalid lattice', lattice, emph=[2])
   end select
 
   interactionMatrix = buildInteraction(Nslip,Nslip,NslipMax,NslipMax,interactionValues,interactionTypes)
@@ -991,7 +991,7 @@ function crystal_interaction_TwinByTwin(Ntwin,interactionValues,lattice) result(
       interactionTypes = HP_INTERACTIONTWINTWIN
       NtwinMax         = HP_NTWINSYSTEM
     case default
-      call IO_error(137,ext_msg='crystal_interaction_TwinByTwin: '//trim(lattice))
+      call IO_error(130_pI16, 'invalid lattice', lattice, emph=[2])
   end select
 
   interactionMatrix = buildInteraction(Ntwin,Ntwin,NtwinMax,NtwinMax,interactionValues,interactionTypes)
@@ -1033,7 +1033,7 @@ function crystal_interaction_TransByTrans(Ntrans,interactionValues,lattice) resu
     interactionTypes = CF_INTERACTIONTRANSTRANS
     NtransMax        = CF_NTRANSSYSTEM
   else
-    call IO_error(137,ext_msg='crystal_interaction_TransByTrans: '//trim(lattice))
+    call IO_error(130_pI16, 'invalid lattice', lattice, emph=[2])
   end if
 
   interactionMatrix = buildInteraction(Ntrans,Ntrans,NtransMax,NtransMax,interactionValues,interactionTypes)
@@ -1193,7 +1193,7 @@ function crystal_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,lattice) r
       NslipMax         = HP_NSLIPSYSTEM
       NtwinMax         = HP_NTWINSYSTEM
     case default
-      call IO_error(137,ext_msg='crystal_interaction_SlipByTwin: '//trim(lattice))
+      call IO_error(130_pI16, 'invalid lattice', lattice, emph=[2])
   end select
 
   interactionMatrix = buildInteraction(Nslip,Ntwin,NslipMax,NtwinMax,interactionValues,interactionTypes)
@@ -1246,7 +1246,7 @@ function crystal_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,lattice)
       NslipMax         = CF_NSLIPSYSTEM
       NtransMax        = CF_NTRANSSYSTEM
     case default
-      call IO_error(137,ext_msg='crystal_interaction_SlipByTrans: '//trim(lattice))
+      call IO_error(130_pI16, 'invalid lattice', lattice, emph=[2])
   end select
 
   interactionMatrix = buildInteraction(Nslip,Ntrans,NslipMax,NtransMax,interactionValues,interactionTypes)
@@ -1322,7 +1322,7 @@ function crystal_interaction_TwinBySlip(Ntwin,Nslip,interactionValues,lattice) r
       NtwinMax         = HP_NTWINSYSTEM
       NslipMax         = HP_NSLIPSYSTEM
     case default
-      call IO_error(137,ext_msg='crystal_interaction_TwinBySlip: '//trim(lattice))
+      call IO_error(130_pI16, 'invalid lattice', lattice, emph=[2])
   end select
 
   interactionMatrix = buildInteraction(Ntwin,Nslip,NtwinMax,NslipMax,interactionValues,interactionTypes)
@@ -1373,20 +1373,20 @@ function crystal_SchmidMatrix_slip(Nslip,lattice,cOverA,nonSchmidCoefficients,se
       slipSystems = TI_SYSTEMSLIP
     case default
       allocate(NslipMax(0))
-      call IO_error(137,ext_msg='crystal_SchmidMatrix_slip: '//trim(lattice))
+      call IO_error(130_pI16, 'invalid lattice', lattice, emph=[2])
   end select
 
   if (present(nonSchmidCoefficients)) then
     select case(lattice)
       case('cI')
         if (size(nonSchmidCoefficients,dim=2) > 6) &
-          call IO_error(132,'too many non-Schmid coefficients for cI (max=6)')
+          call IO_error(130_pI16, 'more than 6 non-Schmid coefficients for lattice', 'cI', emph=[2])
       case('hP')
         if (size(nonSchmidCoefficients,dim=2) > 1) &
-          call IO_error(132,'too many non-Schmid coefficients for hP (max=1)')
+          call IO_error(130_pI16, 'more than 1 non-Schmid coefficient for lattice', 'hP', emph=[2])
       case default
         if (size(nonSchmidCoefficients,dim=2) > 0) &
-          call IO_error(132,'non-Schmid coefficients not implemented for '//lattice)
+          call IO_error(130_pI16, 'non-Schmid coefficient not implemented for lattice', lattice, emph=[2])
     end select
   endif
 
@@ -1478,7 +1478,7 @@ function crystal_SchmidMatrix_twin(Ntwin,lattice,cOverA) result(SchmidMatrix)
       twinSystems = HP_SYSTEMTWIN
     case default
       allocate(NtwinMax(0))
-      call IO_error(137,ext_msg='crystal_SchmidMatrix_twin: '//trim(lattice))
+      call IO_error(130_pI16, 'invalid lattice', lattice, emph=[2])
   end select
 
   if (any(NtwinMax(1:size(Ntwin)) - Ntwin < 0)) &
@@ -1555,7 +1555,7 @@ function crystal_SchmidMatrix_cleavage(Ncleavage,lattice,cOverA) result(SchmidMa
       cleavageSystems = CI_SYSTEMCLEAVAGE
     case default
       allocate(NcleavageMax(0))
-      call IO_error(137,ext_msg='crystal_SchmidMatrix_cleavage: '//trim(lattice))
+      call IO_error(130_pI16, 'invalid lattice', lattice, emph=[2])
   end select
 
   if (any(NcleavageMax(1:size(Ncleavage)) - Ncleavage < 0)) &
@@ -1656,7 +1656,7 @@ function crystal_labels_slip(Nslip,lattice) result(labels)
       NslipMax    = TI_NSLIPSYSTEM
       slipSystems = TI_SYSTEMSLIP
     case default
-      call IO_error(137,ext_msg='crystal_labels_slip: '//trim(lattice))
+      call IO_error(130_pI16, 'invalid lattice', lattice, emph=[2])
   end select
 
   if (any(NslipMax(1:size(Nslip)) - Nslip < 0)) &
@@ -1767,7 +1767,7 @@ function crystal_labels_twin(Ntwin,lattice) result(labels)
       NtwinMax    = HP_NTWINSYSTEM
       twinSystems = HP_SYSTEMTWIN
     case default
-      call IO_error(137,ext_msg='crystal_labels_twin: '//trim(lattice))
+      call IO_error(130_pI16, 'invalid lattice', lattice, emph=[2])
   end select
 
   if (any(NtwinMax(1:size(Ntwin)) - Ntwin < 0)) &
@@ -1857,7 +1857,7 @@ function coordinateSystem_slip(Nslip,lattice,cOverA) result(coordinateSystem)
       slipSystems = TI_SYSTEMSLIP
     case default
       allocate(NslipMax(0))
-      call IO_error(137,ext_msg='coordinateSystem_slip: '//trim(lattice))
+      call IO_error(130_pI16, 'invalid lattice', lattice, emph=[2])
   end select
 
   if (any(NslipMax(1:size(Nslip)) - Nslip < 0)) &
@@ -1969,7 +1969,7 @@ function buildCoordinateSystem(active,potential,system,lattice,cOverA) result(co
                         system(8,p)/cOverA ]                                                        ! plane (hkil)->(h (h+2k)/sqrt(3) l/(p/a))
 
         case default
-          call IO_error(137,ext_msg='buildCoordinateSystem: '//trim(lattice))
+          call IO_error(130_pI16, 'invalid lattice', lattice, emph=[2])
 
       end select
 
@@ -2104,7 +2104,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
       S(1:3,1:3,i) = matmul(Q(1:3,1:3,i), matmul(matmul(sd,ss), transpose(Q(1:3,1:3,i)))) - MATH_I3 ! ToDo: This is of interest for the Schmid matrix only
     end do
   else
-    call IO_error(132,ext_msg='buildTransformationSystem')
+    error stop 'invalid call to buildTransformationSystem'
   end if
 
 end subroutine buildTransformationSystem

@@ -181,7 +181,8 @@ subroutine CLI_init()
       val = flag(s+1:)
       flag = flag(:s-1)
     else
-      if (i > command_argument_count()) call IO_error(610,ext_msg=flag)
+      if (i > command_argument_count()) &
+        call IO_error(610_pI16,'missing value for flag', flag, emph=[2])
       val = getArg(i)
       i = i + 1
     end if
@@ -202,16 +203,17 @@ subroutine CLI_init()
 #if defined(GRID)
       case ('-r', '--rs', '--restart')
         CLI_restartInc = IO_strAsInt(val)
-        if (CLI_restartInc < 0) call IO_error(611,ext_msg=val,label1='--restart')
+        if (CLI_restartInc < 0) &
+          call IO_error(610_pI16, 'invalid value', val, 'for flag', flag, emph=[2,4])
 #endif
       case default
-        call IO_error(613,ext_msg=flag)
+        call IO_error(610_pI16, 'invalid flag', flag, emph=[2])
     end select
   end do
 
-  if (.not. allocated(geomArg))     call IO_error(612,ext_msg='--geom')
-  if (.not. allocated(loadArg))     call IO_error(612,ext_msg='--load')
-  if (.not. allocated(materialArg)) call IO_error(612,ext_msg='--material')
+  if (.not. allocated(geomArg))     call IO_error(610_pI16, 'missing flag', '--geom', emph=[2])
+  if (.not. allocated(loadArg))     call IO_error(610_pI16, 'missing flag', '--load', emph=[2])
+  if (.not. allocated(materialArg)) call IO_error(610_pI16, 'missing flag', '--material', emph=[2])
 
   call setWorkingDirectory(trim(workingDirArg))
   CLI_geomFile = getPathRelCWD(geomArg)

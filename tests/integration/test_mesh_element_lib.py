@@ -31,7 +31,7 @@ def test_mesh_element_lib(res_path,tmp_path,copy_files,update,assert_allclose,di
     numerics_config['solver']['mesh']['p_s'] = p_s
     numerics_config.save(tmp_path/'numerics.yaml')
 
-    damask.util.run(f'DAMASK_mesh -l {load}.yaml -g {mesh}.msh -m {material}.yaml -j {job} -n numerics.yaml',wd=tmp_path)
+    damask.util.run(f'damask_mesh -l {load}.yaml -g {mesh}.msh -m {material}.yaml -j {job} -n numerics.yaml',wd=tmp_path)
 
     with h5py.File(res_path/'Reference.hdf5','a') as ref, h5py.File(tmp_path/f'{job}.hdf5','r') as cur:
         for root, datasets in zip(('/','increment_200'),(('x_n','x_p'),('u_n','u_p'))):

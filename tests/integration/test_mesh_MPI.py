@@ -36,6 +36,6 @@ def test_mesh_MPI(res_path,tmp_path,copy_files,mpi_launcher,np_rng,n):
         numerics_config.save(cwd/'numerics.yaml')
 
         damask.util.run((f'{mpi_launcher} -n {n} ' if mode == 'parallel' else '') +
-                         f'DAMASK_mesh -l {load}.yaml -g {mesh}.msh -m {material}.yaml '+
+                         f'damask_mesh -l {load}.yaml -g {mesh}.msh -m {material}.yaml '+
                          f'-n numerics.yaml -j {job}',wd=cwd,env=env)
         damask.Result(tmp_path/f'{mode}/{job}.hdf5').export_VTK('*',mode='point')

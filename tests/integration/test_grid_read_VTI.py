@@ -32,7 +32,7 @@ def test_grid_read_VTI(res_path,tmp_path,copy_files,h5py_dataset_iterator,assert
     if temp_res_path is None:
         temp_res_path = Path(tempfile.mkdtemp())
         copy_files(res_path,temp_res_path)
-        damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load}',
+        damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load}',
                         wd=temp_res_path)
 
     # create non-standard.vti
@@ -54,7 +54,7 @@ def test_grid_read_VTI(res_path,tmp_path,copy_files,h5py_dataset_iterator,assert
 
     v.save(tmp_path/f'{grid}_{dtype}_{compress}.vti',compress=compress,parallel=False)
     copy_files(res_path,tmp_path,[f'{material}.yaml',f'{load}.yaml'])
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}_{dtype}_{compress}.vti -m {material}.yaml '\
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}_{dtype}_{compress}.vti -m {material}.yaml '\
                     f'-j {grid}_{dtype}_{compress}_{load}',wd=tmp_path)
 
     with h5py.File(temp_res_path/f'{grid}_{load}.hdf5','r') as ref, \
@@ -87,7 +87,7 @@ def test_grid_read_VTI_VTK8(res_path,tmp_path,copy_files):
     material = 'material'
 
     copy_files(res_path,tmp_path,[f'{material}.yaml',f'{load}.yaml',f'{grid}.vti'])
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load}',
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load}',
                     wd=tmp_path)
 
     with h5py.File(tmp_path/f'{grid}_{load}.hdf5','r') as result, \

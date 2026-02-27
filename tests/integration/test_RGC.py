@@ -20,7 +20,7 @@ def test_RGC_detect_changes(res_path,tmp_path,copy_files,h5py_dataset_iterator,a
     material = 'material'
     job = f'{grid}_{load}'
 
-    stdout,stderr = damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',
+    stdout,stderr = damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',
                                     wd=tmp_path)
     print(f'{stdout}\n{stderr}')
 

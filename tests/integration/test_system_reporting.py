@@ -26,7 +26,7 @@ def test_system_reporting(copy_files,res_path,tmp_path,np_rng):
     config['material'][0]['constituents'][0]['O']=damask.Rotation.from_random(rng_seed=np_rng)
     config.save(tmp_path/f'{material}.yaml')
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load}',
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load}',
                     wd=tmp_path)
 
     r = damask.Result(tmp_path/f'{grid}_{load}.hdf5')

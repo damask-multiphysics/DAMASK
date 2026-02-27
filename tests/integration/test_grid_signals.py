@@ -34,7 +34,7 @@ def test_grid_signals(res_path,tmp_path,copy_files,mpi_launcher,mpi,signal):
     copy_files(res_path,tmp_path)
 
     match = re.compile(r' Increment 17/25-1/1 @ Iteration 1≤1≤', re.U)
-    cmd = f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}'
+    cmd = f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}'
     if mpi: cmd = f'{mpi_launcher} -n 2 '+cmd
 
     start = time.time()

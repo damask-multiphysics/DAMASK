@@ -44,7 +44,7 @@ def test_compile_grid(damask_root,res_path,tmp_path,copy_files,h5py_dataset_iter
         load_config['solver']['mechanical'] = solver
         load_config.save(tmp_path/f'{load}.yaml')
 
-        out, _ = damask.util.run(f'./bin/DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',
+        out, _ = damask.util.run(f'./bin/damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',
                                  wd=tmp_path)
         assert solver in out
 

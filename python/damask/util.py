@@ -21,7 +21,7 @@ from typing import Optional as _Optional, Union as _Union, Iterable as _Iterable
 import numpy as _np
 import h5py as _h5py
 try:
-    import numba as _nb                                                                             # type: ignore[import-not-found]
+    import numba as _nb                                                                             # type: ignore
 except ImportError:
     _nb = False
 

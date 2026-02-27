@@ -50,7 +50,7 @@ def test_imageData(np_rng,tmp_path):
     with open(tmp_path/'imageData.vtk','w') as f:
         f.write(string)
     vtk = VTK.load(tmp_path/'imageData.vtk','VTK_imageData')
-    assert (string == vtr.as_ASCII() == vtk.as_ASCII())
+    assert string == vtr.as_ASCII() == vtk.as_ASCII()
 
 def test_rectilinearGrid(np_rng,tmp_path):
     grid = np.sort(np_rng.random((3,10)))
@@ -62,7 +62,7 @@ def test_rectilinearGrid(np_rng,tmp_path):
     with open(tmp_path/'rectilinearGrid.vtk','w') as f:
         f.write(string)
     vtk = VTK.load(tmp_path/'rectilinearGrid.vtk','VTK_rectilinearGrid')
-    assert (string == vtr.as_ASCII() == vtk.as_ASCII())
+    assert string == vtr.as_ASCII() == vtk.as_ASCII()
 
 def test_polyData(np_rng,tmp_path):
     points = np_rng.random((100,3))
@@ -74,7 +74,7 @@ def test_polyData(np_rng,tmp_path):
     with open(tmp_path/'polyData.vtk','w') as f:
         f.write(string)
     vtk = VTK.load(tmp_path/'polyData.vtk','polyData')
-    assert (string == vtp.as_ASCII() == vtk.as_ASCII())
+    assert string == vtp.as_ASCII() == vtk.as_ASCII()
 
 @pytest.mark.xfail(util.version(vtkVersion.GetVTKVersion()) < '9.4.0',
                    reason = 'not available in VTK < 9.4')
@@ -83,7 +83,8 @@ def test_polyData_VTKHDF(np_rng,tmp_path):
     v = VTK.from_poly_data(points)
     v.save_VTKHDF(tmp_path/'polyData')
     vtkhdf = VTK.load(tmp_path/'polyData.vtkhdf')
-    assert (v.as_ASCII() == vtkhdf.as_ASCII())
+    # https://discourse.vtk.org/t/legacy-file-format-data-type-and-version/16299
+    assert v.as_ASCII().replace('long','vtktypeint64') == vtkhdf.as_ASCII().replace('long','vtktypeint64')
 
 # https://defelement.org/elements/lagrange.html
 @pytest.mark.parametrize('cell_type,n_nodes',[
@@ -106,7 +107,7 @@ def test_unstructuredGrid(np_rng,tmp_path,cell_type,n_nodes,order):
     with open(tmp_path/'unstructuredGrid.vtk','w') as f:
         f.write(string)
     vtk = VTK.load(tmp_path/'unstructuredGrid.vtk','unstructuredgrid')
-    assert (string == vtu.as_ASCII() == vtk.as_ASCII())
+    assert string == vtu.as_ASCII() == vtk.as_ASCII()
 
 @pytest.mark.xfail(util.version(vtkVersion.GetVTKVersion()) < '9.4.0',
                    reason = 'not available in VTK < 9.4')
@@ -125,7 +126,7 @@ def test_unstructuredGrid_VTKHDF(np_rng,tmp_path,cell_type,n_nodes,order):
     v = VTK.from_unstructured_grid(nodes,connectivity,cell_type)
     v.save_VTKHDF(tmp_path/'unstructuredGrid')
     vtkhdf = VTK.load(tmp_path/'unstructuredGrid.vtkhdf')
-    assert (v.as_ASCII() == vtkhdf.as_ASCII())
+    assert v.as_ASCII() == vtkhdf.as_ASCII()
 
 
 def test_parallel_out(np_rng,tmp_path):
@@ -149,7 +150,7 @@ def test_compress(np_rng,tmp_path):
     fname_p = tmp_path/'plain.vtp'
     v.save(fname_c,parallel=False,compress=False)
     v.save(fname_p,parallel=False,compress=True)
-    assert (VTK.load(fname_c).as_ASCII() == VTK.load(fname_p).as_ASCII())
+    assert VTK.load(fname_c).as_ASCII() == VTK.load(fname_p).as_ASCII()
 
 
 @pytest.mark.parametrize('fname',['a','a.vtp','a.b','a.b.vtp'])

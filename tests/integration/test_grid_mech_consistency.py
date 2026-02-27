@@ -44,7 +44,7 @@ def test_grid_mech_consistency(res_path,tmp_path,copy_files,h5py_dataset_iterato
     l['solver']['mechanical'] = solver
     l.save(tmp_path/f'{load}.yaml')
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml',
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml',
                     wd=tmp_path)
 
     if job in ref:

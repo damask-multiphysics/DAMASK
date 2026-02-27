@@ -401,10 +401,6 @@ subroutine IO_error_new(error_ID, &
 ! lattice error messages
     case (130)
       msg = 'invalid crystal parameters'
-    case (132)
-      msg = 'invalid parameters for transformation'
-    case (137)
-      msg = 'not defined for lattice structure'
     case (138)
       msg = 'not enough interaction parameters given'
 
@@ -478,13 +474,7 @@ subroutine IO_error_new(error_ID, &
     case (603)
       msg = 'invalid data for table'
     case (610)
-      msg = 'missing value for command line flag'
-    case (611)
-      msg = 'invalid value for command line flag'
-    case (612)
-      msg = 'missing command line flag'
-    case (613)
-      msg = 'invalid command line flag'
+      msg = 'invalid command line options'
     case (640)
       msg = 'invalid working directory'
 

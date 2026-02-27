@@ -44,7 +44,7 @@ def test_grid_restart(res_path,tmp_path,copy_files,h5py_dataset_iterator,assert_
             config_load['loadstep'][0]['discretization']['N']=17
         config_load.save(tmp_path/f'{load}.yaml')
 
-        cmd = f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {mode}'
+        cmd = f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {mode}'
         damask.util.run(cmd,wd=tmp_path)
 
         if mode == 'restart':
@@ -71,9 +71,9 @@ def test_grid_restart_new_file(res_path,tmp_path,copy_files,h5py_dataset_iterato
     config_load['solver']['mechanical'] = 'spectral_Galerkin'
     config_load.save(tmp_path/f'{load}.yaml')
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j normal',wd=tmp_path)
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j normal',wd=tmp_path)
     os.rename(tmp_path/'normal_restart.hdf5',tmp_path/'restart_restart.hdf5')
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j restart -r 17',wd=tmp_path)
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j restart -r 17',wd=tmp_path)
 
     assert (damask.Table.load(tmp_path/'normal.sta').get('IterationsNeeded')[-1] ==
             damask.Table.load(tmp_path/'restart.sta').get('IterationsNeeded')[-1]).all()
@@ -119,7 +119,7 @@ def test_grid_restart_thermo_mechanical(res_path,tmp_path,copy_files,h5py_datase
             config_load['loadstep'][0]['discretization']['N']=17
         config_load.save(tmp_path/f'{load}.yaml')
 
-        cmd = f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {mode}'
+        cmd = f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {mode}'
         damask.util.run(cmd,wd=tmp_path)
 
         if mode == 'restart':
@@ -151,7 +151,7 @@ def test_grid_restart_damage_simple(res_path,tmp_path,copy_files,h5py_dataset_it
             config_load['loadstep'][0]['discretization']['N']=8
         config_load.save(tmp_path/f'{load}.yaml')
 
-        cmd = f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {mode}'
+        cmd = f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {mode}'
         damask.util.run(cmd,wd=tmp_path)
 
         if mode == 'restart':
@@ -184,7 +184,7 @@ def test_grid_restart_damage_complex(res_path,tmp_path,copy_files,h5py_dataset_i
             config_load['loadstep'][-1]['f_restart'] = 60 # restart record step
         config_load.save(tmp_path/f'{load}.yaml')
 
-        cmd = f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {mode}'
+        cmd = f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {mode}'
         damask.util.run(cmd,wd=tmp_path)
 
         if mode == 'restart':

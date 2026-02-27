@@ -20,7 +20,7 @@ def test_grid_displacement(res_path,tmp_path,copy_files,assert_allclose,np_rng):
     cells = np_rng.integers(5,12,(3))
     damask.GeomGrid(np_rng.integers(0,2,cells),size).save(tmp_path/'random_2phase.vti')
 
-    damask.util.run(f'DAMASK_grid -l mixed.yaml -g random_2phase.vti -m material.yaml -w {tmp_path} '\
+    damask.util.run(f'damask_grid -l mixed.yaml -g random_2phase.vti -m material.yaml -w {tmp_path} '\
                      '--jobname random_2phase_mixed')
 
     r = damask.Result(f'{tmp_path}/random_2phase_mixed.hdf5').view(increments=-1)

@@ -33,7 +33,7 @@ def test_grid_MPI(res_path,tmp_path,copy_files,h5py_dataset_iterator,mpi_launche
         load_config['solver']['mechanical'] = solver
         load_config.save(cwd/f'{load}.yaml')
         out,_ = damask.util.run((f'{mpi_launcher} -n {n} ' if mode == 'parallel' else '') +
-                                 f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',
+                                 f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',
                                 wd=cwd,env=env)
         assert solver in out
 

@@ -32,7 +32,7 @@ def test_orientation_consistency(tmp_path,res_path,copy_files,assert_allclose):
 
     damask.GeomGrid.from_table(data,'pos','O').save(tmp_path/'3D_EBSD.vti')
 
-    damask.util.run('DAMASK_grid -l none.yaml -g 3D_EBSD.vti -m material.yaml -j 3D_EBSD_none',
+    damask.util.run('damask_grid -l none.yaml -g 3D_EBSD.vti -m material.yaml -j 3D_EBSD_none',
                     wd=tmp_path)
 
     data = damask.Table.load(res_path/'3D_EBSD.txt')

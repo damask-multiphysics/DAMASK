@@ -648,7 +648,7 @@ class GeomGrid:
         """
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
         tree = spatial.KDTree(seeds,boxsize=np.asarray(size) if periodic else None)
-        material_ = tree.query(coords, workers = int(os.environ.get('OMP_NUM_THREADS',4)))[1]
+        material_ = np.asarray(tree.query(coords, workers = int(os.environ.get('OMP_NUM_THREADS',4)))[1])
 
         return GeomGrid(material = (material_ if material is None else np.array(material)[material_]).reshape(cells),
                         size     = size,
@@ -1003,14 +1003,11 @@ class GeomGrid:
         if not set(directions).issubset(valid):
             raise ValueError(f'invalid direction "{set(directions).difference(valid)}" specified')
 
-        mat = np.flip(self.material, [valid.index(d) for d in directions if d in valid])
-        ic = {}
-        for label in self.initial_conditions:
-            ic[label] = np.flip(self.initial_conditions[label],[valid.index(d) for d in directions if d in valid])
-        return GeomGrid(material = mat,
+        directions_ = tuple([valid.index(d) for d in directions if d in valid])
+        return GeomGrid(material = np.flip(self.material, directions_),
                         size     = self.size,
                         origin   = self.origin,
-                        initial_conditions = ic,
+                        initial_conditions = {label:np.flip(ic, directions_) for label,ic in self.initial_conditions.items()},
                         comments = self.comments+[util.execution_stamp('GeomGrid','flip')],
                        )
 
@@ -1056,10 +1053,12 @@ class GeomGrid:
         material = self.material
         # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
         # see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
-        for angle,axes in zip(R.as_Euler_angles(degrees=True)[::-1], [(0,1),(1,2),(0,1)]):
-            material_temp = ndimage.rotate(material,angle,axes,order=0,prefilter=False,
+        for angle,axes in zip(np.flip(R.as_Euler_angles(degrees=True)), [(0,1),(1,2),(0,1)]):
+            material_temp = ndimage.rotate(material,angle,axes,
                                            output=self.material.dtype,
-                                           cval=np.nanmax(self.material) + 1 if fill is None else fill)
+                                           order=0,
+                                           cval=np.nanmax(self.material) + 1 if fill is None else fill,
+                                           prefilter=False)                                         # type: ignore[call-overload]
             # avoid scipy interpolation errors for rotations close to multiples of 90°
             material = material_temp if np.prod(material_temp.shape) != np.prod(material.shape) else \
                        np.rot90(material,k=np.rint(angle/90.).astype(np.int64),axes=axes)

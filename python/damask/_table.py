@@ -126,7 +126,7 @@ class Table:
                 (item[0], item[1]) if isinstance(item[0],(slice,np.ndarray)) else \
                 (slice(None,None,None),item)
         sliced = self.data.loc[item_]
-        cols = np.array(sliced.columns if isinstance(sliced,pd.core.frame.DataFrame) else [item_[1]])
+        cols = np.array(sliced.columns if isinstance(sliced,pd.DataFrame) else [item_[1]])
         _,idx = np.unique(cols,return_index=True)
         return self.__class__(shapes={k:self.shapes[k] for k in cols[np.sort(idx)]},
                               data=sliced,
