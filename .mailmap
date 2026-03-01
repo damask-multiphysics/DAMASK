@@ -1,3 +1,4 @@
+# git log --format="%aN <%aE>" | sort -u should give no duplicates
 Aadhithyan Kannan <aadhi.kannan@kuleuven.be>           <aadhi@landau.dyn.cs.kuleuven.be>
 Abisheik Panneerselvam <a.panneerselvam@mpie.de>       <a.panneerselvam@maws04.mpie.de>
 Alankar Alankar                                        <a.alankar@mpie.de>
@@ -11,6 +12,7 @@ Cathy Bing                                             <zhangrux@msu.edu>
 Cathy Bing <zhangrux@msu.edu>                          <sfzrx@mail.ustc.edu.cn>
 Chen Zhang                                             <zhangc43@egr.msu.edu>
 Chen Zhang <zhangc43@egr.msu.edu>                      <chenzhang8722@gamil.com>
+Chen Zhang <zhangc43@egr.msu.edu>                      <chenzhang8722@gmail.com>
 Chen Zhang <zhangc43@egr.msu.edu>                      <zhangc43@baron.egr.msu.edu>
 Christoph Kords                                        <c.kords@mpie.de>
 Chuanlai Liu                                           <c.liu@mpie.de>
