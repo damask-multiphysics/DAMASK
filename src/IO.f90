@@ -8,7 +8,7 @@
 !--------------------------------------------------------------------------------------------------
 module IO
   use, intrinsic :: ISO_C_binding
-  use, intrinsic :: ISO_fortran_env, only: &
+  use, intrinsic :: ISO_Fortran_env, only: &
     IO_STDOUT => OUTPUT_UNIT, &
     IO_STDERR => ERROR_UNIT, &
     IO_STDIN => INPUT_UNIT
@@ -19,9 +19,9 @@ module IO
 #ifndef MARC_SOURCE
   use OS
 #endif
-implicit none(type,external)
-  private
 
+  implicit none(type,external)
+  private
 
   interface
 #ifndef MARC_SOURCE
@@ -253,11 +253,10 @@ end function IO_glueDiffering
 !--------------------------------------------------------------------------------------------------
 pure function IO_intAsStr(i)
 
-  integer, intent(in)            :: i
-  character(len=:), allocatable  :: IO_intAsStr
+  integer, intent(in) :: i
+  character(len=merge(2,1,i<0) + floor(log10(real(abs(merge(1,i,i==0)))))) :: IO_intAsStr
 
 
-  allocate(character(len=merge(2,1,i<0) + floor(log10(real(abs(merge(1,i,i==0))))))::IO_intAsStr)
   write(IO_intAsStr,'(i0)') i
 
 end function IO_intAsStr
@@ -266,16 +265,17 @@ end function IO_intAsStr
 !--------------------------------------------------------------------------------------------------
 !> @brief Return given float value as string.
 !--------------------------------------------------------------------------------------------------
-pure function IO_realAsStr(f)
+pure function IO_realAsStr(r)
 
-  real(pREAL), intent(in)        :: f
-  character(len=:), allocatable  :: IO_realAsStr
-  character(len=15)              :: tmp
+  real(pREAL), intent(in) :: r
+  character(len=:), allocatable :: IO_realAsStr
+
+  character(len=15) :: tmp
 
 
-  write(tmp,'(g15.7)') f
+  write(tmp,'(g15.7)') r
   tmp = adjustl(tmp)
-  allocate(IO_realAsStr,source=tmp(:len_trim(tmp)))
+  IO_realAsStr = tmp(:len_trim(tmp))
 
 end function IO_realAsStr
 
@@ -747,19 +747,12 @@ end subroutine IO_selfTest
 !> everything is fine. Exit code 1 signals an error, message according to IO_error.
 !--------------------------------------------------------------------------------------------------
 subroutine quit(stop_id)
-  use, intrinsic :: ISO_fortran_env, only: ERROR_UNIT, OUTPUT_UNIT
 #include <petsc/finclude/petscsys.h>
   use PETScSys
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
   use MPI_f08
 #endif
   use HDF5
-
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
-  implicit none(type,external)
-#else
-  implicit none
-#endif
 
   integer, intent(in) :: stop_id
 
@@ -769,15 +762,16 @@ subroutine quit(stop_id)
   PetscErrorCode :: err_PETSc
 
 
+  !$OMP SINGLE
   call H5Open_f(err_HDF5)                                                                           ! prevents error if not opened yet
-  if (err_HDF5 < 0) write(ERROR_UNIT,'(a,i0)') ' Error in H5Open_f ',err_HDF5
+  if (err_HDF5 < 0) write(IO_STDERR,'(a,i0)') ' Error in H5Open_f ',err_HDF5
   call H5Close_f(err_HDF5)
-  if (err_HDF5 < 0) write(ERROR_UNIT,'(a,i0)') ' Error in H5Close_f ',err_HDF5
+  if (err_HDF5 < 0) write(IO_STDERR,'(a,i0)') ' Error in H5Close_f ',err_HDF5
 
   call PetscFinalize(err_PETSc)
 
   call date_and_time(values = date_time)
-  write(OUTPUT_UNIT,'(/,a)') ' DAMASK terminated on:'
+  write(IO_STDOUT,'(/,a)') ' DAMASK terminated on:'
   print'(3x,a,1x,2(i2.2,a),i4.4)', 'Date:',date_time(3),'/',date_time(2),'/',date_time(1)
   print'(3x,a,1x,2(i2.2,a),i2.2)', 'Time:',date_time(5),':',date_time(6),':',date_time(7)
 
@@ -789,10 +783,12 @@ subroutine quit(stop_id)
     call MPI_Comm_size(MPI_COMM_WORLD,worldsize,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI_Comm error'
     if (stop_id /= 0 .and. worldsize > 1) call MPI_Abort(MPI_COMM_WORLD,1,err_MPI)
-    stop 1                                                                                          ! error (message from IO_error)
+    stop 1                                                                                          ! ToDo: return stop ID (needs to be < 125)
   endif
+  !$OMP END SINGLE
 
 end subroutine quit
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Print C string to Fortran stdout.
@@ -802,7 +798,7 @@ subroutine IO_printCppString(C_STR) bind(C, name='F_IO_printCppString')
   character(kind=C_CHAR), intent(in), dimension(*) :: c_str
 
 
-  write (IO_STDOUT, '(a)', advance='no') c_f_string(c_str)
+  write(IO_STDOUT, '(a)', advance='no') c_f_string(c_str)
   flush(IO_STDOUT)
 
 end subroutine IO_printCppString
@@ -884,9 +880,10 @@ subroutine panel(paneltype,ID,msg, &
              i
 
 
-  ! Needed to avoid output glitches observed with Gfortran.
-  ! see https://fortran-lang.discourse.group/t/openmp-and-thread-safety-of-i-os-write-read/4567/19
-  !$OMP CRITICAL (internal_IO)
+  ! Needed to avoid output glitches observed with GFortran.
+  ! see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=113797
+  !     https://fortran-lang.discourse.group/t/openmp-and-thread-safety-of-i-os-write-read/4567
+  !$OMP CRITICAL (string_concatenation)
   heading = paneltype//' '//IO_intAsStr(ID)
 
   select case (paneltype)
@@ -909,7 +906,7 @@ subroutine panel(paneltype,ID,msg, &
             // as_str(info_7,is_emph(7,emph)) &
             // as_str(info_8,is_emph(8,emph)) &
             // as_str(info_9,is_emph(9,emph))
-  !$OMP END CRITICAL (internal_IO)
+  !$OMP END CRITICAL (string_concatenation)
 
   !$OMP CRITICAL (output_to_screen)
   write(IO_STDERR,'(/,a)')                ' ┌'       //DIVIDER//        '┐'

@@ -33,7 +33,7 @@ module crystal
   integer, dimension(*), parameter :: &
     CF_NCLEAVAGESYSTEM = [3]                                                                        !< # of cleavage systems per family for cF
 
-  integer, parameter  :: &
+  integer, parameter :: &
     CF_NSLIP     = sum(CF_NSLIPSYSTEM), &                                                           !< total # of slip systems for cF
     CF_NTWIN     = sum(CF_NTWINSYSTEM), &                                                           !< total # of twin systems for cF
     CF_NTRANS    = sum(CF_NTRANSSYSTEM), &                                                          !< total # of transformation systems for cF
@@ -116,7 +116,7 @@ module crystal
   integer, dimension(*), parameter :: &
     CI_NCLEAVAGESYSTEM = [3]                                                                        !< # of cleavage systems per family for cI
 
-  integer, parameter  :: &
+  integer, parameter :: &
     CI_NSLIP     = sum(CI_NSLIPSYSTEM), &                                                           !< total # of slip systems for cI
     CI_NTWIN     = sum(CI_NTWINSYSTEM), &                                                           !< total # of twin systems for cI
     CI_NCLEAVAGE = sum(CI_NCLEAVAGESYSTEM)                                                          !< total # of cleavage systems for cI
@@ -213,9 +213,9 @@ module crystal
   integer, dimension(*), parameter :: &
     HP_NTWINSYSTEM = [6, 6, 6, 6]                                                                   !< # of twin systems per family for hP
 
-  integer, parameter  :: &
-    HP_NSLIP     = sum(HP_NSLIPSYSTEM), &                                                           !< total # of slip systems for hP
-    HP_NTWIN     = sum(HP_NTWINSYSTEM)                                                              !< total # of twin systems for hP
+  integer, parameter :: &
+    HP_NSLIP = sum(HP_NSLIPSYSTEM), &                                                               !< total # of slip systems for hP
+    HP_NTWIN = sum(HP_NTWINSYSTEM)                                                                  !< total # of twin systems for hP
 
   real(pREAL), dimension(4+4,HP_NSLIP), parameter :: &
     HP_SYSTEMSLIP = reshape(real([&
@@ -257,7 +257,7 @@ module crystal
       ],pREAL),shape(HP_SYSTEMSLIP))                                                                !< hP slip systems, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
 
   real(pREAL), dimension(4+4,HP_NTWIN), parameter :: &
-    HP_SYSTEMTWIN =  reshape(real([&
+    HP_SYSTEMTWIN = reshape(real([&
     ! https://doi.org/10.1016/0079-6425(94)00007-7, Table 3 and Fig. 22
     ! -----------------------------------
     ! η_1                 K_1
@@ -2121,8 +2121,8 @@ function getlabels(active,potential,system) result(labels)
   real(pREAL),      dimension(:,:), intent(in) :: &
     system
 
-  character(len=:), dimension(:), allocatable :: labels
-  character(len=:),               allocatable :: label
+  character(len=2*size(system,1) + (size(system,1) - 2) + 4) :: label                               ! 2 letters per index + spaces + brackets
+  character(len=2*size(system,1) + (size(system,1) - 2) + 4), dimension(sum(active)) :: labels
 
   integer :: i,j
   integer :: &
@@ -2131,8 +2131,6 @@ function getlabels(active,potential,system) result(labels)
     f, &                                                                                            !< index of my family
     s                                                                                               !< index of my system in current family
 
-  i = 2*size(system,1) + (size(system,1) - 2) + 4                                                   ! 2 letters per index + spaces + brackets
-  allocate(character(len=i) :: labels(sum(active)), label)
 
   a = 0
   activeFamilies: do f = 1,size(active,1)

@@ -63,6 +63,7 @@ end function polynomial_from_coef
 !--------------------------------------------------------------------------------------------------
 !> @brief Initialize a polynomial from a dictionary with coefficients.
 !> @details Coefficients up to order 8 are considered.
+!> Not thread-safe on GFortran due to string concatenation.
 !--------------------------------------------------------------------------------------------------
 function polynomial_from_dict(dict,y,x) result(p)
 
