@@ -23,8 +23,11 @@ module subroutine pass_init()
   print'(/,a,i0)', ' # homogenizations: ',count(mechanical_type == MECHANICAL_PASS_ID)
   flush(IO_STDOUT)
 
-  do ho = 1, size(mechanical_type)
+  do ho = 1, size(material_name_homogenization)
+
     if (mechanical_type(ho) /= MECHANICAL_PASS_ID) cycle
+
+    print'(/,1x,a,1x,i0,a)', 'homogenization',ho,': '//material_name_homogenization(ho)
 
     if (homogenization_Nconstituents(ho) /= 1) &
       call IO_error(211,ext_msg='(pass) with N_constituents !=1')

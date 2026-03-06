@@ -14,9 +14,11 @@ module subroutine pass_init()
 
   print'(/,1x,a)', '<<<+-  homogenization:damage:pass init  -+>>>'
 
-  do ho = 1, size(damage_active)
+  do ho = 1, size(material_name_homogenization)
 
     if (.not. damage_active(ho)) cycle
+
+    print'(/,1x,a,1x,i0,a)', 'homogenization',ho,': '//material_name_homogenization(ho)
 
     if (homogenization_Nconstituents(ho) /= 1) &
       call IO_error(211,ext_msg='(pass) with N_constituents !=1')

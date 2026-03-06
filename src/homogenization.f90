@@ -39,7 +39,8 @@ module homogenization
     CHEMICAL_PASS_ID
   end enum
   integer(kind(THERMAL_UNDEFINED_ID)), dimension(:),   allocatable :: &
-    thermal_type                                                                                    !< type of each homogenization
+    thermal_type, &
+    chemical_type                                                                                   !< type of each homogenization
 
   type(tState),        allocatable, dimension(:), public :: &
     homogState, &
@@ -497,6 +498,7 @@ subroutine parseHomogenization
   material_homogenization => config_material%get_dict('homogenization')
 
   allocate(thermal_type(size(material_name_homogenization)),source=THERMAL_UNDEFINED_ID)
+  allocate(chemical_type(size(material_name_homogenization)),source=CHEMICAL_UNDEFINED_ID)
   allocate(thermal_active(size(material_name_homogenization)),source=.false.)
   allocate(damage_active(size(material_name_homogenization)),source=.false.)
   allocate(chemical_active(size(material_name_homogenization)),source=.false.)
@@ -532,6 +534,7 @@ subroutine parseHomogenization
       homogChemical => homog%get_dict('chemical')
         select case (homogChemical%get_asStr('type'))
           case('pass')
+            chemical_type(h) = CHEMICAL_PASS_ID
             chemical_active(h) = .true.
           case default
             call IO_error(500,ext_msg=homogChemical%get_asStr('type'))
