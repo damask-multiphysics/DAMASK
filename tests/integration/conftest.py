@@ -17,6 +17,10 @@ def pytest_addoption(parser):
                      help='Update reference results.')
     parser.addoption('--damask-root',default=os.environ.get('DAMASK_ROOT'),
                      help='DAMASK root directory.')
+    parser.addoption('--buildcmd-post', default=None,
+                     help='Extra arguments passed to BUILDCMD_POST in CMake.')
+    parser.addoption('--build-type', default='DEBUG',
+                     help='CMake build type. (used for compile tests)')
     parser.addoption('--rng-entropy',
                      help='Entropy for random seed generator.')
     parser.addoption('--mpi-launcher',default='mpiexec',
@@ -46,6 +50,15 @@ def np_rng(request):
 def mpi_launcher(request):
     """Name of the MPI launcher."""
     return request.config.getoption('--mpi-launcher')
+
+@pytest.fixture
+def buildcmd_post(request):
+    """Additional arguments for BUILDCMD_POST."""
+    return request.config.getoption('--buildcmd-post')
+
+@pytest.fixture
+def build_type(request):
+    return request.config.getoption('--build-type')
 
 
 patched_version = '99.99.99-9999-pytest'
