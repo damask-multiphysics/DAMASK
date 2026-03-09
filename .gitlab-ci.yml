@@ -288,6 +288,11 @@ unittest_oneapi_previous:
     - source env/DAMASK.sh
     - cd tests/integration
 
+.compile_macos:
+  extends: .compile
+  tags:
+    - mac-os-arm
+
 .compile_grid:
   extends: .compile
   script:
@@ -303,6 +308,16 @@ compile_grid:
 
 compile_mesh:
   extends: [.compile_mesh, .petsc]
+
+compile_grid_macos:
+  extends: [.compile_macos]
+  script:
+    - pytest -v -k 'compile and grid and not AGGRESSIVE' --build-type=RELEASE --buildcmd-post="--include-directory-after=$(gfortran -print-file-name=include)"
+
+compile_mesh_macos:
+  extends: [.compile_macos]
+  script:
+    - pytest -v -k 'compile and mesh and not AGGRESSIVE' --build-type=RELEASE --buildcmd-post="--include-directory-after=$(gfortran -print-file-name=include)"
 
 compile_grid_previous:
   extends: [.compile_grid, .petsc_previous, .on_merge]

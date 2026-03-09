@@ -20,16 +20,18 @@ ref_file = None
 @pytest.mark.parametrize('openMP',['OFF','ON'])
 @pytest.mark.parametrize('optimization',['OFF','DEFENSIVE','AGGRESSIVE'])
 def test_compile_mesh(damask_root,res_path,tmp_path,copy_files,h5py_dataset_iterator,assert_allclose,
-                      openMP,optimization):
+                      buildcmd_post,build_type,openMP,optimization):
     global ref_file
     cmd = 'cmake '+\
-            '-D CMAKE_BUILD_TYPE=DEBUG '+\
+            f'-D CMAKE_BUILD_TYPE={build_type} '+\
             '-D CMAKE_VERBOSE_MAKEFILE=ON '+\
             f'-D CMAKE_INSTALL_PREFIX={tmp_path} '+\
             '-D MESH=ON '+\
             f'-D OPENMP={openMP} '+\
             f'-D OPTIMIZATION={optimization} '+\
             str(damask_root)
+    if buildcmd_post:
+        cmd += f' -D BUILDCMD_POST={buildcmd_post}'
     damask.util.run(cmd,wd=tmp_path)
     damask.util.run('make VERBOSE=1 -j4 install',wd=tmp_path)
 

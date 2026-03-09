@@ -10,13 +10,7 @@ function blink {
   echo -e "\033[2;5m$1\033[0m"
 }
 
-if [ "$OSTYPE" == "linux-gnu" ] || [ "$OSTYPE" == 'linux' ]; then
-  ENV_ROOT=$(dirname $BASH_SOURCE)
-else
-  [[ "${BASH_SOURCE::1}" == "/" ]] && BASE="" || BASE="$(pwd)/"
-  STAT=$(stat "$(dirname $BASE$BASH_SOURCE)")
-  ENV_ROOT=${STAT##* }
-fi
+ENV_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 DAMASK_ROOT=$(canonicalPath "$ENV_ROOT/../")
 
@@ -29,9 +23,9 @@ cd $DAMASK_ROOT >/dev/null; BRANCH=$(git branch 2>/dev/null| grep -E '^\* '); cd
 PATH=${DAMASK_ROOT}/bin:$PATH
 
 SOLVER_GRID=$(type -p damask_grid || true 2>/dev/null)
-[ "x$SOLVER_GRID" == "x" ] && SOLVER_GRID=$(blink 'Not found!')
+[ -z "$SOLVER_GRID" ] && SOLVER_GRID=$(blink 'Not found!')
 SOLVER_MESH=$(type -p damask_mesh || true 2>/dev/null)
-[ "x$SOLVER_MESH" == "x" ] && SOLVER_MESH=$(blink 'Not found!')
+[ -z "$SOLVER_MESH" ] && SOLVER_MESH=$(blink 'Not found!')
 
 
 # currently, there is no information that unlimited stack size causes problems
@@ -41,10 +35,10 @@ SOLVER_MESH=$(type -p damask_mesh || true 2>/dev/null)
 #           http://superuser.com/questions/220059/what-parameters-has-ulimit
 ulimit -s unlimited 2>/dev/null # maximum stack size (kB)
 
-[ "x$OMP_NUM_THREADS" == "x" ] && export OMP_NUM_THREADS=4
-[ "x$OPENBLAS_NUM_THREADS" == "x" ] && export OPENBLAS_NUM_THREADS=1 # avoid nested threads
-[ "x$I_MPI_JOB_ABORT_SIGNAL" == "x" ] && export I_MPI_JOB_ABORT_SIGNAL=15 # SIGTERM
-[ "x$I_MPI_JOB_SIGNAL_PROPAGATION" == "x" ] && export I_MPI_JOB_SIGNAL_PROPAGATION=yes
+[ -z "$OMP_NUM_THREADS" ] && export OMP_NUM_THREADS=4
+[ -z "$OPENBLAS_NUM_THREADS" ] && export OPENBLAS_NUM_THREADS=1 # avoid nested threads
+[ -z "$I_MPI_JOB_ABORT_SIGNAL" ] && export I_MPI_JOB_ABORT_SIGNAL=15 # SIGTERM
+[ -z "$I_MPI_JOB_SIGNAL_PROPAGATION" ] && export I_MPI_JOB_SIGNAL_PROPAGATION=yes
 
 # disable output in case of scp
 if [ ! -z "$PS1" ]; then
@@ -57,13 +51,13 @@ if [ ! -z "$PS1" ]; then
   echo "DAMASK             $DAMASK_ROOT $BRANCH"
   echo "Grid Solver        $SOLVER_GRID"
   echo "Mesh Solver        $SOLVER_MESH"
-  if [ "x$PETSC_DIR" != "x" ]; then
+  if [ -n "$PETSC_DIR" ]; then
     echo -n "PETSc location     "
     [ -d $PETSC_DIR ] && echo $PETSC_DIR || blink $PETSC_DIR
     [[ $(canonicalPath "$PETSC_DIR") == $PETSC_DIR ]] \
     || echo "               ~~> "$(canonicalPath "$PETSC_DIR")
   fi
-  [ "x$PETSC_ARCH" != "x" ] && echo "PETSc architecture $PETSC_ARCH"
+  [ -n "$PETSC_ARCH" ] && echo "PETSc architecture $PETSC_ARCH"
   echo "Multithreading     OMP_NUM_THREADS=$OMP_NUM_THREADS"
   echo "                   OPENBLAS_NUM_THREADS=$OPENBLAS_NUM_THREADS"
   echo "IntelMPI           I_MPI_JOB_ABORT_SIGNAL=$I_MPI_JOB_ABORT_SIGNAL"
