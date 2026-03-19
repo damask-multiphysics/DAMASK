@@ -488,11 +488,10 @@ pure function math_inv33(A)
   real(pREAL), dimension(3,3), intent(in) :: A
   real(pREAL), dimension(3,3) :: math_inv33
 
-  real(pREAL) :: DetA
   logical     :: error
 
 
-  call math_invert33(math_inv33,DetA,error,A)
+  call math_invert33(math_inv33,error=error,A=A)
   if (error) math_inv33 = 0.0_pREAL
 
 end function math_inv33

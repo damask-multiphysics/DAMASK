@@ -2,7 +2,7 @@
 ###################################################################################################
 # LLVM Compiler
 ###################################################################################################
-set(Fortran_COMPILER_VERSION_MIN 22)
+set(Fortran_COMPILER_VERSION_MIN 23)
 
 set(_OPTIMIZATION_OFF        "-O0")
 set(_OPTIMIZATION_DEBUG      "${_OPTIMIZATION_OFF}")

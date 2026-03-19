@@ -1297,7 +1297,7 @@ class Rotation:
         shape : (sequence of) int, optional
             Output shape. Defaults to None, which gives a scalar.
         degrees : bool, optional
-            Euler space grid coordinates are in degrees. Defaults to True.
+            Euler space grid coordinates are in degrees. Defaults to False.
         fractions : bool, optional
             ODF values correspond to volume fractions, not probability densities.
             Defaults to True.

@@ -813,7 +813,7 @@ class Orientation(Rotation,Crystal):
         shape : (sequence of) int, optional
             Output shape. Defaults to None, which gives a scalar.
         degrees : bool, optional
-            Angles are given in degrees. Defaults to True.
+            Angles are given in degrees. Defaults to False.
         fractions : bool, optional
             ODF values correspond to volume fractions, not probability densities.
             Defaults to True.
@@ -849,7 +849,7 @@ class Orientation(Rotation,Crystal):
         probability densities, p, defined on grid points with ϕ = 0 will never
         result in reconstructed orientations as their dV/V = p dγ = p × 0.
         Hence, it is recommended to transform any such dataset to a
-        cell-centered version, which avoids grid points at ϕ = 0.
+        cell-centered variant, which avoids grid points at ϕ = 0.
 
         References
         ----------
