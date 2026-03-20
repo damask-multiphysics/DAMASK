@@ -139,7 +139,9 @@ program DAMASK_mesh
 ! check valid tags/labels
     do m = 1, size(step_mech)
       mech_BC => step_mech%get_dict(m)
-      if (mech_BC%contains('label')) then
+      if (mech_BC%contains('label') .and. mech_BC%contains('tag')) then
+        call IO_error(812_pI16, '"label" and "tag" are given for boundary condition', m, emph=[2])
+      elseif (mech_BC%contains('label')) then
         bc_label = mech_BC%get_asStr('label')
         boundary = findloc(mesh_bcLabels, bc_label, dim = 1)
         if (boundary == 0) &                                                                        ! label not defined in mesh file
