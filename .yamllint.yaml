@@ -1,0 +1,18 @@
+---
+
+extends: default
+
+rules:
+  line-length:
+    max: 256
+  colons:
+    max-spaces-after: 32
+  commas:
+    min-spaces-after: 1
+    max-spaces-after: 8
+    max-spaces-before: 8
+  brackets:
+    max-spaces-inside: 8
+  braces:
+    max-spaces-inside: 8
+  new-line-at-end-of-file: false

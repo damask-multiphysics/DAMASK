@@ -1,0 +1,11 @@
+pydocstyle:
+  disable:
+    - D203 # numpydoc conformant
+    - D212 # numpydoc conformant
+    - D413 # numpydoc conformant
+    - D417 # numpydoc conformant
+pycodestyle:
+  disable:
+    - E116
+    - E741
+    - N817 # until we have a solution for xml.etree.ElementTree as ET
