@@ -53,16 +53,6 @@ module math
     INVNRMMANDEL = 1.0_pREAL/NRMMANDEL                                                              !< backward weighting for Mandel notation
 
   integer, dimension (2,6), parameter, private :: &
-    MAPNYE = reshape([&
-      1,1, &
-      2,2, &
-      3,3, &
-      1,2, &
-      2,3, &
-      1,3  &
-      ],shape(MAPNYE))                                                                              !< arrangement in Nye notation.
-
-  integer, dimension (2,6), parameter, private :: &
     MAPVOIGT = reshape([&
       1,1, &
       2,2, &
@@ -488,11 +478,10 @@ pure function math_inv33(A)
   real(pREAL), dimension(3,3), intent(in) :: A
   real(pREAL), dimension(3,3) :: math_inv33
 
-  real(pREAL) :: DetA
   logical     :: error
 
 
-  call math_invert33(math_inv33,DetA,error,A)
+  call math_invert33(math_inv33,error=error,A=A)
   if (error) math_inv33 = 0.0_pREAL
 
 end function math_inv33
@@ -744,54 +733,6 @@ end function math_9to33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert symmetric 3x3 matrix into 6 vector.
-!> @details Weighted conversion (default) rearranges according to Nye and weights shear
-! components according to Mandel. Advisable for matrix operations.
-! Unweighted conversion only changes order according to Nye
-!--------------------------------------------------------------------------------------------------
-pure function math_sym33to6(m33,weighted)
-
-  real(pREAL), dimension(6)               :: math_sym33to6
-  real(pREAL), dimension(3,3), intent(in) :: m33                                                    !< symmetric 3x3 matrix (no internal check)
-  logical,     optional,       intent(in) :: weighted                                               !< weight according to Mandel (.true. by default)
-
-  real(pREAL), dimension(6) :: w
-  integer :: i
-
-  w = merge(NRMMANDEL,1.0_pREAL,misc_optional(weighted,.true.))
-
-  math_sym33to6 = [(w(i)*m33(MAPNYE(1,i),MAPNYE(2,i)),i=1,6)]
-
-end function math_sym33to6
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Convert 6 vector into symmetric 3x3 matrix.
-!> @details Weighted conversion (default) rearranges according to Nye and weights shear
-! components according to Mandel. Advisable for matrix operations.
-! Unweighted conversion only changes order according to Nye
-!--------------------------------------------------------------------------------------------------
-pure function math_6toSym33(v6,weighted)
-
-  real(pREAL), dimension(3,3)           :: math_6toSym33
-  real(pREAL), dimension(6), intent(in) :: v6                                                       !< 6 vector
-  logical,     optional,     intent(in) :: weighted                                                 !< weight according to Mandel (.true. by default)
-
-  real(pREAL), dimension(6) :: w
-  integer :: i
-
-
-  w = merge(INVNRMMANDEL,1.0_pREAL,misc_optional(weighted,.true.))
-
-  do i=1,6
-    math_6toSym33(MAPNYE(1,i),MAPNYE(2,i)) = w(i)*v6(i)
-    math_6toSym33(MAPNYE(2,i),MAPNYE(1,i)) = w(i)*v6(i)
-  end do
-
-end function math_6toSym33
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Convert 3x3x3x3 matrix into 9x9 matrix.
 !--------------------------------------------------------------------------------------------------
 pure function math_3333to99(m3333)
@@ -855,10 +796,10 @@ pure function math_sym3333to66(m3333,weighted)
 
 #ifndef __INTEL_COMPILER
   do concurrent(i=1:6, j=1:6)
-    math_sym3333to66(i,j) = w(i)*w(j)*m3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(1,j),MAPNYE(2,j))
+    math_sym3333to66(i,j) = w(i)*w(j)*m3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
   end do
 #else
-  forall(i=1:6, j=1:6) math_sym3333to66(i,j) = w(i)*w(j)*m3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(1,j),MAPNYE(2,j))
+  forall(i=1:6, j=1:6) math_sym3333to66(i,j) = w(i)*w(j)*m3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
 #endif
 
 end function math_sym3333to66
@@ -883,10 +824,10 @@ pure function math_66toSym3333(m66,weighted)
   w = merge(INVNRMMANDEL,1.0_pREAL,misc_optional(weighted,.true.))
 
   do i=1,6; do j=1,6
-    math_66toSym3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(1,j),MAPNYE(2,j)) = w(i)*w(j)*m66(i,j)
-    math_66toSym3333(MAPNYE(2,i),MAPNYE(1,i),MAPNYE(1,j),MAPNYE(2,j)) = w(i)*w(j)*m66(i,j)
-    math_66toSym3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(2,j),MAPNYE(1,j)) = w(i)*w(j)*m66(i,j)
-    math_66toSym3333(MAPNYE(2,i),MAPNYE(1,i),MAPNYE(2,j),MAPNYE(1,j)) = w(i)*w(j)*m66(i,j)
+    math_66toSym3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = w(i)*w(j)*m66(i,j)
+    math_66toSym3333(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = w(i)*w(j)*m66(i,j)
+    math_66toSym3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = w(i)*w(j)*m66(i,j)
+    math_66toSym3333(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = w(i)*w(j)*m66(i,j)
   end do; end do
 
 end function math_66toSym3333
@@ -1325,7 +1266,6 @@ subroutine math_selfTest()
 
   real(pREAL)                 :: det
   real(pREAL), dimension(3)   :: v3_1,v3_2,v3_3,v3_4
-  real(pREAL), dimension(6)   :: v6
   real(pREAL), dimension(9)   :: v9
   real(pREAL), dimension(3,3) :: t33,t33_2
   real(pREAL), dimension(6,6) :: t66
@@ -1372,10 +1312,6 @@ subroutine math_selfTest()
   if (any(dNeq(math_3333to99(math_99to3333(t99)),t99))) &
     error stop 'math_3333to99/math_99to3333'
 
-  call random_number(v6)
-  if (any(dNeq(math_sym33to6(math_6toSym33(v6)),v6))) &
-    error stop 'math_sym33to6/math_6toSym33'
-
   call random_number(t66)
   if (any(dNeq(math_sym3333to66(math_66toSym3333(t66)),t66,1.0e-15_pREAL))) &
     error stop 'math_sym3333to66/math_66toSym3333'
@@ -1383,8 +1319,8 @@ subroutine math_selfTest()
   if (any(dNeq(math_3333toVoigt66_stiffness(math_Voigt66to3333_stiffness(t66)),t66,1.0e-15_pREAL))) &
     error stop 'math_3333toVoigt66/math_Voigt66to3333'
 
-  call random_number(v6)
-  if (any(dNeq0(math_6toSym33(v6) - math_symmetric33(math_6toSym33(v6))))) &
+  call random_number(t33)
+  if (any(dNeq0(math_symmetric33(t33) - transpose(math_symmetric33(t33))))) &
     error stop 'math_symmetric33'
 
   call random_number(v3_1)

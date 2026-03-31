@@ -55,6 +55,16 @@ module materialpoint_Marc
 
   type(tNumerics), private :: num
 
+  integer, dimension (2,6), parameter, private :: &
+    MAPMARC = reshape([&
+      1,1, &
+      2,2, &
+      3,3, &
+      1,2, &
+      2,3, &
+      1,3  &
+      ],shape(MAPMARC))                                                                             !< arrangement in MSC.Marc notation.
+
   public :: &
     materialpoint_general, &
     materialpoint_initAll, &
@@ -107,6 +117,38 @@ subroutine materialpoint_init()
 
 
 end subroutine materialpoint_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Convert symmetric 3x3 matrix into 6 vector using MSC.Marc convention (no weights).
+!--------------------------------------------------------------------------------------------------
+pure function sym33to6(m33)
+
+  real(pREAL), dimension(6)               :: sym33to6
+  real(pREAL), dimension(3,3), intent(in) :: m33                                                    !< symmetric 3x3 matrix (no internal check)
+
+  integer :: i
+
+
+  sym33to6 = [(m33(MAPMARC(1,i),MAPMARC(2,i)),i=1,6)]
+
+end function sym33to6
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Convert symmetric 3x3x3x3 matrix into 6x6 matrix using MSC.Marc convention (no weights).
+!--------------------------------------------------------------------------------------------------
+pure function sym3333to66(m3333)
+
+  real(pREAL), dimension(6,6)                 :: sym3333to66
+  real(pREAL), dimension(3,3,3,3), intent(in) :: m3333                                              !< symmetric 3x3x3x3 matrix (no internal check)
+
+  integer :: i,j
+
+
+  forall(i=1:6, j=1:6) sym3333to66(i,j) = m3333(MAPMARC(1,i),MAPMARC(2,i),MAPMARC(1,j),MAPMARC(2,j))
+
+end function sym3333to66
 
 
 !--------------------------------------------------------------------------------------------------
@@ -174,7 +216,7 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
         ! translate from P to sigma
         Kirchhoff = matmul(homogenization_P(1:3,1:3,ce), transpose(materialpoint_F(1:3,1:3,ip,elCP)))
         J_inverse  = 1.0_pREAL / math_det33(materialpoint_F(1:3,1:3,ip,elCP))
-        materialpoint_cs(1:6,ip,elCP) = math_sym33to6(J_inverse * Kirchhoff,weighted=.false.)
+        materialpoint_cs(1:6,ip,elCP) = sym33to6(J_inverse * Kirchhoff)
 
         !  translate from dP/dF to dCS/dE
         H = 0.0_pREAL
@@ -190,7 +232,7 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
         forall(i=1:3, j=1:3,k=1:3,l=1:3) &
           H_sym(i,j,k,l) = 0.25_pREAL * (H(i,j,k,l) + H(j,i,k,l) + H(i,j,l,k) + H(j,i,l,k))
 
-        materialpoint_dcsde(1:6,1:6,ip,elCP) = math_sym3333to66(J_inverse * H_sym,weighted=.false.)
+        materialpoint_dcsde(1:6,1:6,ip,elCP) = sym3333to66(J_inverse * H_sym)
 
       end if terminalIllness
     end if validCalculation
