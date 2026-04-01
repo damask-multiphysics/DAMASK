@@ -69,14 +69,11 @@ module subroutine chemical_init(phases)
 
   type(tDict), pointer :: &
     phase, &
-    chemical, &
-    components, &
-    component
-
+    chemical
   integer :: &
-    ph, &
+    ph,    &
     Nmembers
-
+  logical :: chemical_active
 
   print'(/,a)', ' <<<+-  phase:chemical init  -+>>>'
 
@@ -85,24 +82,45 @@ module subroutine chemical_init(phases)
   allocate(param(size(phases)))
 
   phases => config_material%get_dict('phase')
+
+  chemical_active = .false.
+
   do ph = 1, size(phases)
+
     phase => phases%get_dict(ph)
-    chemical => phase%get_dict('chemical',defaultVal=emptyDict)
-    param(ph)%V_m = chemical%get_asReal('V_m',defaultVal=1.0_pREAL)
+
+    if (chemical_active) then
+      chemical => phase%get_dict('chemical')
+    else
+      chemical => phase%get_dict('chemical',defaultVal=emptyDict)
+    end if
+
+    if (size(chemical) > 0) then
+      chemical_active = .true.
+      print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+
+      if (.not. chemical%contains('type')) &
+        call IO_error(143_pI16,'type','not specified for phase',ph,emph=[1,3])
+
+      param(ph)%V_m = chemical%get_asReal('V_m',defaultVal=1.0_pREAL)
+    end if
+
   end do
 
   !initialize chemical energy model
-  where(quadEnergy_init())       chemical_energy = CHEMICAL_QUADENERGY
+  where(quadEnergy_init()) chemical_energy = CHEMICAL_QUADENERGY
 
-  do ph = 1,size(phases)
+  do ph = 1, size(phases)
+
     Nmembers = count(material_ID_phase == ph)
+
     if (chemical_energy(ph) == UNDEFINED) then
       allocate(current(ph)%C(1,Nmembers),source=0.0_pREAL)
       allocate(current(ph)%dot_C(1,Nmembers),source=0.0_pREAL)
       allocate(current(ph)%C0(1,Nmembers),source=0.0_pREAL)
     end if
-  end do
 
+  end do
 
 end subroutine chemical_init
 
