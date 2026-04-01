@@ -26,7 +26,7 @@ jobs:
     steps:
 
       - name: DAMASK - Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: GCC - Install
         run: |
@@ -40,7 +40,7 @@ jobs:
 
       - name: PETSc - Cache download
         id: petsc-download
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: download
           key: petsc-${{ env.PETSC_VERSION }}.tar.gz
@@ -59,7 +59,7 @@ jobs:
 
       - name: PETSc - Cache Installation
         id: petsc-install
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: petsc-${{ env.PETSC_VERSION }}
           key: petsc-${{ env.PETSC_VERSION }}-gcc${{ matrix.gcc_v }}-${{ hashFiles('**/petscversion.h') }}
@@ -96,7 +96,7 @@ jobs:
     steps:
 
       - name: DAMASK - Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Intel - Install
         run: |
@@ -115,7 +115,7 @@ jobs:
 
       - name: PETSc - Cache download
         id: petsc-download
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: download
           key: petsc-${{ env.PETSC_VERSION }}.tar.gz
@@ -134,7 +134,7 @@ jobs:
 
       - name: PETSc - Cache installation
         id: petsc-install
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: petsc-${{ env.PETSC_VERSION }}
           key: petsc-${{ env.PETSC_VERSION }}-intel-${{ hashFiles('**/petscversion.h') }}
@@ -167,7 +167,7 @@ jobs:
     steps:
 
       - name: DAMASK - Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: GCC - Install
         uses: gerlero/brew-install@v1
@@ -176,7 +176,7 @@ jobs:
 
       - name: PETSc - Cache download
         id: petsc-download
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: download
           key: petsc-${{ env.PETSC_VERSION }}.tar.gz
@@ -195,7 +195,7 @@ jobs:
 
       - name: PETSc - Cache Installation
         id: petsc-install
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: petsc-${{ env.PETSC_VERSION }}
           key: petsc-${{ env.PETSC_VERSION }}-macos-${{ hashFiles('**/petscversion.h') }}
