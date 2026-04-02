@@ -70,8 +70,8 @@ module IO
     IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13)                            !< whitespace characters
 
 #ifndef MARC_SOURCE
-    logical(C_BOOL), bind(C, name='IO_redirectedSTDOUT') :: IO_redirectedSTDOUT = .false.           !< STDOUT writes to file 'out.X' where X is the world rank
-    logical(C_BOOL), bind(C, name='IO_redirectedSTDERR') :: IO_redirectedSTDERR = .false.           !< STDERR writes to file 'err.X' where X is the world rank
+    logical(C_BOOL), bind(C, name='IO_redirectedSTDOUT'), public :: IO_redirectedSTDOUT = .false.   !< STDOUT writes to file 'out.X' where X is the world rank
+    logical(C_BOOL), bind(C, name='IO_redirectedSTDERR'), public :: IO_redirectedSTDERR = .false.   !< STDERR writes to file 'err.X' where X is the world rank
 #endif
    logical :: IO_colored = .true.                                                                   !< status of colored output
 
