@@ -18,9 +18,6 @@ module FEM_utilities
   use parallelization
   use discretization_mesh
   use homogenization
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
-  use FEM_quadrature
-#endif
   use constants
 
 #ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
@@ -54,7 +51,7 @@ module FEM_utilities
     logical                                :: use_label
   end type tMechBC
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
   external :: &
     PetscSectionGetFieldComponents, &
     PetscSectionGetFieldDof, &
@@ -95,11 +92,7 @@ subroutine FEM_utilities_init(num_mesh)
   p_s = num_mesh%get_asInt('p_s',defaultVal = 2)
   p_i = num_mesh%get_asInt('p_i',defaultVal = p_s)
 
-#if (PETSC_VERSION_MINOR>17)
   if (p_s < 1) &
-#else
-  if (p_s < 1 .or. p_s > size(FEM_nQuadrature,2)) &
-#endif
     call IO_error(301,ext_msg='shape function order (p_s) out of bounds')
   if (p_i < max(1,p_s-1) .or. p_i > p_s) &
     call IO_error(301,ext_msg='integration order (p_i) out of bounds')
