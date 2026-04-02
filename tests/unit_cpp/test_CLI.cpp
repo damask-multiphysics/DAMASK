@@ -8,8 +8,6 @@
 #include <vector>
 #include <system_error>
 
-#ifdef BOOST
-
 #include "../../src/CLI.h"
 
 namespace fs = std::filesystem;
@@ -108,5 +106,3 @@ TEST_F(CwdGuard, InitializationRestart) {
   EXPECT_EQ(cli.jobname, "geom_load_material");
   EXPECT_EQ(cli.restart_inc, 7);
 }
-
-#endif

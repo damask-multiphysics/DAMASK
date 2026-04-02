@@ -15,9 +15,12 @@ module discretization_grid
 
   use prec
   use parallelization
+#if !defined(BOOST)
   use VTI
+#endif
   use CLI
   use IO
+  use C_interfacing
   use config
   use HDF5
   use HDF5_utilities
@@ -46,7 +49,49 @@ module discretization_grid
   public :: &
     discretization_grid_init, &
     discretization_grid_getScalarInitialCondition, &
-    discretization_grid_getVectorInitialCondition
+    discretization_grid_getVectorInitialCondition, &
+    discretization_grid_finalize
+
+#if defined(BOOST)
+  type(C_PTR) :: VTI_ = C_NULL_PTR
+
+interface
+  function C_VTI__new(vtiPath) result(this) bind(C, name='VTI__new')
+    use, intrinsic :: ISO_C_binding, only: C_PTR, C_CHAR
+    character(kind=C_CHAR), dimension(*), intent(in) :: vtiPath
+    type(C_PTR) :: this
+  end function C_VTI__new
+
+  subroutine C_VTI_readDatasetInt(this, label, data) bind(C, name='C_VTI_readDatasetInt')
+    use, intrinsic :: ISO_C_binding, only: C_PTR, C_CHAR, C_INT
+    type(C_PTR), value :: this
+    character(kind=C_CHAR), dimension(*), intent(in) :: label
+    integer(C_INT), allocatable, intent(out) :: data(:)
+  end subroutine C_VTI_readDatasetInt
+
+  subroutine C_VTI_readDatasetReal(this, label, data) bind(C, name='C_VTI_readDatasetReal')
+    use, intrinsic :: ISO_C_binding, only: C_PTR, C_CHAR, C_INT, C_DOUBLE
+    type(C_PTR), value :: this
+    character(kind=C_CHAR), dimension(*), intent(in) :: label
+    real(C_DOUBLE), allocatable, intent(out) :: data(:)
+  end subroutine C_VTI_readDatasetReal
+
+  subroutine C_VTI_readGeometry(this, cells, geomSize, origin, labels) &
+       bind(C, name='C_VTI_readGeometry')
+    use, intrinsic :: ISO_C_binding, only: C_PTR, C_CHAR, C_INT, C_DOUBLE
+    type(C_PTR), value :: this
+    integer(C_INT), intent(out) :: cells(3)
+    real(C_DOUBLE), intent(out) :: geomSize(3), origin(3)
+    character(kind=C_CHAR,len=:), allocatable :: labels(:)
+  end subroutine C_VTI_readGeometry
+
+  subroutine C_VTI__delete(this) bind(C, name='VTI__delete')
+    use, intrinsic :: ISO_C_binding, only: C_PTR
+    type(C_PTR), value :: this
+  end subroutine C_VTI__delete
+
+end interface
+#endif
 
 contains
 
@@ -66,7 +111,7 @@ subroutine discretization_grid_init()
     materialAt, materialAt_global
 
   integer :: &
-    j, &
+    i, &
     n_labels                                                                                         !< number cell datasets in VTI file
   integer(MPI_INTEGER_KIND) :: err_MPI
   integer(C_INTPTR_T) :: &
@@ -75,8 +120,12 @@ subroutine discretization_grid_init()
     displs, sendcounts
   character(len=:), allocatable :: &
     fileContent, fname
+#if defined(BOOST)
+  character(kind=C_CHAR, len=:), allocatable :: &
+#else
   character(len=pSTRLEN), dimension(:), allocatable :: &
-    labels                                                                                           !< cell data labels in VTI file
+#endif
+    labels(:)     ! ToDo double dimension/len                                                        !< cell data labels in VTI file
   integer(HID_T) :: handle
 
 
@@ -84,10 +133,22 @@ subroutine discretization_grid_init()
 
 
   if (worldrank == 0) then
+#if defined(BOOST)
+    print'(/,1x,a)', 'Using C++ XML parser'
+    VTI_ = C_VTI__new(f_c_string(CLI_geomFile))
+    fileContent = IO_read(CLI_geomFile)                                                            ! still needed for job file
+    call C_VTI_readGeometry(VTI_,cells,geomSize,origin,labels)
+#else
+    print'(/,1x,a)', 'Using Fortran XML parser'
     fileContent = IO_read(CLI_geomFile)
     call VTI_readGeometry(cells,geomSize,origin,labels,fileContent)
+#endif
     n_labels = size(labels)
+#if defined(BOOST)
+    call C_VTI_readDatasetInt(VTI_,f_c_string('material'),materialAt_global)
+#else
     materialAt_global = VTI_readDataset_int(fileContent,'material') + 1
+#endif
     if (any(materialAt_global < 1)) &
       call IO_error(180_pI16,'material ID < 1')
     if (size(materialAt_global) /= product(cells)) &
@@ -120,8 +181,8 @@ subroutine discretization_grid_init()
   print'(  1x,3(a,es9.2),a)', 'size:   ',  geomSize(1), ' × ', geomSize(2), ' × ', geomSize(3), ' m³'
   print'(  1x,3(a,es9.2),a)', 'origin: ',  origin(1),   '   ', origin(2),   '   ', origin(3),   ' m'
   print'(/,1x,a)', 'cell data:'
-  do j = 1, n_labels
-    print '(2x,a,a)', '- ', trim(labels(j))
+  do i = 1, n_labels
+    print '(2x,a,a)', '- ', trim(labels(i))
   end do
 
   if (worldsize>cells(3)) call IO_error(894_pI16,'number of processes exceeds cells(3)')
@@ -181,13 +242,23 @@ subroutine discretization_grid_init()
 
 !--------------------------------------------------------------------------------------------------
 ! geometry information required by the nonlocal CP model
-  call geometry_plastic_nonlocal_setIPvolume(reshape([(product(mySize/real(myGrid,pREAL)),j=1,product(myGrid))], &
+  call geometry_plastic_nonlocal_setIPvolume(reshape([(product(mySize/real(myGrid,pREAL)),i=1,product(myGrid))], &
                                                      [1,product(myGrid)]))
   call geometry_plastic_nonlocal_setIParea        (cellSurfaceArea(mySize,myGrid))
   call geometry_plastic_nonlocal_setIPareaNormal  (cellSurfaceNormal(product(myGrid)))
   call geometry_plastic_nonlocal_setIPneighborhood(IPneighborhood(myGrid))
 
 end subroutine discretization_grid_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Deallocate parsed VTI object.
+!--------------------------------------------------------------------------------------------------
+subroutine discretization_grid_finalize()
+#if defined(BOOST)
+  if (worldrank == 0) call C_VTI__delete(VTI_)
+#endif
+end subroutine discretization_grid_finalize
 
 
 !---------------------------------------------------------------------------------------------------
@@ -382,7 +453,11 @@ function get_initial_condition(label) result(ic_local)
 
 
   if (worldrank == 0) then
+#if defined(BOOST)
+    call C_VTI_readDatasetReal(VTI_,f_c_string(label),ic_global)
+#else
     ic_global = VTI_readDataset_real(IO_read(CLI_geomFile),label)
+#endif
     width = size(ic_global) / product(cells)
   else
     allocate(ic_global(0))                                                                          ! needed for IntelMPI

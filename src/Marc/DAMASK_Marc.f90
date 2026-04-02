@@ -22,13 +22,11 @@
 #endif
 
 #include "../prec.f90"
+#include "../C_interfacing.f90"
 #include "../constants.f90"
 #include "../parallelization.f90"
 #include "../misc.f90"
 #include "../IO.f90"
-#ifdef FYAML
-#include "../OS.f90"
-#endif
 #include "../types.f90"
 #include "../YAML.f90"
 #include "../HDF5_utilities.f90"
