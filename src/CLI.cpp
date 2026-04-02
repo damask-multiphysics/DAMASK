@@ -11,30 +11,32 @@
 
 #ifdef BOOST
 
-#include "CLI.h"
-#include <ISO_Fortran_binding.h>
-#include <pwd.h>
-#include <unistd.h>
-#include <array>
-#include <boost/asio/ip/host_name.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/program_options/options_description.hpp>
-#include <boost/program_options/parsers.hpp>
-#include <boost/program_options/value_semantic.hpp>
-#include <boost/program_options/variables_map.hpp>
-#include <boost/system/detail/error_code.hpp>
-#include <boost/version.hpp>
-#if BOOST_VERSION >= 108600
-#include <boost/uuid/basic_random_generator.hpp>
-#endif
-#include <boost/uuid/random_generator.hpp>
-#include <boost/uuid/uuid_io.hpp>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <stdexcept>
 #include <utility>
 #include <petscversion.h>
+#include <ISO_Fortran_binding.h>
+#include <pwd.h>
+#include <unistd.h>
+#include <array>
+
+#include <boost/asio/ip/host_name.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/version.hpp>
+#if BOOST_VERSION >= 108800
+#include <boost/uuid/basic_random_generator.hpp>
+#endif
+#include <boost/system/detail/error_code.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/parsers.hpp>
+#include <boost/program_options/value_semantic.hpp>
+#include <boost/program_options/variables_map.hpp>
+#include <boost/uuid/random_generator.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
+#include "CLI.h"
 
 namespace fs = std::filesystem;
 
@@ -143,7 +145,7 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
 
   boost::system::error_code ec;
   std::string hostname = boost::asio::ip::host_name(ec);
-  if (ec) std::runtime_error("Boost hostname collection error: " + ec.message());
+  if (ec) std::runtime_error("boost hostname collection error: " + ec.message());
 
   cout << " Host name: " << hostname << std::endl;
   cout << " User name: " << get_username() << std::endl << std::endl;

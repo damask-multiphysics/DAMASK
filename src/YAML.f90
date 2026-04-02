@@ -11,7 +11,7 @@ module YAML
   use IO
   use types
 #ifdef FYAML
-  use OS
+  use C_interfacing
 #endif
 
   implicit none(type,external)

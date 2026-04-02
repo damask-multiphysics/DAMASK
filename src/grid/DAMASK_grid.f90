@@ -22,6 +22,7 @@ program DAMASK_grid
   use IO
   use config
   use math
+  use discretization_grid
   use materialpoint
   use material
   use spectral_utilities
@@ -244,6 +245,7 @@ program DAMASK_grid
   end do
 
   call grid_mechanical_init(num_grid%get_dict('mechanical',defaultVal=emptyDict))
+  call discretization_grid_finalize()
   call config_numerics_deallocate()
 
 !--------------------------------------------------------------------------------------------------
@@ -427,7 +429,6 @@ program DAMASK_grid
     end do incLooping
 
   end do loadCaseLooping
-
 
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation

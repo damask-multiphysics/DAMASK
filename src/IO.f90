@@ -16,9 +16,7 @@ module IO
   use prec
   use constants
   use misc
-#ifndef MARC_SOURCE
-  use OS
-#endif
+  use C_interfacing
 
   implicit none(type,external)
   private
@@ -599,6 +597,20 @@ subroutine IO_warning(warning_ID, &
              emph)
 
 end subroutine IO_warning
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief C interface to IO_error_new taking a null-terminated C string.
+!--------------------------------------------------------------------------------------------------
+subroutine F_IO_error(error_ID, msg) bind(C, name='F_IO_error')
+
+  integer(C_INT),               intent(in), value :: error_ID
+  character(len=*,kind=C_CHAR), intent(in)        :: msg
+
+
+  call IO_error_new(int(error_ID,pI16), trim(c_f_string(msg)))
+
+end subroutine F_IO_error
 
 
 !--------------------------------------------------------------------------------------------------

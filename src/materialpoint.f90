@@ -30,8 +30,10 @@ module materialpoint
 #if   defined(MESH)
   use discretization_mesh
 #elif defined(GRID)
+#if !defined(BOOST)
   use base64
   use zlib
+#endif
   use discretization_grid
 #endif
 
@@ -53,7 +55,7 @@ subroutine materialpoint_initAll()
   call IO_init()
   call CLI_init()                                                                                   ! grid and mesh commandline interface
   call signal_init()
-#if defined(GRID)
+#if defined(GRID) && !defined(BOOST)
    call zlib_init()
    call base64_init()
 #endif
