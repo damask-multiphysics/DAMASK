@@ -15,9 +15,9 @@ else()
   message(FATAL_ERROR "Unknown OPTIMIZATION level: ${OPTIMIZATION}")
 endif()
 
-if(OPENMP)
-  set(OPENMP_FLAGS "-fopenmp")
-endif()
+#if(OPENMP)
+#  set(OPENMP_FLAGS "-fopenmp")
+#endif()
 
 set(STANDARD_CHECK "-std=f2018 -pedantic")
 
