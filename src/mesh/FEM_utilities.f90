@@ -3,10 +3,10 @@
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Utilities used by the FEM solver
 !--------------------------------------------------------------------------------------------------
-module FEM_utilities
 #include <petsc/finclude/petsc.h>
+module FEM_utilities
   use PETSc
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPI
   use MPI_f08
 #endif
 
@@ -20,7 +20,7 @@ module FEM_utilities
   use homogenization
   use constants
 
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
 #else
   implicit none

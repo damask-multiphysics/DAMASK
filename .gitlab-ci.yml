@@ -12,8 +12,8 @@ variables:
   GIT_SUBMODULE_STRATEGY: normal
   # Shortcut names
   MARC_VERSION: '2025.1'
-  PETSC_GCC_LATEST: '2025.11.13'
-  PETSC_ONEAPI_LATEST: '2025.11.13'
+  PETSC_GCC_LATEST: '2026.04.03'
+  PETSC_ONEAPI_LATEST: '2026.04.03'
   PYTHON_LATEST: '2026.02.24'
 
 ####################################################################################################
@@ -58,6 +58,7 @@ workflow:
   parallel:
     matrix:
       - IMAGE:
+          - gcc_petsc-debug:2025.11.13
           - gcc_petsc-debug:2025.05.27a
           - gcc_petsc-debug:2025.03.10a
 
@@ -81,6 +82,7 @@ workflow:
   parallel:
     matrix:
       - IMAGE:
+          - oneapi_petsc-debug:2025.11.13
           - oneapi_petsc-debug:2025.06.12a
           - oneapi_petsc-debug:2025.03.27a
 
@@ -98,6 +100,9 @@ workflow:
   parallel:
     matrix:
       - IMAGE:
+          - gcc_petsc-default:2025.11.13
+          - gcc_petsc-i64:2025.11.13
+          - oneapi_petsc-default:2025.11.13
           - gcc_petsc-default:2025.05.27a
           - gcc_petsc-i64:2025.05.27a
           - oneapi_petsc-default:2025.06.12a

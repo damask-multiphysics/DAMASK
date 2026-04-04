@@ -5,17 +5,17 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief FEM PETSc solver
 !--------------------------------------------------------------------------------------------------
-module mesh_mechanical_FEM
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscdm.h>
 #include <petsc/finclude/petsc.h>
+module mesh_mechanical_FEM
   use PETScSNES
   use PETScDM
   use PETScDMplex
 #if PETSC_VERSION_MINOR<23
   use PETScDT
 #endif
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPI
   use MPI_f08
 #endif
 
@@ -27,7 +27,7 @@ module mesh_mechanical_FEM
   use math
   use constants
 
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
 #else
   implicit none

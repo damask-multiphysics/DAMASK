@@ -5,17 +5,17 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Javier Velo, KU Leuven
 !--------------------------------------------------------------------------------------------------
-module discretization_mesh
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscis.h>
 #include <petsc/finclude/petscdmda.h>
+module discretization_mesh
   use PETScDMplex
   use PETScDMDA
   use PETScIS
 #if PETSC_VERSION_MINOR<23
   use PETScDT
 #endif
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPI
   use MPI_f08
 #endif
 
@@ -29,7 +29,7 @@ module discretization_mesh
   use types
   use prec
 
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
 #else
   implicit none

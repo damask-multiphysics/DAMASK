@@ -10,9 +10,10 @@
 module grid_thermal_spectral
   use PETScDMDA
   use PETScSNES
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPI
   use MPI_f08
 #endif
+  use HDF5
 
   use prec
   use parallelization
@@ -20,7 +21,6 @@ module grid_thermal_spectral
   use misc
   use CLI
   use HDF5_utilities
-  use HDF5
   use spectral_utilities
   use discretization_grid
   use homogenization
@@ -28,7 +28,7 @@ module grid_thermal_spectral
   use config
   use constants
 
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
 #else
   implicit none

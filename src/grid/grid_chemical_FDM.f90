@@ -1,10 +1,10 @@
 ! SPDX-License-Identifier: AGPL-3.0-or-later
-module grid_chemical_FDM
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
+module grid_chemical_FDM
   use PETScDMDA
   use PETScSNES
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPI
   use MPI_f08
 #endif
 
@@ -19,7 +19,7 @@ module grid_chemical_FDM
   use config
   use math
 
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
 #else
   implicit none

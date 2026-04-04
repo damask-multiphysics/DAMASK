@@ -10,16 +10,16 @@
 module grid_mech_spectral_polarization                                                              ! "mechanics" => "mech": workaround for ifx
   use PETScDMDA
   use PETScSNES
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPI
   use MPI_f08
 #endif
+  use HDF5
 
   use prec
   use parallelization
   use CLI
   use misc
   use IO
-  use HDF5
   use HDF5_utilities
   use math
   use rotations
@@ -30,7 +30,7 @@ module grid_mech_spectral_polarization                                          
   use discretization_grid
   use constants
 
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
 #else
   implicit none

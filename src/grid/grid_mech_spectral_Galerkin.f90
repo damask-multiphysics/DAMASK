@@ -11,16 +11,16 @@
 module grid_mechanical_spectral_Galerkin
   use PETScDMDA
   use PETScSNES
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPI
   use MPI_f08
 #endif
+  use HDF5
 
   use prec
   use parallelization
   use CLI
   use misc
   use IO
-  use HDF5
   use HDF5_utilities
   use math
   use rotations
@@ -30,7 +30,7 @@ module grid_mechanical_spectral_Galerkin
   use discretization_grid
   use constants
 
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
 #else
   implicit none
@@ -98,6 +98,7 @@ module grid_mechanical_spectral_Galerkin
 
   ! Missing interfaces for some PETSc versions
   interface
+#if PETSC_VERSION_MINOR<25
     subroutine MatCreateShell(comm,mloc,nloc,m,n,ctx,mat,ierr)
       use petscmat
       MPI_Comm :: comm
@@ -118,7 +119,7 @@ module grid_mechanical_spectral_Galerkin
       external :: op_callback
       PetscErrorCode :: ierr
     end subroutine MatShellSetOperation
-
+#endif
 #if PETSC_VERSION_MINOR<24
     subroutine SNESSetUpdate(snes_mech,upd_callback,ierr)
       use petscsnes

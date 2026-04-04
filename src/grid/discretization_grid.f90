@@ -6,13 +6,19 @@
 !> @brief Parse geometry file to set up discretization and geometry for nonlocal model
 !--------------------------------------------------------------------------------------------------
 #include <petsc/finclude/petscsys.h>
+#if defined(PETSC_EXPOSES_MPIF90)
+#define MPI_COMM_WORLD_F90 MPI_COMM_WORLD
+#else
+#define MPI_COMM_WORLD_F90 MPI_COMM_WORLD%MPI_val
+#endif
 module discretization_grid
   use PETScSys
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPI
   use MPI_f08
 #endif
-  use FFTW3
+  use HDF5
 
+  use FFTW3
   use prec
   use parallelization
 #if !defined(BOOST)
@@ -22,13 +28,13 @@ module discretization_grid
   use IO
   use C_interfacing
   use config
-  use HDF5
   use HDF5_utilities
   use result
   use discretization
   use geometry_plastic_nonlocal
 
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+
+#ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
 #else
   implicit none
@@ -94,7 +100,6 @@ end interface
 #endif
 
 contains
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Read the geometry file to obtain information on discretization.
@@ -189,7 +194,7 @@ subroutine discretization_grid_init()
 
   call fftw_mpi_init()
   devNull = fftw_mpi_local_size_3d(int(cells(3),C_INTPTR_T),int(cells(2),C_INTPTR_T),int(cells(1)/2+1,C_INTPTR_T), &
-                                   PETSC_COMM_WORLD, &
+                                   MPI_COMM_WORLD_F90, &
                                    cells3_, &                                                       ! domain cells size along z
                                    cells3Offset_)                                                   ! domain cells offset along z
   if (cells3_==0_C_INTPTR_T) call IO_error(894_pI16,'Cannot distribute MPI processes')
