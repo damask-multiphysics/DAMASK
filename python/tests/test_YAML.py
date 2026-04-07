@@ -34,6 +34,12 @@ def test_load_save_file(tmp_path):
     with open(tmp_path/'config.yaml') as f:
         assert YAML.load(f) == config
 
+def test_load_invalid(tmp_path):
+    with open(tmp_path/'config.yaml','w') as f:
+        f.write('[1, 2, 3]') # valid YAML
+    with pytest.raises(TypeError):
+        YAML.load(tmp_path/'config.yaml')
+
 def test_add_remove():
     dummy = {'hello':'world','foo':'bar'}
     config = YAML()

@@ -79,7 +79,8 @@ class YAML(dict):
         Parameters
         ----------
         config : dict or str, optional
-            YAML. String needs to be valid YAML.
+            Configuration, string needs to be valid YAML
+            with dictionary at top-level.
         **kwargs : arbitrary key–value pairs, optional
             Top-level entries of the configuration.
 
@@ -92,6 +93,8 @@ class YAML(dict):
             kwargs = yaml.load(config, Loader=SafeLoader) | kwargs
         elif isinstance(config,dict):
             kwargs = config | kwargs
+        elif config is not None:
+            raise TypeError('invalid configuration data')
 
         super().__init__(**kwargs)
 
@@ -182,7 +185,7 @@ class YAML(dict):
     def load(cls: Type[MyType],
              fname: FileHandle) -> MyType:
         """
-        Load from YAML file.
+        Load from YAML file with a dictionary at the top-level.
 
         Parameters
         ----------
