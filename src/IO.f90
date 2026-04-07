@@ -761,7 +761,7 @@ end subroutine IO_selfTest
 subroutine quit(stop_id)
 #include <petsc/finclude/petscsys.h>
   use PETScSys
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPI
   use MPI_f08
 #endif
   use HDF5

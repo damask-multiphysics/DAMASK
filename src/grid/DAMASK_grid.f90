@@ -10,7 +10,7 @@
 #include <petsc/finclude/petscsys.h>
 program DAMASK_grid
   use PETScSys
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPI
   use MPI_f08
 #endif
 
@@ -36,7 +36,7 @@ program DAMASK_grid
   use grid_thermal_spectral
   use result
 
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
 #else
   implicit none

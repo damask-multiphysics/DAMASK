@@ -5,17 +5,17 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Javier Velo, KU Leuven
 !--------------------------------------------------------------------------------------------------
-module discretization_mesh
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscis.h>
 #include <petsc/finclude/petscdmda.h>
+module discretization_mesh
   use PETScDMplex
   use PETScDMDA
   use PETScIS
-#if (PETSC_VERSION_MAJOR==3 && (PETSC_VERSION_MINOR>17 && PETSC_VERSION_MINOR<23))
+#if PETSC_VERSION_MINOR<23
   use PETScDT
 #endif
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPI
   use MPI_f08
 #endif
 
@@ -26,13 +26,10 @@ module discretization_mesh
   use IO
   use discretization
   use result
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<18)
-  use FEM_quadrature
-#endif
   use types
   use prec
 
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
 #else
   implicit none
@@ -81,11 +78,8 @@ module discretization_mesh
 
   DM, public :: geomMesh
 
-#if (PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
   external :: &
-#if (PETSC_VERSION_MINOR<16)
-    DMDestroy, &
-#endif
     PetscFEDestroy, &
     PetscFEGetDimension, &
     PetscFEGetDualSpace, &
@@ -110,17 +104,19 @@ subroutine discretization_mesh_init()
                cellStart, cellEnd, pointStart, &
                j
   IS        :: label_values_IS                                                                      ! BC label values IS
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
+#if PETSC_VERSION_MINOR>=24
   IS        :: celltype_IS                                                                          ! 'celltype' label IS
+  PetscBool :: isSimplex                                                                            ! reduced integration, simplex mesh
+  PetscInt                                   :: nPolytopes                                          ! number of different polytopes in the mesh
+  PetscInt,    dimension(:),     pointer     :: cells_IS                                            ! celltype IS values
+  PetscInt,    dimension(:,:),   allocatable :: T_e                                                 ! element connectivity (node numbers in each cell)
+#else
+  real(pREAL), dimension(:),     pointer     :: qPointsP
+  real(pREAL), dimension(:),     pointer     :: PETSC_NULL_REAL_POINTER => NULL()
 #endif
   DMLabel   :: dm_label
   PetscSF   :: sf
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
-  PetscBool :: isSimplex                                                                            ! reduced integration, simplex mesh
-#endif
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>17)
   PetscQuadrature :: quadrature
-#endif
   PetscErrorCode  :: err_PETSc
 
   type(tDict), pointer :: &
@@ -130,24 +126,11 @@ subroutine discretization_mesh_init()
   integer(MPI_INTEGER_KIND)                  :: err_MPI
   integer,     dimension(:),     allocatable :: bc_set_idx                                          ! index for PETSc set labels (no 'edges' in 2D)
   PetscInt                                   :: label_size                                          ! BC label sizes (number of values it assigns)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
-  PetscInt                                   :: nPolytopes                                          ! number of different polytopes in the mesh
-  PetscInt,    dimension(:),     pointer     :: cells_IS                                            ! celltype IS values
-#endif
   PetscInt,    dimension(:),     pointer     :: label_values                                        ! BC label values (from IS)
   PetscInt,    dimension(:),     allocatable :: materialAt, &                                       ! material ID per cell
                                                 label_tmp
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<24)
-  real(pREAL), dimension(:),     pointer     :: qPointsP
-#endif
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<24)
-  real(pREAL), dimension(:),     pointer     :: PETSC_NULL_REAL_POINTER => NULL()
-#endif
   real(pREAL), dimension(:,:),   allocatable :: v_0                                                 ! volume associated with IP (initially!)
   real(pREAL), dimension(:,:,:), allocatable :: x_p                                                 ! IP x,y,z coordinates (after deformation!)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
-  PetscInt,    dimension(:,:),   allocatable :: T_e                                                 ! element connectivity (node numbers in each cell)
-#endif
 
   character(pSTRLEN) :: &
     bc_label                                                                                        ! label (string, defined in mesh file)
@@ -181,13 +164,10 @@ subroutine discretization_mesh_init()
   call DMGetStratumSize(globalMesh,'depth',dimPlex,mesh_nElems,err_PETSc)
   CHKERRQ(err_PETSc)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
+#if PETSC_VERSION_MINOR>=24
   call DMPlexIsSimplex(globalMesh,isSimplex,err_PETSc)
   CHKERRQ(err_PETSc)
   if (.not. isSimplex) p_i = p_i + 1_pPETSCINT                                                      ! adjust for quad/hex (non-simplex)
-#endif
-
-#if (PETSC_VERSION_MINOR>=24)
 ! check invalid mesh (mixed or unsupported elements)
   call DMGetLabelIdIS(globalMesh, 'celltype', celltype_IS, err_PETSc)
   call ISGetSize(celltype_IS, nPolytopes, err_PETSc)
@@ -308,26 +288,25 @@ subroutine discretization_mesh_init()
   CHKERRQ(err_PETSc)
 
 ! Get initial nodal coordinates
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>17)
-#if (PETSC_VERSION_MINOR>=24)
+#if PETSC_VERSION_MINOR>=24
   if (isSimplex) then
     call PetscDTSimplexQuadrature(dimPlex,p_i,PETSCDTSIMPLEXQUAD_DEFAULT,quadrature,err_PETSc)
   else
     call PetscDTGaussTensorQuadrature(dimPlex,dimPlex,p_i,-1.0_pREAL,1.0_pREAL, &
                                       quadrature,err_PETSc)
   end if
-#elif (PETSC_VERSION_MINOR==23)
+#elif PETSC_VERSION_MINOR==23
   call PetscDTSimplexQuadrature(dimPlex,p_i,PETSCDTSIMPLEXQUAD_DEFAULT,quadrature,err_PETSc)
 #else
   call PetscDTSimplexQuadrature(dimPlex,p_i,-1,quadrature,err_PETSc)
 #endif
   CHKERRQ(err_PETSc)
 
-#if (PETSC_VERSION_MINOR>=24)
+#if PETSC_VERSION_MINOR>=24
   call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                               mesh_maxNips,PETSC_NULL_REAL_POINTER, &
                               PETSC_NULL_REAL_POINTER,err_PETSc)
-#elif (PETSC_VERSION_MINOR>21)
+#elif PETSC_VERSION_MINOR>21
   call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                               mesh_maxNips,qPointsP,PETSC_NULL_REAL_POINTER,err_PETSc)
 #else
@@ -336,7 +315,7 @@ subroutine discretization_mesh_init()
 #endif
   CHKERRQ(err_PETSc)
 
-#if (PETSC_VERSION_MINOR>=24)
+#if PETSC_VERSION_MINOR>=24
   x_p = build_coordinates_IP(dimPlex,quadrature)
 #else
   x_p = build_coordinates_IP(dimPlex,qPointsP)
@@ -360,13 +339,6 @@ subroutine discretization_mesh_init()
 
   call PetscQuadratureDestroy(quadrature, err_PETSc)
   CHKERRQ(err_PETSc)
-#else
-  mesh_maxNips = FEM_nQuadrature(dimPlex,p_i)
-
-  x_p = build_coordinates_IP(dimPlex,FEM_quadrature_points(dimPlex,p_i)%p)
-  v_0 = build_volume_IP(dimPlex)
-  call build_nodes_and_connectivity(x_n,p_s)
-#endif
 
   allocate(materialAt(mesh_nElems))
   do j = 1, mesh_nElems
@@ -426,7 +398,7 @@ function build_coordinates_IP(dimPlex,qPoints) result(x_p)
 #endif
 
   PetscInt,                                     intent(in) :: dimPlex
-#if (PETSC_VERSION_MINOR>=24)
+#if PETSC_VERSION_MINOR>=24
   PetscQuadrature,                              intent(in) :: quadrature
 #else
   PetscReal,   dimension(mesh_maxNips*dimPlex), intent(in) :: qPoints
@@ -434,7 +406,7 @@ function build_coordinates_IP(dimPlex,qPoints) result(x_p)
   real(pREAL), dimension(:,:,:), allocatable :: x_p
 
 
-#if (PETSC_VERSION_MINOR>=24)
+#if PETSC_VERSION_MINOR>=24
   PetscReal, pointer, dimension(:) :: pV0, pCellJ, pInvcellJ, pDetJ
 #else
   PetscReal, pointer, dimension(:) :: pV0, pCellJ, pInvcellJ
@@ -449,7 +421,7 @@ function build_coordinates_IP(dimPlex,qPoints) result(x_p)
   CHKERRQ(err_PETSc)
 
   allocate(x_p(3,mesh_maxNips,mesh_nElems),source=0.0_pREAL)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
+#if PETSC_VERSION_MINOR>=24
   allocate(pV0(mesh_maxNips*dimPlex))
   allocate(pCellJ(mesh_maxNips*dimPlex**2))
   allocate(pInvCellJ(mesh_maxNips*dimPlex**2))
@@ -514,7 +486,7 @@ subroutine build_nodes_and_connectivity(x_n, p_s)
   PetscDS  :: coordDS
   PetscFE  :: coordFE
   PetscSection    :: globalSection, localSection                                                    ! section (to retrieve DOF)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
+#if PETSC_VERSION_MINOR>=24
   DMPolytopeType  :: cell_type                                                                      ! tri, quad, tet, hex
 #endif
   PetscDualSpace  :: coordDualSpace
@@ -524,7 +496,7 @@ subroutine build_nodes_and_connectivity(x_n, p_s)
   real(pREAL), dimension(:), pointer     :: coords, &                                               ! local nodes coordinates
                                             nodeCoords                                              ! single node coordinates
   real(pREAL), dimension(:), allocatable :: refCoords                                               ! node coordinates in reference element [-1,+1]^d
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
+#if PETSC_VERSION_MINOR>22
   real(pREAL), dimension(:), allocatable :: mappedCoords                                            ! real (mesh) node coordinates
 #else
   real(pREAL), dimension(:), allocatable, target :: mappedCoords                                    ! real (mesh) node coordinates
@@ -535,7 +507,7 @@ subroutine build_nodes_and_connectivity(x_n, p_s)
   PetscInt,    dimension(:), pointer     :: indices                                                 ! cell closure DOF indices
   integer,     dimension(:), allocatable :: node_map                                                ! PETSc to VTK node order mapping
 #endif
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
+#if PETSC_VERSION_MINOR>=24
   PetscBool :: isSimplex
 #endif
 
@@ -552,7 +524,7 @@ subroutine build_nodes_and_connectivity(x_n, p_s)
   CHKERRQ(err_PETSc)
   call DMGetDimension(coordDM, coordDim, err_PETSc)
   CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=24)
+#if PETSC_VERSION_MINOR>=24
   call DMPlexIsSimplex(coordDM,isSimplex,err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscFECreateDefault(PETSC_COMM_SELF, coordDim, coordDim, isSimplex, 'coord_', p_s, &
@@ -565,7 +537,7 @@ subroutine build_nodes_and_connectivity(x_n, p_s)
 
   call PetscFEGetDimension(coordFE, feDim, err_PETSc)
   CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>22)
+#if PETSC_VERSION_MINOR>22
   call DMAddField(coordDM, PETSC_NULL_DMLABEL, PetscObjectCast(coordFE), err_PETSc)
 #else
   call DMAddField(coordDM, PETSC_NULL_DMLABEL, coordFE, err_PETSc)
@@ -599,7 +571,7 @@ subroutine build_nodes_and_connectivity(x_n, p_s)
   do feBasis = 0_pPETSCINT, feDim-1_pPETSCINT, coordDim                                             ! coordinates in the reference cell in [-1,+1]^d
     call PetscDualSpaceGetFunctional(coordDualSpace, feBasis, refQuadrature, err_PETSc)
     CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>21)
+#if PETSC_VERSION_MINOR>21
     call PetscQuadratureGetData(refQuadrature, coordDim, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, &
 #else
     call PetscQuadratureGetData(refQuadrature, coordDim, PETSC_NULL_INTEGER(1), &
@@ -614,7 +586,7 @@ subroutine build_nodes_and_connectivity(x_n, p_s)
     call DMPlexReferenceToCoordinates(coordDM, cell, nCellNodes, refCoords, &
                                       mappedCoords, err_PETSc)
     CHKERRQ(err_PETSc)
-#if (PETSC_VERSION_MINOR>22)
+#if PETSC_VERSION_MINOR>22
     PetscCall(DMPlexVecSetClosure(coordDM, localSection, coordVec, cell, mappedCoords,INSERT_VALUES, ierr))
 #else
     pMappedCoords => mappedCoords

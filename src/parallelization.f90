@@ -7,23 +7,22 @@
 #include <petsc/finclude/petscsys.h>
 #endif
 module parallelization
-  use, intrinsic :: ISO_fortran_env, only: &
+  use, intrinsic :: ISO_Fortran_env, only: &
     OUTPUT_UNIT, &
     ERROR_UNIT
 
-  use constants
-
 #ifdef PETSC
   use PETScSys
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPI
   use MPI_f08
 #endif
 !$ use OMP_LIB
 #endif
 
+  use constants
   use prec
 
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
 #else
   implicit none

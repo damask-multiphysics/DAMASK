@@ -6,7 +6,7 @@
 #include <petsc/finclude/petscsys.h>
 module grid_utilities
   use PETScSys
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPI
   use MPI_f08
 #endif
 
@@ -21,7 +21,7 @@ module grid_utilities
   use homogenization
   use constants
 
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
 #else
   implicit none

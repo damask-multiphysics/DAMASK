@@ -10,6 +10,13 @@
 #include <petsc/finclude/petscsys.h>
 #endif
 module math
+#ifdef PETSC
+  use PETScSys
+#ifndef PETSC_EXPOSES_MPI
+  use MPI_f08
+#endif
+#endif
+
   use prec
   use misc
   use IO
@@ -18,12 +25,6 @@ module math
   use parallelization
   use LAPACK_interface
 
-#ifdef PETSC
-  use PETScSys
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
-  use MPI_f08
-#endif
-#endif
 
   implicit none(type,external)
   public

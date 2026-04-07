@@ -1,9 +1,12 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 cmake_minimum_required(VERSION 3.18.0)
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD 17)
+
 include(FindPkgConfig REQUIRED)
 include(CheckCXXSymbolExists REQUIRED)
+include(CheckSourceCompiles REQUIRED)
 
 if(DEFINED ENV{PETSC_DIR})
   message("PETSC_DIR:\n$ENV{PETSC_DIR}\n")
@@ -15,7 +18,7 @@ endif()
 project(Prerequisites LANGUAGES)
 set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
 set(PETSC_VERSION_MINOR_MIN "19")
-set(PETSC_VERSION_MINOR_MAX "24")
+set(PETSC_VERSION_MINOR_MAX "25")
 
 pkg_check_modules(PETSC_MIN REQUIRED PETSc>=3.${PETSC_VERSION_MINOR_MIN}.0 QUIET) #CMake does not support version range
 pkg_check_modules(PETSC REQUIRED PETSc<=3.${PETSC_VERSION_MINOR_MAX}.99)
@@ -171,8 +174,8 @@ file(STRINGS "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/petsc/conf/petscvariables" PE
 string(REPLACE "PETSC_FC_INCLUDES = " "" PETSC_INCLUDES "${PETSC_INCLUDES}")
 message("PETSC_INCLUDES:\n${PETSC_INCLUDES}\n")
 
-set(CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${BUILDCMD_PRE} ${OPENMP_FLAGS} ${STANDARD_CHECK} ${OPTIMIZATION_FLAGS} ${COMPILE_FLAGS}")
-set(CMAKE_Fortran_LINK_EXECUTABLE           "${BUILDCMD_PRE} ${CMAKE_Fortran_COMPILER} ${OPENMP_FLAGS} ${OPTIMIZATION_FLAGS} ${LINKER_FLAGS}")
+set(CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${BUILDCMD_PRE} ${OPENMP_FLAGS} ${STANDARD_CHECK} ${OPTIMIZATION_FLAGS}")
+set(CMAKE_Fortran_LINK_EXECUTABLE           "${BUILDCMD_PRE} ${CMAKE_Fortran_COMPILER} ${OPENMP_FLAGS} ${OPTIMIZATION_FLAGS}")
 
 set(CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}} ${PETSC_INCLUDES}")   # zlib installed via PETSc
 
@@ -205,6 +208,86 @@ message("Fortran Compiler Flags:\n${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}}\n")
 message("C Compiler Flags:\n${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}}\n")
 message("C++ Compiler Flags:\n${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}}\n")
 message("Fortran Linker Command:\n${CMAKE_Fortran_LINK_EXECUTABLE}\n")
+
+# check MPI features
+block()
+  string(REPLACE " " ";" CMAKE_REQUIRED_INCLUDES "${PETSC_INCLUDES}")
+  string(REPLACE "-I" "" CMAKE_REQUIRED_INCLUDES "${CMAKE_REQUIRED_INCLUDES}")
+  message("${CMAKE_REQUIRED_INCLUDES}")
+
+  set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
+
+  check_source_compiles(Fortran
+ "#include <petsc/finclude/petscsys.h>
+  module m
+  use PETScSys
+  implicit none
+  contains
+  subroutine s()
+  integer :: i
+  i = PETSC_COMM_WORLD%MPI_val
+  end subroutine s
+  end module m"
+  PETSC_USES_MPIF08)
+
+  check_source_compiles(Fortran
+ "#include <petsc/finclude/petscsys.h>
+  module m
+  use PETScSys
+  implicit none
+  contains
+  subroutine s()
+  integer :: i
+  i = MPI_COMM_WORLD%MPI_val
+  end subroutine s
+  end module m"
+  PETSC_EXPOSES_MPIF08)
+
+  check_source_compiles(Fortran
+ "#include <petsc/finclude/petscsys.h>
+  module m
+  use PETScSys
+  implicit none
+  contains
+  subroutine s()
+  integer :: i
+  i = MPI_COMM_WORLD
+  end subroutine s
+  end module m"
+  PETSC_EXPOSES_MPIF90)
+
+  check_source_compiles(Fortran
+ "module m
+  use HDF5
+  use MPI_f08
+  implicit none
+  contains
+  subroutine s()
+  integer :: hdferr
+  integer(HID_T) :: plist_access_id
+  call H5Pset_fapl_mpio_f(plist_access_id, MPI_COMM_WORLD, MPI_INFO_NULL, hdferr)
+  end subroutine s
+  end module m"
+  HDF5_SUPPORTS_MPIF08)
+endblock()
+
+if(PETSC_USES_MPIF08)
+  add_compile_definitions($<$<COMPILE_LANGUAGE:Fortran>:PETSC_USES_MPIF08>)
+endif()
+
+if(PETSC_EXPOSES_MPIF08)
+  add_compile_definitions($<$<COMPILE_LANGUAGE:Fortran>:PETSC_EXPOSES_MPI>)
+  add_compile_definitions($<$<COMPILE_LANGUAGE:Fortran>:PETSC_EXPOSES_MPIF08>)
+endif()
+
+if(PETSC_EXPOSES_MPIF90)
+  add_compile_definitions($<$<COMPILE_LANGUAGE:Fortran>:PETSC_EXPOSES_MPI>)
+  add_compile_definitions($<$<COMPILE_LANGUAGE:Fortran>:PETSC_EXPOSES_MPIF90>)
+endif()
+
+if(HDF5_SUPPORTS_MPIF08)
+  add_compile_definitions($<$<COMPILE_LANGUAGE:Fortran>:HDF5_SUPPORTS_MPIF08>)
+endif()
 
 # location of code
 add_subdirectory(src)

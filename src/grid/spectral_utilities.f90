@@ -6,13 +6,18 @@
 !> @brief Utilities used by the different spectral solver variants
 !--------------------------------------------------------------------------------------------------
 #include <petsc/finclude/petscsys.h>
+#if defined(PETSC_EXPOSES_MPIF90)
+#define MPI_COMM_WORLD_F90 MPI_COMM_WORLD
+#else
+#define MPI_COMM_WORLD_F90 MPI_COMM_WORLD%MPI_val
+#endif
 module spectral_utilities
   use PETScSys
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPI
   use MPI_f08
 #endif
-  use FFTW3
 
+  use FFTW3
   use prec
   use CLI
   use parallelization
@@ -24,8 +29,7 @@ module spectral_utilities
   use discretization
   use homogenization
 
-
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
 #else
   implicit none
@@ -55,7 +59,6 @@ module spectral_utilities
   complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi1st                         !< wave vector field for first derivatives
   complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi2nd                         !< wave vector field for second derivatives
   real(pREAL),               dimension(3,3,3,3)                    :: C_ref                         !< mechanic reference stiffness
-
 
 !--------------------------------------------------------------------------------------------------
 ! plans for FFTW
@@ -230,7 +233,7 @@ subroutine spectral_utilities_init(active_Gamma, active_G, active_parabolic)
 ! set up FFTW data structures for tensor fields
 ! ToDo: FEM uses tensor field to calculate coordinates, this is not needed
   N = fftw_mpi_local_size_many_transposed(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)], &
-                                          tensorSize,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD, &
+                                          tensorSize,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,MPI_COMM_WORLD_F90, &
                                           cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
   cells2 = int(cells2FFTW)
   cells2Offset = int(cells2_offset)
@@ -245,19 +248,19 @@ subroutine spectral_utilities_init(active_Gamma, active_G, active_parabolic)
   planTensorForth = fftw_mpi_plan_many_dft_r2c(3,cellsFFTW(3:1:-1),tensorSize, &
                                                FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
                                                tensorField_real,tensorField_fourier, &
-                                               PETSC_COMM_WORLD,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_OUT)
+                                               MPI_COMM_WORLD_F90,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_OUT)
   if (.not. c_associated(planTensorForth)) error stop 'FFTW error r2c tensor'
   planTensorBack  = fftw_mpi_plan_many_dft_c2r(3,cellsFFTW(3:1:-1),tensorSize, &
                                                FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
                                                tensorField_fourier,tensorField_real, &
-                                               PETSC_COMM_WORLD,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_IN)
+                                               MPI_COMM_WORLD_F90,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_IN)
   if (.not. c_associated(planTensorBack))  error stop 'FFTW error c2r tensor'
 
 !--------------------------------------------------------------------------------------------------
 ! set up FFTW data structures for vector fields
 ! ToDo: FEM uses vector field to calculate coordinates, this is not needed
   N = fftw_mpi_local_size_many_transposed(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)], &
-                                          vectorSize,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD, &
+                                          vectorSize,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,MPI_COMM_WORLD_F90, &
                                           cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
   if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (vector, real space)'
   if (int(cells2FFTW) /= cells2) error stop 'domain decomposition mismatch (vector, Fourier space)'
@@ -271,19 +274,19 @@ subroutine spectral_utilities_init(active_Gamma, active_G, active_parabolic)
   planVectorForth = fftw_mpi_plan_many_dft_r2c(3,cellsFFTW(3:1:-1),vectorSize, &
                                                FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
                                                vectorField_real,vectorField_fourier, &
-                                               PETSC_COMM_WORLD,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_OUT)
+                                               MPI_COMM_WORLD_F90,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_OUT)
   if (.not. c_associated(planVectorForth)) error stop 'FFTW error r2c vector'
   planVectorBack  = fftw_mpi_plan_many_dft_c2r(3,cellsFFTW(3:1:-1),vectorSize, &
                                                FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
                                                vectorField_fourier,vectorField_real, &
-                                               PETSC_COMM_WORLD,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_IN)
+                                               MPI_COMM_WORLD_F90,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_IN)
   if (.not. c_associated(planVectorBack))  error stop 'FFTW error c2r vector'
 
 !--------------------------------------------------------------------------------------------------
 ! set up FFTW data structures for scalar fields
   if (active_parabolic) then
     N = fftw_mpi_local_size_3d_transposed(cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T), &
-                                          PETSC_COMM_WORLD,cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
+                                          MPI_COMM_WORLD_F90,cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
     if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (scalar, real space)'
     if (int(cells2FFTW) /= cells2) error stop 'domain decomposition mismatch (scalar, Fourier space)'
 
@@ -295,11 +298,11 @@ subroutine spectral_utilities_init(active_Gamma, active_G, active_parabolic)
 
     planScalarForth = fftw_mpi_plan_dft_r2c_3d(cellsFFTW(3),cellsFFTW(2),cellsFFTW(1), &
                                                scalarField_real,scalarField_fourier, &
-                                               PETSC_COMM_WORLD,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_OUT)
+                                               MPI_COMM_WORLD_F90,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_OUT)
     if (.not. c_associated(planScalarForth)) error stop 'FFTW error r2c scalar'
     planScalarBack  = fftw_mpi_plan_dft_c2r_3d(cellsFFTW(3),cellsFFTW(2),cellsFFTW(1), &
                                                scalarField_fourier,scalarField_real, &
-                                               PETSC_COMM_WORLD,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_IN)
+                                               MPI_COMM_WORLD_F90,FFTW_planner_flag+FFTW_MPI_TRANSPOSED_IN)
     if (.not. c_associated(planScalarBack))  error stop 'FFTW error c2r scalar'
   end if
 
@@ -798,7 +801,7 @@ subroutine utilities_updateCoords(F)
   integer(MPI_INTEGER_KIND) :: &
     rank_t, rank_b
   integer(MPI_INTEGER_KIND) :: err_MPI
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPIF90
   type(MPI_Request), dimension(4) :: request
   type(MPI_Status),  dimension(4) :: status
 #else
@@ -868,7 +871,7 @@ subroutine utilities_updateCoords(F)
 
   call MPI_Waitall(4,request,status,err_MPI)
   call parallelization_chkerr(err_MPI)
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPIF90
   ! ToDo
 #else
   if (any(status(MPI_ERROR,:) /= 0)) error stop 'MPI error'

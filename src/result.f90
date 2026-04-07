@@ -9,26 +9,29 @@
 #include <petsc/finclude/petscsys.h>
 #endif
 module result
-  use, intrinsic :: ISO_fortran_env
+  use, intrinsic :: ISO_Fortran_env
+
+  use HDF5
+#ifdef PETSC
+  use PETScSys
+#ifndef PETSC_EXPOSES_MPI
+  use MPI_f08
+#endif
+#endif
 
   use prec
   use misc
   use parallelization
   use IO
   use HDF5_utilities
-  use HDF5
 #ifdef PETSC
   use CLI
   use OS
-  use PETScSys
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
-  use MPI_f08
-#endif
 #else
   use DAMASK_interface
 #endif
 
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
 #else
   implicit none
