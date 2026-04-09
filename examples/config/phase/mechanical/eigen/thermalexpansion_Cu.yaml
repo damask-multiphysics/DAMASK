@@ -1,7 +1,16 @@
 type: thermalexpansion
 
 references:
-  - https://en.wikipedia.org/wiki/Thermal_expansion,
-    293.15K
+  - T.A. Hahn,
+    Journal of Applied Physics 41:5096-5101, 1970,
+    https://doi.org/10.1063/1.1658614,
+    fit to Tab. 1 (T_min=20K, T_max=800K)
 
-Alpha_11: 17.e-6
+Alpha_11: 16.7e-6
+Alpha_11,T: 8.576e-09
+Alpha_11,T^2: -3.622e-11
+Alpha_11,T^3: 2.980e-13
+Alpha_11,T^4: -8.558e-16
+Alpha_11,T^5: 7.793e-19
+
+T_ref: 293.15
