@@ -148,7 +148,7 @@ subroutine grid_thermal_spectral_init(num_grid_thermal)
   call DMDAVecGetArray(DM_thermal,T_vec,T,err_PETSc)                                                ! returns 0-indexed T
   CHKERRQ(err_PETSc)
 
-  restartRead: if (CLI_restartInc > 0) then
+  restartRead: if (CLI_restartInc /= -1) then
     print'(/,1x,a,1x,i0)', 'loading restart data of increment', CLI_restartInc
 
     fileHandle  = HDF5_openFile(CLI_jobName//'_restart.hdf5','r')

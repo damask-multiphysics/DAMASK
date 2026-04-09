@@ -73,7 +73,7 @@ public:
  */
 class CLI {
 public:
-  int          restart_inc = 0;
+  int          restart_inc = -1;
   std::string  geom_path, loadfile_path,
                material_path, numerics_path,
                jobname, uuid;

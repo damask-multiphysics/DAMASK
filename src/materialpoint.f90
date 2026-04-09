@@ -62,7 +62,7 @@ subroutine materialpoint_initAll()
   call types_init()
   call YAML_init()
   call HDF5_utilities_init()
-  call result_init(restart=CLI_restartInc>0)
+  call result_init(restart = CLI_restartInc /= -1)
   call config_init()
   call math_init()
   call rotations_init()
@@ -93,7 +93,7 @@ subroutine materialpoint_init()
 
   print'(/,1x,a)', '<<<+-  materialpoint init  -+>>>'; flush(IO_STDOUT)
 
-  if (CLI_restartInc > 0) then
+  if (CLI_restartInc /= -1) then
     print'(/,1x,a,1x,i0)', 'loading restart information of increment',CLI_restartInc; flush(IO_STDOUT)
 
     fileHandle = HDF5_openFile(CLI_jobName//'_restart.hdf5','r')

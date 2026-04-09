@@ -20,7 +20,7 @@ module CLI
   implicit none(type,external)
   private
   integer,                       public, protected :: &
-    CLI_restartInc = 0                                                                              !< increment at which calculation starts
+    CLI_restartInc = -1                                                                             !< increment at which calculation starts
   character(len=:), allocatable, public, protected :: &
     CLI_geomFile, &                                                                                 !< location of the geometry file
     CLI_loadFile, &                                                                                 !< location of the load case file
@@ -202,9 +202,11 @@ subroutine CLI_init()
         workingDirArg = val
 #if defined(GRID)
       case ('-r', '--rs', '--restart')
-        CLI_restartInc = IO_strAsInt(val)
-        if (CLI_restartInc < 0) &
+        if (IO_strAsInt(val) < 0) then
           call IO_error(610_pI16, 'invalid value', val, 'for flag', flag, emph=[2,4])
+        else
+          CLI_restartInc = IO_strAsInt(val)
+        end if
 #endif
       case default
         call IO_error(610_pI16, 'invalid flag', flag, emph=[2])
@@ -244,7 +246,7 @@ subroutine CLI_init()
 #if (defined(BOOST) && !defined(OLD_STYLE_C_TO_FORTRAN_STRING))
   print'(1x,a)',        'Job ID:             '//CLI_jobID
 #endif
-  if (CLI_restartInc > 0) &
+  if (CLI_restartInc /= -1) &
     print'(1x,a,i0)',   'Restart increment:  ', CLI_restartInc
 #endif
 
