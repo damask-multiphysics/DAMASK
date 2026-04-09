@@ -253,7 +253,7 @@ program DAMASK_grid
   if (worldrank == 0) then
     fname = trim(CLI_jobName)//'.sta'
     inquire(file=fname,exist=exists)
-    writeHeader: if (CLI_restartInc < 1 .or. .not. exists) then
+    writeHeader: if (CLI_restartInc == -1 .or. .not. exists) then
       open(newunit=statUnit,file=fname,form='FORMATTED',status='REPLACE')
       write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded StagIterationsNeeded'
     else writeHeader
@@ -261,7 +261,7 @@ program DAMASK_grid
     end if writeHeader
   end if
 
-  writeUndeformed: if (CLI_restartInc < 1) then
+  writeUndeformed: if (CLI_restartInc == -1) then
     print'(/,1x,a)', '... saving initial configuration ..........................................'
     flush(IO_STDOUT)
     call materialpoint_result(0,0.0_pREAL)
@@ -508,7 +508,7 @@ function parseLoadsteps(load_steps) result(loadCases)
     else
       loadCases(l)%f_out = load_step%get_asInt('f_out', defaultVal=1)
     end if
-    loadCases(l)%estimate_rate = (load_step%get_asBool('estimate_rate',defaultVal=.true.) .and. l>1)
+    loadCases(l)%estimate_rate = load_step%get_asBool('estimate_rate',defaultVal=.true.)
 
     reportAndCheck: if (worldrank == 0) then
       print'(/,1x,a,1x,i0)', 'load case:', l

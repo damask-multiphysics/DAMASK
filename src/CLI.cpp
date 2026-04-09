@@ -163,7 +163,7 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
   }
   cout << " Job name:           " << jobname << std::endl;
   cout << " Job ID:             " << uuid << std::endl;
-  if (restart_inc > 0) {
+  if (restart_inc != -1) {
     cout << " Restart increment:  " << restart_inc << std::endl;
   }
 }

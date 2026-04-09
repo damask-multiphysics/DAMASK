@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import os
+import shutil
 from functools import partial
 
 import pytest
@@ -59,6 +60,38 @@ def test_grid_restart(res_path,tmp_path,copy_files,h5py_dataset_iterator,assert_
                        partial(assert_allclose,rtol=1.e-3),
                        tmp_path/'normal.hdf5',
                        tmp_path/'restart.hdf5')
+
+@pytest.mark.parametrize('solver',['spectral_basic','spectral_polarization','FEM','spectral_Galerkin'])
+def test_grid_restart_at_0(res_path,tmp_path,copy_files,assert_allclose,solver,petsc_version):
+    grid = '27grains3x3x3' if (solver=='FEM' and petsc_version() < '3.24.1') else '8grains2x2x2'
+    load = 'tensionX'
+    material = 'material'
+    job = f'{grid}_{load}_{material}'
+
+    copy_files(res_path,tmp_path)
+
+    config_load = damask.YAML.load(res_path/f'{load}.yaml')
+    config_load['solver']['mechanical'] = solver
+
+    config_load['loadstep'][0]['discretization']['t']=10.
+    config_load['loadstep'][0]['discretization']['N']=10
+    config_load['loadstep'][0]['f_restart']=9
+    config_load['loadstep'][0]['f_out']=10
+    config_load.save(tmp_path/f'{load}.yaml')
+
+    cmd = f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}'
+    damask.util.run(cmd,wd=tmp_path)
+    shutil.move(tmp_path/f'{job}.hdf5',tmp_path/'initial.hdf5')
+
+    config_load['loadstep'][0]['discretization']['t']=1.
+    config_load['loadstep'][0]['discretization']['N']=1
+    config_load['loadstep'][0]['f_out']=1
+    config_load['loadstep'][0]['estimate_rate']=True
+    config_load.save(tmp_path/f'{load}.yaml')
+    damask.util.run(cmd+' -r 0',wd=tmp_path)
+
+    assert_allclose(damask.Result(tmp_path/'initial.hdf5').view(increments=-1).get('u_p'),
+                    damask.Result(tmp_path/f'{job}.hdf5').view(increments=-1).get('u_p'))
 
 def test_grid_restart_new_file(res_path,tmp_path,copy_files,h5py_dataset_iterator,assert_allclose):
     grid = '8grains2x2x2'
@@ -168,7 +201,7 @@ def test_grid_restart_damage_simple(res_path,tmp_path,copy_files,h5py_dataset_it
                         tmp_path/'restart.hdf5')
 
 
-def test_grid_restart_damage_complex(res_path,tmp_path,copy_files,h5py_dataset_iterator,assert_allclose,):
+def test_grid_restart_damage_complex(res_path,tmp_path,copy_files,h5py_dataset_iterator,assert_allclose):
     grid = 'plate_with_hole'
     load = 'isoBrittle' # 500 loadsteps
     material = 'plate_with_hole_isoBrittle_cube'

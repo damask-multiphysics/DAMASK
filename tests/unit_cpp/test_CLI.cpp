@@ -61,6 +61,7 @@ TEST_F(CwdGuard, SimpleInitialization) {
   EXPECT_EQ(cli.loadfile_path, fs::path("load.yaml"));
   EXPECT_EQ(cli.material_path, fs::path("material.yaml"));
   EXPECT_EQ(cli.jobname, "geom_load_material");
+  EXPECT_EQ(cli.restart_inc, -1);
   EXPECT_FALSE(cli.uuid.empty());
   EXPECT_FALSE(fortran_mock_buffer.empty());
 }
@@ -105,4 +106,27 @@ TEST_F(CwdGuard, InitializationRestart) {
   CLI cli(args, &mpi_world_rank);
   EXPECT_EQ(cli.jobname, "geom_load_material");
   EXPECT_EQ(cli.restart_inc, 7);
+}
+
+TEST_F(CwdGuard, InitializationRestartFromZero) {
+  int mpi_world_rank = 0;
+  std::vector<const char*> argv = {
+    "dummysolver",
+    "--geometry", "geom.vti",
+    "--loadcase", "load.yaml",
+    "--materialconfig", "material.yaml",
+    "--restart", "0"
+  };
+  auto args = std::span(argv.data(),std::size(argv));
+
+  CLI cli(args, &mpi_world_rank);
+  EXPECT_EQ(cli.restart_inc, 0);
+  bool found = false;
+  for (const auto& line : fortran_mock_buffer) {
+    if (line.find("Restart increment:  0") != std::string::npos) {
+      found = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(found);
 }

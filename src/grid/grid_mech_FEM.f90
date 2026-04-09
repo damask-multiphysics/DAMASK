@@ -236,7 +236,7 @@ subroutine grid_mechanical_FEM_init(num_grid_mech)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  restartRead: if (CLI_restartInc > 0) then
+  restartRead: if (CLI_restartInc /= -1) then
     print'(/,1x,a,1x,i0)', 'loading restart data of increment', CLI_restartInc
 
     fileHandle  = HDF5_openFile(CLI_jobName//'_restart.hdf5','r')
@@ -276,7 +276,7 @@ subroutine grid_mechanical_FEM_init(num_grid_mech)
   call DMDAVecRestoreArray(DM_mech,u_lastinc_vec,u_lastinc,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  restartRead2: if (CLI_restartInc > 0) then
+  restartRead2: if (CLI_restartInc /= -1) then
     print'(1x,a,1x,i0)', 'loading additional restart data of increment', CLI_restartInc
     call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
     call MPI_Bcast(C_volAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
