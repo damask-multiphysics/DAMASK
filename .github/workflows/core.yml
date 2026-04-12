@@ -2,7 +2,7 @@ name: Grid and Mesh Solver
 on: [push]
 
 env:
-  PETSC_VERSION: '3.24.4'
+  PETSC_VERSION: '3.25.0'
   HOMEBREW_NO_ANALYTICS: 'ON'     # Make Homebrew installation a little quicker
   HOMEBREW_NO_AUTO_UPDATE: 'ON'
   HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK: 'ON'
@@ -71,7 +71,7 @@ jobs:
           ./configure \
           --with-fc=gfortran --with-cc=gcc --with-cxx=g++ \
           --download-openmpi --download-fftw --download-hdf5 --with-hdf5-fortran-bindings=1 --download-zlib --download-boost \
-          --with-mpi-f90module-visibility=1
+          --with-mpi-ftn-module=mpi
           make all
 
       - name: DAMASK - Compile
@@ -145,7 +145,8 @@ jobs:
           ./configure \
           --with-fc=mpiifx --with-cc=mpiicx --with-cxx=mpiicpx \
           --with-x=0 \
-          --download-fftw --download-hdf5 --with-hdf5-fortran-bindings=1 --download-zlib --download-boost
+          --download-fftw --download-hdf5 --with-hdf5-fortran-bindings=1 --download-zlib --download-boost \
+          --with-mpi-ftn-module=mpi_f08
           make all
 
       - name: DAMASK - Compile
