@@ -714,9 +714,9 @@ subroutine form_jacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
                    matmul(reshape(reshape(homogenization_dPdF(1:3,1:3,1:3,1:3,ce), &
                                           shape=[3,3,3,3], order=[2,1,4,3]),shape=[9,9]),BMatFull))*detJ
 #if PETSC_VERSION_MINOR<23
-    call MatSetValuesStencil(Jac,24_pPETScInt,row,24_pPetscInt,col,K_ele,ADD_VALUES,err_PETSc)
+    call MatSetValuesStencil(Jac,24_pPETSCINT,row,24_pPETSCINT,col,K_ele,ADD_VALUES,err_PETSc)
 #else
-    call MatSetValuesStencil(Jac,24_pPETScInt,row,24_pPetscInt,col,reshape(K_ele,[size(K_ele)]),ADD_VALUES,err_PETSc)
+    call MatSetValuesStencil(Jac,24_pPETSCINT,row,24_pPETSCINT,col,reshape(K_ele,[size(K_ele)]),ADD_VALUES,err_PETSc)
 #endif
     CHKERRQ(err_PETSc)
   end do; end do; end do
@@ -733,7 +733,7 @@ subroutine form_jacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
 ! applying boundary conditions
   diag = (C_volAvg(1,1,1,1)/delta(1)**2 + C_volAvg(2,2,2,2)/delta(2)**2 + C_volAvg(3,3,3,3)/delta(3)**2) &
        * detJ
-  call MatZeroRowsColumns(Jac,size(rows,kind=pPetscInt),rows,diag,PETSC_NULL_VEC,PETSC_NULL_VEC,err_PETSc)
+  call MatZeroRowsColumns(Jac,size(rows,kind=pPETSCINT),rows,diag,PETSC_NULL_VEC,PETSC_NULL_VEC,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMGetGlobalVector(da_local,coordinates,err_PETSc)
   CHKERRQ(err_PETSc)

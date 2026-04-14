@@ -133,7 +133,7 @@ subroutine grid_damage_spectral_init(num_grid_damage)
          int(cells(1),pPETSCINT),int(cells(2),pPETSCINT),int(cells(3),pPETSCINT), &                 ! global cells
          1_pPETSCINT, 1_pPETSCINT, int(worldsize,pPETSCINT), &
          1_pPETSCINT, 0_pPETSCINT, &                                                                ! #dof (phi, scalar), ghost boundary width (domain overlap)
-         [int(cells(1),pPetscInt)],[int(cells(2),pPetscInt)],int(cells3_global,pPETSCINT), &        ! local cells
+         [int(cells(1),pPETSCINT)],[int(cells(2),pPETSCINT)],int(cells3_global,pPETSCINT), &        ! local cells
          DM_damage,err_PETSc)                                                                       ! handle, error
   CHKERRQ(err_PETSc)
   call DMsetFromOptions(DM_damage,err_PETSc)

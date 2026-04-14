@@ -184,7 +184,7 @@ subroutine grid_mech_spectral_polarization_init(num_grid_mech)
   CHKERRQ(err_PETSc)
   call SNESSetOptionsPrefix(SNES_mech,'mechanical_',err_PETSc)
   CHKERRQ(err_PETSc)
-  call MPI_Allgather(int(cells3,pPetscInt),1_MPI_INTEGER_KIND,MPI_INTEGER,&
+  call MPI_Allgather(int(cells3,pPETSCINT),1_MPI_INTEGER_KIND,MPI_INTEGER,&
                      cells3_global,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
   call DMDACreate3d(PETSC_COMM_WORLD, &

@@ -119,10 +119,10 @@ subroutine grid_chemical_FDM_init(num_grid_chemical)
   call DMDACreate3D(PETSC_COMM_WORLD, &
          DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, &                        ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
-         int(cells(1),pPetscInt),int(cells(2),pPetscInt),int(cells(3),pPetscInt), &                 ! global grid
-         1_pPetscInt, 1_pPetscInt, int(worldsize,pPetscInt), &
-         int(N_components,pPetscInt), 1_pPetscInt, &                                                ! #dof (mu field), ghost boundary width (domain overlap)
-         [int(cells(1),pPetscInt)],[int(cells(2),pPetscInt)],cells3_global, &                                ! local grid
+         int(cells(1),pPETSCINT),int(cells(2),pPETSCINT),int(cells(3),pPETSCINT), &                 ! global grid
+         1_pPETSCINT, 1_pPETSCINT, int(worldsize,pPETSCINT), &
+         int(N_components,pPETSCINT), 1_pPETSCINT, &                                                ! #dof (mu field), ghost boundary width (domain overlap)
+         [int(cells(1),pPETSCINT)],[int(cells(2),pPETSCINT)],cells3_global, &                       ! local grid
          DM_chemical,err_PETSc)                                                                     ! handle, error
   CHKERRQ(err_PETSc)
   call SNESSetDM(SNES_chemical,DM_chemical,err_PETSc); CHKERRQ(err_PETSc)                           ! connect snes to da
@@ -136,7 +136,7 @@ subroutine grid_chemical_FDM_init(num_grid_chemical)
   CHKERRQ(err_PETSc)
   call DMSNESSetJacobianLocal(DM_chemical,form_jacobian,PETSC_NULL_SNES,err_PETSc)                  ! function to evaluate stiffness matrix
   CHKERRQ(err_PETSc)
-  call SNESSetMaxLinearSolveFailures(SNES_chemical, huge(1_pPetscInt), err_PETSc)
+  call SNESSetMaxLinearSolveFailures(SNES_chemical, huge(1_pPETSCINT), err_PETSc)
   CHKERRQ(err_PETSc)
   call SNESSetFromOptions(SNES_chemical,err_PETSc); CHKERRQ(err_PETSc)
 
@@ -620,10 +620,10 @@ subroutine form_jacobian(da_local,solution_current_local,Jac_mat,Jac_pre_mat,dum
                                                  - mobility_backward(dir,:,:) * Delta_t_/delta(dir)**2
     end do
 #if PETSC_VERSION_MINOR<23
-    call MatSetValuesStencil(Jac_mat,int(N_components,pPetscInt),row,int(7*N_components,pPetscInt),&
+    call MatSetValuesStencil(Jac_mat,int(N_components,pPETSCINT),row,int(7*N_components,pPETSCINT),&
                              col,transpose(Jac),INSERT_VALUES,err_PETSc)
 #else
-    call MatSetValuesStencil(Jac_mat,int(N_components,pPetscInt),row,int(7*N_components,pPetscInt),&
+    call MatSetValuesStencil(Jac_mat,int(N_components,pPETSCINT),row,int(7*N_components,pPETSCINT),&
                              col,reshape(transpose(Jac),[size(Jac)]),INSERT_VALUES,err_PETSc)
 #endif
     CHKERRQ(err_PETSc)
