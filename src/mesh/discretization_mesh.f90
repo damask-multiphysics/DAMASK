@@ -104,6 +104,7 @@ subroutine discretization_mesh_init()
                cellStart, cellEnd, pointStart, &
                j
   IS        :: label_values_IS                                                                      ! BC label values IS
+  PetscBool :: has_label                                                                            ! label exists in the mesh
 #if PETSC_VERSION_MINOR>=24
   IS        :: celltype_IS                                                                          ! 'celltype' label IS
   PetscBool :: isSimplex                                                                            ! reduced integration, simplex mesh
@@ -125,7 +126,6 @@ subroutine discretization_mesh_init()
   integer                                    :: dim, n, m, k
   integer(MPI_INTEGER_KIND)                  :: err_MPI
   integer,     dimension(:),     allocatable :: bc_set_idx                                          ! index for PETSc set labels (no 'edges' in 2D)
-  PetscInt                                   :: label_size                                          ! BC label sizes (number of values it assigns)
   PetscInt,    dimension(:),     pointer     :: label_values                                        ! BC label values (from IS)
   PetscInt,    dimension(:),     allocatable :: materialAt, &                                       ! material ID per cell
                                                 label_tmp
@@ -197,21 +197,22 @@ subroutine discretization_mesh_init()
 
   mesh_nBoundaries = 0_pPETSCINT
   do n = 1, size(bc_set_idx)
-    call DMGetLabelSize(globalMesh,PETSC_GENERIC_LABELS(bc_set_idx(n)),label_size,err_PETSc)
-    CHKERRQ(err_PETSc)
-    if (label_size > 0_pPETSCINT) then
-      call DMGetLabelIdIS(globalMesh,PETSC_GENERIC_LABELS(bc_set_idx(n)),label_values_IS,err_PETSc)
+    call DMHasLabel(globalMesh,PETSC_GENERIC_LABELS(bc_set_idx(n)),has_label,err_PETSc)
+    if (has_label) then
+      call DMGetLabel(globalMesh,PETSC_GENERIC_LABELS(bc_set_idx(n)),dm_label,err_PETSc)
+      CHKERRQ(err_PETSc)
+      call DMLabelGetNonEmptyStratumValuesIS(dm_label, label_values_IS, err_PETSc)
       CHKERRQ(err_PETSc)
       call ISGetIndices(label_values_IS,label_values,err_PETSc)
       CHKERRQ(err_PETSc)
       if (.not. allocated(mesh_boundariesIS)) then
         allocate(mesh_boundariesIS, source = label_values)
-        allocate(mesh_boundariesIdx(label_size), source = int(bc_set_idx(n), pPETSCINT))
-        mesh_nBoundaries = mesh_nBoundaries + label_size
+        allocate(mesh_boundariesIdx(size(label_values)), source = int(bc_set_idx(n), pPETSCINT))
+        mesh_nBoundaries = mesh_nBoundaries + int(size(label_values), pPETSCINT)
       else
         allocate(label_tmp, mold = label_values)
         k = 0
-        do m = 1, int(label_size)
+        do m = 1, size(label_values)
           if (any(label_values(m) == mesh_boundariesIS)) cycle
           k = k + 1
           label_tmp(k) = label_values(m)
@@ -225,6 +226,7 @@ subroutine discretization_mesh_init()
       CHKERRQ(err_PETSc)
     end if
   end do
+  deallocate(bc_set_idx)
   if (mesh_nBoundaries == 0_pPETSCINT) &
     call IO_error(800_pI16, 'no mesh groups found to apply boundary conditions')
 
@@ -244,18 +246,14 @@ subroutine discretization_mesh_init()
       call DMGetLabel(globalMesh, bc_label, dm_label, err_PETSc)
       call DMLabelGetBounds(dm_label, pointStart, PETSC_NULL_INTEGER, err_PETSc)
       if (pointStart < cellEnd) cycle
-      call DMGetLabelSize(globalMesh, bc_label, label_size, err_PETSc)
+      call DMLabelGetNonEmptyStratumValuesIS(dm_label, label_values_IS, err_PETSc)
       CHKERRQ(err_PETSc)
-      if (label_size > 0_pPETSCINT) then
-        call DMGetLabelIdIS(globalMesh,bc_label,label_values_IS,err_PETSc)                          ! get values the label assigns (i.e. the tag)
-        CHKERRQ(err_PETSc)
-        call ISGetIndices(label_values_IS,label_values,err_PETSc)
-        CHKERRQ(err_PETSc)
-        n = findloc(mesh_boundariesIS, label_values(1), dim = 1)
-        mesh_bcLabels(n) = bc_label
-        call ISRestoreIndices(label_values_IS,label_values,err_PETSc)
-        CHKERRQ(err_PETSc)
-      end if
+      call ISGetIndices(label_values_IS,label_values,err_PETSc)
+      CHKERRQ(err_PETSc)
+      n = findloc(mesh_boundariesIS, label_values(1), dim = 1)
+      mesh_bcLabels(n) = bc_label
+      call ISRestoreIndices(label_values_IS,label_values,err_PETSc)
+      CHKERRQ(err_PETSc)
     end do
   else
     mesh_bcLabels = emptyStrArray
