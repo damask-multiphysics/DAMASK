@@ -109,7 +109,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   DMLabel  :: dm_label
   PetscFE  :: mechFE
   PetscDS  :: mechDS
-  PetscInt :: numActiveBC, bcSize, nc, &
+  PetscInt :: numActiveBC, nc, &
               component, boundary, topologDim, &
               cellStart, cellEnd, &
               nCoords
@@ -267,7 +267,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   allocate(pbcComps(numActiveBC))
   allocate(pbcPoints(numActiveBC))
   numActiveBC = 0_pPETSCINT
-  do boundary = 1_pPETSCINT, mesh_Nboundaries;
+  do boundary = 1_pPETSCINT, mesh_Nboundaries
     bc_label = PETSC_GENERIC_LABELS(mesh_boundariesIdx(boundary))
     do component = 1_pPETSCINT, dimPlex
       if (mechBC(boundary)%dot_u_active(component)) then
@@ -275,27 +275,18 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
         call ISCreateGeneral(PETSC_COMM_WORLD,1_pPETSCINT,[component-1_pPETSCINT],PETSC_COPY_VALUES, &
                              pbcComps(numActiveBC),err_PETSc)
         CHKERRQ(err_PETSc)
-        call DMGetStratumSize(mechanical_mesh,bc_label,mesh_boundariesIS(boundary), &
-                              bcSize,err_PETSc)
+        call DMGetStratumIS(mechanical_mesh,bc_label,mesh_boundariesIS(boundary), &
+                            bcPoint,err_PETSc)
         CHKERRQ(err_PETSc)
-        if (bcSize > 0) then
-          call DMGetStratumIS(mechanical_mesh,bc_label,mesh_boundariesIS(boundary), &
-                              bcPoint,err_PETSc)
-          CHKERRQ(err_PETSc)
-          call ISGetIndices(bcPoint,pBcPoint,err_PETSc)
-          CHKERRQ(err_PETSc)
-          call ISCreateGeneral(PETSC_COMM_WORLD,bcSize,pBcPoint,PETSC_COPY_VALUES, &
-                               pbcPoints(numActiveBC),err_PETSc)
-          CHKERRQ(err_PETSc)
-          call ISRestoreIndices(bcPoint,pBcPoint,err_PETSc)
-          CHKERRQ(err_PETSc)
-          call ISDestroy(bcPoint,err_PETSc)
-          CHKERRQ(err_PETSc)
-        else
-          call ISCreateGeneral(PETSC_COMM_WORLD,0_pPETSCINT,[0_pPETSCINT],PETSC_COPY_VALUES, &
-                               pbcPoints(numActiveBC),err_PETSc)
-          CHKERRQ(err_PETSc)
-        end if
+        call ISGetIndices(bcPoint,pBcPoint,err_PETSc)
+        CHKERRQ(err_PETSc)
+        call ISCreateGeneral(PETSC_COMM_WORLD,int(size(pBcPoint),pPETSCINT),pBcPoint, &
+                             PETSC_COPY_VALUES,pbcPoints(numActiveBC),err_PETSc)
+        CHKERRQ(err_PETSc)
+        call ISRestoreIndices(bcPoint,pBcPoint,err_PETSc)
+        CHKERRQ(err_PETSc)
+        call ISDestroy(bcPoint,err_PETSc)
+        CHKERRQ(err_PETSc)
       end if
     end do
   end do
