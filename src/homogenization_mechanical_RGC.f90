@@ -89,14 +89,13 @@ module subroutine RGC_init()
 
   print'(/,1x,a)', '<<<+-  homogenization:mechanical:RGC init  -+>>>'
 
-  print'(/,a,i0)', ' # homogenizations: ',count(mechanical_type == MECHANICAL_RGC_ID)
-  flush(IO_STDOUT)
-
   print'(/,1x,a)', 'D.D. Tjahjanto et al., International Journal of Material Forming 2(1):939–942, 2009'
-  print'(  1x,a)', 'https://doi.org/10.1007/s12289-009-0619-1'//IO_EOL
+  print'(  1x,a)', 'https://doi.org/10.1007/s12289-009-0619-1'
 
   print'(/,1x,a)', 'D.D. Tjahjanto et al., Modelling and Simulation in Materials Science and Engineering 18:015006, 2010'
-  print'(  1x,a)', 'https://doi.org/10.1088/0965-0393/18/1/015006'//IO_EOL
+  print'(  1x,a)', 'https://doi.org/10.1088/0965-0393/18/1/015006'
+
+  print'(/,a,i0)', ' # homogenizations: ',count(mechanical_type == MECHANICAL_RGC_ID)
 
 
   material_homogenization => config_material%get_dict('homogenization')
@@ -138,8 +137,12 @@ module subroutine RGC_init()
   if (num%volDiscrPow <= 0.0_pREAL)  call IO_error(301,ext_msg='Delta_V_exponent')
 
 
-  do ho = 1, size(mechanical_type)
+  do ho = 1, size(material_name_homogenization)
+
     if (mechanical_type(ho) /= MECHANICAL_RGC_ID) cycle
+
+    print'(/,1x,a,1x,i0,a)', 'homogenization',ho,': '//material_name_homogenization(ho)
+
     homog => material_homogenization%get_dict(ho)
     homogMech => homog%get_dict('mechanical')
     associate(prm => param(ho), &

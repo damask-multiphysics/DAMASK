@@ -40,7 +40,7 @@ module function quadEnergy_init() result(myChemicalEnergy)
   myChemicalEnergy = chemical_active('quadEnergy')
   if (count(myChemicalEnergy) == 0) return
   print'(/,a)', ' <<<+-  phase:chemical:QuadEnergy init  -+>>>'
-  print'(a,i2)', ' # phases: ',count(myChemicalEnergy); flush(IO_STDOUT)
+  print'(/,1x,a,1x,i0)', '# phases:',count(myChemicalEnergy); flush(IO_STDOUT)
 
   phases => config_material%get_dict('phase')
 
@@ -48,6 +48,9 @@ module function quadEnergy_init() result(myChemicalEnergy)
 
   do ph = 1, size(phases)
     if ( .not. myChemicalEnergy(ph)) cycle
+
+    print'(/,1x,a,1x,i0,a)', 'phase',ph,': '//phases%key(ph)
+
     associate(prm  => param(ph))
       phase => phases%get_dict(ph)
       chemical => phase%get_dict('chemical')
