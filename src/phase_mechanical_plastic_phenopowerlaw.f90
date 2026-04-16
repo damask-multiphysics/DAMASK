@@ -103,6 +103,14 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
   if (count(myPlasticity) == 0) return
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:phenopowerlaw init  -+>>>'
+
+  print'(/,1x,a)', 'F. Roters et al., Computational Materials Science 158:420–478, 2019'
+  print'(  1x,a)', 'https://doi.org/10.1016/j.commatsci.2018.04.030'
+
+  print'(/,1x,a)', 'Updated slip resistance evolution as in Eq. 3:'
+  print'(  1x,a)', 'N. Prabhu and M. Diehl, Advanced Engineering Materials 28, 2026'
+  print'(  1x,a)', 'https://doi.org/10.1002/adem.202500390'
+
   print'(/,1x,a,1x,i0)', '# phases:',count(myPlasticity); flush(IO_STDOUT)
 
 
