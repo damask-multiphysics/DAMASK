@@ -89,6 +89,8 @@ subroutine CLI_init()
 #define PETSC_DOI '10.2172/2565610'
 #elif PETSC_VERSION_MINOR==24
 #define PETSC_DOI '10.2172/2998643'
+#elif PETSC_VERSION_MINOR==25
+#define PETSC_DOI '10.2172/3025790'
 #endif
 #if (defined(BOOST) && !defined(OLD_STYLE_C_TO_FORTRAN_STRING))
   type(C_PTR) :: CLI_ = C_NULL_PTR

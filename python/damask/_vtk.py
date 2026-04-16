@@ -623,7 +623,7 @@ class VTK:
                 _add_array(dup.vtk_data,l,table.get(l))
                 if info is not None: dup.comments.append(f'{l}: {info}')
         else:
-            raise TypeError
+            raise TypeError('no valid data provided')
 
         return dup
 

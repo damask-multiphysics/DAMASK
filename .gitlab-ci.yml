@@ -14,6 +14,7 @@ variables:
   MARC_VERSION: '2025.1'
   PETSC_GCC_LATEST: '2026.04.03'
   PETSC_ONEAPI_LATEST: '2026.04.03'
+  PETSC_LLVM_LATEST: '2026.04.04'
   PYTHON_LATEST: '2026.02.24'
 
 ####################################################################################################
@@ -85,6 +86,11 @@ workflow:
           - oneapi_petsc-debug:2025.11.13
           - oneapi_petsc-debug:2025.06.12a
           - oneapi_petsc-debug:2025.03.27a
+
+.petsc_llvm_debug:
+  extends: .registry
+  variables:
+    IMAGE: llvm_petsc-default:${PETSC_LLVM_LATEST} # only one image at the moment
 
 .petsc:
   extends: .registry
@@ -259,13 +265,7 @@ c++-linter:
     matrix:
       - BUILD_TYPE: [DEBUG, RELEASE, PERFORMANCE]
 
-.unittest_gcc:
-  extends: .unittest
-  before_script:
-    - cmake -B build -DTEST=ON -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=-coverage
-    - cmake --build build --target install
-
-.unittest_oneapi:
+.unittest_base:
   extends: .unittest
   before_script:
     - cmake -B build -DTEST=ON -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
@@ -273,17 +273,27 @@ c++-linter:
 
 
 unittest_gcc:
-  extends: [.unittest_gcc, .petsc_gcc_debug]
+  extends: [.unittest, .petsc_gcc_debug]
+  before_script:
+    - cmake -B build -DTEST=ON -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=-coverage
+    - cmake --build build --target install
 
 unittest_oneapi:
-  extends: [.unittest_oneapi, .petsc_oneapi_debug]
+  extends: [.unittest_base, .petsc_oneapi_debug]
+
+unittest_llvm:
+  extends: [.unittest, .petsc_llvm_debug]
+  before_script:
+    - sed -i 's/Fortran_COMPILER_VERSION_MIN .*)/Fortran_COMPILER_VERSION_MIN 20)/' cmake/Compiler-LLVMFlang.cmake
+    - cmake -B build -DTEST=ON -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
+    - cmake --build build --target install
 
 
 unittest_gcc_previous:
-  extends: [.unittest_gcc, .petsc_gcc_debug_previous, .on_merge]
+  extends: [.unittest_base, .petsc_gcc_debug_previous, .on_merge]
 
 unittest_oneapi_previous:
-  extends: [.unittest_oneapi, .petsc_oneapi_debug_previous, .on_merge]
+  extends: [.unittest_base, .petsc_oneapi_debug_previous, .on_merge]
 
 
 .compile:
@@ -330,6 +340,15 @@ compile_grid_previous:
 
 compile_mesh_previous:
   extends: [.compile_mesh, .petsc_previous, .on_merge]
+
+# compiles but does not run
+compile_llvm:
+  stage: core
+  extends: .petsc_llvm_debug
+  before_script:
+    - sed -i 's/Fortran_COMPILER_VERSION_MIN .*)/Fortran_COMPILER_VERSION_MIN 20)/' cmake/Compiler-LLVMFlang.cmake
+  script:
+    - cmake -DGRID=ON -DMESH=ON -B build -G Ninja && cmake --build build --parallel 4 --target install
 
 Marc_patch:
   stage: core

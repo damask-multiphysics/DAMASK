@@ -223,6 +223,8 @@ cout << " https://doi.org/10.2172/2476320" << endl;
 cout << " https://doi.org/10.2172/2565610" << endl;
 #elif PETSC_VERSION_MINOR == 24
 cout << " https://doi.org/10.2172/2998643" << endl;
+#elif PETSC_VERSION_MINOR == 25
+cout << " https://doi.org/10.2172/3025790" << endl;
 #endif
 cout << endl;
 #endif
