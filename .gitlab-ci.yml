@@ -145,6 +145,7 @@ core:
         printf "%b" "\e[1;32m::\nchecking commit ${COMMIT}\n::\e[0m\n"
         git checkout ${COMMIT}
         git submodule update --init
+        rm -rf build
         cmake -DGRID=ON -DMESH=ON -B build && cmake --build build --parallel 4 --target install
       done
 
