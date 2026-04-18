@@ -809,7 +809,7 @@ def dict_prune(d: dict) -> dict:
     for k,v in d.items():
         if isinstance(v, dict):
             v = dict_prune(v)
-        if not isinstance(v,dict) or v != {}:
+        if not isinstance(v, dict) or v != {}:
             new[k] = v
 
     return new
@@ -828,9 +828,9 @@ def dict_flatten(d: dict) -> dict:
     flattened : dict
         Flattened dictionary.
     """
-    if isinstance(d,dict) and len(d) == 1:
+    if isinstance(d, dict) and len(d) == 1:
         entry = d[list(d.keys())[0]]
-        new = dict_flatten(entry.copy()) if isinstance(entry,dict) else entry
+        new = dict_flatten(entry.copy()) if isinstance(entry, dict) else entry
     else:
         new = {k: (dict_flatten(v) if isinstance(v, dict) else v) for k,v in d.items()}
 
@@ -932,3 +932,22 @@ class ProgressBar:
 
         if iteration == self.total - 1 and _sys.stdout.isatty():
             _sys.stdout.write('\n')
+
+
+class NestedDefaultDict(_defaultdict):
+    """A dictionary that has itself as a default."""
+
+    def __init__(self, *args, **kwargs):
+        """New nested default dictionary."""
+        super(NestedDefaultDict, self).__init__(NestedDefaultDict, *args, **kwargs)
+
+    def to_regular(self) -> dict:
+        """Convert recursively to regular dictionary."""
+        def to_regular(nested: dict):
+            regular = {}
+            for k,v in nested.items():
+                if isinstance(v, dict):
+                    v = to_regular(v)
+                regular[k] = v
+            return regular
+        return to_regular(self)
