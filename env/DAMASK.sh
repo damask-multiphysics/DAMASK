@@ -11,7 +11,6 @@ function blink {
 }
 
 ENV_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-
 DAMASK_ROOT=$(canonicalPath "$ENV_ROOT/../")
 
 # shorthand command to change to DAMASK_ROOT directory
@@ -86,6 +85,6 @@ export PYTHONPATH=$DAMASK_ROOT/python:$PYTHONPATH
 source "$ENV_ROOT/damask_grid"
 source "$ENV_ROOT/damask_mesh"
 
-for var in BASE STAT SOLVER BRANCH ENV_ROOT; do
+for var in SOLVER BRANCH ENV_ROOT; do
   unset "${var}"
 done
