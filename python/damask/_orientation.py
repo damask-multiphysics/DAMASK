@@ -1414,7 +1414,8 @@ class Orientation(Rotation,Crystal):
             Index of the symmetrically equivalent orientation that rotated vector to SST.
         """
         if return_operators:
-            warnings.warn('"return_operators" is deprecated, use "return_operator".',DeprecationWarning,stacklevel=2)
+            warnings.warn('"return_operators" is deprecated, use "return_operator"',
+                          DeprecationWarning,stacklevel=2)
         vector_ = np.array(vector,float)
         if vector_.shape[-1] != 3:
             raise ValueError('input is not a field of three-dimensional vectors')

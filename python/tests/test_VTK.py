@@ -224,6 +224,18 @@ def test_set_table(np_rng,default,shapes):
     for k,s in shapes.items():
         assert np.allclose(np.squeeze(d[k]['data']),new.get(k),rtol=1e-7)
 
+@pytest.mark.parametrize('shapes',[{'scalar':(1,),'vector':(3,),'tensor':(3,3)},
+                                   {'vector':(6,),'tensor':(3,3)},
+                                   {'tensor':(3,3),'scalar':(1,)}])
+def test_set_from_table(np_rng,default,shapes):
+    N = np_rng.choice([default.N_points,default.N_cells])
+    d = dict()
+    for k,s in shapes.items():
+        d[k] = dict(shape = s,
+                    data = np_rng.random(N*np.prod(s)).reshape((N,-1)))
+    new = default.set_from_table(Table(shapes,np.column_stack([d[k]['data'] for k in shapes.keys()])))
+    for k,s in shapes.items():
+        assert np.allclose(np.squeeze(d[k]['data']),new.get(k),rtol=1e-7)
 
 def test_set_masked(np_rng,default):
     data = np_rng.random((5*6*7,3))
