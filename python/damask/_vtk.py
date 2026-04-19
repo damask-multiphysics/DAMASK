@@ -5,7 +5,7 @@ import multiprocessing as mp
 import logging
 import contextlib
 from pathlib import Path
-from typing import Optional, Union, Literal, Sequence
+from typing import Optional, Union, Literal
 
 import numpy as np
 
@@ -169,7 +169,7 @@ class VTK:
 
     @comments.setter
     def comments(self,
-                 comments: Sequence[str]):
+                 comments: StrSequence):
         """
         Set comments.
 
@@ -534,7 +534,8 @@ class VTK:
             data: Union[None, np.ndarray, np.ma.MaskedArray] = None,
             info: Optional[str] = None,
             *,
-            table: Optional['Table'] = None) -> 'VTK':
+            table: Optional['Table'] = None,
+            component_names: Optional[StrSequence] = None) -> 'VTK':
         """
         Add new or replace existing point or cell data.
 
@@ -557,6 +558,9 @@ class VTK:
         table : damask.Table, optional
             Data to add or replace. Each table label is individually considered.
             Number of rows needs to match either number of cells or number of points.
+        component_names: sequence of str, optional
+            Names of the components, (flattened) length must correspond to the shape
+            of the data. Tensors are flattened assuming row-major order.
 
         Returns
         -------
@@ -577,7 +581,10 @@ class VTK:
         >>> cells = (16,8,16)
         >>> size = (1.0,0.5,1.0)
         >>> v = damask.VTK.from_image_data(cells=cells,size=size)
-        >>> print(v := v.set(label='F',data=np.broadcast_to(np.eye(3),(np.prod(cells),3,3))))
+        >>> print(v := v.set(label='F',data=np.broadcast_to(np.eye(3),(np.prod(cells),3,3)),
+        ...                  component_names = ['11','12','13',
+        ...                                     '21','22','23',
+        ...                                     '31','32','33']))
         vtkImageData
         <BLANKLINE>
         # cells: 2048
@@ -610,6 +617,9 @@ class VTK:
                     d = numpy_to_vtk(data_,deep=True)
 
                 d.SetName(label)
+                if component_names is not None:
+                    for c,n in zip(range(data_.shape[1]),np.asarray(component_names).flatten(),strict=True):
+                        d.SetComponentName(c,str(n))
 
                 if N_data == N_p:
                     dup.vtk_data.GetPointData().AddArray(d)
@@ -631,6 +641,7 @@ class VTK:
     def set_from_table(self,
                        table: 'Table',
                        labels: Optional[StrSequence] = None,
+                       component_names: Optional[dict[str,StrSequence]] = None,
                        info: Optional[str] = None) -> 'VTK':
         """
         Add new or replace existing point or cell data from damask.Table.
@@ -644,6 +655,10 @@ class VTK:
             Labels of data to consider. By default, all data is added.
         info : str, optional
             Human-readable information about the data.
+        component_names: dictionary, optional
+            Names of the vector or tensor components. Keys are the labels
+            of the data to be added, values must have the length of the
+            (flattened) array shape. Tensors are flattened assuming row-major order.
 
         Returns
         -------
@@ -656,7 +671,8 @@ class VTK:
         """
         dup = self.copy()
         for label in (labels if labels is not None else table.labels):
-            dup = dup.set(label,table.get(label),info=info)
+            dup = dup.set(label,table.get(label),info=info,
+                          component_names=(component_names.get(label,None) if component_names else None))
 
         return dup
 
