@@ -559,8 +559,8 @@ class VTK:
             Data to add or replace. Each table label is individually considered.
             Number of rows needs to match either number of cells or number of points.
         component_names: sequence of str, optional
-            Names of the components, (flattened) length must correspond to the shape
-            of the data. Tensors are flattened assuming row-major order.
+            Name of each data component. Flattened component names are assigned to
+            flattened shape of one data row, assuming row-major order for both.
 
         Returns
         -------
@@ -582,9 +582,9 @@ class VTK:
         >>> size = (1.0,0.5,1.0)
         >>> v = damask.VTK.from_image_data(cells=cells,size=size)
         >>> print(v := v.set(label='F',data=np.broadcast_to(np.eye(3),(np.prod(cells),3,3)),
-        ...                  component_names = ['11','12','13',
-        ...                                     '21','22','23',
-        ...                                     '31','32','33']))
+        ...                  component_names = [['11','12','13'],
+        ...                                     ['21','22','23'],
+        ...                                     ['31','32','33']]))
         vtkImageData
         <BLANKLINE>
         # cells: 2048
@@ -653,12 +653,12 @@ class VTK:
             Number of rows needs to match either number of cells or number of points.
         labels : sequence of str, optional
             Labels of data to consider. By default, all data is added.
+        component_names: dictionary of sequence of str, optional
+            Name of each data component per table entry. Flattened component names are
+            assigned to flattened data shape of corresponding table entry, assuming
+            row-major order for both.
         info : str, optional
             Human-readable information about the data.
-        component_names: dictionary, optional
-            Names of the vector or tensor components. Keys are the labels
-            of the data to be added, values must have the length of the
-            (flattened) array shape. Tensors are flattened assuming row-major order.
 
         Returns
         -------
