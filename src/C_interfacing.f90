@@ -12,8 +12,6 @@ module C_interfacing
   implicit none(type,external)
   private
 
-  public :: &
-    c_f_string
 #if (defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) \
  || (defined(__GFORTRAN__) && __GNUC__ < 15) \
  || defined(__flang__)
@@ -21,63 +19,7 @@ module C_interfacing
     f_c_string
 #endif
 
-  interface c_f_string
-    module procedure c_f_string_scalar
-    module procedure c_f_string_array
-  end interface
-
 contains
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Convert C string to Fortran string.
-!> @details: C string is a fixed-size fortran array referencing a NULL terminated c string.
-!            Due to the NULL-termination, C string has one more element than the Fortran string.
-!--------------------------------------------------------------------------------------------------
-pure function c_f_string_scalar(c_string) result(f_string)
-
-  character(kind=C_CHAR,len=*), intent(in) :: c_string
-  character(len=:), allocatable            :: f_string
-
-  integer(pI64) :: i
-
-
-  allocate(character(len=len(c_string,kind=pI64))::f_string)
-  do i=1_pI64,len(f_string,pI64)
-    if (c_string(i:i) /= C_NULL_CHAR) then
-      f_string(i:i)=c_string(i:i)
-    else
-      f_string = f_string(:i-1_pI64)
-      exit
-    end if
-  end do
-
-end function c_f_string_scalar
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Convert C string pointer to Fortran string.
-!> @details: C string is an assumed-size fortran array referencing a NULL terminated c string.
-!--------------------------------------------------------------------------------------------------
-pure function c_f_string_array(c_string) result(f_string)
-
-  character(kind=C_CHAR), intent(in), dimension(*) :: c_string
-  character(len=:), allocatable                    :: f_string
-
-  integer :: n, i
-
-
-  n = 0
-  do
-    if (c_string(n+1) == C_NULL_CHAR) exit
-    n = n + 1
-  end do
-
-  allocate(character(len=n) :: f_string)
-  do i = 1, n
-    f_string(i:i) = c_string(i)
-  end do
-
-end function c_f_string_array
-
 
 #if (defined(__INTEL_COMPILER) && __INTEL_COMPILER_BUILD_DATE < 20240000) \
  || (defined(__GFORTRAN__) && __GNUC__ < 15) \
