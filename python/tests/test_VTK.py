@@ -204,11 +204,14 @@ def test_invalid_set_dual(default):
                                             (float,(1,)),
                                             (int,(4,)),
                                             (str,(1,))])
-@pytest.mark.parametrize('N_values',[5*6*7,6*7*8])
-def test_set_get(np_rng,default,data_type,shape,N_values):
-    data = np.squeeze(np_rng.integers(0,100,(N_values,)+shape)).astype(data_type)
-    new = default.set('data',data)
-    assert (np.squeeze(data.reshape(N_values,-1)) == new.get('data')).all()
+@pytest.mark.parametrize('cell_centered',[True,False])
+@pytest.mark.parametrize('named_components',[True,False])
+def test_set_get(np_rng,default,data_type,shape,cell_centered,named_components):
+    data = np.squeeze(np_rng.integers(0,100,(default.N_cells if cell_centered else default.N_points,)+shape)).astype(data_type)
+    component_names = [f'comp{i}' for i in range(np.prod(shape))] if named_components and np.prod(shape) > 1 else \
+                      None
+    new = default.set('data',data,component_names=component_names)
+    assert (np.squeeze(data.reshape(-1,np.prod(shape))) == new.get('data')).all()
 
 
 @pytest.mark.parametrize('shapes',[{'scalar':(1,),'vector':(3,),'tensor':(3,3)},
@@ -224,6 +227,20 @@ def test_set_table(np_rng,default,shapes):
     for k,s in shapes.items():
         assert np.allclose(np.squeeze(d[k]['data']),new.get(k),rtol=1e-7)
 
+@pytest.mark.parametrize('shapes',[{'scalar':(1,),'vector':(3,),'tensor':(3,3)},
+                                   {'vector':(6,),'tensor':(3,3)},
+                                   {'tensor':(3,3),'scalar':(1,)}])
+@pytest.mark.parametrize('named_components',[True,False])
+def test_set_from_table(np_rng,default,shapes,named_components):
+    N = np_rng.choice([default.N_points,default.N_cells])
+    data = {k:np_rng.random(N*np.prod(s)).reshape((N,-1)) for k,s in shapes.items()}
+    component_names = {k:[f'comp{i}' for i in range(np.prod(s))] for k,s in shapes.items()} if named_components else \
+                      None
+
+    new = default.set_from_table(Table(shapes,np.column_stack(list(data.values()))),
+                                 component_names=component_names)
+    for k,s in shapes.items():
+        assert np.allclose(np.squeeze(data[k]),new.get(k),rtol=1e-7)
 
 def test_set_masked(np_rng,default):
     data = np_rng.random((5*6*7,3))

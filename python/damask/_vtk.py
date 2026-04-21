@@ -1,12 +1,15 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import os
+import warnings
 import multiprocessing as mp
 import logging
 import contextlib
 from pathlib import Path
-from typing import Optional, Union, Literal, Sequence
+from typing import Optional, Union, Literal
 
 import numpy as np
+
+from ._typehints import StrSequence
 
 # needed for visualization but might not be available everywhere
 # https://gitlab.kitware.com/vtk/vtk/-/issues/19687
@@ -166,7 +169,7 @@ class VTK:
 
     @comments.setter
     def comments(self,
-                 comments: Sequence[str]):
+                 comments: StrSequence):
         """
         Set comments.
 
@@ -531,12 +534,17 @@ class VTK:
             data: Union[None, np.ndarray, np.ma.MaskedArray] = None,
             info: Optional[str] = None,
             *,
-            table: Optional['Table'] = None) -> 'VTK':
+            table: Optional['Table'] = None,
+            component_names: Optional[StrSequence] = None) -> 'VTK':
         """
         Add new or replace existing point or cell data.
 
         Data can either be a numpy.array, which requires a corresponding label,
         or a damask.Table.
+
+        .. deprecated:: 3.1.0
+            The `table` argument will be removed in DAMASK 4.0.
+            Use `vtk.set_from_table` instead.
 
         Parameters
         ----------
@@ -550,6 +558,9 @@ class VTK:
         table : damask.Table, optional
             Data to add or replace. Each table label is individually considered.
             Number of rows needs to match either number of cells or number of points.
+        component_names: sequence of str, optional
+            Name of each data component. Flattened component names are assigned to
+            flattened shape of one data row, assuming row-major order for both.
 
         Returns
         -------
@@ -570,7 +581,10 @@ class VTK:
         >>> cells = (16,8,16)
         >>> size = (1.0,0.5,1.0)
         >>> v = damask.VTK.from_image_data(cells=cells,size=size)
-        >>> print(v := v.set(label='F',data=np.broadcast_to(np.eye(3),(np.prod(cells),3,3))))
+        >>> print(v := v.set(label='F',data=np.broadcast_to(np.eye(3),(np.prod(cells),3,3)),
+        ...                  component_names = [['11','12','13'],
+        ...                                     ['21','22','23'],
+        ...                                     ['31','32','33']]))
         vtkImageData
         <BLANKLINE>
         # cells: 2048
@@ -578,52 +592,87 @@ class VTK:
         <BLANKLINE>
         # points: 2601
         """
-
-        def _add_array(vtk_data,
-                       label: str,
-                       data: np.ndarray):
-
-            N_p,N_c = vtk_data.GetNumberOfPoints(),vtk_data.GetNumberOfCells()
-            if (N_data := data.shape[0]) not in [N_p,N_c]:
-                raise ValueError(f'data count mismatch ({N_data} ≠ {N_p} & {N_c})')
-
-            data_ = data.reshape(N_data,-1) \
-                        .astype(np.single if data.dtype in [np.double,np.longdouble] else data.dtype)
-
-            if data.dtype.type is np.str_:
-                d = vtkStringArray()
-                for s in np.squeeze(data_):
-                    d.InsertNextValue(s)
-            else:
-                d = numpy_to_vtk(data_,deep=True)
-
-            d.SetName(label)
-
-            if N_data == N_p:
-                vtk_data.GetPointData().AddArray(d)
-            if N_data == N_c:
-                vtk_data.GetCellData().AddArray(d)
-
         if data is None and table is None:
             raise KeyError('no data given')
         if data is not None and table is not None:
             raise KeyError('cannot use both, data and table')
 
         dup = self.copy()
+
         if isinstance(data,np.ndarray):
             if label is not None:
-                _add_array(dup.vtk_data,
-                           label,
-                           np.where(data.mask,data.fill_value,data) if isinstance(data,np.ma.MaskedArray) else data)
+                N_p,N_c = dup.vtk_data.GetNumberOfPoints(),dup.vtk_data.GetNumberOfCells()
+                if (N_data := data.shape[0]) not in [N_p,N_c]:
+                    raise ValueError(f'data count mismatch ({N_data} ≠ {N_p} & {N_c})')
+
+                data_ = (data.filled() if isinstance(data,np.ma.MaskedArray) else data) \
+                        .reshape(N_data,-1) \
+                        .astype(np.single if data.dtype in [np.double,np.longdouble] else data.dtype)
+
+                if data.dtype.type is np.str_:
+                    d = vtkStringArray()
+                    for s in np.squeeze(data_):
+                        d.InsertNextValue(s)
+                else:
+                    d = numpy_to_vtk(data_,deep=True)
+
+                d.SetName(label)
+                if component_names is not None:
+                    for c,n in zip(range(data_.shape[1]),np.asarray(component_names).flatten(),strict=True):
+                        d.SetComponentName(c,str(n))
+
+                if N_data == N_p:
+                    dup.vtk_data.GetPointData().AddArray(d)
+                if N_data == N_c:
+                    dup.vtk_data.GetCellData().AddArray(d)
+
                 if info is not None: dup.comments.append(f'{label}: {info}')
             else:
                 raise ValueError('no label defined for data')
+            return dup
         elif isinstance(table,Table):
-            for l in table.labels:
-                _add_array(dup.vtk_data,l,table.get(l))
-                if info is not None: dup.comments.append(f'{l}: {info}')
+            warnings.warn('using "table" is deprecated, use "damask.VTK.set_from_table"',
+                          DeprecationWarning,stacklevel=2)
+            return  self.set_from_table(table,info=info)
         else:
             raise TypeError('no valid data provided')
+
+
+    def set_from_table(self,
+                       table: 'Table',
+                       labels: Optional[StrSequence] = None,
+                       component_names: Optional[dict[str,StrSequence]] = None,
+                       info: Optional[str] = None) -> 'VTK':
+        """
+        Add new or replace existing point or cell data from damask.Table.
+
+        Parameters
+        ----------
+        table : damask.Table
+            Data to add or replace. Each table label is individually considered.
+            Number of rows needs to match either number of cells or number of points.
+        labels : sequence of str, optional
+            Labels of data to consider. By default, all data is added.
+        component_names: dictionary of sequence of str, optional
+            Name of each data component per table entry. Flattened component names are
+            assigned to flattened data shape of corresponding table entry, assuming
+            row-major order for both.
+        info : str, optional
+            Human-readable information about the data.
+
+        Returns
+        -------
+        updated : damask.VTK
+            Updated VTK-based geometry.
+
+        Notes
+        -----
+        If the number of cells equals the number of points, the data is added to both.
+        """
+        dup = self.copy()
+        for label in (labels if labels is not None else table.labels):
+            dup = dup.set(label,table.get(label),info=info,
+                          component_names=(component_names.get(label,None) if component_names else None))
 
         return dup
 
