@@ -22,8 +22,6 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ptree_fwd.hpp>
 
-#include "../IO.h"
-
 // Guideline Support Library is used when pointers own memory and need to be manually freed.
 // https://clang.llvm.org/extra/clang-tidy/checks/cppcoreguidelines/owning-memory.html
 namespace gsl {
@@ -48,8 +46,7 @@ public:
    * @param file_path Null-terminated path to a .vti file.
    * @throws std::runtime_error on I/O or parse/validation errors.
    */
-  explicit VTI(const IO& io) : io(io) {}
-  VTI(const char* file_path, const IO& io);
+  VTI(const char* file_path);
 
   /**
    * @brief Read a little-endian word of size @p n_bytes_per_word from @p p.
@@ -67,7 +64,7 @@ public:
    * @param n_bytes_per_word Word size (4 or 8).
    * @return            Vector with decoded uncompressed bytes
    */
-  std::vector<uint8_t> decode_compressed_VTI(const std::string& b64_string, std::size_t n_bytes_per_word);
+  static std::vector<uint8_t> decode_compressed_VTI(const std::string& b64_string, std::size_t n_bytes_per_word);
 
   /**
    * @brief Decode an uncompressed VTI Dataarray.
@@ -76,7 +73,7 @@ public:
    * @param n_bytes_per_word Word size (4 or 8).
    * @return            Vector with decoded bytes.
    */
-  std::vector<uint8_t> decode_uncompressed_VTI(const std::string& b64_string, std::size_t n_bytes_per_word);
+  static std::vector<uint8_t> decode_uncompressed_VTI(const std::string& b64_string, std::size_t n_bytes_per_word);
 
   /**
    * @brief Read an integer DataArray into a Fortran pointer descriptor.
@@ -117,7 +114,6 @@ public:
   DecodedBuffer parse_cell_data_array(const char* array_name);
   pt::ptree vti_tree;
   std::string file_path;
-  IO io;
 
 private:
   /**
@@ -135,7 +131,7 @@ private:
    * @param b64 ASCII string with valid Base-64 characters
    * @return Vector with decoded bytes
    */
-  std::vector<std::uint8_t> decode_b64(std::string_view b64);
+  static std::vector<std::uint8_t> decode_b64(std::string_view b64);
 
   /**
    * @brief Interpret a raw byte vector as a span of type T.

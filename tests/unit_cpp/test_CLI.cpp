@@ -7,26 +7,12 @@
 #include <string>
 #include <vector>
 #include <system_error>
+#include <initializer_list>
 
 #include "../../src/CLI.h"
+#include "conftest.h"
 
 namespace fs = std::filesystem;
-
-// Mock fortran functions (resolve directly so the actual implementations are not pulled from fortran)
-extern "C" {
-  static std::vector<std::string> fortran_mock_buffer;
-  void F_IO_printCppString(const char* c_str) { fortran_mock_buffer.emplace_back(c_str ? c_str : ""); }
-  void F_printCompileOptions() {}
-  bool IO_redirectedSTDOUT = false;
-  bool IO_redirectedSTDERR = false;
-}
-
-// Use object lifespan to ensure clean fortran buffer across tests
-// NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
-struct FortranBufferGuard {
-  FortranBufferGuard()  { fortran_mock_buffer.clear(); }
-  ~FortranBufferGuard() { fortran_mock_buffer.clear(); }
-};
 
 // Fixture to ensure we go back to the testdir after a test changes our cwd
 class CwdGuard : public ::testing::Test {
@@ -106,6 +92,70 @@ TEST_F(CwdGuard, InitializationRestart) {
   CLI cli(args, &mpi_world_rank);
   EXPECT_EQ(cli.jobname, "geom_load_material");
   EXPECT_EQ(cli.restart_inc, 7);
+}
+
+TEST_F(CwdGuard, HelpExitsWithoutError) {
+  int mpi_world_rank = 0;
+  std::vector<const char*> argv = {
+    "dummysolver",
+    "-h"
+  };
+  auto args = std::span(argv.data(),std::size(argv));
+  EXPECT_EXIT({
+      CLI cli(args, &mpi_world_rank);
+      (void)cli;
+    }, ::testing::ExitedWithCode(0), ""
+  );
+}
+
+TEST_F(CwdGuard, InitializationRestartNegative) {
+  int mpi_world_rank = 0;
+  for (const char* restart_val : {"-1", "-2"}) {
+    std::vector<const char*> argv = {
+      "dummysolver",
+      "--geometry", "geom.vti",
+      "--loadcase", "load.yaml",
+      "--materialconfig", "material.yaml",
+      "--restart", restart_val
+    };
+    auto args = std::span(argv.data(),std::size(argv));
+
+    EXPECT_THROW(CLI cli(args, &mpi_world_rank), FIOErrorCalled);
+    EXPECT_EQ(last_f_io_error_msg(), std::string("invalid value for --restart: ") + restart_val);
+  }
+}
+
+TEST_F(CwdGuard, InitializationMissingLoadcaseValue) {
+  int mpi_world_rank = 0;
+  IOMockGuard io_mock;
+
+  std::vector<const char*> argv = {
+    "dummysolver",
+    "-g", "20grains16x16x16.vti",
+    "-m", "material.yaml"
+  };
+  auto args = std::span(argv.data(),std::size(argv));
+
+  EXPECT_THROW(CLI cli(args, &mpi_world_rank), FIOErrorCalled);
+  EXPECT_EQ(io_error_id, 610);
+  EXPECT_NE(io_error_msg.find("the option '--loadcase' is required but missing"), std::string::npos);
+}
+
+TEST_F(CwdGuard, InitializationMissingArgumentAfterFlag) {
+  int mpi_world_rank = 0;
+  IOMockGuard io_mock;
+
+  std::vector<const char*> argv = {
+    "dummysolver",
+    "-g", "20grains16x16x16.vti",
+    "-m", "material.yaml",
+    "-l"
+  };
+  auto args = std::span(argv.data(),std::size(argv));
+
+  EXPECT_THROW(CLI cli(args, &mpi_world_rank), FIOErrorCalled);
+  EXPECT_EQ(io_error_id, 610);
+  EXPECT_NE(io_error_msg.find("the required argument for option '--loadcase' is missing"), std::string::npos);
 }
 
 TEST_F(CwdGuard, InitializationRestartFromZero) {

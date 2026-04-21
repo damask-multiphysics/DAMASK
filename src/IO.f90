@@ -16,7 +16,6 @@ module IO
   use prec
   use constants
   use misc
-  use C_interfacing
 
   implicit none(type,external)
   private
@@ -600,15 +599,15 @@ end subroutine IO_warning
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief C interface to IO_error_new taking a null-terminated C string.
+!> @brief C interface to IO_error_new taking a CFI character string.
 !--------------------------------------------------------------------------------------------------
 subroutine F_IO_error(error_ID, msg) bind(C, name='F_IO_error')
 
-  integer(C_INT),               intent(in), value :: error_ID
-  character(len=*,kind=C_CHAR), intent(in)        :: msg
+  integer(C_INT), intent(in), value :: error_ID
+  character(kind=C_CHAR,len=*), intent(in) :: msg
 
 
-  call IO_error_new(int(error_ID,pI16), trim(c_f_string(msg)))
+  call IO_error_new(int(error_ID,pI16), trim(msg))
 
 end subroutine F_IO_error
 
@@ -803,14 +802,14 @@ end subroutine quit
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Print C string to Fortran stdout.
+!> @brief Print CFI string to Fortran stdout.
 !--------------------------------------------------------------------------------------------------
 subroutine IO_printCppString(C_STR) bind(C, name='F_IO_printCppString')
 
-  character(kind=C_CHAR), intent(in), dimension(*) :: c_str
+  character(kind=C_CHAR,len=*), intent(in) :: c_str
 
 
-  write(IO_STDOUT, '(a)', advance='no') c_f_string(c_str)
+  write(IO_STDOUT, '(a)', advance='no') c_str
   flush(IO_STDOUT)
 
 end subroutine IO_printCppString

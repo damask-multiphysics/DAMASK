@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <array>
 
+#include <boost/program_options/errors.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/version.hpp>
@@ -37,8 +38,10 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include "CLI.h"
+#include "IO.h"                                           // for IO
 
 namespace fs = std::filesystem;
+constexpr int kCLIError = 610;
 
 std::string IO_color(const std::array<int, 3>& rgb) {
   if (isatty(STDOUT_FILENO) && !IO_redirectedSTDOUT) {
@@ -63,21 +66,19 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
   po::options_description flags(" Valid command line flags");
   flags.add_options()
     ("help,h", "show help")
-    ("geometry,g",         po::value<std::string>(&arg_geom)->value_name("[ --geom ]"),         "geometry file")
-    ("loadcase,l",         po::value<std::string>(&arg_load)->value_name("[ --load ]"),         "load case")
-    ("materialconfig,m",   po::value<std::string>(&arg_material)->value_name("[ --material ]"), "material config")
-    ("numericsconfig,n",   po::value<std::string>(&arg_numerics)->value_name("[ --numerics ]"), "numerics config")
-    ("jobname,j",          po::value<std::string>(&arg_jobname)->value_name("[ --job ]"),       "job name")
-    ("workingdirectory,w", po::value<std::string>(&arg_wd)->value_name("[ --wd ]"),             "working directory")
-    ("wd",                 po::value<std::string>(&arg_wd),                                     "alias")
+    ("geometry,g", po::value<std::string>(&arg_geom)->value_name("[ --geom ]")->required(), "geometry file")
+    ("loadcase,l", po::value<std::string>(&arg_load)->value_name("[ --load ]")->required(), "load case")
+    ("materialconfig,m", po::value<std::string>(&arg_material)->value_name("[ --material ]")->required(), "material config")
+    ("numericsconfig,n", po::value<std::string>(&arg_numerics)->value_name("[ --numerics ]"), "numerics config")
+    ("jobname,j", po::value<std::string>(&arg_jobname)->value_name("[ --job ]"), "job name")
+    ("workingdirectory,w", po::value<std::string>(&arg_wd)->value_name("[ --wd ]"), "working directory")
+    ("wd", po::value<std::string>(&arg_wd), "alias")
 #if defined(GRID) || defined(TEST)
-    ("restart,r",          po::value<int>(&arg_rs)->value_name("[ --rs ]"),                     "restart increment")
-    ("rs",                 po::value<std::string>(&arg_wd),                                     "alias")
+    ("restart,r", po::value<int>(&arg_rs)->value_name("[ --rs ]"), "restart increment")
+    ("rs", po::value<int>(&arg_rs), "alias")
 #endif
   ;
   po::variables_map vm;
-  po::store(po::parse_command_line(int(args.size()), args.data(), flags), vm);
-  po::notify(vm);
 
   /**
    * @brief Helper method to remove leading equal from argument string.
@@ -87,7 +88,7 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
    * @param[in] path_str
    */
   auto remove_leading_equal = [](const std::string& arg) -> std::string {
-    return arg.length() > 0 && arg.at(0) == '=' ? arg.substr(1):arg;
+    return !arg.empty() && arg.at(0) == '=' ? arg.substr(1):arg;
   };
 
   /**
@@ -112,9 +113,18 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
     return boost::lexical_cast<std::string>(boost::uuids::random_generator()());
   };
 
-  if (vm.count("help") || args.size() == 1) {
-    CLI::help_print(flags);
-    std::exit(0);
+  try {
+    po::parsed_options parsed = po::parse_command_line(int(args.size()), args.data(), flags);
+    po::store(parsed, vm);
+
+    if (vm.count("help") || args.size() == 1) {
+      CLI::help_print(flags);
+      std::exit(0);
+    }
+
+    po::notify(vm);
+  } catch (const boost::program_options::error& e) {
+    IO::error(kCLIError, std::string("Command line error: ") + e.what());
   }
 
   geom_path = remove_leading_equal(arg_geom);
@@ -136,8 +146,12 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
     fs::current_path(remove_leading_equal(arg_wd));
   }
 
-  if (arg_rs != -1)
+  if (vm.count("restart")) {
+    if (arg_rs < 0) {
+      IO::error(kCLIError, std::string("invalid value for --restart: ") + std::to_string(arg_rs));
+    }
     restart_inc = arg_rs;
+  }
 
   if (*worldrank==0){
     uuid = generate_uuid();
@@ -145,7 +159,7 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
 
   boost::system::error_code ec;
   std::string hostname = boost::asio::ip::host_name(ec);
-  if (ec) std::runtime_error("boost hostname collection error: " + ec.message());
+  if (ec) throw std::runtime_error("boost hostname collection error: " + ec.message());
 
   cout << " Host name: " << hostname << std::endl;
   cout << " User name: " << get_username() << std::endl << std::endl;
@@ -158,7 +172,7 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
   cout << " Geometry:           " << geom_path << std::endl;
   cout << " Load case:          " << loadfile_path << std::endl;
   cout << " Material config:    " << material_path << std::endl;
-  if (vm.count("numerics")) {
+  if (vm.count("numericsconfig")) {
     cout << " Numerics config:  " << numerics_path << std::endl;
   }
   cout << " Job name:           " << jobname << std::endl;
@@ -168,14 +182,13 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
   }
 }
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
 void CLI::init_print() {
 #ifdef DEBUG
-  std::array<int,3> red = {255,0,0};
+  constexpr std::array<int,3> red = {255,0,0};
   cout << IO_color(red);
   cout << "debug version - debug version - debug version - debug version - debug version" << std::endl;
 #else
-  std::array<int,3> DAMASK_blue = {67,128,208};
+  constexpr std::array<int,3> DAMASK_blue = {67,128,208};
   cout << IO_color(DAMASK_blue);
 #endif
   cout << R"(
@@ -188,11 +201,11 @@ void CLI::init_print() {
 )";
 
 #ifdef GRID
-  std::array<int,3> DAMASK_green = {123,207,68};
+  constexpr std::array<int,3> DAMASK_green = {123,207,68};
   cout << IO_color(DAMASK_green);
   cout << " Grid solver" << std::endl << std::endl;
 #elif defined(MESH)
-  std::array<int,3> DAMASK_orange = {230,150,68};
+  constexpr std::array<int,3> DAMASK_orange = {230,150,68};
   cout << IO_color(DAMASK_orange);
   cout << " Mesh solver" << std::endl << std::endl;
 #endif
@@ -201,7 +214,6 @@ void CLI::init_print() {
   cout << IO_color(red);
   cout << " debug version - debug version - debug version - debug version - debug version" << std::endl << std::endl;
 #endif
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
 
   cout << IO_color_reset();
   cout << " F. Roters et al., Computational Materials Science 158:420–478, 2019" << std::endl
