@@ -29,7 +29,7 @@ extern "C" {
    *
    * @param[in] c_str  Descriptor for the string to print.
    */
-  void F_IO_printCppString(CFI_cdesc_t* c_str);
+  void F_IO_print(CFI_cdesc_t* c_str);
 
   /** Print Fortran `compiler_options()` string and cmake info. */
   void F_printCompileOptions();
@@ -60,7 +60,7 @@ class FortranStream : public std::ostream {
         CFI_CDESC_T(0) buffer_desc_raw;
         auto* buffer_desc = reinterpret_cast<CFI_cdesc_t*>(&buffer_desc_raw);
         CFI_establish(buffer_desc, buffer.data(), CFI_attribute_other, CFI_type_char, buffer.size(), 0, nullptr);
-        F_IO_printCppString(buffer_desc);
+        F_IO_print(buffer_desc);
         buffer.clear();
       }
       return 0;
