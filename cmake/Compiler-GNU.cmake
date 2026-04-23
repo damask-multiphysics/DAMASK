@@ -2,7 +2,7 @@
 ###################################################################################################
 # GNU Compiler
 ###################################################################################################
-set(Fortran_COMPILER_VERSION_MIN 11.1)
+set(Fortran_COMPILER_VERSION_MIN 12.1)
 
 set(_OPTIMIZATION_DEBUG      "-Og")
 set(_OPTIMIZATION_OFF        "-O0")
@@ -23,10 +23,6 @@ if(CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 14)
   set(STANDARD_CHECK "-std=f2018 -pedantic-errors")
 else()
   set(STANDARD_CHECK "-std=f2023 -pedantic-errors")
-endif()
-
-if(CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 12)
-  add_compile_definitions(OLD_STYLE_C_TO_FORTRAN_STRING)
 endif()
 
 #------------------------------------------------------------------------------------------------

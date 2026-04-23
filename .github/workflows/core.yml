@@ -17,7 +17,7 @@ jobs:
 
     strategy:
       matrix:
-        gcc_v: [11, 12, 13, 14]
+        gcc_v: [12, 13, 14]
       fail-fast: false
 
     env:
@@ -67,7 +67,6 @@ jobs:
       - name: PETSc - Installation
         run: |
           cd petsc-${PETSC_VERSION}
-          sed -i 's/self.getCompiler().lower()/self.getCompiler()/g' config/BuildSystem/config/packages/boost.py # https://gitlab.com/petsc/petsc/-/merge_requests/9012
           ./configure \
           --with-fc=gfortran --with-cc=gcc --with-cxx=g++ \
           --download-openmpi --download-fftw --download-hdf5 --with-hdf5-fortran-bindings=1 --download-zlib --download-boost \
