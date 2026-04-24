@@ -11,6 +11,7 @@ from damask import Table
 from damask import Crystal
 from damask import util
 from damask import grid_filters
+from damask import tensor
 from damask import _crystal
 
 crystal_families = set(_crystal.lattice_symmetries.values())
@@ -435,12 +436,21 @@ def test_Schmid_crystal_equivalence(np_rng,assert_allclose,lattice):
                                 c=(1.2 if lattice == 'tI' else None),rng_seed=np_rng)               # noqa
     c = Crystal(lattice=lattice,c=(1.2 if lattice == 'tI' else None))
     for mode in ['slip']+([] if lattice == 'tI' else ['twin']):
-        Ps = O.Schmid(N_slip='*') if mode == 'slip' else O.Schmid(N_twin='*')
+        Ps = O.Schmid(**{f'N_{mode}':'*'})
         for i in itertools.product(*map(range,tuple(shape))):
-            P = ~O[i] @ (c.Schmid(N_slip='*') if mode == 'slip' else c.Schmid(N_twin='*'))
+            P = ~O[i] @ c.Schmid(**{f'N_{mode}':'*'})
             idx = (slice(None),)+i+(slice(None),slice(None))
             assert_allclose(P,Ps[idx])
             #assert_allclose(P,Ps[:,*i,:,:])                                                        # ok for Python >= 3.13
+
+@pytest.mark.parametrize('lattice',['hP','cI','cF','tI'])
+def test_resolved_shear_stress(np_rng,assert_allclose,lattice):
+    shape = np_rng.integers(1,4,np_rng.integers(1,4))
+    sigma = np.diag(np_rng.permutation([0,0,1]))
+    O = Orientation.from_random(shape=shape,lattice=lattice,
+                                c=(1.2 if lattice == 'tI' else None),rng_seed=np_rng)               # noqa
+    for mode in ['slip']+([] if lattice == 'tI' else ['twin']):
+        assert np.all(np.abs(O.resolved_shear_stress(**{f'N_{mode}':'*','sigma':sigma}))<0.5)
 
 ### vectorization tests ###
 
@@ -450,12 +460,27 @@ def test_Schmid_vectorization(np_rng,assert_allclose,lattice):
     O = Orientation.from_random(shape=shape,lattice=lattice,
                                 c=(1.2 if lattice == 'tI' else None),rng_seed=np_rng)               # noqa
     for mode in ['slip']+([] if lattice == 'tI' else ['twin']):
-        Ps = O.Schmid(N_slip='*') if mode == 'slip' else O.Schmid(N_twin='*')
+        Ps = O.Schmid(**{f'N_{mode}':'*'})
         for i in itertools.product(*map(range,tuple(shape))):
-            P = O[i].Schmid(N_slip='*') if mode == 'slip' else O[i].Schmid(N_twin='*')
+            P = O[i].Schmid(**{f'N_{mode}':'*'})
             idx = (slice(None),)+i+(slice(None),slice(None))
             assert_allclose(P,Ps[idx])
             #assert_allclose(P,Ps[:,*i,:,:])                                                        # ok for Python >= 3.13
+
+@pytest.mark.parametrize('lattice',['hP','cI','cF','tI'])
+def test_resolved_shear_stress_vectorization(np_rng,assert_allclose,lattice):
+    shape = np_rng.integers(1,4,np_rng.integers(1,4))
+    sigma = tensor.symmetric(np_rng.random((3,3)))
+    O = Orientation.from_random(shape=shape,lattice=lattice,
+                                c=(1.2 if lattice == 'tI' else None),rng_seed=np_rng)               # noqa
+    for mode in ['slip']+([] if lattice == 'tI' else ['twin']):
+        csss = O.resolved_shear_stress(**{f'N_{mode}':'*','sigma':sigma})
+        for i in itertools.product(*map(range,tuple(shape))):
+            css = O[i].resolved_shear_stress(**{f'N_{mode}':'*','sigma':sigma})
+            idx = (slice(None),)+i
+            assert_allclose(css,csss[idx])
+            #assert_allclose(css,csss[:,*i])                                                        # ok for Python >= 3.13
+
 
 @pytest.mark.parametrize('family',crystal_families)
 @pytest.mark.parametrize('shape',[(1,),(2,3),(4,3,2)])

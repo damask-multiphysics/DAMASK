@@ -18,7 +18,7 @@ NumpyRngSeed = Union[int, IntSequence, np.random.SeedSequence, np.random.BitGene
 
 # https://peps.python.org/pep-0655/
 # Metadata = TypedDict('Metadata', {'unit': str, 'description': str, 'creator': str, 'lattice': NotRequired[str]})
-_Metadata = TypedDict('_Metadata', {'lattice': str, 'c/a': float}, total=False)
+_Metadata = TypedDict('_Metadata', {'lattice': str, 'c/a': float, 'systems': list[str]}, total=False)
 
 class Metadata(_Metadata):
     unit: str
