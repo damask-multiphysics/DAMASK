@@ -43,7 +43,6 @@ solver:
     N_staggered_iter_max: 10            # max number of field level staggered iterations
     p_s:                  2             # order of displacement shape functions
     p_i:                  2             # order of quadrature rule required
-    bbarstabilization:    false
 
     mechanical:
       N_iter_max:         250           # Maximum iteration number

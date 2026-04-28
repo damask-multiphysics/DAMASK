@@ -47,8 +47,6 @@ module mesh_mechanical_FEM
     PetscInt :: &
       p_i, &                                                                                        !< integration order (quadrature rule)
       itmax
-    logical :: &
-      BBarStabilization
     real(pREAL) :: &
       eps_struct_atol, &                                                                            !< absolute tolerance for mechanical equilibrium
       eps_struct_rtol                                                                               !< relative tolerance for mechanical equilibrium
@@ -147,9 +145,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
 ! read numerical parametes and do sanity checks
   num_mech => num_mesh%get_dict('mechanical', defaultVal=emptyDict)
 
-  num%p_i               = int(num_mesh%get_asInt('p_i',defaultVal=2),pPETSCINT)
-  num%BBarStabilization = num_mesh%get_asBool('bbarstabilization',defaultVal=.false.)
-
+  num%p_i             = int(num_mesh%get_asInt('p_i',defaultVal=2),pPETSCINT)
   num%itmax           = int(num_mech%get_asInt('N_iter_max',defaultVal=250),pPETSCINT)
   num%eps_struct_atol = num_mech%get_asReal('eps_abs_div(P)', defaultVal=1.0e-10_pREAL)
   num%eps_struct_rtol = num_mech%get_asReal('eps_rel_div(P)', defaultVal=1.0e-4_pREAL)
@@ -461,7 +457,6 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
   PetscInt  :: cellStart, cellEnd, cell, &
                qPt, basis, comp, cidx, &
                numFields, m,i
-  PetscReal :: detFAvg
   PetscReal, dimension(dimPlex*dimPlex,cellDof) :: BMat
 #if PETSC_VERSION_MINOR>=24
   PetscBool :: isSimplex
@@ -555,15 +550,6 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
       end do
       homogenization_F(1:dimPlex,1:dimPlex,m) = reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex], order=[2,1])
     end do
-    if (num%BBarStabilization) then
-      detFAvg = math_det33(sum(homogenization_F(1:3,1:3,cell*nQuadrature+1:(cell+1)*nQuadrature),dim=3)/real(nQuadrature,pREAL))
-      do qPt = 0, nQuadrature-1
-        m = cell*nQuadrature + qPt+1
-        homogenization_F(1:dimPlex,1:dimPlex,m) = homogenization_F(1:dimPlex,1:dimPlex,m) &
-                                                * (detFAvg/math_det33(homogenization_F(1:3,1:3,m)))**(1.0_pREAL/real(dimPlex,pREAL))
-
-      end do
-    end if
 #if PETSC_VERSION_MINOR>22
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,PETSC_NULL_INTEGER,x_scal,err_PETSc)
 #else
@@ -671,8 +657,8 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
 #endif
 
   PetscReal, dimension(1,         cellDof) :: MatB
-  PetscReal, dimension(dimPlex**2,cellDof) :: BMat, BMatAvg, MatA
-  PetscReal, dimension(3,3) :: F, FAvg, FInv
+  PetscReal, dimension(dimPlex**2,cellDof) :: BMat, &
+                                              MatA
 
 #if PETSC_VERSION_MINOR>=24
   real(pREAL), dimension(:), pointer :: pCellJ, pInvCellJ, pDetJ
@@ -686,10 +672,9 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
   PetscReal,   dimension(:), pointer :: basisFieldDer, &
                                         dev_null
 #endif
-  real(pREAL), dimension(:), pointer :: pK_e, x_scal
+  real(pREAL), dimension(:), pointer :: pK_e
 
   real(pREAL), dimension(cellDOF,cellDOF), target :: K_e
-  real(pREAL), dimension(cellDOF,cellDOF)         :: K_eA, K_eB
   real(pREAL), dimension(dimPlex,dimPlex)         :: invCellJ
 
   PetscInt :: cellStart, cellEnd, cell, &
@@ -749,12 +734,6 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
   CHKERRQ(err_PETSc)
 #endif
   do cell = cellStart, cellEnd-1                                                                    !< loop over all elements
-#if PETSC_VERSION_MINOR>22
-    call DMPlexVecGetClosure(dm_local,section,x_local,cell,PETSC_NULL_INTEGER,x_scal,err_PETSc)     !< get Dofs belonging to el
-#else
-    call DMPlexVecGetClosure(dm_local,section,x_local,cell,x_scal,err_PETSc)                        !< get Dofs belonging to element
-#endif
-    CHKERRQ(err_PETSc)
 #if PETSC_VERSION_MINOR>=24
     call DMPlexComputeCellGeometryFEM(dm_local,cell,quadrature,PETSC_NULL_REAL_ARRAY,pCellJ, &
                                       pInvCellJ,pDetJ,err_PETSc)
@@ -762,11 +741,8 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
     call DMPlexComputeCellGeometryAffineFEM(dm_local,cell,pV0,pCellJ,pInvCellJ,detJ,err_PETSc)
 #endif
     CHKERRQ(err_PETSc)
-    K_eA = 0.0_pREAL
-    K_eB = 0.0_pREAL
+    K_e  =  0.0_pREAL
     MatB = 0.0_pREAL
-    FAvg = 0.0_pREAL
-    BMatAvg = 0.0_pREAL
 #if PETSC_VERSION_MINOR<24
     invCellJ = reshape(pInvCellJ, shape=[dimPlex,dimPlex])
 #endif
@@ -798,40 +774,11 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,J,Jp,dummy,err_PETSc)
                                     shape=[dimPlex,dimPlex,dimPlex,dimPlex], order=[2,1,4,3]), &
                             shape=[dimPlex*dimPlex,dimPlex*dimPlex]),BMat)
 
-      if (num%BBarStabilization) then
-        F(1:dimPlex,1:dimPlex) = reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex])
-        FInv = math_inv33(F)
-        K_eA = K_eA + matmul(transpose(BMat),MatA)*math_det33(FInv)**(1.0_pREAL/real(dimPlex,pREAL))
-        K_eB = K_eB - &
-               matmul(transpose(matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,ce),shape=[dimPlex**2,1_pPETSCINT]), &
-                                       matmul(reshape(FInv(1:dimPlex,1:dimPlex), &
-                                                      shape=[1_pPETSCINT,dimPlex**2],order=[2,1]),BMat))),MatA)
-        MatB = MatB &
-             + matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,ce),shape=[1_pPETSCINT,dimPlex**2]),MatA)
-        FAvg = FAvg + F
-        BMatAvg = BMatAvg + BMat
-      else
-        K_eA = K_eA + matmul(transpose(BMat),MatA)
-      end if
+      K_e = K_e + matmul(transpose(BMat),MatA)
     end do
-    if (num%BBarStabilization) then
-      FInv = math_inv33(FAvg)
-      K_e = K_eA*math_det33(FAvg/real(nQuadrature,pREAL))**(1.0_pREAL/real(dimPlex,pREAL)) + &
-            (matmul(matmul(transpose(BMatAvg), &
-                           reshape(FInv(1:dimPlex,1:dimPlex),shape=[dimPlex**2,1_pPETSCINT],order=[2,1])),MatB) + &
-             K_eB)/real(dimPlex,pREAL)
-    else
-      K_e = K_eA
-    end if
-    K_e = (K_e + eps*math_eye(int(cellDof)))
+    K_e = K_e + eps*math_eye(int(cellDof))
     pK_e(1:cellDOF**2) => K_e
     call DMPlexMatSetClosure(dm_local,section,gSection,Jp,cell,pK_e,ADD_VALUES,err_PETSc)
-    CHKERRQ(err_PETSc)
-#if PETSC_VERSION_MINOR>22
-    call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,PETSC_NULL_INTEGER,x_scal,err_PETSc)
-#else
-    call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,x_scal,err_PETSc)
-#endif
     CHKERRQ(err_PETSc)
   end do
   call MatAssemblyBegin(Jp,MAT_FINAL_ASSEMBLY,err_PETSc)
