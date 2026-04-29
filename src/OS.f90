@@ -30,6 +30,7 @@ module OS
       integer(C_INT) :: set_CWD_C
       character(kind=C_CHAR), dimension(*), intent(in) :: cwd
     end function set_CWD_C
+
     subroutine get_CWD_C(cwd, stat) bind(C)
       use, intrinsic :: ISO_C_binding, only: C_INT, C_CHAR
 
@@ -93,8 +94,10 @@ function OS_getCWD()
 
   integer(C_INT) :: stat
 
+
   call get_CWD_C(OS_getCWD,stat)
   if (stat /= 0) error stop 'invalid working directory'
+
 end function OS_getCWD
 
 
@@ -107,8 +110,10 @@ function OS_getHostName()
 
   integer(C_INT) :: stat
 
+
   call get_hostname_C(OS_getHostName,stat)
   if (stat /= 0) OS_getHostName = 'n/a (Error!)'
+
 end function OS_getHostName
 
 
@@ -121,8 +126,10 @@ function OS_getUserName()
 
   integer(C_INT) :: stat
 
+
   call get_username_C(OS_getUserName,stat)
   if (stat /= 0) OS_getUserName = 'n/a (Error!)'
+
 end function OS_getUserName
 
 

@@ -413,7 +413,7 @@ grid_performance:
     - cmake --build build --parallel 4 --target install
     - source env/DAMASK.sh
   script:
-    - git clone -q https://damask_user:${STATISTICS_TOKEN}@git.damask-multiphysics.org/damask/statistics.git
+    - git clone -q https://damask_user:${TOKEN_STATISTICS}@git.damask-multiphysics.org/damask/statistics.git
     - ./statistics/measure_performance.py --input_dir examples/grid --tag ${CI_COMMIT_SHA} --output_dir statistics
     - cp statistics/performance.txt .
   artifacts:
@@ -439,7 +439,7 @@ update_statistics:
   dependencies:
     - grid_performance
   script:
-    - git clone -q https://damask_user:${STATISTICS_TOKEN}@git.damask-multiphysics.org/damask/statistics.git
+    - git clone -q https://damask_user:${TOKEN_STATISTICS}@git.damask-multiphysics.org/damask/statistics.git
     - cp performance.txt statistics/
     - cd statistics
     - git commit -m ${CI_PIPELINE_ID}_${CI_COMMIT_SHA} performance.txt
@@ -449,7 +449,7 @@ update_revision:
   extends: .update
   script:
     - cd $(mktemp -d)
-    - git clone -b development -q https://damask_user:${TOKEN}@git.damask-multiphysics.org/damask/DAMASK.git .
+    - git clone -b development -q https://damask_user:${TOKEN_DAMASK}@git.damask-multiphysics.org/damask/DAMASK.git .
     - export VERSION=$(git describe ${CI_COMMIT_SHA})
     - echo ${VERSION:1} > VERSION
     - >

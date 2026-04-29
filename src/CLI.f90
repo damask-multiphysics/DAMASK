@@ -29,7 +29,7 @@ module CLI
     CLI_jobName, &                                                                                  !< name of the job (will be used for DADF5 result file)
     CLI_jobID                                                                                       !< unique job ID (UUID)
 
-#if (defined(BOOST) && !defined(OLD_STYLE_C_TO_FORTRAN_STRING))
+#ifdef BOOST
    type :: tCLIBuffer
       character(len=:, kind=C_CHAR), pointer :: buf
    end type tCLIBuffer
@@ -92,7 +92,7 @@ subroutine CLI_init()
 #elif PETSC_VERSION_MINOR==25
 #define PETSC_DOI '10.2172/3025790'
 #endif
-#if (defined(BOOST) && !defined(OLD_STYLE_C_TO_FORTRAN_STRING))
+#ifdef BOOST
   type(C_PTR) :: CLI_ = C_NULL_PTR
   type(tCLIArgs) :: cliArgs
   integer(C_INT) :: stat
@@ -115,7 +115,7 @@ subroutine CLI_init()
 
   print'(/,1x,a)', '<<<+-  CLI init  -+>>>'
 
-#if (defined(BOOST) && !defined(OLD_STYLE_C_TO_FORTRAN_STRING))
+#ifdef BOOST
   print'(/,1x,a)', 'Using C++ parser'
 
   call cliArgs%copyCommandLineArgs()
@@ -245,7 +245,7 @@ subroutine CLI_init()
   if (allocated(numericsArg)) &
     print'(1x,a)',      'Numerics config:    '//IO_glueDiffering(CLI_numericsFile,numericsArg)
   print'(1x,a)',        'Job name:           '//CLI_jobName
-#if (defined(BOOST) && !defined(OLD_STYLE_C_TO_FORTRAN_STRING))
+#ifdef BOOST
   print'(1x,a)',        'Job ID:             '//CLI_jobID
 #endif
   if (CLI_restartInc /= -1) &
@@ -317,7 +317,7 @@ subroutine printCompileOptions() bind(C, name="F_printCompileOptions")
 
 end subroutine printCompileOptions
 
-#if (defined(BOOST) && !defined(OLD_STYLE_C_TO_FORTRAN_STRING))
+#ifdef BOOST
 !--------------------------------------------------------------------------------------------------
 !> @brief Copy command line args to c strings for boost-processing,
 !         allocate one extra element for the NULL termination.

@@ -36,7 +36,7 @@ extern "C" {
     last_f_io_error_msg() = msg ? std::string(static_cast<char*>(msg->base_addr), msg->elem_len) : "";
     throw FIOErrorCalled{};
   }
-  void F_IO_printCppString(CFI_cdesc_t* c_str) {
+  void F_IO_print(CFI_cdesc_t* c_str) {
     fortran_mock_buffer.emplace_back(c_str ? std::string(static_cast<char*>(c_str->base_addr), c_str->elem_len) : "");
   }
   void F_printCompileOptions() {}

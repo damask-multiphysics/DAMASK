@@ -7,8 +7,6 @@ import damask
 
 """ ----------------------------------------------------------------------------
 
-    *** PATCH TEST FOR THE MESH SOLVER ***
-
     Parametrization:
      - Polytopes:
        - 2D: triangles (tri) and quadrilaterals (quad)
@@ -51,7 +49,7 @@ import damask
     Also provided analytical solutions for (small) strains, true (Cauchy)
     stresses, first Piola-Kirchhoff stresses and deformation gradients.
 
-    Resources (in resources/patch_test):
+    Resources (in resources/mesh_analytical):
 
     - load.yaml: load file (-l)
     - material_base.yaml: material file (-m; without orientations)
@@ -64,7 +62,7 @@ import damask
 @pytest.fixture
 def res_path(res_path_base):
     """Directory containing testing resources."""
-    return res_path_base/'mesh_patch'
+    return res_path_base/'mesh_analytical'
 
 
 def load_setup(tmp_path, load_file, np_rng, n_D, polytope, BC_type, BC_point):
@@ -85,7 +83,7 @@ def load_setup(tmp_path, load_file, np_rng, n_D, polytope, BC_type, BC_point):
     # - 3D:
     #   - tet & hex: nodes {5,6,7,8}, DOF {13..24}, tags {16,17,18,19}
     dot_x = 'dot_u' if BC_type == 'displ' else 'dot_f'
-    load_config = damask.YAML.load(tmp_path/f'{load_file}.yaml')
+    load_config = damask.YAML.load(tmp_path/load_file)
     if BC_point == 'node':
         if n_D == 2:
             BC_tag = np_rng.integers(16,18) if polytope == 'tri' else \
@@ -111,20 +109,22 @@ def load_setup(tmp_path, load_file, np_rng, n_D, polytope, BC_type, BC_point):
         load_config['loadstep'][0]['boundary_conditions']['mechanical'][1]['label'] = label
         load_config['loadstep'][0]['boundary_conditions']['mechanical'][1][dot_x] = BC_val
 
+    N = np_rng.integers(1,5)
+    load_config['loadstep'][0]['discretization']['N'] = N
     if n_D == 2:
         zero_DOF = np.array([1, 2, 7, 8]) if polytope == 'tri' else \
                    np.array([1, 2, 7, 8, 17, 18])
     else:
         zero_DOF = np.arange(1, 4*n_D + 1)
 
-    load_config.save(tmp_path/f'{load_file}.yaml')
+    load_config.save(tmp_path/load_file)
     zero_DOF -= 1   # 0-indexing in python
     BC_DOF   -= 1
 
     return BC_val, BC_DOF, zero_DOF
 
 
-def material_setup(tmp_path, mat_file, np_rng, xtropy):
+def material_setup(file_in, file_out, np_rng, xtropy):
     """
     Randomized material properties.
 
@@ -160,23 +160,21 @@ def material_setup(tmp_path, mat_file, np_rng, xtropy):
     print('eigenvalues', eigvals)
 
     # Set up material file
-    mat_config = damask.YAML.load(tmp_path/f'{mat_file}_base.yaml')
+    mat_config = damask.ConfigMaterial.load(file_in)
     mat_config['phase']['phase_0']['lattice'] = lattice
     mat_config['phase']['phase_0']['mechanical']['elastic'] = \
         {'type':'Hooke', 'C_11': C_11, 'C_12': C_12, 'C_44': C_44,
                          'C_33': C_33, 'C_13': C_13, 'C_66': C_66}
-    mat_config.save(tmp_path/f'{mat_file}.yaml')
-    mat_config = damask.ConfigMaterial.load(tmp_path/f'{mat_file}.yaml')
     mat_config = mat_config.material_add(phase = ['phase_0'],
                                          O = (damask.Rotation.from_random(rng_seed=np_rng) if xtropy == 'iso' else
                                               damask.Rotation()),
                                          homogenization = 'SX')
-    mat_config.save(tmp_path/f'{mat_file}.yaml')
+    mat_config.save(file_out)
 
     return np.array([C_11, C_12, C_44, C_33, C_13, C_66])
 
 
-def analytical_sol(tmp_path, mesh_file, n_D, BC_vals, BC_DOF, zero_DOF, BC_type, polytope, elast_prop, \
+def analytical_sol(res_path, mesh_file, n_D, BC_vals, BC_DOF, zero_DOF, BC_type, polytope, elast_prop, \
                    chop = 1.0e-12):
     """Exact (analytical) solution (3D)"""
     # 2D:
@@ -196,7 +194,7 @@ def analytical_sol(tmp_path, mesh_file, n_D, BC_vals, BC_DOF, zero_DOF, BC_type,
     is_BC_set = np.array(BC_vals) != 'x'
     nodes_el  = connectivity(polytope)
     n_els     = len(nodes_el)
-    n_nodes   = len(node_coords(tmp_path, polytope))
+    n_nodes   = len(node_coords(res_path, polytope))
     BC_set    = np.sort(np.hstack(np.array([i + BC_DOF for i in range(len(BC_vals)+(n_D-3)) if is_BC_set[i]])))
 
     K_global = stiffness_matrix(polytope, elast_prop)
@@ -222,7 +220,7 @@ def analytical_sol(tmp_path, mesh_file, n_D, BC_vals, BC_DOF, zero_DOF, BC_type,
         uvw[BC_set] = np.tile(np.array(BC_vals)[np.where(is_BC_set)[0]].astype(float), len(BC_DOF))
     uvw = uvw.reshape([n_nodes, n_D])
 
-    coords = node_coords(tmp_path, polytope)    # old
+    coords = node_coords(res_path, polytope)    # old
     curr   = coords + uvw                       # current
 
     n_qPts = 1 if polytope == 'tri' or polytope == 'tet' else \
@@ -283,7 +281,7 @@ def analytical_sol(tmp_path, mesh_file, n_D, BC_vals, BC_DOF, zero_DOF, BC_type,
 
 def damask_results(tmp_path, job):
     """Retrieve numerical solution from DADF5 file"""
-    res = damask.Result(tmp_path/f'{job}.hdf5').view(increments=1)
+    res = damask.Result(tmp_path/f'{job}.hdf5').view(increments=-1)
 
     return res.get('u_n'), res.get('F'), res.get('P')
 
@@ -371,31 +369,28 @@ except EnvironmentError:
               pytest.param('hex',  'surf', marks=mark_old_PETSc)])
 @pytest.mark.parametrize("BC_type", ['displ', 'force'])
 @pytest.mark.parametrize('xtropy', ['iso', 'aniso'])
-def test_mesh_patch_test(res_path, copy_files, tmp_path, np_rng,
+def test_mesh_analytical(res_path, copy_files, tmp_path, np_rng,
                          xtropy, polytope, BC_point, BC_type, petsc_version):
     n_D = 2 if polytope in ['tri','quad'] else 3
-    copy_files(res_path, tmp_path)
-    load = 'load'
     mesh = f'mesh_{polytope}'
-    mat  = 'material'
-    job  = f'patch_{polytope}_{xtropy}_{BC_type}_{BC_point}'
+    job  = f'{polytope}_{xtropy}_{BC_type}_{BC_point}'
 
-    BC_vals, BC_DOF, zero_DOF = load_setup(tmp_path, load, np_rng, n_D, polytope,
+    copy_files(res_path, tmp_path, ['load.yaml', 'numerics.yaml', f'{mesh}.msh'])
+
+    BC_vals, BC_DOF, zero_DOF = load_setup(tmp_path, 'load.yaml', np_rng, n_D, polytope,
                                            BC_type, BC_point)
-    elast_prop = material_setup(tmp_path, mat, np_rng, xtropy)
+    elast_prop = material_setup(res_path/'material_base.yaml', tmp_path/'material.yaml', np_rng, xtropy)
 
-    """ Analytical solution """
-    uvw, strain, stress, F, P = analytical_sol(tmp_path, mesh, n_D, BC_vals, BC_DOF, zero_DOF,
+    uvw, strain, stress, F, P = analytical_sol(res_path, mesh, n_D, BC_vals, BC_DOF, zero_DOF,
                                                BC_type, polytope, elast_prop)
 
-    """ Numerical solution """
     try:
         if n_D == 3 and BC_vals.count('x') == 0 and petsc_version() < '3.24.1':
             pytest.xfail('solved in https://gitlab.com/petsc/petsc/-/merge_requests/8188')
     except EnvironmentError:
         pass
 
-    damask.util.run(f'damask_mesh -m {mat}.yaml -l {load}.yaml -g {mesh}.msh ' +
+    damask.util.run(f'damask_mesh -m material.yaml -l load.yaml -g {mesh}.msh ' +
                     f'-n numerics.yaml -j {job}', wd = tmp_path)
     uvw_damask, F_damask, P_damask = damask_results(tmp_path, job)
 
@@ -408,9 +403,9 @@ def test_mesh_patch_test(res_path, copy_files, tmp_path, np_rng,
 # Auxiliary functions
 #-------------------------------------------------------------------------------
 
-def node_coords(tmp_path, polytope):
+def node_coords(res_path, polytope):
     """Read node coordinates."""
-    return np.loadtxt(tmp_path/f'mesh_{polytope}_coords.dat')
+    return np.loadtxt(res_path/f'mesh_{polytope}_coords.dat')
 
 
 def connectivity(polytope, cell = None):

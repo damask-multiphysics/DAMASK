@@ -607,7 +607,7 @@ subroutine F_IO_error(error_ID, msg) bind(C, name='F_IO_error')
   character(kind=C_CHAR,len=*), intent(in) :: msg
 
 
-  call IO_error_new(int(error_ID,pI16), trim(msg))
+  call IO_error_new(int(error_ID,pI16), msg)
 
 end subroutine F_IO_error
 
@@ -802,17 +802,17 @@ end subroutine quit
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Print CFI string to Fortran stdout.
+!> @brief C interface for printing a CFI character string.
 !--------------------------------------------------------------------------------------------------
-subroutine IO_printCppString(C_STR) bind(C, name='F_IO_printCppString')
+subroutine F_IO_print(msg) bind(C, name='F_IO_print')
 
-  character(kind=C_CHAR,len=*), intent(in) :: c_str
+  character(kind=C_CHAR,len=*), intent(in) :: msg
 
 
-  write(IO_STDOUT, '(a)', advance='no') c_str
+  write(IO_STDOUT, '(a)', advance='no') msg
   flush(IO_STDOUT)
 
-end subroutine IO_printCppString
+end subroutine F_IO_print
 #endif
 
 
