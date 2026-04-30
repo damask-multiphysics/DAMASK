@@ -15,7 +15,7 @@ phase:
       elastic: {type: Hooke, C_11: 106.75e+9, C_12: 60.41e+9, C_44: 28.34e+9}
     chemical:
       V_m: 1.0e-5
-      type: quadEnergy
+      type: quadenergy
       components:
         Li:
           M: 1.0
@@ -32,7 +32,7 @@ phase:
       elastic: {type: Hooke, C_11: 106.75e+9, C_12: 60.41e+9, C_44: 28.34e+9}
     chemical:
       V_m: 1.0e-5
-      type: quadEnergy
+      type: quadenergy
       components:
         Li:
           M: 1.0

@@ -23,36 +23,36 @@ submodule(phase) chemical
   interface
 
 
-    module function quadEnergy_init() result(myChemicalEnergy)
+    module function quadenergy_init() result(myChemicalEnergy)
       logical, dimension(:), allocatable :: mychemicalEnergy
-    end function quadEnergy_init
+    end function quadenergy_init
 
-    module function quadEnergy_composition(mu_chemical,ph,en) result(comp)
+    module function quadenergy_composition(mu_chemical,ph,en) result(comp)
       real(pREAL), dimension(:), intent(in) :: mu_chemical
       integer, intent(in) :: &
         ph, &
         en
       real(pREAL), dimension(:),allocatable :: comp
-    end function quadEnergy_composition
+    end function quadenergy_composition
 
-    module function quadEnergy_compositionTangent(mu_chemical,ph,en) result(comp_tangent)
+    module function quadenergy_compositionTangent(mu_chemical,ph,en) result(comp_tangent)
       real(pREAL), dimension(:), intent(in) :: mu_chemical
       integer, intent(in) :: &
         ph, &
         en
       real(pREAL), dimension(:,:),allocatable :: comp_tangent
-    end function quadEnergy_compositionTangent
+    end function quadenergy_compositionTangent
 
-    module function quadEnergy_mobility(ph,en) result(mobility)
+    module function quadenergy_mobility(ph,en) result(mobility)
       integer, intent(in) :: ph, en
       real(pREAL), dimension(:,:),allocatable :: mobility
-    end function quadEnergy_mobility
+    end function quadenergy_mobility
 
-    module subroutine quadEnergy_results(ph,comp,group)
+    module subroutine quadenergy_results(ph,comp,group)
       integer,          intent(in) :: ph
       real(pREAL), dimension(:,:),intent(in) :: comp
       character(len=*), intent(in) :: group
-    end subroutine quadEnergy_results
+    end subroutine quadenergy_results
 
 
  end interface
@@ -108,7 +108,7 @@ module subroutine chemical_init(phases)
   end do
 
   !initialize chemical energy model
-  where(quadEnergy_init()) chemical_energy = CHEMICAL_QUADENERGY
+  where(quadenergy_init()) chemical_energy = CHEMICAL_QUADENERGY
 
   do ph = 1, size(phases)
 
@@ -146,7 +146,7 @@ module function phase_calculate_composition(mu,co,ce) result(conc)
   chemicalEnergyType: select case (chemical_energy(ph))
 
     case (CHEMICAL_QUADENERGY)
-      conc = quadEnergy_composition(mu_chemical,ph,en)
+      conc = quadenergy_composition(mu_chemical,ph,en)
 
   end select chemicalEnergyType
 
@@ -171,7 +171,7 @@ module function phase_get_mobility(co,ce) result(mobility)
   chemicalEnergyType: select case (chemical_energy(ph))
 
     case (CHEMICAL_QUADENERGY)
-      mobility = quadEnergy_mobility(ph,en)
+      mobility = quadenergy_mobility(ph,en)
 
   end select chemicalEnergyType
 
@@ -199,7 +199,7 @@ module function phase_compositionTangent(mu,co,ce) result(comp_tangent)
   chemicalEnergyType: select case (chemical_energy(ph))
 
     case (CHEMICAL_QUADENERGY)
-      comp_tangent = quadEnergy_compositionTangent(mu_chemical,ph,en)
+      comp_tangent = quadenergy_compositionTangent(mu_chemical,ph,en)
 
   end select chemicalEnergyType
 
@@ -235,7 +235,7 @@ module subroutine chemical_result(group,ph)
   chemicalEnergyType: select case (chemical_energy(ph))
 
     case (CHEMICAL_QUADENERGY)
-      call quadEnergy_results(ph,current(ph)%C,group//'chemical/')
+      call quadenergy_results(ph,current(ph)%C,group//'chemical/')
 
   end select chemicalEnergyType
 

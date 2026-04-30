@@ -1,5 +1,5 @@
 ! SPDX-License-Identifier: AGPL-3.0-or-later
-submodule(phase:chemical) quadEnergy
+submodule(phase:chemical) quadenergy
 
   real(pREAL), parameter :: &
     R = 8.314459848_pREAL                                                                           !< gas constant. Not sure where the exact value comes from, check https://en.wikipedia.org/wiki/Gas_constant
@@ -26,7 +26,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function quadEnergy_init() result(myChemicalEnergy)
+module function quadenergy_init() result(myChemicalEnergy)
 
   logical, dimension(:), allocatable :: myChemicalEnergy
 
@@ -37,9 +37,9 @@ module function quadEnergy_init() result(myChemicalEnergy)
   integer :: Nmembers,ph,com
 
 
-  myChemicalEnergy = chemical_active('quadEnergy')
+  myChemicalEnergy = chemical_active('quadenergy')
   if (count(myChemicalEnergy) == 0) return
-  print'(/,a)', ' <<<+-  phase:chemical:QuadEnergy init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:chemical:quadenergy init  -+>>>'
   print'(/,1x,a,1x,i0)', '# phases:',count(myChemicalEnergy); flush(IO_STDOUT)
 
   phases => config_material%get_dict('phase')
@@ -83,10 +83,10 @@ module function quadEnergy_init() result(myChemicalEnergy)
     end associate
   end do
 
-end function quadEnergy_init
+end function quadenergy_init
 
 
-module function quadEnergy_composition(mu_chemical,ph,en) result(comp)
+module function quadenergy_composition(mu_chemical,ph,en) result(comp)
   integer, intent(in) :: &
     ph, &
     en
@@ -105,10 +105,10 @@ module function quadEnergy_composition(mu_chemical,ph,en) result(comp)
 
   end associate
 
-end function quadEnergy_composition
+end function quadenergy_composition
 
 
-module function quadEnergy_compositionTangent(mu_chemical,ph,en) result(comp_tangent)
+module function quadenergy_compositionTangent(mu_chemical,ph,en) result(comp_tangent)
   real(pREAL), dimension(:), intent(in) :: mu_chemical
   integer, intent(in) :: &
     ph, &
@@ -127,10 +127,10 @@ module function quadEnergy_compositionTangent(mu_chemical,ph,en) result(comp_tan
 
   end associate
 
-end function quadEnergy_compositionTangent
+end function quadenergy_compositionTangent
 
 
-module function quadEnergy_mobility(ph,en) result(mobility)
+module function quadenergy_mobility(ph,en) result(mobility)
   integer, intent(in) :: ph, en
   real(pREAL), dimension(:,:),allocatable :: mobility
 
@@ -146,13 +146,13 @@ module function quadEnergy_mobility(ph,en) result(mobility)
 
   end associate
 
-end function quadEnergy_mobility
+end function quadenergy_mobility
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine quadEnergy_results(ph,comp,group)
+module subroutine quadenergy_results(ph,comp,group)
 
   integer,          intent(in) :: ph
   real(pREAL), dimension(:,:), intent(in) :: comp
@@ -171,8 +171,8 @@ module subroutine quadEnergy_results(ph,comp,group)
 
   end associate
 
-end subroutine quadEnergy_results
+end subroutine quadenergy_results
 
 
-end submodule quadEnergy
+end submodule quadenergy
 
