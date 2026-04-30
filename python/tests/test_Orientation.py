@@ -474,12 +474,12 @@ def test_resolved_shear_stress_vectorization(np_rng,assert_allclose,lattice):
     O = Orientation.from_random(shape=shape,lattice=lattice,
                                 c=(1.2 if lattice == 'tI' else None),rng_seed=np_rng)               # noqa
     for mode in ['slip']+([] if lattice == 'tI' else ['twin']):
-        csss = O.resolved_shear_stress(**{f'N_{mode}':'*','sigma':sigma})
+        rsss = O.resolved_shear_stress(**{f'N_{mode}':'*','sigma':sigma})
         for i in itertools.product(*map(range,tuple(shape))):
-            css = O[i].resolved_shear_stress(**{f'N_{mode}':'*','sigma':sigma})
+            rss = O[i].resolved_shear_stress(**{f'N_{mode}':'*','sigma':sigma})
             idx = (slice(None),)+i
-            assert_allclose(css,csss[idx])
-            #assert_allclose(css,csss[:,*i])                                                        # ok for Python >= 3.13
+            assert_allclose(rss,rsss[idx])
+            #assert_allclose(rss,rsss[:,*i])                                                        # ok for Python >= 3.13
 
 
 @pytest.mark.parametrize('family',crystal_families)

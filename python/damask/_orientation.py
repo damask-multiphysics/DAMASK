@@ -1795,11 +1795,16 @@ class Orientation(Rotation,Crystal):
             Use '*' to select all.
         sigma : numpy.ndarray, shape (...,3,3)
             Cauchy stress.
+            Shape of vector blends with shape of own rotation array.
+            For example, a rotation array of shape (3,2) and a stress array of shape (2,4) result in (3,2,4) outputs.
 
         Returns
         -------
-        tau : numpy.ndarray, shape (N,self.shape)
+        tau : numpy.ndarray, shape (N,...)
             Resolved shear stress for each of the N deformation systems.
 
         """
-        return np.einsum('...jk,...jk',self.Schmid(N_slip=N_slip,N_twin=N_twin),sigma)
+        blend = util.shapeblender(self.shape,sigma.shape[:-2])
+        return np.einsum('...jk,...jk',
+                         self.broadcast_to(blend).Schmid(N_slip=N_slip,N_twin=N_twin),
+                         np.broadcast_to(sigma,blend+sigma.shape[-2:]))
