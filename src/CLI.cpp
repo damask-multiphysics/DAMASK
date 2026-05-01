@@ -26,19 +26,20 @@
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/version.hpp>
-#if BOOST_VERSION >= 108800
-#include <boost/uuid/basic_random_generator.hpp>
-#endif
 #include <boost/system/detail/error_code.hpp>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/parsers.hpp>
 #include <boost/program_options/value_semantic.hpp>
 #include <boost/program_options/variables_map.hpp>
+#if BOOST_VERSION >= 108600
+#include <boost/uuid/time_generator_v7.hpp>
+#else
 #include <boost/uuid/random_generator.hpp>
+#endif
 #include <boost/uuid/uuid_io.hpp>
 
 #include "CLI.h"
-#include "IO.h"                                           // for IO
+#include "IO.h"
 
 namespace fs = std::filesystem;
 constexpr int kCLIError = 610;
@@ -110,7 +111,11 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
    * @brief Generate an UUID.
    */
   auto generate_uuid = []() -> std::string {
+#if BOOST_VERSION >= 108600
+    return boost::lexical_cast<std::string>(boost::uuids::time_generator_v7()());
+#else
     return boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+#endif
   };
 
   try {
