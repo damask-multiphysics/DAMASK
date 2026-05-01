@@ -31,7 +31,8 @@ module subroutine elastic_init(phases)
     mech, &
     elastic
   character(len=:), allocatable :: refs
-  real(pREAL), dimension(6,6) :: C66
+  real(pREAL), dimension(6,6) :: C_tilde
+  real(pREAL) :: C_11, C_12, C_44, C_13, C_33, C_66
 
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:elastic init  -+>>>'
@@ -51,33 +52,32 @@ module subroutine elastic_init(phases)
     if (len(refs) > 0) print'(/,1x,a)', refs
     if (elastic%get_asStr('type') /= 'Hooke') &
       call IO_error(200,label1='elasticity',ext_msg=elastic%get_asStr('type'))
-    C66 = 0.0_pREAL
 
     associate(prm => param(ph))
 
       prm%C_11 = polynomial(elastic,'C_11','T')
       prm%C_12 = polynomial(elastic,'C_12','T')
       prm%C_44 = polynomial(elastic,'C_44','T')
-      C66(1,1) = prm%C_11%at(T_ROOM)
-      C66(1,2) = prm%C_12%at(T_ROOM)
-      C66(4,4) = prm%C_44%at(T_ROOM)
+      C_11 = prm%C_11%at(T_ROOM)
+      C_12 = prm%C_12%at(T_ROOM)
+      C_44 = prm%C_44%at(T_ROOM)
 
       if (any(phase_lattice(ph) == ['hP','tI'])) then
         prm%C_13 = polynomial(elastic,'C_13','T')
         prm%C_33 = polynomial(elastic,'C_33','T')
-        C66(1,3) = prm%C_13%at(T_ROOM)
-        C66(3,3) = prm%C_33%at(T_ROOM)
+        C_13 = prm%C_13%at(T_ROOM)
+        C_33 = prm%C_33%at(T_ROOM)
       end if
 
       if (phase_lattice(ph) == 'tI') then
         prm%C_66 = polynomial(elastic,'C_66','T')
-        C66(6,6) = prm%C_66%at(T_ROOM)
+        C_66 = prm%C_66%at(T_ROOM)
       end if
 
     end associate
 
-    C66 = crystal_symmetrize_C66(C66,phase_lattice(ph))
-    if (.not. stable_stiffness(C66,phase_lattice(ph))) &
+    C_tilde = crystal_assembleStiffness(C_11,C_12,C_44,C_13,C_33,C_66,phase_lattice(ph))
+    if (.not. stable_stiffness(C_tilde,phase_lattice(ph))) &
       call IO_warning(601, 'phase', ph, 'has unstable stiffness matrix at T =', T_ROOM, emph=[2])
   end do
 
@@ -87,33 +87,32 @@ end subroutine elastic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief return 6x6 elasticity tensor
 !--------------------------------------------------------------------------------------------------
-pure module function elastic_C66(ph,en) result(C66)
+pure module function elastic_C66(ph,en) result(C_tilde)
 
   integer, intent(in) :: &
     ph, &
     en
 
-  real(pREAL), dimension(6,6) :: C66
-  real(pREAL) :: T
+  real(pREAL), dimension(6,6) :: C_tilde
+  real(pREAL) :: T, C_11, C_12, C_44, C_13, C_33, C_66
 
 
   associate(prm => param(ph))
 
-    C66 = 0.0_pREAL
     T = thermal_T(ph,en)
 
-    C66(1,1) = prm%C_11%at(T)
-    C66(1,2) = prm%C_12%at(T)
-    C66(4,4) = prm%C_44%at(T)
+    C_11 = prm%C_11%at(T)
+    C_12 = prm%C_12%at(T)
+    C_44 = prm%C_44%at(T)
 
     if (any(phase_lattice(ph) == ['hP','tI'])) then
-      C66(1,3) = prm%C_13%at(T)
-      C66(3,3) = prm%C_33%at(T)
+      C_13 = prm%C_13%at(T)
+      C_33 = prm%C_33%at(T)
     end if
 
-    if (phase_lattice(ph) == 'tI') C66(6,6) = prm%C_66%at(T)
+    if (phase_lattice(ph) == 'tI') C_66 = prm%C_66%at(T)
 
-    C66 = crystal_symmetrize_C66(C66,phase_lattice(ph))
+    C_tilde = crystal_assembleStiffness(C_11,C_12,C_44,C_13,C_33,C_66,phase_lattice(ph))
 
   end associate
 
