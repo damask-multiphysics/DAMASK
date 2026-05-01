@@ -1,12 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-from typing import Optional, Union, Literal
 import math
+from typing import Literal, Optional, Union
 
 import numpy as np
 
-from ._typehints import FloatSequence, IntSequence, CrystalFamily, BravaisLattice, CrystalKinematics
-from . import util
-from . import Rotation
+from . import Rotation, util
+from ._typehints import BravaisLattice, CrystalFamily, CrystalKinematics, FloatSequence, IntSequence
 
 
 _kinematics: dict[BravaisLattice, dict[CrystalKinematics, list[np.ndarray]]] = {

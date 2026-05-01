@@ -1,31 +1,25 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import re
-import fnmatch
-import os
 import copy
-import xml.etree.ElementTree as ET                                                                  # noqa
-import xml.dom.minidom
+import fnmatch
 import functools
-from pathlib import Path
+import logging
+import os
+import re
+import xml.dom.minidom
+import xml.etree.ElementTree as ET                                                                  # noqa
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Optional, Union, Callable, Any, Sequence, Literal, NamedTuple
+from pathlib import Path
+from typing import Any, Callable, Literal, NamedTuple, Optional, Sequence, Union
 
 import h5py
 import numpy as np
 from numpy import ma
 from scipy import interpolate
-import logging
 
 import damask
-from . import VTK
-from . import Orientation
-from . import Rotation
-from . import grid_filters
-from . import mechanics
-from . import tensor
-from . import util
-from ._typehints import FloatSequence, IntSequence, DADF5Dataset, BravaisLattice
+from . import VTK, Orientation, Rotation, grid_filters, mechanics, tensor, util
+from ._typehints import BravaisLattice, DADF5Dataset, FloatSequence, IntSequence
 
 
 logger = logging.getLogger(__name__)

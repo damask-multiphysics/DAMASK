@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import re
 import copy
-from typing import Optional, Union, Mapping, Sequence, Iterable
+import re
+from typing import Iterable, Mapping, Optional, Sequence, Union
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
-from ._typehints import FileHandle
 from . import util
+from ._typehints import FileHandle
 
 
 class Table:

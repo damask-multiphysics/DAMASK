@@ -1,23 +1,22 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import copy
-from io import StringIO
-from collections.abc import Iterable
 import abc
-from typing import Optional, Union, Any, Type, TypeVar
+import copy
+from collections.abc import Iterable
+from io import StringIO
+from typing import Any, Optional, Type, TypeVar, Union
 
 import numpy as np
-from numpy import ma
 import yaml
+from numpy import ma
 try:
-    from yaml import CSafeLoader as SafeLoader
     from yaml import CSafeDumper as SafeDumper
+    from yaml import CSafeLoader as SafeLoader
 except ImportError:
     from yaml import SafeLoader                                                                     # type: ignore[assignment]
     from yaml import SafeDumper                                                                     # type: ignore[assignment]
 
+from . import Rotation, util
 from ._typehints import FileHandle
-from . import Rotation
-from . import util
 
 
 MyType = TypeVar('MyType', bound='YAML')

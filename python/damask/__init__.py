@@ -8,10 +8,11 @@ D. Otto de Mentock et al., Journal of Open Source Software, 10(105):7164, 2025
 https://doi.org/10.21105/joss.07164
 """
 
-from pathlib import Path as _Path
-import re as _re
 import logging as _logging
 import multiprocessing as _mp
+import re as _re
+from pathlib import Path as _Path
+
 
 # https://docs.python.org/3/library/multiprocessing.html#multiprocessing-start-methods
 # needed for Python < 3.14

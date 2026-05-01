@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
+import contextlib
+import logging
+import multiprocessing as mp
 import os
 import warnings
-import multiprocessing as mp
-import logging
-import contextlib
 from pathlib import Path
-from typing import Optional, Union, Literal
+from typing import Literal, Optional, Union
 
 import numpy as np
 
@@ -71,10 +71,8 @@ from vtkmodules.util.numpy_support import (
     vtk_to_numpy,
 )
 
+from . import Colormap, Table, util
 from ._typehints import FloatSequence, IntSequence
-from . import util
-from . import Table
-from . import Colormap
 
 
 logger = logging.getLogger(__name__)

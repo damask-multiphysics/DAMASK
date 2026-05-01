@@ -1,24 +1,23 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import os
-import json
-import functools
 import colorsys
-from typing import Optional, Union
+import functools
+import json
+import os
 from itertools import chain
+from typing import Optional, Union
 
-import numpy as np
-from numpy import typing as npt
-import scipy.interpolate as interp
 import matplotlib as mpl
 if os.name == 'posix' and 'DISPLAY' not in os.environ:
     mpl.use('Agg')
-import matplotlib.pyplot as plt
+import numpy as np
+import scipy.interpolate as interp
 from matplotlib import cm
+from matplotlib import pyplot as plt
+from numpy import typing as npt
 from PIL import Image
 
-from ._typehints import FloatSequence, FileHandle
-from . import util
-from . import Table
+from . import Table, util
+from ._typehints import FileHandle, FloatSequence
 
 
 _EPS   = 216./24389.

@@ -1,16 +1,13 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import copy
 import warnings
-from typing import Optional, Union, TypeVar, Literal, Sequence, NamedTuple, overload
+from typing import Literal, NamedTuple, Optional, Sequence, TypeVar, Union, overload
 
 import numpy as np
 import numpy.typing as npt
 
-from ._typehints import FloatSequence, IntSequence, CrystalFamily, BravaisLattice, NumpyRngSeed
-from . import Rotation
-from . import Crystal
-from . import util
-from . import tensor
+from . import Crystal, Rotation, tensor, util
+from ._typehints import BravaisLattice, CrystalFamily, FloatSequence, IntSequence, NumpyRngSeed
 
 
 MyType = TypeVar('MyType', bound='Orientation')

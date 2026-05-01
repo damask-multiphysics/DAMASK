@@ -1,19 +1,17 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import sys
+import builtins
 import copy
 import re
-import builtins
-from typing import Optional, Union, Sequence, Literal, TypeVar, NamedTuple
+import sys
+from typing import Literal, NamedTuple, Optional, Sequence, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
 import scipy
 from scipy.spatial.transform import Rotation as ScipyRotation
 
+from . import grid_filters, tensor, util
 from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
-from . import tensor
-from . import util
-from . import grid_filters
 
 
 class AxisAngleTuple(NamedTuple):

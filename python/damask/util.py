@@ -1,29 +1,29 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Miscellaneous helper functionality."""
 
-import sys as _sys
-import datetime as _datetime
-import os as _os
-import subprocess as _subprocess
-import shlex as _shlex
-import re as _re
-import signal as _signal
-import fractions as _fractions
 import contextlib as _contextlib
+import datetime as _datetime
+import fractions as _fractions
+import logging as _logging
+import os as _os
+import re as _re
+import shlex as _shlex
+import signal as _signal
+import subprocess as _subprocess
+import sys as _sys
 from collections import abc as _abc, defaultdict as _defaultdict
 from functools import reduce as _reduce, partial as _partial
 from pathlib import Path as _Path
-import logging as _logging
 from typing import Optional as _Optional, Union as _Union, Iterable as _Iterable, \
                    Literal as _Literal, NamedTuple as _NamedTuple, \
                    Any as _Any, TextIO as _TextIO, Generator as _Generator
 
-import numpy as _np
 import h5py as _h5py
 try:
     import numba as _nb                                                                             # type: ignore
 except ImportError:
     _nb = False
+import numpy as _np
 
 from . import version as _version
 from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence, \
