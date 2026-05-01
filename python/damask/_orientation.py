@@ -1670,7 +1670,7 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        P : numpy.ndarray, shape (N,...,3,3)
+        P : numpy.ndarray, shape (N,self.shape,3,3)
             Schmid matrix for each of the N deformation systems.
 
         Examples
@@ -1780,3 +1780,31 @@ class Orientation(Rotation,Crystal):
                            beta =target.beta,
                            gamma=target.gamma,
                            )
+
+
+    def resolved_shear_stress(self, sigma: np.ndarray, *,
+                              N_slip: Optional[Union[IntSequence, Literal['*']]] = None,
+                              N_twin: Optional[Union[IntSequence, Literal['*']]] = None) -> npt.NDArray: # numpydoc ignore=PR01,PR02
+        """
+        Calculate resolved shear stress on slip or twin systems.
+
+        Parameters
+        ----------
+        N_slip|N_twin : '*' or sequence of int
+            Number of deformation systems per family of the deformation system.
+            Use '*' to select all.
+        sigma : numpy.ndarray, shape (...,3,3)
+            Cauchy stress.
+            Shape of vector blends with shape of own rotation array.
+            For example, a rotation array of shape (3,2) and a stress array of shape (2,4) result in (3,2,4) outputs.
+
+        Returns
+        -------
+        tau : numpy.ndarray, shape (N,...)
+            Resolved shear stress for each of the N deformation systems.
+
+        """
+        blend = util.shapeblender(self.shape,sigma.shape[:-2])
+        return np.einsum('...jk,...jk',
+                         self.broadcast_to(blend).Schmid(N_slip=N_slip,N_twin=N_twin),
+                         np.broadcast_to(sigma,blend+sigma.shape[-2:]))

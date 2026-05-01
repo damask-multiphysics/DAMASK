@@ -1010,7 +1010,7 @@ class Result:
         def IPF_color(l: FloatSequence, q: DADF5Dataset) -> DADF5Dataset:
             m = util.scale_to_coprime(np.array(l))
             lattice: BravaisLattice = q['meta']['lattice']                                          # type: ignore[assignment]
-            o = Orientation(rotation = q['data'],lattice=lattice)
+            o = Orientation(rotation = q['data'],lattice=lattice)                                   # ToDo: consider c/a
 
             return {
                     'data': (o.IPF_color(l)*255).astype(np.uint8),
@@ -1151,6 +1151,115 @@ class Result:
                     }
 
         self._add_generic_pointwise(pole,{'q':q},{'uvw':uvw,'hkl':hkl,'with_symmetry':with_symmetry,'normalize':normalize})
+
+
+
+    def _add_resolved_shear_stress(self,
+                                   N_slip: Optional[Union[IntSequence, Literal['*']]] = None,
+                                   N_twin: Optional[Union[IntSequence, Literal['*']]] = None,
+                                   P: str = 'P',
+                                   F: str = 'F',
+                                   q: str = 'O'):                                                   # numpydoc ignore=PR01,PR02
+        """
+        Add resolved shear stress on slip or twin systems.
+
+        Parameters
+        ----------
+        N_slip|N_twin : '*' or sequence of int
+            Number of deformation systems per family of the deformation system.
+            Use '*' to select all.
+        P : str, optional
+            Name of the dataset containing the first Piola-Kirchhoff stress.
+            Defaults to 'P'.
+        F : str, optional
+            Name of the dataset containing the deformation gradient.
+            Defaults to 'F'.
+        q : str, optional
+            Name of the dataset containing the crystallographic orientation as quaternions.
+            Defaults to 'O'.
+        """
+        def format_idx(idx):
+            return ' '.join([f'{i:2}' for i in idx])
+
+        def rss(N_def: Union[IntSequence, Literal['*']], mode: Literal['slip', 'twin'],
+                P: DADF5Dataset, F: DADF5Dataset, q: DADF5Dataset) -> DADF5Dataset:
+            lattice: BravaisLattice = q['meta']['lattice']                                           # type: ignore[assignment]
+            c_a: float = q['meta'].get('c/a',1.0)
+            o = Orientation(rotation = q['data'],lattice=lattice,a=1.0,c=c_a)
+            tau = o.resolved_shear_stress(**{f'N_{mode}':N_def,
+                                             'sigma':mechanics.stress_Cauchy(P['data'],F['data'])}) # type: ignore[arg-type]
+            kinematics = o.kinematics(mode)
+            active = list(map(len,kinematics['direction'])) if isinstance(N_def,str) and N_def == '*' else N_def
+            systems = [f'[{format_idx(d)}]({format_idx(p)})' for d, p in
+                          zip(np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]),
+                              np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))]
+
+            return {
+                    'data': np.swapaxes(tau,1,0),
+                    'label': f'tau_{mode[:2]}',
+                    'meta' : {
+                              'unit':        P['meta']['unit'],
+                              'systems':     systems,
+                              'description': f'critical resolved shear stress for {mode} calculated '
+                                             f"from {P['label']} ({P['meta']['description']}), "
+                                             f"{F['label']} ({F['meta']['description']}), "
+                                             f"and {q['label']} ({q['meta']['description']})",
+                              'creator':     'add_resolved_shear_stress'
+                             }
+                   }
+
+        if (N_slip is not None) ^ (N_twin is None):
+            raise KeyError('specify either "N_slip" or "N_twin"')
+        elif N_slip is not None:
+            self._add_generic_pointwise(rss,{'F':F, 'P':P, 'q':q},
+                                            {'N_def': N_slip, 'mode': 'slip'})
+        elif N_twin is not None:
+            self._add_generic_pointwise(rss,{'F':F, 'P':P, 'q':q},
+                                            {'N_def': N_twin, 'mode': 'twin'})
+
+    def add_resolved_shear_stress_slip(self, N_slip: Union[IntSequence, Literal['*']],
+                                       P: str = 'P', F: str = 'F', q: str = 'O'):
+        """
+        Add resolved shear stress on slip systems.
+
+        Parameters
+        ----------
+        N_slip : '*' or sequence of int, optional
+            Number of slip systems per slip system family.  Use '*' to select all.
+            Defaults to '*'.
+        P : str, optional
+            Name of the dataset containing the first Piola-Kirchhoff stress.
+            Defaults to 'P'.
+        F : str, optional
+            Name of the dataset containing the deformation gradient.
+            Defaults to 'F'.
+        q : str, optional
+            Name of the dataset containing the crystallographic orientation as quaternions.
+            Defaults to 'O'.
+        """
+        self._add_resolved_shear_stress(N_slip = N_slip, P = P, F = F, q = q)
+
+    def add_resolved_shear_stress_twin(self, N_twin: Union[IntSequence, Literal['*']],
+                                       P: str = 'P', F: str = 'F', q: str = 'O'):
+        """
+        Add resolved shear stress on twin  systems.
+
+        Parameters
+        ----------
+        N_twin : '*' or sequence of int, optional
+            Number of twin systems per twin system family.  Use '*' to select all.
+            Defaults to '*'.
+        P : str, optional
+            Name of the dataset containing the first Piola-Kirchhoff stress.
+            Defaults to 'P'.
+        F : str, optional
+            Name of the dataset containing the deformation gradient.
+            Defaults to 'F'.
+        q : str, optional
+            Name of the dataset containing the crystallographic orientation as quaternions.
+            Defaults to 'O'.
+        """
+        self._add_resolved_shear_stress(N_twin = N_twin, P = P, F = F, q = q)
 
 
     def add_rotation(self, F: str):
@@ -1302,7 +1411,7 @@ class Result:
                     'label': 'sigma',
                     'meta':  {
                               'unit':        P['meta']['unit'],
-                              'description': "Cauchy stress calculated "
+                              'description': 'Cauchy stress calculated '
                                              f"from {P['label']} ({P['meta']['description']})"
                                              f" and {F['label']} ({F['meta']['description']})",
                               'creator':     'add_stress_Cauchy'

@@ -1430,13 +1430,14 @@ class Crystal():
         """
         if (N_slip is not None) ^ (N_twin is None):
             raise KeyError('specify either "N_slip" or "N_twin"')
+        elif N_slip is not None:
+            kinematics,active = self.kinematics('slip'),N_slip
+        elif N_twin is not None:
+            kinematics,active = self.kinematics('twin'),N_twin
 
-        kinematics,active = (self.kinematics('slip'),N_slip) if N_twin is None else \
-                            (self.kinematics('twin'),N_twin)
         everylen = list(map(len,kinematics['direction']))
-
-        if active == '*': active = everylen
-        if not active or (np.array(active) > everylen[:len(active)]).any():
+        if isinstance(active,str) and active == '*': active = everylen
+        if (np.asarray(active) < 0).any() or (np.asarray(active) > everylen[:len(active)]).any():
             raise ValueError('Invalid number of slip/twin systems')
 
         d = Crystal.to_frame(self,uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))

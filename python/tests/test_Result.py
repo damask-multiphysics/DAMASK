@@ -312,6 +312,30 @@ def test_add_pole(default,options):
     in_file = default.place(label)
     assert np.allclose(in_memory,in_file)
 
+def test_add_resolved_shear_stress_slip(np_rng,default):
+    for label,data in default.get(['P','F','O']).items():
+        O = Orientation(data['O'],lattice=data['O'].dtype.metadata['lattice'])
+        N_slip_max = [len(system)+1 for system in O.kinematics('slip')['direction']]
+        N_slip_min = np_rng.permutation([0]*(len(N_slip_max)-1) + [1] )
+        N_slip = np_rng.integers(N_slip_min,N_slip_max)
+        single_phase = default.view(phases=label)
+        single_phase.add_resolved_shear_stress_slip(N_slip)
+        in_file = single_phase.get('tau_sl')
+        in_memory = np.einsum('...ij,k...ij',mechanics.stress_Cauchy(data['P'],data['F']),O.Schmid(N_slip=N_slip))
+        assert np.allclose(in_memory,in_file)
+
+def test_add_resolved_shear_stress_twin(np_rng,default):
+    for label,data in default.get(['P','F','O']).items():
+        O = Orientation(data['O'],lattice=data['O'].dtype.metadata['lattice'])
+        N_twin_max = [len(system)+1 for system in O.kinematics('twin')['direction']]
+        N_twin_min = np_rng.permutation([0]*(len(N_twin_max)-1) + [1] )
+        N_twin = np_rng.integers(N_twin_min,N_twin_max)
+        single_phase = default.view(phases=label)
+        single_phase.add_resolved_shear_stress_twin(N_twin)
+        in_file = single_phase.get('tau_tw')
+        in_memory = np.einsum('...ij,k...ij',mechanics.stress_Cauchy(data['P'],data['F']),O.Schmid(N_twin=N_twin))
+        assert np.allclose(in_memory,in_file)
+
 def test_add_rotation(default):
     default.add_rotation('F')
     in_memory = mechanics.rotation(default.place('F')).as_matrix()
