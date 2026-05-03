@@ -425,6 +425,31 @@ def test_Laguerre_weights_invariant(np_rng,periodic):
     assert np.all(a.material == b.material)
 
 @pytest.mark.parametrize('periodic',[True,False])
+def test_Laguerre_correctness(np_rng,periodic):
+    """Compare bias-based formulation to naive/direct implementation."""
+    def find_closest_seed(seeds, weights, point):
+        return np.argmin(np.sum((np.broadcast_to(point,(len(seeds),3))-seeds)**2,axis=1) - weights)
+    cells  = np_rng.integers(10,20,3)
+    size   = np_rng.random(3) + 1.0
+    N_seeds= np_rng.integers(10,30)
+    seeds  = np_rng.random((N_seeds,3)) * np.broadcast_to(size,(N_seeds,3))
+    weights= np_rng.random(N_seeds)
+    if periodic:
+        weights_p = np.tile(weights,27)
+        seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
+        seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
+        seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
+    else:
+        weights_p = np.array(weights,float)
+        seeds_p   = seeds
+
+    coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
+    material = np.array([find_closest_seed(seeds_p,weights_p,coord) for coord in coords]).reshape(cells)
+    if periodic: material %= len(weights)
+    from_bias = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,weights,periodic=periodic)
+    assert np.all(from_bias.material == material)
+
+@pytest.mark.parametrize('periodic',[True,False])
 @pytest.mark.parametrize('approach',['Laguerre','Voronoi'])
 def test_tessellate_bicrystal(np_rng,approach,periodic):
     cells = np_rng.integers(5,10,3)*2
@@ -433,9 +458,9 @@ def test_tessellate_bicrystal(np_rng,approach,periodic):
     material = np.zeros(cells)
     material[:,cells[1]//2:,:] = 1
     if   approach == 'Laguerre':
-        grid = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,np.ones(2),periodic=periodic)
+        grid = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,[np_rng.random()]*2,periodic=periodic)
     elif approach == 'Voronoi':
-        grid = GeomGrid.from_Voronoi_tessellation(cells,size,seeds,            periodic=periodic)
+        grid = GeomGrid.from_Voronoi_tessellation(cells,size,seeds,                     periodic=periodic)
     assert np.all(grid.material == material)
 
 @pytest.mark.parametrize('surface',['Schwarz P',
