@@ -470,13 +470,13 @@ def test_coordinates(default,mode):
 @pytest.mark.parametrize('output',['F','*',['P'],['P','F']],ids=range(4))
 @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5',
                                   '4grains2x4x3_compressionY.hdf5',
-                                  '6grains6x7x8_tensionY_singlePhase.hdf5'],ids=range(3))
+                                  '6grains6x7x8_tensionY_singlePhase.hdf5',
+                                  'merge-datasets.hdf5'],ids=range(4))
 @pytest.mark.parametrize('inc',[4,0],ids=range(2))
-@pytest.mark.xfail(vtkVersion.GetVTKMajorVersion()<9, reason='missing "Direction" attribute')
 def test_export_vtk(request,tmp_path,res_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
     result = Result(res_path/fname).view(increments=inc)
     result.export_VTK(output,target_dir=tmp_path,parallel=False)
-    fname = fname.split('.')[0]+f'_inc{(inc if type(inc) == int else inc[0]):0>2}.vti'
+    fname = fname.split('.')[0]+f'_inc{inc:0>2}.vti'
     v = VTK.load(tmp_path/fname)
     v.comments = ['n/a']
     v.save(tmp_path/fname,parallel=False)
@@ -664,6 +664,16 @@ def test_place(update,request,res_path,view,output,flatten,prune,constituents):
     with bz2.BZ2File((res_path/'place'/fname).with_suffix('.pbz2')) as f:
         ref = pickle.load(f)
         assert cur is None if ref is None else dict_equal(cur,ref)
+
+def test_place_non_mergeable(res_path):
+    result = Result(res_path/'merge-datasets.hdf5').view(increments=-1)
+    assert 'Aluminum' in result.place()['phase']
+    assert 'Bluminum' in result.place()['phase']
+    assert 'xi_sl#0' in result.place()['phase']['Aluminum']
+    assert 'xi_sl#1' in result.place()['phase']['Aluminum']
+    assert 'xi_sl#0' in result.place()['phase']['Bluminum']
+    assert 'xi_sl#1' in result.place()['phase']['Bluminum']
+
 
 def test_simulation_setup_files(default):
     assert set(default.simulation_setup_files) == set(['12grains6x7x8.vti',
