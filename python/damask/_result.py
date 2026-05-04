@@ -7,7 +7,6 @@ import os
 import re
 import xml.dom.minidom
 import xml.etree.ElementTree as ET                                                                  # noqa
-from collections import defaultdict
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Callable, Literal, NamedTuple, Optional, Sequence, Union
@@ -135,7 +134,7 @@ class Result:
                 self.origin = f['geometry'].attrs['origin']
 
             r = re.compile(rf'{prefix_inc}([0-9]+)')
-            self._increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
+            self._increments = sorted([i for i in f if r.match(i)],key=util.natural_sort)
             self._times = {int(i.split('_')[1]):np.around(f[i].attrs['t/s'],12) for i in self._increments}
             if len(self._increments) == 0:
                 raise ValueError('incomplete DADF5 file')
@@ -147,11 +146,10 @@ class Result:
             self.phase            = f['cell_to/phase']['label'].astype('str')
             self._phases          = sorted(np.unique(self.phase),key=util.natural_sort)
 
-            fields: list[str] = []
-            for c in self._phases:
-                fields += f['/'.join([self._increments[0],'phase',c])].keys()
-            for m in self._homogenizations:
-                fields += f['/'.join([self._increments[0],'homogenization',m])].keys()
+            fields = []
+            for kind, labels in zip(['phase','homogenization'],[self._phases,self._homogenizations]):
+                for label in labels:
+                    fields += f['/'.join([self._increments[0],kind,label])].keys()
             self._fields = sorted(set(fields),key=util.natural_sort)                                # make unique
 
         self._visible = {'increments':      self._increments,
@@ -247,16 +245,16 @@ class Result:
             raise ValueError('"increments" and "times" are mutually exclusive')
 
         dup = self.copy()
-        for what,datasets in zip(['increments','times','phases','homogenizations','fields'],
+        for what,selected in zip(['increments','times','phases','homogenizations','fields'],
                                  [ increments,  times,  phases,  homogenizations,  fields ]):
-            if  datasets is None:
+            if  selected is None:
                 continue
             # allow True/False and string arguments
-            elif datasets is True:
-                datasets = '*'
-            elif datasets is False:
-                datasets = []
-            choice = util.to_list(datasets)
+            elif selected is True:
+                selected = '*'
+            elif selected is False:
+                selected = []
+            choice = util.to_list(selected)
             N_expected = len(choice)
 
             if   what == 'increments':
@@ -282,15 +280,16 @@ class Result:
             valid = _match(choice,getattr(self,'_'+what))
             if len(valid) < N_expected:
                 w = what if times is None else 'times'
-                logger.warning(f'Found only "{list(map(str,valid))}" when requesting "{datasets}" for "{w}".')
+                logger.warning(f'Found only "{list(map(str,valid))}" when requesting "{selected}" for "{w}".')
 
             existing = set(self._visible[what])
-            if   action == 'set':
-                dup._visible[what] = sorted(set(valid), key=util.natural_sort)
-            elif action == 'add':
-                dup._visible[what] = sorted(existing.union(valid), key=util.natural_sort)
-            elif action == 'del':
-                dup._visible[what] = sorted(existing.difference(valid), key=util.natural_sort)
+            match action:
+                case 'set':
+                    dup._visible[what] = sorted(set(valid), key=util.natural_sort)
+                case 'add':
+                    dup._visible[what] = sorted(existing.union(valid), key=util.natural_sort)
+                case 'del':
+                    dup._visible[what] = sorted(existing.difference(valid), key=util.natural_sort)
 
         return dup
 
@@ -527,13 +526,11 @@ class Result:
             for inc in self._visible['increments']:
                 for kind in ['phase','homogenization']:
                     for label in self._visible[kind+'s']:
-                        for field in _match(self._visible['fields'],f['/'.join([inc,kind,label])].keys()):
-                            path_src = '/'.join([inc,kind,label,field,name_src])
-                            path_dst = '/'.join([inc,kind,label,field,name_dst])
-                            if path_src in f.keys():
-                                f[path_dst] = f[path_src]
-                                f[path_dst].attrs['renamed'] = f'original name: {name_src}'
-                                del f[path_src]
+                        for field in _match(self._visible['fields'],f['/'.join([inc,kind,label])]):
+                            dset_grp = '/'.join([inc,kind,label,field])
+                            if name_src in f[dset_grp]:
+                                f[dset_grp].move(name_src,name_dst)
+                                f['/'.join([dset_grp,name_dst])].attrs['renamed'] = f'original name: {name_src}'
 
 
     def remove(self, name: str):
@@ -564,9 +561,9 @@ class Result:
             for inc in self._visible['increments']:
                 for kind in ['phase','homogenization']:
                     for label in self._visible[kind+'s']:
-                        for field in _match(self._visible['fields'],f['/'.join([inc,kind,label])].keys()):
+                        for field in _match(self._visible['fields'],f['/'.join([inc,kind,label])]):
                             path = '/'.join([inc,kind,label,field,name])
-                            if path in f.keys(): del f[path]
+                            if path in f: del f[path]
 
 
     def list_data(self) -> list[str]:
@@ -586,13 +583,13 @@ class Result:
                     msg.append(f'  {kind}')
                     for label in self._visible[kind+'s']:
                         msg.append(f'    {label}')
-                        for field in _match(self._visible['fields'],f['/'.join([inc,kind,label])].keys()):
+                        for field in _match(self._visible['fields'],f['/'.join([inc,kind,label])]):
                             msg.append(f'      {field}')
-                            for d in f['/'.join([inc,kind,label,field])].keys():
-                                dataset = f['/'.join([inc,kind,label,field,d])]
-                                unit = dataset.attrs["unit"]
-                                description = dataset.attrs['description']
-                                msg.append(f'        {d} / {unit}: {description}')
+                            for dset_name in f['/'.join([inc,kind,label,field])]:
+                                dset_h5 = f['/'.join([inc,kind,label,field,dset_name])]
+                                unit = dset_h5.attrs['unit']
+                                description = dset_h5.attrs['description']
+                                msg.append(f'        {dset_name} / {unit}: {description}')
 
         return msg
 
@@ -607,8 +604,8 @@ class Result:
     def simulation_setup_files(self):
         """Simulation setup files used to generate the Result object."""
         files = []
-        with h5py.File(self.fname,'r') as f_in:
-            f_in['setup'].visititems(lambda name,obj: files.append(name) if isinstance(obj,h5py.Dataset) else None)
+        with h5py.File(self.fname,'r') as f:
+            f['setup'].visititems(lambda dset_name,obj: files.append(dset_name) if isinstance(obj,h5py.Dataset) else None)
         return files
 
     @property
@@ -1599,8 +1596,8 @@ class Result:
         increments = self.place(list(datasets.values()),False)
         if not increments: raise RuntimeError('received invalid dataset')
         with h5py.File(self.fname, 'a') as f:
-            for increment in increments.items():
-                for kind in increment[1].items():
+            for inc in increments.items():
+                for kind in inc[1].items():
                     for field in kind[1].items():
                         d: np.ma.MaskedArray = list(field[1].values())[0]
                         if np.any(d.mask): continue
@@ -1610,25 +1607,25 @@ class Result:
                                         'meta':d.data.dtype.metadata}}
                         r = func(**dataset,**args)
                         result = grid_filters.ravel(r['data'])
-                        for x in self._visible[kind[0]+'s']:
-                            path = '/'.join(['/',increment[0],kind[0],x,field[0]])
+                        for label in self._visible[kind[0]+'s']:
+                            path = '/'.join(['/',inc[0],kind[0],label,field[0]])
                             if kind[0] == 'phase':
-                                result1 = result[at_cell_ph[0][x]]
+                                result1 = result[at_cell_ph[0][label]]
                             if kind[0] == 'homogenization':
-                                result1 = result[at_cell_ho[x]]
+                                result1 = result[at_cell_ho[label]]
                             if not self._protected and '/'.join([path,r['label']]) in f:
-                                h5_dataset = f['/'.join([path,r['label']])]
-                                h5_dataset[...] = result1
-                                h5_dataset.attrs['overwritten'] = True
+                                dset_h5 = f['/'.join([path,r['label']])]
+                                dset_h5[...] = result1
+                                dset_h5.attrs['overwritten'] = True
                             else:
-                                h5_dataset = f[path].create_dataset(r['label'],data=result1)
+                                dset_h5 = f[path].create_dataset(r['label'],data=result1)
 
-                            h5_dataset.attrs['created'] = util.time_stamp()
+                            dset_h5.attrs['created'] = util.time_stamp()
 
                             for l,v in r['meta'].items():
-                                h5_dataset.attrs[l.lower()] = v
-                            creator = h5_dataset.attrs['creator']
-                            h5_dataset.attrs['creator'] = f'damask.Result.{creator} v{damask.version}'
+                                dset_h5.attrs[l.lower()] = v
+                            creator = dset_h5.attrs['creator']
+                            dset_h5.attrs['creator'] = f'damask.Result.{creator} v{damask.version}'
 
 
     def _add_generic_pointwise(self,
@@ -1673,42 +1670,42 @@ class Result:
             for inc in self._visible['increments']:
                 for kind in ['phase','homogenization']:
                     for label in self._visible[kind+'s']:
-                        for field in _match(self._visible['fields'],f['/'.join([inc,kind,label])].keys()):
-                            group = '/'.join([inc,kind,label,field])
-                            if set(datasets.values()).issubset(f[group].keys()): groups.append(group)
+                        for field in _match(self._visible['fields'],f['/'.join([inc,kind,label])]):
+                            dset_grp = '/'.join([inc,kind,label,field])
+                            if set(datasets.values()).issubset(f[dset_grp].keys()): groups.append(dset_grp)
 
         if len(groups) == 0:
             logger.warning('No matching dataset found, no data was added.')
             return
 
 
-        for group in util.show_progress(groups):
-            if not (result := job_pointwise(group, callback=func, datasets=datasets, args=args)):
+        for dset_grp in util.show_progress(groups):
+            if not (result := job_pointwise(dset_grp, callback=func, datasets=datasets, args=args)):
                 continue
             with h5py.File(self.fname, 'a') as f:
                 try:
-                    if not self._protected and '/'.join([group,result['label']]) in f:
-                        dataset = f['/'.join([group,result['label']])]
-                        dataset[...] = result['data']
-                        dataset.attrs['overwritten'] = True
+                    if not self._protected and '/'.join([dset_grp,result['label']]) in f:
+                        dset_h5 = f['/'.join([dset_grp,result['label']])]
+                        dset_h5[...] = result['data']
+                        dset_h5.attrs['overwritten'] = True
                     else:
                         shape = result['data'].shape
                         if compress := result['data'].size >= chunk_size*2:
                             chunks = (chunk_size//np.prod(shape[1:]),)+shape[1:]
                         else:
                             chunks = shape
-                        dataset = f[group].create_dataset(result['label'],data=result['data'],
-                                                          maxshape=shape, chunks=chunks,
-                                                          compression = 'gzip' if compress else None,
-                                                          compression_opts = 6 if compress else None,
-                                                          shuffle=True,fletcher32=True)
+                        dset_h5 = f[dset_grp].create_dataset(result['label'],data=result['data'],
+                                                             maxshape=shape, chunks=chunks,
+                                                             compression = 'gzip' if compress else None,
+                                                             compression_opts = 6 if compress else None,
+                                                             shuffle=True,fletcher32=True)
 
-                    dataset.attrs['created'] = util.time_stamp()
+                    dset_h5.attrs['created'] = util.time_stamp()
 
                     for l,v in result['meta'].items():
-                        dataset.attrs[l.lower()] = v
-                    creator = dataset.attrs['creator']
-                    dataset.attrs['creator'] = f'damask.Result.{creator} v{damask.version}'
+                        dset_h5.attrs[l.lower()] = v
+                    creator = dset_h5.attrs['creator']
+                    dset_h5.attrs['creator'] = f'damask.Result.{creator} v{damask.version}'
 
                 except (OSError,RuntimeError) as err:
                     logger.error(f'Could not add dataset: {err}.')
@@ -1758,28 +1755,30 @@ class Result:
         data : dict of numpy.ndarray
             Datasets structured by phase/homogenization and according to selected view.
         """
-        r: dict[str,Any] = {}
+        r = util.NestedDefaultDict()
 
         with h5py.File(self.fname,'r') as f:
             for inc in util.show_progress(self._visible['increments']):
-                r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
 
-                for out in _match(output,f['/'.join([inc,'geometry'])].keys()):
-                    r[inc]['geometry'][out] = _read(f['/'.join([inc,'geometry',out])])
+                for kind in ['geometry', 'phase', 'homogenization']:
+                    r[inc][kind] = util.NestedDefaultDict()
+
+                for dset_name in _match(output,f['/'.join([inc,'geometry'])]):
+                    r[inc]['geometry'][dset_name] = _read(f['/'.join([inc,'geometry',dset_name])])
 
                 for kind in ['phase','homogenization']:
                     for label in self._visible[kind+'s']:
-                        r[inc][kind][label] = {}
-                        for field in _match(self._visible['fields'],f['/'.join([inc,kind,label])].keys()):
+                        for field in _match(self._visible['fields'],f['/'.join([inc,kind,label])]):
                             r[inc][kind][label][field] = {}
-                            for out in _match(output,f['/'.join([inc,kind,label,field])].keys()):
-                                r[inc][kind][label][field][out] = \
-                                    _read(f['/'.join([inc,kind,label,field,out])])
+                            for dset_name in _match(output,f['/'.join([inc,kind,label,field])]):
+                                r[inc][kind][label][field][dset_name] = \
+                                    _read(f['/'.join([inc,kind,label,field,dset_name])])
 
-        if prune:   r = util.dict_prune(r)
-        if flatten: r = util.dict_flatten(r)
+        result = r.to_regular()
+        if prune:   result = util.dict_prune(result)
+        if flatten: result = util.dict_flatten(result)
 
-        return None if (type(r) is dict and r == {}) else r
+        return None if (type(result) is dict and result == {}) else result
 
 
     def place(self,
@@ -1916,7 +1915,7 @@ class Result:
         if self.N_constituents != 1 or len(self.phases) != 1 or not self.structured:
             raise NotImplementedError('not a structured grid with one constituent and a single phase')
 
-        attribute_type_map = defaultdict(lambda:'Matrix', ( ((),'Scalar'), ((3,),'Vector'), ((3,3),'Tensor')) )
+        attribute_type_map = {():'Scalar', (3,):'Vector', (3,3):'Tensor'}
 
         def number_type_map(dtype):
             if np.issubdtype(dtype,np.signedinteger):   return 'Int'
@@ -1990,25 +1989,25 @@ class Result:
                 data_items[-1].text = f'{hdf5_link}:/{inc}/geometry/u_n'
                 for kind in ['phase','homogenization']:
                     for label in self._visible[kind+'s']:
-                        for field in _match(self._visible['fields'],f['/'.join([inc,kind,label])].keys()):
-                            for out in _match(output,f['/'.join([inc,kind,label,field])].keys()):
-                                name = '/'.join([inc,kind,label,field,out])
-                                shape = f[name].shape[1:]
-                                dtype = f[name].dtype
+                        for field in _match(self._visible['fields'],f['/'.join([inc,kind,label])]):
+                            for dset_name in _match(output,f['/'.join([inc,kind,label,field])]):
+                                dset_path = '/'.join([inc,kind,label,field,dset_name])
+                                shape = f[dset_path].shape[1:]
+                                dtype = f[dset_path].dtype
 
-                                unit = f[name].attrs['unit']
+                                unit = f[dset_path].attrs['unit']
 
                                 attributes.append(ET.SubElement(grid, 'Attribute'))
-                                attributes[-1].attrib = {'Name':         '/'.join([kind,field,out])+f' / {unit}',
+                                attributes[-1].attrib = {'Name': '/'.join([kind,field,dset_name])+f' / {unit}',
                                                          'Center':       'Cell',
-                                                         'AttributeType': attribute_type_map[shape]}
+                                                         'AttributeType': attribute_type_map.get(shape,'Matrix')}
                                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
                                 data_items[-1].attrib = {'Format':    'HDF',
                                                          'NumberType': number_type_map(dtype),
                                                          'Precision':  f'{dtype.itemsize}',
                                                          'Dimensions': '{} {} {} {}'.format(*self.cells[::-1],1 if shape == () else
-                                                                                                        np.prod(shape))}
-                                data_items[-1].text = f'{hdf5_link}:{name}'
+                                                                                                              np.prod(shape))}
+                                data_items[-1].text = f'{hdf5_link}:{dset_path}'
 
         out_dir.mkdir(parents=True,exist_ok=True)
         with util.open_text((out_dir/hdf5_name).with_suffix('.xdmf'),'w') as f:
@@ -2055,12 +2054,13 @@ class Result:
             Write VTK files in parallel in a separate background process.
             Defaults to True.
         """
-        if mode.lower()=='cell':
-            v = self.geometry0
-        elif mode.lower()=='point':
-            v = VTK.from_poly_data(self.coordinates0_point)
-        else:
-            raise ValueError(f'invalid mode "{mode}"')
+        match mode.lower():
+            case 'cell':
+                v = self.geometry0
+            case 'point':
+                v = VTK.from_poly_data(self.coordinates0_point)
+            case _:
+                raise ValueError(f'invalid mode "{mode}"')
 
         v.comments = [util.execution_stamp('Result','export_VTK')]
 
@@ -2351,11 +2351,11 @@ class Result:
 
                 for kind in ['phase','homogenization']:
                     for label in self._visible[kind+'s']:
-                        for field in _match(self._visible['fields'],f_in['/'.join([inc,kind,label])].keys()):
-                            p = '/'.join([inc,kind,label,field])
-                            for out in _match(output,f_in[p].keys()):
-                                cp(f_in[p],f_out[p],out,None if mapping is None else mappings[kind][label.encode()])
-
+                        for field in _match(self._visible['fields'],f_in['/'.join([inc,kind,label])]):
+                            dset_grp = '/'.join([inc,kind,label,field])
+                            for dset_name in _match(output,f_in[dset_grp]):
+                                cp(f_in[dset_grp],f_out[dset_grp],dset_name,
+                                   None if mapping is None else mappings[kind][label.encode()])
 
     def export_simulation_setup(self,
                      output: Union[str, list[str]] = '*',
