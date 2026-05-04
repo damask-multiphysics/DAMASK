@@ -77,29 +77,30 @@ class ConfigMaterial(YAML):
         ----------
         fname : str or pathlib.Path
             Filename of the DREAM.3D (HDF5) file.
-        grain_data : str
+        grain_data : str, optional
             Name of the group (folder) containing grain-wise data. Defaults
             to None, in which case cell-wise data is used.
-        cell_data : str
+        cell_data : str, optional
             Name of the group (folder) containing cell-wise data. Defaults to
             None in wich case it is automatically detected.
-        cell_ensemble_data : str
+        cell_ensemble_data : str, optional
             Name of the group (folder) containing data of cell ensembles. This
             group is used to inquire the name of the phases. Phases will get
             numeric IDs if this group is not found. Defaults to 'CellEnsembleData'.
-        phases : str
+        phases : str, optional
             Name of the dataset containing the phase ID (cell-wise or grain-wise).
             Defaults to 'Phases'.
-        Euler_angles : str
+        Euler_angles : str, optional
             Name of the dataset containing the crystallographic orientation as
             Euler angles in radians (cell-wise or grain-wise). Defaults to 'EulerAngles'.
-        phase_names : str
+        phase_names : str, optional
             Name of the dataset containing the phase names. Phases will get
             numeric IDs if this dataset is not found. Defaults to 'PhaseName'.
-        base_group : str
-            Path to the group (folder) that contains geometry (_SIMPL_GEOMETRY),
+        base_group : str, optional
+            Path to the group (folder) that contains geometry information,
             and grain- or cell-wise data. Defaults to None, in which case
-            it is set as the path that contains _SIMPL_GEOMETRY/SPACING.
+            it is set as the path that has a '_SPACING' attribute (file version
+            8.0) or contains '_SIMPL_GEOMETRY/SPACING' (file version 7.0).
 
         Returns
         -------
@@ -126,13 +127,14 @@ class ConfigMaterial(YAML):
         Homogenization and phase entries are emtpy and need to be
         defined separately.
 
-        Versions 8.0 and later of the DREAM.3D file format are not yet supported.
+        Versions 7.0 and 8.0 of the DREAM.3D file format are supported.
         """
         with h5py.File(fname, 'r') as f:
-            if (file_version := util.version(f.attrs['FileVersion'].decode()+'.0')) > '7.0.0':
+            file_version = f.attrs['FileVersion'].decode()
+            if file_version != '7.0' and file_version != '8.0':
                 raise ValueError(f'DREAM.3D file format {file_version} is not supported')
-            b = util.DREAM3D_base_group(f) if base_group is None else base_group
-            c = util.DREAM3D_cell_data_group(f) if cell_data is None else cell_data
+            b = util.DREAM3D_base_group(f,file_version) if base_group is None else base_group
+            c = util.DREAM3D_cell_data_group(f,file_version) if cell_data is None else cell_data
 
             if grain_data is None:
                 phase = f['/'.join([b,c,phases])][()].flatten()

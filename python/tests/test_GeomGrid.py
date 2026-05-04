@@ -501,19 +501,21 @@ def test_get_grain_boundaries_invalid(default,directions):
     with pytest.raises(ValueError):
         default.get_grain_boundaries(directions=directions)
 
-def test_load_DREAM3D(res_path):
+@pytest.mark.parametrize('file_version',[7,8])
+def test_load_DREAM3D(res_path,file_version):
     """
     For synthetic microstructures (no in-grain scatter), check that:
     1) the sorted and renumbered grain-wise representation is equivalent to the cell-wise representation.
     2) the same orientations are assigned to each cell for the grain-wise and cell-wise approaches.
     """
     # grain-wise data (using existing DREAM.3D segmentation)
-    grid_grain = GeomGrid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d','FeatureIds')
-    material_grain = ConfigMaterial.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d','Grain Data')
+    fname = res_path/f'2phase_irregularGrid_v{file_version}.dream3d'
+    grid_grain = GeomGrid.load_DREAM3D(fname,'FeatureIds')
+    material_grain = ConfigMaterial.load_DREAM3D(fname,'Grain Data')
     O_grain = np.array([material['constituents'][0]['O'] for material in material_grain['material']])
     # cell-wise data (clustering identical orientation-phase combinations)
-    grid_cell = GeomGrid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d')
-    material_cell = ConfigMaterial.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d')
+    grid_cell = GeomGrid.load_DREAM3D(fname)
+    material_cell = ConfigMaterial.load_DREAM3D(fname)
     O_cell = np.array([material['constituents'][0]['O'] for material in material_cell['material']])
 
     assert np.allclose(grid_grain.origin,grid_cell.origin) and \
@@ -521,8 +523,9 @@ def test_load_DREAM3D(res_path):
             np.allclose(O_grain[grid_grain.material],O_cell[grid_cell.material]) and \
             (grid_grain.renumber().sort().material == grid_cell.material).all()
 
-def test_load_DREAM3D_reference(res_path,update):
-    current   = GeomGrid.load_DREAM3D(res_path/'measured.dream3d')
+@pytest.mark.parametrize('file_version',[7,8])
+def test_load_DREAM3D_reference(res_path,update,file_version):
+    current   = GeomGrid.load_DREAM3D(res_path/f'measured_v{file_version}.dream3d')
     reference = GeomGrid.load(res_path/'measured.vti')
     if update:
         current.save(res_path/'measured.vti')

@@ -435,9 +435,10 @@ class GeomGrid:
             Euler angles in radians It is not used for grain-wise data, i.e.
             when feature_IDs is not None. Defaults to 'EulerAngles'.
         base_group : str, optional
-            Path to the group (folder) that contains geometry (_SIMPL_GEOMETRY),
+            Path to the group (folder) that contains geometry information,
             and grain- or cell-wise data. Defaults to None, in which case
-            it is set as the path that contains _SIMPL_GEOMETRY/SPACING.
+            it is set as the path that has a '_SPACING' attribute (file version
+            8.0) or contains '_SIMPL_GEOMETRY/SPACING' (file version 7.0).
 
         Returns
         -------
@@ -461,17 +462,24 @@ class GeomGrid:
         is only obtained if the "grain_data" argument is used when calling
         damask.ConfigMaterial.load_DREAM3D.
 
-        Versions 8.0 and later of the DREAM.3D file format are not yet supported.
+        Versions 7.0 and 8.0 of the DREAM.3D file format are supported.
         """
         with h5py.File(fname, 'r') as f:
-            if (file_version := util.version(f.attrs['FileVersion'].decode()+'.0')) > '7.0.0':
+            file_version = f.attrs['FileVersion'].decode()
+            if file_version != '7.0' and file_version != '8.0':
                 raise ValueError(f'DREAM.3D file format {file_version} is not supported')
-            b = util.DREAM3D_base_group(f) if base_group is None else base_group
-            c = util.DREAM3D_cell_data_group(f) if cell_data is None else cell_data
+            b = util.DREAM3D_base_group(f,file_version) if base_group is None else base_group
+            c = util.DREAM3D_cell_data_group(f,file_version) if cell_data is None else cell_data
 
-            cells  = f['/'.join([b,'_SIMPL_GEOMETRY','DIMENSIONS'])][()]
-            size   = f['/'.join([b,'_SIMPL_GEOMETRY','SPACING'])] * cells
-            origin = f['/'.join([b,'_SIMPL_GEOMETRY','ORIGIN'])][()]
+            match file_version:
+                case '8.0':
+                    cells  = f[b].attrs['_DIMENSIONS']
+                    size   = f[b].attrs['_SPACING'] * cells
+                    origin = f[b].attrs['_ORIGIN']
+                case '7.0':
+                    cells  = f['/'.join([b,'_SIMPL_GEOMETRY','DIMENSIONS'])][()]
+                    size   = f['/'.join([b,'_SIMPL_GEOMETRY','SPACING'])] * cells
+                    origin = f['/'.join([b,'_SIMPL_GEOMETRY','ORIGIN'])][()]
 
             if feature_IDs is None:
                 phase = f['/'.join([b,c,phases])][()].reshape(-1,1)

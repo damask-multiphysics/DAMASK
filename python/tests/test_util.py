@@ -153,44 +153,59 @@ def test_decorate(style):
 
 @pytest.mark.parametrize('complete',[True,False])
 @pytest.mark.parametrize('fhandle',[True,False])
-def test_D3D_base_group(np_rng,tmp_path,complete,fhandle):
+@pytest.mark.parametrize('file_version',[7,8])
+def test_DREAM3D_base_group(np_rng,tmp_path,complete,fhandle,file_version):
     random.seed(int(np_rng.integers(np.iinfo(int).max)))
     base_group = ''.join(random.choices('DAMASK', k=10))
     with h5py.File(tmp_path/'base_group.dream3d','w') as f:
-        f.create_group('/'.join((base_group,'_SIMPL_GEOMETRY')))
-        if complete:
-            f['/'.join((base_group,'_SIMPL_GEOMETRY'))].create_dataset('SPACING',data=np.ones(3))
+        f.create_group(base_group)
+        match file_version:
+            case 8:
+                if complete:
+                    f[base_group].attrs['_SPACING']=np.ones(3)
+            case 7:
+                f.create_group('/'.join((base_group,'_SIMPL_GEOMETRY')))
+                if complete:
+                    f['/'.join((base_group,'_SIMPL_GEOMETRY'))].create_dataset('SPACING',data=np.ones(3))
 
     fname = tmp_path/'base_group.dream3d'
     if fhandle: fname = h5py.File(fname)
     if complete:
-        assert base_group == util.DREAM3D_base_group(fname)
+        assert base_group == util.DREAM3D_base_group(fname,f'{file_version}.0')
     else:
         with pytest.raises(ValueError):
-            util.DREAM3D_base_group(fname)
+            util.DREAM3D_base_group(fname,f'{file_version}.0')
 
 @pytest.mark.parametrize('complete',[True,False])
 @pytest.mark.parametrize('fhandle',[True,False])
-def test_D3D_cell_data_group(np_rng,tmp_path,complete,fhandle):
+@pytest.mark.parametrize('file_version',[7,8])
+def test_DREAM3D_cell_data_group(np_rng,tmp_path,complete,fhandle,file_version):
     random.seed(int(np_rng.integers(np.iinfo(int).max)))
     base_group = ''.join(random.choices('DAMASK', k=10))
     cell_data_group = ''.join(random.choices('KULeuven', k=10))
     cells = np_rng.integers(1,50,3)
     with h5py.File(tmp_path/'cell_data_group.dream3d','w') as f:
-        f.create_group('/'.join((base_group,'_SIMPL_GEOMETRY')))
-        f['/'.join((base_group,'_SIMPL_GEOMETRY'))].create_dataset('SPACING',data=np.ones(3))
-        f['/'.join((base_group,'_SIMPL_GEOMETRY'))].create_dataset('DIMENSIONS',data=cells[::-1])
-        f[base_group].create_group(cell_data_group)
+        f.create_group('/'.join([base_group,cell_data_group]))
+
+        match file_version:
+            case 8:
+                f[base_group].attrs['_SPACING']=np.ones(3)
+                f[base_group].attrs['_DIMENSIONS']=cells[::-1]
+            case 7:
+                f[base_group].create_group('_SIMPL_GEOMETRY')
+                f['/'.join((base_group,'_SIMPL_GEOMETRY'))].create_dataset('SPACING',data=np.ones(3))
+                f['/'.join((base_group,'_SIMPL_GEOMETRY'))].create_dataset('DIMENSIONS',data=cells[::-1])
+
         if complete:
-            f['/'.join((base_group,cell_data_group))].create_dataset('data',shape=np.append(cells,1))
+            f['/'.join((base_group,cell_data_group))].create_dataset('data',shape=np.append(cells,1),dtype='f4')
 
     fname = tmp_path/'cell_data_group.dream3d'
     if fhandle: fname = h5py.File(fname)
     if complete:
-        assert cell_data_group == util.DREAM3D_cell_data_group(fname)
+        assert cell_data_group == util.DREAM3D_cell_data_group(fname,f'{file_version}.0')
     else:
         with pytest.raises(ValueError):
-            util.DREAM3D_cell_data_group(fname)
+            util.DREAM3D_cell_data_group(fname,f'{file_version}.0')
 
 
 @pytest.mark.parametrize('full,reduced',[({},                           {}),

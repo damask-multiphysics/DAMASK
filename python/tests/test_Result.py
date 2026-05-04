@@ -503,7 +503,7 @@ def test_export_DREAM3D(tmp_path,res_path,h5py_dataset_iterator):
             if path.find(i) >= 0: return True
         return False
 
-    with h5py.File(res_path/'2phase_irregularGrid.dream3d','r') as ref, \
+    with h5py.File(res_path/'2phase_irregularGrid_v7.dream3d','r') as ref, \
             h5py.File(tmp_path/'2phase_irregularGrid_tensionX_material_inc0.dream3d','r') as cur:
 
         for (path,dset) in h5py_dataset_iterator(ref):

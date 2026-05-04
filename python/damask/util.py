@@ -601,7 +601,8 @@ def shapeblender(a: tuple[int, ...],
         return _np.broadcast_shapes(a_,_b)
 
 
-def DREAM3D_base_group(fname: _Union[str, _Path, _h5py.File]) -> str:
+def DREAM3D_base_group(fname: _Union[str, _Path, _h5py.File],
+                       file_version: _Literal['7.0', '8.0']) -> str:
     """
     Determine the base group of a DREAM.3D file.
 
@@ -618,19 +619,25 @@ def DREAM3D_base_group(fname: _Union[str, _Path, _h5py.File]) -> str:
     path : str
         Path to the base group.
     """
-    def get_base_group(f: _h5py.File) -> str:
-        base_group = f.visit(lambda path: path.rsplit('/',2)[0] if '_SIMPL_GEOMETRY/SPACING' in path else None)
+    def get_base_group(f: _h5py.File, version: _Literal['7.0', '8.0']) -> str:
+        match version:
+            case '8.0':
+                base_group = f.visit(lambda path: path if '_SPACING' in f[path].attrs else None)
+            case '7.0':
+                base_group = f.visit(lambda path: path.rsplit('/',2)[0] if '_SIMPL_GEOMETRY/SPACING' in path else None)
+
         if base_group is None:
             raise ValueError(f'could not determine base group in file "{fname}"')
         return base_group
 
     if isinstance(fname,_h5py.File):
-        return get_base_group(fname)
+        return get_base_group(fname, file_version)
 
     with _h5py.File(_Path(fname).expanduser(),'r') as f:
-        return get_base_group(f)
+        return get_base_group(f, file_version)
 
-def DREAM3D_cell_data_group(fname: _Union[str, _Path, _h5py.File]) -> str:
+def DREAM3D_cell_data_group(fname: _Union[str, _Path, _h5py.File],
+                            file_version: _Literal['7.0', '8.0']) -> str:
     """
     Determine the cell data group of a DREAM.3D file.
 
@@ -648,9 +655,13 @@ def DREAM3D_cell_data_group(fname: _Union[str, _Path, _h5py.File]) -> str:
     path : str
         Path to the cell data group.
     """
-    def get_cell_data_group(f: _h5py.File) -> str:
-        base_group = DREAM3D_base_group(f)
-        cells = tuple(f['/'.join([base_group,'_SIMPL_GEOMETRY','DIMENSIONS'])][()][::-1])
+    def get_cell_data_group(f: _h5py.File, version: _Literal['7.0', '8.0']) -> str:
+        base_group = DREAM3D_base_group(f,version)
+        match version:
+            case '8.0':
+                cells = tuple(f[base_group].attrs['_DIMENSIONS'][::-1])
+            case '7.0':
+                cells = tuple(f['/'.join([base_group,'_SIMPL_GEOMETRY','DIMENSIONS'])][()][::-1])
         cell_data_group = f[base_group].visititems(lambda path,obj: path.split('/')[0] \
                                                    if isinstance(obj,_h5py._hl.dataset.Dataset) and _np.shape(obj)[:-1] == cells \
                                                    else None)
@@ -659,10 +670,10 @@ def DREAM3D_cell_data_group(fname: _Union[str, _Path, _h5py.File]) -> str:
         return cell_data_group
 
     if isinstance(fname,_h5py.File):
-        return get_cell_data_group(fname)
+        return get_cell_data_group(fname, file_version)
 
     with _h5py.File(_Path(fname).expanduser(),'r') as f:
-        return get_cell_data_group(f)
+        return get_cell_data_group(f, file_version)
 
 
 def _standardize_MillerBravais(idx: _IntSequence) -> _np.ndarray:

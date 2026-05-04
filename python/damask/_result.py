@@ -2032,8 +2032,9 @@ class Result:
         """
         Export the visible components to DREAM3D compatible files.
 
-        One DREAM3D file per visible increment is created.
-        The geometry is based on the undeformed configuration.
+        The file format version is 7.0. One DREAM3D file per visible
+        increment is created. The geometry is based on the undeformed
+        configuration.
 
         Parameters
         ----------
