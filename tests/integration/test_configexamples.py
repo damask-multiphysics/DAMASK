@@ -112,7 +112,7 @@ config_phase = \
     ('X5CrNi18-10', 'Hooke_X5CrNi18-10', None, 'thermalexpansion_X5CrNi18-10', None, 'X5CrNi18-10',
                                                                                      'externalheat_ramp-and-hold', None),
     # elastic + chemical
-    ('Al', 'Hooke_Al', None, None, None, None, None, 'quadEnergy_example'),
+    ('Al', 'Hooke_Al', None, None, None, None, None, 'quadenergy_example'),
    ]
 
 
