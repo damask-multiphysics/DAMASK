@@ -18,8 +18,8 @@ from typing import (NamedTuple as _NamedTuple,
                     Literal as _Literal,
                     overload as _overload)
 
-from scipy import spatial as _spatial
 import numpy as _np
+from scipy import spatial as _spatial
 
 from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence
 

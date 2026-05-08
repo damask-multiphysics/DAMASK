@@ -393,7 +393,7 @@ module crystal
     crystal_isotropic_nu, &
     crystal_isotropic_mu, &
     crystal_symmetrize_33, &
-    crystal_symmetrize_C66, &
+    crystal_assembleStiffness, &
     crystal_SchmidMatrix_slip, &
     crystal_SchmidMatrix_twin, &
     crystal_SchmidMatrix_trans, &
@@ -558,7 +558,11 @@ function crystal_C66_trans(Ntrans,C_parent66,lattice_target, &
     C_target_unrotated66(1,3) = C_bar66(1,3)
     C_target_unrotated66(3,3) = C_bar66(3,3)
     C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2/(0.5_pREAL*(C_bar66(1,1) - C_bar66(1,2)))
-    C_target_unrotated66 = crystal_symmetrize_C66(C_target_unrotated66,'hP')
+    C_target_unrotated66 = crystal_assembleStiffness(C_target_unrotated66(1,1), &
+                                                     C_target_unrotated66(1,2), &
+                                                     C_target_unrotated66(4,4), &
+                                                     C_target_unrotated66(1,3), &
+                                                     C_target_unrotated66(3,3), lattice='hP')
   elseif (all(lattice_target /= ['cI','hP'])) then
     call IO_error(130_pI16, 'invalid target lattice', lattice_target, emph=[2])
   else
@@ -1700,46 +1704,55 @@ end function crystal_symmetrize_33
 !> @brief Return stiffness matrix in 6x6 notation with symmetry according to given Bravais lattice
 !> @details J. A. Rayne and B. S. Chandrasekhar Phys. Rev. 120, 1658 Erratum Phys. Rev. 122, 1962
 !--------------------------------------------------------------------------------------------------
-pure function crystal_symmetrize_C66(C66,lattice) result(C66_sym)
+pure function crystal_assembleStiffness(C_11,C_12,C_44, &
+                                        C_13,C_33, &
+                                        C_66, &
+                                        lattice) result(C_tilde)
 
-  real(pREAL), dimension(6,6) :: C66_sym
+  real(pREAL), dimension(6,6) :: C_tilde
 
-  real(pREAL), dimension(6,6), intent(in) :: C66
-  character(len=*),            intent(in) :: lattice                                                !< Bravais lattice (Pearson symbol)
+  real(pREAL),      intent(in) :: C_11, C_12, C_44
+  real(pREAL),      intent(in), optional :: C_13, C_33, C_66
+  character(len=*), intent(in) :: lattice                                                            !< Bravais lattice (Pearson symbol)
 
   integer :: i,j
 
 
-  C66_sym = 0.0_pREAL
+  C_tilde = 0.0_pREAL
+
+  C_tilde(1,1) = C_11
+  C_tilde(2,2) = C_11
+
+  C_tilde(1,2) = C_12
+
+  C_tilde(4,4) = C_44
+  C_tilde(5,5) = C_44
 
   select case(lattice)
     case ('cF','cI')
-      C66_sym(1,1) = C66(1,1); C66_sym(2,2) = C66(1,1); C66_sym(3,3) = C66(1,1)
-      C66_sym(1,2) = C66(1,2); C66_sym(1,3) = C66(1,2); C66_sym(2,3) = C66(1,2)
-      C66_sym(4,4) = C66(4,4); C66_sym(5,5) = C66(4,4); C66_sym(6,6) = C66(4,4)                     ! isotropic C_44 = (C_11-C_12)/2
+      C_tilde(3,3) = C_11
+      C_tilde(1,3) = C_12
+      C_tilde(2,3) = C_12
+      C_tilde(6,6) = C_44
     case ('hP')
-      C66_sym(1,1) = C66(1,1); C66_sym(2,2) = C66(1,1)
-      C66_sym(3,3) = C66(3,3)
-      C66_sym(1,2) = C66(1,2)
-      C66_sym(1,3) = C66(1,3); C66_sym(2,3) = C66(1,3)
-      C66_sym(4,4) = C66(4,4); C66_sym(5,5) = C66(4,4)
-      C66_sym(6,6) = 0.5_pREAL*(C66(1,1)-C66(1,2))
+      C_tilde(3,3) = C_33
+      C_tilde(1,3) = C_13
+      C_tilde(2,3) = C_13
+      C_tilde(6,6) = 0.5_pREAL * (C_11 - C_12)
     case ('tI')
-      C66_sym(1,1) = C66(1,1); C66_sym(2,2) = C66(1,1)
-      C66_sym(3,3) = C66(3,3)
-      C66_sym(1,2) = C66(1,2)
-      C66_sym(1,3) = C66(1,3); C66_sym(2,3) = C66(1,3)
-      C66_sym(4,4) = C66(4,4); C66_sym(5,5) = C66(4,4)
-      C66_sym(6,6) = C66(6,6)
+      C_tilde(3,3) = C_33
+      C_tilde(1,3) = C_13
+      C_tilde(2,3) = C_13
+      C_tilde(6,6) = C_66
    end select
 
-   do i = 1, 6
-     do j = i+1, 6
-       C66_sym(j,i) = C66_sym(i,j)
+   do i = 1, 3
+     do j = i+1, 3
+       C_tilde(j,i) = C_tilde(i,j)
      end do
    end do
 
-end function crystal_symmetrize_C66
+end function crystal_assembleStiffness
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2274,10 +2287,10 @@ subroutine crystal_selfTest()
                                                            error stop 'tI coordinate system'
   do i = 1, 10
     call random_number(C)
-    C_cF = crystal_symmetrize_C66(C,'cI')
-    C_cI = crystal_symmetrize_C66(C,'cF')
-    C_hP = crystal_symmetrize_C66(C,'hP')
-    C_tI = crystal_symmetrize_C66(C,'tI')
+    C_cF = crystal_assembleStiffness(C(1,1),C(1,2),C(4,4),lattice='cI')
+    C_cI = crystal_assembleStiffness(C(1,1),C(1,2),C(4,4),lattice='cF')
+    C_hP = crystal_assembleStiffness(C(1,1),C(1,2),C(4,4),C(1,3),C(3,3),lattice='hP')
+    C_tI = crystal_assembleStiffness(C(1,1),C(1,2),C(4,4),C(1,3),C(3,3),C(6,6),lattice='tI')
 
     if (any(dNeq(C_cI,transpose(C_cF))))                   error stop 'SymmetryC66/cI-cF'
     if (any(dNeq(C_cF,transpose(C_cI))))                   error stop 'SymmetryC66/cF-cI'
@@ -2314,14 +2327,11 @@ subroutine crystal_selfTest()
 
   call random_number(C)
   C(1,1) = C(1,1) + C(1,2) + 0.1_pREAL
-  C(1,3) = C(1,2)
-  C(3,3) = C(1,1)
   C(4,4) = 0.5_pREAL * (C(1,1) - C(1,2))
-  C(6,6) = C(4,4)
 
-  C_cI = crystal_symmetrize_C66(C,'cI')
-  if (dNeq(C_cI(4,4),crystal_isotropic_mu(C_cI,'isostrain','cI'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostrain/cI'
-  if (dNeq(C_cI(4,4),crystal_isotropic_mu(C_cI,'isostress','cI'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostress/cI'
+  C_cI = crystal_assembleStiffness(C(1,1),C(1,2),C(4,4),lattice='cI')
+  if (dNeq(C(4,4),crystal_isotropic_mu(C_cI,'isostrain','cI'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostrain/cI'
+  if (dNeq(C(4,4),crystal_isotropic_mu(C_cI,'isostress','cI'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostress/cI'
 
   lambda = C_cI(1,2)
   if (dNeq(lambda*0.5_pREAL/(lambda+crystal_isotropic_mu(C_cI,'isostrain','cI')), &
@@ -2330,7 +2340,7 @@ subroutine crystal_selfTest()
           crystal_isotropic_nu(C_cI,'isostress','cI'),1.0e-12_pREAL)) error stop 'isotropic_nu/isostress/cI'
 
 
-  C_hP = crystal_symmetrize_C66(C,'hP')
+  C_hP = crystal_assembleStiffness(C(1,1),C(1,2),C(4,4),C(1,2),C(1,1),lattice='hP')
   if (dNeq(C(4,4),crystal_isotropic_mu(C_hP,'isostrain','hP'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostrain/hP'
   if (dNeq(C(4,4),crystal_isotropic_mu(C_hP,'isostress','hP'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostress/hP'
 
@@ -2340,9 +2350,9 @@ subroutine crystal_selfTest()
   if (dNeq(lambda*0.5_pREAL/(lambda+crystal_isotropic_mu(C_hP,'isostress','hP')), &
           crystal_isotropic_nu(C_hP,'isostress','hP'),1.0e-12_pREAL)) error stop 'isotropic_nu/isostress/hP'
 
-  C_tI = crystal_symmetrize_C66(C,'tI')
-  if (dNeq(C(6,6),crystal_isotropic_mu(C_tI,'isostrain','tI'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostrain/tI'
-  if (dNeq(C(6,6),crystal_isotropic_mu(C_tI,'isostress','tI'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostress/tI'
+  C_tI = crystal_assembleStiffness(C(1,1),C(1,2),C(4,4),C(1,2),C(1,1),C(4,4),lattice='tI')
+  if (dNeq(C(4,4),crystal_isotropic_mu(C_tI,'isostrain','tI'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostrain/tI'
+  if (dNeq(C(4,4),crystal_isotropic_mu(C_tI,'isostress','tI'),1.0e-12_pREAL)) error stop 'isotropic_mu/isostress/tI'
 
   lambda = C_tI(1,2)
   if (dNeq(lambda*0.5_pREAL/(lambda+crystal_isotropic_mu(C_tI,'isostrain','tI')), &
@@ -2351,7 +2361,8 @@ subroutine crystal_selfTest()
           crystal_isotropic_nu(C_tI,'isostress','tI'),1.0e-12_pREAL)) error stop 'isotropic_nu/isostress/tI'
 
   call random_number(C)
-  C = crystal_symmetrize_C66(C+math_eye(6),'cI')
+  C = C + math_eye(6)
+  C = crystal_assembleStiffness(C(1,1),C(1,2),C(4,4),lattice='cI')
   if (dNeq(crystal_isotropic_mu(C,'isostrain','cI'), crystal_isotropic_mu(C,'isostrain','hP'), 1.0e-12_pREAL)) &
     error stop 'isotropic_mu/isostrain/cI-hP'
   if (dNeq(crystal_isotropic_nu(C,'isostrain','cF'), crystal_isotropic_nu(C,'isostrain','cI'), 1.0e-12_pREAL)) &

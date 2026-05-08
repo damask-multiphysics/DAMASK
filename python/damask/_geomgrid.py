@@ -1,23 +1,18 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import os
 import copy
-import numbers
 import multiprocessing as mp
+import numbers
+import os
 from functools import partial
-from typing import Optional, Union, Sequence
 from pathlib import Path
+from typing import Optional, Sequence, Union
 
+import h5py
 import numpy as np
 import pandas as pd
-import h5py
-from scipy import ndimage, spatial, interpolate
+from scipy import interpolate, ndimage, spatial
 
-from . import VTK
-from . import util
-from . import grid_filters
-from . import Rotation
-from . import Table
-from . import Colormap
+from . import VTK, Colormap, Rotation, Table, grid_filters, util
 from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
 
 

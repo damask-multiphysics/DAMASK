@@ -328,12 +328,12 @@ compile_mesh:
 compile_grid_macos:
   extends: [.compile_macos]
   script:
-    - pytest -v -k 'compile and grid and not AGGRESSIVE' --build-type=RELEASE --buildcmd-post="--include-directory-after=$(gfortran -print-file-name=include)"
+    - pytest -v -k 'compile and grid' --build-type=RELEASE --buildcmd-post="--include-directory-after=$(gfortran -print-file-name=include)"
 
 compile_mesh_macos:
   extends: [.compile_macos]
   script:
-    - pytest -v -k 'compile and mesh and not AGGRESSIVE' --build-type=RELEASE --buildcmd-post="--include-directory-after=$(gfortran -print-file-name=include)"
+    - pytest -v -k 'compile and mesh' --build-type=RELEASE --buildcmd-post="--include-directory-after=$(gfortran -print-file-name=include)"
 
 compile_grid_previous:
   extends: [.compile_grid, .petsc_previous, .on_merge]

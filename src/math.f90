@@ -779,56 +779,40 @@ end function math_99to3333
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert symmetric 3x3x3x3 matrix into 6x6 matrix.
-!> @details Weighted conversion (default) rearranges according to Nye and weights shear
-! components according to Mandel. Advisable for matrix operations.
-! Unweighted conversion only rearranges order according to Nye
+!> @details Uses Mandel convention.
 !--------------------------------------------------------------------------------------------------
-pure function math_sym3333to66(m3333,weighted)
+pure function math_sym3333to66(m) result(m_tilde)
 
-  real(pREAL), dimension(6,6)                 :: math_sym3333to66
-  real(pREAL), dimension(3,3,3,3), intent(in) :: m3333                                              !< symmetric 3x3x3x3 matrix (no internal check)
-  logical,     optional,           intent(in) :: weighted                                           !< weight according to Mandel (.true. by default)
+  real(pREAL), dimension(6,6)                 :: m_tilde
+  real(pREAL), dimension(3,3,3,3), intent(in) :: m                                                  !< symmetric 3x3x3x3 matrix (no internal check)
 
-  real(pREAL), dimension(6) :: w
   integer :: i,j
 
 
-  w = merge(NRMMANDEL,1.0_pREAL,misc_optional(weighted,.true.))
-
-#ifndef __INTEL_COMPILER
-  do concurrent(i=1:6, j=1:6)
-    math_sym3333to66(i,j) = w(i)*w(j)*m3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
-  end do
-#else
-  forall(i=1:6, j=1:6) math_sym3333to66(i,j) = w(i)*w(j)*m3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
-#endif
+  do i=1,6; do j=1,6
+    m_tilde(i,j) = NRMMANDEL(i)*NRMMANDEL(j)*m(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
+  end do; end do
 
 end function math_sym3333to66
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert 6x6 matrix into symmetric 3x3x3x3 matrix.
-!> @details Weighted conversion (default) rearranges according to Nye and weights shear
-! components according to Mandel. Advisable for matrix operations.
-! Unweighted conversion only rearranges order according to Nye
+!> @details Uses Mandel convention.
 !--------------------------------------------------------------------------------------------------
-pure function math_66toSym3333(m66,weighted)
+pure function math_66toSym3333(m_tilde) result(m)
 
-  real(pREAL), dimension(3,3,3,3)            :: math_66toSym3333
-  real(pREAL), dimension(6,6),    intent(in) :: m66                                                 !< 6x6 matrix
-  logical,     optional,          intent(in) :: weighted                                            !< weight according to Mandel (.true. by default)
+  real(pREAL), dimension(3,3,3,3)            :: m
+  real(pREAL), dimension(6,6),    intent(in) :: m_tilde                                             !< 6x6 matrix
 
-  real(pREAL), dimension(6) :: w
   integer :: i,j
 
 
-  w = merge(INVNRMMANDEL,1.0_pREAL,misc_optional(weighted,.true.))
-
   do i=1,6; do j=1,6
-    math_66toSym3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = w(i)*w(j)*m66(i,j)
-    math_66toSym3333(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = w(i)*w(j)*m66(i,j)
-    math_66toSym3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = w(i)*w(j)*m66(i,j)
-    math_66toSym3333(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = w(i)*w(j)*m66(i,j)
+    m(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = INVNRMMANDEL(i)*INVNRMMANDEL(j)*m_tilde(i,j)
+    m(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = INVNRMMANDEL(i)*INVNRMMANDEL(j)*m_tilde(i,j)
+    m(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = INVNRMMANDEL(i)*INVNRMMANDEL(j)*m_tilde(i,j)
+    m(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = INVNRMMANDEL(i)*INVNRMMANDEL(j)*m_tilde(i,j)
   end do; end do
 
 end function math_66toSym3333

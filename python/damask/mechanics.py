@@ -10,8 +10,8 @@ from typing import Sequence as _Sequence, Union as _Union, Literal as _Literal
 import numpy as _np
 from numpy import typing as _npt
 
-from . import tensor as _tensor
 from . import _rotation
+from . import tensor as _tensor
 
 
 def deformation_Cauchy_Green_left(F: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:

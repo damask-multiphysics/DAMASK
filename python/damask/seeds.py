@@ -3,13 +3,13 @@
 
 from typing import Optional as _Optional, NamedTuple as _NamedTuple
 
-from scipy import spatial as _spatial
 import numpy as _np
+from scipy import spatial as _spatial
 
+from . import grid_filters as _grid_filters
+from . import util as _util
 from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence, \
                         NumpyRngSeed as _NumpyRngSeed
-from . import util as _util
-from . import grid_filters as _grid_filters
 
 
 class FromGridTuple(_NamedTuple):

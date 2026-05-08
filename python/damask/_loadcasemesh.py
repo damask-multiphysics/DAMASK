@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-from typing import Optional, Union, Any
+from typing import Any, Optional, Union
 
+from . import YAML
 from ._typehints import FileHandle
 from ._yaml import MaskedMatrixDumper
-from . import YAML
 
 
 class LoadcaseMesh(YAML):

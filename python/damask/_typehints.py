@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Functionality for typehints."""
 
-from typing import Sequence, Union, TypedDict, Literal, TextIO
 from pathlib import Path
+from typing import Literal, Sequence, TextIO, TypedDict, Union
 
 import numpy as np
 

@@ -1,16 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-from typing import Optional, Union, Sequence, Any
-
-import numpy as np
-import h5py
 import logging
+from typing import Any, Optional, Sequence, Union
 
-from . import YAML
-from . import Rotation
-from . import Orientation
-from . import util
-from . import tensor
-from . import Table
+import h5py
+import numpy as np
+
+from . import YAML, Orientation, Rotation, Table, tensor, util
 from ._typehints import FloatSequence, StrSequence
 
 

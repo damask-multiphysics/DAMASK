@@ -81,3 +81,6 @@ warn_unused_ignores = true
 [[tool.mypy.overrides]]
 module = ['h5py', 'vtkmodules.*', 'wx']
 ignore_missing_imports = true
+
+[tool.isort]
+lines_after_imports = 2

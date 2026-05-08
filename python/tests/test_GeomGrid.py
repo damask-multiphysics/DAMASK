@@ -396,32 +396,46 @@ def test_tessellation_approaches(np_rng,periodic):
     size   = np_rng.random(3) + 1.0
     N_seeds= np_rng.integers(10,30)
     seeds  = np_rng.random((N_seeds,3)) * np.broadcast_to(size,(N_seeds,3))
-    Voronoi  = GeomGrid.from_Voronoi_tessellation( cells,size,seeds,                 np.arange(N_seeds)+5,periodic)
-    Laguerre = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,np.ones(N_seeds),np.arange(N_seeds)+5,periodic)
+    weights = np.ones(N_seeds) * 100 * np_rng.random() + 1
+    Voronoi  = GeomGrid.from_Voronoi_tessellation( cells,size,seeds,        np.arange(N_seeds)+5,periodic)
+    Laguerre = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,weights,np.arange(N_seeds)+5,periodic)
     assert Laguerre == Voronoi
 
-def test_Laguerre_weights(np_rng):
+@pytest.mark.parametrize('periodic',[True,False])
+def test_Laguerre_weights_extreme(np_rng,periodic):
     cells  = np_rng.integers(10,20,3)
     size   = np_rng.random(3) + 1.0
     N_seeds= np_rng.integers(10,30)
     seeds  = np_rng.random((N_seeds,3)) * np.broadcast_to(size,(N_seeds,3))
-    weights= np.full((N_seeds),-np.inf)
+    weights= np.zeros(N_seeds)
     ms     = np_rng.integers(N_seeds)
-    weights[ms] = np_rng.random()
-    Laguerre = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,weights,periodic=np_rng.random()>0.5)
+    weights[ms] = np.finfo(weights.dtype).max
+    Laguerre = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,weights,periodic=periodic)
     assert np.all(Laguerre.material == ms)
 
+@pytest.mark.parametrize('periodic',[True,False])
+def test_Laguerre_weights_invariant(np_rng,periodic):
+    cells  = np_rng.integers(10,20,3)
+    size   = np_rng.random(3) + 1.0
+    N_seeds= np_rng.integers(10,30)
+    seeds  = np_rng.random((N_seeds,3)) * np.broadcast_to(size,(N_seeds,3))
+    weights= np_rng.random(N_seeds)
+    a = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,weights,                periodic=periodic)
+    b = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,weights+np_rng.random(),periodic=periodic)
+    assert np.all(a.material == b.material)
+
+@pytest.mark.parametrize('periodic',[True,False])
 @pytest.mark.parametrize('approach',['Laguerre','Voronoi'])
-def test_tessellate_bicrystal(np_rng,approach):
+def test_tessellate_bicrystal(np_rng,approach,periodic):
     cells = np_rng.integers(5,10,3)*2
     size  = cells.astype(float)
     seeds = np.vstack((size*np.array([0.5,0.25,0.5]),size*np.array([0.5,0.75,0.5])))
     material = np.zeros(cells)
     material[:,cells[1]//2:,:] = 1
     if   approach == 'Laguerre':
-        grid = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,np.ones(2),periodic=np_rng.random()>0.5)
+        grid = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,np.ones(2),periodic=periodic)
     elif approach == 'Voronoi':
-        grid = GeomGrid.from_Voronoi_tessellation(cells,size,seeds,            periodic=np_rng.random()>0.5)
+        grid = GeomGrid.from_Voronoi_tessellation(cells,size,seeds,            periodic=periodic)
     assert np.all(grid.material == material)
 
 @pytest.mark.parametrize('surface',['Schwarz P',

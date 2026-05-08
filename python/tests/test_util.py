@@ -293,3 +293,8 @@ def test_standardize_MillerBravais(np_rng,dim):
     idx_missing[...,2][idx_full[...,3]>0] = ...
     assert np.equal(idx_full,util._standardize_MillerBravais(idx_red)).all() and \
             np.equal(idx_full,util._standardize_MillerBravais(idx_missing)).all()
+
+def test_NestedDefaultDict():
+    d = util.NestedDefaultDict()
+    d['a']['b']['c'] = 'hello'
+    d.to_regular() == {'a':{'b':{'c':'hello'}}}
