@@ -532,9 +532,9 @@ class GeomGrid:
 
     @staticmethod
     def _find_closest_seed(seeds: np.ndarray,
-                           weights: np.ndarray,
-                           point: np.ndarray) -> np.integer:
-        return np.argmin(np.sum((np.broadcast_to(point,(len(seeds),3))-seeds)**2,axis=1) - weights)
+                           bias: np.ndarray,
+                           coord: np.ndarray) -> np.integer:
+        return np.argmax(2*np.dot(seeds,coord) + bias)
 
     @staticmethod
     def from_Laguerre_tessellation(cells: IntSequence,
@@ -556,8 +556,8 @@ class GeomGrid:
             Position of the seed points in meter. All points need
             to lay within the box [(0,0,0),size].
         weights : sequence of float, len (seeds.shape[0])
-            Weights of the seeds. Setting all weights to 1.0 gives a
-            standard Voronoi tessellation.
+            Weights of the seeds. Uniform weights result in Voronoi
+            tessellation.
         material : sequence of int, len (seeds.shape[0]), optional
             Material ID of the seeds.
             Defaults to None, in which case materials are consecutively numbered.
@@ -573,20 +573,18 @@ class GeomGrid:
         -----
         damask.seeds contains functionality for seed generation.
         """
-        weights_p: FloatSequence
         if periodic:
-            weights_p = np.tile(weights,27)                                                         # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
             seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
+            bias_p  = -np.sum(seeds_p**2,axis=-1) + np.tile(weights,27)
         else:
-            weights_p = np.array(weights,float)
-            seeds_p   = seeds
-
-        coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
+            seeds_p = np.asarray(seeds)
+            bias_p  = -np.sum(seeds_p**2,axis=-1) + np.asarray(weights)
 
         pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',4)))
-        result = pool.map_async(partial(GeomGrid._find_closest_seed,seeds_p,weights_p), coords)
+        result = pool.map_async(partial(GeomGrid._find_closest_seed,seeds_p,bias_p),
+                                grid_filters.coordinates0_point(cells,size).reshape(-1,3))
         pool.close()
         pool.join()
         material_ = np.array(result.get()).reshape(cells)
