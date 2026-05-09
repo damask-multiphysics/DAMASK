@@ -1,0 +1,5 @@
+# For single point calculations, requires N_constituents = 1
+type: pass
+N_components: 3
+
+output: [x, mu]

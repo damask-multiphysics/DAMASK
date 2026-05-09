@@ -54,6 +54,7 @@ module function quadenergy_init() result(myChemicalEnergy)
     associate(prm  => param(ph))
       phase => phases%get_dict(ph)
       chemical => phase%get_dict('chemical')
+
       ! read params
       components => chemical%get_dict('components',defaultVal=emptyDict)
 
@@ -149,30 +150,4 @@ module function quadenergy_mobility(ph,en) result(mobility)
 end function quadenergy_mobility
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief Write results to HDF5 output file.
-!--------------------------------------------------------------------------------------------------
-module subroutine quadenergy_results(ph,comp,group)
-
-  integer,          intent(in) :: ph
-  real(pREAL), dimension(:,:), intent(in) :: comp
-  character(len=*), intent(in) :: group
-
-  integer :: ou
-
-
-  associate(prm => param(ph))
-
-    do ou = 1,prm%N_components
-
-        call result_writeDataset(comp(ou,:),group,trim(material_name_species(ou)), &
-                                 'concentration of '//trim(material_name_species(ou)),'mole fraction')
-    end do
-
-  end associate
-
-end subroutine quadenergy_results
-
-
 end submodule quadenergy
-

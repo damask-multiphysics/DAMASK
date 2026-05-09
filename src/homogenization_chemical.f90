@@ -178,7 +178,7 @@ end function homogenization_mobility
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Set chemical field (mu)
+!> @brief Set chemical field (mu).
 !--------------------------------------------------------------------------------------------------
 module subroutine homogenization_chemical_setField(mu, comp, Delta_t, ce)
 
@@ -197,30 +197,27 @@ end subroutine homogenization_chemical_setField
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Writes result to HDF5 output file.
+!> @brief Write result to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
 module subroutine chemical_result(ho,group)
 
   integer,          intent(in) :: ho
   character(len=*), intent(in) :: group
 
-  integer :: o, ou
+  integer :: o
 
+
+ ! ToDo (MD): replace hard-coded "systems" with appropriate name in HDF5/result.
+ !            I belive we call it "component" because "constituent" has already a different meaning
   associate(prm => param(ho))
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
-        case('comp')
-          do ou = 1, homogenization_chemical_Ncomponents(ho)
-              call result_writeDataset(current(ho)%comp(ou,:),group,trim(material_name_species(ou)), &
-                                       'concentration of '//trim(material_name_species(ou)),'mole fraction')
-          end do
+        case('x')
+          call result_writeDataset(current(ho)%comp,group,'x','mole fraction','1', &
+                                   material_name_species)
         case('mu')
-          do ou = 1, homogenization_chemical_Ncomponents(ho)-1
-              call result_writeDataset(current(ho)%mu(ou,:),group,'mu_'//trim(material_name_species(ou)), &
-                                       'total potential of '//trim(material_name_species(ou)),'J')
-          end do
-
-
+          call result_writeDataset(current(ho)%mu,group,'mu','total potential','J', &
+                                   material_name_species(:size(material_name_species)-1))
       end select
     end do outputsLoop
   end associate

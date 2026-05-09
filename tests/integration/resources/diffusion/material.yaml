@@ -6,7 +6,7 @@ homogenization:
     chemical:
       N_components: 2
       type: pass
-      output: [mu, comp]
+      output: [mu, x]
 
 phase:
   Aluminum_1:

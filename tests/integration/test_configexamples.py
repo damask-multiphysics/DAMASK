@@ -17,14 +17,16 @@ def res_path(res_path_base):
 config_homogenization = \
    [
     # mechanical
-    ('direct','pass_direct', None,None),
-    ('bicrystal','isostrain_polycrystal', None,None),
-    ('8grains','RGC_8grains', None,None),
+    ('direct','pass_direct', None,None,None),
+    ('bicrystal','isostrain_polycrystal', None,None,None),
+    ('8grains','RGC_8grains', None,None,None),
     # mechanical + thermal
-    ('direct','pass_direct','pass_direct',None),
-    ('8grains','isostrain_polycrystal','isotemperature_polycrystal',None),
-    # mechanical + thermal
-    ('direct','pass_direct','pass_direct','pass_direct'),
+    ('direct','pass_direct','pass_direct',None,None),
+    ('8grains','isostrain_polycrystal','isotemperature_polycrystal',None,None),
+    # mechanical + thermal + damage
+    ('direct','pass_direct','pass_direct','pass_direct',None),
+    # mechanical + thermal + damage + chemical
+    ('direct','pass_direct','pass_direct','pass_direct','pass_direct'),
    ]
 
 
@@ -120,7 +122,7 @@ def test_coverage_homogenization(damask_root):
     existing = set((damask_root/'examples/config/homogenization').glob('**/*.yaml'))
 
     tested   = set()
-    path = ['.','mechanical','thermal','damage']
+    path = ['.','mechanical','thermal','damage','chemical']
     for combination in config_homogenization:
         tested.update([damask_root/f'examples/config/homogenization/{path[i]}/{config}.yaml'
                        for i,config in enumerate(combination) if config is not None])
@@ -128,13 +130,13 @@ def test_coverage_homogenization(damask_root):
     assert len(existing ^ tested) == 0, existing ^ tested
 
 
-@pytest.mark.parametrize('N_constituents,mechanical,thermal,damage',config_homogenization)
+@pytest.mark.parametrize('N_constituents,mechanical,thermal,damage,chemical',config_homogenization)
 def test_homogenization(damask_root,tmp_path,
-                        N_constituents,mechanical,thermal,damage):
+                        N_constituents,mechanical,thermal,damage,chemical):
     def get_output(config,label='DAMASK'):
         output = {}
         homogenization = config['homogenization'][label]
-        for t in ['mechanical','thermal','damage']:
+        for t in ['mechanical','thermal','damage','chemical']:
             if t in homogenization.keys():
                 output[t] = homogenization[t].get('output', [])
         return output
@@ -177,6 +179,14 @@ def test_homogenization(damask_root,tmp_path,
         load_case['solver']['damage'] = 'spectral'
         g.initial_conditions['phi'] = 1.0
 
+    if chemical is not None:
+        config['homogenization'][label]['chemical'] \
+            = damask.YAML.load(base_path/'chemical'/f'{chemical}.yaml')
+        config['phase']['iso']['chemical'] \
+            = damask.YAML.load(damask_root/'examples'/'config'/'phase'/'chemical'/'quadenergy_example.yaml')
+        load_case['solver']['chemical'] = 'FDM'
+        for component in config['phase']['iso']['chemical']['components']:
+            g.initial_conditions[component] = 1.0
 
 
     config.material_add(phase='iso',O=damask.Rotation().broadcast_to((1,N)),                    # noqa
@@ -275,6 +285,15 @@ def test_phase(damask_root,tmp_path,
         config['homogenization']['SX']['damage'] = {'type':'pass'}
         load_case['solver']['damage'] = 'spectral'
         g.initial_conditions['phi'] = 1.0
+
+    if chemical is not None:
+        config['phase'][label]['chemical'] \
+            = damask.YAML.load(damask_root/'examples'/'config'/'phase'/'chemical'/f'{chemical}.yaml')
+        components = config['phase'][label]['chemical']['components']
+        config['homogenization']['SX']['chemical'] = {'type':'pass','N_components': len(components)}
+        for component in components:
+            g.initial_conditions[component] = 1.0
+        load_case['solver']['chemical'] = 'FDM'
 
     config.material_add(phase=label,O=[1.,0.,0.,0.],homogenization='SX').save(tmp_path/f'{material}.yaml') # noqa
     load_case.save(tmp_path/f'{load}.yaml')
