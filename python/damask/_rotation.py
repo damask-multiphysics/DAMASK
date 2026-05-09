@@ -486,28 +486,28 @@ class Rotation:
         >>> (r@o[np.newaxis,...]).shape                                                             # (12) @ (1,12, 3,3)
         (12, 12, 3, 3)
         """
+        def rotate_vector(q,vector):
+            p_m = q[...,1:]
+            q_m = q[...,0]
+            A = q_m**2 - np.einsum('...i,...i',p_m,p_m)
+            B = 2. * np.einsum('...i,...i',p_m,vector)
+            C = 2. * _P * q_m
+            return np.stack([A * vector[...,i] +
+                             B *    p_m[...,i] +
+                             C *  ( p_m[...,(i+1)%3]*vector[...,(i+2)%3]
+                                   -p_m[...,(i+2)%3]*vector[...,(i+1)%3])
+                            for i in [0,1,2]],axis=-1)
+
         if isinstance(other, np.ndarray):
-            obs = (util.shapeblender(self.shape,other.shape[:-1])+other.shape[-1:])[len(self.shape):]
-            for l in [4,2,1]:
-                if obs[-l:] == l*(3,):
-                    bs = util.shapeblender(self.shape,other.shape[:-l],False)
-                    self_ = self.broadcast_to(bs) if self.shape != bs else self
-                    if l==1:
-                        q_m = self_.quaternion[...,0]
-                        p_m = self_.quaternion[...,1:]
-                        A = q_m**2 - np.einsum('...i,...i',p_m,p_m)
-                        B = 2. * np.einsum('...i,...i',p_m,other)
-                        C = 2. * _P * q_m
-                        return np.stack([(A * other[...,i]) +
-                                         (B *   p_m[...,i]) +
-                                         (C * ( p_m[...,(i+1)%3]*other[...,(i+2)%3]
-                                              - p_m[...,(i+2)%3]*other[...,(i+1)%3]))
-                                        for i in [0,1,2]],axis=-1)
-                    else:
-                        return np.einsum({2: '...im,...jn,...mn',
-                                          4: '...im,...jn,...ko,...lp,...mnop'}[l],
-                                         *l*[self_.as_matrix()],
-                                         other)
+            obs = (util.shapeblender(self.shape,other.shape[:-1])+other.shape[-1:])[self.ndim:]
+            for order in [4,2,1]:
+                if obs[-order:] == order*(3,):
+                    target_batch = util.shapeblender(self.shape,other.shape[:-order],False)
+                    q = self.quaternion.reshape(self.shape + (1,)*(len(target_batch)-len(self.shape)) + (1,)*max(0,order-1) + (4,))
+                    result = other
+                    for ax in range(-order,0):
+                        result = np.moveaxis(rotate_vector(q,np.moveaxis(result,ax,-1)),-1,ax)
+                    return result
             raise ValueError('can only rotate vectors, second-order tensors, and fourth-order tensors')
         elif isinstance(other, Rotation):
             raise TypeError('use "R2*R1", i.e. multiplication, to compose rotations "R1" and "R2"')
