@@ -6,6 +6,8 @@ submodule(phase) chemical
 
   type :: tChemicalParameters
     real(pREAL) ::                 V_m = 0.0_pREAL                                                  !< molar volume
+    character(len=pSTRLEN), allocatable, dimension(:) :: &
+      output
   end type tChemicalParameters
 
   integer(kind(UNDEFINED)),  dimension(:), allocatable :: &
@@ -47,12 +49,6 @@ submodule(phase) chemical
       integer, intent(in) :: ph, en
       real(pREAL), dimension(:,:),allocatable :: mobility
     end function quadenergy_mobility
-
-    module subroutine quadenergy_results(ph,comp,group)
-      integer,          intent(in) :: ph
-      real(pREAL), dimension(:,:),intent(in) :: comp
-      character(len=*), intent(in) :: group
-    end subroutine quadenergy_results
 
 
  end interface
@@ -103,6 +99,11 @@ module subroutine chemical_init(phases)
         call IO_error(143_pI16,'type','not specified for phase',ph,emph=[1,3])
 
       param(ph)%V_m = chemical%get_asReal('V_m',defaultVal=1.0_pREAL)
+#if defined (__GFORTRAN__)
+      param(ph)%output = output_as1dStr(chemical)
+#else
+      param(ph)%output = chemical%get_as1dStr('output',defaultVal=emptyStrArray)
+#endif
     end if
 
   end do
@@ -228,16 +229,19 @@ module subroutine chemical_result(group,ph)
   character(len=*), intent(in) :: group
   integer,          intent(in) :: ph
 
+  integer :: ou
 
-  if (chemical_energy(ph) /= UNDEFINED) &
+  if (chemical_energy(ph) /= UNDEFINED) then
+
     call result_closeGroup(result_addGroup(group//'chemical'))
+    outputsLoop: do ou = 1,size(param(ph)%output)
+      select case(trim(param(ph)%output(ou)))
+        case ('x')
+          call result_writeDataset(current(ph)%C,group//'chemical/','x','mole fraction','1',material_name_species)
+      end select
+    end do outputsLoop
+  end if
 
-  chemicalEnergyType: select case (chemical_energy(ph))
-
-    case (CHEMICAL_QUADENERGY)
-      call quadenergy_results(ph,current(ph)%C,group//'chemical/')
-
-  end select chemicalEnergyType
 
 end subroutine chemical_result
 
