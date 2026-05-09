@@ -1723,7 +1723,7 @@ class Orientation(Rotation,Crystal):
         """
         return np.moveaxis(~self @
                            super().Schmid(N_slip=N_slip,
-                                          N_twin=N_twin)[(np.newaxis,)*len(self.shape)],
+                                          N_twin=N_twin)[(np.newaxis,)*self.ndim],
                            -3,
                            0)
 

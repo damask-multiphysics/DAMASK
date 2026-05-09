@@ -351,10 +351,10 @@ class Rotation:
             s_m   = util.shapeshifter( self.shape,blend,mode='right')
             s_o   = util.shapeshifter(other.shape,blend,mode='left')
 
-            q_m = self.broadcast_to(s_m).quaternion[...,0:1]
-            p_m = self.broadcast_to(s_m).quaternion[...,1:]
-            q_o = other.broadcast_to(s_o).quaternion[...,0:1]
-            p_o = other.broadcast_to(s_o).quaternion[...,1:]
+            q_m = self.quaternion[...,0].reshape(s_m + (1,))
+            p_m = self.quaternion[...,1:].reshape(s_m + (3,))
+            q_o = other.quaternion[...,0].reshape(s_o + (1,))
+            p_o = other.quaternion[...,1:].reshape(s_o + (3,))
 
             qmo = q_m*q_o
             q = (qmo - np.einsum('...i,...i',p_m,p_o).reshape(qmo.shape))
@@ -445,7 +445,7 @@ class Rotation:
 
         >>> import numpy as np
         >>> import damask
-        >>> r = damask.Rotation.from_random(shape=(12))
+        >>> r = damask.Rotation.from_random(shape=12)
         >>> o = np.ones((5,3))
         >>> (r@o).shape                                                                             # (12) @ (5, 3)
         (12, 5, 3)
@@ -463,7 +463,7 @@ class Rotation:
 
         >>> import numpy as np
         >>> import damask
-        >>> r = damask.Rotation.from_random(shape=(12))
+        >>> r = damask.Rotation.from_random(shape=12)
         >>> o = np.ones((12,3,3))
         >>> (r@o).shape                                                                             # (12) @ (3,3)
         (12, 3, 3)
@@ -472,7 +472,7 @@ class Rotation:
 
         >>> import numpy as np
         >>> import damask
-        >>> r = damask.Rotation.from_random(shape=(3))
+        >>> r = damask.Rotation.from_random(shape=3)
         >>> o = np.ones((3,3))
         >>> (r[...,np.newaxis]@o[np.newaxis,...]).shape                                             # (3,1) @ (1,3, 3)
         (3, 3, 3)
@@ -481,7 +481,7 @@ class Rotation:
 
         >>> import numpy as np
         >>> import damask
-        >>> r = damask.Rotation.from_random(shape=(12))
+        >>> r = damask.Rotation.from_random(shape=12)
         >>> o = np.ones((12,3,3))
         >>> (r@o[np.newaxis,...]).shape                                                             # (12) @ (1,12, 3,3)
         (12, 12, 3, 3)
@@ -498,11 +498,11 @@ class Rotation:
                         A = q_m**2 - np.einsum('...i,...i',p_m,p_m)
                         B = 2. * np.einsum('...i,...i',p_m,other)
                         C = 2. * _P * q_m
-                        return np.block([(A * other[...,i]) +
+                        return np.stack([(A * other[...,i]) +
                                          (B *   p_m[...,i]) +
                                          (C * ( p_m[...,(i+1)%3]*other[...,(i+2)%3]
                                               - p_m[...,(i+2)%3]*other[...,(i+1)%3]))
-                                        for i in [0,1,2]]).reshape(bs+(3,),order='F')
+                                        for i in [0,1,2]],axis=-1)
                     else:
                         return np.einsum({2: '...im,...jn,...mn',
                                           4: '...im,...jn,...ko,...lp,...mnop'}[l],
@@ -1483,8 +1483,8 @@ class Rotation:
         f[::2,:3] *= -1.                                                                            # flip half the rotation axes to negative sense
 
         return (R_align.broadcast_to(N)
-              * Rotation.from_axis_angle(p,normalize=True)
-              * Rotation.from_axis_angle(f)).reshape(() if shape is None else shape)
+                * Rotation.from_axis_angle(p,normalize=True)
+                * Rotation.from_axis_angle(f)).reshape(() if shape is None else shape)
 
 
 ####################################################################################################
@@ -1538,17 +1538,17 @@ class Rotation:
         E. Bernardes and S. Viollet, PLoS ONE 17(11):e0276302, 2022
         https://doi.org/10.1371/journal.pone.0276302
         """
-        qq = qu[...,0:1]**2-(qu[...,1:2]**2 + qu[...,2:3]**2 + qu[...,3:4]**2)
-        om = np.block([qq + 2.*qu[...,1:2]**2,
-                       2.*(qu[...,2:3]*qu[...,1:2]-_P*qu[...,0:1]*qu[...,3:4]),
-                       2.*(qu[...,3:4]*qu[...,1:2]+_P*qu[...,0:1]*qu[...,2:3]),
-                       2.*(qu[...,1:2]*qu[...,2:3]+_P*qu[...,0:1]*qu[...,3:4]),
-                       qq + 2.*qu[...,2:3]**2,
-                       2.*(qu[...,3:4]*qu[...,2:3]-_P*qu[...,0:1]*qu[...,1:2]),
-                       2.*(qu[...,1:2]*qu[...,3:4]-_P*qu[...,0:1]*qu[...,2:3]),
-                       2.*(qu[...,2:3]*qu[...,3:4]+_P*qu[...,0:1]*qu[...,1:2]),
-                       qq + 2.*qu[...,3:4]**2,
-                      ]).reshape(qu.shape[:-1]+(3,3))
+        qq = qu[...,0]**2-(qu[...,1]**2 + qu[...,2]**2 + qu[...,3]**2)
+        om = np.stack([qq + 2.*qu[...,1]**2,
+                       2.*(qu[...,2]*qu[...,1]-_P*qu[...,0]*qu[...,3]),
+                       2.*(qu[...,3]*qu[...,1]+_P*qu[...,0]*qu[...,2]),
+                       2.*(qu[...,1]*qu[...,2]+_P*qu[...,0]*qu[...,3]),
+                       qq + 2.*qu[...,2]**2,
+                       2.*(qu[...,3]*qu[...,2]-_P*qu[...,0]*qu[...,1]),
+                       2.*(qu[...,1]*qu[...,3]-_P*qu[...,0]*qu[...,2]),
+                       2.*(qu[...,2]*qu[...,3]+_P*qu[...,0]*qu[...,1]),
+                       qq + 2.*qu[...,3]**2,
+                      ],axis=-1).reshape(qu.shape[:-1]+(3,3))
         return om
 
     @staticmethod
@@ -1571,16 +1571,15 @@ class Rotation:
         E. Bernardes and S. Viollet, PLoS ONE 17(11):e0276302, 2022
         https://doi.org/10.1371/journal.pone.0276302
         """
-        a =     qu[...,0:1]
-        b = -_P*qu[...,3:4]
-        c = -_P*qu[...,1:2]
-        d = -_P*qu[...,2:3]
+        a =     qu[...,0]
+        b = -_P*qu[...,3]
+        c = -_P*qu[...,1]
+        d = -_P*qu[...,2]
 
-        eu = np.block([
-            np.arctan2(b,a),
-            np.arccos(2*(a**2+b**2)/(a**2+b**2+c**2+d**2)-1),
-            np.arctan2(-d,c),
-        ])
+        eu = np.stack([np.arctan2(b,a),
+                       np.arccos(2*(a**2+b**2)/(a**2+b**2+c**2+d**2)-1),
+                       np.arctan2(-d,c),
+                      ],axis=-1)
 
         eu_sum  = eu[...,0] + eu[...,2]
         eu_diff = eu[...,0] - eu[...,2]
@@ -1619,7 +1618,7 @@ class Rotation:
         with np.errstate(invalid='ignore',divide='ignore'):
             s = np.sign(qu[...,0:1])/np.sqrt(qu[...,1:2]**2+qu[...,2:3]**2+qu[...,3:4]**2)
             omega = 2. * np.arccos(np.clip(qu[...,0:1],-1.,1.))
-            ax = np.where(np.broadcast_to(qu[...,0:1] < 1.e-8,qu.shape),
+            ax = np.where(qu[...,0:1] < 1.e-8,
                           np.block([qu[...,1:4],np.broadcast_to(np.pi,qu[...,0:1].shape)]),
                           np.block([qu[...,1:4]*s,omega]))
         ax[np.isclose(qu[...,0],1.,rtol=0.)] = np.array([0.,0.,1.,0.])
@@ -1642,12 +1641,9 @@ class Rotation:
         """
         with np.errstate(invalid='ignore',divide='ignore'):
             s  = np.linalg.norm(qu[...,1:4],axis=-1,keepdims=True)
-            ro = np.where(np.broadcast_to(np.abs(qu[...,0:1]) < 1.e-12,qu.shape),
-                          np.block([qu[...,1:2], qu[...,2:3], qu[...,3:4], np.broadcast_to(np.inf,qu[...,0:1].shape)]),
-                          np.block([qu[...,1:2]/s,qu[...,2:3]/s,qu[...,3:4]/s,
-                                    np.tan(np.arccos(np.clip(qu[...,0:1],-1.,1.)))
-                                   ])
-                       )
+            ro = np.where(np.abs(qu[...,0:1]) < 1.e-12,
+                          np.block([qu[...,1:4],  np.broadcast_to(np.inf,qu[...,0:1].shape)]),
+                          np.block([qu[...,1:4]/s,np.tan(np.arccos(np.clip(qu[...,0:1],-1.,1.)))]))
         ro[np.abs(s).squeeze(-1) < 1.e-12] = np.array([0.,0.,_P,0.])
         return ro
 
@@ -1711,34 +1707,34 @@ class Rotation:
         qu : numpy.ndarray, shape (...,4)
             Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
         """
-        trace = om[...,0,0:1] + om[...,1,1:2] + om[...,2,2:3]
+        trace = om[...,0,0] + om[...,1,1] + om[...,2,2]
 
         with np.errstate(invalid='ignore',divide='ignore'):
             s = np.array([
                  0.5 / np.sqrt( 1. + trace),
-                 2.  * np.sqrt( 1. + om[...,0,0:1] - om[...,1,1:2] - om[...,2,2:3]),
-                 2.  * np.sqrt( 1. + om[...,1,1:2] - om[...,2,2:3] - om[...,0,0:1]),
-                 2.  * np.sqrt( 1. + om[...,2,2:3] - om[...,0,0:1] - om[...,1,1:2] )
+                 2.  * np.sqrt( 1. + om[...,0,0] - om[...,1,1] - om[...,2,2]),
+                 2.  * np.sqrt( 1. + om[...,1,1] - om[...,2,2] - om[...,0,0]),
+                 2.  * np.sqrt( 1. + om[...,2,2] - om[...,0,0] - om[...,1,1] )
                 ])
-            qu = np.where(trace>0,
-                          np.block([0.25 / s[0],
-                                   (om[...,2,1:2] - om[...,1,2:3] ) * s[0],
-                                   (om[...,0,2:3] - om[...,2,0:1] ) * s[0],
-                                   (om[...,1,0:1] - om[...,0,1:2] ) * s[0]]),
-                          np.where(om[...,0,0:1] > np.maximum(om[...,1,1:2],om[...,2,2:3]),
-                                   np.block([(om[...,2,1:2] - om[...,1,2:3]) / s[1],
+            qu = np.where((trace>0)[...,np.newaxis],
+                          np.stack([0.25 / s[0],
+                                   (om[...,2,1] - om[...,1,2]) * s[0],
+                                   (om[...,0,2] - om[...,2,0]) * s[0],
+                                   (om[...,1,0] - om[...,0,1]) * s[0]], axis=-1),
+                          np.where((om[...,0,0] > np.maximum(om[...,1,1],om[...,2,2]))[...,np.newaxis],
+                                   np.stack([(om[...,2,1] - om[...,1,2]) / s[1],
                                              0.25 * s[1],
-                                             (om[...,0,1:2] + om[...,1,0:1]) / s[1],
-                                             (om[...,0,2:3] + om[...,2,0:1]) / s[1]]),
-                                   np.where(om[...,1,1:2] > om[...,2,2:3],
-                                            np.block([(om[...,0,2:3] - om[...,2,0:1]) / s[2],
-                                                      (om[...,0,1:2] + om[...,1,0:1]) / s[2],
+                                             (om[...,0,1] + om[...,1,0]) / s[1],
+                                             (om[...,0,2] + om[...,2,0]) / s[1]], axis=-1),
+                                   np.where((om[...,1,1] > om[...,2,2])[...,np.newaxis],
+                                            np.stack([(om[...,0,2] - om[...,2,0]) / s[2],
+                                                      (om[...,0,1] + om[...,1,0]) / s[2],
                                                       0.25 * s[2],
-                                                      (om[...,1,2:3] + om[...,2,1:2]) / s[2]]),
-                                            np.block([(om[...,1,0:1] - om[...,0,1:2]) / s[3],
-                                                      (om[...,0,2:3] + om[...,2,0:1]) / s[3],
-                                                      (om[...,1,2:3] + om[...,2,1:2]) / s[3],
-                                                      0.25 * s[3]]),
+                                                      (om[...,1,2] + om[...,2,1]) / s[2]], axis=-1),
+                                            np.stack([(om[...,1,0] - om[...,0,1]) / s[3],
+                                                      (om[...,0,2] + om[...,2,0]) / s[3],
+                                                      (om[...,1,2] + om[...,2,1]) / s[3],
+                                                      0.25 * s[3]], axis=-1),
                                            )
                                   )
                          )*np.array([1.,_P,_P,_P])
@@ -1761,16 +1757,16 @@ class Rotation:
             Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]).
         """
         with np.errstate(invalid='ignore',divide='ignore'):
-            zeta = 1./np.sqrt(1.-om[...,2,2:3]**2)
-            eu = np.where(np.isclose(np.abs(om[...,2,2:3]),1.,0.),
-                          np.block([np.arctan2(om[...,0,1:2],om[...,0,0:1]),
-                                    np.pi*0.5*(1.-om[...,2,2:3]),
-                                    np.zeros(om.shape[:-2]+(1,)),
-                                   ]),
-                          np.block([np.arctan2(om[...,2,0:1]*zeta,-om[...,2,1:2]*zeta),
-                                    np.arccos( om[...,2,2:3]),
-                                    np.arctan2(om[...,0,2:3]*zeta,+om[...,1,2:3]*zeta)
-                                   ])
+            zeta = 1./np.sqrt(1.-om[...,2,2]**2)
+            eu = np.where(np.isclose(np.abs(om[...,2,2]),1.,0.)[...,np.newaxis],
+                          np.stack([np.arctan2(om[...,0,1],om[...,0,0]),
+                                    np.pi*0.5*(1.-om[...,2,2]),
+                                    np.zeros(om.shape[:-2]),
+                                   ], axis=-1),
+                          np.stack([np.arctan2(om[...,2,0]*zeta,-om[...,2,1]*zeta),
+                                    np.arccos( om[...,2,2]),
+                                    np.arctan2(om[...,0,2]*zeta,+om[...,1,2]*zeta)
+                                   ], axis=-1)
                           )
         eu[np.abs(eu) < 1.e-8] = 0.0
         return np.where(eu < 0., eu%(np.pi*np.array([2.,1.,2.])),eu)
@@ -1790,10 +1786,10 @@ class Rotation:
         ax : numpy.ndarray, shape (...,4)
             Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π].
         """
-        diag_delta = -_P*np.block([om[...,1,2:3]-om[...,2,1:2],
-                                   om[...,2,0:1]-om[...,0,2:3],
-                                   om[...,0,1:2]-om[...,1,0:1]
-                                 ])
+        diag_delta = -_P*np.stack([om[...,1,2]-om[...,2,1],
+                                   om[...,2,0]-om[...,0,2],
+                                   om[...,0,1]-om[...,1,0]
+                                  ], axis=-1)
         t = 0.5*(om.trace(axis2=-2,axis1=-1) -1.).reshape(om.shape[:-2]+(1,))
         w,vr = np.linalg.eig(om)
         # mask duplicated real eigenvalues
@@ -1877,12 +1873,12 @@ class Rotation:
             Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
         """
         ee = 0.5*eu
-        cPhi = np.cos(ee[...,1:2])
-        sPhi = np.sin(ee[...,1:2])
-        qu = np.block([    cPhi*np.cos(ee[...,0:1]+ee[...,2:3]),
-                       -_P*sPhi*np.cos(ee[...,0:1]-ee[...,2:3]),
-                       -_P*sPhi*np.sin(ee[...,0:1]-ee[...,2:3]),
-                       -_P*cPhi*np.sin(ee[...,0:1]+ee[...,2:3])])
+        cPhi = np.cos(ee[...,1])
+        sPhi = np.sin(ee[...,1])
+        qu = np.stack([    cPhi*np.cos(ee[...,0]+ee[...,2]),
+                       -_P*sPhi*np.cos(ee[...,0]-ee[...,2]),
+                       -_P*sPhi*np.sin(ee[...,0]-ee[...,2]),
+                       -_P*cPhi*np.sin(ee[...,0]+ee[...,2])], axis=-1)
         qu[qu[...,0] < 0.] *= -1.
         return qu
 
@@ -1903,16 +1899,16 @@ class Rotation:
         """
         c = np.cos(eu)
         s = np.sin(eu)
-        om = np.block([+c[...,0:1]*c[...,2:3]-s[...,0:1]*s[...,2:3]*c[...,1:2],
-                       +s[...,0:1]*c[...,2:3]+c[...,0:1]*s[...,2:3]*c[...,1:2],
-                       +s[...,2:3]*s[...,1:2],
-                       -c[...,0:1]*s[...,2:3]-s[...,0:1]*c[...,2:3]*c[...,1:2],
-                       -s[...,0:1]*s[...,2:3]+c[...,0:1]*c[...,2:3]*c[...,1:2],
-                       +c[...,2:3]*s[...,1:2],
-                       +s[...,0:1]*s[...,1:2],
-                       -c[...,0:1]*s[...,1:2],
-                       +c[...,1:2]
-                       ]).reshape(eu.shape[:-1]+(3,3))
+        om = np.stack([+c[...,0]*c[...,2]-s[...,0]*s[...,2]*c[...,1],
+                       +s[...,0]*c[...,2]+c[...,0]*s[...,2]*c[...,1],
+                       +s[...,2]*s[...,1],
+                       -c[...,0]*s[...,2]-s[...,0]*c[...,2]*c[...,1],
+                       -s[...,0]*s[...,2]+c[...,0]*c[...,2]*c[...,1],
+                       +c[...,2]*s[...,1],
+                       +s[...,0]*s[...,1],
+                       -c[...,0]*s[...,1],
+                       +c[...,1]
+                       ],axis=-1).reshape(eu.shape[:-1]+(3,3))
         om[np.abs(om) < 1.e-12] = 0.
         return om
 
@@ -1931,19 +1927,19 @@ class Rotation:
         ax : numpy.ndarray, shape (...,4)
             Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π].
         """
-        t = np.tan(eu[...,1:2]*0.5)
-        sigma = 0.5*(eu[...,0:1]+eu[...,2:3])
-        delta = 0.5*(eu[...,0:1]-eu[...,2:3])
-        tau   = np.linalg.norm(np.block([t,np.sin(sigma)]),axis=-1,keepdims=True)
+        t = np.tan(eu[...,1]*0.5)
+        sigma = 0.5*(eu[...,0]+eu[...,2])
+        delta = 0.5*(eu[...,0]-eu[...,2])
+        tau   = np.linalg.norm(np.stack([t,np.sin(sigma)],axis=-1),axis=-1)
         alpha = np.where(np.abs(np.cos(sigma))<1.e-12,np.pi,2.*np.arctan(tau/np.cos(sigma)))
         with np.errstate(invalid='ignore',divide='ignore'):
-            ax = np.where(np.broadcast_to(np.abs(alpha)<1.e-12,eu.shape[:-1]+(4,)),
+            ax = np.where((np.abs(alpha)<1.e-12)[...,np.newaxis],
                           [0.,0.,1.,0.],
-                          np.block([-_P/tau*t*np.cos(delta),
+                          np.stack([-_P/tau*t*np.cos(delta),
                                     -_P/tau*t*np.sin(delta),
                                     -_P/tau*  np.sin(sigma),
                                      alpha
-                                    ]))
+                                   ], axis=-1))
         ax[(alpha<0.).squeeze()] *= -1.
         return ax
 
@@ -2039,18 +2035,18 @@ class Rotation:
         om : numpy.ndarray, shape (...,3,3)
             Rotation matrix with det(R) = 1 and R.T ∙ R = I.
         """
-        c = np.cos(ax[...,3:4])
-        s = np.sin(ax[...,3:4])
+        c = np.cos(ax[...,3])
+        s = np.sin(ax[...,3])
         omc = 1.-c
-        om = np.block([c+omc*ax[...,0:1]**2,
-                         omc*ax[...,0:1]*ax[...,1:2] + s*ax[...,2:3],
-                         omc*ax[...,0:1]*ax[...,2:3] - s*ax[...,1:2],
-                         omc*ax[...,0:1]*ax[...,1:2] - s*ax[...,2:3],
-                       c+omc*ax[...,1:2]**2,
-                         omc*ax[...,1:2]*ax[...,2:3] + s*ax[...,0:1],
-                         omc*ax[...,0:1]*ax[...,2:3] + s*ax[...,1:2],
-                         omc*ax[...,1:2]*ax[...,2:3] - s*ax[...,0:1],
-                       c+omc*ax[...,2:3]**2]).reshape(ax.shape[:-1]+(3,3))
+        om = np.stack([c+omc*ax[...,0]**2,
+                         omc*ax[...,0]*ax[...,1] + s*ax[...,2],
+                         omc*ax[...,0]*ax[...,2] - s*ax[...,1],
+                         omc*ax[...,0]*ax[...,1] - s*ax[...,2],
+                       c+omc*ax[...,1]**2,
+                         omc*ax[...,1]*ax[...,2] + s*ax[...,0],
+                         omc*ax[...,0]*ax[...,2] + s*ax[...,1],
+                         omc*ax[...,1]*ax[...,2] - s*ax[...,0],
+                       c+omc*ax[...,2]**2],axis=-1).reshape(ax.shape[:-1]+(3,3))
         return om if _P < 0. else np.swapaxes(om,-1,-2)
 
     @staticmethod
@@ -2219,8 +2215,9 @@ class Rotation:
             Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3π/4)^(1/3).
         """
         f = np.where(np.isfinite(ro[...,3:4]),2.*np.arctan(ro[...,3:4]) -np.sin(2.*np.arctan(ro[...,3:4])),np.pi)
-        return np.where(np.broadcast_to(np.sum(ro[...,0:3]**2,axis=-1,keepdims=True) < 1.e-8,ro[...,0:3].shape),
-                        np.zeros(3), ro[...,0:3]* (0.75*f)**(1./3.))
+        return np.where(np.sum(ro[...,0:3]**2,axis=-1,keepdims=True) < 1.e-8,
+                        np.zeros(3),
+                        ro[...,0:3]*(0.75*f)**(1./3.))
 
     @staticmethod
     def _ro2cu(ro: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
@@ -2317,7 +2314,7 @@ class Rotation:
         hmag_squared = np.sum(ho**2,axis=-1,keepdims=True)
         s = np.sum(tfit*hmag_squared**np.arange(len(tfit)),axis=-1,keepdims=True)
         with np.errstate(invalid='ignore'):
-            return np.where(np.broadcast_to(np.abs(hmag_squared)<1.e-8,ho.shape[:-1]+(4,)),
+            return np.where(np.abs(hmag_squared)<1.e-8,
                             [0.,0.,1.,0.],
                             np.block([ho/np.sqrt(hmag_squared),2.*np.arccos(np.clip(s,-1.,1.))]))
 
@@ -2493,27 +2490,26 @@ class Rotation:
         with np.errstate(invalid='ignore',divide='ignore'):
             # get pyramid and scale by grid parameter ratio
             XYZ = np.take_along_axis(cu,Rotation._get_pyramid_order(cu,'forward'),-1) * _sc
-            order = np.abs(XYZ[...,1:2]) <= np.abs(XYZ[...,0:1])
-            q = np.pi/12. * np.where(order,XYZ[...,1:2],XYZ[...,0:1]) \
-                           / np.where(order,XYZ[...,0:1],XYZ[...,1:2])
+            order = np.abs(XYZ[...,1]) <= np.abs(XYZ[...,0])
+            q = np.pi/12. * np.where(order,XYZ[...,1],XYZ[...,0]) / np.where(order,XYZ[...,0],XYZ[...,1])
             c = np.cos(q)
             s = np.sin(q)
             q = _R1*2.**0.25/_beta/ np.sqrt(np.sqrt(2.)-c) \
-              * np.where(order,XYZ[...,0:1],XYZ[...,1:2])
+              * np.where(order,XYZ[...,0],XYZ[...,1])
 
-            T = np.block([(np.sqrt(2.)*c - 1.), np.sqrt(2.) * s]) * q
+            T = np.stack([(np.sqrt(2.)*c - 1.), np.sqrt(2.) * s], axis=-1) * q[...,np.newaxis]
 
             # transform to sphere grid (inverse Lambert)
-            c = np.sum(T**2,axis=-1,keepdims=True)
-            s = c *         np.pi/24. /XYZ[...,2:3]**2
-            c = c * np.sqrt(np.pi/24.)/XYZ[...,2:3]
+            c = np.sum(T**2,axis=-1)
+            s = c *         np.pi/24. /XYZ[...,2]**2
+            c = c * np.sqrt(np.pi/24.)/XYZ[...,2]
             q = np.sqrt( 1. - s)
 
             ho = np.where(np.isclose(np.sum(np.abs(XYZ[...,0:2]),axis=-1,keepdims=True),0.,rtol=0.,atol=1.e-16),
                           np.block([np.zeros_like(XYZ[...,0:2]),np.sqrt(6./np.pi)*XYZ[...,2:3]]),
-                          np.block([np.where(order,T[...,0:1],T[...,1:2])*q,
-                                    np.where(order,T[...,1:2],T[...,0:1])*q,
-                                    np.sqrt(6./np.pi) * XYZ[...,2:3] - c])
+                          np.stack([np.where(order,T[...,0],T[...,1])*q,
+                                    np.where(order,T[...,1],T[...,0])*q,
+                                    np.sqrt(6./np.pi) * XYZ[...,2] - c], axis=-1)
                           )
 
         ho[np.isclose(np.sum(np.abs(cu),axis=-1),0.,rtol=0.,atol=1.e-16)] = 0.

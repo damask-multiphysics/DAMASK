@@ -57,7 +57,7 @@ def from_random(size: _FloatSequence,
     else:
         grid_coords = _grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
         coords = grid_coords[rng.choice(_np.prod(cells),N_seeds,replace=False)] \
-               + _np.broadcast_to(size_/_np.array(cells,_np.int64),(N_seeds,3))*(rng.random((N_seeds,3))*.5-.25) # wobble w/o leaving grid
+               + (size_/_np.array(cells,_np.int64))*(rng.random((N_seeds,3))*.5-.25) # wobble w/o leaving grid
 
     return coords
 
@@ -102,7 +102,7 @@ def from_Poisson_disc(size: _FloatSequence,
     progress = _util.ProgressBar(N_seeds,'',50)
     while s < N_seeds:
         i += 1
-        candidates = rng.random((N_candidates,3))*_np.broadcast_to(size_,(N_candidates,3))
+        candidates = rng.random((N_candidates,3))*size_
         tree = _spatial.cKDTree(coords[:s],boxsize=size_ if periodic else None)
         distances = _np.asarray(tree.query(candidates)[0])
         if distances.max() > distance:                                                              # require minimum separation
