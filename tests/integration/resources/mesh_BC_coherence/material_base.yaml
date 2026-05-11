@@ -1,0 +1,9 @@
+homogenization:
+  SX:
+    N_constituents: 1
+    mechanical: {type: pass}
+phase:
+  phase_0:
+    lattice: cF
+    mechanical:
+      output: [F, P]

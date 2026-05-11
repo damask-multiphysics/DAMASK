@@ -1,0 +1,7 @@
+solver:
+  mesh:
+    p_s: 1
+    p_i: 1
+    mechanical:
+      eps_rel_div(P): 1.0e-6
+      eps_abs_div(P): 1.0e-5
