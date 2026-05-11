@@ -1,0 +1,14 @@
+---
+loadstep:
+  - boundary_conditions:
+      mechanical:
+        - label: 'load'
+          f_dot: ['x', 'x', 'x']
+        - label: 'fix_uv'
+          u_dot: [0.0, 0.0, 'x']
+        - label: 'fix_v'
+          u_dot: ['x', 0.0, 'x']
+    discretization:
+      t: 1.0
+      N: 1
+    f_out: 1

@@ -315,7 +315,7 @@ program DAMASK_mesh
                '-',stepFraction, '/', subStepFactor**cutBackLevel
         flush(IO_STDOUT)
 
-        call FEM_mechanical_forward(guess,Delta_t,Delta_t_prev,loadCases(l)%mechBC)
+        call FEM_mechanical_forward(guess,Delta_t,Delta_t_prev)
 
 !--------------------------------------------------------------------------------------------------
 ! solve fields

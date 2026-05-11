@@ -146,18 +146,17 @@ end subroutine utilities_constitutiveResponse
 !--------------------------------------------------------------------------------------------------
 !> @brief Project BC values to local vector.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_projectBCValues(solution_local_vec,dm_local,section,mechBC,Delta_t,dimPlex)
+subroutine utilities_projectBCValues(solution_local_vec,dm_local,mechBC,Delta_t)
 
   Vec,                         intent(inout) :: solution_local_vec
   DM,                          intent(in)    :: dm_local
-  PetscSection,                intent(in)    :: section
   type(tMechBC), dimension(:), intent(in)    :: mechBC
   real(pREAL),                 intent(in)    :: Delta_t
-  PetscInt,                    intent(in)    :: dimPlex
 
   PetscInt       :: component, boundary, &
                     point, dof, n_field_dof, n_field_comp, offset
   IS             :: bc_points_IS
+  PetscSection   :: section
   PetscErrorCode :: err_PETSc
   PetscInt,    pointer :: bc_points(:)
   real(pREAL), pointer :: solution_local(:)
@@ -166,9 +165,11 @@ subroutine utilities_projectBCValues(solution_local_vec,dm_local,section,mechBC,
 
 
   ! Displacement BC
-  call VecGetArray(solution_local_vec,solution_local,err_PETSc)
+  call DMGetLocalSection(dm_local, section, err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscSectionGetFieldComponents(section,0_pPETSCINT,n_field_comp,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecGetArray(solution_local_vec,solution_local,err_PETSc)
   CHKERRQ(err_PETSc)
   do boundary = 1_pPETSCINT, mesh_Nboundaries
     if (any(mechBC(boundary)%dot_u_active)) then
@@ -182,7 +183,7 @@ subroutine utilities_projectBCValues(solution_local_vec,dm_local,section,mechBC,
         CHKERRQ(err_PETSc)
         call PetscSectionGetFieldOffset(section,bc_points(point),0_pPETSCINT,offset,err_PETSc)
         CHKERRQ(err_PETSc)
-        do component = 1_pPETSCINT, dimPlex
+        do component = 1_pPETSCINT, size(mechBC(boundary)%dot_u)
           if (mechBC(boundary)%dot_u_active(component)) then
             do dof = offset+component, offset+n_field_dof, n_field_comp
               solution_local(dof) = solution_local(dof) + mechBC(boundary)%dot_u(component)*Delta_t
@@ -192,11 +193,11 @@ subroutine utilities_projectBCValues(solution_local_vec,dm_local,section,mechBC,
       end do
       call ISRestoreIndices(bc_points_IS,bc_points,err_PETSc)
       CHKERRQ(err_PETSc)
+      call ISDestroy(bc_points_IS,err_PETSc)
+      CHKERRQ(err_PETSc)
     end if
   end do
   call VecRestoreArray(solution_local_vec,solution_local,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call ISDestroy(bc_points_IS,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine utilities_projectBCValues
