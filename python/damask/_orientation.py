@@ -1680,8 +1680,8 @@ class Orientation(Rotation,Crystal):
         >>> O = damask.Orientation.from_Euler_angles(phi=[0,45,0],degrees=True,lattice='cF')
         >>> np.round(O.Schmid(N_slip=[12])[0],3)
         array([[ 0.   ,  0.   ,  0.   ],
-               [ 0.577, -0.   ,  0.816],
-               [ 0.   ,  0.   ,  0.   ]])
+               [ 0.577,  0.   ,  0.816],
+               [-0.   , -0.   , -0.   ]])
 
         Schmid matrix (in lab frame) of first {110}, {112}, and {123} slip systems of
         a body-centered cubic crystal in "rotated cube" orientation.
@@ -1723,7 +1723,7 @@ class Orientation(Rotation,Crystal):
         """
         return np.moveaxis(~self @
                            super().Schmid(N_slip=N_slip,
-                                          N_twin=N_twin)[(np.newaxis,)*len(self.shape)],
+                                          N_twin=N_twin)[(np.newaxis,)*self.ndim],
                            -3,
                            0)
 

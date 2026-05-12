@@ -9,6 +9,7 @@ from damask import Table
 from damask import _rotation
 from damask import grid_filters
 from damask import tensor
+from damask import util
 
 n = 1000
 atol=1.e-4
@@ -1205,12 +1206,25 @@ def test_invariant():
 
 @pytest.mark.parametrize('shape',[None,2,(2,3),(2,2),(2,3,3,3)])
 @pytest.mark.parametrize('item_shape',[3,(3,3),(3,3,3,3)])
-def test_apply(np_rng,shape,item_shape):
+def test_apply(np_rng,assert_allclose,shape,item_shape):
     item = np_rng.random(item_shape)
     r = Rotation.from_random(shape)
     i = r*~r
     applied = i.apply(item)
-    assert np.allclose(np.broadcast_to(item,applied.shape),applied)
+    assert_allclose(np.broadcast_to(item,applied.shape),applied)
+
+@pytest.mark.parametrize('shape',[(),(80,),(5,10)])
+@pytest.mark.parametrize('order',[1,2,4])
+@pytest.mark.parametrize('N_item',[(),(300,),(8,4)])
+def test_apply_reference(np_rng,assert_allclose,shape,order,N_item):
+    item = np_rng.random(N_item+(3,)*order)
+    r = Rotation.from_random(shape)
+    r_ = r.broadcast_to(util.shapeblender(r.shape,item.shape[:-order],False))
+    reference = np.einsum({1: '...im,...m',
+                           2: '...im,...jn,...mn',
+                           4: '...im,...jn,...ko,...lp,...mnop'}[order],
+                          *order*[r_.as_matrix()], item)
+    assert_allclose(reference,r_@item)
 
 @pytest.mark.parametrize('angle',[10,20,30,40,50,60,70,80,90,100,120])
 def test_average(angle):

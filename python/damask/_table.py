@@ -432,7 +432,7 @@ class Table:
 
         else:
 
-            dup.shapes[label] = data.shape[1:] if len(data.shape) > 1 else (1,)
+            dup.shapes[label] = data.shape[1:] if data.ndim > 1 else (1,)
             size = np.prod(data.shape[1:],dtype=np.int64)
             new = pd.DataFrame(data=data.reshape((-1,size)),
                                columns=[label]*size,

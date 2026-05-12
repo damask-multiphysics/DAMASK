@@ -63,13 +63,13 @@ class IcDict(dict):
         """
         if not (    isinstance(v, numbers.Real)
                 or (isinstance(v, np.ndarray) and v.shape in [(), (1,), (3,)])
-                or (isinstance(v, np.ndarray) and len(v.shape) >= 3 and
+                or (isinstance(v, np.ndarray) and v.ndim >= 3 and
                     v.shape[:3] == self.cells and v.shape[3:] in [(), (1,), (3,)])
                ):
             raise ValueError(f'initial condition "{k}" must be [a field of] scalars or three-dimensional vectors')
 
         super().__setitem__(k,
-                            v if isinstance(v, np.ndarray) and len(v.shape) >= 3 and v.shape[:3] == self.cells else
+                            v if isinstance(v, np.ndarray) and v.ndim >= 3 and v.shape[:3] == self.cells else
                             np.broadcast_to(v, self.cells + v.shape) if isinstance(v, np.ndarray) else
                             np.broadcast_to(v, self.cells)
                             )
@@ -134,7 +134,7 @@ class GeomGrid:
                f'origin: {util.srepr(self.origin,"   ")} m',
                f'# materials: {mat_N}' + ('' if mat_min == 0 and mat_max == mat_N-1 else
                                           f' (min: {mat_min}, max: {mat_max})')
-               ]+(['initial_conditions:']+[f'  - {f}'+(f' {data.shape[3:]}' if len(data.shape)>3 else '')
+               ]+(['initial_conditions:']+[f'  - {f}'+(f' {data.shape[3:]}' if data.ndim>3 else '')
                                            for f,data in self.initial_conditions.items()] if self.initial_conditions else []))
 
 
@@ -210,7 +210,7 @@ class GeomGrid:
     @material.setter
     def material(self,
                  material: np.ndarray):
-        if len(material.shape) != 3:
+        if material.ndim != 3:
             raise ValueError(f'invalid material shape {material.shape}')
         if material.dtype not in [np.float32,np.float64, np.int32,np.int64]:
             raise TypeError(f'invalid material data type "{material.dtype}"')
@@ -1138,7 +1138,7 @@ class GeomGrid:
             Cell count of resulting grid matches shape of index map.
         """
         cells = idx.shape[:3]
-        flat = (idx if len(idx.shape)==3 else grid_filters.ravel_index(idx)).flatten(order='F')
+        flat = (idx if idx.ndim==3 else grid_filters.ravel_index(idx)).flatten(order='F')
         ic = {k: v.reshape((-1,)+v.shape[3:],order='F')[flat]
                   .reshape(cells+v.shape[3:],order='F') for k,v in self.initial_conditions.items()}
 
