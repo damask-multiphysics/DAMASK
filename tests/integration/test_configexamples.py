@@ -115,6 +115,9 @@ config_phase = \
                                                                                      'externalheat_ramp-and-hold', None),
     # elastic + chemical
     ('Al', 'Hooke_Al', None, None, None, None, None, 'quadenergy_example'),
+    ('Al', 'Hooke_Al', None, None, None, None, None, 'regularsolution_AlZn'),
+    ('Mg', 'Hooke_Mg', None, None, None, None, None, 'regularsolution_AlMg'),
+    ('Fe', 'Hooke_Fe', None, None, None, None, None, 'regularsolution_FeNb'),
    ]
 
 
@@ -196,8 +199,6 @@ def test_homogenization(damask_root,tmp_path,
 
     out,err = damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load}',
                               wd=tmp_path)
-    print(out)
-    print(err)
 
     output_expected = get_output(config)
     r = damask.Result(tmp_path/f'{grid}_{load}.hdf5').view(increments=0,phases=False)

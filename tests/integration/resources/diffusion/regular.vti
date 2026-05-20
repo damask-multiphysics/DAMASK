@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<VTKFile type="ImageData" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">
+  <ImageData WholeExtent="0 32 0 2 0 2" Origin="0 0 0" Spacing="0.000001 0.000001 0.000001" Direction="1 0 0 0 1 0 0 0 1">
+    <FieldData>
+      <Array type="String" Name="comments" NumberOfTuples="0" format="binary">
+        AAAAAACAAAAAAAAA
+      </Array>
+    </FieldData>
+  <Piece Extent="0 32 0 2 0 2">
+    <PointData>
+    </PointData>
+    <CellData>
+      <DataArray type="Int64" Name="material" format="binary" RangeMin="0" RangeMax="1">
+        AQAAAACAAAAABAAAKQAAAA==eF5jZIAARjLpgQaE3EdreqABIffRmh5oQMh9tKYHGhByHyEaAIUAAEE=
+      </DataArray>
+      <DataArray type="Float32" Name="Nb" format="binary" RangeMin="-51241.67578125" RangeMax="-37672.16796875">
+        AQAAAACAAAAAAgAALwAAAA==eF5bq+lxfC0erK0hTBHGZzYxmJD5hDAh8wlhQuYTwoTMJ4QJmU8IEzIfAKo8xIE=
+      </DataArray>
+      <DataArray type="Float32" Name="Fe" format="binary" RangeMin="-51241.67578125" RangeMax="-37672.16796875">
+        AQAAAACAAAAAAgAALwAAAA==eF5bq+lxfC0erK0hTBHGZzYxmJD5hDAh8wlhQuYTwoTMJ4QJmU8IEzIfAKo8xIE=
+      </DataArray>
+      <DataArray type="Int64" Name="T" format="binary" RangeMin="1650" RangeMax="1650">
+        AQAAAACAAAAABAAAFQAAAA==eF4rYmMAg6JRepQepUccDQD4CDwB
+      </DataArray>
+    </CellData>
+  </Piece>
+  </ImageData>
+</VTKFile>

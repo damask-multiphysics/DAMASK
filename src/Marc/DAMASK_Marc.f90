@@ -247,6 +247,7 @@ end module DAMASK_interface
 #include "../phase_damage_anisobrittle.f90"
 #include "../phase_chemical.f90"
 #include "../phase_chemical_quadenergy.f90"
+#include "../phase_chemical_regularsolution.f90"
 #include "../homogenization.f90"
 #include "../homogenization_mechanical.f90"
 #include "../homogenization_mechanical_pass.f90"

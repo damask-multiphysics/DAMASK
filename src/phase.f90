@@ -64,6 +64,7 @@ module phase
     DAMAGE_ANISOBRITTLE, &
     THERMAL_SOURCE_DISSIPATION, &
     THERMAL_SOURCE_EXTERNALHEAT, &
+    CHEMICAL_REGULARSOLUTION, &
     CHEMICAL_QUADENERGY
   end enum
 
@@ -362,6 +363,12 @@ module phase
       real(pREAL), dimension(:,:),allocatable :: mobility
     end function phase_get_mobility
 
+    module subroutine phase_chemical_setField(comp,Delta_t,co,ce)
+      real(pREAL), dimension(:), intent(in) :: comp
+      real(pREAL),               intent(in) :: Delta_t
+      integer, intent(in) :: co, ce
+    end subroutine phase_chemical_setField
+
     module function phase_compositionTangent(mu,co,ce) result(comp_tangent)
       real(pREAL), dimension(:), intent(in) :: mu
       integer, intent(in) :: co, ce
@@ -399,6 +406,7 @@ module phase
     phase_F, &
     phase_calculate_composition, &
     phase_get_mobility, &
+    phase_chemical_setField, &
     phase_compositionTangent
 
 contains
