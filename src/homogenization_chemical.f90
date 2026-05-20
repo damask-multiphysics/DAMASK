@@ -103,7 +103,7 @@ module subroutine chemical_partition(Delta_t, ce)
   mu    = current(material_ID_homogenization(ce))%mu(:,material_entry_homogenization(ce))
   do co = 1, homogenization_Nconstituents(material_ID_homogenization(ce))
     comp =  phase_calculate_composition(mu,co,ce)   ! need to calculate composition for each constituent for given diffusion potential
-    !call phase_chemical_setField(comp,Delta_t,co,ce)
+    call phase_chemical_setField(comp,Delta_t,co,ce)
   end do
 
 end subroutine chemical_partition

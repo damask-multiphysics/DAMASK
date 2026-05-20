@@ -25,6 +25,46 @@ submodule(phase) chemical
   interface
 
 
+    module function regularsolution_init() result(myChemicalEnergy)
+      logical, dimension(:), allocatable :: mychemicalEnergy
+    end function regularsolution_init
+
+    module function regularsolution_mu_explicit(ph,en,comp_prev) result(mu_explicit)
+      integer, intent(in) :: &
+        ph, &
+        en
+      real(pREAL), dimension(:), intent(in) :: comp_prev
+      real(pREAL), dimension(:),allocatable :: mu_explicit
+    end function regularsolution_mu_explicit
+
+    module function regularsolution_composition(mu_chemical,comp_prev,ph,en) result(comp)
+      real(pREAL), dimension(:), intent(in) :: mu_chemical, comp_prev
+      integer, intent(in) :: &
+        ph, &
+        en
+      real(pREAL), dimension(:),allocatable :: comp
+    end function regularsolution_composition
+
+    module function regularsolution_compositionTangent(mu_chemical,comp_prev,ph,en) result(comp_tangent)
+      real(pREAL), dimension(:), intent(in) :: mu_chemical
+      real(pREAL), dimension(:), intent(in) :: comp_prev
+      integer, intent(in) :: &
+        ph, &
+        en
+      real(pREAL), dimension(:,:),allocatable :: comp_tangent
+    end function regularsolution_compositionTangent
+
+    module function regularsolution_mobility(ph,en) result(mobility)
+      integer, intent(in) :: ph, en
+      real(pREAL), dimension(:,:),allocatable :: mobility
+    end function regularsolution_mobility
+
+    module subroutine regularsolution_result(ph,comp,group)
+      integer,          intent(in) :: ph
+      real(pREAL), dimension(:,:),intent(in) :: comp
+      character(len=*), intent(in) :: group
+    end subroutine regularsolution_result
+
     module function quadenergy_init() result(myChemicalEnergy)
       logical, dimension(:), allocatable :: mychemicalEnergy
     end function quadenergy_init
@@ -109,7 +149,8 @@ module subroutine chemical_init(phases)
   end do
 
   !initialize chemical energy model
-  where(quadenergy_init()) chemical_energy = CHEMICAL_QUADENERGY
+  where(quadenergy_init())      chemical_energy = CHEMICAL_QUADENERGY
+  where(regularsolution_init()) chemical_energy = CHEMICAL_REGULARSOLUTION
 
   do ph = 1, size(phases)
 
@@ -146,6 +187,8 @@ module function phase_calculate_composition(mu,co,ce) result(conc)
   mu_chemical = mu
   chemicalEnergyType: select case (chemical_energy(ph))
 
+    case (CHEMICAL_REGULARSOLUTION)
+      conc =  regularsolution_composition(mu_chemical,current(ph)%C0(:,en),ph,en)
     case (CHEMICAL_QUADENERGY)
       conc = quadenergy_composition(mu_chemical,ph,en)
 
@@ -155,7 +198,28 @@ end function phase_calculate_composition
 
 
 !----------------------------------------------------------------------------------------------
-!< @brief Retrieves composition for constituent.
+!< @brief
+!----------------------------------------------------------------------------------------------
+module subroutine phase_chemical_setField(comp, Delta_t, co, ce)
+
+  real(pREAL), dimension(:), intent(in) :: comp
+  real(pREAL), intent(in) :: Delta_t
+  integer, intent(in) :: co, ce
+
+  integer :: &
+    ph, en
+
+  ph = material_ID_phase(co,ce)
+  en = material_entry_phase(co,ce)
+
+  current(ph)%C(:,en) = comp
+  current(ph)%dot_C(:,en) = (current(ph)%C(:,en) - current(ph)%C0(:,en))/merge(1.0_pREAL,Delta_t,dEq0(Delta_t))
+
+end subroutine phase_chemical_setField
+
+
+!----------------------------------------------------------------------------------------------
+!< @brief
 !----------------------------------------------------------------------------------------------
 module function phase_get_mobility(co,ce) result(mobility)
 
@@ -171,6 +235,8 @@ module function phase_get_mobility(co,ce) result(mobility)
 
   chemicalEnergyType: select case (chemical_energy(ph))
 
+    case (CHEMICAL_REGULARSOLUTION)
+      mobility =  regularsolution_mobility(ph,en)
     case (CHEMICAL_QUADENERGY)
       mobility = quadenergy_mobility(ph,en)
 
@@ -180,7 +246,7 @@ end function phase_get_mobility
 
 
 !----------------------------------------------------------------------------------------------
-!< @brief Retrieves composition tangent for constituent.
+!< @brief
 !----------------------------------------------------------------------------------------------
 module function phase_compositionTangent(mu,co,ce) result(comp_tangent)
 
@@ -199,6 +265,8 @@ module function phase_compositionTangent(mu,co,ce) result(comp_tangent)
   mu_chemical = mu
   chemicalEnergyType: select case (chemical_energy(ph))
 
+    case (CHEMICAL_REGULARSOLUTION)
+      comp_tangent =  regularsolution_compositionTangent(mu_chemical,current(ph)%C0(:,en),ph,en)
     case (CHEMICAL_QUADENERGY)
       comp_tangent = quadenergy_compositionTangent(mu_chemical,ph,en)
 
@@ -241,7 +309,6 @@ module subroutine chemical_result(group,ph)
       end select
     end do outputsLoop
   end if
-
 
 end subroutine chemical_result
 

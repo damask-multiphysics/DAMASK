@@ -131,16 +131,18 @@ module function quadenergy_compositionTangent(mu_chemical,ph,en) result(comp_tan
 end function quadenergy_compositionTangent
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Return mobility.
+!--------------------------------------------------------------------------------------------------
 module function quadenergy_mobility(ph,en) result(mobility)
   integer, intent(in) :: ph, en
-  real(pREAL), dimension(:,:),allocatable :: mobility
+  real(pREAL), dimension(:,:), allocatable :: mobility
 
   integer :: com
 
   associate(prm => param(ph))
 
-    allocate(mobility(prm%N_components-1,prm%N_components-1))
-    mobility = 0.0_pREAL
+    allocate(mobility(prm%N_components-1,prm%N_components-1), source=0.0_pREAL)
     do com = 1, prm%N_components-1
       mobility(com,com) = prm%Mobility(com)
     end do
