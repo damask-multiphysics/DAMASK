@@ -96,7 +96,36 @@ def test_chemical_diffusion(res_path,tmp_path,np_rng,assert_allclose):
     assert_allclose(C_analytic, Li[tstep][16:], rtol=5e-2,atol=1e-4)
 
 
-def test_chemical_regularsolution(res_path,tmp_path,np_rng,assert_allclose,update):
+def test_chemical_regularsolution_reference(res_path,tmp_path,assert_allclose,update):
+
+    grid = 'regular'
+    load = 'no_deformation'
+    material = 'material_regular'
+    job = f'{grid}_{load}'
+
+    g = damask.GeomGrid.load(res_path/f'{grid}.vti')
+    g.save(tmp_path/grid)
+
+    mat = damask.ConfigMaterial.load(res_path/f'{material}.yaml')
+    mat['phase']['phase_A']['chemical']['V_m'] = 0.0005212393458879053
+    mat['phase']['phase_B']['chemical']['V_m'] = 0.0002967229062448962
+    mat.save(tmp_path/f'{material}.yaml')
+
+    l = damask.LoadcaseGrid.load(res_path/f'{load}.yaml')
+    l['solver']['thermal'] = 'spectral'
+    l['loadstep'][0]['discretization']['t'] = 1.5
+    l['loadstep'][0]['discretization']['N'] = 100
+    l.save(tmp_path/f'{load}.yaml')
+
+    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
+
+    if update:
+        shutil.copyfile(tmp_path/f'{job}.hdf5', res_path/f'regular_load_material.hdf5')
+
+    h5py_compare_files(res_path/f'regular_load_material.hdf5', tmp_path/f'{job}.hdf5', assert_allclose)
+
+
+def test_chemical_regularsolution_plausibility(res_path,tmp_path,np_rng,assert_allclose):
 
     grid = 'regular'
     load = 'no_deformation'
@@ -123,19 +152,13 @@ def test_chemical_regularsolution(res_path,tmp_path,np_rng,assert_allclose,updat
 
     damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
 
-    # check 1: compare with pre-generated result
-    if update:
-        shutil.copyfile(tmp_path/f'{job}.hdf5', res_path/f'regular_load_material.hdf5')
-
-    h5py_compare_files(res_path/f'regular_load_material.hdf5', tmp_path/f'{job}.hdf5', assert_allclose)
-
-    # check 2: decrease in chemical potential gradient (equivalently difference) over time
+    # check 1: decrease in chemical potential gradient (equivalently difference) over time
     r = damask.Result(tmp_path/f'{job}.hdf5')
     mu_Nb = np.array([np.average(mu[:,0].reshape(g.cells,order='F'),axis=(1,2)) for mu in r.get('mu').values()])
     delta_mu_Nb = mu_Nb.max(axis=1) - mu_Nb.min(axis=1)
     assert (delta_mu_Nb[:-1]-delta_mu_Nb[1:] > 0).all()
 
-    # 3: symmetric result for a symmetric initial profile
+    # check 2: symmetric result for a symmetric initial profile
     inc = np_rng.integers(1,N)
     x_Nb = np.average(r.view(increments=inc).get('x')[:,0].reshape(g.cells,order='F'),axis=(1,2))
     assert_allclose(x_Nb[0:g.cells[0]//2], x_Nb[g.cells[0]:g.cells[0]//2-1:-1], rtol=5e-2,atol=1e-4)
