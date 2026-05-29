@@ -251,7 +251,7 @@ c++-linter:
     - BOOST_MAPPINGS=/usr/share/include-what-you-use/boost-all.imp
     - cmake -B build -DTEST=ON
        -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="include-what-you-use;-Xiwyu;--error;-Xiwyu;--mapping_file=${BOOST_MAPPINGS}"
-       -DCMAKE_CXX_CLANG_TIDY='clang-tidy;--checks=cppcoreguidelines*,bugprone*;--warnings-as-errors=cppcoreguidelines*,bugprone*'
+       -DCMAKE_CXX_CLANG_TIDY='clang-tidy'
     - cmake --build build --parallel --target install
 
 .unittest:

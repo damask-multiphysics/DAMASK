@@ -1,0 +1,24 @@
+Checks: 'cppcoreguidelines*,bugprone*,readability-identifier-naming*'
+WarningsAsErrors: 'cppcoreguidelines*,bugprone*,readability-identifier-naming*'
+HeaderFilterRegex: '.*/src/.*'
+CheckOptions:
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+  - key: readability-identifier-naming.MethodCase
+    value: lower_case
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.MemberCase
+    value: lower_case
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.GlobalConstantPrefix
+    value: k
+  - key: readability-identifier-naming.FunctionIgnoredRegexp
+    value: 'F_.*|C_.*'

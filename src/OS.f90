@@ -9,6 +9,7 @@ module OS
 
   use prec
   use C_interfacing
+  use IO
 
   implicit none(type,external)
   private
@@ -96,8 +97,7 @@ function OS_getCWD()
 
 
   call get_CWD_C(OS_getCWD,stat)
-  if (stat /= 0) error stop 'invalid working directory'
-
+  if (stat /= 0) call IO_error(640)
 end function OS_getCWD
 
 

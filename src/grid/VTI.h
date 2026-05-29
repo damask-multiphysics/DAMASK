@@ -25,15 +25,14 @@
 // Guideline Support Library is used when pointers own memory and need to be manually freed.
 // https://clang.llvm.org/extra/clang-tidy/checks/cppcoreguidelines/owning-memory.html
 namespace gsl {
-  template<typename T>
-  using owner = T;
+template <typename T> using owner = T;
 }
 
 namespace pt = boost::property_tree;
 
 struct DecodedBuffer {
-    std::string vtk_type;
-    std::vector<uint8_t> raw_bytes;
+  std::string vtk_type;
+  std::vector<uint8_t> raw_bytes;
 };
 
 /**
@@ -64,7 +63,7 @@ public:
    * @param n_bytes_per_word Word size (4 or 8).
    * @return            Vector with decoded uncompressed bytes
    */
-  static std::vector<uint8_t> decode_compressed_VTI(const std::string& b64_string, std::size_t n_bytes_per_word);
+  static std::vector<uint8_t> decode_compressed_vti(const std::string& b64_string, std::size_t n_bytes_per_word);
 
   /**
    * @brief Decode an uncompressed VTI Dataarray.
@@ -73,7 +72,7 @@ public:
    * @param n_bytes_per_word Word size (4 or 8).
    * @return            Vector with decoded bytes.
    */
-  static std::vector<uint8_t> decode_uncompressed_VTI(const std::string& b64_string, std::size_t n_bytes_per_word);
+  static std::vector<uint8_t> decode_uncompressed_vti(const std::string& b64_string, std::size_t n_bytes_per_word);
 
   /**
    * @brief Read an integer DataArray into a Fortran pointer descriptor.
@@ -117,6 +116,14 @@ public:
 
 private:
   /**
+   * @brief Validate VTI file format.
+   *
+   * @param root The VTKFile root element of the property tree.
+   * @throws std::runtime_error if validation fails.
+   */
+  void check_file_format(const pt::ptree& root) const;
+
+  /**
    * @brief Fetch an XML attribute, return an empty string if it doesn't exist.
    *
    * @param n    XML node.
@@ -140,8 +147,7 @@ private:
    * @param raw  Vector of raw bytes
    * @return     Span of type T pointing into @p raw.
    */
-  template<class T>
-  std::vector<T> view(const std::vector<uint8_t>& raw) const;
+  template <class T> std::vector<T> view(const std::vector<uint8_t>& raw) const;
 
   /**
    * @brief Allocate a Fortran array and convert the VTK byte stream into it.
@@ -151,58 +157,53 @@ private:
    * @param d     Decoded VTK Dataarray plus type tag.
    * @param desc  Fortran descriptor whose base-address will receive the data.
    */
-  template<typename T>
-  void allocate_and_convert(const DecodedBuffer& d, CFI_cdesc_t* desc);
+  template <typename T> void allocate_and_convert(const DecodedBuffer& d, CFI_cdesc_t* desc);
 };
 
 extern "C" {
-  /**
-   * @brief C-interface constructor for the C++ VTI object.
-   *
-   * @param vti_path Path to VTI file
-   * @return VTI*       VTI object pointer
-   */
-  gsl::owner<VTI*> VTI__new(const char* vti_path);
+/**
+ * @brief C-interface constructor for the C++ VTI object.
+ *
+ * @param vti_path Path to VTI file
+ * @return VTI*       VTI object pointer
+ */
+gsl::owner<VTI*> C_VTI_new(const char* vti_path);
 
-  /**
-   * @brief Read an integer DataArray into a Fortran pointer descriptor.
-   *
-   * @param vti   Previously initialized VTI object with allocated vti_tree.
-   * @param name  Name of target attribute.
-   * @param desc  Pre-allocated descriptor to be filled by \c CFI_allocate.
-   */
-  void C_VTI_readDatasetInt(VTI* vti, const char* name, CFI_cdesc_t* desc);
+/**
+ * @brief Read an integer DataArray into a Fortran pointer descriptor.
+ *
+ * @param vti   Previously initialized VTI object with allocated vti_tree.
+ * @param name  Name of target attribute.
+ * @param desc  Pre-allocated descriptor to be filled by \c CFI_allocate.
+ */
+void C_VTI_readDatasetInt(VTI* vti, const char* name, CFI_cdesc_t* desc);
 
-  /**
-   * @brief Read a floating-point DataArray into a Fortran pointer descriptor.
-   *
-   * @param vti   Previously initialized VTI object with allocated vti_tree.
-   * @param name  Name of target attribute.
-   * @param desc  Pre-allocated descriptor to be filled by \c CFI_allocate.
-   */
-  void C_VTI_readDatasetReal(VTI* vti, const char* name, CFI_cdesc_t* desc);
+/**
+ * @brief Read a floating-point DataArray into a Fortran pointer descriptor.
+ *
+ * @param vti   Previously initialized VTI object with allocated vti_tree.
+ * @param name  Name of target attribute.
+ * @param desc  Pre-allocated descriptor to be filled by \c CFI_allocate.
+ */
+void C_VTI_readDatasetReal(VTI* vti, const char* name, CFI_cdesc_t* desc);
 
-  /**
-   * @brief Extract grid size, physical extent and origin from a VTI file.
-   *
-   * @param vti            Previously initialized VTI object with allocated vti_tree.
-   * @param cells          Number of cells along x/y/z.
-   * @param geom_size      Physical side lengths.
-   * @param origin         Origin coordinates.
-   * @param labels_desc    Optional labels descriptor (may be nullptr).
-   */
-  void C_VTI_readGeometry(VTI* vti,
-                          int* cells,
-                          double* geom_size,
-                          double* origin,
-                          CFI_cdesc_t* labels_desc);
+/**
+ * @brief Extract grid size, physical extent and origin from a VTI file.
+ *
+ * @param vti            Previously initialized VTI object with allocated vti_tree.
+ * @param cells          Number of cells along x/y/z.
+ * @param geom_size      Physical side lengths.
+ * @param origin         Origin coordinates.
+ * @param labels_desc    Optional labels descriptor (may be nullptr).
+ */
+void C_VTI_readGeometry(VTI* vti, int* cells, double* geom_size, double* origin, CFI_cdesc_t* labels_desc);
 
-  /**
-   * @brief Destroy a VTI instance allocated via VTI__new.
-   *
-   * @param vti Pointer returned by VTI__new (ignored if nullptr).
-   */
-  void VTI__delete(gsl::owner<VTI*> vti);
+/**
+ * @brief Destroy a VTI instance allocated via VTI__new.
+ *
+ * @param vti Pointer returned by C_VTI_new (ignored if nullptr).
+ */
+void C_VTI_delete(gsl::owner<VTI*> vti);
 }
 
 #endif
