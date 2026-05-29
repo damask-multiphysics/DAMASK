@@ -43,16 +43,16 @@ module CLI
    end type tCLIArgs
 
 interface
-  function C_CLI__new(argc, argv, worldrank) result(this) bind(C, name='CLI__new')
+  function C_CLI_new(argc, argv, worldrank) result(this) bind(C, name='C_CLI_new')
     use, intrinsic :: ISO_C_binding, only: C_INT, C_PTR
     integer(C_INT), intent(in) :: argc
     type(C_PTR),    intent(in) :: argv(*) ! MD I think this should be dimension(:), but wait for working ifx
     integer(C_INT), intent(in) :: worldrank
     type(C_PTR)                :: this
-  end function C_CLI__new
+  end function C_CLI_new
 
   subroutine C_CLI_getParsedArgs(cli, geom, load, material, numerics, jobname, uuid, restart, stat) &
-      bind(C, name='CLI_getParsedArgs')
+      bind(C, name='C_CLI_getParsedArgs')
     use ISO_C_binding
     type(C_PTR), value :: cli
     character(kind=C_CHAR,len=:), allocatable, intent(out) :: geom, load, material, numerics, jobname, uuid
@@ -120,7 +120,7 @@ subroutine CLI_init()
 
   call cliArgs%copyCommandLineArgs()
   ! https://fortran-lang.discourse.group/t/c-interoperability-command-line-arguments/5773/7
-  CLI_ = C_CLI__new(cliArgs%argc, cliArgs%argv, worldrank)
+  CLI_ = C_CLI_new(cliArgs%argc, cliArgs%argv, worldrank)
   call C_CLI_getParsedArgs(CLI_, CLI_geomFile, CLI_loadFile, CLI_materialFile, &
                            CLI_numericsFile, CLI_jobID, CLI_jobName, CLI_restartInc, stat)
   if (stat /= 0) error stop 'could not collect parsed args from CLI.cpp'

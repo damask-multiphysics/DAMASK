@@ -13,15 +13,19 @@
 
 #include <ISO_Fortran_binding.h>
 
+#include <cstdlib>
+#include <filesystem>
+#include <stdexcept>
 #include <string>
 #include <vector>
+#include <unistd.h>
 
 #include "../../src/IO.h"
 
 // Mock fortran functions (resolve directly so the actual implementations are not pulled from fortran)
 namespace {
 struct FIOErrorCalled final {};
-}
+} // namespace
 
 static std::string last_f_io_error_msg_storage;
 
@@ -30,18 +34,18 @@ inline std::string& last_f_io_error_msg() {
 }
 
 extern "C" {
-  static std::vector<std::string> fortran_mock_buffer;
+static std::vector<std::string> fortran_mock_buffer;
 
-  void F_IO_error(int, CFI_cdesc_t* msg) {
-    last_f_io_error_msg() = msg ? std::string(static_cast<char*>(msg->base_addr), msg->elem_len) : "";
-    throw FIOErrorCalled{};
-  }
-  void F_IO_print(CFI_cdesc_t* c_str) {
-    fortran_mock_buffer.emplace_back(c_str ? std::string(static_cast<char*>(c_str->base_addr), c_str->elem_len) : "");
-  }
-  void F_printCompileOptions() {}
-  bool IO_redirectedSTDOUT = false;
-  bool IO_redirectedSTDERR = false;
+void F_IO_error(int, CFI_cdesc_t* msg) {
+  last_f_io_error_msg() = msg ? std::string(static_cast<char*>(msg->base_addr), msg->elem_len) : "";
+  throw FIOErrorCalled{};
+}
+void F_IO_print(CFI_cdesc_t* c_str) {
+  fortran_mock_buffer.emplace_back(c_str ? std::string(static_cast<char*>(c_str->base_addr), c_str->elem_len) : "");
+}
+void F_printCompileOptions() {}
+bool IO_redirectedSTDOUT = false;
+bool IO_redirectedSTDERR = false;
 }
 
 static bool io_error_called = false;
@@ -59,7 +63,10 @@ static void mock_io_error(int error_ID, CFI_cdesc_t* msg) {
 
 // Use object lifespan to ensure clean fortran buffer across tests
 struct FortranBufferGuard {
-  FortranBufferGuard() { fortran_mock_buffer.clear(); last_f_io_error_msg().clear(); }
+  FortranBufferGuard() {
+    fortran_mock_buffer.clear();
+    last_f_io_error_msg().clear();
+  }
 };
 
 // Use object lifespan to ensure IO mocking across tests
@@ -71,5 +78,27 @@ struct IOMockGuard {
     io_error_id = 0;
     io_error_msg.clear();
   }
-  ~IOMockGuard() { IO::fn = old_fn; }
+  ~IOMockGuard() {
+    IO::fn = old_fn;
+  }
+};
+
+struct TempDirGuard {
+  explicit TempDirGuard(const std::string& prefix) : path(std::filesystem::temp_directory_path() / (prefix + ".XXXXXX")) {
+    std::string buffer;
+    buffer = path.string();
+    buffer.push_back('\0');
+    const char* created = mkdtemp(buffer.data());
+    if (created == nullptr) {
+      throw std::runtime_error("mkdtemp failed for " + path.string());
+    }
+    path = created;
+  }
+
+  ~TempDirGuard() {
+    std::error_code ec;
+    std::filesystem::remove_all(path, ec);
+  }
+
+  std::filesystem::path path;
 };

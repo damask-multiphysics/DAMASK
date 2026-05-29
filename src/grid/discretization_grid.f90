@@ -62,11 +62,11 @@ module discretization_grid
   type(C_PTR) :: VTI_ = C_NULL_PTR
 
 interface
-  function C_VTI__new(vtiPath) result(this) bind(C, name='VTI__new')
+  function C_VTI_new(vtiPath) result(this) bind(C, name='C_VTI_new')
     use, intrinsic :: ISO_C_binding, only: C_PTR, C_CHAR
     character(kind=C_CHAR), dimension(*), intent(in) :: vtiPath
     type(C_PTR) :: this
-  end function C_VTI__new
+  end function C_VTI_new
 
   subroutine C_VTI_readDatasetInt(this, label, data) bind(C, name='C_VTI_readDatasetInt')
     use, intrinsic :: ISO_C_binding, only: C_PTR, C_CHAR, C_INT
@@ -91,10 +91,10 @@ interface
     character(kind=C_CHAR,len=:), allocatable :: labels(:)
   end subroutine C_VTI_readGeometry
 
-  subroutine C_VTI__delete(this) bind(C, name='VTI__delete')
+  subroutine C_VTI_delete(this) bind(C, name='C_VTI_delete')
     use, intrinsic :: ISO_C_binding, only: C_PTR
     type(C_PTR), value :: this
-  end subroutine C_VTI__delete
+  end subroutine C_VTI_delete
 
 end interface
 #endif
@@ -140,7 +140,7 @@ subroutine discretization_grid_init()
   if (worldrank == 0) then
 #if defined(BOOST)
     print'(/,1x,a)', 'Using C++ XML parser'
-    VTI_ = C_VTI__new(f_c_string(CLI_geomFile))
+    VTI_ = C_VTI_new(f_c_string(CLI_geomFile))
     fileContent = IO_read(CLI_geomFile)                                                            ! still needed for job file
     call C_VTI_readGeometry(VTI_,cells,geomSize,origin,labels)
 #else
@@ -261,7 +261,7 @@ end subroutine discretization_grid_init
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_grid_finalize()
 #if defined(BOOST)
-  if (worldrank == 0) call C_VTI__delete(VTI_)
+  if (worldrank == 0) call C_VTI_delete(VTI_)
 #endif
 end subroutine discretization_grid_finalize
 
