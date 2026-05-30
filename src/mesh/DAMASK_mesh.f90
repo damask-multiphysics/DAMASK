@@ -121,7 +121,7 @@ program DAMASK_mesh
   load => YAML_str_asDict(fileContent)
   load_steps => load%get_list('loadstep')
 
-  allocate(read_BC_entries(mesh_nBoundaries), source = .false.)
+  allocate(read_BC_entries(mesh_Nboundaries), source = .false.)
   allocate(loadCases(size(load_steps)))
   do l = 1, size(load_steps)
     load_step => load_steps%get_dict(l)
