@@ -195,7 +195,7 @@ subroutine discretization_mesh_init()
     allocate(bc_set_idx, source = [PETSC_BC_TYPE_FACE, PETSC_BC_TYPE_EDGE, PETSC_BC_TYPE_VERTEX])
   end if
 
-  mesh_nBoundaries = 0_pPETSCINT
+  mesh_Nboundaries = 0_pPETSCINT
   do n = 1, size(bc_set_idx)
     call DMHasLabel(globalMesh,PETSC_GENERIC_LABELS(bc_set_idx(n)),has_label,err_PETSc)
     if (has_label) then
@@ -208,7 +208,7 @@ subroutine discretization_mesh_init()
       if (.not. allocated(mesh_boundariesIS)) then
         allocate(mesh_boundariesIS, source = label_values)
         allocate(mesh_boundariesIdx(size(label_values)), source = int(bc_set_idx(n), pPETSCINT))
-        mesh_nBoundaries = mesh_nBoundaries + int(size(label_values), pPETSCINT)
+        mesh_Nboundaries = mesh_Nboundaries + int(size(label_values), pPETSCINT)
       else
         allocate(label_tmp, mold = label_values)
         k = 0
@@ -219,7 +219,7 @@ subroutine discretization_mesh_init()
         end do
         mesh_boundariesIS = [mesh_boundariesIS, label_tmp(1:k)]
         mesh_boundariesIdx = [mesh_boundariesIdx, [(int(bc_set_idx(n), pPETSCINT), m = 1, k)]]
-        mesh_nBoundaries = mesh_nBoundaries + int(k, pPETSCINT)
+        mesh_Nboundaries = mesh_Nboundaries + int(k, pPETSCINT)
         deallocate(label_tmp)
       end if
       call ISRestoreIndices(label_values_IS,label_values,err_PETSc)
@@ -227,7 +227,7 @@ subroutine discretization_mesh_init()
     end if
   end do
   deallocate(bc_set_idx)
-  if (mesh_nBoundaries == 0_pPETSCINT) &
+  if (mesh_Nboundaries == 0_pPETSCINT) &
     call IO_error(800_pI16, 'no mesh groups found to apply boundary conditions')
 
 !--------------------------------------------------------------------------------
@@ -235,7 +235,7 @@ subroutine discretization_mesh_init()
   call DMGetNumLabels(globalMesh, n_mesh_labels, err_PETSc)
   CHKERRQ(err_PETSc)
   if (n_mesh_labels > 2_pPETSCINT) then                                                             ! there are user-defined labels (for BC/material ID)
-    allocate(character(len=pSTRLEN) :: mesh_bcLabels(mesh_nBoundaries))
+    allocate(character(len=pSTRLEN) :: mesh_bcLabels(mesh_Nboundaries))
     mesh_bcLabels = ''
 
     call DMPlexGetHeightStratum(globalMesh,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
