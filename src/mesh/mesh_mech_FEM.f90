@@ -259,7 +259,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
     call PetscSectionGetDof(section, cellStart, pnumDof(topologDim), err_PETSc)
     CHKERRQ(err_PETSc)
   end do
-  numActiveBC = sum([(count(mechBC(boundary)%dot_u_active), boundary = 1, size(mechBC))])           ! number of active DOF in BC
+  numActiveBC = sum([(count(mechBC(boundary)%active == BC_TYPE_U_DOT), boundary = 1, size(mechBC))])
   allocate(pbcField(numActiveBC), source = 0_pPETSCINT)
   allocate(pbcComps(numActiveBC))
   allocate(pbcPoints(numActiveBC))
@@ -267,7 +267,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   do boundary = 1_pPETSCINT, mesh_Nboundaries
     bc_label = PETSC_GENERIC_LABELS(mesh_boundariesIdx(boundary))
     do component = 1_pPETSCINT, dimPlex
-      if (mechBC(boundary)%dot_u_active(component)) then
+      if (mechBC(boundary)%active(component) == BC_TYPE_U_DOT) then
         numActiveBC = numActiveBC + 1_pPETSCINT
         call ISCreateGeneral(PETSC_COMM_WORLD,1_pPETSCINT,[component-1_pPETSCINT],PETSC_COPY_VALUES, &
                              pbcComps(numActiveBC),err_PETSc)
@@ -328,7 +328,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   CHKERRQ(err_PETSc)
   call DMSNESSetJacobianLocal(mechanical_mesh,FEM_mechanical_formJacobian,PETSC_NULL_VEC,err_PETSc) ! function to evaluate stiffness matrix
   CHKERRQ(err_PETSc)
-  call SNESSetMaxLinearSolveFailures(mechanical_snes, huge(1_pPETSCINT), err_PETSc)                 ! ignore linear solve failures
+  call SNESSetMaxLinearSolveFailures(mechanical_snes,huge(1_pPETSCINT), err_PETSc)                  ! ignore linear solve failures
   CHKERRQ(err_PETSc)
   call SNESSetConvergenceTest(mechanical_snes,FEM_mechanical_converged,PETSC_NULL_VEC,PETSC_NULL_FUNCTION,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -371,7 +371,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   call VecAssemblyEnd(solution_local, err_PETSc)
   CHKERRQ(err_PETSc)
 
-  call utilities_assembleRHS(rhs_f0, rhs_f_local, mechanical_mesh, section, mechBC)
+  call utilities_assembleRHS(rhs_f0, rhs_f_local, mechanical_mesh, mechBC, params%Delta_t)
   call VecCopy(rhs_f0, rhs_f, err_PETSc)
   CHKERRQ(err_PETSc)
 
@@ -433,11 +433,11 @@ end function FEM_mechanical_solution
 !--------------------------------------------------------------------------------------------------
 !> @brief Form the FEM residual vector.
 !--------------------------------------------------------------------------------------------------
-subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_local,dummy,err_PETSc)
+subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_vec,dummy,err_PETSc)
 
   DM,          intent(in) :: dm_local                                                               !> DM
   Vec,         intent(in) :: delta_u_local                                                          !> latest displacement solution increment
-  Vec                     :: f_internal_local                                                       !> internal forces
+  Vec                     :: f_internal_vec                                                         !> (local) internal forces vector
   PetscObject, intent(in) :: dummy
   PetscErrorCode          :: err_PETSc
 
@@ -447,26 +447,26 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_local,d
 #if PETSC_VERSION_MINOR>=24
   PetscQuadrature :: quadrature
 #endif
-  real(pREAL), dimension(:), pointer      :: x_scal, pf_scal
-  real(pREAL), dimension(cellDof), target :: f_scal
+  real(pREAL), dimension(:), pointer      :: x_scal, pf_internal
+  real(pREAL), dimension(cellDof), target :: f_internal
   PetscReal,   dimension(dimPlex,dimPlex) :: invCellJ
 
 #if PETSC_VERSION_MINOR>=24
-  PetscReal, dimension(:), pointer :: pCellJ, pInvCellJ, pDetJ
+  PetscReal, dimension(:), pointer :: pCellJ, pInvCellJ, pDetJ                                      ! (pointer) cell / inverse / determinant jacobian
 #else
-  PetscReal, dimension(:), pointer :: pV0, pCellJ, pInvCellJ
-  PetscReal                        :: detJ
+  PetscReal, dimension(:), pointer :: pV0, pCellJ, pInvCellJ                                        ! cell first node / jacobian / inverse jacobian
+  PetscReal                        :: detJ                                                          ! jacobian determinant
 #endif
 #if PETSC_VERSION_MINOR>22
-  PetscTabulation, pointer :: tab(:)
+  PetscTabulation, pointer :: tab(:)                                                                ! shape function tabulation
 #else
-  PetscReal, dimension(:), pointer :: basisFieldDer, &
+  PetscReal, dimension(:), pointer :: basisFieldDer, &                                              ! shape functions first derivative
                                       dev_null
 #endif
   PetscInt  :: cellStart, cellEnd, cell, &
                qPt, basis, comp, cidx, &
                numFields, m,i
-  PetscReal, dimension(dimPlex*dimPlex,cellDof) :: BMat
+  PetscReal, dimension(dimPlex*dimPlex,cellDof) :: BMat                                             ! strain-displacement [B] matrix
 #if PETSC_VERSION_MINOR>=24
   PetscBool :: isSimplex
 
@@ -550,7 +550,6 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_local,d
 #else
             matmul(invCellJ,basisFieldDer(i*dimPlex+1_pPETSCINT:(i+1_pPETSCINT)*dimPlex))
 #endif
-
         end do
       end do
       homogenization_F(1:dimPlex,1:dimPlex,m) = reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex], order=[2,1])
@@ -589,7 +588,7 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_local,d
 #if PETSC_VERSION_MINOR<24
     invCellJ = reshape(pInvCellJ, shape=[dimPlex,dimPlex])
 #endif
-    f_scal = 0.0_pREAL
+    f_internal = 0.0_pREAL
     do qPt = 0_pPETSCINT, nQuadrature-1_pPETSCINT
       m = cell*nQuadrature + qPt+1_pPETSCINT
       BMat = 0.0_pREAL
@@ -610,16 +609,16 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_local,d
         end do
       end do
 #if PETSC_VERSION_MINOR>=24
-      f_scal = f_scal + pDetJ(qPt+1_pPETSCINT) * qWeights(qPt+1_pPETSCINT) &
+      f_internal = f_internal + pDetJ(qPt+1_pPETSCINT) * qWeights(qPt+1_pPETSCINT) &
 #else
-      f_scal = f_scal + abs(detJ) * qWeights(qPt+1_pPETSCINT) &
+      f_internal = f_internal + abs(detJ) * qWeights(qPt+1_pPETSCINT) &
 #endif
-             * matmul(transpose(BMat), &
-                      reshape(transpose(homogenization_P(1:dimPlex,1:dimPlex,m)), &
-                              shape=[dimPlex*dimPlex]))
+            * matmul(transpose(BMat), &
+                     reshape(transpose(homogenization_P(1:dimPlex,1:dimPlex,m)), &
+                             shape=[dimPlex*dimPlex]))
     end do
-    pf_scal => f_scal
-    call DMPlexVecSetClosure(dm_local,section,f_internal_local,cell,pf_scal,ADD_VALUES,err_PETSc)
+    pf_internal => f_internal
+    call DMPlexVecSetClosure(dm_local,section,f_internal_vec,cell,pf_internal,ADD_VALUES,err_PETSc)
     CHKERRQ(err_PETSc)
 #if PETSC_VERSION_MINOR>22
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,PETSC_NULL_INTEGER,x_scal,err_PETSc)
@@ -656,32 +655,30 @@ subroutine FEM_mechanical_formJacobian(dm_local,delta_u_local,J,Jp,dummy,err_PET
 #endif
 
   PetscReal, dimension(1,         cellDof) :: MatB
-  PetscReal, dimension(dimPlex**2,cellDof) :: BMat, &
+  PetscReal, dimension(dimPlex**2,cellDof) :: BMat, &                                               ! strain-displacement [B] matrix
                                               MatA
-
 #if PETSC_VERSION_MINOR>=24
-  real(pREAL), dimension(:), pointer :: pCellJ, pInvCellJ, pDetJ
+  real(pREAL), dimension(:), pointer :: pCellJ, pInvCellJ, pDetJ                                    ! (pointer) cell / inverse / determinant jacobian
 #else
-  real(pREAL), dimension(:), pointer :: pV0, pCellJ, pInvCellJ
-  PetscReal :: detJ
+  real(pREAL), dimension(:), pointer :: pV0, pCellJ, pInvCellJ                                      ! cell first node / jacobian / inverse jacobian
+  PetscReal :: detJ                                                                                 ! jacobian determinant
 #endif
 #if PETSC_VERSION_MINOR>22
-  PetscTabulation, pointer :: tab(:)
+  PetscTabulation, pointer :: tab(:)                                                                ! shape function tabulation
 #else
-  PetscReal,   dimension(:), pointer :: basisFieldDer, &
+  PetscReal,   dimension(:), pointer :: basisFieldDer, &                                            ! shape functions first derivative
                                         dev_null
 #endif
-  real(pREAL), dimension(:), pointer :: pK_e
+  real(pREAL), dimension(:), pointer :: pK_e                                                        ! (pointer) element tangent stiffnes
 
-  real(pREAL), dimension(cellDOF,cellDOF), target :: K_e
-  real(pREAL), dimension(dimPlex,dimPlex)         :: invCellJ
+  real(pREAL), dimension(cellDOF,cellDOF), target :: K_e                                            ! element tangent stiffness
+  real(pREAL), dimension(dimPlex,dimPlex)         :: invCellJ                                       ! cell inverse jacobian
 
   PetscInt :: cellStart, cellEnd, cell, &
               qPt, basis, comp, cidx, ce, i
 #if PETSC_VERSION_MINOR>=24
   PetscBool :: isSimplex
 #endif
-
 
 #if PETSC_VERSION_MINOR>=24
   allocate(pCellJ(nQuadrature*dimPlex**2))
