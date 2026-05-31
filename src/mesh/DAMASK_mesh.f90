@@ -41,8 +41,7 @@ program DAMASK_mesh
     Delta_t_prev = 0.0_pREAL                                                                        !< previous time interval
   logical :: &
     guess, &                                                                                        !< guess along former trajectory
-    stagIterate, &
-    printed_bc_type
+    stagIterate
   logical, allocatable, dimension(:) :: &
     read_BC_entries
   integer :: &
@@ -56,18 +55,17 @@ program DAMASK_mesh
     stagIter, &
     component
   type(tDict), pointer :: &
-    num_solver, &
-    num_mesh, &
-    load, &
-    load_step, &
-    step_bc, &
-    mech_BC, &
-    step_discretization
+    num_solver => NULL(), &
+    num_mesh => NULL(), &
+    load => NULL(), &
+    load_step => NULL(), &
+    step_bc => NULL(), &
+    mech_BC => NULL(), &
+    step_discretization => NULL()
   type(tList), pointer :: &
-    load_steps, &
-    mech_u => NULL(), &
-    mech_f => NULL(), &
-    step_mech
+    load_steps => NULL(), &
+    load_tmp => NULL(), &
+    step_mech => NULL()
   character(len=pSTRLEN) :: &
     incInfo
   integer :: &
@@ -129,10 +127,9 @@ program DAMASK_mesh
     step_mech => step_bc%get_list('mechanical')
     allocate(loadCases(l)%mechBC(mesh_Nboundaries))
     do boundary = 1_pPETSCINT, mesh_Nboundaries
-      allocate(loadCases(l)%mechBC(boundary)%dot_u(dimPlex), source = 0.0_pREAL)
-      allocate(loadCases(l)%mechBC(boundary)%dot_u_active(dimPlex), source = .false.)
-      allocate(loadCases(l)%mechBC(boundary)%dot_f(dimPlex), source = 0.0_pREAL)
-      allocate(loadCases(l)%mechBC(boundary)%dot_f_active(dimPlex), source = .false.)
+      allocate(loadCases(l)%mechBC(boundary)%displacements(dimPlex), source = 0.0_pREAL)
+      allocate(loadCases(l)%mechBC(boundary)%forces(dimPlex), source = 0.0_pREAL)
+      allocate(loadCases(l)%mechBC(boundary)%active(dimPlex), source = BC_TYPE_NONE)
     end do
 
 !--------------------------------------------------------------------------------------------------
@@ -140,7 +137,7 @@ program DAMASK_mesh
     do m = 1, size(step_mech)
       mech_BC => step_mech%get_dict(m)
       if (mech_BC%contains('label') .and. mech_BC%contains('tag')) then
-        call IO_error(812_pI16, '"label" and "tag" are given for boundary condition', m, emph=[2])
+        call IO_error(812_pI16, 'label', 'and', 'tag', 'are given for boundary condition', m, emph=[1,3,5])
       elseif (mech_BC%contains('label')) then
         bc_label = mech_BC%get_asStr('label')
         boundary = findloc(mesh_bcLabels, bc_label, dim = 1)
@@ -162,38 +159,52 @@ program DAMASK_mesh
         read_BC_entries(boundary) = .true.
         loadCases(l)%mechBC(boundary)%use_label = .false.
       else
-        call IO_error(812_pI16, 'neither "label" nor "tag" given for boundary condition', m, emph=[2])
+        call IO_error(812_pI16, 'neither', 'label', 'nor', 'tag', 'are given for boundary condition', m, emph=[2,4,6])
       end if
 ! check valid BC definition of dot_u and dot_f, store values
-      if (mech_BC%contains('dot_u')) mech_u => mech_BC%get_list('dot_u')
-      if (mech_BC%contains('u_dot')) mech_u => mech_BC%get_list('u_dot')
-      if (mech_BC%contains('dot_f')) mech_f => mech_BC%get_list('dot_f')
-      if (mech_BC%contains('f_dot')) mech_f => mech_BC%get_list('f_dot')
-
-      if (.not. (associated(mech_u) .or. associated(mech_f))) &
-        call IO_error(812_pI16, 'dot_u/dot_f missing for boundary condition', m, emph = [2])
-
       associate (BC_mech => loadCases(l)%mechBC(boundary))
-        do component = 1, dimplex
-          if (associated(mech_u)) then
-            if (mech_u%get_asStr(component) /= 'x') then
-              BC_mech%dot_u(component) = mech_u%get_asReal(component)
-              BC_mech%dot_u_active(component) = .true.
+        if (mech_BC%contains('u_dot')) then
+          load_tmp => mech_BC%get_list('u_dot')
+        else if (mech_BC%contains('dot_u')) then
+          load_tmp => mech_BC%get_list('dot_u')
+        end if
+        if (associated(load_tmp)) then
+          do component = 1, dimplex
+            if (load_tmp%get_asStr(component) /= 'x') then
+              BC_mech%displacements(component) = load_tmp%get_asReal(component)
+              BC_mech%active(component) = ior(BC_mech%active(component), BC_TYPE_U_DOT)
             end if
-          end if
-          if (associated(mech_f)) then
-            if (mech_f%get_asStr(component) /= 'x') then
-              BC_mech%dot_f(component) = mech_f%get_asReal(component)
-              BC_mech%dot_f_active(component) = .true.
+          end do
+          nullify(load_tmp)
+        end if
+        if (mech_BC%contains('f_dot')) then
+          load_tmp => mech_BC%get_list('f_dot')
+        else if (mech_BC%contains('dot_f')) then
+          load_tmp => mech_BC%get_list('dot_f')
+        end if
+        if (associated(load_tmp)) then
+          do component = 1, dimplex
+            if (load_tmp%get_asStr(component) /= 'x') then
+              BC_mech%forces(component) = load_tmp%get_asReal(component)
+              BC_mech%active(component) = ior(BC_mech%active(component), BC_TYPE_F_DOT)
             end if
-          end if
+          end do
+          nullify(load_tmp)
+        end if
 
-          if (BC_mech%dot_f_active(component) .and. BC_mech%dot_u_active(component)) &
-            call IO_error(812_pI16, 'displacement and force prescribed in the same DOF', &
-                          IO_EOL, 'in boundary condition', m, emph = [4])
+        do component = 1, dimplex
+          if (popcnt(BC_mech%active(component)) > 1) then
+            if (BC_mech%use_label) then
+              call IO_error(812_pI16, 'more than one condition specified for component', &
+                            component, IO_EOL, 'in loadcase', l, '/ label', trim(bc_label), &
+                            emph = [2, 5, 7])
+            else
+              call IO_error(812_pI16, 'more than one condition specified for component', &
+                            component, IO_EOL, 'in loadcase', l, '/ tag', bc_tag, emph = [2, 5, 7])
+            end if
+          end if
         end do
       end associate
-      nullify(mech_u, mech_f)
     end do
     read_BC_entries = .false.
 
@@ -217,52 +228,38 @@ program DAMASK_mesh
   skip_T1 = 4+max(len(PETSC_GENERIC_LABELS), maxval(len_trim(mesh_bcLabels)))+2                     ! indentation(4)+length_longest_label+blank
   checkLoadcases: do l = 1, size(load_steps)
     if (loadCases(l)%N < 1) &
-      call IO_error(301_pI16, 'loadcase', l, 'has non-positive number of steps ("N")', emph = [2])
+      call IO_error(301_pI16, 'loadcase', l, 'has non-positive number of steps','N', emph = [2,4])
     if (loadCases(l)%f_out < 1) &
-      call IO_error(301_pI16, 'loadcase', l, 'has non-positive output frequency ("f_out")', emph = [2])
+      call IO_error(301_pI16, 'loadcase', l, 'has non-positive output frequency', 'f_out', emph = [2,4])
 
     print'(/,1x,a,1x,i0)', 'load case:', l
     if (.not. loadCases(l)%estimate_rate) print'(2x,a)', 'drop guessing along trajectory'
     print'(2x,a)', 'Field '//trim(FIELD_MECH_label)
 
     do boundary = 1_pPETSCINT, mesh_Nboundaries
-      if (loadCases(l)%mechBC(boundary)%use_label) then
-        bc_label = mesh_bcLabels(boundary)
-      else
-        m = mesh_boundariesIdx(boundary)
-        if (dimPlex == 2_pPETSCINT .and. m < size(PETSC_GENERIC_LABELS)) m = m + 1                  ! adjust for 2D (cells -> faces)
-        bc_label = PETSC_GENERIC_LABELS(m)
-      end if
-
-      printed_bc_type = .false.
-      if (count(loadCases(l)%mechBC(boundary)%dot_u_active) > 0) then
-        if (.not. printed_bc_type) then
-          print'(3x,a,T'//IO_intAsStr(skip_T1)//',a,i0,a)', &
-            trim(bc_label), '(', mesh_boundariesIS(boundary),')'
-          printed_bc_type = .true.
+      associate (BC_mech => loadCases(l)%mechBC(boundary))
+        if (all(BC_mech%active == BC_TYPE_NONE)) cycle
+        if (BC_mech%use_label) then
+          bc_label = mesh_bcLabels(boundary)
+        else
+          m = mesh_boundariesIdx(boundary)
+          if (dimPlex == 2_pPETSCINT .and. m < size(PETSC_GENERIC_LABELS)) m = m + 1                ! adjust for 2D (cells -> faces)
+          bc_label = PETSC_GENERIC_LABELS(m)
         end if
-        print'(4x,a)', 'Rates of Displacement'
-        do component = 1_pPETSCINT, dimPlex
-          if (loadCases(l)%mechBC(boundary)%dot_u_active(component)) &
-            print'(5x,a,1x,i1,a,1x,en12.3e2,2x,a)', &
-            'Component', component, ':', &
-            loadCases(l)%mechBC(boundary)%dot_u(component), 'm/s'
-        end do
-      end if
-      if (count(loadCases(l)%mechBC(boundary)%dot_f_active) > 0) then
-        if (.not. printed_bc_type) then
+
+        if (any(BC_mech%active == BC_TYPE_U_DOT) .or. any(BC_mech%active == BC_TYPE_F_DOT)) then
           print'(3x,a,T'//IO_intAsStr(skip_T1)//',a,i0,a)', &
             trim(bc_label), '(', mesh_boundariesIS(boundary), ')'
-          printed_bc_type = .true.
+          do component = 1_pPETSCINT, dimPlex
+            if (BC_mech%active(component) == BC_TYPE_U_DOT) &
+              print'(5x,a,1x,i1,a,1x,en12.3e2,2x,a)', &
+              'Component', component, ':', BC_mech%displacements(component), 'm/s'
+            if (BC_mech%active(component) == BC_TYPE_F_DOT) &
+              print'(5x,a,1x,i1,a,1x,en12.3e2,2x,a)', &
+              'Component', component, ':', BC_mech%forces(component), 'N/s'
+          end do
         end if
-        print'(4x,a)', 'Rates of Force'
-        do component = 1_pPETSCINT, dimPlex
-          if (loadCases(l)%mechBC(boundary)%dot_f_active(component)) &
-            print'(5x,a,1x,i1,a,1x,en12.3e2,2x,a)', &
-            'Component', component, ':', &
-            loadCases(l)%mechBC(boundary)%dot_f(component), 'N/s'
-        end do
-      end if
+      end associate
     end do
     print'(2x,a,T19,en12.3e2,2x,a)', 'time:',             loadCases(l)%t, 's'
     print'(2x,a,T22,i0)',            'increments:',       loadCases(l)%N
@@ -330,7 +327,6 @@ program DAMASK_mesh
                        .and.       all(solres(:)%converged) &
                        .and. .not. all(solres(:)%stagConverged)                                     ! stationary with respect to staggered iteration
         end do
-
 ! check solution
         cutBack = .False.
         if (.not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                      ! no solution found
@@ -338,7 +334,7 @@ program DAMASK_mesh
             cutBack = .True.
             stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
             cutBackLevel = cutBackLevel + 1
-            t    = t - Delta_t                                                                      ! rewind time
+            t = t - Delta_t                                                                         ! rewind time
             Delta_t = Delta_t/2.0_pREAL
             print'(/,1x,a)', 'cutting back'
           else                                                                                      ! default behavior, exit if spectral solver does not converge

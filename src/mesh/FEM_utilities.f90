@@ -43,13 +43,18 @@ module FEM_utilities
     PetscInt :: iterationsNeeded = 0_pPETSCINT
   end type tSolutionState
 
-  type, public :: tMechBC
-    real(pREAL), allocatable, dimension(:) :: dot_u
-    logical,     allocatable, dimension(:) :: dot_u_active
-    real(pREAL), allocatable, dimension(:) :: dot_f
-    logical,     allocatable, dimension(:) :: dot_f_active
-    logical                                :: use_label
+  type, public :: tMechBC                                                                           !< boundary conditions data
+    real(pREAL), allocatable, dimension(:) :: displacements                                         !< u_dot & u
+    real(pREAL), allocatable, dimension(:) :: forces                                                !< f_dot & f
+    integer,     allocatable, dimension(:) :: active                                                !< which of u_dot/u/f_dot/f is set
+    logical                                :: use_label                                             !< use label or tag
   end type tMechBC
+
+  enum, bind(c); enumerator :: &                                                                    !< allowed BC types
+    BC_TYPE_NONE  = int(b'0000'), &
+    BC_TYPE_U_DOT = int(b'0001'), &
+    BC_TYPE_F_DOT = int(b'0100')
+  end enum
 
 #if PETSC_VERSION_MINOR<23
   external :: &
@@ -62,7 +67,11 @@ module FEM_utilities
     FEM_utilities_init, &
     utilities_constitutiveResponse, &
     utilities_projectBCValues, &
-    utilities_assembleRHS
+    utilities_assembleRHS, &
+    ! enum
+    BC_TYPE_NONE, &
+    BC_TYPE_U_DOT, &
+    BC_TYPE_F_DOT
 
 contains
 
@@ -133,7 +142,7 @@ subroutine utilities_constitutiveResponse(status, Delta_t,P_av,forwardData)
 
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
 
-  call homogenization_mechanical_response(status,Delta_t,1,int(mesh_maxNips*mesh_nElems))         ! calculate P field
+  call homogenization_mechanical_response(status,Delta_t,1,int(mesh_maxNips*mesh_nElems))           ! calculate P field
   cutBack = .false.
 
   P_av = sum(homogenization_P,dim=3) * wgt
@@ -172,7 +181,7 @@ subroutine utilities_projectBCValues(solution_local_vec,dm_local,mechBC,Delta_t)
   call VecGetArray(solution_local_vec,solution_local,err_PETSc)
   CHKERRQ(err_PETSc)
   do boundary = 1_pPETSCINT, mesh_Nboundaries
-    if (any(mechBC(boundary)%dot_u_active)) then
+    if (any(iand(mechBC(boundary)%active, BC_TYPE_U_DOT) > 0)) then
       bc_label = PETSC_GENERIC_LABELS(mesh_boundariesIdx(boundary))
       call DMGetStratumIS(dm_local,bc_label,mesh_boundariesIS(boundary),bc_points_IS,err_PETSc)
       CHKERRQ(err_PETSc)
@@ -183,12 +192,11 @@ subroutine utilities_projectBCValues(solution_local_vec,dm_local,mechBC,Delta_t)
         CHKERRQ(err_PETSc)
         call PetscSectionGetFieldOffset(section,bc_points(point),0_pPETSCINT,offset,err_PETSc)
         CHKERRQ(err_PETSc)
-        do component = 1_pPETSCINT, size(mechBC(boundary)%dot_u)
-          if (mechBC(boundary)%dot_u_active(component)) then
-            do dof = offset+component, offset+n_field_dof, n_field_comp
-              solution_local(dof) = solution_local(dof) + mechBC(boundary)%dot_u(component)*Delta_t
-            end do
-          end if
+        do component = 1_pPETSCINT, size(mechBC(boundary)%displacements)
+          if (iand(mechBC(boundary)%active(component), BC_TYPE_U_DOT) == 0) cycle
+          do dof = offset+component, offset+n_field_dof, n_field_comp
+            solution_local(dof) = solution_local(dof) + mechBC(boundary)%displacements(component) * Delta_t
+          end do
         end do
       end do
       call ISRestoreIndices(bc_points_IS,bc_points,err_PETSc)
@@ -206,16 +214,17 @@ end subroutine utilities_projectBCValues
 !--------------------------------------------------------------------------------------------------
 !> @brief Assemble right hand side.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_assembleRHS(rhs_f, rhs_f_local, dm, section, mechBC)
+subroutine utilities_assembleRHS(rhs_f, rhs_f_local, dm, mechBC, Delta_t)
 
   Vec,                         intent(inout) :: rhs_f, rhs_f_local
   DM,                          intent(in)    :: dm
-  PetscSection,                intent(in)    :: section
   type(tMechBC), dimension(:), intent(in)    :: mechBC
+  real(pREAL),                 intent(in)    :: Delta_t
 
   PetscInt       :: component, boundary, &
                     point, dof, n_field_dof, n_field_comp, offset
   IS             :: bc_points_IS
+  PetscSection   :: section
   PetscErrorCode :: err_PETSc
   PetscInt,    pointer :: bc_points(:)
   real(pREAL), pointer :: solution_local(:)
@@ -224,12 +233,14 @@ subroutine utilities_assembleRHS(rhs_f, rhs_f_local, dm, section, mechBC)
 
 
   ! Forces
+  call DMGetLocalSection(dm, section, err_PETSc)
+  CHKERRQ(err_PETSc)
   call VecGetArray(rhs_f_local,solution_local,err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscSectionGetFieldComponents(section,0_pPETSCINT,n_field_comp,err_PETSc)
   CHKERRQ(err_PETSc)
   do boundary = 1_pPETSCINT, mesh_Nboundaries
-    if (any(mechBC(boundary)%dot_f_active)) then
+    if (any(iand(mechBC(boundary)%active, BC_TYPE_F_DOT) > 0)) then
       bc_label = PETSC_GENERIC_LABELS(mesh_boundariesIdx(boundary))
       call DMGetStratumIS(dm,bc_label,mesh_boundariesIS(boundary),bc_points_IS,err_PETSc)
       CHKERRQ(err_PETSc)
@@ -240,12 +251,11 @@ subroutine utilities_assembleRHS(rhs_f, rhs_f_local, dm, section, mechBC)
         CHKERRQ(err_PETSc)
         call PetscSectionGetFieldOffset(section,bc_points(point),0_pPETSCINT,offset,err_PETSc)
         CHKERRQ(err_PETSc)
-        do component = 1_pPETSCINT, size(mechBC(boundary)%dot_f_active)
-          if (mechBC(boundary)%dot_f_active(component)) then
-            do dof = offset+component, offset+n_field_dof, n_field_comp
-              solution_local(dof) = solution_local(dof) + mechBC(boundary)%dot_f(component)
-            end do
-          end if
+        do component = 1_pPETSCINT, size(mechBC(boundary)%forces)
+          if (iand(mechBC(boundary)%active(component), BC_TYPE_F_DOT) == 0) cycle
+          do dof = offset+component, offset+n_field_dof, n_field_comp
+            solution_local(dof) = solution_local(dof) + mechBC(boundary)%forces(component)
+          end do
         end do
       end do
       call ISRestoreIndices(bc_points_IS,bc_points,err_PETSc)
