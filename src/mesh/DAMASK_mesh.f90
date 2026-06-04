@@ -38,22 +38,24 @@ program DAMASK_mesh
     t   = 0.0_pREAL, &                                                                              !< elapsed time
     t_0 = 0.0_pREAL, &                                                                              !< begin of interval
     Delta_t = 0.0_pREAL, &                                                                          !< current time interval
-    Delta_t_prev = 0.0_pREAL                                                                        !< previous time interval
+    Delta_t_prev = 0.0_pREAL, &                                                                     !< previous time interval
+    bc_value                                                                                        !< BC component value from YAML load file
   logical :: &
     guess, &                                                                                        !< guess along former trajectory
-    stagIterate
+    stagIterate                                                                                     !< flag for continuing staggered iterations
   logical, allocatable, dimension(:) :: &
-    read_BC_entries
+    read_BC_entries                                                                                 !< already read BC entries (repetition forbidden)
   integer :: &
     l, &
     m, &
+    boundary, &
+    component, &
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
     stepFraction = 0, &                                                                             !< fraction of current time interval
     inc, &                                                                                          !< current increment in current load case
     totalIncsCounter = 0, &                                                                         !< total # of increments
     statUnit = 0, &                                                                                 !< file unit for statistics output
-    stagIter, &
-    component
+    stagIter                                                                                        !< staggered iterations counter
   type(tDict), pointer :: &
     num_solver => NULL(), &
     num_mesh => NULL(), &
@@ -64,22 +66,23 @@ program DAMASK_mesh
     step_discretization => NULL()
   type(tList), pointer :: &
     load_steps => NULL(), &
-    load_tmp => NULL(), &
-    step_mech => NULL()
+    step_mech => NULL(), &
+    bc_uf => NULL()                                                                                 !< u/f[_dot] components in YAML load file
   character(len=pSTRLEN) :: &
-    incInfo
+    incInfo                                                                                         !< report new step (iterations, cut backs, etc)
   integer :: &
     stagItMax, &                                                                                    !< max number of field level staggered iterations
     maxCutBack, &                                                                                   !< max number of cutbacks
     bc_tag, &                                                                                       !< tag used for BC in YAML load file
     skip_T1                                                                                         !< number of characters to skip (T descriptor)
 
-  type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
+  type(tLoadCase),      allocatable, dimension(:) :: loadCases                                      !< array of all load cases
   type(tSolutionState), allocatable, dimension(:) :: solres
-  PetscInt :: boundary, dimPlex
+  PetscInt :: dimPlex                                                                               !< mesh dimension (2D or 3D)
   PetscErrorCode :: err_PETSc
   character(len=:), allocatable :: &
-    fileContent, fname
+    fileContent, fname, &                                                                           !< load file full content/filename
+    bc_unit                                                                                         !< BC unit for printing: one of [m, m/s, N, N/s]
   character(len=pSTRLEN) :: &
     bc_label                                                                                        !< mesh label or generic label for BC
 
@@ -102,7 +105,7 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! reading basic information from load case file, allocate data structure containing load cases
 ! and some checks for invalid tags/labels use
-  call DMGetDimension(geomMesh,dimPlex,err_PETSc)                                                   ! dimension of mesh (2D or 3D)
+  call DMGetDimension(geomMesh,dimPlex,err_PETSc)
   CHKERRA(err_PETSc)
   allocate(solres(1))
 
@@ -126,7 +129,7 @@ program DAMASK_mesh
     step_bc   => load_step%get_dict('boundary_conditions')
     step_mech => step_bc%get_list('mechanical')
     allocate(loadCases(l)%mechBC(mesh_Nboundaries))
-    do boundary = 1_pPETSCINT, mesh_Nboundaries
+    do boundary = 1, int(mesh_Nboundaries)
       allocate(loadCases(l)%mechBC(boundary)%displacements(dimPlex), source = 0.0_pREAL)
       allocate(loadCases(l)%mechBC(boundary)%forces(dimPlex), source = 0.0_pREAL)
       allocate(loadCases(l)%mechBC(boundary)%active(dimPlex), source = BC_TYPE_NONE)
@@ -164,35 +167,45 @@ program DAMASK_mesh
 ! check valid BC definition of dot_u and dot_f, store values
       associate (BC_mech => loadCases(l)%mechBC(boundary))
         if (mech_BC%contains('u_dot')) then
-          load_tmp => mech_BC%get_list('u_dot')
+          bc_uf => mech_BC%get_list('u_dot')
         else if (mech_BC%contains('dot_u')) then
-          load_tmp => mech_BC%get_list('dot_u')
+          bc_uf => mech_BC%get_list('dot_u')
         end if
-        if (associated(load_tmp)) then
-          do component = 1, dimplex
-            if (load_tmp%get_asStr(component) /= 'x') then
-              BC_mech%displacements(component) = load_tmp%get_asReal(component)
+        if (associated(bc_uf)) then
+          do component = 1, int(dimPlex)
+            if (bc_uf%get_asStr(component) /= 'x') then
+              BC_mech%displacements(component) = bc_uf%get_asReal(component)
               BC_mech%active(component) = ior(BC_mech%active(component), BC_TYPE_U_DOT)
             end if
           end do
-          nullify(load_tmp)
+          nullify(bc_uf)
+        end if
+        if (mech_BC%contains('u')) then
+          bc_uf => mech_BC%get_list('u')
+          do component = 1, int(dimPlex)
+            if (bc_uf%get_asStr(component) /= 'x') then
+              BC_mech%displacements(component) = bc_uf%get_asReal(component)
+              BC_mech%active(component) = ior(BC_mech%active(component), BC_TYPE_U)
+            end if
+          end do
+          nullify(bc_uf)
         end if
         if (mech_BC%contains('f_dot')) then
-          load_tmp => mech_BC%get_list('f_dot')
+          bc_uf => mech_BC%get_list('f_dot')
         else if (mech_BC%contains('dot_f')) then
-          load_tmp => mech_BC%get_list('dot_f')
+          bc_uf => mech_BC%get_list('dot_f')
         end if
-        if (associated(load_tmp)) then
-          do component = 1, dimplex
-            if (load_tmp%get_asStr(component) /= 'x') then
-              BC_mech%forces(component) = load_tmp%get_asReal(component)
+        if (associated(bc_uf)) then
+          do component = 1, int(dimPlex)
+            if (bc_uf%get_asStr(component) /= 'x') then
+              BC_mech%forces(component) = bc_uf%get_asReal(component)
               BC_mech%active(component) = ior(BC_mech%active(component), BC_TYPE_F_DOT)
             end if
           end do
-          nullify(load_tmp)
+          nullify(bc_uf)
         end if
 
-        do component = 1, dimplex
+        do component = 1, int(dimPlex)
           if (popcnt(BC_mech%active(component)) > 1) then
             if (BC_mech%use_label) then
               call IO_error(812_pI16, 'more than one condition specified for component', &
@@ -247,18 +260,24 @@ program DAMASK_mesh
           bc_label = PETSC_GENERIC_LABELS(m)
         end if
 
-        if (any(BC_mech%active == BC_TYPE_U_DOT) .or. any(BC_mech%active == BC_TYPE_F_DOT)) then
-          print'(3x,a,T'//IO_intAsStr(skip_T1)//',a,i0,a)', &
-            trim(bc_label), '(', mesh_boundariesIS(boundary), ')'
-          do component = 1_pPETSCINT, dimPlex
-            if (BC_mech%active(component) == BC_TYPE_U_DOT) &
-              print'(5x,a,1x,i1,a,1x,en12.3e2,2x,a)', &
-              'Component', component, ':', BC_mech%displacements(component), 'm/s'
-            if (BC_mech%active(component) == BC_TYPE_F_DOT) &
-              print'(5x,a,1x,i1,a,1x,en12.3e2,2x,a)', &
-              'Component', component, ':', BC_mech%forces(component), 'N/s'
-          end do
-        end if
+        print'(3x,a,T'//IO_intAsStr(skip_T1)//',a,i0,a)', &
+          trim(bc_label), '(', mesh_boundariesIS(boundary), ')'
+        do component = 1_pPETSCINT, dimPlex
+          if (BC_mech%active(component) == BC_TYPE_NONE) cycle
+          if (BC_mech%active(component) == BC_TYPE_U_DOT) then
+            bc_unit = 'm/s'
+            bc_value = BC_mech%displacements(component)
+          else if (BC_mech%active(component) == BC_TYPE_U) then
+            bc_unit = 'm'
+            bc_value = BC_mech%displacements(component)
+          else if (BC_mech%active(component) == BC_TYPE_F_DOT) then
+            bc_unit = 'N/s'
+            bc_value = BC_mech%forces(component)
+          end if
+          print'(5x,a,1x,i1,a,1x,en12.3e2,2x,a)', &
+            'Component', component, ':', bc_value, bc_unit
+          deallocate(bc_unit)
+        end do
       end associate
     end do
     print'(2x,a,T19,en12.3e2,2x,a)', 'time:',             loadCases(l)%t, 's'
@@ -284,6 +303,7 @@ program DAMASK_mesh
   loadCaseLooping: do l = 1, size(load_steps)
     t_0 = t                                                                                         ! load case start time
     guess = loadCases(l)%estimate_rate                                                              ! change of load case? homogeneous guess for the first inc
+    call FEM_mechanical_assembleU(loadCases(l)%mechBC, loadCases(l)%t)
 
     incLooping: do inc = 1, loadCases(l)%N
       totalIncsCounter = totalIncsCounter + 1
