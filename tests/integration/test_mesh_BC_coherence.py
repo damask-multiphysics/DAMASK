@@ -10,18 +10,18 @@ import damask
     - Discretization-independency i.e. the number of discretization steps `N`
       does not change the solution.
       - Test versions 1, 3, 4
-    - Rates and aim (target) equivalence i.e. the solution is the same when BC
+    - Rates and aim equivalence i.e. the solution is the same when BC
       are applied using equivalent rates (x_dot) or aim (x) values
       - Example: {x_dot=5, t = 2} is equivalent to {x = 10, t = []}
-    - Time-independence for aim/target BC (version 2 below)
+    - Time-independence for aim BC
       - Example: {x = 10, t = ..} should give the same result regardless of 't'
-      - Test versions 2
+      - Test version 2
     - For the linear case, additive BC
       - Test versions 3, 4
 
     Parametrization:
      - Dimension (2 or 3)
-     - Boundary condition type (u_dot)
+     - Boundary condition type (u_dot & u)
 
     Randomization:
      - Elastic constants (C_11, C_12, ...)
@@ -35,7 +35,7 @@ import damask
     - Load (-l)
       - load_{2/3}D.yaml
     - Material (-m)
-      - material.yaml
+      - material_base.yaml (without orientations)
     - Mesh (-g)
       - mesh_{2/3}D.msh (single QUAD/HEXA element)
     - Numerics configuration (-n)
@@ -52,12 +52,13 @@ import damask
         - Version 3: k steps, N >= 1, t = 1.0
         - Version 4: 2 steps, N >= 1, t = 1.0 (first and last), plus k steps
                      in between with free BC ([x,x,x])
-    - Version 5:
+    - Version 5 (cyclic):
         Checks the final displacement is zero after applying a "cyclic" load,
-        simulated by consecutive steps of (total) force {+F, -F, +F, -F...}.
+        simulated by consecutive steps of (total) displacement/force i.e.
+        {+u, -u, +u, -u...}/{+F, -F, +F, -F...}.
 
-    - All versions (0..5) are run for both rates (f_dot) and aim (f)
-      boundary conditions. Version 0 with rate f_dot is used as reference.
+    - All versions (0..5) are run for both rates (x_dot) and aim (x)
+      boundary conditions. Version 0 with rate u_dot is used as reference.
 
     ------------------------------------------------------------------------ """
 
@@ -71,9 +72,9 @@ def res_path(res_path_base):
 def bc_setup(np_rng, n_D, BC_type):
     """Randomized displacement boundary conditions."""
     # Set BC (along Y in 2D, along Z in 3D)
-    scale = 1.0e+6 if 'BC_type' == 'f' else 1.0e-2
-    bc_val = ['x', 'x', 'x']
-    bc_val[n_D-1] = scale*np_rng.uniform(0.5,1)
+    scale = 1.0e+6 if BC_type == 'f' else 1.0e-2
+    bc_val = ['x']*3
+    bc_val[n_D-1] = scale*np_rng.uniform(0.5,1)*np_rng.choice([-1,+1])
 
     return bc_val
 
@@ -144,15 +145,16 @@ def material_setup(mat_config, np_rng):
     """
     Randomized material properties.
 
-    The stiffness matrix needs to be positive definite.
-    Here we ensure also a reasonable condition number because
-    agreement with the analytical solution is better in
-    that case.
+    The stiffness matrix must be positive definite.
+    We additionally constrain its condition number
+    to remain within a reasonable range,
+    since well-conditioned systems typically exhibit
+    closer agreement with the analytical solution.
     """
     unstable = True
     while unstable:
-        C_11 = C_33 = 70.e9 + 20.e9 * np_rng.random()
-        C_12 = C_13 = 60.e9 + 10.e9 * np_rng.random()
+        C_11 = C_33 = 90.e9 + 40.e9 * np_rng.random()
+        C_12 = C_13 = 55.e9 + 10.e9 * np_rng.random()
         C_44 = C_66 = 0.5 * (C_11 - C_12)
 
         C = np.array([[C_11, C_12, C_13,  0.0,  0.0,   0.0],
@@ -183,29 +185,53 @@ def test_mesh_BC_coherence(res_path, copy_files, tmp_path, np_rng,
     copy_files(res_path, tmp_path, [f'mesh_{n_D}D.msh', f'load_{n_D}D.yaml', \
                                     'numerics.yaml'])
 
-    load_config = damask.YAML.load(res_path/f'load_{n_D}D.yaml')
+    load_config = damask.LoadcaseMesh.load(res_path/f'load_{n_D}D.yaml')
     mat_config = damask.ConfigMaterial.load(res_path/'material_base.yaml')
 
     bc_val = bc_setup(np_rng, n_D, BC_type)
     material_setup(mat_config, np_rng).save(tmp_path/'material.yaml')
 
-    """ Reference solution (version 0, f_dot)"""
-    BC_key = f'{BC_type}_dot'
-    load_setup(load_config, np_rng, bc_val, n_D, BC_key, 0).save(tmp_path/f'load_v0_{n_D}D_{BC_key}.yaml')
-    damask.util.run(f'damask_mesh -m material.yaml -l load_v0_{n_D}D_{BC_key}.yaml ' +
-                    f'-g mesh_{n_D}D.msh -n numerics.yaml -j v0_{n_D}D_{BC_key}', wd = tmp_path)
-    u_ref = damask.Result(tmp_path/f'v0_{n_D}D_{BC_key}.hdf5').view(increments=-1).get('u_n')
-    u_ref[np.where(np.abs(u_ref) < 1.0e-9)] = 0.0
+    """ Reference solution (version 0, u_dot)"""
+    load_setup(load_config, np_rng, bc_val, n_D, 'u_dot', 0).save(tmp_path/f'load_v0_{n_D}D_u_dot.yaml')
+    damask.util.run(f'damask_mesh -m material.yaml -l load_v0_{n_D}D_u_dot.yaml ' +
+                    f'-g mesh_{n_D}D.msh -n numerics.yaml -j v0_{n_D}D_u_dot', wd = tmp_path)
+    u_ref = damask.Result(tmp_path/f'v0_{n_D}D_u_dot.hdf5').view(increments=-1).get('u_n')
+    u_ref[np.abs(u_ref) < 1.0e-12] = 0.0
 
     """ Numerical solution"""
-    BC_key = BC_type + '_dot'
-    for t in ['rate']:
-        for v in np.arange(1,5+1):
-            load_config = damask.YAML.load(tmp_path/f'load_v0_{n_D}D_{BC_type}_dot.yaml')
+    for t in ['rate', 'aim']:
+        BC_key = BC_type + ('_dot' if t == 'rate' else '')
+        for v in range(4+1):
+            if v == 0 and t == 'rate': continue
+            load_config = damask.LoadcaseMesh.load(tmp_path/f'load_v0_{n_D}D_u_dot.yaml')
             load_setup(load_config, np_rng, bc_val, n_D, BC_key, v).save(tmp_path/f'load_v{v}_{n_D}D_{BC_key}.yaml')
             damask.util.run(f'damask_mesh -m material.yaml -l load_v{v}_{n_D}D_{BC_key}.yaml ' +
                             f'-g mesh_{n_D}D.msh -n numerics.yaml -j v{v}_{n_D}D_{BC_key}', wd = tmp_path)
             u_n = damask.Result(tmp_path/f'v{v}_{n_D}D_{BC_key}.hdf5').view(increments=-1).get('u_n')
-            u_n[np.where(np.abs(u_n) < 1.0e-12)] = 0.0
-            assert(np.allclose(u_ref, u_n, rtol = 5.0e-6, atol = 1.0e-7) if v < 5 else
-                   np.allclose(0.0, u_n, rtol = 1.0e-9, atol = 1.0e-12))
+            u_n[np.abs(u_n) < 1.0e-12] = 0.0
+            assert(np.allclose(u_ref, u_n, rtol = 5.0e-6, atol = 1.0e-7))
+
+
+@pytest.mark.parametrize('n_D', [2, 3])
+@pytest.mark.parametrize('BC_type', ['u'])
+def test_mesh_BC_coherence_cyclic(res_path, copy_files, tmp_path, np_rng,
+                                  n_D, BC_type, petsc_version):
+    copy_files(res_path, tmp_path, [f'mesh_{n_D}D.msh', f'load_{n_D}D.yaml', \
+                                    'numerics.yaml'])
+
+    load_config = damask.LoadcaseMesh.load(res_path/f'load_{n_D}D.yaml')
+    mat_config = damask.ConfigMaterial.load(res_path/'material_base.yaml')
+
+    bc_val = bc_setup(np_rng, n_D, BC_type)
+    material_setup(mat_config, np_rng).save(tmp_path/'material.yaml')
+
+    """ Numerical solution"""
+    for t in ['rate', 'aim']:
+        BC_key = BC_type + ('_dot' if t == 'rate' else '')
+        load_config = damask.LoadcaseMesh.load(tmp_path/f'load_{n_D}D.yaml')
+        load_setup(load_config, np_rng, bc_val, n_D, BC_key, 5).save(tmp_path/f'load_v5_{n_D}D_{BC_key}.yaml')
+        damask.util.run(f'damask_mesh -m material.yaml -l load_v5_{n_D}D_{BC_key}.yaml ' +
+                        f'-g mesh_{n_D}D.msh -n numerics.yaml -j v5_{n_D}D_{BC_key}', wd = tmp_path)
+        u_n = damask.Result(tmp_path/f'v5_{n_D}D_{BC_key}.hdf5').view(increments=-1).get('u_n')
+        u_n[np.abs(u_n) < 1.0e-12] = 0.0
+        assert(np.allclose(0.0, u_n, rtol = 1.0e-9, atol = 1.0e-12))

@@ -58,6 +58,7 @@ module mesh_mechanical_FEM
   SNES                           :: mechanical_snes
   Vec                            :: solution, solution_local, solution_rate, &
                                     rhs_f, rhs_f_local, rhs_f0, &
+                                    u_aim, u_aim_rate, u_aim_prev, &
                                     x_local
   PetscInt                       :: dimPlex, cellDof, nBasis
   PetscInt                       :: nQuadrature
@@ -91,6 +92,7 @@ module mesh_mechanical_FEM
     FEM_mechanical_init, &
     FEM_mechanical_solution, &
     FEM_mechanical_forward, &
+    FEM_mechanical_assembleU, &
     FEM_mechanical_updateCoords
 
 contains
@@ -104,14 +106,14 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   type(tDict),   pointer,      intent(in) :: num_mesh
 
   DM       :: mechanical_mesh
-  IS       :: bcPoint
-  DMLabel  :: dm_label
+  IS       :: label_points_IS                                                                       ! IS of points in a stratum of a label
+  DMLabel  :: dm_label                                                                              ! mesh labels
   PetscFE  :: mechFE
   PetscDS  :: mechDS
-  PetscInt :: numActiveBC, nc, &
+  PetscInt :: n_displacement_BC, nc, &
               component, boundary, topologDim, &
               cellStart, cellEnd, &
-              nCoords
+              nCoords, d
   PetscBool       :: has_label
 #if PETSC_VERSION_MINOR>=24
   PetscBool       :: isSimplex
@@ -127,8 +129,8 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   DMLabel,   dimension(:), pointer     :: PETSC_NULL_DMLABEL_ARRAY => NULL()
   PetscReal, dimension(:), pointer     :: PETSC_NULL_REAL_POINTER => NULL()
 #endif
-  IS,        dimension(:), pointer     :: pBcComps, pBcPoints
-  PetscInt,  dimension(:), pointer     :: pNumComp, pNumDof, pBcField, pBcPoint
+  IS,        dimension(:), pointer     :: bc_comps_IS, bc_points_IS
+  PetscInt,  dimension(:), pointer     :: n_comp, n_dof, bc_field, label_points
   PetscInt,  dimension(:), allocatable :: idx
   PetscReal, dimension(:), pointer     :: qWeightsP
   real(pREAL), dimension(:), allocatable :: nodeCoords
@@ -251,52 +253,56 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
 
   call DMGetLocalSection(mechanical_mesh,section,err_PETSc)
   CHKERRQ(err_PETSc)
-  allocate(pnumComp(1), source=dimPlex)
-  allocate(pnumDof(0:dimPlex), source = 0_pPETSCINT)
+  allocate(n_comp(1), source=dimPlex)
+  allocate(n_dof(0:dimPlex), source = 0_pPETSCINT)
   do topologDim = 0_pPETSCINT, dimPlex
     call DMPlexGetDepthStratum(mechanical_mesh, topologDim, cellStart, cellEnd, err_PETSc)
     CHKERRQ(err_PETSc)
-    call PetscSectionGetDof(section, cellStart, pnumDof(topologDim), err_PETSc)
+    call PetscSectionGetDof(section, cellStart, n_dof(topologDim), err_PETSc)
     CHKERRQ(err_PETSc)
   end do
-  numActiveBC = sum([(count(mechBC(boundary)%active == BC_TYPE_U_DOT), boundary = 1, size(mechBC))])
-  allocate(pbcField(numActiveBC), source = 0_pPETSCINT)
-  allocate(pbcComps(numActiveBC))
-  allocate(pbcPoints(numActiveBC))
-  numActiveBC = 0_pPETSCINT
+  n_displacement_BC = sum([(count(mechBC(boundary)%active == BC_TYPE_U_DOT .or. &
+                                  mechBC(boundary)%active == BC_TYPE_U), boundary = 1, size(mechBC))])
+  allocate(bc_field(n_displacement_BC), source = 0_pPETSCINT)
+  allocate(bc_comps_IS(n_displacement_BC))
+  allocate(bc_points_IS(n_displacement_BC))
+  d = 0_pPETSCINT
   do boundary = 1_pPETSCINT, mesh_Nboundaries
     bc_label = PETSC_GENERIC_LABELS(mesh_boundariesIdx(boundary))
     do component = 1_pPETSCINT, dimPlex
-      if (mechBC(boundary)%active(component) == BC_TYPE_U_DOT) then
-        numActiveBC = numActiveBC + 1_pPETSCINT
+      if (mechBC(boundary)%active(component) == BC_TYPE_U_DOT .or. &
+          mechBC(boundary)%active(component) == BC_TYPE_U) then
+        d = d + 1_pPETSCINT
         call ISCreateGeneral(PETSC_COMM_WORLD,1_pPETSCINT,[component-1_pPETSCINT],PETSC_COPY_VALUES, &
-                             pbcComps(numActiveBC),err_PETSc)
+                             bc_comps_IS(d),err_PETSc)
         CHKERRQ(err_PETSc)
         call DMGetStratumIS(mechanical_mesh,bc_label,mesh_boundariesIS(boundary), &
-                            bcPoint,err_PETSc)
+                            label_points_IS,err_PETSc)
         CHKERRQ(err_PETSc)
-        call ISGetIndices(bcPoint,pBcPoint,err_PETSc)
+        call ISGetIndices(label_points_IS,label_points,err_PETSc)
         CHKERRQ(err_PETSc)
-        call ISCreateGeneral(PETSC_COMM_WORLD,int(size(pBcPoint),pPETSCINT),pBcPoint, &
-                             PETSC_COPY_VALUES,pbcPoints(numActiveBC),err_PETSc)
+        call ISCreateGeneral(PETSC_COMM_WORLD,int(size(label_points),pPETSCINT),label_points, &
+                             PETSC_COPY_VALUES,bc_points_IS(d),err_PETSc)
         CHKERRQ(err_PETSc)
-        call ISRestoreIndices(bcPoint,pBcPoint,err_PETSc)
+        call ISRestoreIndices(label_points_IS,label_points,err_PETSc)
         CHKERRQ(err_PETSc)
-        call ISDestroy(bcPoint,err_PETSc)
+        call ISDestroy(label_points_IS,err_PETSc)
         CHKERRQ(err_PETSc)
       end if
     end do
   end do
-
-  call DMPlexCreateSection(mechanical_mesh,PETSC_NULL_DMLABEL_ARRAY,pNumComp,pNumDof, &
-                           numActiveBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,err_PETSc)
+  call DMPlexCreateSection(mechanical_mesh,PETSC_NULL_DMLABEL_ARRAY,n_comp,n_dof, &
+                           n_displacement_BC,bc_field,bc_comps_IS,bc_points_IS,PETSC_NULL_IS,section,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMSetLocalSection(mechanical_mesh,section,err_PETSc)
   CHKERRQ(err_PETSc)
-  do boundary = 1_pPETSCINT, numActiveBC
-    call ISDestroy(pbcPoints(boundary),err_PETSc)
+  do boundary = 1_pPETSCINT, n_displacement_BC
+    call ISDestroy(bc_points_IS(boundary),err_PETSc)
+    CHKERRQ(err_PETSc)
+    call ISDestroy(bc_comps_IS(boundary),err_PETSc)
     CHKERRQ(err_PETSc)
   end do
+  deallocate(bc_field)
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -322,13 +328,19 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   CHKERRQ(err_PETSc)
   call DMCreateLocalVector (mechanical_mesh,rhs_f_local,err_PETSc)                                  ! local RHS vector {F}
   CHKERRQ(err_PETSc)
+  call DMCreateLocalVector(mechanical_mesh,u_aim,err_PETSc)                                         ! local displacement aim at end of step
+  CHKERRQ(err_PETSc)
+  call DMCreateLocalVector(mechanical_mesh,u_aim_rate,err_PETSc)                                    ! local (per step) displacement rate
+  CHKERRQ(err_PETSc)
+  call DMCreateLocalVector(mechanical_mesh,u_aim_prev,err_PETSc)                                    ! previous step {u_aim_rate}
+  CHKERRQ(err_PETSc)
   call DMCreateLocalVector(mechanical_mesh,x_local,err_PETSc)                                       ! current coordinates (with latest solution update)
   CHKERRQ(err_PETSc)
   call DMSNESSetFunctionLocal(mechanical_mesh,FEM_mechanical_formResidual,PETSC_NULL_VEC,err_PETSc) ! function to evaluate residual forces
   CHKERRQ(err_PETSc)
   call DMSNESSetJacobianLocal(mechanical_mesh,FEM_mechanical_formJacobian,PETSC_NULL_VEC,err_PETSc) ! function to evaluate stiffness matrix
   CHKERRQ(err_PETSc)
-  call SNESSetMaxLinearSolveFailures(mechanical_snes,huge(1_pPETSCINT), err_PETSc)                  ! ignore linear solve failures
+  call SNESSetMaxLinearSolveFailures(mechanical_snes, huge(1_pPETSCINT), err_PETSc)                 ! ignore linear solve failures
   CHKERRQ(err_PETSc)
   call SNESSetConvergenceTest(mechanical_snes,FEM_mechanical_converged,PETSC_NULL_VEC,PETSC_NULL_FUNCTION,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -342,6 +354,8 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   call VecZeroEntries(solution,err_PETSc)
   CHKERRQ(err_PETSc)
   call VecZeroEntries(solution_rate,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecZeroEntries(u_aim,err_PETSc)
   CHKERRQ(err_PETSc)
   call VecZeroEntries(rhs_f,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -383,7 +397,7 @@ end subroutine FEM_mechanical_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the FEM load step
 !--------------------------------------------------------------------------------------------------
-type(tSolutionState) function FEM_mechanical_solution( &
+  type(tSolutionState) function FEM_mechanical_solution( &
              incInfoIn,Delta_t,Delta_t_prev,mechBC)
 
 !--------------------------------------------------------------------------------------------------
@@ -401,8 +415,8 @@ type(tSolutionState) function FEM_mechanical_solution( &
 
   incInfo = incInfoIn
   FEM_mechanical_solution%converged = .false.
-!--------------------------------------------------------------------------------------------------
-! set module wide availabe data
+  !--------------------------------------------------------------------------------------------------
+  ! set module wide availabe data
   params%Delta_t = Delta_t
   params%mechBC = mechBC
 
@@ -450,7 +464,6 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_vec,dum
   real(pREAL), dimension(:), pointer      :: x_scal, pf_internal
   real(pREAL), dimension(cellDof), target :: f_internal
   PetscReal,   dimension(dimPlex,dimPlex) :: invCellJ
-
 #if PETSC_VERSION_MINOR>=24
   PetscReal, dimension(:), pointer :: pCellJ, pInvCellJ, pDetJ                                      ! (pointer) cell / inverse / determinant jacobian
 #else
@@ -490,7 +503,7 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_vec,dum
 #endif
   call VecWAXPY(x_local,1.0_pREAL,delta_u_local,solution_local,err_PETSc)
   CHKERRQ(err_PETSc)
-  call utilities_projectBCValues(x_local,dm_local,params%mechBC,params%Delta_t)                     ! include displacements BC
+  call utilities_projectBCValues(x_local,u_aim_rate,params%Delta_t)                                 ! include displacements BC
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate field derivatives
@@ -669,7 +682,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,delta_u_local,J,Jp,dummy,err_PET
   PetscReal,   dimension(:), pointer :: basisFieldDer, &                                            ! shape functions first derivative
                                         dev_null
 #endif
-  real(pREAL), dimension(:), pointer :: pK_e                                                        ! (pointer) element tangent stiffnes
+  real(pREAL), dimension(:), pointer :: pK_e                                                        ! (pointer) element tangent stiffness
 
   real(pREAL), dimension(cellDOF,cellDOF), target :: K_e                                            ! element tangent stiffness
   real(pREAL), dimension(dimPlex,dimPlex)         :: invCellJ                                       ! cell inverse jacobian
@@ -812,7 +825,6 @@ subroutine FEM_mechanical_forward(guess,Delta_t,Delta_t_prev)
     Delta_t
 
   DM             :: dm_local
-  Vec            :: u_local                                                                         ! solution from last increment
   PetscSection   :: section
   PetscErrorCode :: err_PETSc
 
@@ -824,18 +836,7 @@ subroutine FEM_mechanical_forward(guess,Delta_t,Delta_t_prev)
     CHKERRQ(err_PETSc)
     call DMGetLocalSection(dm_local,section,err_PETSc)
     CHKERRQ(err_PETSc)
-    call DMGetLocalVector(dm_local,u_local,err_PETSc)
-    CHKERRQ(err_PETSc)
-    call VecZeroEntries(u_local,err_PETSc)
-    CHKERRQ(err_PETSc)
-    call DMGlobalToLocalBegin(dm_local,solution,INSERT_VALUES,u_local,err_PETSc)
-    CHKERRQ(err_PETSc)
-    call DMGlobalToLocalEnd(dm_local,solution,INSERT_VALUES,u_local,err_PETSc)
-    CHKERRQ(err_PETSc)
-    call VecAXPY(solution_local,1.0_pREAL,u_local,err_PETSc)                                        ! update solution (used as starting point for next step) ...
-    CHKERRQ(err_PETSc)
-    call utilities_projectBCValues(solution_local,dm_local,params%mechBC,Delta_t_prev)              ! ... including prescribed displacement BC
-    call DMRestoreLocalVector(dm_local,u_local,err_PETSc)
+    call VecCopy(x_local, solution_local, err_PETSc)                                                ! update solution (used as starting point for next step)
     CHKERRQ(err_PETSc)
 !--------------------------------------------------------------------------------------------------
 ! update rate and forward last inc
@@ -854,6 +855,36 @@ subroutine FEM_mechanical_forward(guess,Delta_t,Delta_t_prev)
   CHKERRQ(err_PETSc)
 
 end subroutine FEM_mechanical_forward
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief build displacement vector
+!> @details built at the beginning of a load step. Computes the end-of-step aim displacements
+!> @details u_aim, and the required rate to achieve them (u_aim_rate).
+!> @details NOTE: All these vectors are local.
+!--------------------------------------------------------------------------------------------------
+subroutine FEM_mechanical_assembleU(mechBC, Delta_t)
+
+  type(tMechBC), dimension(:), intent(in) :: &
+    mechBC                                                                                          !< loadcase boundary conditions data
+  real(pREAL),                 intent(in) :: &
+    Delta_t                                                                                         !< total load step time
+
+  DM             :: dm_local
+  PetscErrorCode :: err_PETSc
+
+
+  call SNESGetDM(mechanical_snes,dm_local,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecCopy(u_aim, u_aim_prev, err_PETSc)                                                        ! previous u_aim needed for force rates
+  CHKERRQ(err_PETSc)
+  call utilities_assembleU(u_aim, dm_local, mechBC, Delta_t)
+  call VecWAXPY(u_aim_rate,-1.0_pREAL,u_aim_prev,u_aim,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecScale(u_aim_rate,1.0_pREAL/Delta_t,err_PETSc)                                             ! u rate: u_aim_rate = (u_aim - u_prev) / dt
+  CHKERRQ(err_PETSc)
+
+end subroutine FEM_mechanical_assembleU
 
 
 !--------------------------------------------------------------------------------------------------
@@ -932,7 +963,8 @@ subroutine FEM_mechanical_updateCoords()
   call VecRestoreArray(x_local,nodeCoordsDM,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  ! write ip displacements
+!--------------------------------------------------------------------------------------------------
+! write IP displacements
   call DMPlexGetHeightStratum(dm_local,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
 #if PETSC_VERSION_MINOR>22
