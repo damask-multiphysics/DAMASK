@@ -800,7 +800,7 @@ def regrid(size: _FloatSequence,
                                 axis=1)
 
         coeffs_arr = coeffs_arr[_np.any(coeffs_arr != 0, axis=1)]            # remove zero tuple
-        vecs = coeffs_arr @ bases                                            # lattice vectors
+        vecs = coeffs_arr @ _np.asarray(bases)                               # lattice vectors; avoid np.ma.MaskedArray clash
 
         if max_candidates is not None:
             norms = _np.linalg.norm(vecs, axis=1)
