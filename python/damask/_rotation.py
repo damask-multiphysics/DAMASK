@@ -509,7 +509,7 @@ class Rotation:
                         result = np.moveaxis(rotate_vector(q,np.moveaxis(result,ax,-1)),-1,ax)
                     return result
             raise ValueError('can only rotate vectors, second-order tensors, and fourth-order tensors')
-        elif isinstance(other, Rotation):
+        elif isinstance(other, Rotation):                                                           # type: ignore[unreachable]
             raise TypeError('use "R2*R1", i.e. multiplication, to compose rotations "R1" and "R2"')
         else:
             raise TypeError(f'cannot rotate "{type(other)}"')

@@ -957,7 +957,7 @@ class Result:
 
     def add_equivalent_Mises(self,
                              T_sym: str,
-                             kind: Optional[str] = None):
+                             kind: Optional[Literal['stress', 'strain']] = None):
         """
         Add the equivalent von Mises stress or strain of a symmetric tensor.
 
@@ -965,7 +965,7 @@ class Result:
         ----------
         T_sym : str
             Name of symmetric tensorial stress or strain dataset.
-        kind : {'stress', 'strain', None}, optional
+        kind : {'stress', 'strain'}, optional
             Kind of the von Mises equivalent. Defaults to None, in which case
             it is selected based on the unit of the dataset ('1' -> strain, 'Pa' -> stress).
 
@@ -988,7 +988,7 @@ class Result:
         >>> r = damask.Result(fname='my_file.hdf5')
         >>> r.add_equivalent_Mises(T_sym='epsilon_V^0.0(F)')
         """
-        def equivalent_Mises(T_sym: DADF5Dataset, kind: str) -> DADF5Dataset:
+        def equivalent_Mises(T_sym: DADF5Dataset, kind: Optional[Literal['stress', 'strain']]) -> DADF5Dataset:
             if (k := kind) is None:
                 match T_sym['meta']['unit']:
                     case '1':  k = 'strain'
@@ -1085,7 +1085,7 @@ class Result:
 
     def add_norm(self,
                  x: str,
-                 ord: Union[None, int, float, Literal['fro', 'nuc']] = None):
+                 ord: Optional[Union[int, float, Literal['fro', 'nuc']]] = None):
         """
         Add the norm of a vector or tensor.
 
@@ -1100,7 +1100,7 @@ class Result:
         -----
         For details refer to ``numpy.linalg.norm``.
         """
-        def norm(x: DADF5Dataset, ord: Union[int, float, Literal['fro', 'nuc']]) -> DADF5Dataset:
+        def norm(x: DADF5Dataset, ord: Optional[Union[int, float, Literal['fro', 'nuc']]]) -> DADF5Dataset:
             o = ord
             if len(x['data'].shape) == 2:
                 axis: Union[int, tuple[int, int]] = 1

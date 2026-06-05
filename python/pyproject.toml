@@ -75,8 +75,8 @@ ignore = ['E701','E741']
 
 [tool.mypy]
 warn_redundant_casts = true
-no_implicit_optional = true
 warn_unused_ignores = true
+warn_unreachable = true
 
 [[tool.mypy.overrides]]
 module = ['h5py', 'vtkmodules.*', 'wx']

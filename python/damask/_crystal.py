@@ -759,11 +759,11 @@ class Crystal():
             self.b = float(self.b) if self.b is not None else \
                      (self.a * self.ratio['b'] if self.a is not None and self.ratio['b'] is not None else
                       self.c / self.ratio['c'] * self.ratio['b']
-                      if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
+                      if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None) # type: ignore[unreachable]
             self.c = float(self.c) if self.c is not None else \
                      (self.a * self.ratio['c'] if self.a is not None and self.ratio['c'] is not None else
                       self.b / self.ratio['b'] * self.ratio['c']
-                      if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
+                      if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None) # type: ignore[unreachable]
 
             self.alpha = math.radians(alpha) if degrees and alpha is not None else alpha
             self.beta  = math.radians(beta)  if degrees and beta  is not None else beta
