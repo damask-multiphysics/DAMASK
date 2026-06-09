@@ -62,7 +62,7 @@ module mesh_mechanical_FEM
                                     x_local
   PetscInt                       :: dimPlex, cellDof, nBasis
   PetscInt                       :: nQuadrature
-  PetscReal, allocatable, target :: qWeights(:)
+  PetscReal, allocatable, dimension(:) :: qWeights
   MatNullSpace                   :: matnull
 
 !--------------------------------------------------------------------------------------------------
@@ -114,10 +114,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
               component, boundary, topologDim, &
               cellStart, cellEnd, &
               nCoords, d
-  PetscBool       :: has_label
-#if PETSC_VERSION_MINOR>=24
-  PetscBool       :: isSimplex
-#endif
+  PetscBool       :: has_label, is_simplex
   PetscSection    :: section
   PetscQuadrature :: mechQuad
   PetscDualSpace  :: mechDualSpace
@@ -165,24 +162,23 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   CHKERRQ(err_PETSc)
   call DMSetFromOptions(mechanical_mesh,err_PETSc)
   CHKERRQ(err_PETSc)
-#if PETSC_VERSION_MINOR>=24
-  call DMPlexIsSimplex(mechanical_mesh,isSimplex,err_PETSc)
+  call DMPlexIsSimplex(mechanical_mesh,is_simplex,err_PETSc)
   CHKERRQ(err_PETSc)
-  if (.not. isSimplex) num%p_i = num%p_i + 1_pPETSCINT                                              ! adjust for quad/hex (non-simplex)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech discretization
-  if (isSimplex) then
-    call PetscDTSimplexQuadrature(dimPlex,num%p_i,PETSCDTSIMPLEXQUAD_DEFAULT, &
-                                  mechQuad,err_PETSc)
+#if PETSC_VERSION_MINOR>=24
+  if (is_simplex) then
+    call PetscDTSimplexQuadrature(dimPlex,num%p_i,PETSCDTSIMPLEXQUAD_DEFAULT,mechQuad,err_PETSc)
   else
-    call PetscDTGaussTensorQuadrature(dimPlex,dimPlex,num%p_i,-1.0_pREAL,1.0_pREAL, &
-                                      mechQuad,err_PETSc)
+    num%p_i = num%p_i + 1_pPETSCINT                                                                 ! adjust for quad/hex (non-simplex)
+    call PetscDTGaussTensorQuadrature(dimPlex,dimPlex,num%p_i,-1.0_pREAL,1.0_pREAL,mechQuad,err_PETSc)
   end if
 #elif PETSC_VERSION_MINOR==23
-  call PetscDTSimplexQuadrature(dimPlex,num%p_i,PETSCDTSIMPLEXQUAD_DEFAULT, &
-                                mechQuad,err_PETSc)
+  if (.not. is_simplex) call IO_error(800_pI16, 'mesh is not a simplex')
+  call PetscDTSimplexQuadrature(dimPlex,num%p_i,PETSCDTSIMPLEXQUAD_DEFAULT,mechQuad,err_PETSc)
 #else
+  if (.not. is_simplex) call IO_error(800_pI16, 'mesh is not a simplex')
   call PetscDTSimplexQuadrature(dimPlex,num%p_i,-1,mechQuad,err_PETSc)
 #endif
   CHKERRQ(err_PETSc)
@@ -206,16 +202,9 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
 #endif
   CHKERRQ(err_PETSc)
 
-#if PETSC_VERSION_MINOR>=24
-  if (.not. isSimplex) qWeights = [(qWeights(nc), nc=1,size(qWeights),int(dimPlex))]
-#endif
+  if (.not. is_simplex) qWeights = qWeights(::dimPlex)                                              ! duplicates per component not needed
   nc = dimPlex
-#if PETSC_VERSION_MINOR>=24
-  call PetscFECreateDefault(PETSC_COMM_SELF,dimPlex,nc,isSimplex,prefix, &
-#else
-  call PetscFECreateDefault(PETSC_COMM_SELF,dimPlex,nc,PETSC_TRUE,prefix, &
-#endif
-                            num%p_i,mechFE,err_PETSc)
+  call PetscFECreateDefault(PETSC_COMM_SELF,dimPlex,nc,is_simplex,prefix,num%p_i,mechFE,err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscFESetQuadrature(mechFE,mechQuad,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -481,7 +470,7 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_vec,dum
                numFields, m,i
   PetscReal, dimension(dimPlex*dimPlex,cellDof) :: BMat                                             ! strain-displacement [B] matrix
 #if PETSC_VERSION_MINOR>=24
-  PetscBool :: isSimplex
+  PetscBool :: is_simplex
 
   allocate(pCellJ(nQuadrature*dimPlex**2))
   allocate(pInvCellJ(nQuadrature*dimPlex**2))
@@ -498,7 +487,7 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_vec,dum
   call DMPlexGetHeightStratum(dm_local,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
 #if PETSC_VERSION_MINOR>=24
-  call DMPlexIsSimplex(dm_local,isSimplex,err_PETSc)
+  call DMPlexIsSimplex(dm_local,is_simplex,err_PETSc)
   CHKERRQ(err_PETSc)
 #endif
   call VecWAXPY(x_local,1.0_pREAL,delta_u_local,solution_local,err_PETSc)
@@ -517,7 +506,7 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_vec,dum
   CHKERRQ(err_PETSc)
 
 #if PETSC_VERSION_MINOR>=24
-  if (isSimplex) then
+  if (is_simplex) then
     call PetscDTSimplexQuadrature(dimPlex,num%p_i,PETSCDTSIMPLEXQUAD_DEFAULT, &
                                   quadrature,err_PETSc)
   else
@@ -690,7 +679,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,delta_u_local,J,Jp,dummy,err_PET
   PetscInt :: cellStart, cellEnd, cell, &
               qPt, basis, comp, cidx, ce, i
 #if PETSC_VERSION_MINOR>=24
-  PetscBool :: isSimplex
+  PetscBool :: is_simplex
 #endif
 
 #if PETSC_VERSION_MINOR>=24
@@ -725,9 +714,9 @@ subroutine FEM_mechanical_formJacobian(dm_local,delta_u_local,J,Jp,dummy,err_PET
   call DMPlexGetHeightStratum(dm_local,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
 #if PETSC_VERSION_MINOR>=24
-  call DMPlexIsSimplex(dm_local,isSimplex,err_PETSc)
+  call DMPlexIsSimplex(dm_local,is_simplex,err_PETSc)
   CHKERRQ(err_PETSc)
-  if (isSimplex) then
+  if (is_simplex) then
     call PetscDTSimplexQuadrature(dimPlex,num%p_i,PETSCDTSIMPLEXQUAD_DEFAULT, &
                                   quadrature,err_PETSc)
   else
