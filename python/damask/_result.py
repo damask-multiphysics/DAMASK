@@ -2453,18 +2453,20 @@ class Result:
         inc: str
             Increment to consider.
         kind: str
-            Kind to consider
+            Kind to consider.
         output : (list of) str, optional
             Names of the datasets to consider.
             Defaults to '*', in which case all visible datasets are exported.
         """
         layout = util.NestedDefaultDict()
-        for label in self._visible[kind+'s']:
-            if label not in f['/'.join([inc,kind])]: continue
-            for field in self._visible['fields']:
-                if field not in f['/'.join([inc,kind,label])]: continue
-                dset_grp = '/'.join([inc,kind,label,field])
-                for dset_name in _match(output,f[dset_grp]):
-                    layout[label][field][dset_name] = DatasetMetadata(f['/'.join([dset_grp,dset_name])],
-                                                                      ['creator', 'created'] + ['lattice', 'systems', 'c/a'])   # latter: 3.x compatibility
+        for label in (label for label in self._visible[kind + 's'] if label in f[f'{inc}/{kind}']):
+            for field in (field for field in self._visible['fields'] if field in f[f'{inc}/{kind}/{label}']):
+                dset_grp = f'{inc}/{kind}/{label}/{field}'
+
+                for dset_name in _match(output, f[dset_grp]):
+                    layout[label][field][dset_name] = DatasetMetadata(
+                        f[f'{dset_grp}/{dset_name}'],
+                        ['creator', 'created'] + ['lattice', 'systems', 'c/a']   # latter: 3.x compatibility
+                    )
+
         return layout.to_regular()
