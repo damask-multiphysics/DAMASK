@@ -892,7 +892,7 @@ def get_value0(d: dict) -> _Any:
     value_0
         First value from the dictionary.
     """
-    return list(d.values())[0]
+    return next(iter(d.values()))
 
 
 ####################################################################################################
