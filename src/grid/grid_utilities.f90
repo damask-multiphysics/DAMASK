@@ -30,11 +30,11 @@ module grid_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! derived types
-  type, public :: tBoundaryCondition                                                                !< set of parameters defining a boundary condition
+  type, public :: tBCmech                                                                !< set of parameters defining a boundary condition
     real(pREAL), dimension(3,3)   :: values = 0.0_pREAL
     logical,     dimension(3,3)   :: mask   = .true.
     character(len=:), allocatable :: myType
-  end type tBoundaryCondition
+  end type tBCmech
 
   type, public :: tSolutionParams
     real(pREAL), dimension(3,3) :: stress_BC
