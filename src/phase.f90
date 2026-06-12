@@ -107,6 +107,8 @@ module phase
     plasticState
   type(tState),  allocatable, dimension(:), public :: &
     damageState
+!  type(tState),  allocatable, dimension(:), public :: &
+!    chemicalState
 
 
   interface
@@ -193,6 +195,11 @@ module phase
       integer, intent(in) :: ph
     end subroutine damage_restartWrite
 
+    module subroutine chemical_restartWrite(groupHandle,ph)
+      integer(HID_T), intent(in) :: groupHandle
+      integer, intent(in) :: ph
+    end subroutine chemical_restartWrite
+
     module subroutine mechanical_restartRead(groupHandle,ph)
       integer(HID_T), intent(in) :: groupHandle
       integer, intent(in) :: ph
@@ -207,6 +214,11 @@ module phase
       integer(HID_T), intent(in) :: groupHandle
       integer, intent(in) :: ph
     end subroutine damage_restartRead
+
+    module subroutine chemical_restartRead(groupHandle,ph)
+      integer(HID_T), intent(in) :: groupHandle
+      integer, intent(in) :: ph
+    end subroutine chemical_restartRead
 
     module function mechanical_S(ph,en) result(S)
       integer, intent(in) :: ph,en
@@ -365,7 +377,7 @@ module phase
 
     module subroutine phase_chemical_setField(comp,Delta_t,co,ce)
       real(pREAL), dimension(:), intent(in) :: comp
-      real(pREAL),               intent(in) :: Delta_t
+      real(pREAL), intent(in) :: Delta_t
       integer, intent(in) :: co, ce
     end subroutine phase_chemical_setField
 
@@ -677,6 +689,7 @@ subroutine phase_restartWrite(fileHandle)
     call mechanical_restartWrite(groupHandle(2),ph)
     call thermal_restartWrite(groupHandle(2),ph)
     call damage_restartWrite(groupHandle(2),ph)
+    call chemical_restartWrite(groupHandle(2),ph)
 
     call HDF5_closeGroup(groupHandle(2))
 
@@ -707,6 +720,7 @@ subroutine phase_restartRead(fileHandle)
     call mechanical_restartRead(groupHandle(2),ph)
     call thermal_restartRead(groupHandle(2),ph)
     call damage_restartRead(groupHandle(2),ph)
+    call chemical_restartRead(groupHandle(2),ph)
 
     call HDF5_closeGroup(groupHandle(2))
 

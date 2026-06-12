@@ -114,6 +114,7 @@ module subroutine chemical_init(phases)
   print'(/,a)', ' <<<+-  phase:chemical init  -+>>>'
 
   allocate(current(size(phases)))
+!  allocate(chemicalState(size(phases)))
   allocate(chemical_energy(size(phases)),source=UNDEFINED)
   allocate(param(size(phases)))
 
@@ -198,7 +199,7 @@ end function phase_calculate_composition
 
 
 !----------------------------------------------------------------------------------------------
-!< @brief
+!< @brief set chemical field
 !----------------------------------------------------------------------------------------------
 module subroutine phase_chemical_setField(comp, Delta_t, co, ce)
 
@@ -287,6 +288,34 @@ module subroutine chemical_forward()
   end do
 
 end subroutine chemical_forward
+
+
+!----------------------------------------------------------------------------------------------
+!< @brief writes restart data for chemical to file.
+!----------------------------------------------------------------------------------------------
+module subroutine chemical_restartWrite(groupHandle,ph)
+
+  integer(HID_T), intent(in) :: groupHandle
+  integer, intent(in) :: ph
+
+
+  call HDF5_write(current(ph)%C,groupHandle,'x')
+
+end subroutine chemical_restartWrite
+
+
+!----------------------------------------------------------------------------------------------
+!< @brief reads restart data for chemical to file.
+!----------------------------------------------------------------------------------------------
+module subroutine chemical_restartRead(groupHandle,ph)
+
+  integer(HID_T), intent(in) :: groupHandle
+  integer, intent(in) :: ph
+
+
+  call HDF5_read(current(ph)%C0,groupHandle,'x')
+
+end subroutine chemical_restartRead
 
 
 !----------------------------------------------------------------------------------------------
