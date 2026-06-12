@@ -121,6 +121,7 @@ module function regularsolution_init() result(myChemicalEnergy)
       end do
 
       Nmembers = count(material_ID_phase == ph)
+      ! call phase_allocateState(chemicalState(ph),Nmembers,1,1,0)
       allocate(current(ph)%C(prm%N_components,Nmembers),source=spread(prm%c_0,2,Nmembers))
       allocate(current(ph)%dot_C(prm%N_components,Nmembers),source=0.0_pREAL)
       allocate(current(ph)%C0(prm%N_components,Nmembers),source=spread(prm%c_0,2,Nmembers))

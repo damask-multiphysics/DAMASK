@@ -415,6 +415,8 @@ program DAMASK_grid
                 call grid_thermal_spectral_restartWrite()
               case(FIELD_DAMAGE_ID)
                 call grid_damage_spectral_restartWrite()
+              case(FIELD_CHEMICAL_ID)
+                call grid_chemical_FDM_restartWrite()
             end select
           end do
           call materialpoint_restartWrite()
