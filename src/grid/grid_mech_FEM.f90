@@ -344,7 +344,7 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
     Delta_t_old, &
     Delta_t, &
     t_remaining                                                                                     !< remaining time of current load case
-  type(tBoundaryCondition), intent(in) :: &
+  type(tBCmech), intent(in) :: &
     stress_BC, &
     deformation_BC
   type(tRotation),          intent(in) :: &

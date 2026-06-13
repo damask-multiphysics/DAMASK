@@ -44,7 +44,7 @@ program DAMASK_grid
 
   type :: tLoadCase
     type(tRotation)          :: rot                                                                 !< rotation of BC
-    type(tBoundaryCondition) :: stress, &                                                           !< stress BC
+    type(tBCmech) :: stress, &                                                           !< stress BC
                                 deformation                                                         !< deformation BC (dot_F, F, or L)
     real(pREAL) ::              t, &                                                                !< length of increment
                                 r                                                                   !< ratio of geometric progression
