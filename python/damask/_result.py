@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
+import collections
 import copy
 import fnmatch
 import functools
@@ -34,26 +35,44 @@ class MappingsTuple(NamedTuple):
     in_data_ho: dict[str, np.ndarray]
 
 
-def _read(dataset: h5py._hl.dataset.Dataset) -> np.ndarray:
+class DatasetMetadata(dict):
+    """Information about a dataset in an HDF5 file."""
+
+    def __init__(self,
+                 dset_h5: h5py.Dataset,
+                 ignore: list[str]):
+        """
+        New information about an HDF5 dataset.
+
+        Parameters
+        ----------
+        dset_h5 : h5py.Dataset
+            HDF5 dataset.
+        ignore : list of str
+            Attributes to ignore.
+        """
+        self['attrs'] = {k: v for k, v in dset_h5.attrs.items() if k not in ignore}
+        self['shape'] = dset_h5.shape[1:]
+        self['dtype'] = dset_h5.dtype
+
+    def __eq__(self, other):
+        """Return self==other."""
+        return self['shape'] == other['shape'] and \
+               self['dtype'] == other['dtype'] and \
+               self['attrs'].keys() == other['attrs'].keys() and \
+               np.all([np.array_equal(self['attrs'][k],other['attrs'][k]) for k in self['attrs'].keys()])
+
+    def __ne__(self, other):
+        """Return self!=other."""
+        return not self == other
+
+
+def _read(dset_h5: h5py.Dataset) -> np.ndarray:
     """Read a dataset and its metadata into a numpy.ndarray."""
-    dtype = np.dtype(dataset.dtype, metadata=dict(dataset.attrs.items()))
-    return np.array(dataset, dtype=dtype)
-
-def _read_dt(dataset: h5py._hl.dataset.Dataset) -> np.dtype:
-    """Only read the metadata of an item without loading the full array."""
-    return np.dtype(dataset.dtype, metadata=dict(dataset.attrs.items()))
-
-def _get_common_metadata(dtypes: list[np.dtype]) -> np.dtype:
-    metadata_list = [dtype.metadata for dtype in dtypes if dtype.metadata]
-    common_metadata = {}
-    for key in set.intersection(*map(set, metadata_list)):
-        value = metadata_list[0][key]
-        if all(np.array_equal(meta[key], value) for meta in metadata_list):
-            common_metadata[key] = value
-    return np.dtype(dtypes[0].base.type, metadata=common_metadata)
+    return np.array(dset_h5, dtype=np.dtype(dset_h5.dtype, metadata=dict(dset_h5.attrs.items())))
 
 def _match(requested,
-           existing: h5py._hl.base.KeysViewHDF5) -> list[str]:
+           existing: Union[h5py.Group,list[str]]) -> list[str]:
     """Find matches among two sets of labels."""
     def flatten_list(list_of_lists):
         return [e for e_ in list_of_lists for e in e_]
@@ -63,20 +82,40 @@ def _match(requested,
     elif requested is False or requested is None:
         requested = []
 
-    requested_ = util.to_list(requested)
-
-    return sorted(set(flatten_list([fnmatch.filter(existing,r) for r in requested_])),
+    existing_ = list(existing.keys()) if isinstance(existing,h5py.Group) else existing
+    return sorted(set(flatten_list([fnmatch.filter(existing_,r) for r in util.to_list(requested)])),
                   key=util.natural_sort)
 
-def _empty_like(dataset_shape: tuple[int],
-                dtype: np.dtype,
+def _empty_like(metadata: DatasetMetadata,
                 N_materialpoints: int,
                 fill_float: float,
                 fill_int: int) -> np.ma.core.MaskedArray:
     """Create empty numpy.ma.MaskedArray."""
-    return ma.array(np.empty((N_materialpoints,) + dataset_shape[1:], dtype=dtype),
+    shape = (N_materialpoints,) + metadata['shape']
+    dtype = np.dtype(metadata['dtype'], metadata=metadata['attrs'])
+    return ma.array(np.empty(shape, dtype=dtype),
                     fill_value=fill_float if np.issubdtype(dtype, np.floating) else fill_int,
                     mask=True)
+
+def _is_mergeable(layout):
+    """Determine if datasets can be merged."""
+    mergeable = collections.defaultdict(dict)
+    not_mergeable = collections.defaultdict(dict)
+    for label, fields in layout.items():
+        for field, datasets in fields.items():
+            for dset_name,v in datasets.items():
+                if dset_name not in mergeable[field] | not_mergeable[field]:
+                    mergeable[field][dset_name] = {label:v}
+                else:
+                    if dset_name in mergeable[field]:
+                        if v == util.get_value0(mergeable[field][dset_name]):
+                            mergeable[field][dset_name][label] = v
+                        else:
+                            not_mergeable[field][dset_name] = mergeable[field].pop(dset_name) | {label : v}
+                    else:
+                        not_mergeable[field][dset_name][label] = v
+
+    return mergeable, not_mergeable
 
 
 class Result:
@@ -1791,9 +1830,10 @@ class Result:
         """
         Merge data into spatial order that is compatible with the damask.VTK geometry representation.
 
-        The returned data structure reflects the group/folder structure in the DADF5 file.
+        The returned data structure reflects loosely the group/folder
+        structure in the DADF5 file.
 
-        Multi-phase data is fused into a single output.
+        Multi-phase data is fused into a single output if possible.
         `place` is equivalent to `get` if only one phase/homogenization
         and one constituent is present.
 
@@ -1823,7 +1863,7 @@ class Result:
         data : dict of numpy.ma.MaskedArray
             Datasets structured by spatial position and according to selected view.
         """
-        r: dict[str,Any] = {}
+        r = util.NestedDefaultDict()
 
         constituents_ = map(int,constituents) if isinstance(constituents,Iterable) else \
                       (range(self.N_constituents) if constituents is None else [constituents])
@@ -1836,52 +1876,51 @@ class Result:
         with h5py.File(self.fname,'r') as f:
 
             for inc in util.show_progress(self._visible['increments']):
-                r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
 
-                for out in _match(output,f['/'.join([inc,'geometry'])].keys()):
-                    r[inc]['geometry'][out] = ma.array(_read(f['/'.join([inc,'geometry',out])]),fill_value = fill_float)
+                for kind in ['geometry', 'phase', 'homogenization']:
+                    r[inc][kind] = util.NestedDefaultDict()
 
-                for kind in ['phase','homogenization']:
+                for dset_name in _match(output,f['/'.join([inc,kind := 'geometry'])]):
+                    r[inc][kind][dset_name] = ma.array(_read(f['/'.join([inc,kind,dset_name])]),fill_value = fill_float)
 
-                    dtypes_by_out: dict[str, Any] = {}
-                    for label in self._visible[kind + 's']:
-                        for field in _match(self._visible['fields'], f['/'.join([inc, kind, label])].keys()):
-                            for out in _match(output, f['/'.join([inc, kind, label, field])].keys()):
-                                dtype = _read_dt(f['/'.join([inc, kind, label, field, out])])
-                                dtypes_by_out.setdefault(out, []).append(dtype)
-                    dtype_by_out = {out: _get_common_metadata(dtypes) for out, dtypes in dtypes_by_out.items()}
+                for kind, suffixes_ in zip(['phase', 'homogenization'],[suffixes, ['']]):
 
-                    for label in self._visible[kind+'s']:
-                        for field in _match(self._visible['fields'],f['/'.join([inc,kind,label])].keys()):
-                            if field not in r[inc][kind].keys():
-                                r[inc][kind][field] = {}
+                    mergeable, not_mergeable = _is_mergeable(self._get_layout(f,inc,kind,output))
 
-                            for out in _match(output,f['/'.join([inc,kind,label,field])].keys()):
-                                data = ma.array(_read(f['/'.join([inc,kind,label,field,out])]))
+                    for field, dsets in mergeable.items():
+                        for dset_name, dset in dsets.items():
+                            dset_metadata = util.get_value0(dset)
+                            d = {dset_name+suffix:_empty_like(dset_metadata,self.N_materialpoints,
+                                                              fill_float,fill_int) for suffix in suffixes_}
+                            for label, dset_metadata in dset.items():
+                                data = ma.array(_read(f['/'.join([inc,kind,label,field,dset_name])]))
+                                match kind:
+                                    case 'phase':
+                                        for c,suffix in zip(constituents_,suffixes_):
+                                            d[dset_name+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
+                                    case 'homogenization':
+                                        d[dset_name][at_cell_ho[label]] = data[in_data_ho[label]]
+                            r[inc][kind][field].update(d)
 
-                                if kind == 'phase':
-                                    if out+suffixes[0] not in r[inc][kind][field].keys():
-                                        for c,suffix in zip(constituents_,suffixes):
-                                            r[inc][kind][field][out+suffix] = \
-                                                _empty_like(data.shape,dtype_by_out[out],
-                                                            self.N_materialpoints,fill_float,fill_int)
+                    for field, dsets in not_mergeable.items():
+                        for dset_name, dset in dsets.items():
+                            for label, dset_metadata in dset.items():
+                                d = {dset_name+suffix:_empty_like(dset_metadata,self.N_materialpoints,
+                                                                  fill_float,fill_int) for suffix in suffixes_}
+                                data = ma.array(_read(f['/'.join([inc,kind,label,field,dset_name])]))
+                                match kind:
+                                    case 'phase':
+                                        for c,suffix in zip(constituents_,suffixes_):
+                                            d[dset_name+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
+                                    case 'homogenization':
+                                        d[dset_name][at_cell_ho[label]] = data[in_data_ho[label]]
+                                r[inc][kind][field][label].update(d)
 
-                                    for c,suffix in zip(constituents_,suffixes):
-                                        r[inc][kind][field][out+suffix][at_cell_ph[c][label]] = \
-                                            data[in_data_ph[c][label]]
+        result = r.to_regular()
+        if prune:   result = util.dict_prune(result)
+        if flatten: result = util.dict_flatten(result)
 
-                                if kind == 'homogenization':
-                                    if out not in r[inc][kind][field].keys():
-                                        r[inc][kind][field][out] = \
-                                            _empty_like(data.shape,dtype_by_out[out],
-                                                        self.N_materialpoints,fill_float,fill_int)
-
-                                    r[inc][kind][field][out][at_cell_ho[label]] = data[in_data_ho[label]]
-
-        if prune:   r = util.dict_prune(r)
-        if flatten: r = util.dict_flatten(r)
-
-        return None if (type(r) is dict and r == {}) else r
+        return None if (type(result) is dict and result == {}) else result
 
 
     def export_XDMF(self,
@@ -2087,43 +2126,42 @@ class Result:
                 u = _read(f['/'.join([inc,'geometry','u_n' if mode.lower() == 'cell' else 'u_p'])])
                 v = v.set('u',u)
 
-                for kind in ['phase','homogenization']:
+                for kind, suffixes_ in zip(['phase', 'homogenization'],[suffixes, ['']]):
+                    mergeable, not_mergeable = _is_mergeable(self._get_layout(f,inc,kind,output))
 
-                    dtypes_by_out: dict[str, Any] = {}
-                    for label in self._visible[kind + 's']:
-                        for field in _match(self._visible['fields'], f['/'.join([inc, kind, label])].keys()):
-                            for out in _match(output, f['/'.join([inc, kind, label, field])].keys()):
-                                dtype = _read_dt(f['/'.join([inc, kind, label, field, out])])
-                                dtypes_by_out.setdefault(out, []).append(dtype)
-                    dtype_by_out = {out: _get_common_metadata(dtypes) for out, dtypes in dtypes_by_out.items()}
-
-                    for field in self._visible['fields']:
-                        outs: dict[str, np.ma.core.MaskedArray] = {}
-                        for label in self._visible[kind+'s']:
-                            if field not in f['/'.join([inc,kind,label])].keys(): continue
-
-                            for out in _match(output,f['/'.join([inc,kind,label,field])].keys()):
-                                data = ma.array(_read(f['/'.join([inc,kind,label,field,out])]))
-
-                                if kind == 'phase':
-                                    if out+suffixes[0] not in outs.keys():
+                    for field, dsets in mergeable.items():
+                        for dset_name, dset in dsets.items():
+                            dset_metadata = util.get_value0(dset)
+                            d = {dset_name+suffix:_empty_like(dset_metadata,self.N_materialpoints,
+                                                              fill_float,fill_int) for suffix in suffixes_}
+                            for label, dset_metadata in dset.items():
+                                data = ma.array(_read(f['/'.join([inc,kind,label,field,dset_name])]))
+                                match kind:
+                                    case 'phase':
                                         for c,suffix in zip(constituents_,suffixes):
-                                            outs[out+suffix] = \
-                                                _empty_like(data.shape,dtype_by_out[out],
-                                                            self.N_materialpoints,fill_float,fill_int)
+                                            d[dset_name+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
+                                    case 'homogenization':
+                                        d[dset_name][at_cell_ho[label]] = data[in_data_ho[label]]
 
-                                    for c,suffix in zip(constituents_,suffixes):
-                                        outs[out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
+                            for name,dataset in d.items():
+                                v = v.set(' / '.join(['/'.join([kind,field,name]),
+                                          dataset.dtype.metadata['unit']]),dataset)                 # type: ignore[index]
 
-                                if kind == 'homogenization':
-                                    if out not in outs.keys():
-                                        outs[out] = _empty_like(data.shape,dtype_by_out[out],
-                                                                self.N_materialpoints,fill_float,fill_int)
-                                    outs[out][at_cell_ho[label]] = data[in_data_ho[label]]
-
-                        for label,dataset in outs.items():
-                            v = v.set(' / '.join(['/'.join([kind,field,label]),
-                                                 dataset.dtype.metadata['unit']]),dataset)          # type: ignore[index]
+                    for field, dsets in not_mergeable.items():
+                        for dset_name, dset in dsets.items():
+                            for label, dset_metadata in dset.items():
+                                d = {dset_name+suffix:_empty_like(dset_metadata,self.N_materialpoints,
+                                                                  fill_float,fill_int) for suffix in suffixes_}
+                                data = ma.array(_read(f['/'.join([inc,kind,label,field,dset_name])]))
+                                match kind:
+                                    case 'phase':
+                                        for c,suffix in zip(constituents_,suffixes):
+                                            d[dset_name+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
+                                    case 'homogenization':
+                                        d[dset_name][at_cell_ho[label]] = data[in_data_ho[label]]
+                                for name,dataset in d.items():
+                                    v = v.set(' / '.join(['/'.join([kind,field,label,name]),
+                                              dataset.dtype.metadata['unit']]),dataset)             # type: ignore[index]
 
                 v.save(out_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
                        parallel=parallel)
@@ -2397,3 +2435,36 @@ class Result:
                                                        output=output,
                                                        cfg_dir=cfg_dir,
                                                        overwrite=overwrite))
+
+    def _get_layout(self,
+                    f: h5py.File,
+                    inc: str,
+                    kind: str,
+                    output: Union[str, list[str]] = '*'):
+        """
+        Get the layout of visible groups/datasets for selected datasets.
+
+        Parameters
+        ----------
+        f: h5py.File
+            File handle to DADF5 file.
+        inc: str
+            Increment to consider.
+        kind: str
+            Kind to consider.
+        output : (list of) str, optional
+            Names of the datasets to consider.
+            Defaults to '*', in which case all visible datasets are exported.
+        """
+        layout = util.NestedDefaultDict()
+        for label in (label for label in self._visible[kind + 's'] if label in f[f'{inc}/{kind}']):
+            for field in (field for field in self._visible['fields'] if field in f[f'{inc}/{kind}/{label}']):
+                dset_grp = f'{inc}/{kind}/{label}/{field}'
+
+                for dset_name in _match(output, f[dset_grp]):
+                    layout[label][field][dset_name] = DatasetMetadata(
+                        f[f'{dset_grp}/{dset_name}'],
+                        ['creator', 'created'] + ['lattice', 'systems', 'c/a']   # latter: 3.x compatibility
+                    )
+
+        return layout.to_regular()

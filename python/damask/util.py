@@ -878,6 +878,23 @@ def numba_njit_wrapper(**kwargs):
     return (lambda function: _nb.njit(function) if _nb else function)
 
 
+def get_value0(d: dict) -> _Any:
+    """
+    Get first value from dictionary.
+
+    Parameters
+    ----------
+    d : dict
+        Dictionary with at least one entry.
+
+    Returns
+    -------
+    value_0
+        First value from the dictionary.
+    """
+    return next(iter(d.values()))
+
+
 ####################################################################################################
 # Classes
 ####################################################################################################
