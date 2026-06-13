@@ -51,9 +51,7 @@ class DatasetMetadata(dict):
         ignore : list of str
             Attributes to ignore.
         """
-        self['attrs'] = dict(dset_h5.attrs)
-        for attr in ignore:
-            if attr in self['attrs']: del self['attrs'][attr]
+        self['attrs'] = {k: v for k, v in dset_h5.attrs.items() if k not in ignore}
         self['shape'] = dset_h5.shape[1:]
         self['dtype'] = dset_h5.dtype
 
