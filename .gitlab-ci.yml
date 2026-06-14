@@ -251,7 +251,7 @@ c++-linter:
     - BOOST_MAPPINGS=/usr/share/include-what-you-use/boost-all.imp
     - cmake -B build -DTEST=ON
        -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="include-what-you-use;-Xiwyu;--error;-Xiwyu;--mapping_file=${BOOST_MAPPINGS}"
-       -DCMAKE_CXX_CLANG_TIDY='clang-tidy'
+       -DCMAKE_CXX_CLANG_TIDY="clang-tidy;--config-file=${PWD}/.clang-tidy"
     - cmake --build build --parallel --target install
 
 .unittest:
@@ -407,7 +407,7 @@ grid_performance:
   stage: core
   extends: .petsc_oneapi_performance
   tags:
-    - matesting
+    - performance
   before_script:
     - cmake -DGRID=ON -DOPTIMIZATION=AGGRESSIVE -B build
     - cmake --build build --parallel 4 --target install

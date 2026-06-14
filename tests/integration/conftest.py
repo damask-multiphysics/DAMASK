@@ -210,8 +210,9 @@ def report_nonclose(a, b, rtol, atol, N, msg):
              +f' at {np.transpose(idx)[i]}' for i in list(ids[head])+list(ids[tail])]
     if split: diffs.insert(head.stop,'...')
 
-    return '\n'.join(['']+diffs
-                     +['',f'fraction {n}/{a_.size} outside tolerance']
+    return '\n'.join( ['',f'fraction {n}/{a_.size} outside tolerance']
+                     +[f'tolerance: atol = {atol} + rtol = {rtol} * absmax']
+                     +['']+diffs
                      +(['',msg] if msg is not None else [])
                      )
 

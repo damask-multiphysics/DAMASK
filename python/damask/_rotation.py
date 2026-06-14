@@ -2383,9 +2383,7 @@ class Rotation:
                              np.block([np.arccos(tt)/np.pi*12.,np.ones_like(tt)]))*q
             T_inv[xyz2<0.] *= -1.
             T_inv[np.broadcast_to(np.isclose(qxy,0.,rtol=0.,atol=1.e-12),T_inv.shape)] = 0.
-            cu = np.block([T_inv/ _sc, np.where(xyz3[...,2:3]<0.,
-                                                -rs/np.sqrt(6./np.pi)/ _sc,
-                                                +rs/np.sqrt(6./np.pi)/ _sc)])
+            cu = np.block([T_inv, np.where(xyz3[...,2:3]<0.,-rs,rs)/np.sqrt(6./np.pi)])/_sc
 
         cu[np.isclose(np.sum(np.abs(ho),axis=-1),0.,rtol=0.,atol=1.e-16)] = 0.
         return np.take_along_axis(cu,Rotation._get_pyramid_order(ho,'backward'),-1)
