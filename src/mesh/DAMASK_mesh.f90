@@ -105,7 +105,7 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! reading basic information from load case file, allocate data structure containing load cases
 ! and some checks for invalid tags/labels use
-  call DMGetDimension(geomMesh,dimPlex,err_PETSc)
+  call DMGetDimension(geomMesh,dimPlex,err_PETSc)                                                   ! dimension of mesh (2D or 3D)
   CHKERRA(err_PETSc)
   allocate(solres(1))
 
@@ -204,6 +204,16 @@ program DAMASK_mesh
           end do
           nullify(bc_uf)
         end if
+        if (mech_BC%contains('f')) then
+          bc_uf => mech_BC%get_list('f')
+          do component = 1, int(dimPlex)
+            if (bc_uf%get_asStr(component) /= 'x') then
+              BC_mech%forces(component) = bc_uf%get_asReal(component)
+              BC_mech%active(component) = ior(BC_mech%active(component), BC_TYPE_F)
+            end if
+          end do
+          nullify(bc_uf)
+        end if
 
         do component = 1, int(dimPlex)
           if (popcnt(BC_mech%active(component)) > 1) then
@@ -273,6 +283,9 @@ program DAMASK_mesh
           else if (BC_mech%active(component) == BC_TYPE_F_DOT) then
             bc_unit = 'N/s'
             bc_value = BC_mech%forces(component)
+          else if (BC_mech%active(component) == BC_TYPE_F) then
+            bc_unit = 'N'
+            bc_value = BC_mech%forces(component)
           end if
           print'(5x,a,1x,i1,a,1x,en12.3e2,2x,a)', &
             'Component', component, ':', bc_value, bc_unit
@@ -303,7 +316,8 @@ program DAMASK_mesh
   loadCaseLooping: do l = 1, size(load_steps)
     t_0 = t                                                                                         ! load case start time
     guess = loadCases(l)%estimate_rate                                                              ! change of load case? homogeneous guess for the first inc
-    call FEM_mechanical_assembleU(loadCases(l)%mechBC, loadCases(l)%t)
+    call FEM_mechanical_assembleFext(loadCases(l)%mechBC, loadCases(l)%t)                           ! assemble external loads vector
+    call FEM_mechanical_assembleU(loadCases(l)%mechBC, loadCases(l)%t)                              ! assemble vector of displacements (Dirichlet) BC
 
     incLooping: do inc = 1, loadCases(l)%N
       totalIncsCounter = totalIncsCounter + 1

@@ -56,9 +56,9 @@ module mesh_mechanical_FEM
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   SNES                           :: mechanical_snes
-  Vec                            :: solution, solution_local, solution_rate, &
-                                    rhs_f, rhs_f_local, rhs_f0, &
+  Vec                            :: u, u_local, u_rate, &
                                     u_aim, u_aim_rate, u_aim_prev, &
+                                    f_ext, f_aim_rate, f_ext_prev, &
                                     x_local
   PetscInt                       :: dimPlex, cellDof, nBasis
   PetscInt                       :: nQuadrature
@@ -92,6 +92,7 @@ module mesh_mechanical_FEM
     FEM_mechanical_init, &
     FEM_mechanical_solution, &
     FEM_mechanical_forward, &
+    FEM_mechanical_assembleFext, &
     FEM_mechanical_assembleU, &
     FEM_mechanical_updateCoords
 
@@ -305,23 +306,23 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   CHKERRQ(err_PETSc)
   call SnesSetLagJacobian(mechanical_snes, 10_pPETSCINT, err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMCreateGlobalVector(mechanical_mesh,solution,err_PETSc)                                     ! global solution vector {u}
+  call DMCreateGlobalVector(mechanical_mesh,u,err_PETSc)                                            ! global solution vector {u}
   CHKERRQ(err_PETSc)
-  call DMCreateGlobalVector(mechanical_mesh,solution_rate,err_PETSc)                                ! locally owned velocity Dofs to guess solution at next load step
+  call DMCreateGlobalVector(mechanical_mesh,u_rate,err_PETSc)                                       ! locally owned velocity Dofs to guess solution at next load step
   CHKERRQ(err_PETSc)
-  call DMCreateGlobalVector(mechanical_mesh,rhs_f, err_PETSc)                                       ! global RHS vector {f}
+  call DMCreateGlobalVector(mechanical_mesh,f_ext,err_PETSc)                                        ! global external forces vector (used as RHS in K u = f)
   CHKERRQ(err_PETSc)
-  call DMCreateGlobalVector(mechanical_mesh,rhs_f0,err_PETSc)
+  call DMCreateGlobalVector(mechanical_mesh,f_aim_rate,err_PETSc)                                   ! global (per step) force rate
   CHKERRQ(err_PETSc)
-  call DMCreateLocalVector (mechanical_mesh,solution_local,err_PETSc)                               ! local solution vector {u}
-  CHKERRQ(err_PETSc)
-  call DMCreateLocalVector (mechanical_mesh,rhs_f_local,err_PETSc)                                  ! local RHS vector {F}
+  call DMCreateGlobalVector(mechanical_mesh,f_ext_prev,err_PETSc)                                   ! previous step global {f_ext}
   CHKERRQ(err_PETSc)
   call DMCreateLocalVector(mechanical_mesh,u_aim,err_PETSc)                                         ! local displacement aim at end of step
   CHKERRQ(err_PETSc)
   call DMCreateLocalVector(mechanical_mesh,u_aim_rate,err_PETSc)                                    ! local (per step) displacement rate
   CHKERRQ(err_PETSc)
   call DMCreateLocalVector(mechanical_mesh,u_aim_prev,err_PETSc)                                    ! previous step {u_aim_rate}
+  CHKERRQ(err_PETSc)
+  call DMCreateLocalVector(mechanical_mesh,u_local,err_PETSc)                                       ! local solution vector {u}
   CHKERRQ(err_PETSc)
   call DMCreateLocalVector(mechanical_mesh,x_local,err_PETSc)                                       ! current coordinates (with latest solution update)
   CHKERRQ(err_PETSc)
@@ -340,17 +341,17 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  call VecZeroEntries(solution,err_PETSc)
+  call VecZeroEntries(u,err_PETSc)
   CHKERRQ(err_PETSc)
-  call VecZeroEntries(solution_rate,err_PETSc)
+  call VecZeroEntries(u_rate,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecZeroEntries(f_ext,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecZeroEntries(f_aim_rate,err_PETSc)
   CHKERRQ(err_PETSc)
   call VecZeroEntries(u_aim,err_PETSc)
   CHKERRQ(err_PETSc)
-  call VecZeroEntries(rhs_f,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call VecZeroEntries(rhs_f0,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call VecZeroEntries(rhs_f_local,err_PETSc)
+  call VecZeroEntries(x_local,err_PETSc)
   CHKERRQ(err_PETSc)
 #if PETSC_VERSION_MINOR>22
   call PetscDSGetDiscretization(mechDS,0_pPETSCINT,obj,err_PETSc)
@@ -367,15 +368,11 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   nCoords = size(x_n(1:dimPlex,:),kind=pPETSCINT)
   nodeCoords = pack(x_n(1:dimPlex,:), .true.)
   idx = [(nc, nc = 0_pPETSCINT, nCoords - 1_pPETSCINT)]
-  call VecSetValuesLocal(solution_local, nCoords, idx, nodeCoords, INSERT_VALUES, err_PETSc)        ! initial node coordinates (undeformed)
+  call VecSetValuesLocal(u_local, nCoords, idx, nodeCoords, INSERT_VALUES, err_PETSc)               ! initial node coordinates (undeformed)
   CHKERRQ(err_PETSc)
-  call VecAssemblyBegin(solution_local, err_PETSc)
+  call VecAssemblyBegin(u_local, err_PETSc)
   CHKERRQ(err_PETSc)
-  call VecAssemblyEnd(solution_local, err_PETSc)
-  CHKERRQ(err_PETSc)
-
-  call utilities_assembleRHS(rhs_f0, rhs_f_local, mechanical_mesh, mechBC, params%Delta_t)
-  call VecCopy(rhs_f0, rhs_f, err_PETSc)
+  call VecAssemblyEnd(u_local, err_PETSc)
   CHKERRQ(err_PETSc)
 
   call utilities_constitutiveResponse(status,0.0_pREAL,devNull,.true.)
@@ -404,16 +401,15 @@ end subroutine FEM_mechanical_init
 
   incInfo = incInfoIn
   FEM_mechanical_solution%converged = .false.
-  !--------------------------------------------------------------------------------------------------
-  ! set module wide availabe data
+!--------------------------------------------------------------------------------------------------
+! set module wide availabe data
   params%Delta_t = Delta_t
   params%mechBC = mechBC
 
-  call SNESSolve(mechanical_snes,rhs_f,solution,err_PETSc)                                          ! solve mechanical_snes based on solution guess (result in solution)
+  call SNESSolve(mechanical_snes,f_ext,u,err_PETSc)                                                 ! solve mechanical_snes (RHS = f_ext, initial guess = u; result in u)
   CHKERRQ(err_PETSc)
   call SNESGetConvergedReason(mechanical_snes,reason,err_PETSc)                                     ! solution converged?
   CHKERRQ(err_PETSc)
-
 #if PETSC_VERSION_MINOR>22
   if (reason%v <= SNES_CONVERGED_ITERATING%v) then
 #else
@@ -472,6 +468,7 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_vec,dum
 #if PETSC_VERSION_MINOR>=24
   PetscBool :: is_simplex
 
+
   allocate(pCellJ(nQuadrature*dimPlex**2))
   allocate(pInvCellJ(nQuadrature*dimPlex**2))
   allocate(pDetJ(nQuadrature))
@@ -490,9 +487,9 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_vec,dum
   call DMPlexIsSimplex(dm_local,is_simplex,err_PETSc)
   CHKERRQ(err_PETSc)
 #endif
-  call VecWAXPY(x_local,1.0_pREAL,delta_u_local,solution_local,err_PETSc)
+  call VecWAXPY(x_local,1.0_pREAL,delta_u_local,u_local,err_PETSc)
   CHKERRQ(err_PETSc)
-  call utilities_projectBCValues(x_local,u_aim_rate,params%Delta_t)                                 ! include displacements BC
+  call utilities_projectDisplacementBC(x_local,u_aim_rate,params%Delta_t)                           ! enforce displacement BC
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate field derivatives
@@ -649,6 +646,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,delta_u_local,J,Jp,dummy,err_PET
   Mat                     :: J, Jp                                                                  !> jacobian, preconditioner
   PetscObject, intent(in) :: dummy
   PetscErrorCode          :: err_PETSc
+
 
   PetscDS      :: prob
   PetscSection :: section, gSection
@@ -807,9 +805,9 @@ end subroutine FEM_mechanical_formJacobian
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_mechanical_forward(guess,Delta_t,Delta_t_prev)
 
-  logical,        intent(in) :: &
+  logical,     intent(in) :: &
     guess
-  real(pREAL),    intent(in) :: &
+  real(pREAL), intent(in) :: &
     Delta_t_prev, &
     Delta_t
 
@@ -825,30 +823,76 @@ subroutine FEM_mechanical_forward(guess,Delta_t,Delta_t_prev)
     CHKERRQ(err_PETSc)
     call DMGetLocalSection(dm_local,section,err_PETSc)
     CHKERRQ(err_PETSc)
-    call VecCopy(x_local, solution_local, err_PETSc)                                                ! update solution (used as starting point for next step)
+    call VecCopy(x_local, u_local, err_PETSc)                                                       ! update solution (used as starting point for next step)
     CHKERRQ(err_PETSc)
 !--------------------------------------------------------------------------------------------------
 ! update rate and forward last inc
-    call VecCopy(solution,solution_rate,err_PETSc)
+    call VecCopy(u,u_rate,err_PETSc)
     CHKERRQ(err_PETSc)
-    call VecScale(solution_rate,Delta_t_prev**(-1),err_PETSc)
+    call VecScale(u_rate,Delta_t_prev**(-1),err_PETSc)
     CHKERRQ(err_PETSc)
   end if
-  call VecCopy(solution_rate,solution,err_PETSc)
+
+  if (cutback) then                                                                                 ! adjust (decrease) incremental load
+    call VecAXPY(f_ext,-Delta_t_prev,f_aim_rate,err_PETSc)                                          ! back to previous time step value
+    CHKERRQ(err_PETSc)
+  end if
+
+  call VecCopy(u_rate,u,err_PETSc)
   CHKERRQ(err_PETSc)
-  call VecScale(solution,Delta_t,err_PETSc)
+  call VecScale(u,Delta_t,err_PETSc)
   CHKERRQ(err_PETSc)
-  call VecCopy(rhs_f0,rhs_f,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call VecScale(rhs_f,Delta_t,err_PETSc)
+  call VecAXPY(f_ext,Delta_t,f_aim_rate,err_PETSc)                                                  ! f = f + dt * rate
   CHKERRQ(err_PETSc)
 
 end subroutine FEM_mechanical_forward
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief build displacement vector
-!> @details built at the beginning of a load step. Computes the end-of-step aim displacements
+!> @brief Build external forces vector.
+!> @details Build at the beginning of a load step. Compute the end-of-step aim forces
+!> @details f_aim_(local), and the required rate to achieve them (f_aim_rate).
+!--------------------------------------------------------------------------------------------------
+subroutine FEM_mechanical_assembleFext(mechBC, Delta_t)
+
+  type(tMechBC), dimension(:), intent(in) :: &
+    mechBC                                                                                          !< loadcase boundary conditions data
+  real(pREAL),                 intent(in) :: &
+    Delta_t                                                                                         !< total load step time
+
+  DM             :: dm_local
+  Vec            :: f_aim_local                                                                     ! external forces (built from YAML, aim at end of step)
+  PetscErrorCode :: err_PETSc
+
+
+  call SNESGetDM(mechanical_snes,dm_local,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecCopy(f_ext, f_ext_prev, err_PETSc)                                                        ! previous f_ext needed for force rates
+  CHKERRQ(err_PETSc)
+  call DMGetLocalVector(dm_local, f_aim_local, err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMGlobalToLocalBegin(dm_local,f_ext,INSERT_VALUES,f_aim_local,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMGlobalToLocalEnd(dm_local,f_ext,INSERT_VALUES,f_aim_local,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call utilities_assembleFext(f_aim_local, dm_local, mechBC, Delta_t)
+  call DMLocalToGlobalBegin(dm_local,f_aim_local,INSERT_VALUES,f_aim_rate,err_PETSc)                ! build global f_aim (into f_aim_rate)
+  CHKERRQ(err_PETSc)
+  call DMLocalToGlobalEnd(dm_local,f_aim_local,INSERT_VALUES,f_aim_rate,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMRestoreLocalVector(dm_local, f_aim_local, err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecAXPY(f_aim_rate,-1.0_pREAL,f_ext_prev,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecScale(f_aim_rate,1.0_pREAL/Delta_t,err_PETSc)                                             ! f rate: f_aim_rate = (f_aim - f_prev) / dt
+  CHKERRQ(err_PETSc)
+
+end subroutine FEM_mechanical_assembleFext
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Build displacement vector.
+!> @details Build at the beginning of a load step. Compute the end-of-step aim displacements
 !> @details u_aim, and the required rate to achieve them (u_aim_rate).
 !> @details NOTE: All these vectors are local.
 !--------------------------------------------------------------------------------------------------
@@ -942,7 +986,8 @@ subroutine FEM_mechanical_updateCoords()
   call DMGetDimension(dm_local,dimPlex,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  ! write nodes displacements
+!--------------------------------------------------------------------------------------------------
+! get current coordinates
   call VecGetArray(x_local,nodeCoordsDM,err_PETSc)
   CHKERRQ(err_PETSc)
   nNodes = size(nodeCoordsDM,kind=pPETSCINT)/dimPlex
