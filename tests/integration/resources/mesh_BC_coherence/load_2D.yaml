@@ -3,11 +3,11 @@ loadstep:
   - boundary_conditions:
       mechanical:
         - label: 'load'
-          f_dot: ['x', 'x', 'x']
+          n/a: ['x', 'x', 'x']  # placeholder
         - label: 'fix_uv'
-          u_dot: [0.0, 0.0, 'x']
+          u: [0.0, 0.0, 'x']
         - label: 'fix_v'
-          u_dot: ['x', 0.0, 'x']
+          u: ['x', 0.0, 'x']
     discretization:
       t: 1.0
       N: 1
