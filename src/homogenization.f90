@@ -280,7 +280,7 @@ subroutine homogenization_mechanical_response(status,Delta_t,cell_start,cell_end
     en = material_entry_homogenization(ce)
     ho = material_ID_homogenization(ce)
 
-    call phase_restore(ce,.false.) ! wrong name (is more a forward function)
+    call phase_restore(ce) ! wrong name (is more a forward function)
 
     if (homogState(ho)%sizeState > 0)  homogState(ho)%state(:,en) = homogState(ho)%state0(:,en)
     if (damageState_h(ho)%sizeState > 0) damageState_h(ho)%state(:,en) = damageState_h(ho)%state0(:,en)

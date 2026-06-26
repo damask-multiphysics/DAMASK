@@ -509,7 +509,7 @@ class Rotation:
                         result = np.moveaxis(rotate_vector(q,np.moveaxis(result,ax,-1)),-1,ax)
                     return result
             raise ValueError('can only rotate vectors, second-order tensors, and fourth-order tensors')
-        elif isinstance(other, Rotation):
+        elif isinstance(other, Rotation):                                                           # type: ignore[unreachable]
             raise TypeError('use "R2*R1", i.e. multiplication, to compose rotations "R1" and "R2"')
         else:
             raise TypeError(f'cannot rotate "{type(other)}"')
@@ -684,8 +684,17 @@ class Rotation:
         omega : np.ndarray
             Misorientation angle.
         """
-        trace_max = np.abs((self*~other).quaternion[...,0])
-        return 2.*np.arccos(np.clip(np.round(trace_max,15),None,1.))
+        blend = util.shapeblender( self.shape,other.shape)
+        s_m   = util.shapeshifter( self.shape,blend,mode='right')
+        s_o   = util.shapeshifter(other.shape,blend,mode='left')
+
+        q_m = self.quaternion[...,0].reshape(s_m)
+        p_m = self.quaternion[...,1:].reshape(s_m + (3,))
+        q_o = other.quaternion[...,0].reshape(s_o)
+        p_o = other.quaternion[...,1:].reshape(s_o + (3,))
+
+        q_0 = np.abs(q_m*q_o - np.einsum('...i,...i',p_m,-p_o))
+        return 2.*np.arccos(np.clip(np.round(q_0,15),None,1.))
 
 
     ################################################################################################
@@ -1665,7 +1674,7 @@ class Rotation:
         with np.errstate(invalid='ignore'):
             omega = 2. * np.arccos(np.clip(qu[...,0:1],-1.,1.))
             ho = np.where(np.abs(omega) < 1.e-12,
-                          np.zeros(3),
+                          0.0,
                           qu[...,1:4]/np.linalg.norm(qu[...,1:4],axis=-1,keepdims=True)
                           * (0.75*(omega - np.sin(omega)))**(1./3.))
         return ho
@@ -2015,9 +2024,9 @@ class Rotation:
         qu : numpy.ndarray, shape (...,4)
             Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
         """
-        c = np.cos(ax[...,3:4]*.5)
-        s = np.sin(ax[...,3:4]*.5)
-        qu = np.where(np.abs(ax[...,3:4]) < 1.e-6,[1.,0.,0.,0.],np.block([c,ax[...,:3]*s]))
+        qu = np.where(np.abs(ax[...,3:4]) < 1.e-6,
+                      [1.,0.,0.,0.],
+                      np.block([np.cos(ax[...,3:4]*.5),ax[...,:3]*np.sin(ax[...,3:4]*.5)]))
         return qu
 
     @staticmethod
@@ -2196,7 +2205,7 @@ class Rotation:
             ax = np.where(np.isfinite(ro[...,3:4]),
                  np.block([ro[...,0:3]*np.linalg.norm(ro[...,0:3],axis=-1,keepdims=True),2.*np.arctan(ro[...,3:4])]),
                  np.block([ro[...,0:3],np.broadcast_to(np.pi,ro[...,3:4].shape)]))
-        ax[np.abs(ro[...,3]) < 1.e-8]  = np.array([0.,0.,1.,0.])
+        ax[np.abs(ro[...,3]) < 1.e-8] = np.array([0.,0.,1.,0.])
         return ax
 
     @staticmethod
@@ -2216,7 +2225,7 @@ class Rotation:
         """
         f = np.where(np.isfinite(ro[...,3:4]),2.*np.arctan(ro[...,3:4]) -np.sin(2.*np.arctan(ro[...,3:4])),np.pi)
         return np.where(np.sum(ro[...,0:3]**2,axis=-1,keepdims=True) < 1.e-8,
-                        np.zeros(3),
+                        0.0,
                         ro[...,0:3]*(0.75*f)**(1./3.))
 
     @staticmethod
@@ -2370,13 +2379,11 @@ class Rotation:
             tt = np.clip((np.min(np.abs(xyz2),axis=-1,keepdims=True)**2\
                 +np.max(np.abs(xyz2),axis=-1,keepdims=True)*sq2)/np.sqrt(2.)/qxy,-1.,1.)
             T_inv = np.where(np.abs(xyz2[...,1:2]) <= np.abs(xyz2[...,0:1]),
-                                np.block([np.ones_like(tt),np.arccos(tt)/np.pi*12.]),
-                                np.block([np.arccos(tt)/np.pi*12.,np.ones_like(tt)]))*q
+                             np.block([np.ones_like(tt),np.arccos(tt)/np.pi*12.]),
+                             np.block([np.arccos(tt)/np.pi*12.,np.ones_like(tt)]))*q
             T_inv[xyz2<0.] *= -1.
             T_inv[np.broadcast_to(np.isclose(qxy,0.,rtol=0.,atol=1.e-12),T_inv.shape)] = 0.
-            cu = np.block([T_inv, np.where(xyz3[...,2:3]<0.,-np.ones_like(xyz3[...,2:3]),np.ones_like(xyz3[...,2:3])) \
-                                  * rs/np.sqrt(6./np.pi),
-                          ])/ _sc
+            cu = np.block([T_inv, np.where(xyz3[...,2:3]<0.,-rs,rs)/np.sqrt(6./np.pi)])/_sc
 
         cu[np.isclose(np.sum(np.abs(ho),axis=-1),0.,rtol=0.,atol=1.e-16)] = 0.
         return np.take_along_axis(cu,Rotation._get_pyramid_order(ho,'backward'),-1)

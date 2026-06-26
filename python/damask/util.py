@@ -961,10 +961,5 @@ class NestedDefaultDict(_defaultdict):
     def to_regular(self) -> dict:
         """Convert recursively to regular dictionary."""
         def to_regular(nested: dict):
-            regular = {}
-            for k,v in nested.items():
-                if isinstance(v, dict):
-                    v = to_regular(v)
-                regular[k] = v
-            return regular
+            return {k : to_regular(v) if isinstance(v, dict) else v for k,v in nested.items()}
         return to_regular(self)

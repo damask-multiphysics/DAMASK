@@ -739,6 +739,9 @@ class Crystal():
         degrees : bool, optional
             Angles are given in degrees. Defaults to False.
         """
+        def mask_None(values):
+            return np.ma.array(values, mask=[v is None for v in values], dtype=float)
+
         if not lattice and not family:
             raise KeyError('Crystal initialization requires either lattice or family information')
         if family is not None and family not in list(lattice_symmetries.values()):
@@ -750,42 +753,37 @@ class Crystal():
         self.lattice = lattice
 
         if self.lattice is not None:
-            self.a = 1. if a is None else a
-            self.b = b
-            self.c = c
-            self.a = float(self.a) if self.a is not None else \
-                     (self.b / self.ratio['b'] if self.b is not None and self.ratio['b'] is not None else
-                      self.c / self.ratio['c'] if self.c is not None and self.ratio['c'] is not None else None)
-            self.b = float(self.b) if self.b is not None else \
-                     (self.a * self.ratio['b'] if self.a is not None and self.ratio['b'] is not None else
-                      self.c / self.ratio['c'] * self.ratio['b']
-                      if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
-            self.c = float(self.c) if self.c is not None else \
-                     (self.a * self.ratio['c'] if self.a is not None and self.ratio['c'] is not None else
-                      self.b / self.ratio['b'] * self.ratio['c']
-                      if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
+            x = mask_None([a,b,c])
+            r = mask_None([1.0,self.ratio['b'],self.ratio['c']])
+            R = mask_None([1.0,
+                           self.ratio['b'] if 'b' in self.immutable else None,
+                           self.ratio['c'] if 'c' in self.immutable else None,])
+            implied_a = (x / R).compressed()
+            a_resolved = np.average(implied_a) if implied_a.size else 1.0
+            if implied_a.size and not np.allclose(implied_a, a_resolved):
+                raise ValueError(f'inconsistent a values {implied_a} implied')
+            if not np.all(resolvable := ~x.mask | ~r.mask):
+                raise ValueError(f"insufficient information to determine {', '.join(np.array(['a','b','c'])[~resolvable])}")
+            x[x.mask] = a_resolved * r[x.mask]
 
-            self.alpha = math.radians(alpha) if degrees and alpha is not None else alpha
-            self.beta  = math.radians(beta)  if degrees and beta  is not None else beta
-            self.gamma = math.radians(gamma) if degrees and gamma is not None else gamma
-            if self.alpha is None and 'alpha' in self.immutable: self.alpha = self.immutable['alpha']
-            if self.beta  is None and 'beta'  in self.immutable: self.beta  = self.immutable['beta']
-            if self.gamma is None and 'gamma' in self.immutable: self.gamma = self.immutable['gamma']
+            self.a, self.b, self.c = x.data
 
-            if \
-                (self.a     is None) \
-             or (self.b     is None or ('b'     in self.immutable and self.b     != self.immutable['b'] * self.a)) \
-             or (self.c     is None or ('c'     in self.immutable and self.c     != self.immutable['c'] * self.b)) \
-             or (self.alpha is None or ('alpha' in self.immutable and self.alpha != self.immutable['alpha'])) \
-             or (self.beta  is None or ('beta'  in self.immutable and self.beta  != self.immutable['beta'])) \
-             or (self.gamma is None or ('gamma' in self.immutable and self.gamma != self.immutable['gamma'])):
-                raise ValueError (f'incompatible parameters {self.parameters} for crystal family {self.family}')
+            angles = []
+            for name, value in zip(('alpha','beta','gamma'),(alpha,beta,gamma)):
+                fixed = self.immutable.get(name)
+                value = (math.radians(value) if degrees else value) if value is not None else fixed
+                if value is None: raise ValueError(f'missing angle {name}')
+                if value <= 0.0: raise ValueError(f'angle {name} must be positive')
+                if fixed is not None and not math.isclose(value, fixed):
+                    raise ValueError(f'inconsistent angle {name} ≠ {np.degrees(fixed):.5g}°')
+                angles.append(value)
 
-            if np.any(np.array([self.alpha,self.beta,self.gamma]) <= 0):
-                raise ValueError ('lattice angles must be positive')
-            if np.any([np.roll([self.alpha,self.beta,self.gamma],r)[0]
-              >= np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
-                raise ValueError ('each lattice angle must be less than sum of others')
+            self.alpha, self.beta, self.gamma = angles
+
+            if np.any(inadmissible := [np.roll([self.alpha,self.beta,self.gamma],-r)[0]
+                             >= np.sum(np.roll([self.alpha,self.beta,self.gamma],-r)[1:]) for r in range(3)]):
+                raise ValueError (f"angle {', '.join(np.array(['alpha','beta','gamma'])[inadmissible])}"+
+                                  ' must be smaller than the sum of the other two')
 
 
     def __repr__(self):
@@ -1093,12 +1091,8 @@ class Crystal():
         """
         _ratio = { 'hexagonal': {'c': math.sqrt(8./3.)}}
 
-        return dict(b = self.immutable['b']
-                        if 'b' in self.immutable else
-                        _ratio[self.family]['b'] if self.family in _ratio and 'b' in _ratio[self.family] else None,
-                    c = self.immutable['c']
-                        if 'c' in self.immutable else
-                        _ratio[self.family]['c'] if self.family in _ratio and 'c' in _ratio[self.family] else None,
+        return dict(b = self.immutable.get('b', _ratio.get(self.family, {}).get('b')),
+                    c = self.immutable.get('c', _ratio.get(self.family, {}).get('c')),
                    )
 
 
@@ -1308,7 +1302,7 @@ class Crystal():
             return np.array([[0.5*np.sqrt(2.0)]*N_twin_[0]])
         elif self.lattice == 'hP':
             N_twin_ = [len(a) for a in _kinematics[self.lattice]['twin']] if N_twin == '*' else N_twin
-            c_a = self.c/self.a                                                                     # type: ignore[operator]
+            c_a = self.c/self.a
             return np.array([[(3.0-c_a**2)/np.sqrt(3.0)/c_a]*N_twin_[0],
                              [1.0/c_a]*N_twin_[1],
                              [(9.0-4.0*c_a**2)/np.sqrt(48.0)/c_a]*N_twin_[2],

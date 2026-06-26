@@ -162,9 +162,8 @@ module phase
     end subroutine chemical_forward
 
 
-    module subroutine mechanical_restore(ce,includeL)
+    module subroutine mechanical_restore(ce)
       integer, intent(in) :: ce
-      logical, intent(in) :: includeL
     end subroutine mechanical_restore
 
     module subroutine damage_restore(ce)
@@ -527,13 +526,12 @@ end subroutine phase_allocateState
 !--------------------------------------------------------------------------------------------------
 !> @brief Restore data after homog cutback.
 !--------------------------------------------------------------------------------------------------
-subroutine phase_restore(ce,includeL)
+subroutine phase_restore(ce)
 
-  logical, intent(in) :: includeL
   integer, intent(in) :: ce
 
 
-  call mechanical_restore(ce,includeL)
+  call mechanical_restore(ce)
   call damage_restore(ce)
 
 end subroutine phase_restore

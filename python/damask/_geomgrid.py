@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import copy
 import multiprocessing as mp
-import numbers
 import os
 from functools import partial
 from pathlib import Path
@@ -31,7 +30,7 @@ class IcDict(dict):
         super().__init__()
         self.cells = cells
 
-    def __setitem__(self, k: str, v: Union[int, float, np.ndarray]):
+    def __setitem__(self, k: str, v: Union[float, np.ndarray]):
         """
         Set a single initial condition key with validation and broadcasting.
 
@@ -39,14 +38,9 @@ class IcDict(dict):
         ----------
         k : str
             Name of the initial condition field.
-        v : int, float, or np.ndarray
-            Value to assign to the field. Allowed types and shapes:
-            - Scalars (`int` or `float`)
-              → broadcast to `cells`.
-            - Small arrays (`np.ndarray`) of shape (), (1,), or (3,)
-              → broadcast to `cells + value.shape`.
-            - Full-field arrays (`np.ndarray`) with leading dimensions matching `cells` and trailing shape (), (1,), or (3,)
-              → copied as-is.
+        v : float or np.ndarray
+            Value to assign to the field.
+            Scalars or vectors will be broadcasted.
 
         Raises
         ------
@@ -61,18 +55,13 @@ class IcDict(dict):
         and per-key assignment (`GeomGrid.initial_conditions[key] = value`), so all
         validation and broadcasting logic is centralized here.
         """
-        if not (    isinstance(v, numbers.Real)
-                or (isinstance(v, np.ndarray) and v.shape in [(), (1,), (3,)])
-                or (isinstance(v, np.ndarray) and v.ndim >= 3 and
-                    v.shape[:3] == self.cells and v.shape[3:] in [(), (1,), (3,)])
-               ):
+        if isinstance(v, np.ndarray) and v.shape not in [(), (1,), (3,),
+                                                         self.cells, self.cells+(1,), self.cells+(3,)]:
             raise ValueError(f'initial condition "{k}" must be [a field of] scalars or three-dimensional vectors')
+        super().__setitem__(k, (v if isinstance(v, np.ndarray) and v.ndim >= 3 and v.shape[:3] == self.cells else
+                                np.broadcast_to(v, self.cells + v.shape) if isinstance(v, np.ndarray) else
+                                np.broadcast_to(v, self.cells)).astype(float))
 
-        super().__setitem__(k,
-                            v if isinstance(v, np.ndarray) and v.ndim >= 3 and v.shape[:3] == self.cells else
-                            np.broadcast_to(v, self.cells + v.shape) if isinstance(v, np.ndarray) else
-                            np.broadcast_to(v, self.cells)
-                            )
 
 
 class GeomGrid:

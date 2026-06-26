@@ -1084,11 +1084,9 @@ end function phase_mechanical_constitutive
 !--------------------------------------------------------------------------------------------------
 !> @brief Restore data after homog cutback.
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_restore(ce,includeL)
+module subroutine mechanical_restore(ce)
 
   integer, intent(in) :: ce
-  logical, intent(in) :: &
-    includeL                                                                                        !< protect agains fake cutback
 
   integer :: &
     co, ph, en
@@ -1097,14 +1095,10 @@ module subroutine mechanical_restore(ce,includeL)
   do co = 1,homogenization_Nconstituents(material_ID_homogenization(ce))
     ph = material_ID_phase(co,ce)
     en = material_entry_phase(co,ce)
-    if (includeL) then
-      phase_mechanical_Lp(ph)%data(1:3,1:3,en) = phase_mechanical_Lp0(ph)%data(1:3,1:3,en)
-      phase_mechanical_Li(ph)%data(1:3,1:3,en) = phase_mechanical_Li0(ph)%data(1:3,1:3,en)
-    end if                                                                                           ! maybe protecting everything from overwriting makes more sense
 
-    phase_mechanical_Fp(ph)%data(1:3,1:3,en)   = phase_mechanical_Fp0(ph)%data(1:3,1:3,en)
-    phase_mechanical_Fi(ph)%data(1:3,1:3,en)   = phase_mechanical_Fi0(ph)%data(1:3,1:3,en)
-    phase_mechanical_S(ph)%data(1:3,1:3,en)    = phase_mechanical_S0(ph)%data(1:3,1:3,en)
+    phase_mechanical_Fp(ph)%data(1:3,1:3,en) = phase_mechanical_Fp0(ph)%data(1:3,1:3,en)
+    phase_mechanical_Fi(ph)%data(1:3,1:3,en) = phase_mechanical_Fi0(ph)%data(1:3,1:3,en)
+    phase_mechanical_S(ph)%data(1:3,1:3,en)  = phase_mechanical_S0(ph)%data(1:3,1:3,en)
 
     plasticState(ph)%state(:,en) = plasticState(ph)%State0(:,en)
   end do
