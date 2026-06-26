@@ -25,8 +25,6 @@ def h5py_compare_files(iterator,asserter,
            for e in dset.dtype.fields:
                assert np.all(dset[e]==cur[path][e])
        else:
-           if os.path.split(path)[1] in  ['u_n', 'u_p']:
-               continue
            asserter(dset,cur[path])
 
 # this class attribute is not reset when using pytest-repeat
