@@ -47,9 +47,6 @@ module mesh_mechanical_FEM
     PetscInt :: &
       p_i, &                                                                                        !< integration order (quadrature rule)
       itmax
-    real(pREAL) :: &
-      eps_struct_atol, &                                                                            !< absolute tolerance for mechanical equilibrium
-      eps_struct_rtol                                                                               !< relative tolerance for mechanical equilibrium
   end type tNumerics
 
   type(tNumerics), private :: num
@@ -78,6 +75,7 @@ module mesh_mechanical_FEM
   external :: &                                                                                     ! ToDo: write interfaces
 #if PETSC_VERSION_MINOR<22
     DMAddField, &
+    SNESConvergedDefault, &
 #endif
     PetscSectionGetNumFields, &
     PetscFESetQuadrature, &
@@ -146,14 +144,10 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
 ! read numerical parametes and do sanity checks
   num_mech => num_mesh%get_dict('mechanical', defaultVal=emptyDict)
 
-  num%p_i             = int(num_mesh%get_asInt('p_i',defaultVal=2),pPETSCINT)
-  num%itmax           = int(num_mech%get_asInt('N_iter_max',defaultVal=250),pPETSCINT)
-  num%eps_struct_atol = num_mech%get_asReal('eps_abs_div(P)', defaultVal=1.0e-10_pREAL)
-  num%eps_struct_rtol = num_mech%get_asReal('eps_rel_div(P)', defaultVal=1.0e-4_pREAL)
+  num%p_i   = int(num_mesh%get_asInt('p_i',defaultVal=2),pPETSCINT)
+  num%itmax = int(num_mech%get_asInt('N_iter_max',defaultVal=250),pPETSCINT)
 
-  if (num%itmax <= 1_pPETSCINT)         call IO_error(301,ext_msg='N_iter_max')
-  if (num%eps_struct_rtol <= 0.0_pREAL) call IO_error(301,ext_msg='eps_rel_div(P)')
-  if (num%eps_struct_atol <= 0.0_pREAL) call IO_error(301,ext_msg='eps_abs_div(P)')
+  if (num%itmax <= 1_pPETSCINT) call IO_error(301,ext_msg='N_iter_max')
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech mesh
@@ -330,13 +324,15 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   CHKERRQ(err_PETSc)
   call DMSNESSetJacobianLocal(mechanical_mesh,FEM_mechanical_formJacobian,PETSC_NULL_VEC,err_PETSc) ! function to evaluate stiffness matrix
   CHKERRQ(err_PETSc)
-  call SNESSetMaxLinearSolveFailures(mechanical_snes, huge(1_pPETSCINT), err_PETSc)                 ! ignore linear solve failures
+  call SNESSetMaxLinearSolveFailures(mechanical_snes,huge(1_pPETSCINT),err_PETSc)                   ! ignore linear solve failures
   CHKERRQ(err_PETSc)
-  call SNESSetConvergenceTest(mechanical_snes,FEM_mechanical_converged,PETSC_NULL_VEC,PETSC_NULL_FUNCTION,err_PETSc)
+  call SNESSetConvergenceTest(mechanical_snes,FEM_mechanical_converged,PETSC_NULL_VEC, &            ! function to check for convergence
+                              PETSC_NULL_FUNCTION,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESSetTolerances(mechanical_snes,1.0_pREAL,0.0_pREAL,0.0_pREAL,num%itmax,num%itmax,err_PETSc)
+  call SNESSetTolerances(mechanical_snes,1.0e-5_pREAL,1.0e-6_pREAL,1.0e-6_pREAL,num%itmax, &        ! tolerances (absolute/relative/update), max func evals, max iters
+                         num%itmax,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESSetFromOptions(mechanical_snes,err_PETSc)
+  call SNESSetFromOptions(mechanical_snes,err_PETSc)                                                ! "PETSc_options" flags from numerics file
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -422,9 +418,6 @@ end subroutine FEM_mechanical_init
     call SNESGetIterationNumber(mechanical_snes,FEM_mechanical_solution%iterationsNeeded,err_PETSc)
     CHKERRQ(err_PETSc)
   end if
-
-  print'(/,1x,a)', '==========================================================================='
-  flush(IO_STDOUT)
 
 end function FEM_mechanical_solution
 
@@ -921,27 +914,127 @@ end subroutine FEM_mechanical_assembleU
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reporting
+!> @brief Report solver status: continue iterating, converged or diverged.
 !--------------------------------------------------------------------------------------------------
-subroutine FEM_mechanical_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,err_PETSc)
+subroutine FEM_mechanical_converged(snes,iter,x_norm,s_norm,f_norm,reason,dummy,err_PETSc)
 
-  SNES :: snes_local
-  PetscInt :: PETScIter
-  PetscReal :: xnorm,snorm,fnorm,divTol
-  SNESConvergedReason :: reason
-  PetscObject :: dummy
+  SNES :: snes                                                                                      !< (local) SNES
+  PetscInt :: iter                                                                                  !< current iteration
+  PetscReal :: x_norm, s_norm, f_norm                                                               !< solution / solution update / residual norms
+  SNESConvergedReason :: reason                                                                     !< reason of convergence/divergence
+  PetscObject :: dummy                                                                              !< PETSc context object (unused)
   PetscErrorCode :: err_PETSc
 
-!--------------------------------------------------------------------------------------------------
-! report
-  divTol = max(maxval(abs(P_av(1:dimPlex,1:dimPlex)))*num%eps_struct_rtol,num%eps_struct_atol)
-  call SNESConvergedDefault(snes_local,PETScIter,xnorm,snorm,fnorm/divTol,reason,dummy,err_PETSc)
-  CHKERRQ(err_PETSc)
-  if (status /= STATUS_OK) reason = SNES_DIVERGED_FUNCTION_DOMAIN
-  print'(/,1x,a,a,i0,a,f0.3)', trim(incInfo), &
-                  ' @ Iteration ',PETScIter,' mechanical residual norm = ',fnorm/divTol
-  print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
-    'Piola--Kirchhoff stress / MPa =',transpose(P_av)*1.e-6_pREAL
+#if PETSC_VERSION_MINOR>22
+  Vec         :: rhs_vec                                                                            ! current step RHS (f_external) vector
+#endif
+  PetscInt    :: n_f_evals, n_ls_its                                                                ! number of function evaluations/linear solve iterations
+  real(pREAL) :: abs_tol, rel_tol, sol_tol, rhs_tol, &                                              ! absolute/relative/update/rhs tolerances
+                 r_norm                                                                             ! RHS / ratio norm
+
+
+  write(IO_STDOUT,'(/,1x,a,a,i0,a)',advance='no') trim(incInfo), ' @ Iteration ', iter
+
+  if (status /= STATUS_OK) then                                                                     ! mechanics failed
+    reason = SNES_DIVERGED_USER
+    print '(a,2/,3x,a)', ' ~ Diverged', &
+      'Divergence reason: evaluation of constitutive law for mechanics failed'
+#if PETSC_VERSION_MINOR>22
+  else if (reason%v < SNES_CONVERGED_ITERATING%v) then                                              ! diverged
+#else
+  else if (reason < 0) then                                                                         ! diverged
+#endif
+    write(IO_STDOUT, '(a,2/,3x,a)',advance='no') ' ~ Diverged', 'Divergence reason:'
+    if (reason == SNES_DIVERGED_FUNCTION_DOMAIN) then
+      print '(1x,a)', 'solution outside the domain of the function'
+    else if (reason == SNES_DIVERGED_FUNCTION_COUNT) then
+      print '(1x,a,i0,a)', 'function evaluations limit reached (', num%itmax, ')'
+    else if (reason == SNES_DIVERGED_LINEAR_SOLVE) then
+      print '(1x,a)', 'linear solver failed'
+    else if (reason == SNES_DIVERGED_MAX_IT) then
+      print '(1x,a,i0,a)', 'linear solver iterations limit reached (', num%itmax, ')'
+    else if (reason == SNES_DIVERGED_LINE_SEARCH) then
+      print '(1x,a)', 'line search failed'
+    else if (reason == SNES_DIVERGED_INNER) then
+      print '(1x,a)', 'inner solver failed'
+    else if (reason == SNES_DIVERGED_LOCAL_MIN) then
+      print '(1x,a)', 'solver stagnated at a non-zero local minimum'
+    else if (reason == SNES_DIVERGED_DTOL) then
+      call SNESGetDivergenceTolerance(snes, rhs_tol, err_PETSc)
+      CHKERRQ(err_PETSc)
+      print '(1x,a,es9.3e2)', 'relative residual norm ||r|| / ||r_0|| > ', rhs_tol
+    else if (reason == SNES_DIVERGED_JACOBIAN_DOMAIN) then
+      print '(1x,a)', 'invalid jacobian'
+    else if (reason == SNES_DIVERGED_USER) then
+      print '(1x,a)', 'user-defined'
+    else if (reason == SNES_DIVERGED_JACOBIAN_DOMAIN) then
+      print '(1x,a)', "the jacobian evaluation ocurred outside the function's domain"
+#if PETSC_VERSION_MINOR>24
+    else if (reason == SNES_DIVERGED_FUNCTION_NANORINF) then
+      print '(1x,a)', 'residual norm is NaN or Inf'
+    else if (reason == SNES_DIVERGED_OBJECTIVE_DOMAIN) then
+      print '(1x,a)', "the object function evaluation ocurred outside the function's domain"
+#endif
+    end if
+  else
+    call SNESConvergedDefault(snes, iter, x_norm, s_norm, f_norm, reason, dummy, err_PETSc)
+    CHKERRQ(err_PETSc)
+    call SNESGetTolerances(snes, abs_tol, rel_tol, sol_tol, PETSC_NULL_INTEGER, &
+                           PETSC_NULL_INTEGER, err_PETSc)
+    CHKERRQ(err_PETSc)
+#if PETSC_VERSION_MINOR>22
+    call SNESGetRhs(snes, rhs_vec, err_PETSc)
+    CHKERRQ(err_PETSc)
+    call VecNorm(rhs_vec, NORM_2, r_norm, err_PETSc)
+    CHKERRQ(err_PETSc)
+    rhs_tol = max(rel_tol * r_norm, abs_tol)
+#else
+    rhs_tol = abs_tol
+#endif
+    if (reason == SNES_CONVERGED_FNORM_RELATIVE) then                                               ! overwrite RELATIVE_FNORM convergence reason
+      if (f_norm / rhs_tol < 1.0_pREAL) then
+        reason = SNES_CONVERGED_USER
+      else if (s_norm < sol_tol * x_norm) then
+        reason = SNES_CONVERGED_SNORM_RELATIVE
+      else
+        reason = SNES_CONVERGED_ITERATING
+      end if
+    end if
+    if (reason == SNES_CONVERGED_ITERATING) then
+      print '(2/,2(3x,3(a,es9.3e2),a))', &
+        '- Residual       ||r|| = ', f_norm / rhs_tol, ' ( ', f_norm, ', tol = ', rhs_tol, ' )'
+      if (iter > 0_pPETSCINT) then
+        r_norm = s_norm / x_norm
+        print '(3x,3(a,es9.3e2),a))', &
+          '- Ratio   ||Δu||/||u|| = ', r_norm / sol_tol, ' ( ', r_norm, ', tol = ', sol_tol, ' )'
+      end if
+    else                                                                                            ! convergence
+      call SNESGetTolerances(snes, abs_tol, rel_tol, sol_tol, PETSC_NULL_INTEGER, &
+                             PETSC_NULL_INTEGER, err_PETSc)
+      CHKERRQ(err_PETSc)
+      call SNESGetNumberFunctionEvals(snes, n_f_evals, err_PETSc)
+      CHKERRQ(err_PETSc)
+      call SNESGetLinearSolveIterations(snes, n_ls_its, err_PETSc)
+      CHKERRQ(err_PETSc)
+      write(IO_STDOUT, '(a,2/,3x,a)',advance='no') ' ~ Converged', 'Convergence reason:'
+      if (reason == SNES_CONVERGED_FNORM_ABS) then
+        print '(1x,a,es9.3e2)', 'residual norm ||r|| < ', abs_tol
+      else if (reason == SNES_CONVERGED_SNORM_RELATIVE) then
+        print '(1x,a,es9.3e2)', 'ratio ||Δu||/||u|| < ', sol_tol
+      else if (reason == SNES_CONVERGED_USER) then
+        print '(1x,a,es9.3e2)', 'residual norm ||r|| < max(abs,rel*||RHS||)'
+      end if
+      r_norm = s_norm / x_norm
+      print '(/,2(3x,3(a,es9.3e2),a,/),/,2(3x,a,es9.3e2,/))', &
+        '- Residual       ||r|| = ', f_norm / rhs_tol, ' ( ', f_norm, ', tol = ', rhs_tol, ' )', &
+        '- Ratio   ||Δu||/||u|| = ', r_norm / sol_tol, ' ( ', r_norm, ', tol = ', sol_tol, ' )', &
+        '- Final residual ||r|| = ', f_norm, &
+        '- Final update  ||Δu|| = ', s_norm
+      print '(2(3x,a,i0,:,/))', &
+        '- # function evaluations     = ', n_f_evals, &
+        '- # linear solver iterations = ', n_ls_its
+    end if
+  end if
   flush(IO_STDOUT)
 
 end subroutine FEM_mechanical_converged

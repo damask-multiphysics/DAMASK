@@ -46,8 +46,6 @@ solver:
 
     mechanical:
       N_iter_max:         250           # Maximum iteration number
-      eps_abs_div(P):     1.0e-10       # absolute tolerance for mechanical equilibrium
-      eps_rel_div(P):     1.0e-4        # relative tolerance for mechanical equilibrium
 
   Marc:
     unit_length:          1.0           # physical length of one computational length unit
