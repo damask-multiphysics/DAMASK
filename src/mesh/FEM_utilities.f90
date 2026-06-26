@@ -116,7 +116,7 @@ subroutine FEM_utilities_init(num_mesh)
 
   petsc_options = misc_prefixOptions('-snes_type newtonls &
                                      &-ksp_type gmres -ksp_max_it 25 -pc_type eisenstat &
-                                     &-snes_ksp_ew -snes_ksp_ew_rtol0 0.01 -snes_ksp_ew_rtolmax 0.01 &
+                                     &-snes_ksp_ew &
                                      &-petscspace_degree ' // IO_intAsStr(p_s) // ' &
                                      &-petscdualspace_lagrange_node_type equispaced &
                                      &-petscdualspace_lagrange_node_endpoints 1 '// &

@@ -388,12 +388,6 @@ program DAMASK_mesh
 
       cutBackLevel = max(0, cutBackLevel - 1)                                                       ! try half number of subincs next inc
 
-      if (all(solres(:)%converged)) then
-        print'(/,1x,a,1x,i0,1x,a)', 'increment', totalIncsCounter, 'converged'
-      else
-        print'(/,1x,a,1x,i0,1x,a)', 'increment', totalIncsCounter, 'NOT converged'
-      end if; flush(IO_STDOUT)
-
       if (mod(inc,loadCases(l)%f_out) == 0) then                                                    ! at output frequency
         print'(/,1x,a)', '... saving results ........................................................'
         call FEM_mechanical_updateCoords()
