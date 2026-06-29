@@ -9,15 +9,8 @@ https://doi.org/10.21105/joss.07164
 """
 
 import logging as _logging
-import multiprocessing as _mp
 import re as _re
 from pathlib import Path as _Path
-
-
-# https://docs.python.org/3/library/multiprocessing.html#multiprocessing-start-methods
-# needed for Python < 3.14
-if (_start_methods := _mp.get_all_start_methods())[0] == 'fork' and 'forkserver' in _start_methods:
-    _mp.set_start_method('forkserver',True)
 
 _logging.basicConfig(level=_logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
