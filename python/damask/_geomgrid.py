@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import copy
-import multiprocessing as mp
 import os
 from functools import partial
 from pathlib import Path
@@ -520,12 +519,6 @@ class GeomGrid:
 
 
     @staticmethod
-    def _find_closest_seed(seeds: np.ndarray,
-                           bias: np.ndarray,
-                           coord: np.ndarray) -> np.integer:
-        return np.argmax(2*np.dot(seeds,coord) + bias)
-
-    @staticmethod
     def from_Laguerre_tessellation(cells: IntSequence,
                                    size: FloatSequence,
                                    seeds: np.ndarray,
@@ -562,23 +555,20 @@ class GeomGrid:
         -----
         damask.seeds contains functionality for seed generation.
         """
+        coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
+        weights_ = np.asarray(weights)
+
         if periodic:
-            seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
-            seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
-            seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
-            bias_p  = -np.sum(seeds_p**2,axis=-1) + np.tile(weights,27)
+            max_extra = np.sqrt(weights_.max() - weights_.min())
+            sentinel = np.sqrt(4 * np.sum(np.asarray(size)**2) + max_extra**2) + max_extra + 1e-6
+            boxsize = np.append(size, sentinel)
         else:
-            seeds_p = np.asarray(seeds)
-            bias_p  = -np.sum(seeds_p**2,axis=-1) + np.asarray(weights)
+            boxsize = None
 
-        pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',4)))
-        result = pool.map_async(partial(GeomGrid._find_closest_seed,seeds_p,bias_p),
-                                grid_filters.coordinates0_point(cells,size).reshape(-1,3))
-        pool.close()
-        pool.join()
-        material_ = np.array(result.get()).reshape(cells)
-
-        if periodic: material_ %= len(weights)
+        tree = spatial.KDTree(np.column_stack((seeds, np.sqrt(weights_.max() - weights_))),
+                              boxsize=boxsize)
+        material_ = np.asarray(tree.query(np.column_stack((coords, np.zeros(len(coords)))),
+                                          workers=int(os.environ.get('OMP_NUM_THREADS',4)))[1]).reshape(cells)
 
         return GeomGrid(material = material_ if material is None else np.array(material)[material_],
                         size     = size,
