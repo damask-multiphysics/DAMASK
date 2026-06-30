@@ -19,10 +19,6 @@ from typing import Optional as _Optional, Union as _Union, Iterable as _Iterable
                    Any as _Any, TextIO as _TextIO, Generator as _Generator
 
 import h5py as _h5py
-try:
-    import numba as _nb                                                                             # type: ignore
-except ImportError:
-    _nb = False
 import numpy as _np
 
 from . import version as _version
@@ -852,30 +848,6 @@ def to_list(a: _Any) -> list:
         Data in list.
     """
     return [a] if not hasattr(a,'__iter__') or isinstance(a,str) else list(a)
-
-
-def numba_njit_wrapper(**kwargs):
-    """
-    Return a decorator that applies `numba.njit` if Numba is available.
-
-    This function serves as a compatibility wrapper around Numba's `njit`
-    decorator. If the global variable `nb` (typically an imported `numba` module)
-    is defined, it applies `nb.njit` to the decorated function. Otherwise, it
-    returns the function unchanged, allowing code to run even when Numba is not
-    installed.
-
-    Parameters
-    ----------
-    **kwargs : dict
-        Currently unused, reserved for future compatibility or configuration
-        with `numba.njit`.
-
-    Returns
-    -------
-    callable
-        A decorator that conditionally applies `numba.njit` to a function.
-    """
-    return (lambda function: _nb.njit(function) if _nb else function)
 
 
 def get_value0(d: dict) -> _Any:
