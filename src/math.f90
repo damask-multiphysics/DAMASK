@@ -21,6 +21,7 @@ module math
   use misc
   use IO
   use config
+  use constants
   use types
   use parallelization
   use LAPACK_interface
@@ -48,20 +49,21 @@ module math
       ],shape(math_I3)),pREAL)                                                                      !< 3x3 Identity
 
   real(pREAL), dimension(*), parameter, private :: &
-    NRMMANDEL = [1.0_pREAL, 1.0_pREAL,1.0_pREAL, sqrt(2.0_pREAL), sqrt(2.0_pREAL), sqrt(2.0_pREAL)] !< forward weighting for Mandel notation
+    NRMMANDEL = [1.0_pREAL, 1.0_pREAL, 1.0_pREAL, &
+                 WEIGHTS_MANDEL(1), WEIGHTS_MANDEL(1), WEIGHTS_MANDEL(1)]                           !< forward weighting for Mandel notation
 
   real(pREAL), dimension(*), parameter, private :: &
     INVNRMMANDEL = 1.0_pREAL/NRMMANDEL                                                              !< backward weighting for Mandel notation
 
   integer, dimension (2,6), parameter, private :: &
-    MAPVOIGT = reshape([&
+    MAPMANDEL = reshape([&
       1,1, &
       2,2, &
       3,3, &
       2,3, &
       1,3, &
       1,2  &
-      ],shape(MAPVOIGT))                                                                            !< arrangement in Voigt notation
+      ],shape(MAPMANDEL))                                                                            !< arrangement in Mandel notation
 
 
 contains
@@ -726,8 +728,40 @@ end function math_99to3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert symmetric 3x3x3x3 matrix into 6x6 matrix.
-!> @details Uses Mandel convention.
+!> @brief Convert symmetric 3x3 matrix to 6 vector in Mandel notation.
+!--------------------------------------------------------------------------------------------------
+pure function math_sym33to6(m) result(m_tilde)
+
+  real(pREAL), dimension(6) :: m_tilde
+  real(pREAL), dimension(3,3), intent(in) :: m                                                      !< symmetric matrix ((no internal check)
+
+
+  m_tilde = [m(1,1), m(2,2), m(3,3), m(3,2), m(3,1), m(1,2)] * NRMMANDEL
+
+end function math_sym33to6
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Convert 6 vector in Mandel notation to 3x3 symmetric matrix.
+!--------------------------------------------------------------------------------------------------
+pure function math_6toSym33(m_tilde) result(m)
+
+  real(pREAL), dimension(3,3) :: m
+  real(pREAL), dimension(6), intent(in) :: m_tilde                                                  !< 6 vector
+
+  real(pREAL), dimension(6) :: m_tilde_w
+
+
+  m_tilde_w = m_tilde*INVNRMMANDEL
+  m = reshape([m_tilde_w(1), m_tilde_w(6), m_tilde_w(5), &
+               m_tilde_w(6), m_tilde_w(2), m_tilde_w(4), &
+               m_tilde_w(5), m_tilde_w(4), m_tilde_w(3)],[3,3])
+
+end function math_6toSym33
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Convert symmetric 3x3x3x3 matrix into 6x6 matrix in Mandel notation.
 !--------------------------------------------------------------------------------------------------
 pure function math_sym3333to66(m) result(m_tilde)
 
@@ -738,15 +772,14 @@ pure function math_sym3333to66(m) result(m_tilde)
 
 
   do i=1,6; do j=1,6
-    m_tilde(i,j) = NRMMANDEL(i)*NRMMANDEL(j)*m(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
+    m_tilde(i,j) = NRMMANDEL(i)*NRMMANDEL(j)*m(MAPMANDEL(1,i),MAPMANDEL(2,i),MAPMANDEL(1,j),MAPMANDEL(2,j))
   end do; end do
 
 end function math_sym3333to66
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert 6x6 matrix into symmetric 3x3x3x3 matrix.
-!> @details Uses Mandel convention.
+!> @brief Convert 6x6 matrix in Mandel notation into symmetric 3x3x3x3 matrix.
 !--------------------------------------------------------------------------------------------------
 pure function math_66toSym3333(m_tilde) result(m)
 
@@ -757,119 +790,13 @@ pure function math_66toSym3333(m_tilde) result(m)
 
 
   do i=1,6; do j=1,6
-    m(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = INVNRMMANDEL(i)*INVNRMMANDEL(j)*m_tilde(i,j)
-    m(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = INVNRMMANDEL(i)*INVNRMMANDEL(j)*m_tilde(i,j)
-    m(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = INVNRMMANDEL(i)*INVNRMMANDEL(j)*m_tilde(i,j)
-    m(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = INVNRMMANDEL(i)*INVNRMMANDEL(j)*m_tilde(i,j)
+    m(MAPMANDEL(1,i),MAPMANDEL(2,i),MAPMANDEL(1,j),MAPMANDEL(2,j)) = INVNRMMANDEL(i)*INVNRMMANDEL(j)*m_tilde(i,j)
+    m(MAPMANDEL(2,i),MAPMANDEL(1,i),MAPMANDEL(1,j),MAPMANDEL(2,j)) = INVNRMMANDEL(i)*INVNRMMANDEL(j)*m_tilde(i,j)
+    m(MAPMANDEL(1,i),MAPMANDEL(2,i),MAPMANDEL(2,j),MAPMANDEL(1,j)) = INVNRMMANDEL(i)*INVNRMMANDEL(j)*m_tilde(i,j)
+    m(MAPMANDEL(2,i),MAPMANDEL(1,i),MAPMANDEL(2,j),MAPMANDEL(1,j)) = INVNRMMANDEL(i)*INVNRMMANDEL(j)*m_tilde(i,j)
   end do; end do
 
 end function math_66toSym3333
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Convert 6 Voigt stress vector into symmetric 3x3 tensor.
-!--------------------------------------------------------------------------------------------------
-pure function math_Voigt6to33_stress(sigma_tilde) result(sigma)
-
-  real(pREAL), dimension(3,3) :: sigma
-  real(pREAL), dimension(6), intent(in) :: sigma_tilde
-
-
-  sigma = reshape([sigma_tilde(1), sigma_tilde(6), sigma_tilde(5), &
-                   sigma_tilde(6), sigma_tilde(2), sigma_tilde(4), &
-                   sigma_tilde(5), sigma_tilde(4), sigma_tilde(3)],[3,3])
-
-end function math_Voigt6to33_stress
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Convert 6 Voigt strain vector into symmetric 3x3 tensor.
-!--------------------------------------------------------------------------------------------------
-pure function math_Voigt6to33_strain(epsilon_tilde) result(epsilon)
-
-  real(pREAL), dimension(3,3) :: epsilon
-  real(pREAL), dimension(6), intent(in) :: epsilon_tilde
-
-
-  epsilon = reshape([          epsilon_tilde(1), 0.5_pREAL*epsilon_tilde(6), 0.5_pREAL*epsilon_tilde(5), &
-                     0.5_pREAL*epsilon_tilde(6),           epsilon_tilde(2), 0.5_pREAL*epsilon_tilde(4), &
-                     0.5_pREAL*epsilon_tilde(5), 0.5_pREAL*epsilon_tilde(4),           epsilon_tilde(3)],[3,3])
-
-end function math_Voigt6to33_strain
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Convert 3x3 stress tensor into 6 Voigt vector.
-!--------------------------------------------------------------------------------------------------
-pure function math_33toVoigt6_stress(sigma) result(sigma_tilde)
-
-  real(pREAL), dimension(6) :: sigma_tilde
-  real(pREAL), dimension(3,3), intent(in) :: sigma
-
-
-  sigma_tilde = [sigma(1,1), sigma(2,2), sigma(3,3), &
-                 sigma(3,2), sigma(3,1), sigma(1,2)]
-
-end function math_33toVoigt6_stress
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Convert 3x3 strain tensor into 6 Voigt vector.
-!--------------------------------------------------------------------------------------------------
-pure function math_33toVoigt6_strain(epsilon) result(epsilon_tilde)
-
-  real(pREAL), dimension(6) :: epsilon_tilde
-  real(pREAL), dimension(3,3), intent(in) :: epsilon
-
-
-  epsilon_tilde = [          epsilon(1,1),           epsilon(2,2),           epsilon(3,3), &
-                   2.0_pREAL*epsilon(3,2), 2.0_pREAL*epsilon(3,1), 2.0_pREAL*epsilon(1,2)]
-
-end function math_33toVoigt6_strain
-
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Convert 6x6 Voigt stiffness matrix into symmetric 3x3x3x3 tensor.
-!--------------------------------------------------------------------------------------------------
-pure function math_Voigt66to3333_stiffness(C_tilde) result(C)
-
-  real(pREAL), dimension(3,3,3,3) :: C
-  real(pREAL), dimension(6,6), intent(in) :: C_tilde
-
-  integer :: i,j
-
-
-  do i=1,6; do j=1,6
-    C(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = C_tilde(i,j)
-    C(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = C_tilde(i,j)
-    C(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = C_tilde(i,j)
-    C(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = C_tilde(i,j)
-  end do; end do
-
-end function math_Voigt66to3333_stiffness
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Convert 3x3x3x3 stiffness tensor into 6x6 Voigt matrix.
-!--------------------------------------------------------------------------------------------------
-pure function math_3333toVoigt66_stiffness(C) result(C_tilde)
-
-  real(pREAL), dimension(6,6) :: C_tilde
-  real(pREAL), dimension(3,3,3,3), intent(in) :: C
-
-  integer :: i,j
-
-
-#ifndef __INTEL_COMPILER
-  do concurrent(i=1:6, j=1:6)
-    C_tilde(i,j) = C(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
-  end do
-#else
-  forall(i=1:6, j=1:6) C_tilde(i,j) = C(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
-#endif
-
-end function math_3333toVoigt66_stiffness
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1248,9 +1175,6 @@ subroutine math_selfTest()
   call random_number(t66)
   if (any(dNeq(math_sym3333to66(math_66toSym3333(t66)),t66,1.0e-15_pREAL))) &
     error stop 'math_sym3333to66/math_66toSym3333'
-
-  if (any(dNeq(math_3333toVoigt66_stiffness(math_Voigt66to3333_stiffness(t66)),t66,1.0e-15_pREAL))) &
-    error stop 'math_3333toVoigt66/math_Voigt66to3333'
 
   call random_number(t33)
   if (any(dNeq0(math_symmetric33(t33) - transpose(math_symmetric33(t33))))) &
