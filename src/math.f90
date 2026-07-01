@@ -281,14 +281,9 @@ pure function math_identity4th()
   integer :: i,j,k,l
 
 
-#ifndef __INTEL_COMPILER
-  do concurrent(i=1:3, j=1:3, k=1:3, l=1:3)
+  do l=1,3; do k=1,3; do j=1,3; do i=1,3
     math_identity4th(i,j,k,l) = 0.5_pREAL*(math_I3(i,k)*math_I3(j,l)+math_I3(i,l)*math_I3(j,k))
-  end do
-#else
-  forall(i=1:3, j=1:3, k=1:3, l=1:3) &
-    math_identity4th(i,j,k,l) = 0.5_pREAL*(math_I3(i,k)*math_I3(j,l)+math_I3(i,l)*math_I3(j,k))
-#endif
+  end do; end do; end do; end do
 
 end function math_identity4th
 
@@ -359,13 +354,9 @@ pure function math_outer(A,B)
   integer :: i,j
 
 
-#ifndef __INTEL_COMPILER
-  do concurrent(i=1:size(A,1), j=1:size(B,1))
+  do j=1,size(B,1); do i=1,size(A,1)
     math_outer(i,j) = A(i)*B(j)
-  end do
-#else
-  forall(i=1:size(A,1), j=1:size(B,1)) math_outer(i,j) = A(i)*B(j)
-#endif
+  end do; end do
 
 end function math_outer
 
@@ -409,13 +400,9 @@ pure function math_mul3333xx33(A,B)
   integer :: i,j
 
 
-#ifndef __INTEL_COMPILER
-  do concurrent(i=1:3, j=1:3)
+  do j=1,3; do i=1,3
     math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
-  end do
-#else
-  forall (i=1:3, j=1:3) math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
-#endif
+  end do; end do
 
 end function math_mul3333xx33
 
@@ -432,13 +419,9 @@ pure function math_mul3333xx3333(A,B)
   integer :: i,j,k,l
 
 
-#ifndef __INTEL_COMPILER
-  do concurrent(i=1:3, j=1:3, k=1:3, l=1:3)
+  do l=1,3; do k=1,3; do j=1,3; do i=1,3
     math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
-  end do
-#else
-  forall(i=1:3, j=1:3, k=1:3, l=1:3) math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
-#endif
+  end do; end do; end do; end do
 
 end function math_mul3333xx3333
 
@@ -744,13 +727,9 @@ pure function math_3333to99(m3333)
   integer :: i,j
 
 
-#ifndef __INTEL_COMPILER
-  do concurrent(i=1:9, j=1:9)
+  do j=1,9; do i=1,9
     math_3333to99(i,j) = m3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j))
-  end do
-#else
-  forall(i=1:9, j=1:9) math_3333to99(i,j) = m3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j))
-#endif
+  end do; end do
 
 end function math_3333to99
 
@@ -766,13 +745,9 @@ pure function math_99to3333(m99)
   integer :: i,j
 
 
-#ifndef __INTEL_COMPILER
-  do concurrent(i=1:9, j=1:9)
+  do j=1,9; do i=1,9
     math_99to3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j)) = m99(i,j)
-  end do
-#else
-  forall(i=1:9, j=1:9) math_99to3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j)) = m99(i,j)
-#endif
+  end do; end do
 
 end function math_99to3333
 
