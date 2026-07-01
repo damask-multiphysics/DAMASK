@@ -480,7 +480,7 @@ end function crystal_characteristicShear_Twin
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Rotated elasticity matrices for twinning in 6x6-matrix notation
+!> @brief Rotated elasticity matrices for twinning in Mandel notation.
 !--------------------------------------------------------------------------------------------------
 function crystal_C66_twin(Ntwin,C_tilde,lattice,CoverA)
 
@@ -518,7 +518,7 @@ end function crystal_C66_twin
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Rotated elasticity matrices for transformation in 6x6-matrix notation
+!> @brief Rotated elasticity matrices for transformation in Mandel notation.
 !--------------------------------------------------------------------------------------------------
 function crystal_C66_trans(Ntrans,C_parent_tilde,lattice_target, cOverA_trans,a_cF,a_cI)
 
@@ -1704,8 +1704,9 @@ end function crystal_symmetrize_33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return stiffness matrix in 6x6 notation with symmetry according to given Bravais lattice
-!> @details J. A. Rayne and B. S. Chandrasekhar Phys. Rev. 120, 1658 Erratum Phys. Rev. 122, 1962
+!> @brief Assemble unrotated stiffness matrix in Mandel notation.
+!> @details J.F. Nye, Physical Properties of Crystals, 1985. Table 9, page 140
+!>          https://doi.org/10.1016/j.euromechsol.2021.104357
 !--------------------------------------------------------------------------------------------------
 pure function crystal_assembleStiffness(C_11,C_12,C_44, &
                                         C_13,C_33, &
@@ -1714,9 +1715,9 @@ pure function crystal_assembleStiffness(C_11,C_12,C_44, &
 
   real(pREAL), dimension(6,6) :: C_tilde
 
-  real(pREAL),      intent(in) :: C_11, C_12, C_44
-  real(pREAL),      intent(in), optional :: C_13, C_33, C_66
-  character(len=*), intent(in) :: lattice                                                            !< Bravais lattice (Pearson symbol)
+  real(pREAL),      intent(in) :: C_11, C_12, C_44                                                  !< elastic constants in Voigt notation
+  real(pREAL),      intent(in), optional :: C_13, C_33, C_66                                        !< elastic constants in Voigt notation
+  character(len=*), intent(in) :: lattice                                                           !< Bravais lattice (Pearson symbol)
 
   integer :: i,j
 
@@ -1728,25 +1729,25 @@ pure function crystal_assembleStiffness(C_11,C_12,C_44, &
 
   C_tilde(1,2) = C_12
 
-  C_tilde(4,4) = C_44*WEIGHTS_MANDEL(2)
-  C_tilde(5,5) = C_44*WEIGHTS_MANDEL(2)
+  C_tilde(4,4) = C_44*WGT_MANDEL(2)
+  C_tilde(5,5) = C_44*WGT_MANDEL(2)
 
   select case(lattice)
     case ('cF','cI')
       C_tilde(3,3) = C_11
       C_tilde(1,3) = C_12
       C_tilde(2,3) = C_12
-      C_tilde(6,6) = C_44*WEIGHTS_MANDEL(2)
+      C_tilde(6,6) = C_44*WGT_MANDEL(2)
     case ('hP')
       C_tilde(3,3) = C_33
       C_tilde(1,3) = C_13
       C_tilde(2,3) = C_13
-      C_tilde(6,6) = 0.5_pREAL * (C_11 - C_12)*WEIGHTS_MANDEL(2)
+      C_tilde(6,6) = 0.5_pREAL * (C_11 - C_12)*WGT_MANDEL(2)
     case ('tI')
       C_tilde(3,3) = C_33
       C_tilde(1,3) = C_13
       C_tilde(2,3) = C_13
-      C_tilde(6,6) = C_66*WEIGHTS_MANDEL(2)
+      C_tilde(6,6) = C_66*WGT_MANDEL(2)
    end select
 
    do i = 1, 3
@@ -2235,11 +2236,11 @@ pure function crystal_isotropic_mu(C_tilde,assumption,lattice) result(mu)
   if     (assumption == 'isostrain') then
     select case(misc_optional(lattice,''))
       case('cF','cI')
-        mu = ( C_tilde(1,1) - C_tilde(1,2) + C_tilde(4,4)*3.0_pREAL/WEIGHTS_MANDEL(2)) / 5.0_pREAL  ! eq (9b)
+        mu = ( C_tilde(1,1) - C_tilde(1,2) + C_tilde(4,4)*3.0_pREAL/WGT_MANDEL(2)) / 5.0_pREAL      ! eq (9b)
       case default
         mu = (  C_tilde(1,1)+C_tilde(2,2)+C_tilde(3,3) &
               - C_tilde(1,2)-C_tilde(2,3)-C_tilde(1,3) &
-              +(C_tilde(4,4)+C_tilde(5,5)+C_tilde(6,6)) * 3.0_pREAL/WEIGHTS_MANDEL(2) &
+              +(C_tilde(4,4)+C_tilde(5,5)+C_tilde(6,6)) * 3.0_pREAL/WGT_MANDEL(2) &
              ) / 15.0_pREAL                                                                         ! eq (6b)
     end select
 
@@ -2247,13 +2248,13 @@ pure function crystal_isotropic_mu(C_tilde,assumption,lattice) result(mu)
     select case(misc_optional(lattice,''))
       case('cF','cI')
         mu = 5.0_pREAL &
-           / (4.0_pREAL/(C_tilde(1,1)-C_tilde(1,2)) + 3.0_pREAL*WEIGHTS_MANDEL(2)/C_tilde(4,4))     ! eq (9c), (8a), (8c)
+           / (4.0_pREAL/(C_tilde(1,1)-C_tilde(1,2)) + 3.0_pREAL*WGT_MANDEL(2)/C_tilde(4,4))         ! eq (9c), (8a), (8c)
       case default
         call math_invert(S_tilde,error,C_tilde)
         if (error) error stop 'matrix inversion failed'
         mu = 15.0_pREAL &
            / ( 4.0_pREAL*(S_tilde(1,1)+S_tilde(2,2)+S_tilde(3,3)-S_tilde(1,2)-S_tilde(2,3)-S_tilde(1,3)) \
-              +3.0_pREAL*WEIGHTS_MANDEL(2)*(S_tilde(4,4)+S_tilde(5,5)+S_tilde(6,6)))                    ! eq (7b)
+              +3.0_pREAL*WGT_MANDEL(2)*(S_tilde(4,4)+S_tilde(5,5)+S_tilde(6,6)))                    ! eq (7b)
     end select
   else
     error stop 'invalid assumption'
@@ -2301,17 +2302,17 @@ subroutine crystal_selfTest()
     if (any(dNeq(C_hP,transpose(C_hP))))                   error stop 'SymmetryC66/hP'
     if (any(dNeq(C_tI,transpose(C_tI))))                   error stop 'SymmetryC66/tI'
 
-    if (any(dNeq(C(1,1),[C_cF(1,1),C_cF(2,2),C_cF(3,3)]))) error stop 'SymmetryC_11-22-33/c'
-    if (any(dNeq(C(1,2),[C_cF(1,2),C_cF(1,3),C_cF(2,3)]))) error stop 'SymmetryC_12-13-23/c'
-    if (any(dNeq(C(4,4)*WEIGHTS_MANDEL(2),[C_cF(4,4),C_cF(5,5),C_cF(6,6)]))) error stop 'SymmetryC_44-55-66/c'
+    if (any(dNeq(C(1,1),[C_cF(1,1),C_cF(2,2),C_cF(3,3)])))               error stop 'SymmetryC_11-22-33/c'
+    if (any(dNeq(C(1,2),[C_cF(1,2),C_cF(1,3),C_cF(2,3)])))               error stop 'SymmetryC_12-13-23/c'
+    if (any(dNeq(C(4,4)*WGT_MANDEL(2),[C_cF(4,4),C_cF(5,5),C_cF(6,6)]))) error stop 'SymmetryC_44-55-66/c'
 
-    if (any(dNeq(C(1,1),[C_hP(1,1),C_hP(2,2)])))           error stop 'SymmetryC_11-22/hP'
-    if (any(dNeq(C(1,3),[C_hP(1,3),C_hP(2,3)])))           error stop 'SymmetryC_13-23/hP'
-    if (any(dNeq(C(4,4)*WEIGHTS_MANDEL(2),[C_hP(4,4),C_hP(5,5)])))           error stop 'SymmetryC_44-55/hP'
+    if (any(dNeq(C(1,1),[C_hP(1,1),C_hP(2,2)])))                         error stop 'SymmetryC_11-22/hP'
+    if (any(dNeq(C(1,3),[C_hP(1,3),C_hP(2,3)])))                         error stop 'SymmetryC_13-23/hP'
+    if (any(dNeq(C(4,4)*WGT_MANDEL(2),[C_hP(4,4),C_hP(5,5)])))           error stop 'SymmetryC_44-55/hP'
 
-    if (any(dNeq(C(1,1),[C_tI(1,1),C_tI(2,2)])))           error stop 'SymmetryC_11-22/tI'
-    if (any(dNeq(C(1,3),[C_tI(1,3),C_tI(2,3)])))           error stop 'SymmetryC_13-23/tI'
-    if (any(dNeq(C(4,4)*WEIGHTS_MANDEL(2),[C_tI(4,4),C_tI(5,5)])))           error stop 'SymmetryC_44-55/tI'
+    if (any(dNeq(C(1,1),[C_tI(1,1),C_tI(2,2)])))                         error stop 'SymmetryC_11-22/tI'
+    if (any(dNeq(C(1,3),[C_tI(1,3),C_tI(2,3)])))                         error stop 'SymmetryC_13-23/tI'
+    if (any(dNeq(C(4,4)*WGT_MANDEL(2),[C_tI(4,4),C_tI(5,5)])))           error stop 'SymmetryC_44-55/tI'
 
     call random_number(T)
     T_cF = crystal_symmetrize_33(T,'cI')

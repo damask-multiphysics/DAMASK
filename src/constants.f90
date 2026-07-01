@@ -15,7 +15,7 @@ module constants
     N_A = 6.02214076e23_pREAL                                                                       !< Avogadro constant in 1/mol (https://doi.org/10.1351/goldbook)
 
   real(pREAL), dimension(2), parameter :: &
-    WEIGHTS_MANDEL = [sqrt(2.0_pREAL), 2.0_pREAL]
+    WGT_MANDEL = [sqrt(2.0_pREAL), 2.0_pREAL]                                                       !< Weights for Mandel notation
 
   character, parameter :: &
     CR = achar(13), &
