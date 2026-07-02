@@ -229,7 +229,7 @@ subroutine CLI_init()
   if (.not. allocated(CLI_jobName)) then
     CLI_jobName = jobname(CLI_geomFile,CLI_loadFile,CLI_materialFile,CLI_numericsFile)
   elseif (scan(CLI_jobName,'/') > 0) then
-    call IO_error(612,ext_msg=CLI_jobName,label1='--jobname')
+    call IO_error(610_pI16, 'path separator in jobname', CLI_jobName, emph=[2])
   endif
 
   commandLine = getArg(-1)

@@ -346,3 +346,188 @@ def test_thermal_dissipation(res_path,tmp_path,np_rng,assert_allclose):
 
     T_analytic = T_0 + f_t_cum*k/rho/C_p
     assert_allclose(T_analytic, T_sim, atol=0.5)
+
+
+@pytest.mark.parametrize('thermostat',['shift','scale'])
+def test_thermal_BC_T_target(res_path,tmp_path,copy_files,assert_allclose,np_rng,thermostat):
+    grid = 'simple'
+    load = 'no_deformation'
+    material = 'material'
+    job = f'{grid}_{load}'
+    copy_files(res_path,tmp_path,[f'{material}.yaml'])
+
+    shape = (2,2,2)
+
+    T_0      = np_rng.uniform(300,400,size=shape)
+    T_target = np_rng.uniform(200,600)
+
+    mat = damask.ConfigMaterial.load(tmp_path/f'{material}.yaml')
+    del mat['phase']['heatsource']
+    del mat['material'][1]
+    mat['phase']['matrix']['thermal']['K_11'] = np_rng.uniform(70,90)
+    mat.save(tmp_path/f'{material}.yaml')
+
+    g = damask.GeomGrid(np.zeros(shape),np.ones(3)*1.e-6)
+    g.initial_conditions['T'] = T_0
+    g.save(tmp_path/grid)
+
+    l = damask.LoadcaseGrid.load(res_path/f'{load}.yaml')
+    l['loadstep'][0]['boundary_conditions']['thermal'] = {'T': T_target, 'thermostat': thermostat}
+    l['loadstep'][0]['discretization']['t'] = 100.
+    l['loadstep'][0]['discretization']['N'] = 10
+    l.save(tmp_path/f'{load}.yaml')
+
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
+    T = damask.Result(tmp_path/f'{job}.hdf5').view(increments=-1).get('T')
+    assert_allclose(np.average(T),T_target,rtol=1.e-5)
+
+
+@pytest.mark.parametrize('thermostat',['shift','scale'])
+def test_thermal_BC_dot_T(res_path,tmp_path,copy_files,assert_allclose,np_rng,thermostat):
+    grid = 'simple'
+    load = 'no_deformation'
+    material = 'material'
+    job = f'{grid}_{load}'
+    copy_files(res_path,tmp_path,[f'{material}.yaml'])
+
+    shape = (2,2,2)
+
+    T_0   = np_rng.uniform(300,400,size=shape)
+    dot_T = np_rng.uniform(-2,2)
+    t     = 100.
+
+    mat = damask.ConfigMaterial.load(tmp_path/f'{material}.yaml')
+    del mat['phase']['heatsource']
+    del mat['material'][1]
+    mat['phase']['matrix']['thermal']['K_11'] = np_rng.uniform(70,90)
+    mat.save(tmp_path/f'{material}.yaml')
+
+    g = damask.GeomGrid(np.zeros(shape),np.ones(3)*1.e-6)
+    g.initial_conditions['T'] = T_0
+    g.save(tmp_path/grid)
+
+    l = damask.LoadcaseGrid.load(res_path/f'{load}.yaml')
+    l['loadstep'][0]['boundary_conditions']['thermal'] = {'dot_T': dot_T, 'thermostat': thermostat}
+    l['loadstep'][0]['discretization']['t'] = t
+    l['loadstep'][0]['discretization']['N'] = 10
+    l.save(tmp_path/f'{load}.yaml')
+
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
+    T = damask.Result(tmp_path/f'{job}.hdf5').view(increments=-1).get('T')
+    assert_allclose(np.average(T),np.average(T_0) + dot_T*t,rtol=1.e-5)
+
+
+@pytest.mark.parametrize('thermostat',['shift','scale'])
+def test_thermal_BC_gradient_preserved(res_path,tmp_path,copy_files,assert_allclose,thermostat):
+    grid = 'inclusion'
+    load = 'no_deformation'
+    material = 'material'
+    job = f'{grid}_{load}'
+    copy_files(res_path,tmp_path,[f'{load}.yaml',f'{material}.yaml'])
+
+    T_0, T_1, T_target = 300., 350., 500.
+
+    mat = damask.ConfigMaterial.load(tmp_path/f'{material}.yaml')
+    for phase in mat['phase'].keys():
+        mat['phase'][phase]['thermal']['K_11'] = 0.0
+        mat['phase'][phase]['thermal']['K_33'] = 0.0
+    del mat['phase']['heatsource']['thermal']['source']
+    mat.save(tmp_path/f'{material}.yaml')
+
+    g = damask.GeomGrid.load(res_path/f'{grid}.vti')
+    T_init = np.where(g.material==0, T_0, T_1)
+    g.initial_conditions['T'] = T_init
+    g.save(tmp_path/grid)
+
+    l = damask.LoadcaseGrid.load(res_path/f'{load}.yaml')
+    l['loadstep'][0]['boundary_conditions']['thermal'] = {'T': T_target, 'thermostat': thermostat}
+    l['loadstep'][0]['discretization']['t'] = 100.
+    l['loadstep'][0]['discretization']['N'] = 10
+    l.save(tmp_path/f'{load}.yaml')
+
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
+    T_final = damask.Result(tmp_path/f'{job}.hdf5').view(increments=-1).get('T')
+    match thermostat:
+        case 'shift':
+            assert_allclose(T_final.max()-T_final.min(), T_1-T_0, rtol=1.e-4)
+        case 'scale':
+            assert_allclose(T_final.max()/T_final.min(), T_1/T_0, rtol=1.e-4)
+
+
+def test_thermal_BC_restart(res_path,tmp_path,copy_files,assert_allclose,np_rng):
+    grid = 'simple'
+    load = 'no_deformation'
+    material = 'material'
+    copy_files(res_path,tmp_path,[f'{material}.yaml'])
+
+    T_0   = np_rng.uniform(300,400)
+    dot_T = np_rng.uniform(-3,3)
+
+    mat = damask.ConfigMaterial.load(tmp_path/f'{material}.yaml')
+    del mat['phase']['heatsource']
+    del mat['material'][1]
+    mat['phase']['matrix']['thermal']['K_11'] = np_rng.uniform(70,90)
+    mat.save(tmp_path/f'{material}.yaml')
+
+    g = damask.GeomGrid(np.zeros((2,2,2)),np.ones(3)*1.e-6)
+    g.initial_conditions['T'] = T_0
+    g.save(tmp_path/grid)
+
+    l = damask.LoadcaseGrid.load(res_path/f'{load}.yaml')
+    l['loadstep'][0]['boundary_conditions']['thermal'] = {'dot_T': dot_T, 'thermostat': 'shift'}
+    l['loadstep'][0]['f_out'] = 1
+
+    for mode in ['normal','restart']:
+        if mode == 'restart':
+            l['loadstep'][0]['discretization']['t'] = 9.
+            l['loadstep'][0]['discretization']['N'] = 9
+            l['loadstep'][0]['f_restart'] = 9
+        else:
+            l['loadstep'][0]['discretization']['t'] = 10.
+            l['loadstep'][0]['discretization']['N'] = 10
+        l.save(tmp_path/f'{load}.yaml')
+
+        cmd = f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {mode}'
+        damask.util.run(cmd,wd=tmp_path)
+
+        if mode == 'restart':
+            l['loadstep'][0]['discretization']['t'] = 10.
+            l['loadstep'][0]['discretization']['N'] = 10
+            l.save(tmp_path/f'{load}.yaml')
+            damask.util.run(cmd+' -r 9',wd=tmp_path)
+
+    T_normal  = damask.Result(tmp_path/'normal.hdf5').view(increments=-1).get('T')
+    T_restart = damask.Result(tmp_path/'restart.hdf5').view(increments=-1).get('T')
+    assert_allclose(T_normal,T_restart,rtol=1.e-5)
+
+
+@pytest.mark.parametrize('thermal_bc,msg',[
+    ({'T': 400.0},                                         'missing_thermostat'),
+    ({'T': 400.0, 'dot_T': 0.1, 'thermostat': 'shift'},    'both_T_and_dotT'),
+    ({'T': 400.0, 'thermostat': 'average'},                'invalid_thermostat'),
+])
+def test_thermal_BC_invalid(res_path,tmp_path,copy_files,thermal_bc,msg):
+    grid = 'simple'
+    load = 'no_deformation'
+    material = 'material'
+    job = f'{grid}_{load}_{msg}'
+    copy_files(res_path,tmp_path,[f'{material}.yaml'])
+
+    mat = damask.ConfigMaterial.load(tmp_path/f'{material}.yaml')
+    del mat['phase']['heatsource']
+    del mat['material'][1]
+    mat['phase']['matrix']['thermal']['K_11'] = 0.0
+    mat.save(tmp_path/f'{material}.yaml')
+
+    g = damask.GeomGrid(np.zeros((2,2,2)),np.ones(3)*1.e-6)
+    g.initial_conditions['T'] = 300.
+    g.save(tmp_path/grid)
+
+    l = damask.LoadcaseGrid.load(res_path/f'{load}.yaml')
+    l['loadstep'][0]['boundary_conditions']['thermal'] = thermal_bc
+    l['loadstep'][0]['discretization']['t'] = 10.
+    l['loadstep'][0]['discretization']['N'] = 1
+    l.save(tmp_path/f'{load}.yaml')
+
+    with pytest.raises(RuntimeError):
+        damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)

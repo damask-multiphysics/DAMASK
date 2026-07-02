@@ -3,6 +3,7 @@
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Fotios Tsiolis, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Driver controlling inner and outer load case looping of the various spectral solvers
 !> @details doing cutbacking, forwarding in case of restart, reporting statistics, writing
 !> results
@@ -46,6 +47,7 @@ program DAMASK_grid
     type(tRotation)          :: rot                                                                 !< rotation of BC
     type(tBCmech) :: stress, &                                                           !< stress BC
                                 deformation                                                         !< deformation BC (dot_F, F, or L)
+    type(tBCthermal) ::         temperature                                                         !< thermal BC; unallocated = free
     real(pREAL) ::              t, &                                                                !< length of increment
                                 r                                                                   !< ratio of geometric progression
     integer ::                  N, &                                                                !< number of increments
@@ -322,7 +324,13 @@ program DAMASK_grid
                         stress_BC      = loadCases(l)%stress, &
                         rotation_BC    = loadCases(l)%rot)
 
-              case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward(cutBack, Delta_t)
+              case(FIELD_THERMAL_ID)
+                if (allocated(loadCases(l)%temperature%myType)) then
+                  call grid_thermal_spectral_forward(cutBack, guess, Delta_t, Delta_t_prev, t_remaining, &
+                                                     loadCases(l)%temperature)
+                else
+                  call grid_thermal_spectral_forward(cutBack, guess, Delta_t, Delta_t_prev, t_remaining)
+                end if
               case(FIELD_DAMAGE_ID); call grid_damage_spectral_forward(cutBack)
               case(FIELD_CHEMICAL_ID); call grid_chemical_FDM_forward(cutBack)
             end select
@@ -474,6 +482,7 @@ function parseLoadsteps(load_steps) result(loadCases)
     load_step, &
     step_bc, &
     step_mech, &
+    step_therm, &
     step_discretization
 
 
@@ -486,10 +495,14 @@ function parseLoadsteps(load_steps) result(loadCases)
     readMech: do m = 1, size(step_mech)
       select case (step_mech%key(m))
         case ('L','dot_F','F_dot','F')                                                              ! assign values for the deformation BC matrix
+          if (allocated(loadCases(l)%deformation%myType)) &
+            call IO_error(830_pI16, 'load case', l, 'only one of L, dot_F, or F allowed in mechanical BC', emph=[2])
           loadCases(l)%deformation%myType = step_mech%key(m)
           if (loadCases(l)%deformation%myType == 'F_dot') loadCases(l)%deformation%myType = 'dot_F'
           call getMaskedTensor(loadCases(l)%deformation%values,loadCases(l)%deformation%mask,step_mech%get_list(m))
         case ('dot_P','P','P_dot')
+          if (loadCases(l)%stress%myType /= '') &
+            call IO_error(830_pI16, 'load case', l, 'only one of P or dot_P allowed in mechanical BC', emph=[2])
           loadCases(l)%stress%myType = step_mech%key(m)
           if (loadCases(l)%stress%myType == 'P_dot') loadCases(l)%stress%myType = 'dot_P'
           call getMaskedTensor(loadCases(l)%stress%values,loadCases(l)%stress%mask,step_mech%get_list(m))
@@ -498,6 +511,26 @@ function parseLoadsteps(load_steps) result(loadCases)
     end do readMech
     if (.not. allocated(loadCases(l)%deformation%myType)) &
       call IO_error(830_pI16, 'load case', l, 'is incomplete: L, F_dot/dot_F, or F missing', emph=[2])
+
+    if (step_bc%contains('thermal')) then
+      step_therm => step_bc%get_dict('thermal')
+      readTherm: do m = 1, size(step_therm)
+        select case (step_therm%key(m))
+          case ('T','dot_T')
+            if (allocated(loadCases(l)%temperature%myType)) &
+              call IO_error(830_pI16, 'load case', l, 'only one of T or dot_T allowed in thermal BC', emph=[2])
+            loadCases(l)%temperature%myType = step_therm%key(m)
+            loadCases(l)%temperature%value  = step_therm%get_asReal(m)
+          case ('thermostat')
+            loadCases(l)%temperature%thermostat = step_therm%get_asStr(m)
+            if (loadCases(l)%temperature%thermostat /= 'shift' .and. &
+                loadCases(l)%temperature%thermostat /= 'scale') &
+              call IO_error(830_pI16, 'load case', l, 'thermal BC thermostat must be shift or scale', emph=[2])
+        end select
+      end do readTherm
+      if (allocated(loadCases(l)%temperature%myType) .and. .not. allocated(loadCases(l)%temperature%thermostat)) &
+        call IO_error(830_pI16, 'load case', l, 'thermal BC requires thermostat: shift or scale', emph=[2])
+    end if
 
     step_discretization => load_step%get_dict('discretization')
     loadCases(l)%t = step_discretization%get_asReal('t')
@@ -549,6 +582,15 @@ function parseLoadsteps(load_steps) result(loadCases)
       if (any(dNeq(loadCases(l)%rot%asMatrix(), math_I3))) &
         write(IO_STDOUT,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'R:',&
                  transpose(loadCases(l)%rot%asMatrix())
+
+      if (allocated(loadCases(l)%temperature%myType)) then
+        if (loadCases(l)%temperature%myType == 'T') then
+          print'(2x,a,1x,f0.3)', 'T / K:', loadCases(l)%temperature%value
+        else
+          print'(2x,a,1x,f0.3)', 'dot_T / K/s:', loadCases(l)%temperature%value
+        end if
+        print'(2x,a,1x,a)', 'thermal BC thermostat:', loadCases(l)%temperature%thermostat
+      end if
 
       if (solver%get_asStr('mechanical') == 'spectral_Galerkin' .and. step_mech%contains('R')) &
         call IO_error(830_pI16, 'load case', l, 'contains rotation', 'R', &
