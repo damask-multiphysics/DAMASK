@@ -742,7 +742,7 @@ function tList_get(self,idx) result(node)
 
 
   if (idx < 1 .or. idx > size(self)) &
-    call IO_error(150,ext_msg='tList_get @ '//IO_intAsStr(i)//' of '//IO_intAsStr(size(self)) )
+    call IO_error(150,ext_msg='tList_get @ '//IO_intAsStr(idx)//' of '//IO_intAsStr(size(self)) )
   item => self%first
   do i = 2, idx
     item => item%next
