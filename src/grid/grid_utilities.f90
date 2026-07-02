@@ -36,6 +36,12 @@ module grid_utilities
     character(len=:), allocatable :: myType
   end type tBCmech
 
+  type, public :: tBCthermal                                                                        !< thermal boundary condition parameters
+    real(pREAL)                   :: value = 0.0_pREAL                                              !< temperature [K] or rate [K/s]
+    character(len=:), allocatable :: thermostat                                                     !< 'shift' or 'scale'
+    character(len=:), allocatable :: myType                                                         !< 'T' or 'dot_T'; unallocated = free
+  end type tBCthermal
+
   type, public :: tSolutionParams
     real(pREAL), dimension(3,3) :: stress_BC
     logical, dimension(3,3)     :: stress_mask
@@ -47,7 +53,8 @@ module grid_utilities
     utilities_maskedCompliance, &
     utilities_constitutiveResponse, &
     utilities_calculateRate, &
-    utilities_forwardTensorField
+    utilities_forwardTensorField, &
+    utilities_forwardScalarField
 
 contains
 
@@ -247,5 +254,41 @@ function utilities_forwardTensorField(Delta_t,field_lastinc,rate,aim)
   end if
 
 end function utilities_forwardTensorField
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Forward a scalar field with a pointwise given rate; if aim and thermostat are given,
+!> ensures that the average matches the aim.
+!--------------------------------------------------------------------------------------------------
+function utilities_forwardScalarField(Delta_t,field_lastinc,rate,aim,method)
+
+  real(pREAL), intent(in) :: &
+    Delta_t                                                                                         !< Delta_t of current step
+  real(pREAL), intent(in), dimension(cells(1),cells(2),cells3) :: &
+    field_lastinc, &                                                                                !< initial field
+    rate                                                                                            !< rate by which to forward
+  real(pREAL),     intent(in), optional :: aim                                                      !< average field value aim
+  character(*),    intent(in), optional :: method                                                   !< 'shift' or 'scale'
+
+  real(pREAL), dimension(cells(1),cells(2),cells3) :: &
+    utilities_forwardScalarField
+  real(pREAL) :: fieldMean                                                                          !< global mean of forwarded field
+  integer(MPI_INTEGER_KIND) :: err_MPI
+
+
+  utilities_forwardScalarField = field_lastinc + rate*Delta_t
+  if (present(aim)) then
+    fieldMean = sum(utilities_forwardScalarField)*wgt
+    call MPI_Allreduce(MPI_IN_PLACE,fieldMean,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+    call parallelization_chkerr(err_MPI)
+    select case (method)
+      case ('shift')
+        utilities_forwardScalarField = utilities_forwardScalarField + (aim - fieldMean)
+      case ('scale')
+        utilities_forwardScalarField = utilities_forwardScalarField * (aim/fieldMean)
+    end select
+  end if
+
+end function utilities_forwardScalarField
 
 end module grid_utilities
