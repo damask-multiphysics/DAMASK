@@ -9,14 +9,13 @@ https://doi.org/10.21105/joss.07164
 """
 
 import logging as _logging
-import re as _re
 from pathlib import Path as _Path
 
 _logging.basicConfig(level=_logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 name = 'damask'
 with open(_Path(__file__).parent/'VERSION') as _f:
-    version = _re.sub(r'^v','',_f.readline().strip())
+    version = _f.readline().strip().removeprefix('v')
     __version__ = version
 
 from .                 import _typehints       # noqa

@@ -489,14 +489,9 @@ class Rotation:
         def rotate_vector(q,vector):
             p_m = q[...,1:]
             q_m = q[...,0]
-            A = q_m**2 - np.einsum('...i,...i',p_m,p_m)
-            B = 2. * np.einsum('...i,...i',p_m,vector)
-            C = 2. * _P * q_m
-            return np.stack([A * vector[...,i] +
-                             B *    p_m[...,i] +
-                             C *  ( p_m[...,(i+1)%3]*vector[...,(i+2)%3]
-                                   -p_m[...,(i+2)%3]*vector[...,(i+1)%3])
-                            for i in [0,1,2]],axis=-1)
+            return  np.expand_dims(q_m**2 - np.einsum('...i,...i',p_m,p_m), -1) * vector \
+                  + np.expand_dims(2. * np.einsum('...i,...i',p_m,vector), -1) * p_m \
+                  + np.expand_dims(2. * _P * q_m, -1) * np.cross(p_m,vector)
 
         if isinstance(other, np.ndarray):
             obs = (util.shapeblender(self.shape,other.shape[:-1])+other.shape[-1:])[self.ndim:]
@@ -1725,28 +1720,28 @@ class Rotation:
                  2.  * np.sqrt( 1. + om[...,1,1] - om[...,2,2] - om[...,0,0]),
                  2.  * np.sqrt( 1. + om[...,2,2] - om[...,0,0] - om[...,1,1] )
                 ])
-            qu = np.where((trace>0)[...,np.newaxis],
-                          np.stack([0.25 / s[0],
-                                   (om[...,2,1] - om[...,1,2]) * s[0],
-                                   (om[...,0,2] - om[...,2,0]) * s[0],
-                                   (om[...,1,0] - om[...,0,1]) * s[0]], axis=-1),
-                          np.where((om[...,0,0] > np.maximum(om[...,1,1],om[...,2,2]))[...,np.newaxis],
-                                   np.stack([(om[...,2,1] - om[...,1,2]) / s[1],
-                                             0.25 * s[1],
-                                             (om[...,0,1] + om[...,1,0]) / s[1],
-                                             (om[...,0,2] + om[...,2,0]) / s[1]], axis=-1),
-                                   np.where((om[...,1,1] > om[...,2,2])[...,np.newaxis],
-                                            np.stack([(om[...,0,2] - om[...,2,0]) / s[2],
-                                                      (om[...,0,1] + om[...,1,0]) / s[2],
-                                                      0.25 * s[2],
-                                                      (om[...,1,2] + om[...,2,1]) / s[2]], axis=-1),
-                                            np.stack([(om[...,1,0] - om[...,0,1]) / s[3],
-                                                      (om[...,0,2] + om[...,2,0]) / s[3],
-                                                      (om[...,1,2] + om[...,2,1]) / s[3],
-                                                      0.25 * s[3]], axis=-1),
-                                           )
-                                  )
-                         )*np.array([1.,_P,_P,_P])
+
+            qu = np.select(
+                [(trace > 0)[...,np.newaxis],
+                 (om[...,0,0] > np.maximum(om[...,1,1], om[...,2,2]))[...,np.newaxis],
+                 (om[...,1,1] > om[...,2,2])[...,np.newaxis]],
+                [np.stack([0.25 / s[0],
+                           (om[...,2,1] - om[...,1,2]) * s[0],
+                           (om[...,0,2] - om[...,2,0]) * s[0],
+                           (om[...,1,0] - om[...,0,1]) * s[0]], axis=-1),
+                 np.stack([(om[...,2,1] - om[...,1,2]) / s[1],
+                           0.25 * s[1],
+                           (om[...,0,1] + om[...,1,0]) / s[1],
+                           (om[...,0,2] + om[...,2,0]) / s[1]], axis=-1),
+                 np.stack([(om[...,0,2] - om[...,2,0]) / s[2],
+                           (om[...,0,1] + om[...,1,0]) / s[2],
+                           0.25 * s[2],
+                           (om[...,1,2] + om[...,2,1]) / s[2]], axis=-1)],
+                default=np.stack([(om[...,1,0] - om[...,0,1]) / s[3],
+                                  (om[...,0,2] + om[...,2,0]) / s[3],
+                                  (om[...,1,2] + om[...,2,1]) / s[3],
+                                  0.25 * s[3]], axis=-1)
+                          )*np.array([1.,_P,_P,_P])
             qu[qu[...,0] < 0.] *= -1.
         return qu
 
@@ -2547,7 +2542,8 @@ class Rotation:
         order = {'forward': np.array([[0,1,2],[1,2,0],[2,0,1]]),
                  'backward':np.array([[0,1,2],[2,0,1],[1,2,0]])}
 
-        p = np.where(np.maximum(np.abs(xyz[...,0]),np.abs(xyz[...,1])) <= np.abs(xyz[...,2]),0,
-                     np.where(np.maximum(np.abs(xyz[...,1]),np.abs(xyz[...,2])) <= np.abs(xyz[...,0]),1,2))
+        p = np.select([np.maximum(np.abs(xyz[...,0]),np.abs(xyz[...,1])) <= np.abs(xyz[...,2]),
+                       np.maximum(np.abs(xyz[...,1]),np.abs(xyz[...,2])) <= np.abs(xyz[...,0])],
+                      [0, 1], default=2)
 
         return order[direction][p]

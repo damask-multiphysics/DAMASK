@@ -141,14 +141,15 @@ class VTK:
 
     def copy(self):
         """Return a deep copy."""
-        if   isinstance(self.vtk_data,vtkImageData):
-            dup = vtkImageData()
-        elif isinstance(self.vtk_data,vtkUnstructuredGrid):
-            dup = vtkUnstructuredGrid()
-        elif isinstance(self.vtk_data,vtkPolyData):
-            dup = vtkPolyData()
-        elif isinstance(self.vtk_data,vtkRectilinearGrid):
-            dup = vtkRectilinearGrid()
+        match self.vtk_data:
+            case vtkImageData():
+                dup = vtkImageData()
+            case vtkUnstructuredGrid():
+                dup = vtkUnstructuredGrid()
+            case vtkPolyData():
+                dup = vtkPolyData()
+            case vtkRectilinearGrid():
+                dup = vtkRectilinearGrid()
 
         dup.DeepCopy(self.vtk_data)
 

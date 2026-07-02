@@ -1101,27 +1101,26 @@ class Orientation(Rotation,Crystal):
 
         with np.errstate(invalid='ignore'):
             # using '*'/prod for 'and'
-            if   self.family == 'cubic':
-                return (np.prod(np.sqrt(2)-1. >= rho_abs,axis=-1) *
-                                   (1. >= np.sum(rho_abs,axis=-1))).astype(bool)
-            if self.family == 'hexagonal':
-                return (np.prod(1.  >= rho_abs,axis=-1) *
-                                (2. >= np.sqrt(3)*rho_abs[...,0] + rho_abs[...,1]) *
-                                (2. >= np.sqrt(3)*rho_abs[...,1] + rho_abs[...,0]) *
-                                (2. >= np.sqrt(3)                + rho_abs[...,2])).astype(bool)
-            if self.family == 'tetragonal':
-                return (np.prod(1.  >= rho_abs[...,:2],axis=-1) *
-                        (np.sqrt(2) >= rho_abs[...,0] + rho_abs[...,1]) *
-                        (np.sqrt(2) >= rho_abs[...,2] + 1.)).astype(bool)
-            if self.family == 'orthorhombic':
-                return (np.prod(1. >= rho_abs,axis=-1)).astype(bool)
-            if self.family == 'monoclinic':
-                return np.logical_or(   1. >= rho_abs[...,1],
-                                     np.isnan(rho_abs[...,1]))
-            if self.family == 'triclinic':
-                return np.ones(rho_abs.shape[:-1]).astype(bool)
-
-            raise TypeError(f'unknown symmetry "{self.family}"')
+            match self.family:
+                case 'cubic':
+                    return (np.prod(np.sqrt(2)-1. >= rho_abs,axis=-1) *
+                                       (1. >= np.sum(rho_abs,axis=-1))).astype(bool)
+                case 'hexagonal':
+                    return (np.prod(1.  >= rho_abs,axis=-1) *
+                                    (2. >= np.sqrt(3)*rho_abs[...,0] + rho_abs[...,1]) *
+                                    (2. >= np.sqrt(3)*rho_abs[...,1] + rho_abs[...,0]) *
+                                    (2. >= np.sqrt(3)                + rho_abs[...,2])).astype(bool)
+                case 'tetragonal':
+                    return (np.prod(1.  >= rho_abs[...,:2],axis=-1) *
+                            (np.sqrt(2) >= rho_abs[...,0] + rho_abs[...,1]) *
+                            (np.sqrt(2) >= rho_abs[...,2] + 1.)).astype(bool)
+                case 'orthorhombic':
+                    return (np.prod(1. >= rho_abs,axis=-1)).astype(bool)
+                case 'monoclinic':
+                    return np.logical_or(   1. >= rho_abs[...,1],
+                                         np.isnan(rho_abs[...,1]))
+                case 'triclinic':
+                    return np.ones(rho_abs.shape[:-1]).astype(bool)
 
 
     @property
@@ -1145,13 +1144,20 @@ class Orientation(Rotation,Crystal):
                     (np.isclose(c[2],v[...,2]) | (v[...,2] > c[2]))).astype(bool)
 
         rho = self.as_Rodrigues_vector(compact=True)
-        return larger_or_equal(rho,
-                                     [rho[...,1],           rho[...,2],0] if self.family == 'cubic'
-                                else [rho[...,1]*np.sqrt(3),0,         0] if self.family == 'hexagonal'
-                                else [rho[...,1],           0,         0] if self.family == 'tetragonal'
-                                else [0,                    0,         0] if self.family == 'orthorhombic'
-                                else [-np.inf,              0,         0] if self.family == 'monoclinic'
-                                else [-np.inf,        -np.inf,   -np.inf]) & self.in_FZ
+        match self.family:
+            case 'cubic':
+                c = [rho[...,1],            rho[...,2], 0]
+            case 'hexagonal':
+                c = [rho[...,1]*np.sqrt(3), 0,          0]
+            case 'tetragonal':
+                c = [rho[...,1],            0,          0]
+            case 'orthorhombic':
+                c = [0,                     0,          0]
+            case 'monoclinic':
+                c = [-np.inf,               0,          0]
+            case 'triclinic':
+                c = [-np.inf,              -np.inf,    -np.inf]
+        return larger_or_equal(rho, c) & self.in_FZ
 
 
     @overload
@@ -1274,60 +1280,61 @@ class Orientation(Rotation,Crystal):
         """
         q_abs = np.abs((self*~other).quaternion)
 
-        if   'triclinic' == other.family == self.family:
-            trace_max = q_abs[...,0:1]
-
-        elif 'monoclinic' == other.family == self.family:
-            trace_max = np.maximum(q_abs[...,0:1],
-                                   q_abs[...,2:3])
-
-        elif 'orthorhombic' == other.family == self.family:
-            trace_max = np.maximum.reduce([q_abs[...,0:1],
-                                           q_abs[...,1:2],
-                                           q_abs[...,2:3],
-                                           q_abs[...,3:4]])
-
-        elif 'tetragonal' == other.family == self.family:
-            m1,m2,m3,m4 = np.split(q_abs,4,axis=-1)
-
-            trace_max = np.maximum.reduce([m1,m2,m3,m4,
-                                           (m1+m4)*np.sqrt(2.)/2.,
-                                           (m2+m3)*np.sqrt(2.)/2.])
-
-        elif 'hexagonal' == other.family == self.family:
-            m1,m2,m3,m4 = np.split(q_abs,4,axis=-1)
-
-            mask = m1 < m4
-            m1[mask],m4[mask] = m4[mask],m1[mask]
-            mask = m2 < m3
-            m2[mask],m3[mask] = m3[mask],m2[mask]
-
-            trace_max = np.maximum.reduce([m1,m2,
-                                           m1*np.sqrt(3.)/2.+m4*.5,
-                                           m2*np.sqrt(3.)/2.+m3*.5])
-
-        elif 'cubic' == other.family == self.family:
-            m1,m2,m3,m4 = np.split(q_abs,4,axis=-1)
-
-            trace_max = np.sum(q_abs,axis=-1,keepdims=True)*.5
-
-            mask = m1 < m2
-            m1[mask],m2[mask] = m2[mask],m1[mask]
-            mask = m3 < m4
-            m3[mask],m4[mask] = m4[mask],m3[mask]
-
-            mask1 = m1 > m3
-            mask2 = np.logical_and(mask1,m2<m3)
-            mask3 = np.logical_not(mask1)
-
-            m2[mask2] = m3[mask2]
-            m2[mask3] = np.where(m4[mask3]<m1[mask3],m1[mask3],m4[mask3])
-            m1[mask3] = m3[mask3]
-
-            trace_max = np.maximum.reduce([trace_max,m1,(m1+m2)*np.sqrt(2.)/2.])
-
-        else:
+        if self.family != other.family:
             return self.disorientation(other).as_axis_angle(pair=True)[1]
+
+        match self.family:
+            case 'cubic':
+                m1,m2,m3,m4 = np.split(q_abs,4,axis=-1)
+
+                trace_max = np.sum(q_abs,axis=-1,keepdims=True)*.5
+
+                mask = m1 < m2
+                m1[mask],m2[mask] = m2[mask],m1[mask]
+                mask = m3 < m4
+                m3[mask],m4[mask] = m4[mask],m3[mask]
+
+                mask1 = m1 > m3
+                mask2 = np.logical_and(mask1,m2<m3)
+                mask3 = np.logical_not(mask1)
+
+                m2[mask2] = m3[mask2]
+                m2[mask3] = np.where(m4[mask3]<m1[mask3],m1[mask3],m4[mask3])
+                m1[mask3] = m3[mask3]
+
+                trace_max = np.maximum.reduce([trace_max,m1,(m1+m2)*np.sqrt(2.)/2.])
+
+            case 'hexagonal':
+                m1,m2,m3,m4 = np.split(q_abs,4,axis=-1)
+
+                mask = m1 < m4
+                m1[mask],m4[mask] = m4[mask],m1[mask]
+                mask = m2 < m3
+                m2[mask],m3[mask] = m3[mask],m2[mask]
+
+                trace_max = np.maximum.reduce([m1,m2,
+                                               m1*np.sqrt(3.)/2.+m4*.5,
+                                               m2*np.sqrt(3.)/2.+m3*.5])
+
+            case 'tetragonal':
+                m1,m2,m3,m4 = np.split(q_abs,4,axis=-1)
+
+                trace_max = np.maximum.reduce([m1,m2,m3,m4,
+                                               (m1+m4)*np.sqrt(2.)/2.,
+                                               (m2+m3)*np.sqrt(2.)/2.])
+
+            case 'orthorhombic':
+                trace_max = np.maximum.reduce([q_abs[...,0:1],
+                                               q_abs[...,1:2],
+                                               q_abs[...,2:3],
+                                               q_abs[...,3:4]])
+
+            case 'monoclinic':
+                trace_max = np.maximum(q_abs[...,0:1],
+                                       q_abs[...,2:3])
+
+            case 'triclinic':
+                trace_max = q_abs[...,0:1]
 
         return 2.*np.arccos(np.clip(trace_max[...,0].round(15),None,1.))
 
