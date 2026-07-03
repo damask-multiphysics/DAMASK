@@ -1737,6 +1737,10 @@ subroutine initialize_write(myStart, totalShape, dset_id, filespace_id, memspace
   !> @brief Determine chunk layout.
   !------------------------------------------------------------------------------------------------
   pure function get_chunks(totalShape,chunkSize)
+#ifndef __GFORTRAN__
+    use HDF5
+    import, none
+#endif
 
     integer(HSIZE_T), dimension(:), intent(in)    :: totalShape
     integer(HSIZE_T),               intent(in)    :: chunkSize

@@ -84,13 +84,13 @@ program DAMASK_grid
     cutBack = .false.,&
     sig
   integer :: &
-    i, j, field, &
+    field, &
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
     stepFraction = 0, &                                                                             !< fraction of current time interval
     l = 0, &                                                                                        !< current load case
     inc, &                                                                                          !< current increment in current load case
     totalIncsCounter = 0, &                                                                         !< total # of increments
-    statUnit = 0, &                                                                                 !< file unit for statistics output
+    unit_stat = 0, &                                                                                !< file unit for statistics output
     stagIter, &
     nActiveFields = 0, &
     maxCutBack, &                                                                                   !< max number of cut backs
@@ -256,10 +256,10 @@ program DAMASK_grid
     fname = trim(CLI_jobName)//'.sta'
     inquire(file=fname,exist=exists)
     writeHeader: if (CLI_restartInc == -1 .or. .not. exists) then
-      open(newunit=statUnit,file=fname,form='FORMATTED',status='REPLACE')
-      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded StagIterationsNeeded'
+      open(newunit=unit_stat,file=fname,form='FORMATTED',status='REPLACE')
+      write(unit_stat,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded StagIterationsNeeded'
     else writeHeader
-      open(newunit=statUnit,file=fname,form='FORMATTED', position='APPEND', status='OLD')
+      open(newunit=unit_stat,file=fname,form='FORMATTED', position='APPEND', status='OLD')
     end if writeHeader
   end if
 
@@ -269,7 +269,7 @@ program DAMASK_grid
     call materialpoint_result(0,0.0_pREAL)
   end if writeUndeformed
 
-  loadCases = parseLoadSteps(load%get_list('loadstep'))
+  loadCases = parse_and_print_load_cases(load%get_list('loadstep'), solver)
 
   loadCaseLooping: do l = 1, size(loadCases)
     t_0 = t                                                                                         ! load case start time
@@ -374,9 +374,9 @@ program DAMASK_grid
             cutBack = .false.
             guess = .true.                                                                          ! start guessing after first converged (sub)inc
             if (worldrank == 0) then
-              write(statUnit,*) totalIncsCounter, t, cutBackLevel, &
+              write(unit_stat,*) totalIncsCounter, t, cutBackLevel, &
                                 solres(1)%converged, solres(1)%iterationsNeeded, StagIter - 1
-              flush(statUnit)
+              flush(unit_stat)
             end if
           elseif (cutBackLevel < maxCutBack) then                                                   ! further cutbacking tolerated?
             cutBack = .true.
@@ -386,7 +386,7 @@ program DAMASK_grid
             Delta_t = Delta_t/real(subStepFactor,pREAL)                                             ! cut timestep
             print'(/,1x,a)', 'cutting back '
           else                                                                                      ! no more options to continue
-            if (worldrank == 0) close(statUnit)
+            if (worldrank == 0) close(unit_stat)
             call IO_error(950)
           end if
 
@@ -443,18 +443,187 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
   print'(/,1x,a)', '###########################################################################'
-  if (worldrank == 0) close(statUnit)
+  if (worldrank == 0) close(unit_stat)
 
   call quit(0)                                                                                      ! no complains ;)
 
-
 contains
 
-subroutine getMaskedTensor(values,mask,tensor)
+
+function parse_and_print_load_cases(load_steps, solver) result(load_cases)
+
+#ifndef __GFORTRAN__
+  use prec
+  use types
+  use IO
+  use math
+  use parallelization
+
+  import, only: tLoadCase, get_masked_tensor
+#endif
+
+  type(tList), intent(in), target :: load_steps
+  type(tDict), pointer, intent(in) :: solver
+  type(tLoadCase), allocatable, dimension(:) :: load_cases                                          !< array of all load cases
+
+  integer :: i,j, l,m
+  type(tDict), pointer :: &
+    load_step, &
+    step_bc, &
+    step_mech, &
+    step_therm, &
+    step_discretization
+
+
+  allocate(load_cases(size(load_steps)))
+  do l = 1, size(load_steps)
+    load_step => load_steps%get_dict(l)
+    step_bc   => load_step%get_dict('boundary_conditions')
+    step_mech => step_bc%get_dict('mechanical')
+    load_cases(l)%stress%myType=''
+    readMech: do m = 1, size(step_mech)
+      select case (step_mech%key(m))
+        case ('L','dot_F','F_dot','F')                                                              ! assign values for the deformation BC matrix
+          if (allocated(load_cases(l)%deformation%myType)) &
+            call IO_error(830_pI16, 'load case', l, 'only one of L, dot_F, or F allowed in mechanical BC', emph=[2])
+          load_cases(l)%deformation%myType = step_mech%key(m)
+          if (load_cases(l)%deformation%myType == 'F_dot') load_cases(l)%deformation%myType = 'dot_F'
+          call get_masked_tensor(load_cases(l)%deformation%values,load_cases(l)%deformation%mask,step_mech%get_list(m))
+        case ('dot_P','P','P_dot')
+          if (load_cases(l)%stress%myType /= '') &
+            call IO_error(830_pI16, 'load case', l, 'only one of P or dot_P allowed in mechanical BC', emph=[2])
+          load_cases(l)%stress%myType = step_mech%key(m)
+          if (load_cases(l)%stress%myType == 'P_dot') load_cases(l)%stress%myType = 'dot_P'
+          call get_masked_tensor(load_cases(l)%stress%values,load_cases(l)%stress%mask,step_mech%get_list(m))
+      end select
+      call load_cases(l)%rot%fromAxisAngle(step_mech%get_as1dReal('R',defaultVal = real([0.0,0.0,1.0,0.0],pREAL)),degrees=.true.)
+    end do readMech
+    if (.not. allocated(load_cases(l)%deformation%myType)) &
+      call IO_error(830_pI16, 'load case', l, 'is incomplete: L, F_dot/dot_F, or F missing', emph=[2])
+
+    if (step_bc%contains('thermal')) then
+      step_therm => step_bc%get_dict('thermal')
+      readTherm: do m = 1, size(step_therm)
+        select case (step_therm%key(m))
+          case ('T','dot_T')
+            if (allocated(load_cases(l)%temperature%myType)) &
+              call IO_error(830_pI16, 'load case', l, 'only one of T or dot_T allowed in thermal BC', emph=[2])
+            load_cases(l)%temperature%myType = step_therm%key(m)
+            load_cases(l)%temperature%value  = step_therm%get_asReal(m)
+          case ('thermostat')
+            load_cases(l)%temperature%thermostat = step_therm%get_asStr(m)
+            if (load_cases(l)%temperature%thermostat /= 'shift' .and. &
+                load_cases(l)%temperature%thermostat /= 'scale') &
+              call IO_error(830_pI16, 'load case', l, 'thermal BC thermostat must be shift or scale', emph=[2])
+        end select
+      end do readTherm
+      if (allocated(load_cases(l)%temperature%myType) .and. .not. allocated(load_cases(l)%temperature%thermostat)) &
+        call IO_error(830_pI16, 'load case', l, 'thermal BC requires thermostat: shift or scale', emph=[2])
+    end if
+
+    step_discretization => load_step%get_dict('discretization')
+    load_cases(l)%t = step_discretization%get_asReal('t')
+    load_cases(l)%N = step_discretization%get_asInt  ('N')
+    load_cases(l)%r = step_discretization%get_asReal('r',defaultVal= 1.0_pREAL)
+
+    load_cases(l)%f_restart = load_step%get_asInt('f_restart', defaultVal=huge(0))
+    if (load_step%get_asStr('f_out',defaultVal='n/a') == 'none') then
+      load_cases(l)%f_out = huge(0)
+    else
+      load_cases(l)%f_out = load_step%get_asInt('f_out', defaultVal=1)
+    end if
+    load_cases(l)%estimate_rate = load_step%get_asBool('estimate_rate',defaultVal=.true.)
+
+    reportAndCheck: if (worldrank == 0) then
+      print'(/,1x,a,1x,i0)', 'load case:', l
+      print'(2x,a,1x,l1)', 'estimate_rate:', load_cases(l)%estimate_rate
+      if (load_cases(l)%deformation%myType == 'F') then
+        print'(2x,a)', 'F:'
+      else
+        print'(2x,a)', load_cases(l)%deformation%myType//' / 1/s:'
+      end if
+      do i = 1, 3; do j = 1, 3
+        if (load_cases(l)%deformation%mask(i,j)) then
+          write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
+        else
+          write(IO_STDOUT,'(2x,f12.7)',advance='no') load_cases(l)%deformation%values(i,j)
+        end if
+        end do; write(IO_STDOUT,'(/)',advance='no')
+      end do
+      if (any(load_cases(l)%stress%mask .eqv. load_cases(l)%deformation%mask)) &
+        call IO_error(830_pI16, 'mask consistency violated in load case', l, emph=[2])
+      if (any(.not.(load_cases(l)%stress%mask .or. transpose(load_cases(l)%stress%mask)) .and. (math_I3<1))) &
+        call IO_error(830_pI16, 'mixed boundary conditions allow rotation in load case', l, emph=[2])
+
+      if (load_cases(l)%stress%myType == 'P')     print'(2x,a)', 'P / MPa:'
+      if (load_cases(l)%stress%myType == 'dot_P') print'(2x,a)', 'dot_P / MPa/s:'
+
+      if (load_cases(l)%stress%myType /= '') then
+        do i = 1, 3; do j = 1, 3
+          if (load_cases(l)%stress%mask(i,j)) then
+            write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
+          else
+            write(IO_STDOUT,'(2x,f12.4)',advance='no') load_cases(l)%stress%values(i,j)*1e-6_pREAL
+          end if
+          end do; write(IO_STDOUT,'(/)',advance='no')
+        end do
+      end if
+      if (any(dNeq(load_cases(l)%rot%asMatrix(), math_I3))) &
+        write(IO_STDOUT,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'R:',&
+                 transpose(load_cases(l)%rot%asMatrix())
+
+      if (allocated(load_cases(l)%temperature%myType)) then
+        if (load_cases(l)%temperature%myType == 'T') then
+          print'(2x,a,1x,f0.3)', 'T / K:', load_cases(l)%temperature%value
+        else
+          print'(2x,a,1x,f0.3)', 'dot_T / K/s:', load_cases(l)%temperature%value
+        end if
+        print'(2x,a,1x,a)', 'thermal BC thermostat:', load_cases(l)%temperature%thermostat
+      end if
+
+      if (solver%get_asStr('mechanical') == 'spectral_Galerkin' .and. step_mech%contains('R')) &
+        call IO_error(830_pI16, 'load case', l, 'contains rotation', 'R', &
+                      'which is not supported when using the Galerkin solver', emph=[2,4])
+      if (load_cases(l)%r <= 0.0_pREAL) &
+        call IO_error(830_pI16, 'non-positive ratio for geometric progression in load case', l, emph=[2])
+      if (load_cases(l)%t <= 0.0_pREAL) &
+        call IO_error(830_pI16, 'negative time increment in load case', l, emph=[2])
+      if (load_cases(l)%N < 1) &
+        call IO_error(830_pI16, 'non-positive number of increments in load case', l, emph=[2])
+      if (load_cases(l)%f_out < 1) &
+        call IO_error(830_pI16, 'non-positive result frequency in load case', l, emph=[2])
+      if (load_cases(l)%f_restart < 1) &
+        call IO_error(830_pI16, 'non-positive restart frequency in load case', l, emph=[2])
+
+      if (dEq(load_cases(l)%r,1.0_pREAL,1.e-9_pREAL)) then
+        print'(2x,a)', 'r: 1 (constant step width)'
+      else
+        print'(2x,a,1x,f0.3)', 'r:', load_cases(l)%r
+      end if
+      print'(2x,a,1x,f0.3)',   't:', load_cases(l)%t
+      print'(2x,a,1x,i0)',     'N:', load_cases(l)%N
+      if (load_cases(l)%f_out < huge(0)) &
+        print'(2x,a,1x,i0)',   'f_out:', load_cases(l)%f_out
+      if (load_cases(l)%f_restart < huge(0)) &
+        print'(2x,a,1x,i0)',   'f_restart:', load_cases(l)%f_restart
+
+    end if reportAndCheck
+  end do
+end function parse_and_print_load_cases
+
+
+subroutine get_masked_tensor(values,mask,tensor)
+
+#ifndef __GFORTRAN__
+  use prec
+  use types
+
+  import, none
+#endif
 
   real(pREAL), intent(out), dimension(3,3) :: values
   logical,     intent(out), dimension(3,3) :: mask
-  type(tList), pointer :: tensor
+  type(tList), pointer, intent(in) :: tensor
 
   type(tList), pointer :: row
   integer :: i,j
@@ -469,157 +638,6 @@ subroutine getMaskedTensor(values,mask,tensor)
     end do
   end do
 
-end subroutine getMaskedTensor
-
-
-function parseLoadsteps(load_steps) result(loadCases)
-
-  type(tList), intent(in), target :: load_steps
-  type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
-
-  integer :: l,m
-  type(tDict), pointer :: &
-    load_step, &
-    step_bc, &
-    step_mech, &
-    step_therm, &
-    step_discretization
-
-
-  allocate(loadCases(size(load_steps)))
-  do l = 1, size(load_steps)
-    load_step => load_steps%get_dict(l)
-    step_bc   => load_step%get_dict('boundary_conditions')
-    step_mech => step_bc%get_dict('mechanical')
-    loadCases(l)%stress%myType=''
-    readMech: do m = 1, size(step_mech)
-      select case (step_mech%key(m))
-        case ('L','dot_F','F_dot','F')                                                              ! assign values for the deformation BC matrix
-          if (allocated(loadCases(l)%deformation%myType)) &
-            call IO_error(830_pI16, 'load case', l, 'only one of L, dot_F, or F allowed in mechanical BC', emph=[2])
-          loadCases(l)%deformation%myType = step_mech%key(m)
-          if (loadCases(l)%deformation%myType == 'F_dot') loadCases(l)%deformation%myType = 'dot_F'
-          call getMaskedTensor(loadCases(l)%deformation%values,loadCases(l)%deformation%mask,step_mech%get_list(m))
-        case ('dot_P','P','P_dot')
-          if (loadCases(l)%stress%myType /= '') &
-            call IO_error(830_pI16, 'load case', l, 'only one of P or dot_P allowed in mechanical BC', emph=[2])
-          loadCases(l)%stress%myType = step_mech%key(m)
-          if (loadCases(l)%stress%myType == 'P_dot') loadCases(l)%stress%myType = 'dot_P'
-          call getMaskedTensor(loadCases(l)%stress%values,loadCases(l)%stress%mask,step_mech%get_list(m))
-      end select
-      call loadCases(l)%rot%fromAxisAngle(step_mech%get_as1dReal('R',defaultVal = real([0.0,0.0,1.0,0.0],pREAL)),degrees=.true.)
-    end do readMech
-    if (.not. allocated(loadCases(l)%deformation%myType)) &
-      call IO_error(830_pI16, 'load case', l, 'is incomplete: L, F_dot/dot_F, or F missing', emph=[2])
-
-    if (step_bc%contains('thermal')) then
-      step_therm => step_bc%get_dict('thermal')
-      readTherm: do m = 1, size(step_therm)
-        select case (step_therm%key(m))
-          case ('T','dot_T')
-            if (allocated(loadCases(l)%temperature%myType)) &
-              call IO_error(830_pI16, 'load case', l, 'only one of T or dot_T allowed in thermal BC', emph=[2])
-            loadCases(l)%temperature%myType = step_therm%key(m)
-            loadCases(l)%temperature%value  = step_therm%get_asReal(m)
-          case ('thermostat')
-            loadCases(l)%temperature%thermostat = step_therm%get_asStr(m)
-            if (loadCases(l)%temperature%thermostat /= 'shift' .and. &
-                loadCases(l)%temperature%thermostat /= 'scale') &
-              call IO_error(830_pI16, 'load case', l, 'thermal BC thermostat must be shift or scale', emph=[2])
-        end select
-      end do readTherm
-      if (allocated(loadCases(l)%temperature%myType) .and. .not. allocated(loadCases(l)%temperature%thermostat)) &
-        call IO_error(830_pI16, 'load case', l, 'thermal BC requires thermostat: shift or scale', emph=[2])
-    end if
-
-    step_discretization => load_step%get_dict('discretization')
-    loadCases(l)%t = step_discretization%get_asReal('t')
-    loadCases(l)%N = step_discretization%get_asInt  ('N')
-    loadCases(l)%r = step_discretization%get_asReal('r',defaultVal= 1.0_pREAL)
-
-    loadCases(l)%f_restart = load_step%get_asInt('f_restart', defaultVal=huge(0))
-    if (load_step%get_asStr('f_out',defaultVal='n/a') == 'none') then
-      loadCases(l)%f_out = huge(0)
-    else
-      loadCases(l)%f_out = load_step%get_asInt('f_out', defaultVal=1)
-    end if
-    loadCases(l)%estimate_rate = load_step%get_asBool('estimate_rate',defaultVal=.true.)
-
-    reportAndCheck: if (worldrank == 0) then
-      print'(/,1x,a,1x,i0)', 'load case:', l
-      print'(2x,a,1x,l1)', 'estimate_rate:', loadCases(l)%estimate_rate
-      if (loadCases(l)%deformation%myType == 'F') then
-        print'(2x,a)', 'F:'
-      else
-        print'(2x,a)', loadCases(l)%deformation%myType//' / 1/s:'
-      end if
-      do i = 1, 3; do j = 1, 3
-        if (loadCases(l)%deformation%mask(i,j)) then
-          write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
-        else
-          write(IO_STDOUT,'(2x,f12.7)',advance='no') loadCases(l)%deformation%values(i,j)
-        end if
-        end do; write(IO_STDOUT,'(/)',advance='no')
-      end do
-      if (any(loadCases(l)%stress%mask .eqv. loadCases(l)%deformation%mask)) &
-        call IO_error(830_pI16, 'mask consistency violated in load case', l, emph=[2])
-      if (any(.not.(loadCases(l)%stress%mask .or. transpose(loadCases(l)%stress%mask)) .and. (math_I3<1))) &
-        call IO_error(830_pI16, 'mixed boundary conditions allow rotation in load case', l, emph=[2])
-
-      if (loadCases(l)%stress%myType == 'P')     print'(2x,a)', 'P / MPa:'
-      if (loadCases(l)%stress%myType == 'dot_P') print'(2x,a)', 'dot_P / MPa/s:'
-
-      if (loadCases(l)%stress%myType /= '') then
-        do i = 1, 3; do j = 1, 3
-          if (loadCases(l)%stress%mask(i,j)) then
-            write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
-          else
-            write(IO_STDOUT,'(2x,f12.4)',advance='no') loadCases(l)%stress%values(i,j)*1e-6_pREAL
-          end if
-          end do; write(IO_STDOUT,'(/)',advance='no')
-        end do
-      end if
-      if (any(dNeq(loadCases(l)%rot%asMatrix(), math_I3))) &
-        write(IO_STDOUT,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'R:',&
-                 transpose(loadCases(l)%rot%asMatrix())
-
-      if (allocated(loadCases(l)%temperature%myType)) then
-        if (loadCases(l)%temperature%myType == 'T') then
-          print'(2x,a,1x,f0.3)', 'T / K:', loadCases(l)%temperature%value
-        else
-          print'(2x,a,1x,f0.3)', 'dot_T / K/s:', loadCases(l)%temperature%value
-        end if
-        print'(2x,a,1x,a)', 'thermal BC thermostat:', loadCases(l)%temperature%thermostat
-      end if
-
-      if (solver%get_asStr('mechanical') == 'spectral_Galerkin' .and. step_mech%contains('R')) &
-        call IO_error(830_pI16, 'load case', l, 'contains rotation', 'R', &
-                      'which is not supported when using the Galerkin solver', emph=[2,4])
-      if (loadCases(l)%r <= 0.0_pREAL) &
-        call IO_error(830_pI16, 'non-positive ratio for geometric progression in load case', l, emph=[2])
-      if (loadCases(l)%t <= 0.0_pREAL) &
-        call IO_error(830_pI16, 'negative time increment in load case', l, emph=[2])
-      if (loadCases(l)%N < 1) &
-        call IO_error(830_pI16, 'non-positive number of increments in load case', l, emph=[2])
-      if (loadCases(l)%f_out < 1) &
-        call IO_error(830_pI16, 'non-positive result frequency in load case', l, emph=[2])
-      if (loadCases(l)%f_restart < 1) &
-        call IO_error(830_pI16, 'non-positive restart frequency in load case', l, emph=[2])
-
-      if (dEq(loadCases(l)%r,1.0_pREAL,1.e-9_pREAL)) then
-        print'(2x,a)', 'r: 1 (constant step width)'
-      else
-        print'(2x,a,1x,f0.3)', 'r:', loadCases(l)%r
-      end if
-      print'(2x,a,1x,f0.3)',   't:', loadCases(l)%t
-      print'(2x,a,1x,i0)',     'N:', loadCases(l)%N
-      if (loadCases(l)%f_out < huge(0)) &
-        print'(2x,a,1x,i0)',   'f_out:', loadCases(l)%f_out
-      if (loadCases(l)%f_restart < huge(0)) &
-        print'(2x,a,1x,i0)',   'f_restart:', loadCases(l)%f_restart
-
-    end if reportAndCheck
-  end do
-end function parseLoadsteps
+end subroutine get_masked_tensor
 
 end program DAMASK_grid
