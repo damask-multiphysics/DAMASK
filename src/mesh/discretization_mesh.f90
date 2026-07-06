@@ -62,7 +62,7 @@ module discretization_mesh
     x_n                                                                                             !< node x,z,y coordinates
 
   character(len=pSTRLEN), dimension(:), allocatable, public, protected :: &
-    mesh_bcLabels
+    mesh_BCLabels
 
   enum, bind(c); enumerator :: &
     PETSC_BC_TYPE_CELL = 1, &
@@ -125,7 +125,7 @@ subroutine discretization_mesh_init()
     num_mesh
   integer                                    :: dim, n, m, k
   integer(MPI_INTEGER_KIND)                  :: err_MPI
-  integer,     dimension(:),     allocatable :: bc_set_idx                                          ! index for PETSc set labels (no 'edges' in 2D)
+  integer,     dimension(:),     allocatable :: BC_set_idx                                          ! index for PETSc set labels (no 'edges' in 2D)
   PetscInt,    dimension(:),     pointer     :: label_values                                        ! BC label values (from IS)
   PetscInt,    dimension(:),     allocatable :: materialAt, &                                       ! material ID per cell
                                                 label_tmp
@@ -133,7 +133,7 @@ subroutine discretization_mesh_init()
   real(pREAL), dimension(:,:,:), allocatable :: x_p                                                 ! IP x,y,z coordinates (after deformation!)
 
   character(pSTRLEN) :: &
-    bc_label                                                                                        ! label (string, defined in mesh file)
+    BC_label                                                                                        ! label (string, defined in mesh file)
 
 
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'
@@ -190,16 +190,16 @@ subroutine discretization_mesh_init()
 !--------------------------------------------------------------------------------
 ! read mesh tags
   if (dimPlex == 2_pPETSCINT) then
-    allocate(bc_set_idx, source = [PETSC_BC_TYPE_FACE, PETSC_BC_TYPE_VERTEX])
+    allocate(BC_set_idx, source = [PETSC_BC_TYPE_FACE, PETSC_BC_TYPE_VERTEX])
   else
-    allocate(bc_set_idx, source = [PETSC_BC_TYPE_FACE, PETSC_BC_TYPE_EDGE, PETSC_BC_TYPE_VERTEX])
+    allocate(BC_set_idx, source = [PETSC_BC_TYPE_FACE, PETSC_BC_TYPE_EDGE, PETSC_BC_TYPE_VERTEX])
   end if
 
   mesh_Nboundaries = 0_pPETSCINT
-  do n = 1, size(bc_set_idx)
-    call DMHasLabel(globalMesh,PETSC_GENERIC_LABELS(bc_set_idx(n)),has_label,err_PETSc)
+  do n = 1, size(BC_set_idx)
+    call DMHasLabel(globalMesh,PETSC_GENERIC_LABELS(BC_set_idx(n)),has_label,err_PETSc)
     if (has_label) then
-      call DMGetLabel(globalMesh,PETSC_GENERIC_LABELS(bc_set_idx(n)),dm_label,err_PETSc)
+      call DMGetLabel(globalMesh,PETSC_GENERIC_LABELS(BC_set_idx(n)),dm_label,err_PETSc)
       CHKERRQ(err_PETSc)
       call DMLabelGetNonEmptyStratumValuesIS(dm_label, label_values_IS, err_PETSc)
       CHKERRQ(err_PETSc)
@@ -207,7 +207,7 @@ subroutine discretization_mesh_init()
       CHKERRQ(err_PETSc)
       if (.not. allocated(mesh_boundariesIS)) then
         allocate(mesh_boundariesIS, source = label_values)
-        allocate(mesh_boundariesIdx(size(label_values)), source = int(bc_set_idx(n), pPETSCINT))
+        allocate(mesh_boundariesIdx(size(label_values)), source = int(BC_set_idx(n), pPETSCINT))
         mesh_Nboundaries = mesh_Nboundaries + int(size(label_values), pPETSCINT)
       else
         allocate(label_tmp, mold = label_values)
@@ -218,7 +218,7 @@ subroutine discretization_mesh_init()
           label_tmp(k) = label_values(m)
         end do
         mesh_boundariesIS = [mesh_boundariesIS, label_tmp(1:k)]
-        mesh_boundariesIdx = [mesh_boundariesIdx, [(int(bc_set_idx(n), pPETSCINT), m = 1, k)]]
+        mesh_boundariesIdx = [mesh_boundariesIdx, [(int(BC_set_idx(n), pPETSCINT), m = 1, k)]]
         mesh_Nboundaries = mesh_Nboundaries + int(k, pPETSCINT)
         deallocate(label_tmp)
       end if
@@ -226,7 +226,7 @@ subroutine discretization_mesh_init()
       CHKERRQ(err_PETSc)
     end if
   end do
-  deallocate(bc_set_idx)
+  deallocate(BC_set_idx)
   if (mesh_Nboundaries == 0_pPETSCINT) &
     call IO_error(800_pI16, 'no mesh groups found to apply boundary conditions')
 
@@ -235,15 +235,15 @@ subroutine discretization_mesh_init()
   call DMGetNumLabels(globalMesh, n_mesh_labels, err_PETSc)
   CHKERRQ(err_PETSc)
   if (n_mesh_labels > 2_pPETSCINT) then                                                             ! there are user-defined labels (for BC/material ID)
-    allocate(character(len=pSTRLEN) :: mesh_bcLabels(mesh_Nboundaries))
-    mesh_bcLabels = ''
+    allocate(character(len=pSTRLEN) :: mesh_BCLabels(mesh_Nboundaries))
+    mesh_BCLabels = ''
 
     call DMPlexGetHeightStratum(globalMesh,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
     do j = 2_pPETSCINT, n_mesh_labels - 1_pPETSCINT                                                 ! skip 'celltype' and 'depth' labels; 0-indexing in PETSc
-      call DMGetLabelName(globalMesh, j, bc_label, err_PETSc)
+      call DMGetLabelName(globalMesh, j, BC_label, err_PETSc)
       CHKERRQ(err_PETSc)
-      if (any(bc_label == PETSC_GENERIC_LABELS)) cycle
-      call DMGetLabel(globalMesh, bc_label, dm_label, err_PETSc)
+      if (any(BC_label == PETSC_GENERIC_LABELS)) cycle
+      call DMGetLabel(globalMesh, BC_label, dm_label, err_PETSc)
       call DMLabelGetBounds(dm_label, pointStart, PETSC_NULL_INTEGER, err_PETSc)
       if (pointStart < cellEnd) cycle
       call DMLabelGetNonEmptyStratumValuesIS(dm_label, label_values_IS, err_PETSc)
@@ -251,12 +251,12 @@ subroutine discretization_mesh_init()
       call ISGetIndices(label_values_IS,label_values,err_PETSc)
       CHKERRQ(err_PETSc)
       n = findloc(mesh_boundariesIS, label_values(1), dim = 1)
-      mesh_bcLabels(n) = bc_label
+      mesh_BCLabels(n) = BC_label
       call ISRestoreIndices(label_values_IS,label_values,err_PETSc)
       CHKERRQ(err_PETSc)
     end do
   else
-    mesh_bcLabels = emptyStrArray
+    mesh_BCLabels = emptyStrArray
   end if
 
   dim = int(dimPlex)
@@ -277,8 +277,8 @@ subroutine discretization_mesh_init()
   call parallelization_chkerr(err_MPI)
   call MPI_Bcast(mesh_boundariesIdx,int(mesh_Nboundaries,MPI_INTEGER_KIND),MPI_INTEGER,0_MPI_INTEGER_KIND, &
                  MPI_COMM_WORLD,err_MPI)
-  if (worldrank /= 0) allocate(character(len=pSTRLEN) :: mesh_bcLabels(mesh_Nboundaries))
-  call MPI_Bcast(mesh_bcLabels,int(pSTRLEN*size(mesh_bcLabels),MPI_INTEGER_KIND),MPI_CHARACTER, &
+  if (worldrank /= 0) allocate(character(len=pSTRLEN) :: mesh_BCLabels(mesh_Nboundaries))
+  call MPI_Bcast(mesh_BCLabels,int(pSTRLEN*size(mesh_BCLabels),MPI_INTEGER_KIND),MPI_CHARACTER, &
                  0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
 
