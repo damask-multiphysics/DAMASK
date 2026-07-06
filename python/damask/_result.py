@@ -2192,7 +2192,7 @@ class Result:
         one constituent.
         """
         def add_attribute(obj,name,data):
-            """DREAM.3D requires fixed length string."""
+            """DREAM3D requires fixed length string."""
             if isinstance(data,str):
                 tid = h5py.h5t.C_S1.copy()
                 tid.set_size(len(data)+1)
@@ -2225,7 +2225,7 @@ class Result:
                     for label in self._visible['phases']:
                         try:
                             data = _read(f['/'.join([inc,'phase',label,'mechanical',q])])
-                            # Map to DREAM.3D IDs
+                            # Map to DREAM3D IDs
                             match data.dtype.metadata['lattice']:                                   # type: ignore[index]
                                 case 'hP':
                                     crystal_structure.append(0)

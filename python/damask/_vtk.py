@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import contextlib
 import logging
-import multiprocessing as mp
+import threading
 import os
 import warnings
 from pathlib import Path
@@ -492,8 +492,8 @@ class VTK:
 
         if parallel:
             try:
-                mp_writer = mp.Process(target=self._write,args=(writer,))
-                mp_writer.start()
+                writer_th = threading.Thread(target=self._write,args=(writer,))
+                writer_th.start()
             except TypeError:
                 writer.Write()
         else:

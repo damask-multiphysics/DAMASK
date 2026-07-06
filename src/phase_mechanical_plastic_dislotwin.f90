@@ -489,7 +489,7 @@ module function plastic_dislotwin_homogenizedC(ph,en) result(homogenizedC)
     homogenizedC = f_matrix * C
 
     twinActive: if (prm%sum_N_tw > 0) then
-      C66_tw    = crystal_C66_twin(prm%N_tw,C,phase_lattice(ph),phase_cOverA(ph))
+      C66_tw = crystal_C66_twin(prm%N_tw,C,phase_lattice(ph),phase_cOverA(ph))
       do i = 1, prm%sum_N_tw
         homogenizedC = homogenizedC &
                      + stt%f_tw(i,en)*C66_tw(1:6,1:6,i)
@@ -497,7 +497,7 @@ module function plastic_dislotwin_homogenizedC(ph,en) result(homogenizedC)
      end if twinActive
 
     transActive: if (prm%sum_N_tr > 0) then
-      C66_tr    = crystal_C66_trans(prm%N_tr,C,'hP',prm%cOverA_hP)
+      C66_tr = crystal_C66_trans(prm%N_tr,C,'hP',prm%cOverA_hP)
       do i = 1, prm%sum_N_tr
         homogenizedC = homogenizedC &
                      + stt%f_tr(i,en)*C66_tr(1:6,1:6,i)

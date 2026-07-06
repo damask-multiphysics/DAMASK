@@ -520,49 +520,45 @@ end function crystal_C66_twin
 !--------------------------------------------------------------------------------------------------
 !> @brief Rotated elasticity matrices for transformation in 6x6-matrix notation
 !--------------------------------------------------------------------------------------------------
-function crystal_C66_trans(Ntrans,C_parent66,lattice_target, &
-                           cOverA_trans,a_cF,a_cI)
+function crystal_C66_trans(Ntrans,C_parent_tilde,lattice_target, cOverA_trans,a_cF,a_cI)
 
   integer,     dimension(:),             intent(in) :: Ntrans                                       !< number of active twin systems per family
   character(len=*),                      intent(in) :: lattice_target                               !< Bravais lattice (Pearson symbol)
-  real(pREAL), dimension(6,6),           intent(in) :: C_parent66
+  real(pREAL), dimension(6,6),           intent(in) :: C_parent_tilde
   real(pREAL),                 optional, intent(in) :: cOverA_trans, a_cF, a_cI
   real(pREAL), dimension(6,6,sum(Ntrans))           :: crystal_C66_trans
 
-  real(pREAL), dimension(6,6)             :: C_bar66, C_target_unrotated66
+  real(pREAL), dimension(6,6)             :: C_target_tilde                                         !< target stiffness matrix in Voigt notation (unrotated)
   real(pREAL), dimension(3,3,sum(Ntrans)) :: Q,S
-  type(tRotation)                         :: R
-  integer                                 :: i
+  real(pREAL) :: C_bar_11, C_bar_12, C_bar_33, C_bar_13, C_bar_44, C_bar_14                         !< average elastic constants in Voigt notation
+  type(tRotation) :: R
+  integer :: i
+
 
  !--------------------------------------------------------------------------------------------------
  ! elasticity matrix of the target phase in cube orientation
   if (lattice_target  == 'cI' .and. present(a_cF) .and. present(a_cI)) then
     if (a_cI <= 0.0_pREAL .or. a_cF <= 0.0_pREAL) &
       call IO_error(130_pI16,'negative lattice parameter a', min(a_cI,a_cF), emph=[2])
-    C_target_unrotated66 = C_parent66
+    C_target_tilde = C_parent_tilde
   elseif (lattice_target == 'hP' .and. present(cOverA_trans)) then
     ! https://doi.org/10.1063/1.1663858 eq. (16), eq. (18), eq. (19)
     ! https://doi.org/10.1016/j.actamat.2016.07.032 eq. (47), eq. (48)
     if (cOverA_trans < 1.0_pREAL .or. cOverA_trans > 3.0_pREAL) &
       call IO_error(130_pI16,'c/a for hP target lattice not in range [1,3]', cOverA_trans, emph=[2])
-    C_bar66(1,1) = (C_parent66(1,1) + C_parent66(1,2) + 2.0_pREAL*C_parent66(4,4))/2.0_pREAL
-    C_bar66(1,2) = (C_parent66(1,1) + 5.0_pREAL*C_parent66(1,2) - 2.0_pREAL*C_parent66(4,4))/6.0_pREAL
-    C_bar66(3,3) = (C_parent66(1,1) + 2.0_pREAL*C_parent66(1,2) + 4.0_pREAL*C_parent66(4,4))/3.0_pREAL
-    C_bar66(1,3) = (C_parent66(1,1) + 2.0_pREAL*C_parent66(1,2) - 2.0_pREAL*C_parent66(4,4))/3.0_pREAL
-    C_bar66(4,4) = (C_parent66(1,1) - C_parent66(1,2) + C_parent66(4,4))/3.0_pREAL
-    C_bar66(1,4) = (C_parent66(1,1) - C_parent66(1,2) - 2.0_pREAL*C_parent66(4,4)) /(3.0_pREAL*sqrt(2.0_pREAL))
+    C_bar_11 = (C_parent_tilde(1,1) + C_parent_tilde(1,2) + 2.0_pREAL*C_parent_tilde(4,4))/2.0_pREAL
+    C_bar_12 = (C_parent_tilde(1,1) + 5.0_pREAL*C_parent_tilde(1,2) - 2.0_pREAL*C_parent_tilde(4,4))/6.0_pREAL
+    C_bar_33 = (C_parent_tilde(1,1) + 2.0_pREAL*C_parent_tilde(1,2) + 4.0_pREAL*C_parent_tilde(4,4))/3.0_pREAL
+    C_bar_13 = (C_parent_tilde(1,1) + 2.0_pREAL*C_parent_tilde(1,2) - 2.0_pREAL*C_parent_tilde(4,4))/3.0_pREAL
+    C_bar_44 = (C_parent_tilde(1,1) - C_parent_tilde(1,2) + C_parent_tilde(4,4))/3.0_pREAL
+    C_bar_14 = (C_parent_tilde(1,1) - C_parent_tilde(1,2) - 2.0_pREAL*C_parent_tilde(4,4)) /(3.0_pREAL*sqrt(2.0_pREAL))
 
-    C_target_unrotated66 = 0.0_pREAL
-    C_target_unrotated66(1,1) = C_bar66(1,1) - C_bar66(1,4)**2/C_bar66(4,4)
-    C_target_unrotated66(1,2) = C_bar66(1,2) + C_bar66(1,4)**2/C_bar66(4,4)
-    C_target_unrotated66(1,3) = C_bar66(1,3)
-    C_target_unrotated66(3,3) = C_bar66(3,3)
-    C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2/(0.5_pREAL*(C_bar66(1,1) - C_bar66(1,2)))
-    C_target_unrotated66 = crystal_assembleStiffness(C_target_unrotated66(1,1), &
-                                                     C_target_unrotated66(1,2), &
-                                                     C_target_unrotated66(4,4), &
-                                                     C_target_unrotated66(1,3), &
-                                                     C_target_unrotated66(3,3), lattice='hP')
+    C_target_tilde = crystal_assembleStiffness(C_11 = C_bar_11 - C_bar_14**2/C_bar_44, &
+                                               C_12 = C_bar_12 + C_bar_14**2/C_bar_44, &
+                                               C_13 = C_bar_13, &
+                                               C_33 = C_bar_33, &
+                                               C_44 = C_bar_44 - C_bar_14**2/(0.5_pREAL*(C_bar_11 - C_bar_12)), &
+                                               lattice='hP')
   elseif (all(lattice_target /= ['cI','hP'])) then
     call IO_error(130_pI16, 'invalid target lattice', lattice_target, emph=[2])
   else
@@ -570,7 +566,7 @@ function crystal_C66_trans(Ntrans,C_parent66,lattice_target, &
   end if
 
   do i = 1,6
-    if (abs(C_target_unrotated66(i,i))<tol_math_check) &
+    if (abs(C_target_tilde(i,i))<tol_math_check) &
       call IO_error(130_pI16, 'zero entry in elasticity matrix at', i, i, emph=[2,3])
   end do
 
@@ -578,7 +574,7 @@ function crystal_C66_trans(Ntrans,C_parent66,lattice_target, &
 
   do i = 1,sum(Ntrans)
     call R%fromMatrix(Q(1:3,1:3,i))
-    crystal_C66_trans(1:6,1:6,i) = R%rotStiffness(C_target_unrotated66)
+    crystal_C66_trans(1:6,1:6,i) = R%rotStiffness(C_target_tilde)
   end do
 
  end function crystal_C66_trans
@@ -984,6 +980,7 @@ function crystal_interaction_TwinByTwin(Ntwin,interactionValues,lattice) result(
       20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  17,17,17,17,17,16  &
       ],shape(HP_INTERACTIONTWINTWIN))                                                              !< Twin-twin interaction types for hP
 
+
   select case(lattice)
     case('cF')
       interactionTypes = CF_INTERACTIONTWINTWIN
@@ -1032,6 +1029,7 @@ function crystal_interaction_TransByTrans(Ntrans,interactionValues,lattice) resu
       2,2,2,2,2,2,2,2,2,1,1,1, &
       2,2,2,2,2,2,2,2,2,1,1,1  &
       ],shape(CF_INTERACTIONTRANSTRANS))                                                            !< Trans-trans interaction types for cF
+
 
   if (lattice == 'cF') then
     interactionTypes = CF_INTERACTIONTRANSTRANS
@@ -1183,6 +1181,7 @@ function crystal_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,lattice) r
       17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20  &
       ],shape(HP_INTERACTIONSLIPTWIN))                                                              !< Slip-twin interaction types for hP
 
+
   select case(lattice)
     case('cF')
       interactionTypes = CF_INTERACTIONSLIPTWIN
@@ -1243,6 +1242,7 @@ function crystal_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,lattice)
       4,4,4,4,4,4,4,4,4,4,4,4, &
       4,4,4,4,4,4,4,4,4,4,4,4  &
       ],shape(CF_INTERACTIONSLIPTRANS))                                                             !< Slip-trans interaction types for cF
+
 
   select case(lattice)
     case('cF')
@@ -1469,6 +1469,7 @@ function crystal_SchmidMatrix_twin(Ntwin,lattice,cOverA) result(SchmidMatrix)
   real(pREAL), dimension(:,:),           allocatable :: twinSystems
   integer,     dimension(:),             allocatable :: NtwinMax
   integer                                            :: i
+
 
   select case(lattice)
     case('cF')

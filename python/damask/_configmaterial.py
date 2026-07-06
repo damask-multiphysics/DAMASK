@@ -62,16 +62,16 @@ class ConfigMaterial(YAML):
                      phase_names: str = 'PhaseName',
                      base_group: Optional[str] = None) -> 'ConfigMaterial':
         """
-        Load DREAM.3D (HDF5) file.
+        Load DREAM3D (HDF5) file.
 
-        Data in DREAM.3D files can be stored per cell ('CellData')
+        Data in DREAM3D files can be stored per cell ('CellData')
         and/or per grain ('Grain Data'). Per default, i.e. if
         'grain_data' is None, cell-wise data is assumed.
 
         Parameters
         ----------
         fname : str or pathlib.Path
-            Filename of the DREAM.3D (HDF5) file.
+            Filename of the DREAM3D (HDF5) file.
         grain_data : str, optional
             Name of the group (folder) containing grain-wise data. Defaults
             to None, in which case cell-wise data is used.
@@ -105,7 +105,7 @@ class ConfigMaterial(YAML):
         Notes
         -----
         A grain-wise material configuration is based on segmented data from
-        the DREAM.3D file. This data is typically available when the microstructure
+        the DREAM3D file. This data is typically available when the microstructure
         was synthetically created. In cell-wise representations, cells having the
         same orientation and phase are grouped. Since synthetically created
         microstructures have typically no in-grain scatter, cell-wise grids
@@ -122,12 +122,12 @@ class ConfigMaterial(YAML):
         Homogenization and phase entries are emtpy and need to be
         defined separately.
 
-        Versions 7.0 and 8.0 of the DREAM.3D file format are supported.
+        Versions 7.0 and 8.0 of the DREAM3D file format are supported.
         """
         with h5py.File(fname, 'r') as f:
             file_version = f.attrs['FileVersion'].decode()
             if file_version != '7.0' and file_version != '8.0':
-                raise ValueError(f'DREAM.3D file format {file_version} is not supported')
+                raise ValueError(f'DREAM3D file format {file_version} is not supported')
             b = util.DREAM3D_base_group(f,file_version) if base_group is None else base_group
             c = util.DREAM3D_cell_data_group(f,file_version) if cell_data is None else cell_data
 

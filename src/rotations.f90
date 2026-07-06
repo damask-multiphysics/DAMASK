@@ -257,8 +257,8 @@ end subroutine standardize
 
 
 !--------------------------------------------------------------------------------------------------
-!> @author Marc De Graef, Carnegie Mellon University
 !> @brief Rotate a vector passively (default) or actively.
+!> @details: Apply Rodrigues formula.
 !--------------------------------------------------------------------------------------------------
 pure function rotVector(self,v,active) result(vRot)
 
@@ -267,26 +267,18 @@ pure function rotVector(self,v,active) result(vRot)
   real(pREAL),     intent(in), dimension(3) :: v
   logical,         intent(in), optional     :: active
 
-  real(pREAL), dimension(4) :: v_normed, q
+  real(pREAL), dimension(4) :: q
 
 
-  if (dEq0(norm2(v))) then
-    vRot = v
-  else
-    v_normed = [0.0_pREAL,v]/norm2(v)
-    q = merge(multiplyQuaternion(conjugateQuaternion(self%q), multiplyQuaternion(v_normed, self%q)), &
-              multiplyQuaternion(self%q, multiplyQuaternion(v_normed, conjugateQuaternion(self%q))), &
-              misc_optional(active,.false.))
-    vRot = q(2:4)*norm2(v)
-  end if
+  q = merge(conjugateQuaternion(self%q), self%q, misc_optional(active,.false.))
+  vRot = rotate_vector(v, q)
 
 end function rotVector
 
 
 !--------------------------------------------------------------------------------------------------
-!> @author Marc De Graef, Carnegie Mellon University
 !> @brief Rotate a rank-2 tensor passively (default) or actively.
-!> @details: Rotation is based on rotation matrix
+!> @details: Apply Rodrigues formula to each index sequentially.
 !--------------------------------------------------------------------------------------------------
 pure function rotTensor2(self,T,active) result(tRot)
 
@@ -295,18 +287,26 @@ pure function rotTensor2(self,T,active) result(tRot)
   real(pREAL),     intent(in), dimension(3,3) :: T
   logical,         intent(in), optional       :: active
 
+  real(pREAL), dimension(4) :: q
+  integer :: i,j
 
-  tRot = merge(matmul(matmul(transpose(self%asMatrix()),T),self%asMatrix()), &
-               matmul(matmul(self%asMatrix(),T),transpose(self%asMatrix())), &
-               misc_optional(active,.false.))
+
+  q = merge(conjugateQuaternion(self%q), self%q, misc_optional(active,.false.))
+
+  do i = 1,3
+    tRot(i,:) = rotate_vector(T(i,:), q)
+  end do
+
+  do j = 1,3
+    tRot(:,j) = rotate_vector(tRot(:,j), q)
+  end do
 
 end function rotTensor2
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Rotate a rank-4 tensor passively (default) or actively.
-!> @details: rotation is based on rotation matrix
-!! ToDo: Need to check active/passive !!!
+!> @details: Apply Rodrigues formula to each index sequentially.
 !--------------------------------------------------------------------------------------------------
 pure function rotTensor4(self,T,active) result(tRot)
 
@@ -315,17 +315,27 @@ pure function rotTensor4(self,T,active) result(tRot)
   real(pREAL),     intent(in), dimension(3,3,3,3) :: T
   logical,         intent(in), optional           :: active
 
-  real(pREAL), dimension(3,3) :: R
-  integer :: i,j,k,l,m,n,o,p
+  real(pREAL), dimension(4) :: q
+  integer :: i,j,k,l
 
-  R = merge(transpose(self%asMatrix()),self%asMatrix(),misc_optional(active,.false.))
 
-  tRot = 0.0_pREAL
-  do i = 1,3;do j = 1,3;do k = 1,3;do l = 1,3
-  do m = 1,3;do n = 1,3;do o = 1,3;do p = 1,3
-    tRot(i,j,k,l) = tRot(i,j,k,l) &
-                  + R(i,m) * R(j,n) * R(k,o) * R(l,p) * T(m,n,o,p)
-  end do; end do; end do; end do; end do; end do; end do; end do
+  q = merge(conjugateQuaternion(self%q), self%q, misc_optional(active,.false.))
+
+  do i = 1,3; do j = 1,3; do k = 1,3
+    tRot(i,j,k,:) = rotate_vector(T(i,j,k,:), q)
+  end do; end do; end do
+
+  do i = 1,3; do j = 1,3; do l = 1,3
+    tRot(i,j,:,l) = rotate_vector(tRot(i,j,:,l), q)
+  end do; end do; end do
+
+  do i = 1,3; do k = 1,3; do l = 1,3
+    tRot(i,:,k,l) = rotate_vector(tRot(i,:,k,l), q)
+  end do; end do; end do
+
+  do j = 1,3; do k = 1,3; do l = 1,3
+    tRot(:,j,k,l) = rotate_vector(tRot(:,j,k,l), q)
+  end do; end do; end do
 
 end function rotTensor4
 
@@ -758,18 +768,41 @@ end function conjugateQuaternion
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Apply Rodrigues rotation formula to a vector.
+!> @details http://dx.doi.org/10.1088/0965-0393/23/8/083501, eq. (24)
+!--------------------------------------------------------------------------------------------------
+pure function rotate_vector(v, q) result(vRot)
+
+  real(pREAL), dimension(3) :: vRot
+  real(pREAL), dimension(3), intent(in) :: v
+  real(pREAL), dimension(4), intent(in) :: q
+
+  real(pREAL) :: A, B, C
+
+
+  A = q(1)**2 - sum(q(2:4)**2)
+  B = 2.0_pREAL*sum(q(2:4)*v)
+  C = 2.0_pREAL*P*q(1)
+
+  vRot = A*v + B*q(2:4) + C*math_cross(q(2:4),v)
+
+end function rotate_vector
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some rotations functions.
 !--------------------------------------------------------------------------------------------------
 subroutine rotations_selfTest()
 
   type(tRotation)                 :: R
+  real(pREAL)                     :: x
   real(pREAL), dimension(4)       :: qu
-  real(pREAL), dimension(3)       :: x, eu, v3
-  real(pREAL), dimension(3,3)     :: om, t33
-  real(pREAL), dimension(3,3,3,3) :: t3333
+  real(pREAL), dimension(3)       :: eu, v3, v3_rot
+  real(pREAL), dimension(3,3)     :: om, t33, t33_rot
+  real(pREAL), dimension(3,3,3,3) :: t3333, t3333_rot
   real(pREAL), dimension(6,6)     :: C
-  real(pREAL) :: A,B
-  integer :: i
+  integer :: i,j,k,l,m,n,o,p
+  logical :: active
 
 
   do i = 1, 20
@@ -785,14 +818,7 @@ subroutine rotations_selfTest()
     elseif (i==5) then
       qu = [0.0_pREAL, 0.0_pREAL, 0.0_pREAL, 1.0_pREAL]
     else
-      call random_number(x)
-      A = sqrt(x(3))
-      B = sqrt(1-0_pREAL -x(3))
-      qu = [cos(TAU*x(1))*A,&
-            sin(TAU*x(2))*B,&
-            cos(TAU*x(2))*B,&
-            sin(TAU*x(1))*A]
-      if (qu(1)<0.0_pREAL) qu = qu * (-1.0_pREAL)
+      qu = random_quaternion()
     end if
 
 
@@ -831,10 +857,42 @@ subroutine rotations_selfTest()
 
   end do
 
+  call R%fromQuaternion(qu)
+  call random_number(x)
+  active = x > 0.5_pREAL
+
+
+  om = merge(transpose(R%asMatrix()),R%asMatrix(),active)
+
+  v3_rot = 0.0_pREAL
+  do i = 1,3;do j = 1,3
+    v3_rot(i) = v3_rot(i) &
+              + om(i,j) * v3(j)
+  end do; end do
+  if (any(dNeq(R%rotate(v3,active),v3_rot,1.0e-14_pREAL)))       error stop 'rotate vector'
+
+
+  t33_rot = 0.0_pREAL
+  do i = 1,3;do j = 1,3;do k = 1,3;do l = 1,3
+    t33_rot(i,j) = t33_rot(i,j) &
+                 + om(i,k) * om(j,l) * t33(k,l)
+  end do; end do; end do; end do
+  if (any(dNeq(R%rotate(t33,active),t33_rot,1.0e-14_pREAL)))     error stop 'rotate 2nd order tensor'
+
+  t3333_rot = 0.0_pREAL
+  do i = 1,3;do j = 1,3;do k = 1,3;do l = 1,3
+  do m = 1,3;do n = 1,3;do o = 1,3;do p = 1,3
+    t3333_rot(i,j,k,l) = t3333_rot(i,j,k,l) &
+                       + om(i,m) * om(j,n) * om(k,o) * om(l,p) * t3333(m,n,o,p)
+  end do; end do; end do; end do; end do; end do; end do; end do
+  if (any(dNeq(R%rotate(t3333,active),t3333_rot,1.0e-14_pREAL))) error stop 'rotate 4th order tensor'
+
   contains
 
   pure recursive function quaternion_equal(qu1,qu2) result(ok)
-
+#ifndef __GFORTRAN__
+    import, only: pREAL, dEq, dEq0
+#endif
     real(pREAL), intent(in), dimension(4) :: qu1,qu2
     logical :: ok
 
@@ -843,6 +901,28 @@ subroutine rotations_selfTest()
       ok = ok .or. all(dEq(-1.0_pREAL*qu1,qu2,1.0e-7_pREAL))
 
   end function quaternion_equal
+
+
+  function random_quaternion() result(qu)
+#ifndef __GFORTRAN__
+    import, only: pREAL, TAU
+#endif
+    real(pREAL), dimension(4) :: qu
+
+    real(pREAL), dimension(3):: x
+    real(pREAL) :: A,B
+
+    call random_number(x)
+    A = sqrt(x(3))
+    B = sqrt(1-0_pREAL -x(3))
+    qu = [cos(TAU*x(1))*A,&
+          sin(TAU*x(2))*B,&
+          cos(TAU*x(2))*B,&
+          sin(TAU*x(1))*A]
+
+    if (qu(1)<0.0_pREAL) qu = qu * (-1.0_pREAL)
+
+   end function random_quaternion
 
 end subroutine rotations_selfTest
 

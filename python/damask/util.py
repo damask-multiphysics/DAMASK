@@ -600,7 +600,7 @@ def shapeblender(a: tuple[int, ...],
 def DREAM3D_base_group(fname: _Union[str, _Path, _h5py.File],
                        file_version: _Literal['7.0', '8.0']) -> str:
     """
-    Determine the base group of a DREAM.3D file.
+    Determine the base group of a DREAM3D file.
 
     The base group is defined as the group (folder) that contains
     a 'SPACING' dataset in a '_SIMPL_GEOMETRY' group.
@@ -608,7 +608,7 @@ def DREAM3D_base_group(fname: _Union[str, _Path, _h5py.File],
     Parameters
     ----------
     fname : str, pathlib.Path, or _h5py.File
-        Filename of the DREAM.3D (HDF5) file.
+        Filename of the DREAM3D (HDF5) file.
 
     Returns
     -------
@@ -635,7 +635,7 @@ def DREAM3D_base_group(fname: _Union[str, _Path, _h5py.File],
 def DREAM3D_cell_data_group(fname: _Union[str, _Path, _h5py.File],
                             file_version: _Literal['7.0', '8.0']) -> str:
     """
-    Determine the cell data group of a DREAM.3D file.
+    Determine the cell data group of a DREAM3D file.
 
     The cell data group is defined as the group (folder) that contains
     a dataset in the base group whose length matches the total number
@@ -644,7 +644,7 @@ def DREAM3D_cell_data_group(fname: _Union[str, _Path, _h5py.File],
     Parameters
     ----------
     fname : str, pathlib.Path, or h5py.File
-        Filename of the DREAM.3D (HDF5) file.
+        Filename of the DREAM3D (HDF5) file.
 
     Returns
     -------
