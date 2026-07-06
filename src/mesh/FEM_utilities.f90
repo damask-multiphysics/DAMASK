@@ -38,16 +38,14 @@ module FEM_utilities
 !--------------------------------------------------------------------------------------------------
 ! derived types
   type, public :: tSolutionState                                                                    !< return type of solution from FEM solver variants
-    logical :: converged        = .true.
-    logical :: stagConverged    = .true.
-    PetscInt :: iterationsNeeded = 0_pPETSCINT
+    logical :: converged      = .true.
+    PetscInt :: iter_needed   = 0_pPETSCINT
   end type tSolutionState
 
   type, public :: tMechBC                                                                           !< boundary conditions data
     real(pREAL), allocatable, dimension(:) :: displacements                                         !< u_dot & u
     real(pREAL), allocatable, dimension(:) :: forces                                                !< f_dot & f
     integer,     allocatable, dimension(:) :: active                                                !< which of u_dot/u/f_dot/f is set
-    logical                                :: use_label                                             !< use label or tag
   end type tMechBC
 
   enum, bind(c); enumerator :: &                                                                    !< allowed BC types
@@ -171,12 +169,12 @@ subroutine utilities_assembleFext(f_aim_vec, dm, mechBC, Delta_t)
 
   PetscInt       :: component, boundary, &
                     point, dof, n_field_dof, n_field_comp, offset
-  IS             :: bc_points_IS                                                                    ! IS of BC points
+  IS             :: BC_points_IS                                                                    ! IS of BC points
   PetscSection   :: section
   PetscErrorCode :: err_PETSc
-  PetscInt,    pointer :: bc_points(:)                                                              ! array of IS of BC points
+  PetscInt,    pointer :: BC_points(:)                                                              ! array of IS of BC points
   real(pREAL), pointer :: f_aim(:)                                                                  ! array for f_aim_vec
-  character(len=11)    :: bc_label                                                                  ! face/edge/vertex set
+  character(len=11)    :: BC_label                                                                  ! face/edge/vertex set
   integer, parameter   :: FDOT_OR_F = ior(BC_TYPE_F_DOT, BC_TYPE_F)
 
 
@@ -189,15 +187,15 @@ subroutine utilities_assembleFext(f_aim_vec, dm, mechBC, Delta_t)
   CHKERRQ(err_PETSc)
   do boundary = 1_pPETSCINT, mesh_Nboundaries
     if (any(iand(mechBC(boundary)%active, FDOT_OR_F) > 0)) then
-      bc_label = PETSC_GENERIC_LABELS(mesh_boundariesIdx(boundary))
-      call DMGetStratumIS(dm,bc_label,mesh_boundariesIS(boundary),bc_points_IS,err_PETSc)
+      BC_label = PETSC_GENERIC_LABELS(mesh_boundariesIdx(boundary))
+      call DMGetStratumIS(dm,BC_label,mesh_boundariesIS(boundary),BC_points_IS,err_PETSc)
       CHKERRQ(err_PETSc)
-      call ISGetIndices(bc_points_IS,bc_points,err_PETSc)
+      call ISGetIndices(BC_points_IS,BC_points,err_PETSc)
       CHKERRQ(err_PETSc)
-      do point = 1_pPETSCINT, size(bc_points)
-        call PetscSectionGetFieldDof(section,bc_points(point),0_pPETSCINT,n_field_dof,err_PETSc)
+      do point = 1_pPETSCINT, size(BC_points)
+        call PetscSectionGetFieldDof(section,BC_points(point),0_pPETSCINT,n_field_dof,err_PETSc)
         CHKERRQ(err_PETSc)
-        call PetscSectionGetFieldOffset(section,bc_points(point),0_pPETSCINT,offset,err_PETSc)
+        call PetscSectionGetFieldOffset(section,BC_points(point),0_pPETSCINT,offset,err_PETSc)
         CHKERRQ(err_PETSc)
         do component = 1_pPETSCINT, size(mechBC(boundary)%forces)
           if (iand(mechBC(boundary)%active(component), FDOT_OR_F) == 0) cycle
@@ -208,13 +206,13 @@ subroutine utilities_assembleFext(f_aim_vec, dm, mechBC, Delta_t)
           end do
         end do
       end do
-      call ISRestoreIndices(bc_points_IS,bc_points,err_PETSc)
+      call ISRestoreIndices(BC_points_IS,BC_points,err_PETSc)
       CHKERRQ(err_PETSc)
     end if
   end do
   call VecRestoreArray(f_aim_vec,f_aim,err_PETSc)
   CHKERRQ(err_PETSc)
-  call ISDestroy(bc_points_IS,err_PETSc)
+  call ISDestroy(BC_points_IS,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine utilities_assembleFext
@@ -233,12 +231,12 @@ subroutine utilities_assembleU(u_aim_vec, dm, mechBC, Delta_t)
 
   PetscInt       :: component, boundary, &
                     point, dof, n_field_dof, n_field_comp, offset
-  IS             :: bc_points_IS
+  IS             :: BC_points_IS
   PetscSection   :: section
   PetscErrorCode :: err_PETSc
-  PetscInt,    pointer :: bc_points(:)
+  PetscInt,    pointer :: BC_points(:)
   real(pREAL), pointer :: u_aim(:)
-  character(len=11)    :: bc_label
+  character(len=11)    :: BC_label
   integer, parameter   :: UDOT_OR_U = ior(BC_TYPE_U_DOT, BC_TYPE_U)
 
 
@@ -251,15 +249,15 @@ subroutine utilities_assembleU(u_aim_vec, dm, mechBC, Delta_t)
   CHKERRQ(err_PETSc)
   do boundary = 1_pPETSCINT, mesh_Nboundaries
     if (any(iand(mechBC(boundary)%active, UDOT_OR_U) > 0)) then
-      bc_label = PETSC_GENERIC_LABELS(mesh_boundariesIdx(boundary))
-      call DMGetStratumIS(dm,bc_label,mesh_boundariesIS(boundary),bc_points_IS,err_PETSc)
+      BC_label = PETSC_GENERIC_LABELS(mesh_boundariesIdx(boundary))
+      call DMGetStratumIS(dm,BC_label,mesh_boundariesIS(boundary),BC_points_IS,err_PETSc)
       CHKERRQ(err_PETSc)
-      call ISGetIndices(bc_points_IS,bc_points,err_PETSc)
+      call ISGetIndices(BC_points_IS,BC_points,err_PETSc)
       CHKERRQ(err_PETSc)
-      do point = 1_pPETSCINT, size(bc_points)
-        call PetscSectionGetFieldDof(section,bc_points(point),0_pPETSCINT,n_field_dof,err_PETSc)
+      do point = 1_pPETSCINT, size(BC_points)
+        call PetscSectionGetFieldDof(section,BC_points(point),0_pPETSCINT,n_field_dof,err_PETSc)
         CHKERRQ(err_PETSc)
-        call PetscSectionGetFieldOffset(section,bc_points(point),0_pPETSCINT,offset,err_PETSc)
+        call PetscSectionGetFieldOffset(section,BC_points(point),0_pPETSCINT,offset,err_PETSc)
         CHKERRQ(err_PETSc)
         do component = 1_pPETSCINT, size(mechBC(boundary)%displacements)
           if (iand(mechBC(boundary)%active(component), UDOT_OR_U) == 0) cycle
@@ -270,13 +268,13 @@ subroutine utilities_assembleU(u_aim_vec, dm, mechBC, Delta_t)
           end do
         end do
       end do
-      call ISRestoreIndices(bc_points_IS,bc_points,err_PETSc)
+      call ISRestoreIndices(BC_points_IS,BC_points,err_PETSc)
       CHKERRQ(err_PETSc)
     end if
   end do
   call VecRestoreArray(u_aim_vec,u_aim,err_PETSc)
   CHKERRQ(err_PETSc)
-  call ISDestroy(bc_points_IS,err_PETSc)
+  call ISDestroy(BC_points_IS,err_PETSc)
   CHKERRQ(err_PETSc)
 
 end subroutine utilities_assembleU
@@ -287,16 +285,16 @@ end subroutine utilities_assembleU
 !> @details Enforce displacement BC onto the appropriate DoF by adding the end-of-step aim
 !> @details displacement to current coordinates.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_projectDisplacementBC(x_vec, rate_vec, delta_t)
+subroutine utilities_projectDisplacementBC(x_vec, rate_vec, Delta_t)
 
   Vec,         intent(inout) :: x_vec
   Vec,         intent(in)    :: rate_vec
-  real(preal), intent(in)    :: delta_T
+  real(preal), intent(in)    :: Delta_t
 
   PetscErrorCode :: err_PETSc
 
 
-  call VecAXPY(x_vec, delta_t, rate_vec, err_PETSc)                                                 ! x = x + rate * dt
+  call VecAXPY(x_vec, Delta_t, rate_vec, err_PETSc)                                                 ! x = x + rate * dt
   CHKERRQ(err_PETSc)
 
 end subroutine utilities_projectDisplacementBC

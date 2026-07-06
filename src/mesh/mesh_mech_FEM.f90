@@ -125,15 +125,15 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   DMLabel,   dimension(:), pointer     :: PETSC_NULL_DMLABEL_ARRAY => NULL()
   PetscReal, dimension(:), pointer     :: PETSC_NULL_REAL_POINTER => NULL()
 #endif
-  IS,        dimension(:), pointer     :: bc_comps_IS, bc_points_IS
-  PetscInt,  dimension(:), pointer     :: n_comp, n_dof, bc_field, label_points
+  IS,        dimension(:), pointer     :: BC_comps_IS, BC_points_IS
+  PetscInt,  dimension(:), pointer     :: n_comp, n_dof, BC_field, label_points
   PetscInt,  dimension(:), allocatable :: idx
   PetscReal, dimension(:), pointer     :: qWeightsP
   real(pREAL), dimension(:), allocatable :: nodeCoords
 
   integer                     :: n
   character(len=*), parameter :: prefix = 'mechanical_'
-  character(len=pSTRLEN)      :: bc_label
+  character(len=pSTRLEN)      :: BC_label
 
   real(pREAL), dimension(3,3) :: devNull
   type(tDict), pointer        :: num_mech
@@ -247,26 +247,26 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   end do
   n_displacement_BC = sum([(count(mechBC(boundary)%active == BC_TYPE_U_DOT .or. &
                                   mechBC(boundary)%active == BC_TYPE_U), boundary = 1, size(mechBC))])
-  allocate(bc_field(n_displacement_BC), source = 0_pPETSCINT)
-  allocate(bc_comps_IS(n_displacement_BC))
-  allocate(bc_points_IS(n_displacement_BC))
+  allocate(BC_field(n_displacement_BC), source = 0_pPETSCINT)
+  allocate(BC_comps_IS(n_displacement_BC))
+  allocate(BC_points_IS(n_displacement_BC))
   d = 0_pPETSCINT
   do boundary = 1_pPETSCINT, mesh_Nboundaries
-    bc_label = PETSC_GENERIC_LABELS(mesh_boundariesIdx(boundary))
+    BC_label = PETSC_GENERIC_LABELS(mesh_boundariesIdx(boundary))
     do component = 1_pPETSCINT, dimPlex
       if (mechBC(boundary)%active(component) == BC_TYPE_U_DOT .or. &
           mechBC(boundary)%active(component) == BC_TYPE_U) then
         d = d + 1_pPETSCINT
         call ISCreateGeneral(PETSC_COMM_WORLD,1_pPETSCINT,[component-1_pPETSCINT],PETSC_COPY_VALUES, &
-                             bc_comps_IS(d),err_PETSc)
+                             BC_comps_IS(d),err_PETSc)
         CHKERRQ(err_PETSc)
-        call DMGetStratumIS(mechanical_mesh,bc_label,mesh_boundariesIS(boundary), &
+        call DMGetStratumIS(mechanical_mesh,BC_label,mesh_boundariesIS(boundary), &
                             label_points_IS,err_PETSc)
         CHKERRQ(err_PETSc)
         call ISGetIndices(label_points_IS,label_points,err_PETSc)
         CHKERRQ(err_PETSc)
         call ISCreateGeneral(PETSC_COMM_WORLD,int(size(label_points),pPETSCINT),label_points, &
-                             PETSC_COPY_VALUES,bc_points_IS(d),err_PETSc)
+                             PETSC_COPY_VALUES,BC_points_IS(d),err_PETSc)
         CHKERRQ(err_PETSc)
         call ISRestoreIndices(label_points_IS,label_points,err_PETSc)
         CHKERRQ(err_PETSc)
@@ -276,17 +276,17 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
     end do
   end do
   call DMPlexCreateSection(mechanical_mesh,PETSC_NULL_DMLABEL_ARRAY,n_comp,n_dof, &
-                           n_displacement_BC,bc_field,bc_comps_IS,bc_points_IS,PETSC_NULL_IS,section,err_PETSc)
+                           n_displacement_BC,BC_field,BC_comps_IS,BC_points_IS,PETSC_NULL_IS,section,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMSetLocalSection(mechanical_mesh,section,err_PETSc)
   CHKERRQ(err_PETSc)
   do boundary = 1_pPETSCINT, n_displacement_BC
-    call ISDestroy(bc_points_IS(boundary),err_PETSc)
+    call ISDestroy(BC_points_IS(boundary),err_PETSc)
     CHKERRQ(err_PETSc)
-    call ISDestroy(bc_comps_IS(boundary),err_PETSc)
+    call ISDestroy(BC_comps_IS(boundary),err_PETSc)
     CHKERRQ(err_PETSc)
   end do
-  deallocate(bc_field)
+  deallocate(BC_field)
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -298,7 +298,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   CHKERRQ(err_PETSc)
   call SNESSetFromOptions(mechanical_snes,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SnesSetLagJacobian(mechanical_snes, 10_pPETSCINT, err_PETSc)
+  call SnesSetLagJacobian(mechanical_snes,10_pPETSCINT, err_PETSc)
   CHKERRQ(err_PETSc)
   call DMCreateGlobalVector(mechanical_mesh,u,err_PETSc)                                            ! global solution vector {u}
   CHKERRQ(err_PETSc)
@@ -412,10 +412,10 @@ end subroutine FEM_mechanical_init
   if (reason < 1) then                                                                              ! 0: still iterating (will not occur), negative -> convergence error
 #endif
     FEM_mechanical_solution%converged = .false.
-    FEM_mechanical_solution%iterationsNeeded = num%itmax
+    FEM_mechanical_solution%iter_needed = num%itmax
   else                                                                                              ! >= 1 proper convergence (or broken)
     FEM_mechanical_solution%converged = .true.
-    call SNESGetIterationNumber(mechanical_snes,FEM_mechanical_solution%iterationsNeeded,err_PETSc)
+    call SNESGetIterationNumber(mechanical_snes,FEM_mechanical_solution%iter_needed,err_PETSc)
     CHKERRQ(err_PETSc)
   end if
 
@@ -663,7 +663,6 @@ subroutine FEM_mechanical_formJacobian(dm_local,delta_u_local,J,Jp,dummy,err_PET
                                         dev_null
 #endif
   real(pREAL), dimension(:), pointer :: pK_e                                                        ! (pointer) element tangent stiffness
-
   real(pREAL), dimension(cellDOF,cellDOF), target :: K_e                                            ! element tangent stiffness
   real(pREAL), dimension(dimPlex,dimPlex)         :: invCellJ                                       ! cell inverse jacobian
 
