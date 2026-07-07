@@ -478,7 +478,11 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
   allocate(load_cases(size(load_steps)))
   do l = 1, size(load_steps)
     load_step => load_steps%get_dict(l)
-    step_bc   => load_step%get_dict('boundary_conditions')
+    if (load_step%contains('boundary_condition')) then
+      step_bc => load_step%get_dict('boundary_condition')
+    else
+      step_bc => load_step%get_dict('boundary_conditions')
+    end if
     step_mech => step_bc%get_dict('mechanical')
     load_cases(l)%stress%myType=''
     readMech: do m = 1, size(step_mech)
