@@ -1185,8 +1185,8 @@ class Crystal():
             Lattice vector of direction or plane.
             Use util.scale_to_coprime to convert to (integer) Miller indices.
         """
-        if (direction is not None) ^ (plane is None):
-            raise KeyError('specify either "direction" or "plane"')
+        if (direction is None) == (plane is None):
+            raise TypeError('specify either "direction" or "plane"')
         basis,axis = (self.basis_reciprocal,np.asarray(direction)) \
                      if plane is None else \
                      (self.basis_real,np.asarray(plane))
@@ -1421,8 +1421,8 @@ class Crystal():
                 [-0.195, -0.338, -0.246],
                 [ 0.358,  0.62 ,  0.451]]])
         """
-        if (N_slip is not None) ^ (N_twin is None):
-            raise KeyError('specify either "N_slip" or "N_twin"')
+        if (N_slip is None) == (N_twin is None):
+            raise TypeError('specify either "N_slip" or "N_twin"')
         elif N_slip is not None:
             kinematics,active = self.kinematics('slip'),N_slip
         elif N_twin is not None:

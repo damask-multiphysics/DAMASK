@@ -1607,8 +1607,8 @@ class Orientation(Rotation,Crystal):
         >>> damask.util.scale_to_coprime(tetragonal.to_lattice(plane=[1,1,1]))
         array([2, 2, 1])
         """
-        if (direction is not None) ^ (plane is None):
-            raise KeyError('specify either "direction" or "plane"')
+        if (direction is None) == (plane is None):
+            raise TypeError('specify either "direction" or "plane"')
         return (super().to_lattice(direction=self@np.asarray(direction)) if plane is None else
                 super().to_lattice(plane=self@np.asarray(plane)))
 

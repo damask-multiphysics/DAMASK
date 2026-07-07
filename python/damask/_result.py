@@ -71,6 +71,22 @@ def _read(dset_h5: h5py.Dataset) -> np.ndarray:
     """Read a dataset and its metadata into a numpy.ndarray."""
     return np.array(dset_h5, dtype=np.dtype(dset_h5.dtype, metadata=dict(dset_h5.attrs.items())))
 
+def _times_to_increments(choice: list[str],
+                         times: dict[int, float],
+                         increments: list[str]) -> list[str]:
+    sorted_times = list(times.values())
+    atol = 1.e-2 * np.min(np.diff(sorted_times))
+    if choice == ['*']:
+        return increments
+    resolved = []
+    for c in np.array(choice).astype(float):
+        idx = np.searchsorted(sorted_times, c, side='left')
+        if idx < len(times) and np.isclose(c, sorted_times[idx], rtol=0, atol=atol):
+            resolved.append(increments[idx])
+        elif idx > 0 and np.isclose(c, sorted_times[idx-1], rtol=0, atol=atol):
+            resolved.append(increments[idx-1])
+    return resolved
+
 def _match(requested,
            existing: Union[h5py.Group,list[str]]) -> list[str]:
     """Find matches among two sets of labels."""
@@ -104,7 +120,7 @@ def _is_mergeable(layout):
     for label, fields in layout.items():
         for field, datasets in fields.items():
             for dset_name,v in datasets.items():
-                if dset_name not in mergeable[field] | not_mergeable[field]:
+                if dset_name not in mergeable[field] and dset_name not in not_mergeable[field]:
                     mergeable[field][dset_name] = {label:v}
                 else:
                     if dset_name in mergeable[field]:
@@ -296,30 +312,18 @@ class Result:
             choice = util.to_list(selected)
             N_expected = len(choice)
 
+            original_what = what
             if   what == 'increments':
                 choice = [c if isinstance(c,str) and c.startswith(prefix_inc) else
                           self._increments[c] if isinstance(c,int) and c<0 else
                           f'{prefix_inc}{c}' for c in choice]
             elif what == 'times':
-                times = list(self._times.values())
-                atol = 1.e-2 * np.min(np.diff(times))
+                choice = _times_to_increments(choice, self._times, self._increments)
                 what = 'increments'
-                if choice == ['*']:
-                    choice = self._increments
-                else:
-                    iterator = np.array(choice).astype(float)
-                    choice = []
-                    for c in iterator:
-                        idx = np.searchsorted(times,c,side='left')
-                        if  idx<len(self._times) and np.isclose(c,times[idx],rtol=0,atol=atol):
-                            choice.append(self._increments[idx])
-                        elif idx>0 and np.isclose(c,times[idx-1],rtol=0,atol=atol):
-                            choice.append(self._increments[idx-1])
 
             valid = _match(choice,getattr(self,'_'+what))
             if len(valid) < N_expected:
-                w = what if times is None else 'times'
-                logger.warning(f'Found only "{list(map(str,valid))}" when requesting "{selected}" for "{w}".')
+                logger.warning(f'Found only "{list(map(str,valid))}" when requesting "{selected}" for "{original_what}".')
 
             existing = set(self._visible[what])
             match action:
@@ -1238,8 +1242,8 @@ class Result:
                              }
                    }
 
-        if (N_slip is not None) ^ (N_twin is None):
-            raise KeyError('specify either "N_slip" or "N_twin"')
+        if (N_slip is None) == (N_twin is None):
+            raise TypeError('specify either "N_slip" or "N_twin"')
         elif N_slip is not None:
             self._add_generic_pointwise(rss,{'F':F, 'P':P, 'q':q},
                                             {'N_def': N_slip, 'mode': 'slip'})

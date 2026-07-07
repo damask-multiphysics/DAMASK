@@ -25,7 +25,7 @@ def test_eq(np_rng):
 
 def test_double_to_lattice():
     c = Crystal(lattice='cF')
-    with pytest.raises(KeyError):
+    with pytest.raises(TypeError):
         c.to_lattice(direction=np.ones(3),plane=np.ones(3))
 
 def test_double_to_frame():

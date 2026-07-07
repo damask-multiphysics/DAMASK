@@ -1366,8 +1366,8 @@ class GeomGrid:
             mask = np.roll(mask,((c/self.size-0.5)*self.cells).round().astype(np.int64),(0,1,2))
 
         return GeomGrid(material = np.where(np.logical_not(mask) if inverse else mask,
-                                        self.material,
-                                        np.nanmax(self.material)+1 if fill is None else fill),
+                                            self.material,
+                                            np.nanmax(self.material)+1 if fill is None else fill),
                         size     = self.size,
                         origin   = self.origin,
                         initial_conditions = self.initial_conditions,

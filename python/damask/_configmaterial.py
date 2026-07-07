@@ -264,12 +264,12 @@ class ConfigMaterial(YAML):
 
         ok = True
         msg = []
-        all = set(['homogenization','phase','material'])
+        top_level = {'homogenization','phase','material'}
 
-        if miss := set([item for item in all if item not in self]):
+        if miss := set([item for item in top_level if item not in self]):
             msg.append(f'{labeled_list("top-level",miss)} missing')
             ok = False
-        if empty := set([item for item in all-miss if self[item] is None]):
+        if empty := set([item for item in top_level-miss if self[item] is None]):
             msg.append(f'{labeled_list("top-level",empty)} empty')
 
         if ok:
