@@ -936,14 +936,15 @@ subroutine FEM_mechanical_converged(snes,iter,x_norm,s_norm,f_norm,reason,dummy,
 
   if (status /= STATUS_OK) then                                                                     ! mechanics failed
     reason = SNES_DIVERGED_USER
-    print '(a,2/,3x,a)', ' ~ Diverged', &
+    print '(4a,2/,3x,a)', ' ~ ',IO_color([224,0,0]), 'Diverged', IO_color(),  &
       'Divergence reason: evaluation of constitutive law for mechanics failed'
 #if PETSC_VERSION_MINOR>22
   else if (reason%v < SNES_CONVERGED_ITERATING%v) then                                              ! diverged
 #else
   else if (reason < 0) then                                                                         ! diverged
 #endif
-    write(IO_STDOUT, '(a,2/,3x,a)',advance='no') ' ~ Diverged', 'Divergence reason:'
+    write(IO_STDOUT, '(4a,2/,3x,a)',advance='no') &
+      ' ~ ', IO_color([224,0,0]), 'Diverged', IO_color(), 'Divergence reason:'
     if (reason == SNES_DIVERGED_FUNCTION_DOMAIN) then
       print '(1x,a)', 'solution outside the domain of the function'
     else if (reason == SNES_DIVERGED_FUNCTION_COUNT) then
@@ -961,7 +962,7 @@ subroutine FEM_mechanical_converged(snes,iter,x_norm,s_norm,f_norm,reason,dummy,
     else if (reason == SNES_DIVERGED_DTOL) then
       call SNESGetDivergenceTolerance(snes, rhs_tol, err_PETSc)
       CHKERRQ(err_PETSc)
-      print '(1x,a,es9.3e2)', 'relative residual norm ||r|| / ||r_0|| > ', rhs_tol
+      print '(1x,a,es10.3e2)', 'relative residual norm ||r|| / ||r_0|| >', rhs_tol
     else if (reason == SNES_DIVERGED_JACOBIAN_DOMAIN) then
       print '(1x,a)', 'invalid jacobian'
     else if (reason == SNES_DIVERGED_USER) then
@@ -975,7 +976,7 @@ subroutine FEM_mechanical_converged(snes,iter,x_norm,s_norm,f_norm,reason,dummy,
       print '(1x,a)', "the object function evaluation ocurred outside the function's domain"
 #endif
     end if
-  else
+  else                                                                                              ! converged
     call SNESConvergedDefault(snes, iter, x_norm, s_norm, f_norm, reason, dummy, err_PETSc)
     CHKERRQ(err_PETSc)
     call SNESGetTolerances(snes, abs_tol, rel_tol, sol_tol, PETSC_NULL_INTEGER, &
@@ -991,21 +992,22 @@ subroutine FEM_mechanical_converged(snes,iter,x_norm,s_norm,f_norm,reason,dummy,
     rhs_tol = abs_tol
 #endif
     if (reason == SNES_CONVERGED_FNORM_RELATIVE) then                                               ! overwrite RELATIVE_FNORM convergence reason
-      if (f_norm / rhs_tol < 1.0_pREAL) then
-        reason = SNES_CONVERGED_USER
-      else if (s_norm < sol_tol * x_norm) then
-        reason = SNES_CONVERGED_SNORM_RELATIVE
-      else
-        reason = SNES_CONVERGED_ITERATING
+      if (f_norm > rhs_tol) then
+        if (s_norm < sol_tol * x_norm) then
+          reason = SNES_CONVERGED_SNORM_RELATIVE
+        else
+          reason = SNES_CONVERGED_ITERATING
+        end if
       end if
     end if
+    if (iter > 0_pPETSCINT .and. s_norm < 1.0e-13_pREAL) reason = SNES_CONVERGED_USER
     if (reason == SNES_CONVERGED_ITERATING) then
-      print '(2/,2(3x,3(a,es9.3e2),a))', &
-        '- Residual       ||r|| = ', f_norm / rhs_tol, ' ( ', f_norm, ', tol = ', rhs_tol, ' )'
+      print '(2/,2(3x,3(a,es10.3e2),a))', &
+        '- Residual       =', f_norm / rhs_tol, ' (||r||        =', f_norm, ', tol =', rhs_tol, ')'
       if (iter > 0_pPETSCINT) then
         r_norm = s_norm / x_norm
-        print '(3x,3(a,es9.3e2),a))', &
-          '- Ratio   ||Δu||/||u|| = ', r_norm / sol_tol, ' ( ', r_norm, ', tol = ', sol_tol, ' )'
+        print '(3x,3(a,es10.3e2),a))', &
+          '- Solution ratio =', r_norm / sol_tol, ' (||Δu||/||u|| =', r_norm, ', tol =', sol_tol, ')'
       end if
     else                                                                                            ! convergence
       call SNESGetTolerances(snes, abs_tol, rel_tol, sol_tol, PETSC_NULL_INTEGER, &
@@ -1015,20 +1017,23 @@ subroutine FEM_mechanical_converged(snes,iter,x_norm,s_norm,f_norm,reason,dummy,
       CHKERRQ(err_PETSc)
       call SNESGetLinearSolveIterations(snes, n_ls_its, err_PETSc)
       CHKERRQ(err_PETSc)
-      write(IO_STDOUT, '(a,2/,3x,a)',advance='no') ' ~ Converged', 'Convergence reason:'
+      write(IO_STDOUT, '(4a,2/,3x,a)',advance='no') &
+        ' ~ ', IO_color([0,192,0]), 'Converged', IO_color(), 'Convergence reason:'
       if (reason == SNES_CONVERGED_FNORM_ABS) then
-        print '(1x,a,es9.3e2)', 'residual norm ||r|| < ', abs_tol
+        print '(1x,a,es10.3e2)', 'residual norm ||r|| <', abs_tol
+      else if (reason == SNES_CONVERGED_FNORM_RELATIVE) then
+        print '(1x,a)', 'residual norm ||r|| < max(abs,rel*||RHS||)'
       else if (reason == SNES_CONVERGED_SNORM_RELATIVE) then
-        print '(1x,a,es9.3e2)', 'ratio ||Δu||/||u|| < ', sol_tol
+        print '(1x,a,es10.3e2)', 'ratio ||Δu||/||u|| <', sol_tol
       else if (reason == SNES_CONVERGED_USER) then
-        print '(1x,a,es9.3e2)', 'residual norm ||r|| < max(abs,rel*||RHS||)'
+        print '(1x,a)', '(near) zero update norm ||Δu||'
       end if
       r_norm = s_norm / x_norm
-      print '(/,2(3x,3(a,es9.3e2),a,/),/,2(3x,a,es9.3e2,/))', &
-        '- Residual       ||r|| = ', f_norm / rhs_tol, ' ( ', f_norm, ', tol = ', rhs_tol, ' )', &
-        '- Ratio   ||Δu||/||u|| = ', r_norm / sol_tol, ' ( ', r_norm, ', tol = ', sol_tol, ' )', &
-        '- Final residual ||r|| = ', f_norm, &
-        '- Final update  ||Δu|| = ', s_norm
+      print '(/,2(3x,3(a,es10.3e2),a,/),/,2(3x,a,es10.3e2,/))', &
+        '- Residual       =', f_norm / rhs_tol, ' (||r||        =', f_norm, ', tol =', rhs_tol, ')', &
+        '- Solution ratio =', r_norm / sol_tol, ' (||Δu||/||u|| =', r_norm, ', tol =', sol_tol, ')', &
+        '- Final residual ||r|| =', f_norm, &
+        '- Final update  ||Δu|| =', s_norm
       print '(2(3x,a,i0,:,/))', &
         '- # function evaluations     = ', n_f_evals, &
         '- # linear solver iterations = ', n_ls_its
