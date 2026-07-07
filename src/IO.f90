@@ -732,6 +732,9 @@ subroutine IO_selfTest()
 
   contains
   pure subroutine test_tokenize(input,delimiter,solution)
+#ifndef __GFORTRAN__
+    import, only: tokenize
+#endif
     character(len=*), intent(in) :: input, delimiter
     character(len=*), dimension(:), intent(in) :: solution
 

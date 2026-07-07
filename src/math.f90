@@ -63,19 +63,6 @@ module math
       1,2  &
       ],shape(MAPVOIGT))                                                                            !< arrangement in Voigt notation
 
-  integer, dimension (2,9), parameter, private :: &
-    MAPPLAIN = reshape([&
-      1,1, &
-      1,2, &
-      1,3, &
-      2,1, &
-      2,2, &
-      2,3, &
-      3,1, &
-      3,2, &
-      3,3  &
-      ],shape(MAPPLAIN))                                                                            !< arrangement in Plain notation
-
 
 contains
 
@@ -690,10 +677,8 @@ pure function math_33to9(m33)
   real(pREAL), dimension(9)               :: math_33to9
   real(pREAL), dimension(3,3), intent(in) :: m33
 
-  integer :: i
 
-
-  math_33to9 = [(m33(MAPPLAIN(1,i),MAPPLAIN(2,i)),i=1,9)]
+  math_33to9 = reshape(transpose(m33), [9])
 
 end function math_33to9
 
@@ -706,12 +691,8 @@ pure function math_9to33(v9)
   real(pREAL), dimension(3,3)           :: math_9to33
   real(pREAL), dimension(9), intent(in) :: v9
 
-  integer :: i
 
-
-  do i = 1, 9
-    math_9to33(MAPPLAIN(1,i),MAPPLAIN(2,i)) = v9(i)
-  end do
+  math_9to33 = transpose(reshape(v9, [3,3]))
 
 end function math_9to33
 
@@ -724,12 +705,8 @@ pure function math_3333to99(m3333)
   real(pREAL), dimension(9,9)                 :: math_3333to99
   real(pREAL), dimension(3,3,3,3), intent(in) :: m3333
 
-  integer :: i,j
 
-
-  do j=1,9; do i=1,9
-    math_3333to99(i,j) = m3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j))
-  end do; end do
+  math_3333to99 = reshape(reshape(m3333, [3,3,3,3], order=[2,1,4,3]), [9,9])
 
 end function math_3333to99
 
@@ -742,12 +719,8 @@ pure function math_99to3333(m99)
   real(pREAL), dimension(3,3,3,3)         :: math_99to3333
   real(pREAL), dimension(9,9), intent(in) :: m99
 
-  integer :: i,j
 
-
-  do j=1,9; do i=1,9
-    math_99to3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j)) = m99(i,j)
-  end do; end do
+  math_99to3333 = reshape(reshape(m99, [3,3,3,3]), [3,3,3,3], order=[2,1,4,3])
 
 end function math_99to3333
 

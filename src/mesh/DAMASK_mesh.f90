@@ -246,7 +246,11 @@ function parse_and_print_load_cases(load_steps) result(load_cases)
   allocate(load_cases(size(load_steps)))
   do l = 1, size(load_steps)
     load_step => load_steps%get_dict(l)
-    boundary_conditions   => load_step%get_dict('boundary_conditions')
+    if (load_step%contains('boundary_condition')) then
+      boundary_conditions => load_step%get_dict('boundary_condition')
+    else
+      boundary_conditions => load_step%get_dict('boundary_conditions')
+    end if
     BCs_mechanical => boundary_conditions%get_list('mechanical')
     allocate(load_cases(l)%mechBC(mesh_nBoundaries))
     do boundary = 1, int(mesh_nBoundaries)

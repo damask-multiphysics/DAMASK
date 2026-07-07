@@ -305,6 +305,10 @@ function integrateDamageState(Delta_t,ph,en) result(status)
   !> @brief Calculate the damping for correction of state and dot state.
   !--------------------------------------------------------------------------------------------------
   real(pREAL) pure function damper(omega_0,omega_1,omega_2)
+#ifndef __GFORTRAN__
+  use prec
+  import, none
+#endif
 
   real(pREAL), dimension(:), intent(in) :: &
     omega_0, omega_1, omega_2

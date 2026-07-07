@@ -891,7 +891,9 @@ subroutine rotations_selfTest()
 
   pure recursive function quaternion_equal(qu1,qu2) result(ok)
 #ifndef __GFORTRAN__
-    import, only: pREAL, dEq, dEq0
+    use prec
+    use math
+    import, none
 #endif
     real(pREAL), intent(in), dimension(4) :: qu1,qu2
     logical :: ok
@@ -905,7 +907,9 @@ subroutine rotations_selfTest()
 
   function random_quaternion() result(qu)
 #ifndef __GFORTRAN__
-    import, only: pREAL, TAU
+    use prec
+    use math
+    import, none
 #endif
     real(pREAL), dimension(4) :: qu
 

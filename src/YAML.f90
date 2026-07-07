@@ -114,44 +114,42 @@ recursive function parse_flow(YAML_flow) result(node)
     node => emptyDict
     return
   elseif (flow_string(1:1) == '{') then                                                             ! start of a dictionary
-    e = 1_pI64
     allocate(tDict::node)
-    do while (e < len_trim(flow_string,pI64))
-      s = e
-      d = s + scan(flow_string(s+1_pI64:),':',kind=pI64)
-      e = d + find_end(flow_string(d+1_pI64:),'}')
-      key = trim(adjustl(flow_string(s+1_pI64:d-1_pI64)))
-      if (quotedStr(key)) key = key(2_pI64:len(key,kind=pI64)-1_pI64)
-      myVal => parse_flow(flow_string(d+1_pI64:e-1_pI64))                                           ! parse items (recursively)
-
-      select type (node)
-        class is (tDict)
-          call node%set(key,myVal)
-      end select
-    end do
+    select type (dict => node)
+      class is (tDict)
+        e = 1_pI64
+        do while (e < len_trim(flow_string,pI64))
+          s = e
+          d = s + scan(flow_string(s+1_pI64:),':',kind=pI64)
+          e = d + find_end(flow_string(d+1_pI64:),'}')
+          key = trim(adjustl(flow_string(s+1_pI64:d-1_pI64)))
+          if (quotedStr(key)) key = key(2_pI64:len(key,kind=pI64)-1_pI64)
+          myVal => parse_flow(flow_string(d+1_pI64:e-1_pI64))                                       ! parse items (recursively)
+          call dict%set(key,myVal)
+        end do
+    end select
   elseif (flow_string(1:1) == '[') then                                                             ! start of a list
-    e = 1_pI64
     allocate(tList::node)
-    do while (e < len_trim(flow_string,pI64))
-      s = e
-      e = s + find_end(flow_string(s+1_pI64:),']')
-      myVal => parse_flow(flow_string(s+1_pI64:e-1_pI64))                                           ! parse items (recursively)
-
-      select type (node)
-        class is (tList)
-          call node%append(myVal)
-      end select
-    end do
+    select type (list => node)
+      class is (tList)
+        e = 1_pI64
+        do while (e < len_trim(flow_string,pI64))
+          s = e
+          e = s + find_end(flow_string(s+1_pI64:),']')
+          myVal => parse_flow(flow_string(s+1_pI64:e-1_pI64))                                       ! parse items (recursively)
+          call list%append(myVal)
+        end do
+    end select
   else                                                                                              ! scalar value
     allocate(tScalar::node)
-      select type (node)
-        class is (tScalar)
-          if (quotedStr(flow_string)) then
-            node = trim(adjustl(flow_string(2_pI64:len(flow_string,kind=pI64)-1_pI64)))
-          else
-            node = trim(adjustl(flow_string))
-          end if
-      end select
+    select type (scalar => node)
+      class is (tScalar)
+        if (quotedStr(flow_string)) then
+          scalar = trim(adjustl(flow_string(2_pI64:len(flow_string,kind=pI64)-1_pI64)))
+        else
+          scalar = trim(adjustl(flow_string))
+        end if
+    end select
   end if
 
 end function parse_flow

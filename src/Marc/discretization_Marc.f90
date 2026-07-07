@@ -676,6 +676,10 @@ subroutine inputRead_elemType(elem, &
   !> @brief mapping of Marc element types to internal representation
   !--------------------------------------------------------------------------------------------------
   integer function mapElemtype(what)
+#ifndef __GFORTRAN__
+   use IO
+   import, none
+#endif
 
    character(len=*), intent(in) :: what
 
@@ -960,6 +964,9 @@ pure subroutine buildCells(connectivity,definition, &
   !> @brief count unique rows (same rows need to be stored consecutively)
   !------------------------------------------------------------------------------------------------
   pure function uniqueRows(A) result(u)
+#ifndef __GFORTRAN__
+    import, none
+#endif
 
     integer, dimension(:,:), intent(in) :: A                                                        !< array, rows need to be sorted
 

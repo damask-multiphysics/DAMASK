@@ -263,7 +263,8 @@ contains
 
   pure function test_pI32(int_in) result(int_out)
 #ifndef __GFORTRAN__
-    import, only: pI32, misc_optional_pI32
+    use prec
+    import, only: misc_optional_pI32
 #endif
     integer(pI32)                       :: int_out
     integer(pI32), intent(in), optional :: int_in
@@ -276,7 +277,8 @@ contains
 
   pure function test_real(real_in) result(real_out)
 #ifndef __GFORTRAN__
-    import, only: pREAL, misc_optional_real
+    use prec
+    import, only: misc_optional_real
 #endif
     real(pREAL)                       :: real_out
     real(pREAL), intent(in), optional :: real_in

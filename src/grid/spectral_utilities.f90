@@ -1012,6 +1012,11 @@ subroutine selfTest()
   contains
 
     function planeCosine(n)
+#ifndef __GFORTRAN__
+      use prec
+      use math
+      import, none
+#endif
       integer, intent(in) :: n
       real(pREAL), dimension(n) :: planeCosine
 
@@ -1021,6 +1026,11 @@ subroutine selfTest()
     end function planeCosine
 
     function planeSine(n)
+#ifndef __GFORTRAN__
+      use prec
+      use math
+      import, none
+#endif
       integer, intent(in) :: n
       real(pREAL), dimension(n) :: planeSine
 

@@ -651,6 +651,10 @@ function integrateStateFPI(F_0,F,Fp0,Fi0,state0,Delta_t,ph,en) result(status)
   !> @brief calculate the damping for correction of state and dot state
   !--------------------------------------------------------------------------------------------------
   real(pREAL) pure function damper(omega_0,omega_1,omega_2)
+#ifndef __GFORTRAN__
+    use prec
+    import, none
+#endif
 
     real(pREAL), dimension(:), intent(in) :: &
       omega_0, omega_1, omega_2
@@ -955,6 +959,11 @@ subroutine results(group,ph)
 !> @brief Convert orientation array to quaternion array.
 !--------------------------------------------------------------------------------------------------
   function to_quaternion(dataset)
+#ifndef __GFORTRAN__
+    use prec
+    use rotations
+    import, none
+#endif
 
     type(tRotation), dimension(:), intent(in) :: dataset
     real(pREAL), dimension(4,size(dataset,1)) :: to_quaternion
