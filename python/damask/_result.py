@@ -2128,7 +2128,7 @@ class Result:
             for inc in util.show_progress(self._visible['increments']):
 
                 u = _read(f['/'.join([inc,'geometry','u_n' if mode.lower() == 'cell' else 'u_p'])])
-                v = v.set('u',u)
+                v = v.set('u (m)',u) # ad-hoc, should come from metadata
 
                 for kind, suffixes_ in zip(['phase', 'homogenization'],[suffixes, ['']]):
                     mergeable, not_mergeable = _is_mergeable(self._get_layout(f,inc,kind,output))
@@ -2148,8 +2148,8 @@ class Result:
                                         d[dset_name][at_cell_ho[label]] = data[in_data_ho[label]]
 
                             for name,dataset in d.items():
-                                v = v.set(' / '.join(['/'.join([kind,field,name]),
-                                          dataset.dtype.metadata['unit']]),dataset)                 # type: ignore[index]
+                                v = v.set(':'.join([kind,field,name])\
+                                          +f' ({dataset.dtype.metadata["unit"]})',dataset)          # type: ignore[index]
 
                     for field, dsets in not_mergeable.items():
                         for dset_name, dset in dsets.items():
@@ -2164,8 +2164,8 @@ class Result:
                                     case 'homogenization':
                                         d[dset_name][at_cell_ho[label]] = data[in_data_ho[label]]
                                 for name,dataset in d.items():
-                                    v = v.set(' / '.join(['/'.join([kind,field,label,name]),
-                                              dataset.dtype.metadata['unit']]),dataset)             # type: ignore[index]
+                                    v = v.set(':'.join([kind,field,label,name])\
+                                              +f' ({dataset.dtype.metadata["unit"]})',dataset)      # type: ignore[index]
 
                 v.save(out_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
                        parallel=parallel)
