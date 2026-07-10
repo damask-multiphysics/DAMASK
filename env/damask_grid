@@ -41,5 +41,4 @@ _damask_grid() {
     fi
 }
 
-complete -F _damask_grid DAMASK_grid
 complete -F _damask_grid damask_grid
