@@ -999,10 +999,9 @@ class Crystal():
 
         References
         ----------
-        U.F. Kocks et al.,
-        Texture and Anisotropy: Preferred Orientations in Polycrystals
-        and their Effect on Materials Properties.
-        Cambridge University Press 1998. Table II
+        U.F. Kocks et al., Texture and Anisotropy: Preferred Orientations
+        in Polycrystals and their Effect on Materials Properties
+        Cambridge University Press, 1998. Table II
 
         https://en.wikipedia.org/wiki/Crystal_system#Crystal_classes
         """

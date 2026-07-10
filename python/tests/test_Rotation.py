@@ -866,9 +866,22 @@ def test_basis(multidim_rotations,reciprocal):
                          m.isclose(f,atol=atol)
                         ).all()
 
+def test_random(np_rng):
+    N = 100000
+    p = []
+    for i in range(10):
+        R = Rotation.from_random(N,np_rng)
+        assert np.abs(np.mean(R.as_quaternion()**2,axis=0)-0.25 < 0.01).all()
+        assert np.abs(np.mean(R.as_matrix(),axis=0) < 0.01).all()
+        assert np.abs(np.mean(R.as_axis_angle(pair=True)[0]**2,axis=0) - 1./3. < 0.01).all()
+        theta = R.as_axis_angle(pair=True)[1]
+        assert np.abs(np.mean(theta) - (np.pi/2. + 2./np.pi)) < 0.01
+        u = (theta - np.sin(theta)) / np.pi
+        p.append(stats.kstest(u,'uniform').pvalue)
+    assert np.average(p) > 0.01
 
 @pytest.mark.parametrize('shape',[None,1,(4,4)])
-def test_random(np_rng,shape):
+def test_random_shape(np_rng,shape):
     r = Rotation.from_random(shape,rng_seed=np_rng)
     assert r.shape == () if shape is None else (1,) if shape == 1 else shape
 
@@ -1243,7 +1256,7 @@ def test_spherical_component(sigma,shape):
         _, angles = c.misorientation(o).as_axis_angle(pair=True,degrees=True)
         angles[::2] *= -1                                                                           # flip angle for every second to symmetrize distribution
 
-        p.append(stats.normaltest(angles)[1])
+        p.append(stats.normaltest(angles).pvalue)
 
     sigma_out = np.std(angles)
     p = np.average(p)
