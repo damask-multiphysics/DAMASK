@@ -172,7 +172,7 @@ jobs:
       - name: GCC - Install
         uses: gerlero/brew-install@v1
         with:
-          packages: gcc open-mpi bzip2 libfyaml
+          packages: gcc open-mpi bzip2
 
       - name: PETSc - Cache download
         id: petsc-download
@@ -202,7 +202,6 @@ jobs:
 
       - name: PETSc - Installation
         run: |
-          ln -s /opt/homebrew/bin/gfortran-15 /opt/homebrew/bin/gfortran
           cd petsc-${PETSC_VERSION}
           ./configure --with-fc=mpifort --with-cc=mpicc --with-cxx=mpic++ \
           --download-fftw --download-hdf5 --with-hdf5-fortran-bindings=1 --download-zlib --download-boost
