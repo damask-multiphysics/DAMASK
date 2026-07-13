@@ -17,9 +17,9 @@ DAMASK_ROOT=$(canonicalPath "$ENV_ROOT/../")
 eval "function DAMASK_root() { cd $DAMASK_ROOT; }"
 
 # add BRANCH if DAMASK_ROOT is a git repository
-cd $DAMASK_ROOT >/dev/null; BRANCH=$(git branch 2>/dev/null| grep -E '^\* '); cd - >/dev/null
+cd $DAMASK_ROOT >/dev/null; BRANCH=$(git branch 2>/dev/null| grep -E '^\* ' || true); cd - >/dev/null
 
-PATH=${DAMASK_ROOT}/bin:$PATH
+PATH=${DAMASK_ROOT}/bin${PATH:+:$PATH}
 
 SOLVER_GRID=$(type -p damask_grid || true 2>/dev/null)
 [ -z "$SOLVER_GRID" ] && SOLVER_GRID=$(blink 'Not found!')
@@ -40,7 +40,7 @@ ulimit -s unlimited 2>/dev/null # maximum stack size (kB)
 [ -z "$I_MPI_JOB_SIGNAL_PROPAGATION" ] && export I_MPI_JOB_SIGNAL_PROPAGATION=yes
 
 # disable output in case of scp
-if [ ! -z "$PS1" ]; then
+if [[ $- == *i* ]]; then
   echo
   echo Düsseldorf Advanced Materials Simulation Kit --- DAMASK
   echo Max-Planck-Institut für Nachhaltige Materialien GmbH, Düsseldorf
@@ -50,13 +50,13 @@ if [ ! -z "$PS1" ]; then
   echo "DAMASK             $DAMASK_ROOT $BRANCH"
   echo "Grid Solver        $SOLVER_GRID"
   echo "Mesh Solver        $SOLVER_MESH"
-  if [ -n "$PETSC_DIR" ]; then
+  if [ -n "${PETSC_DIR:-}" ]; then
     echo -n "PETSc location     "
     [ -d $PETSC_DIR ] && echo $PETSC_DIR || blink $PETSC_DIR
     [[ $(canonicalPath "$PETSC_DIR") == $PETSC_DIR ]] \
     || echo "               ~~> "$(canonicalPath "$PETSC_DIR")
   fi
-  [ -n "$PETSC_ARCH" ] && echo "PETSc architecture $PETSC_ARCH"
+  [ -n "${PETSC_ARCH:-}" ] && echo "PETSc architecture $PETSC_ARCH"
   echo "Multithreading     OMP_NUM_THREADS=$OMP_NUM_THREADS"
   echo "                   OPENBLAS_NUM_THREADS=$OPENBLAS_NUM_THREADS"
   echo "IntelMPI           I_MPI_JOB_ABORT_SIGNAL=$I_MPI_JOB_ABORT_SIGNAL"
@@ -81,7 +81,7 @@ if [ ! -z "$PS1" ]; then
 fi
 
 export DAMASK_ROOT
-export PYTHONPATH=$DAMASK_ROOT/python:$PYTHONPATH
+export PYTHONPATH=${DAMASK_ROOT}/python${PYTHONPATH:+:$PYTHONPATH}
 source "$ENV_ROOT/damask_grid"
 source "$ENV_ROOT/damask_mesh"
 
