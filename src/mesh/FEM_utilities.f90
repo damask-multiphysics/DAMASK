@@ -11,6 +11,7 @@ module FEM_utilities
 #endif
 
   use prec
+  use constants
   use config
   use math
   use misc
@@ -18,7 +19,7 @@ module FEM_utilities
   use parallelization
   use discretization_mesh
   use homogenization
-  use constants
+  use materialpoint
 
 #ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
@@ -142,6 +143,7 @@ subroutine utilities_constitutiveResponse(status, Delta_t,forwardData)
 
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
 
+  if (forwardData) call materialpoint_forward()
   call homogenization_mechanical_response(status,Delta_t,1,int(mesh_maxNips*mesh_nElems))           ! calculate P field
   cutBack = .false.
 

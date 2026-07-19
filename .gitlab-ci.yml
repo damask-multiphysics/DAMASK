@@ -251,6 +251,9 @@ open-source:
     - >
        pytest -v -x -n 3 --dist=loadscope --durations=20 -k 'not compile and not Marc'
        --basetemp=${CI_PROJECT_DIR}/${CI_JOB_NAME}_${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
+    - cd ../../examples/mesh
+    - damask_mesh -l tensionY.yaml -m material.yaml -n numerics.yaml -g notch_3D_hex_13k.msh        # temporary until we have a good test
+
 
 c++-linter:
   stage: core
