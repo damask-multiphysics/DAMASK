@@ -42,6 +42,12 @@ workflow:
 .registry:
   image: git.damask-multiphysics.org:5050/damask/damask/${IMAGE}
 
+.artifacts:
+  artifacts:
+    name: "${CI_PROJECT_DIR}/${CI_JOB_NAME}_${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"
+    paths: ["${CI_PROJECT_DIR}/${CI_JOB_NAME}_${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"]
+    expire_in: '2 days'
+
 ####################################################################################################
 # images
 .petsc_gcc_default:
@@ -90,7 +96,7 @@ workflow:
 .petsc_llvm_debug:
   extends: .registry
   variables:
-    IMAGE: llvm_petsc-default:${PETSC_LLVM_LATEST} # only one image at the moment
+    IMAGE: llvm_petsc-default:${PETSC_LLVM_LATEST}  # only one image at the moment
 
 .petsc:
   extends: .registry
@@ -198,12 +204,14 @@ create_package_previous:
 
 
 .pytest:
-  extends: .processing
+  extends: [.processing, .artifacts]
   script:
     - export DAMASK_ROOT=$(pwd)
     - PYTHONPATH=${DAMASK_ROOT}/python:$PYTHONPATH
     - cd python
-    - python3 -m pytest -v --cov=damask --cov-report=xml --damask-root=${DAMASK_ROOT}
+    - >
+       python3 -m pytest -v --cov=damask --cov-report=xml --damask-root=${DAMASK_ROOT}
+       --basetemp=${CI_PROJECT_DIR}/${CI_JOB_NAME}_${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
     - coverage report --fail-under=90 --show-missing
 
 pytest:
@@ -230,7 +238,7 @@ doctest:
 
 open-source:
   stage: core
-  extends: .petsc_gcc_default
+  extends: [.petsc_gcc_default, .artifacts]
   tags:
     - long_running
   needs: []
@@ -240,7 +248,9 @@ open-source:
   script:
     - cd tests/integration
     - export OMP_NUM_THREADS=2
-    - pytest -v -x -n 3 --dist=loadscope --durations=20 -k 'not compile and not Marc'
+    - >
+       pytest -v -x -n 3 --dist=loadscope --durations=20 -k 'not compile and not Marc'
+       --basetemp=${CI_PROJECT_DIR}/${CI_JOB_NAME}_${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
 
 c++-linter:
   stage: core
