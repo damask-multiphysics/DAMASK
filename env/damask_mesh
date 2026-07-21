@@ -40,5 +40,4 @@ _damask_mesh() {
     fi
 }
 
-complete -F _damask_mesh DAMASK_mesh
 complete -F _damask_mesh damask_mesh

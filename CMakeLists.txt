@@ -299,7 +299,7 @@ add_subdirectory(src)
 
 if(TEST)
   include(CTest)
-  add_test(NAME fortran.unit COMMAND $<TARGET_FILE:DAMASK_test>)
+  add_test(NAME fortran.unit COMMAND $<TARGET_FILE:damask_test>)
   set_tests_properties(fortran.unit PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
   add_subdirectory(tests/unit_cpp)
 endif()

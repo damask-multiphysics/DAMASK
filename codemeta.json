@@ -14,6 +14,11 @@
             "givenName": "Martin"
         },
         {
+            "type": "Role",
+            "schema:author": "https://orcid.org/0000-0002-3738-7363",
+            "roleName": "Project manager"
+        },
+        {
             "id": "https://orcid.org/0000-0002-8220-5995",
             "type": "Person",
             "affiliation": {
@@ -24,34 +29,54 @@
             "givenName": "Philip"
         },
         {
+            "type": "Role",
+            "schema:author": "https://orcid.org/0000-0002-8220-5995",
+            "roleName": "Project manager"
+        },
+        {
             "id": "https://orcid.org/0000-0001-5754-068X",
             "type": "Person",
             "affiliation": {
                 "type": "Organization",
-                "name": "Max-Planck-Institut für Nachhaltige Materialien GmbH"
+                "name": "Max-Planck-Institut für Nachhaltige Materialien"
             },
             "familyName": "Roongta",
             "givenName": "Sharan"
+        },
+        {
+            "type": "Role",
+            "schema:author": "https://orcid.org/0000-0001-5754-068X",
+            "roleName": "Researcher"
         },
         {
             "id": "https://orcid.org/0009-0005-8363-6112",
             "type": "Person",
             "affiliation": {
                 "type": "Organization",
-                "name": "Max-Planck-Institut für Nachhaltige Materialien GmbH"
+                "name": "Max-Planck-Institut für Nachhaltige Materialien"
             },
             "familyName": "Otto de Mentock",
             "givenName": "Daniel"
+        },
+        {
+            "type": "Role",
+            "schema:author": "https://orcid.org/0009-0005-8363-6112",
+            "roleName": "Researcher"
         },
         {
             "id": "https://orcid.org/0000-0003-2775-6169",
             "type": "Person",
             "affiliation": {
                 "type": "Organization",
-                "name": "Max-Planck-Institut für Nachhaltige Materialien GmbH"
+                "name": "Max-Planck-Institut für Nachhaltige Materialien"
             },
             "familyName": "Hu",
             "givenName": "Yi"
+        },
+        {
+            "type": "Role",
+            "schema:author": "https://orcid.org/0000-0003-2775-6169",
+            "roleName": "Researcher"
         },
         {
             "id": "https://orcid.org/0000-0003-0843-3903",
@@ -64,6 +89,56 @@
             "givenName": "Nikhil"
         },
         {
+            "type": "Role",
+            "schema:author": "https://orcid.org/0000-0003-0843-3903",
+            "roleName": "Researcher"
+        },
+        {
+            "id": "https://orcid.org/0009-0009-3294-5301",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "KU Leuven"
+            },
+            "familyName": "Velo Perez",
+            "givenName": "Javier"
+        },
+        {
+            "type": "Role",
+            "schema:author": "https://orcid.org/0009-0009-3294-5301",
+            "roleName": "Researcher"
+        },
+        {
+            "id": "https://orcid.org/0009-0002-5649-8859",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "KU Leuven"
+            },
+            "familyName": "Kannan",
+            "givenName": "Aadhithyan"
+        },
+        {
+            "type": "Role",
+            "schema:author": "https://orcid.org/0009-0002-5649-8859",
+            "roleName": "Researcher"
+        },
+        {
+            "id": "https://orcid.org/0009-0007-4579-7286",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "Max-Planck-Institut für Nachhaltige Materialien"
+            },
+            "familyName": "Tsiolis",
+            "givenName": "Fotios"
+        },
+        {
+            "type": "Role",
+            "schema:author": "https://orcid.org/0009-0007-4579-7286",
+            "roleName": "Researcher"
+        },
+        {
             "id": "https://orcid.org/0000-0002-6324-0306",
             "type": "Person",
             "affiliation": {
@@ -74,27 +149,39 @@
             "givenName": "Pratheek"
         },
         {
+            "type": "Role",
+            "schema:author": "https://orcid.org/0000-0002-6324-0306",
+            "roleName": "Project leader"
+        },
+        {
             "id": "https://orcid.org/0000-0002-9098-9566",
             "type": "Person",
             "affiliation": {
                 "type": "Organization",
-                "name": "Max-Planck-Institut für Nachhaltige Materialien GmbH"
+                "name": "Max-Planck-Institut für Nachhaltige Materialien"
             },
             "familyName": "Roters",
             "givenName": "Franz"
+        },
+        {
+            "type": "Role",
+            "schema:author": "https://orcid.org/0000-0002-9098-9566",
+            "roleName": "Project leader"
         }
     ],
     "codeRepository": "https://github.com/damask-multiphysics/DAMASK.git",
     "dateCreated": "2007-03-20",
-    "dateModified": "2025-06-09",
+    "dateModified": "2026-07-09",
     "datePublished": "2012-11-15",
     "description": "DAMASK® is a unified multi-physics crystal plasticity simulation package. The solution of continuum mechanical boundary value problems requires a constitutive response that connects deformation and stress at each material point. This problem is solved in DAMASK on the basis of crystal plasticity using a variety of constitutive models and homogenization approaches. However, treating mechanics in isolation is no longer sufficient to study emergent advanced high-strength materials. In these materials, deformation happens interrelated with displacive phase transformation, significant heating, and potential damage evolution. Therefore, DAMASK is capable of handling multi-physics problems. Following a modular approach, additional field equations are solved in a fully coupled way using a staggered approach.",
-    "downloadUrl": "https://damask-multiphysics.org/download/damask-3.0.2.tar.xz",
+    "downloadUrl": "https://damask-multiphysics.org/download/damask-3.1.0.tar.xz",
     "identifier": "10.5281/zenodo.14586837",
     "keywords": [
-        "crystal plasticity",
-        "simulation",
-        "multi-physics"
+        "Materials Engineering",
+        "Materials Science",
+        "Simulation",
+        "Crystal Plasticity",
+        "Multi-Physics"
     ],
     "license": "https://spdx.org/licenses/AGPL-3.0-or-later",
     "name": "DAMASK",
@@ -104,11 +191,29 @@
     ],
     "programmingLanguage": [
         "Fortran",
+        "Python",
         "C",
-        "Python"
+        "C++"
     ],
-    "softwareRequirements": "PETSc, FFTW, zlib, HDF5, Python, pandas, NumPy, SciPy, h5py, VTK, Matplotlib, PyYAML",
-    "version": "3.0.2",
+    "relatedLink": "https://damask-multiphysics.org",
+    "softwareRequirements": [
+        "https://petsc.org",
+        "https://www.hdfgroup.org/solutions/hdf5",
+        "https://www.fftw.org",
+        "https://www.zlib.net",
+        "https://github.com/pantoniou/libfyaml",
+        "https://www.boost.org",
+        "https://www.python.org",
+        "https://pandas.pydata.org",
+        "https://numpy.org",
+        "https://scipy.org",
+        "https://www.h5py.org",
+        "https://vtk.org",
+        "https://matplotlib.org",
+        "https://pyyaml.org"
+    ],
+    "version": "3.1.0",
     "developmentStatus": "active",
     "referencePublication": "https://doi.org/10.1016/j.commatsci.2018.04.030"
 }
+

@@ -1,5 +1,5 @@
 /**
- * @file VTI.cpp
+ * @file VTI.h
  * @brief DAMASK VTI reader with beast-based XML parser
  *
  * @author Daniel Otto de Mentock, Max‑Planck‑Institut für Nachhaltige Materialien GmbH

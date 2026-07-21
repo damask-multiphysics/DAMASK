@@ -21,23 +21,40 @@ authors:
   - given-names: Sharan
     family-names: Roongta
     email: s.roongta@mpi-susmat.de
-    affiliation: Max-Planck-Institut für Nachhaltige Materialien GmbH
+    affiliation: Max-Planck-Institut für Nachhaltige Materialien
     orcid: 'https://orcid.org/0000-0001-5754-068X'
   - given-names: Daniel
     family-names: Otto de Mentock
     email: d.mentock@mpi-susmat.de
-    affiliation: Max-Planck-Institut für Nachhaltige Materialien GmbH
+    affiliation: Max-Planck-Institut für Nachhaltige Materialien
     orcid: 'https://orcid.org/0009-0005-8363-6112'
   - given-names: Yi
     family-names: Hu
     email: y.hu@mpi-susmat.de
-    affiliation: Max-Planck-Institut für Nachhaltige Materialien GmbH
+    affiliation: Max-Planck-Institut für Nachhaltige Materialien
     orcid: 'https://orcid.org/0000-0003-2775-6169'
   - given-names: Nikhil
     family-names: Prabhu
     email: nikhil.prabhu@kuleuven.be
     affiliation: KU Leuven
     orcid: 'https://orcid.org/0000-0003-0843-3903'
+  - given-names: Javier
+    family-names: Velo Perez
+    email: javier.velo@kuleuven.be
+    affiliation: KU Leuven
+    orcid: 'https://orcid.org/0009-0009-3294-5301'
+  - given-names: Aadhithyan
+    family-names: Kannan
+    email: aadhi.kannan@kuleuven.be
+    affiliation: KU Leuven
+    orcid: 'https://orcid.org/0009-0002-5649-8859'
+  - given-names: Fotios
+    family-names: Tsiolis
+    email: f.tsiolis@mpi-susmat.de
+    affiliation:
+      - Max-Planck-Institut für Nachhaltige Materialien
+      - National Technical University of Athens
+    orcid: 'https://orcid.org/0009-0007-4579-7286'
   - given-names: Pratheek
     family-names: Shanthraj
     email: pratheek.shanthraj@ukaea.uk
@@ -46,7 +63,7 @@ authors:
   - given-names: Franz
     family-names: Roters
     email: f.roters@mpi-susmat.de
-    affiliation: Max-Planck-Institut für Nachhaltige Materialien GmbH
+    affiliation: Max-Planck-Institut für Nachhaltige Materialien
     orcid: 'https://orcid.org/0000-0002-9098-9566'
 identifiers:
   - type: doi
@@ -81,13 +98,15 @@ abstract: >-
   additional field equations are solved in a fully coupled
   way using a staggered approach.
 keywords:
-  - crystal plasticity
-  - simulation
-  - multi-physics
+  - Materials Engineering
+  - Materials Science
+  - Simulation
+  - Crystal Plasticity
+  - Multi-Physics
 license: AGPL-3.0-or-later
-commit: 810df52f6d98c0a3603c0fc88b9912c450b56e06
-version: 3.0.2
-date-released: '2024-06-09'
+commit: e192172249a6cef314c0d81b4798fd2aa8bbeadf
+version: 3.1.0
+date-released: '2026-07-09'
 preferred-citation:
   type: article
   authors:

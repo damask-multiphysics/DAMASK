@@ -37,21 +37,21 @@ version = _np.lib.NumpyVersion
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
 # https://stackoverflow.com/questions/287871
 if 'NO_COLOR' not in _os.environ:
-   _formats = _defaultdict(str,
-              {
-               'header' :    '\033[95m',
-               'OK_blue':    '\033[94m',
-               'OK_green':   '\033[92m',
-               'warning':    '\033[93m',
-               'fail':       '\033[91m',
-               'bold':       '\033[1m',
-               'dim':        '\033[2m',
-               'underline':  '\033[4m',
-               'crossout':   '\033[9m',
-               'end_format': '\033[0m'
-              })
+    _formats = _defaultdict(str,
+               {
+                'header' :    '\033[95m',
+                'OK_blue':    '\033[94m',
+                'OK_green':   '\033[92m',
+                'warning':    '\033[93m',
+                'fail':       '\033[91m',
+                'bold':       '\033[1m',
+                'dim':        '\033[2m',
+                'underline':  '\033[4m',
+                'crossout':   '\033[9m',
+                'end_format': '\033[0m'
+               })
 else:
-   _formats = _defaultdict(str)
+    _formats = _defaultdict(str)
 
 ####################################################################################################
 # Functions
@@ -731,8 +731,8 @@ def Bravais_to_Miller(*,
     uvw|hkl : numpy.ndarray, shape (...,3)
         Miller indices of [uvw] direction or (hkl) plane normal.
     """
-    if (uvtw is not None) ^ (hkil is None):
-        raise KeyError('specify either "uvtw" or "hkil"')
+    if (uvtw is None) == (hkil is None):
+        raise TypeError('specify either "uvtw" or "hkil"')
     elif uvtw is not None:
         axis,basis = _standardize_MillerBravais(uvtw),_np.array([[2,1,0,0],
                                                                  [1,2,0,0],
@@ -765,8 +765,8 @@ def Miller_to_Bravais(*,
     uvtw|hkil : numpy.ndarray, shape (...,4)
         Miller–Bravais indices of [uvtw] direction or (hkil) plane normal.
     """
-    if (uvw is not None) ^ (hkl is None):
-        raise KeyError('specify either "uvw" or "hkl"')
+    if (uvw is None) == (hkl is None):
+        raise TypeError('specify either "uvw" or "hkl"')
     axis,basis = (_np.asarray(uvw),_np.array([[ 2,-1, 0],
                                               [-1, 2, 0],
                                               [-1,-1, 0],

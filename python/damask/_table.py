@@ -416,7 +416,7 @@ class Table:
             return [f'{specific} / {general}']
 
         dup = self.copy()
-        if info is not None: self.comments += add_comment(label,data.shape[1:],info)
+        if info is not None: dup.comments += add_comment(label,data.shape[1:],info)
 
         key = m.group(1) if (m := re.match(r'(.*)\[((\d+,)*(\d+))\]',label)) else label
 
@@ -437,7 +437,7 @@ class Table:
             new = pd.DataFrame(data=data.reshape((-1,size)),
                                columns=[label]*size,
                               )
-            new.index = new.index if dup.data.index.empty else dup.data.index
+            if not dup.data.index.empty: new.index = dup.data.index
             dup.data = pd.concat([dup.data,new],axis=1)
 
         return dup

@@ -231,11 +231,11 @@ def test_flatten(full,reduced):
 
 
 def test_double_Bravais_to_Miller():
-    with pytest.raises(KeyError):
+    with pytest.raises(TypeError):
         util.Bravais_to_Miller(uvtw=np.ones(4),hkil=np.ones(4))
 
 def test_double_Miller_to_Bravais():
-    with pytest.raises(KeyError):
+    with pytest.raises(TypeError):
         util.Miller_to_Bravais(uvw=np.ones(4),hkl=np.ones(4))
 
 @pytest.mark.parametrize('key_value',[{'uvtw':[1.,0.,-1.,1.1]},

@@ -1266,18 +1266,18 @@ class Rotation:
         -------
         new : damask.Rotation
             Random rotation of given shape.
+
+        References
+        ----------
+        A.J. Hanson, Visualizing More Quaternions
+        Morgan Kaufmann Publishers, 2024. Chapter 6
+        https://doi.org/10.1016/C2021-0-01777-6
         """
         rng = np.random.default_rng(rng_seed)
-        r = rng.random(3 if shape is None else tuple(shape)+(3,) if hasattr(shape, '__iter__') else (shape,3))
+        q = rng.normal(size = (4 if shape is None else tuple(shape)+(4,) if hasattr(shape, '__iter__') else (shape,4)))
+        q /= np.linalg.norm(q,axis=-1,keepdims=True)                                                # assuming no division by zero
 
-        A = np.sqrt(r[...,2])
-        B = np.sqrt(1.-r[...,2])
-        q = np.stack([np.cos(2.*np.pi*r[...,0])*A,
-                      np.sin(2.*np.pi*r[...,1])*B,
-                      np.cos(2.*np.pi*r[...,1])*B,
-                      np.sin(2.*np.pi*r[...,0])*A],axis=-1)
-
-        return Rotation(q[:] if shape is None else q.reshape(r.shape[:-1]+(4,)))._standardize()
+        return Rotation(q[:] if shape is None else q)._standardize()
 
 
     @staticmethod
@@ -1478,13 +1478,13 @@ class Rotation:
 
         N = 1 if shape is None else np.prod(shape).astype(int)
         u,Theta = (rng.random((N,2)) * 2. * np.array([1.,np.pi]) - np.array([1.,0.])).T
-        omega = abs(rng.normal(scale=sigma_,size=N))
+        omega = rng.normal(scale=sigma_,size=N)
         p = np.column_stack([np.sqrt(1.-u**2)*np.cos(Theta),
                              np.sqrt(1.-u**2)*np.sin(Theta),
-                             u, omega])
+                             u, np.abs(omega)])
         p[:,:3] = np.einsum('ij,...j',np.eye(3)-np.outer(d_lab,d_lab),p[:,:3])                      # remove component along fiber axis
         f = np.column_stack((np.broadcast_to(d_lab,(N,3)),rng.random(N)*np.pi))
-        f[::2,:3] *= -1.                                                                            # flip half the rotation axes to negative sense
+        f[omega<0.0,:3] *= -1
 
         return (R_align.broadcast_to(N)
                 * Rotation.from_axis_angle(p,normalize=True)

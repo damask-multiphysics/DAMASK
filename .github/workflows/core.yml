@@ -81,8 +81,8 @@ jobs:
 
       - name: DAMASK - Run
         run: |
-          ./bin/DAMASK_grid -l tensionX.yaml -g 20grains16x16x16.vti -m material.yaml -w examples/grid
-          ./bin/DAMASK_mesh -l tensionZ_3g.yaml -g cube_3grains.msh -m material.yaml -w examples/mesh
+          ./bin/damask_grid -l tensionX.yaml -g 20grains16x16x16.vti -m material.yaml -w examples/grid
+          ./bin/damask_mesh -l tensionZ_3g.yaml -g cube_3grains.msh -m material.yaml -w examples/mesh
 
 
   ubuntu_Intel:
@@ -156,8 +156,8 @@ jobs:
 
       - name: DAMASK - Run
         run: |
-          ./bin/DAMASK_grid -l tensionX.yaml -g 20grains16x16x16.vti -m material.yaml -w examples/grid
-          ./bin/DAMASK_mesh -l tensionZ_3g.yaml -g cube_3grains.msh -m material.yaml -w examples/mesh
+          ./bin/damask_grid -l tensionX.yaml -g 20grains16x16x16.vti -m material.yaml -w examples/grid
+          ./bin/damask_mesh -l tensionZ_3g.yaml -g cube_3grains.msh -m material.yaml -w examples/mesh
 
 
   macos_homebrew:
@@ -172,7 +172,7 @@ jobs:
       - name: GCC - Install
         uses: gerlero/brew-install@v1
         with:
-          packages: gcc open-mpi bzip2 libfyaml
+          packages: gcc open-mpi bzip2
 
       - name: PETSc - Cache download
         id: petsc-download
@@ -202,7 +202,6 @@ jobs:
 
       - name: PETSc - Installation
         run: |
-          ln -s /opt/homebrew/bin/gfortran-15 /opt/homebrew/bin/gfortran
           cd petsc-${PETSC_VERSION}
           ./configure --with-fc=mpifort --with-cc=mpicc --with-cxx=mpic++ \
           --download-fftw --download-hdf5 --with-hdf5-fortran-bindings=1 --download-zlib --download-boost
@@ -216,5 +215,5 @@ jobs:
 
       - name: DAMASK - Run
         run: |
-          ./bin/DAMASK_grid -l tensionX.yaml -g 20grains16x16x16.vti -m material.yaml -w examples/grid
-          ./bin/DAMASK_mesh -l tensionZ_3g.yaml -g cube_3grains.msh -m material.yaml -w examples/mesh
+          ./bin/damask_grid -l tensionX.yaml -g 20grains16x16x16.vti -m material.yaml -w examples/grid
+          ./bin/damask_mesh -l tensionZ_3g.yaml -g cube_3grains.msh -m material.yaml -w examples/mesh

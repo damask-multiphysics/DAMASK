@@ -117,7 +117,7 @@ def test_chemical_regularsolution_reference(res_path,tmp_path,assert_allclose,up
     l['loadstep'][0]['discretization']['N'] = 100
     l.save(tmp_path/f'{load}.yaml')
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
 
     if update:
         shutil.copyfile(tmp_path/f'{job}.hdf5', res_path/f'regular_load_material.hdf5')
@@ -150,7 +150,7 @@ def test_chemical_regularsolution_plausibility(res_path,tmp_path,np_rng,assert_a
     l['loadstep'][0]['discretization']['N'] = N
     l.save(tmp_path/f'{load}.yaml')
 
-    damask.util.run(f'DAMASK_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
+    damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
 
     # check 1: decrease in chemical potential gradient (equivalently difference) over time
     r = damask.Result(tmp_path/f'{job}.hdf5')

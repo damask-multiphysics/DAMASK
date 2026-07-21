@@ -1,28 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-function(fs_case_sensitive base_path out_var)
-  set(_test_dir "${base_path}/neveruse")
-  file(MAKE_DIRECTORY "${_test_dir}")
-  file(WRITE "${_test_dir}/never.use" "test\n")
-  file(WRITE "${_test_dir}/NEVER.USE" "test\n")
-
-  # Count distinct directory entries
-  file(GLOB _case_test_files "${_test_dir}/*")
-  list(LENGTH _case_test_files _case_test_count)
-
-  # If both names coexist as separate entries -> case-sensitive
-  set(_is_case_sensitive FALSE)
-  if(_case_test_count GREATER 1)
-    set(_is_case_sensitive TRUE)
-  endif()
-
-  file(REMOVE_RECURSE "${_test_dir}")
-  set(${out_var} ${_is_case_sensitive} PARENT_SCOPE)
-endfunction()
-
 foreach(VARIANT GRID MESH TEST)
   if(${VARIANT})
     string(TOLOWER "${VARIANT}" VARIANT_LOWER)
-    set(executable_name "DAMASK_${VARIANT_LOWER}")
+    set(executable_name "damask_${VARIANT_LOWER}")
     if(VARIANT_LOWER STREQUAL "test")
       set(variant_path "${PROJECT_SOURCE_DIR}/tests/unit_fortran")
     else()
@@ -67,14 +47,6 @@ foreach(VARIANT GRID MESH TEST)
       endif()
 
       install(TARGETS ${executable_name} RUNTIME DESTINATION bin)
-      fs_case_sensitive(${CMAKE_INSTALL_PREFIX}/bin fs_is_case_sensitive)
-      if(fs_is_case_sensitive)
-        INSTALL(CODE "execute_process( \
-          COMMAND ${CMAKE_COMMAND} -E create_symlink \
-          ${executable_name} \
-          ${CMAKE_INSTALL_PREFIX}/bin/damask_${VARIANT_LOWER} \
-          )")
-      endif()
     else()
       add_library(${executable_name} OBJECT ${damask_fortran} ${damask_c})
       execute_process(COMMAND "mktemp" OUTPUT_VARIABLE nothing OUTPUT_STRIP_TRAILING_WHITESPACE)
