@@ -14,7 +14,7 @@ ENV_ROOT=$(canonicalPath "${0:a:h}")
 DAMASK_ROOT=$(canonicalPath "${0:a:h}'/..")
 
 # add BRANCH if DAMASK_ROOT is a git repository
-cd $DAMASK_ROOT >/dev/null; BRANCH=$(git branch 2>/dev/null| grep -E '^\* ' || true); cd - >/dev/null
+cd $DAMASK_ROOT >/dev/null; BRANCH=$(git branch --show-current 2>/dev/null || true); cd - >/dev/null
 
 PATH=${DAMASK_ROOT}/bin${PATH:+:$PATH}
 
