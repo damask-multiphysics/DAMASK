@@ -187,7 +187,6 @@ mypy:
 .create_package:
   extends: .processing
   script:
-    - sed -i 's/-[[:digit:]]*-.*//' VERSION
     - cd python
     - python3 -m build --wheel --no-isolation
 
@@ -450,11 +449,10 @@ update_revision:
   script:
     - cd $(mktemp -d)
     - git clone -b development -q https://damask_user:${TOKEN_DAMASK}@git.damask-multiphysics.org/damask/DAMASK.git .
-    - export VERSION=$(git describe ${CI_COMMIT_SHA})
-    - echo ${VERSION:1} > VERSION
-    - >
-       git diff-index --quiet HEAD ||
-       git commit VERSION -m "[skip ci] updated version information after successful test of $VERSION"
+    - export VERSION_RAW=$(git describe ${CI_COMMIT_SHA})
+    - export VERSION=$(printf '%s\n' "$VERSION_RAW" | sed 's/^v//; s/-/+/; s/-g/./')
+    - echo ${VERSION} > VERSION
+    - git commit VERSION --allow-empty -m "[skip ci] updated version information after successful test of $VERSION"
     - if [ ${CI_COMMIT_SHA} == $(git rev-parse HEAD^) ]; then git push --atomic --no-verify origin HEAD:development HEAD:master; fi
 
 
