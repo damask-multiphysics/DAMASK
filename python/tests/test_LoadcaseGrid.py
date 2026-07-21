@@ -4,6 +4,7 @@ from numpy import ma
 
 from damask import LoadcaseGrid
 
+
 def test_dumper():
     a = ma.MaskedArray(np.arange(3,dtype=float),mask=[0,1,0])
     assert str(LoadcaseGrid({'a':a}))             == 'a: [0.0, x, 2.0]\n'

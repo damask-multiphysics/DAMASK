@@ -5,7 +5,9 @@ Finite-strain continuum mechanics.
 All routines operate on numpy.ndarrays of shape (...,3,3).
 """
 
-from typing import Sequence as _Sequence, Union as _Union, Literal as _Literal
+from typing import Literal as _Literal
+from typing import Sequence as _Sequence
+from typing import Union as _Union
 
 import numpy as _np
 from numpy import typing as _npt

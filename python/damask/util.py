@@ -11,19 +11,29 @@ import shlex as _shlex
 import signal as _signal
 import subprocess as _subprocess
 import sys as _sys
-from collections import abc as _abc, defaultdict as _defaultdict
-from functools import reduce as _reduce, partial as _partial
+from collections import abc as _abc
+from collections import defaultdict as _defaultdict
+from functools import partial as _partial
+from functools import reduce as _reduce
 from pathlib import Path as _Path
-from typing import Optional as _Optional, Union as _Union, Iterable as _Iterable, \
-                   Literal as _Literal, NamedTuple as _NamedTuple, \
-                   Any as _Any, TextIO as _TextIO, Generator as _Generator
+from typing import Any as _Any
+from typing import Generator as _Generator
+from typing import Iterable as _Iterable
+from typing import Literal as _Literal
+from typing import NamedTuple as _NamedTuple
+from typing import Optional as _Optional
+from typing import TextIO as _TextIO
+from typing import Union as _Union
 
 import h5py as _h5py
 import numpy as _np
 
 from . import version as _version
-from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence, \
-                        NumpyRngSeed as _NumpyRngSeed, FileHandle as _FileHandle
+from ._typehints import FileHandle as _FileHandle
+from ._typehints import FloatSequence as _FloatSequence
+from ._typehints import IntSequence as _IntSequence
+from ._typehints import NumpyRngSeed as _NumpyRngSeed
+
 
 class stdioTuple(_NamedTuple):
     stdout: str

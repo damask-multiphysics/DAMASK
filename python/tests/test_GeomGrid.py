@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import sys
 
-import pytest
 import numpy as np
+import pytest
 from vtkmodules.vtkCommonCore import vtkVersion
 
 from damask import VTK

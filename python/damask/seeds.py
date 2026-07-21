@@ -1,15 +1,17 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Functionality for generation of seed points for Voronoi or Laguerre tessellation."""
 
-from typing import Optional as _Optional, NamedTuple as _NamedTuple
+from typing import NamedTuple as _NamedTuple
+from typing import Optional as _Optional
 
 import numpy as _np
 from scipy import spatial as _spatial
 
 from . import grid_filters as _grid_filters
 from . import util as _util
-from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence, \
-                        NumpyRngSeed as _NumpyRngSeed
+from ._typehints import FloatSequence as _FloatSequence
+from ._typehints import IntSequence as _IntSequence
+from ._typehints import NumpyRngSeed as _NumpyRngSeed
 
 
 class FromGridTuple(_NamedTuple):

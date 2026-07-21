@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import sys
-import random
 import pydoc
+import random
+import sys
 
-import pytest
-import numpy as np
-from scipy import stats
 import h5py
+import numpy as np
+import pytest
+from scipy import stats
 
 from damask import util
 

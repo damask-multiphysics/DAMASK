@@ -7,6 +7,8 @@ from itertools import chain
 from typing import Optional, Union
 
 import matplotlib as mpl
+
+
 if os.name == 'posix' and 'DISPLAY' not in os.environ:
     mpl.use('Agg')
 import numpy as np

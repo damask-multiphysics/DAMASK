@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import sys
 import os
-import pytest
+import sys
+
 import numpy as np
+import pytest
 
 from damask import ConfigMaterial
 from damask import Table

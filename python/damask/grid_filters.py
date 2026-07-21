@@ -12,16 +12,17 @@ the following operations are required for tensorial data:
     - D1 = D3.reshape(cells+(-1,),order='C').reshape(-1,9,order='F')
 """
 
-from typing import (NamedTuple as _NamedTuple,
-                    Tuple as _Tuple,
-                    Union as _Union,
-                    Literal as _Literal,
-                    overload as _overload)
+from typing import Literal as _Literal
+from typing import NamedTuple as _NamedTuple
+from typing import Tuple as _Tuple
+from typing import Union as _Union
+from typing import overload as _overload
 
 import numpy as _np
 from scipy import spatial as _spatial
 
-from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence
+from ._typehints import FloatSequence as _FloatSequence
+from ._typehints import IntSequence as _IntSequence
 
 
 class CellsSizeOriginTuple(_NamedTuple):

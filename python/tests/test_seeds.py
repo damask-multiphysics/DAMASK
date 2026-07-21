@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import pytest
 import numpy as np
+import pytest
 from scipy.spatial import cKDTree
 
 from damask import seeds

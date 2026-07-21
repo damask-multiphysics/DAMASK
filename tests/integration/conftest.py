@@ -1,16 +1,17 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-from pathlib import Path
-import os
 import datetime
 import glob
-import shutil
+import os
 import re
+import shutil
+from pathlib import Path
 
 import h5py
 import numpy as np
 import pytest
 
 import damask
+
 
 def pytest_addoption(parser):
     parser.addoption('--update', action='store_true', default=False,

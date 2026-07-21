@@ -1,18 +1,19 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import os
 import filecmp
+import os
 import time
 
-import numpy as np
-import pytest
-from PIL import Image
-from PIL import ImageChops
 import matplotlib as mpl
 if os.name == 'posix' and 'DISPLAY' not in os.environ:
     mpl.use('Agg')
 import matplotlib.pyplot as plt
+import numpy as np
+import pytest
+from PIL import Image
+from PIL import ImageChops
 
 from damask import Colormap
+
 
 @pytest.fixture
 def res_path(res_path_base):

@@ -7,7 +7,7 @@ References
 D. Otto de Mentock et al., Journal of Open Source Software, 10(105):7164, 2025
 https://doi.org/10.21105/joss.07164
 """
-
+# isort: skip_file
 import logging as _logging
 from pathlib import Path as _Path
 

@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import pytest
-import numpy as np
 import itertools
+
+import numpy as np
+import pytest
 from matplotlib import pyplot as plt
 from PIL import Image
 

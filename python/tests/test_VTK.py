@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import os
 import filecmp
-import time
+import os
 import string
 import sys
+import time
 
-import pytest
 import numpy as np
 import numpy.ma as ma
+import pytest
 from vtkmodules.vtkCommonCore import vtkVersion
 
 from damask import util

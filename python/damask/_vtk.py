@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import contextlib
 import logging
-import threading
 import os
+import threading
 import warnings
 from pathlib import Path
 from typing import Literal, Optional, Union
@@ -10,6 +10,7 @@ from typing import Literal, Optional, Union
 import numpy as np
 
 from ._typehints import StrSequence
+
 
 # needed for visualization but might not be available everywhere
 # https://gitlab.kitware.com/vtk/vtk/-/issues/19687

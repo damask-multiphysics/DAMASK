@@ -1,18 +1,18 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import bz2
-import pickle
-import time
-import shutil
-import os
-import sys
-import hashlib
 import fnmatch
+import hashlib
+import os
+import pickle
 import random
+import shutil
+import sys
+import time
 from datetime import datetime
 
 import pytest
-from vtkmodules.vtkIOXML import vtkXMLImageDataReader
 from vtkmodules.vtkCommonCore import vtkVersion
+from vtkmodules.vtkIOXML import vtkXMLImageDataReader
 try:
     from vtkmodules.vtkIOXdmf2 import vtkXdmfReader
 except ImportError:
