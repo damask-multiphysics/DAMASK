@@ -74,6 +74,7 @@ def _read(dset_h5: h5py.Dataset) -> np.ndarray:
 def _times_to_increments(choice: list[str],
                          times: dict[int, float],
                          increments: list[str]) -> list[str]:
+    """Return increments for specified simulation times."""
     sorted_times = list(times.values())
     atol = 1.e-2 * np.min(np.diff(sorted_times))
     if choice == ['*']:
