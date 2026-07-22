@@ -1,0 +1,5 @@
+solver:
+  mesh:
+    p_s: 1
+    p_i: 1
+    mechanical: {PETSc_options: '-snes_type newtonls -ksp_type fgmres -ksp_max_it 50 -pc_type lu -snes_linesearch_type bt -snes_ksp_ew -snes_linesearch_max_it 3'}

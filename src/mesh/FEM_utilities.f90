@@ -11,6 +11,7 @@ module FEM_utilities
 #endif
 
   use prec
+  use constants
   use config
   use math
   use misc
@@ -18,7 +19,7 @@ module FEM_utilities
   use parallelization
   use discretization_mesh
   use homogenization
-  use constants
+  use materialpoint
 
 #ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
@@ -28,7 +29,6 @@ module FEM_utilities
   private
 
   logical,     public             :: cutBack = .false.                                              !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
-  real(pREAL), public, protected  :: wgt                                                            !< weighting factor 1/Nelems
 
 !--------------------------------------------------------------------------------------------------
 ! field labels information
@@ -126,32 +126,26 @@ subroutine FEM_utilities_init(num_mesh)
   call PetscOptionsSetValue(PETSC_NULL_OPTIONS,'-petscds_force_quad','0',err_PETSc)
   CHKERRQ(err_PETSc)
 
-  wgt = real(mesh_maxNips*mesh_nElems,pREAL)**(-1)
-
 end subroutine FEM_utilities_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate constitutive response.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_constitutiveResponse(status, Delta_t,P_av,forwardData)
+subroutine utilities_constitutiveResponse(status, Delta_t,forwardData)
 
   integer(kind(STATUS_OK)),  intent(out)  :: status
   real(pREAL), intent(in)                 :: Delta_t                                                !< loading time
   logical,     intent(in)                 :: forwardData                                            !< age results
-  real(pREAL),intent(out), dimension(3,3) :: P_av                                                   !< average PK stress
 
   integer(MPI_INTEGER_KIND) :: err_MPI
 
 
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
 
+  if (forwardData) call materialpoint_forward()
   call homogenization_mechanical_response(status,Delta_t,1,int(mesh_maxNips*mesh_nElems))           ! calculate P field
   cutBack = .false.
-
-  P_av = sum(homogenization_P,dim=3) * wgt
-  call MPI_Allreduce(MPI_IN_PLACE,P_av,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  call parallelization_chkerr(err_MPI)
 
 end subroutine utilities_constitutiveResponse
 

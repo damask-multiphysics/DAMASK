@@ -1,0 +1,15 @@
+---
+
+loadstep:
+  - boundary_conditions:
+      mechanical:
+        - label: 'bot_surf'
+          u_dot: ['x', 0.0, 'x']
+        - label: 'bot_pt1'
+          u_dot: [0.0, 0.0, 0.0]
+        - label: 'bot_pt2'
+          u_dot: [0.0, 'x', 'x']
+        - label: 'top_surf'
+          u_dot: ['x', .002, 'x']
+    discretization: {t: 50, N: 200}
+    f_out: 10

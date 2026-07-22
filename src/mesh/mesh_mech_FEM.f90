@@ -65,14 +65,12 @@ module mesh_mechanical_FEM
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
   character(len=pSTRLEN) :: incInfo
-  real(pREAL), dimension(3,3) :: &
-    P_av = 0.0_pREAL
   logical :: ForwardData
   integer(kind(STATUS_OK)) :: status
   real(pREAL), parameter :: eps = 1.0e-18_pREAL
 
 #if PETSC_VERSION_MINOR<23
-  external :: &                                                                                     ! ToDo: write interfaces
+  external :: &
 #if PETSC_VERSION_MINOR<22
     DMAddField, &
     SNESConvergedDefault, &
@@ -135,7 +133,6 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   character(len=*), parameter :: prefix = 'mechanical_'
   character(len=pSTRLEN)      :: BC_label
 
-  real(pREAL), dimension(3,3) :: devNull
   type(tDict), pointer        :: num_mech
 
   print'(/,1x,a)', '<<<+-  FEM_mech init  -+>>>'; flush(IO_STDOUT)
@@ -371,7 +368,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   call VecAssemblyEnd(u_local, err_PETSc)
   CHKERRQ(err_PETSc)
 
-  call utilities_constitutiveResponse(status,0.0_pREAL,devNull,.true.)
+  call utilities_constitutiveResponse(status,0.0_pREAL,.true.)
 
 end subroutine FEM_mechanical_init
 
@@ -455,8 +452,7 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_vec,dum
                                       dev_null
 #endif
   PetscInt  :: cellStart, cellEnd, cell, &
-               qPt, basis, comp, cidx, &
-               numFields, m,i
+               qPt, basis, comp, m,i
   PetscReal, dimension(dimPlex*dimPlex,cellDof) :: BMat                                             ! strain-displacement [B] matrix
 #if PETSC_VERSION_MINOR>=24
   PetscBool :: is_simplex
@@ -507,8 +503,6 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_vec,dum
   CHKERRQ(err_PETSc)
 
   do cell = cellStart, cellEnd-1_pPETSCINT
-    call PetscSectionGetNumFields(section,numFields,err_PETSc)
-    CHKERRQ(err_PETSc)
 #if PETSC_VERSION_MINOR>22
     call DMPlexVecGetClosure(dm_local,section,x_local,cell,PETSC_NULL_INTEGER,x_scal,err_PETSc)     ! get Dofs belonging to element
 #else
@@ -534,7 +528,6 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_vec,dum
 #endif
       do basis = 0_pPETSCINT, nBasis-1_pPETSCINT
         do comp = 0_pPETSCINT, dimPlex-1_pPETSCINT
-          cidx = basis*dimPlex+comp
           i = ((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp
           BMat(comp*dimPlex+1_pPETSCINT:(comp+1_pPETSCINT)*dimPlex,basis*dimPlex+comp+1_pPETSCINT) = &
 #if PETSC_VERSION_MINOR>22
@@ -556,9 +549,7 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_vec,dum
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call utilities_constitutiveResponse(status,params%Delta_t,P_av,ForwardData)
-  call MPI_Allreduce(MPI_IN_PLACE,status,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,err_MPI)
-  call parallelization_chkerr(err_MPI)
+  call utilities_constitutiveResponse(status,params%Delta_t,ForwardData)
   ForwardData = .false.
 
 !--------------------------------------------------------------------------------------------------
@@ -590,7 +581,6 @@ subroutine FEM_mechanical_formResidual(dm_local,delta_u_local,f_internal_vec,dum
 #endif
       do basis = 0_pPETSCINT, nBasis-1_pPETSCINT
         do comp = 0_pPETSCINT, dimPlex-1_pPETSCINT
-          cidx = basis*dimPlex+comp
           i = ((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp
           BMat(comp*dimPlex+1_pPETSCINT:(comp+1_pPETSCINT)*dimPlex,basis*dimPlex+comp+1_pPETSCINT) = &
 #if PETSC_VERSION_MINOR>22
@@ -667,7 +657,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,delta_u_local,J,Jp,dummy,err_PET
   real(pREAL), dimension(dimPlex,dimPlex)         :: invCellJ                                       ! cell inverse jacobian
 
   PetscInt :: cellStart, cellEnd, cell, &
-              qPt, basis, comp, cidx, ce, i
+              qPt, basis, comp, ce, i
 #if PETSC_VERSION_MINOR>=24
   PetscBool :: is_simplex
 #endif
@@ -737,7 +727,6 @@ subroutine FEM_mechanical_formJacobian(dm_local,delta_u_local,J,Jp,dummy,err_PET
 #endif
       do basis = 0_pPETSCINT, nBasis-1_pPETSCINT
         do comp = 0_pPETSCINT, dimPlex-1_pPETSCINT
-          cidx = basis*dimPlex+comp
           i = ((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp
           BMat(comp*dimPlex+1_pPETSCINT:(comp+1_pPETSCINT)*dimPlex,basis*dimPlex+comp+1_pPETSCINT) = &
 #if PETSC_VERSION_MINOR>22
@@ -967,7 +956,7 @@ subroutine FEM_mechanical_converged(snes,iter,x_norm,s_norm,f_norm,reason,dummy,
       print '(1x,a)', 'invalid jacobian'
     else if (reason == SNES_DIVERGED_USER) then
       print '(1x,a)', 'user-defined'
-    else if (reason == SNES_DIVERGED_JACOBIAN_DOMAIN) then
+    else if (reason == SNES_DIVERGED_JACOBIAN_DOMAIN) then                                          ! ToDo: duplicate, dead code
       print '(1x,a)', "the jacobian evaluation ocurred outside the function's domain"
 #if PETSC_VERSION_MINOR>24
     else if (reason == SNES_DIVERGED_FUNCTION_NANORINF) then
