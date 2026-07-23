@@ -82,7 +82,7 @@ jobs:
       - name: DAMASK - Run
         run: |
           ./bin/damask_grid -l tensionX.yaml -g 20grains16x16x16.vti -m material.yaml -w examples/grid
-          ./bin/damask_mesh -l tensionZ_3g.yaml -g cube_3grains.msh -m material.yaml -w examples/mesh
+          ./bin/damask_mesh -l tensionY.yaml -g notch_3D_hex_13k.msh -m material.yaml -w examples/mesh -n numerics.yaml
 
 
   ubuntu_Intel:
@@ -157,7 +157,7 @@ jobs:
       - name: DAMASK - Run
         run: |
           ./bin/damask_grid -l tensionX.yaml -g 20grains16x16x16.vti -m material.yaml -w examples/grid
-          ./bin/damask_mesh -l tensionZ_3g.yaml -g cube_3grains.msh -m material.yaml -w examples/mesh
+          ./bin/damask_mesh -l tensionY.yaml -g notch_3D_hex_13k.msh -m material.yaml -w examples/mesh -n numerics.yaml
 
 
   macos_homebrew:
@@ -216,4 +216,4 @@ jobs:
       - name: DAMASK - Run
         run: |
           ./bin/damask_grid -l tensionX.yaml -g 20grains16x16x16.vti -m material.yaml -w examples/grid
-          ./bin/damask_mesh -l tensionZ_3g.yaml -g cube_3grains.msh -m material.yaml -w examples/mesh
+          ./bin/damask_mesh -l tensionY.yaml -g notch_3D_hex_13k.msh -m material.yaml -w examples/mesh -n numerics.yaml
