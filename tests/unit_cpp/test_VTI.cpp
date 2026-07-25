@@ -29,53 +29,53 @@ static TempVTIFile write_temp_vti(const std::string& xml) {
   return file;
 }
 
-const std::string kB64UC32 = "BAAAAAECAwQAAAAA";             // [1,2,3,4] 32bit uncompressed
-const std::string kB64UC64 = "BAAAAAAAAAABAgMEAAAAAAAAAAA="; // [1,2,3,4] 64it uncompressed
+const std::string B64_UC32 = "BAAAAAECAwQAAAAA";             // [1,2,3,4] 32bit uncompressed
+const std::string B64_UC64 = "BAAAAAAAAAABAgMEAAAAAAAAAAA="; // [1,2,3,4] 64it uncompressed
 
-const std::string kB64Comp32 =
-    "AgAAAAQAAAADAAAADAAAAAsAAAB4nGNgZGIGAAAOAAd4nOPi5gEAAEMAIg=="; // [0,1,2,3], [10,11,12] 32bit compressed
-const std::string kB64Comp64 = "AgAAAAAAAAAEAAAAAAAAAAMAAAAAAAAADAAAAAAAAAALAAAAAAAAAHicY2BkYgYA"
+const std::string B64_COMP32 = "AgAAAAQAAAADAAAADAAAAAsAAAB4nGNgZGIGAAAOAAd4nOPi5gEAAEMAIg=="; // [0,1,2,3], [10,11,12] 32bit
+                                                                                               // compressed
+const std::string B64_COMP64 = "AgAAAAAAAAAEAAAAAAAAAAMAAAAAAAAADAAAAAAAAAALAAAAAAAAAHicY2BkYgYA"
                                "AA4AB3ic4+LmAQAAQwAi"; // [0,1,2,3], [10,11,12] 64bit compressed
 
-const std::vector<uint8_t> kExpectedUncompressed = {1, 2, 3, 4};
-const std::vector<uint8_t> kExpectedCompressed = {0, 1, 2, 3, 10, 11, 12};
+const std::vector<uint8_t> EXPECTED_UNCOMPRESSED = {1, 2, 3, 4};
+const std::vector<uint8_t> EXPECTED_COMPRESSED = {0, 1, 2, 3, 10, 11, 12};
 
-constexpr std::size_t kNBytesPerWord32bit = 4;
-constexpr std::size_t kNBytesPerWord64bit = 8;
+constexpr std::size_t N_BYTES_PER_WORD_32BIT = 4;
+constexpr std::size_t N_BYTES_PER_WORD_64BIT = 8;
 
 TEST(ReadWordTest, ReadsLittleEndian) {
   const std::array<uint8_t, 4> d32 = {0x78, 0x56, 0x34, 0x12};
   const std::array<uint8_t, 8> d64 = {0xF0, 0xDE, 0xBC, 0x9A, 0x78, 0x56, 0x34, 0x12};
-  EXPECT_EQ(VTI::read_word(d32.data(), kNBytesPerWord32bit), 0x12345678ULL);
-  EXPECT_EQ(VTI::read_word(d64.data(), kNBytesPerWord64bit), 0x123456789ABCDEF0ULL);
+  EXPECT_EQ(VTI::read_word(d32.data(), N_BYTES_PER_WORD_32BIT), 0x12345678ULL);
+  EXPECT_EQ(VTI::read_word(d64.data(), N_BYTES_PER_WORD_64BIT), 0x123456789ABCDEF0ULL);
 }
 
 TEST(DecodeUncompressedVTI, Uncompressed32Bit) {
-  auto out = VTI::decode_uncompressed_vti(kB64UC32, kNBytesPerWord32bit);
-  EXPECT_EQ(out, kExpectedUncompressed);
+  auto out = VTI::decode_uncompressed_vti(B64_UC32, N_BYTES_PER_WORD_32BIT);
+  EXPECT_EQ(out, EXPECTED_UNCOMPRESSED);
 }
 
 TEST(DecodeUncompressedVTI, Uncompressed64Bit) {
-  auto out = VTI::decode_uncompressed_vti(kB64UC64, kNBytesPerWord64bit);
-  EXPECT_EQ(out, kExpectedUncompressed);
+  auto out = VTI::decode_uncompressed_vti(B64_UC64, N_BYTES_PER_WORD_64BIT);
+  EXPECT_EQ(out, EXPECTED_UNCOMPRESSED);
 }
 
 TEST(DecodeUncompressedVTI, Uncompressed32BitUnderflowError) {
   // specify size 5, only provide 4
   const std::string bad = "BQAAAAECAwQ="; // hex: 05 00 00 00 01 02 03 04
   last_f_io_error_msg().clear();
-  EXPECT_THROW(VTI::decode_uncompressed_vti(bad, kNBytesPerWord32bit), FIOErrorCalled);
+  EXPECT_THROW(VTI::decode_uncompressed_vti(bad, N_BYTES_PER_WORD_32BIT), FIOErrorCalled);
   EXPECT_NE(last_f_io_error_msg().find("data block exceeds payload"), std::string::npos);
 }
 
 TEST(DecodeCompressedVTI, Compressed32Bit) {
-  auto out = VTI::decode_compressed_vti(kB64Comp32, kNBytesPerWord32bit);
-  EXPECT_EQ(out, kExpectedCompressed);
+  auto out = VTI::decode_compressed_vti(B64_COMP32, N_BYTES_PER_WORD_32BIT);
+  EXPECT_EQ(out, EXPECTED_COMPRESSED);
 }
 
 TEST(DecodeCompressedVTI, Compressed64Bit) {
-  auto out = VTI::decode_compressed_vti(kB64Comp64, kNBytesPerWord64bit);
-  EXPECT_EQ(out, kExpectedCompressed);
+  auto out = VTI::decode_compressed_vti(B64_COMP64, N_BYTES_PER_WORD_64BIT);
+  EXPECT_EQ(out, EXPECTED_COMPRESSED);
 }
 
 TEST(ParseCellDataArray, Uncompressed32Bit) {
@@ -86,7 +86,7 @@ TEST(ParseCellDataArray, Uncompressed32Bit) {
                <Piece Extent="0 1 0 1 0 1">
                  <CellData>
                    <DataArray type="Int32" Name="mydata" format="binary">)" +
-      kB64UC32 + R"(</DataArray>
+      B64_UC32 + R"(</DataArray>
                  </CellData>
                </Piece>
              </ImageData>
@@ -95,7 +95,7 @@ TEST(ParseCellDataArray, Uncompressed32Bit) {
   VTI vti(file.path.c_str());
   auto vtk_array = vti.parse_cell_data_array("mydata");
   EXPECT_EQ(vtk_array.vtk_type, "Int32");
-  EXPECT_EQ(vtk_array.raw_bytes, kExpectedUncompressed);
+  EXPECT_EQ(vtk_array.raw_bytes, EXPECTED_UNCOMPRESSED);
 }
 
 TEST(ParseCellDataArray, Compressed32Bit) {
@@ -107,7 +107,7 @@ TEST(ParseCellDataArray, Compressed32Bit) {
                <Piece Extent="0 1 0 1 0 1">
                  <CellData>
                    <DataArray type="Int32" Name="mydata" format="binary">)" +
-      kB64Comp32 + R"(</DataArray>
+      B64_COMP32 + R"(</DataArray>
                  </CellData>
                </Piece>
              </ImageData>
@@ -116,7 +116,7 @@ TEST(ParseCellDataArray, Compressed32Bit) {
   VTI vti(file.path.c_str());
   auto vtk_array = vti.parse_cell_data_array("mydata");
   EXPECT_EQ(vtk_array.vtk_type, "Int32");
-  EXPECT_EQ(vtk_array.raw_bytes, kExpectedCompressed);
+  EXPECT_EQ(vtk_array.raw_bytes, EXPECTED_COMPRESSED);
 }
 
 TEST(ParseCellDataArray, TrailingWhitespaceInBase64) {
@@ -128,7 +128,7 @@ TEST(ParseCellDataArray, TrailingWhitespaceInBase64) {
                <Piece Extent="0 1 0 1 0 1">
                  <CellData>
                    <DataArray type="Int32" Name="mydata" format="binary">)" +
-      kB64UC32 + "   " + R"(</DataArray>
+      B64_UC32 + "   " + R"(</DataArray>
                  </CellData>
                </Piece>
              </ImageData>
@@ -137,7 +137,7 @@ TEST(ParseCellDataArray, TrailingWhitespaceInBase64) {
   VTI vti(file.path.c_str());
   auto vtk_array = vti.parse_cell_data_array("mydata");
   EXPECT_EQ(vtk_array.vtk_type, "Int32");
-  EXPECT_EQ(vtk_array.raw_bytes, kExpectedUncompressed);
+  EXPECT_EQ(vtk_array.raw_bytes, EXPECTED_UNCOMPRESSED);
 }
 
 TEST(ReadCellsSizeOrigin, GeometryExtraction) {
@@ -175,7 +175,7 @@ TEST(ParseCellDataArray, ThrowsOnMissingArray) {
                <Piece Extent="0 1 0 1 0 1">
                  <CellData>
                    <DataArray type="Int32" Name="other" format="binary">)" +
-      kB64UC32 + R"(</DataArray>
+      B64_UC32 + R"(</DataArray>
                  </CellData>
                </Piece>
              </ImageData>
@@ -196,7 +196,7 @@ TEST(ParseCellDataArray, RejectsUnsupportedByteOrder) {
                <Piece Extent="0 1 0 1 0 1">
                  <CellData>
                    <DataArray type="Int32" Name="mydata" format="binary">)" +
-      kB64UC32 + R"(</DataArray>
+      B64_UC32 + R"(</DataArray>
                  </CellData>
                </Piece>
              </ImageData>
@@ -218,7 +218,7 @@ TEST(ParseCellDataArray, RejectsUnsupportedCompressor) {
                <Piece Extent="0 1 0 1 0 1">
                  <CellData>
                    <DataArray type="Int32" Name="mydata" format="binary">)" +
-      kB64UC32 + R"(</DataArray>
+      B64_UC32 + R"(</DataArray>
                  </CellData>
                </Piece>
              </ImageData>
@@ -232,7 +232,8 @@ TEST(ParseCellDataArray, RejectsUnsupportedCompressor) {
 
 // Set up parametrization, exposed in tests as TypeParam
 // https://google.github.io/googletest/reference/testing.html
-template <typename T> class ReadDatasetInt : public ::testing::Test {};
+template <typename T>
+class ReadDatasetInt : public ::testing::Test {};
 using ReadDatasetIntTypes = ::testing::Types<int32_t, int64_t>;
 TYPED_TEST_SUITE(ReadDatasetInt, ReadDatasetIntTypes);
 

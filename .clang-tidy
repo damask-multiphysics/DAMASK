@@ -17,8 +17,10 @@ CheckOptions:
   - key: readability-identifier-naming.MemberCase
     value: lower_case
   - key: readability-identifier-naming.GlobalConstantCase
-    value: CamelCase
-  - key: readability-identifier-naming.GlobalConstantPrefix
-    value: k
+    value: UPPER_CASE
+  - key: readability-identifier-naming.StaticConstantCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.ConstexprVariableCase
+    value: UPPER_CASE
   - key: readability-identifier-naming.FunctionIgnoredRegexp
     value: 'F_.*|C_.*'

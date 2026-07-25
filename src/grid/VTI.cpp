@@ -40,15 +40,15 @@
 #include "VTI.h"
 #include "../IO.h"
 
-constexpr int kVTKError = 844;
+constexpr int VTK_ERROR = 844;
 
 VTI::VTI(const char* file_path) {
   if (!file_path)
-    IO::error(kVTKError, "no valid geometry file path supplied");
+    IO::error(VTK_ERROR, "no valid geometry file path supplied");
   this->file_path = file_path;
   std::ifstream f(file_path, std::ios::binary);
   if (!f)
-    IO::error(kVTKError, std::string("cannot open file '") + file_path + '\'');
+    IO::error(VTK_ERROR, std::string("cannot open file '") + file_path + '\'');
   pt::read_xml(f, vti_tree);
 }
 
@@ -64,7 +64,7 @@ std::vector<uint8_t> VTI::decode_compressed_vti(const std::string& b64_string, c
 
   const std::size_t n_header_bytes = 3 * n_bytes_per_word; // VTK generates headers of size 3
   if (decoded.size() < n_header_bytes)
-    IO::error(kVTKError, "header for compressed VTI too short");
+    IO::error(VTK_ERROR, "header for compressed VTI too short");
   std::span<const uint8_t> header = decoded.first(n_header_bytes);
   uint64_t n_blocks = VTI::read_word(header.subspan(0 * n_bytes_per_word).data(), n_bytes_per_word);
   uint64_t block_uncompressed = VTI::read_word(header.subspan(1 * n_bytes_per_word).data(), n_bytes_per_word);
@@ -72,7 +72,7 @@ std::vector<uint8_t> VTI::decode_compressed_vti(const std::string& b64_string, c
 
   const std::size_t header_size = n_header_bytes + static_cast<std::size_t>(n_blocks) * n_bytes_per_word;
   if (decoded.size() < header_size)
-    IO::error(kVTKError, "missing header for compressed VTI");
+    IO::error(VTK_ERROR, "missing header for compressed VTI");
   std::span<const uint8_t> c_table = decoded.subspan(n_header_bytes, header_size - n_header_bytes);
   std::vector<std::size_t> block_sizes(n_blocks);
   for (std::size_t i = 0; i < n_blocks; ++i) {
@@ -90,7 +90,7 @@ std::vector<uint8_t> VTI::decode_compressed_vti(const std::string& b64_string, c
   std::size_t dst_offset = 0;
   for (std::size_t block_idx = 0; block_idx < n_blocks; ++block_idx) {
     if (src_offset + block_sizes.at(block_idx) > deflated.size())
-      IO::error(kVTKError, "invalid VTI, defined size overflowing for block " + std::to_string(block_idx));
+      IO::error(VTK_ERROR, "invalid VTI, defined size overflowing for block " + std::to_string(block_idx));
 
     const std::size_t uncompressed_len = (block_idx + 1 == n_blocks && last_block_size > 0)
                                              ? static_cast<std::size_t>(last_block_size)
@@ -101,7 +101,7 @@ std::vector<uint8_t> VTI::decode_compressed_vti(const std::string& b64_string, c
                        deflated.subspan(src_offset).data(),
                        static_cast<uLongf>(block_sizes.at(block_idx)));
     if (z != Z_OK || dest != static_cast<uLongf>(uncompressed_len))
-      IO::error(kVTKError, "zlib inflate failed on block " + std::to_string(block_idx));
+      IO::error(VTK_ERROR, "zlib inflate failed on block " + std::to_string(block_idx));
     src_offset += block_sizes.at(block_idx);
     dst_offset += uncompressed_len;
   }
@@ -122,7 +122,7 @@ std::vector<uint8_t> VTI::decode_uncompressed_vti(const std::string& b64_string,
     if (n_bytes == 0)
       break;
     if (offset + n_bytes > decoded.size())
-      IO::error(kVTKError, "VTI uncompressed: data block exceeds payload");
+      IO::error(VTK_ERROR, "VTI uncompressed: data block exceeds payload");
     std::span<const uint8_t> payload = decoded.subspan(offset, static_cast<std::size_t>(n_bytes));
     res_vec.insert(res_vec.end(), payload.begin(), payload.end());
     offset += static_cast<std::size_t>(n_bytes);
@@ -130,7 +130,8 @@ std::vector<uint8_t> VTI::decode_uncompressed_vti(const std::string& b64_string,
   return res_vec;
 }
 
-template <typename T> static void increment_integer_array(CFI_cdesc_t* desc) {
+template <typename T>
+static void increment_integer_array(CFI_cdesc_t* desc) {
   std::span<T> data(static_cast<T*>(desc->base_addr), static_cast<std::size_t>(desc->dim[0].extent));
   for (T& v : data)
     v += 1;
@@ -145,7 +146,7 @@ void VTI::read_dataset_int(const char* name, CFI_cdesc_t* desc) {
     allocate_and_convert<int64_t>(d, desc);
     increment_integer_array<int64_t>(desc);
   } else {
-    IO::error(kVTKError, "unsupported integer type for dataset '" + std::string(name) + "'");
+    IO::error(VTK_ERROR, "unsupported integer type for dataset '" + std::string(name) + "'");
   }
 }
 
@@ -157,15 +158,15 @@ void VTI::read_dataset_real(const char* name, CFI_cdesc_t* desc) {
 void VTI::check_file_format(const pt::ptree& root) const {
   const std::string type = get_attr(root, "type");
   if (type != "ImageData")
-    IO::error(kVTKError, "type is not ImageData (got '" + type + "')");
+    IO::error(VTK_ERROR, "type is not ImageData (got '" + type + "')");
 
   const std::string byte_order = get_attr(root, "byte_order");
   if (byte_order.empty() || byte_order != "LittleEndian")
-    IO::error(kVTKError, "byte_order must be 'LittleEndian' (got '" + byte_order + "')");
+    IO::error(VTK_ERROR, "byte_order must be 'LittleEndian' (got '" + byte_order + "')");
 
   const std::string compressor = get_attr(root, "compressor");
   if (!compressor.empty() && compressor != "vtkZLibDataCompressor")
-    IO::error(kVTKError, "compressor is not vtkZLibDataCompressor (got '" + compressor + "')");
+    IO::error(VTK_ERROR, "compressor is not vtkZLibDataCompressor (got '" + compressor + "')");
 }
 
 void VTI::read_geometry(int* cells_ptr,
@@ -173,7 +174,7 @@ void VTI::read_geometry(int* cells_ptr,
                         double* geom_size_ptr,
                         double* origin_ptr,
                         CFI_cdesc_t* labels_desc) {
-  constexpr std::size_t vec_size = 3;
+  constexpr std::size_t VEC_SIZE = 3;
 
   auto parse_ints = [](const std::string& s) {
     std::istringstream is(s);
@@ -189,33 +190,33 @@ void VTI::read_geometry(int* cells_ptr,
     std::array<double, 3> out{};
     is >> out[0] >> out[1] >> out[2];
     if (!is)
-      IO::error(kVTKError, "bad numeric field for '" + field_name + "' (got '" + s + "')");
+      IO::error(VTK_ERROR, "bad numeric field for '" + field_name + "' (got '" + s + "')");
     return out;
   };
 
   auto root = vti_tree.get_child_optional("VTKFile");
   if (!root)
-    IO::error(kVTKError, "missing <VTKFile> element");
+    IO::error(VTK_ERROR, "missing <VTKFile> element");
   check_file_format(*root);
   auto img = root->get_child_optional("ImageData");
   if (!img)
-    IO::error(kVTKError, "missing ImageData element");
+    IO::error(VTK_ERROR, "missing ImageData element");
   std::string dir = get_attr(*img, "Direction");
   if (!dir.empty() && dir != "1 0 0 0 1 0 0 0 1")
-    IO::error(kVTKError, "unsupported 'Direction' (got '" + dir + "')");
+    IO::error(VTK_ERROR, "unsupported 'Direction' (got '" + dir + "')");
   const std::string extent_str = get_attr(*img, "WholeExtent");
   if (extent_str.empty())
-    IO::error(kVTKError, "missing 'WholeExtent'");
+    IO::error(VTK_ERROR, "missing 'WholeExtent'");
   const std::vector<int> extent = parse_ints(extent_str);
-  if (extent.size() != 2 * vec_size || (extent.at(0) != 0 || extent.at(2) != 0 || extent.at(4) != 0))
-    IO::error(kVTKError, "invalid 'WholeExtent' (got '" + extent_str + "')");
+  if (extent.size() != 2 * VEC_SIZE || (extent.at(0) != 0 || extent.at(2) != 0 || extent.at(4) != 0))
+    IO::error(VTK_ERROR, "invalid 'WholeExtent' (got '" + extent_str + "')");
 
-  const std::array<double, vec_size> spacing = parse_3_doubles("ImageData@Spacing", get_attr(*img, "Spacing"));
-  const std::array<double, vec_size> origin_vec = parse_3_doubles("ImageData@Origin", get_attr(*img, "Origin"));
+  const std::array<double, VEC_SIZE> spacing = parse_3_doubles("ImageData@Spacing", get_attr(*img, "Spacing"));
+  const std::array<double, VEC_SIZE> origin_vec = parse_3_doubles("ImageData@Origin", get_attr(*img, "Origin"));
 
-  std::span<int, vec_size> cells(cells_ptr, vec_size);
-  std::span<double, vec_size> geom_size(geom_size_ptr, vec_size);
-  std::span<double, vec_size> origin(origin_ptr, vec_size);
+  std::span<int, VEC_SIZE> cells(cells_ptr, VEC_SIZE);
+  std::span<double, VEC_SIZE> geom_size(geom_size_ptr, VEC_SIZE);
+  std::span<double, VEC_SIZE> origin(origin_ptr, VEC_SIZE);
 
   /* modern form for component-wise assignment below (does not work on macOS)
   auto cells_vec = extent | std::views::drop(1) | std::views::stride(2);
@@ -231,9 +232,9 @@ void VTI::read_geometry(int* cells_ptr,
   std::copy(origin_vec.begin(), origin_vec.end(), origin.begin());
 
   if (geom_size[0] <= 0 || geom_size[1] <= 0 || geom_size[2] <= 0)
-    IO::error(kVTKError, "one or more entries <= 0 for 'size'");
+    IO::error(VTK_ERROR, "one or more entries <= 0 for 'size'");
   if (cells[0] < 1 || cells[1] < 1 || cells[2] < 1)
-    IO::error(kVTKError, "one or more entries < 1 for 'cells'");
+    IO::error(VTK_ERROR, "one or more entries < 1 for 'cells'");
 
   if (labels_desc) {
     if (auto cell_data = img->get_child_optional("Piece.CellData")) {
@@ -246,7 +247,7 @@ void VTI::read_geometry(int* cells_ptr,
         if (name.empty())
           continue;
         if (std::find(labels.begin(), labels.end(), name) != labels.end()) {
-          IO::error(kVTKError, "repeated label '" + name + '\'');
+          IO::error(VTK_ERROR, "repeated label '" + name + '\'');
         }
         labels.push_back(std::move(name));
       }
@@ -255,17 +256,17 @@ void VTI::read_geometry(int* cells_ptr,
       if (labels_desc->base_addr)
         CFI_deallocate(labels_desc);
       if (!labels.empty()) {
-        constexpr std::size_t char_len = 256;
+        constexpr std::size_t CHAR_LEN = 256;
         const CFI_index_t lb = 1;
         const CFI_index_t ext = static_cast<CFI_index_t>(labels.size());
-        if (CFI_allocate(labels_desc, &lb, &ext, char_len) != CFI_SUCCESS)
+        if (CFI_allocate(labels_desc, &lb, &ext, CHAR_LEN) != CFI_SUCCESS)
           throw std::runtime_error("CFI allocation failed for labels");
 
         for (std::size_t i = 0; i < labels.size(); ++i) {
           std::array<CFI_index_t, 1> sub = {static_cast<CFI_index_t>(i + 1)};
           char* dst = static_cast<char*>(CFI_address(labels_desc, sub.data()));
-          std::memset(dst, ' ', char_len);
-          const std::size_t copy_len = std::min<std::size_t>(labels.at(i).size(), char_len);
+          std::memset(dst, ' ', CHAR_LEN);
+          const std::size_t copy_len = std::min<std::size_t>(labels.at(i).size(), CHAR_LEN);
           std::copy_n(labels.at(i).data(), copy_len, dst);
         }
       }
@@ -276,14 +277,14 @@ void VTI::read_geometry(int* cells_ptr,
 DecodedBuffer VTI::parse_cell_data_array(const char* array_name) {
   boost::optional<pt::ptree&> root = vti_tree.get_child_optional("VTKFile");
   if (!root)
-    IO::error(kVTKError, "missing <VTKFile> element");
+    IO::error(VTK_ERROR, "missing <VTKFile> element");
   check_file_format(*root);
   boost::optional<pt::ptree&> image_data = root->get_child_optional("ImageData");
   if (!image_data)
-    IO::error(kVTKError, "missing <ImageData> element");
+    IO::error(VTK_ERROR, "missing <ImageData> element");
   boost::optional<pt::ptree&> cell_data = image_data->get_child_optional("Piece.CellData");
   if (!cell_data)
-    IO::error(kVTKError, "missing <CellData> element");
+    IO::error(VTK_ERROR, "missing <CellData> element");
   boost::optional<pt::ptree&> data_array_node;
   for (auto& child : *cell_data) {
     if (child.first == "DataArray") {
@@ -295,12 +296,12 @@ DecodedBuffer VTI::parse_cell_data_array(const char* array_name) {
     }
   }
   if (!data_array_node)
-    IO::error(kVTKError, "no DataArray with Name='" + std::string(array_name) + "' found");
+    IO::error(VTK_ERROR, "no DataArray with Name='" + std::string(array_name) + "' found");
   if (get_attr(*data_array_node, "format") != "binary")
-    IO::error(kVTKError, "DataArray '" + std::string(array_name) + "' is not binary");
+    IO::error(VTK_ERROR, "DataArray '" + std::string(array_name) + "' is not binary");
   const std::string vtk_type = get_attr(*data_array_node, "type");
   if (vtk_type.empty())
-    IO::error(kVTKError, "DataArray missing 'type' attribute");
+    IO::error(VTK_ERROR, "DataArray missing 'type' attribute");
   bool compressed = (get_attr(*root, "compressor") == "vtkZLibDataCompressor");
   std::string header_type = get_attr(*root, "header_type");
   if (header_type.empty())
@@ -354,7 +355,7 @@ std::vector<std::uint8_t> VTI::decode_b64(std::string_view b64) {
     std::span<std::uint8_t> out_chunk = std::span<std::uint8_t>(out).subspan(pos);
     auto [bytes_written, chars_consumed] = boost::beast::detail::base64::decode(out_chunk.data(), chunk.data(), chunk.size());
     if (chars_consumed == 0)
-      IO::error(kVTKError, "base64 decode failed (invalid character or malformed input)");
+      IO::error(VTK_ERROR, "base64 decode failed (invalid character or malformed input)");
     pos += bytes_written;
     b64_view.remove_prefix(chars_consumed);
   }
@@ -362,15 +363,17 @@ std::vector<std::uint8_t> VTI::decode_b64(std::string_view b64) {
   return out;
 }
 
-template <class T> std::vector<T> VTI::view(const std::vector<uint8_t>& raw) const {
+template <class T>
+std::vector<T> VTI::view(const std::vector<uint8_t>& raw) const {
   if (raw.size() % sizeof(T) != 0)
-    IO::error(kVTKError, "size mismatch");
+    IO::error(VTK_ERROR, "size mismatch");
   std::vector<T> out(raw.size() / sizeof(T));
   std::memcpy(out.data(), raw.data(), raw.size());
   return out;
 }
 
-template <typename T> void VTI::allocate_and_convert(const DecodedBuffer& d, CFI_cdesc_t* desc) {
+template <typename T>
+void VTI::allocate_and_convert(const DecodedBuffer& d, CFI_cdesc_t* desc) {
   std::function<T*(std::size_t)> allocate_fortran_array = [&](std::size_t n) -> T* {
     if (desc->base_addr)
       CFI_deallocate(desc);
@@ -409,7 +412,7 @@ template <typename T> void VTI::allocate_and_convert(const DecodedBuffer& d, CFI
         return static_cast<T>(v);
       });
   } else {
-    IO::error(kVTKError, "unknown VTK type '" + type + '\'');
+    IO::error(VTK_ERROR, "unknown VTK type '" + type + '\'');
   }
 }
 

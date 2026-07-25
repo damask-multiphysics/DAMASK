@@ -88,8 +88,11 @@ bool isatty_stdin_c() {
 }
 
 #ifdef GRID
-void inflate_c(
-    const uLong* s_deflated, const uLong* s_inflated, const Byte deflated[*s_deflated], Byte inflated[*s_inflated], int* stat) {
+void inflate_c(const uLong* s_deflated,
+               const uLong* s_inflated,
+               const Byte deflated[*s_deflated],
+               Byte inflated[*s_inflated],
+               int* stat) {
   /* make writable copy, uncompress will write to it */
   uLong s_inflated_;
   s_inflated_ = *s_inflated;
@@ -108,9 +111,14 @@ void inflate_c(
 #ifdef FYAML
 void to_flow_c(CFI_cdesc_t* flow, const char* mixed, int* stat) {
   struct fy_document* fyd = NULL;
-  enum fy_emitter_cfg_flags emit_flags = FYECF_MODE_FLOW_ONELINE | FYECF_WIDTH_INF | FYECF_STRIP_LABELS | FYECF_STRIP_TAGS |
-                                         FYECF_STRIP_DOC | FYECF_DOC_START_MARK_OFF;
-
+  // clang-format off
+  enum fy_emitter_cfg_flags emit_flags = FYECF_MODE_FLOW_ONELINE
+                                       | FYECF_WIDTH_INF
+                                       | FYECF_STRIP_LABELS
+                                       | FYECF_STRIP_TAGS
+                                       | FYECF_STRIP_DOC
+                                       | FYECF_DOC_START_MARK_OFF;
+  // clang-format on
   fyd = fy_document_build_from_string(NULL, mixed, -1);
   if (!fyd) {
     *stat = 1;
