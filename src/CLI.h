@@ -36,6 +36,8 @@ void F_IO_print(CFI_cdesc_t* c_str);
 
 void F_printCompileOptions();
 
+void quit(int stop_id);
+
 extern bool IO_redirectedSTDOUT; // NOLINT(readability-identifier-naming)
 extern bool IO_redirectedSTDERR; // NOLINT(readability-identifier-naming)
 }

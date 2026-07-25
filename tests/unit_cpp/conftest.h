@@ -22,7 +22,7 @@
 
 #include "../../src/IO.h"
 
-// Mock fortran functions (resolve directly so the actual implementations are not pulled from fortran)
+// Mock Fortran functions (resolve directly so the actual implementations are not pulled from Fortran)
 namespace {
 struct FIOErrorCalled final {};
 } // namespace
@@ -44,6 +44,9 @@ void F_IO_print(CFI_cdesc_t* c_str) {
   fortran_mock_buffer.emplace_back(c_str ? std::string(static_cast<char*>(c_str->base_addr), c_str->elem_len) : "");
 }
 void F_printCompileOptions() {}
+void quit(int stop_id) {
+  std::exit(stop_id);
+}
 bool IO_redirectedSTDOUT = false;
 bool IO_redirectedSTDERR = false;
 }

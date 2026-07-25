@@ -11,7 +11,6 @@
 
 #ifdef BOOST
 
-#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <stdexcept>
@@ -136,7 +135,7 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
 
     if (vm.count("help") || args.size() == 1) {
       CLI::help_print(flags);
-      std::exit(0);
+      quit(0);
     }
 
     po::notify(vm);
