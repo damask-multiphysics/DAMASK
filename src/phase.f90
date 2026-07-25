@@ -38,8 +38,6 @@ module phase
       state, &                                                                                      !< state
       dotState, &                                                                                   !< rate of state change
       deltaState                                                                                    !< increment of state change
-    real(pREAL), pointer,     dimension(:,:)  :: &
-      deltaState2
   end type
 
   type, extends(tState) :: tPlasticState
@@ -517,8 +515,6 @@ subroutine phase_allocateState(state, &
   allocate(state%dotState      (sizeDotState,NEntries), source=0.0_pREAL)
 
   allocate(state%deltaState  (sizeDeltaState,NEntries), source=0.0_pREAL)
-  state%deltaState2 => state%state(state%offsetDeltaState+1: &
-                                   state%offsetDeltaState+state%sizeDeltaState,:)
 
 end subroutine phase_allocateState
 

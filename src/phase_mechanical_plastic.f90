@@ -386,6 +386,7 @@ module function plastic_deltaState(ph, en) result(status)
   real(pREAL), dimension(3,3) :: &
     Mp
   integer :: &
+    offset, &
     mySize
 
 
@@ -410,9 +411,10 @@ module function plastic_deltaState(ph, en) result(status)
 
       if (any(IEEE_is_NaN(plasticState(ph)%deltaState(:,en)))) status = STATUS_FAIL_PHASE_MECHANICAL_DELTASTATE
       if (status == STATUS_OK) then
-        mySize   = plasticState(ph)%sizeDeltaState
-        plasticState(ph)%deltaState2(1:mySize,en) = plasticState(ph)%deltaState2(1:mySize,en) &
-                                                  + plasticState(ph)%deltaState(1:mySize,en)
+        offset = plasticState(ph)%offsetDeltaState
+        mySize = plasticState(ph)%sizeDeltaState
+        plasticState(ph)%state(offset+1:offset+mySize,en) = plasticState(ph)%state(offset+1:offset+mySize,en) &
+                                                          + plasticState(ph)%deltaState(1:mySize,en)
       end if
 
   end select
