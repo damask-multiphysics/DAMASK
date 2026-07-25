@@ -42,12 +42,13 @@
 #include "IO.h"
 
 namespace fs = std::filesystem;
-constexpr int kCLIError = 610;
-constexpr int kInvalidWorkingDirectoryError = 640;
+constexpr int CLI_ERROR = 610;
+constexpr int INVALID_WORKING_DIRECTORY_ERROR = 640;
 
 std::string add_text_color(const std::array<int, 3>& rgb) {
   if (isatty(STDOUT_FILENO) && !IO_redirectedSTDOUT) {
-    return "\033[38;2;" + std::to_string(rgb.at(0)) + ";" + std::to_string(rgb.at(1)) + ";" + std::to_string(rgb.at(2)) + "m";
+    return "\033[38;2;" + std::to_string(rgb.at(0)) + ";" + std::to_string(rgb.at(1)) + ";" +
+           std::to_string(rgb.at(2)) + "m";
   }
   return {};
 }
@@ -64,19 +65,32 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
   init_print();
 
   po::options_description flags(" Valid command line flags");
-  flags.add_options()("help,h", "show help")(
-      "geometry,g", po::value<std::string>(&arg_geom)->value_name("[ --geom ]")->required(), "geometry file")(
-      "loadcase,l", po::value<std::string>(&arg_load)->value_name("[ --load ]")->required(), "load case")(
-      "materialconfig,m", po::value<std::string>(&arg_material)->value_name("[ --material ]")->required(), "material config")(
-      "numericsconfig,n", po::value<std::string>(&arg_numerics)->value_name("[ --numerics ]"), "numerics config")(
-      "jobname,j", po::value<std::string>(&arg_jobname)->value_name("[ --job ]"), "job name")(
-      "workingdirectory,w", po::value<std::string>(&arg_wd)->value_name("[ --wd ]"), "working directory")(
-      "wd", po::value<std::string>(&arg_wd), "alias")
+  flags.add_options()("help,h", "show help");
+  flags.add_options()("geometry,g",
+                      po::value<std::string>(&arg_geom)->value_name("[ --geom ]")->required(),
+                      "geometry file");
+  flags.add_options()("loadcase,l",
+                      po::value<std::string>(&arg_load)->value_name("[ --load ]")->required(),
+                      "load case");
+  flags.add_options()("materialconfig,m",
+                      po::value<std::string>(&arg_material)->value_name("[ --material ]")->required(),
+                      "material config");
+  flags.add_options()("numericsconfig,n",
+                      po::value<std::string>(&arg_numerics)->value_name("[ --numerics ]"),
+                      "numerics config");
+  flags.add_options()("jobname,j",
+                      po::value<std::string>(&arg_jobname)->value_name("[ --job ]"),
+                      "job name");
+  flags.add_options()("workingdirectory,w",
+                      po::value<std::string>(&arg_wd)->value_name("[ --wd ]"),
+                      "working directory");
+  flags.add_options()("wd", po::value<std::string>(&arg_wd), "alias");
 #if defined(GRID) || defined(TEST)
-      ("restart,r", po::value<int>(&arg_rs)->value_name("[ --rs ]"), "restart increment")(
-          "rs", po::value<int>(&arg_rs), "alias")
+  flags.add_options()("restart,r",
+                      po::value<int>(&arg_rs)->value_name("[ --rs ]"),
+                      "restart increment");
+  flags.add_options()("rs", po::value<int>(&arg_rs), "alias");
 #endif
-      ;
   po::variables_map vm;
 
   /**
@@ -127,7 +141,7 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
 
     po::notify(vm);
   } catch (const boost::program_options::error& e) {
-    IO::error(kCLIError, std::string("Command line error: ") + e.what());
+    IO::error(CLI_ERROR, std::string("Command line error: ") + e.what());
   }
 
   geom_path = remove_leading_equal(arg_geom);
@@ -150,13 +164,13 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
     try {
       fs::current_path(working_directory);
     } catch (const fs::filesystem_error&) {
-      IO::error(kInvalidWorkingDirectoryError, working_directory);
+      IO::error(INVALID_WORKING_DIRECTORY_ERROR, working_directory);
     }
   }
 
   if (vm.count("restart")) {
     if (arg_rs < 0) {
-      IO::error(kCLIError, std::string("invalid value for --restart: ") + std::to_string(arg_rs));
+      IO::error(CLI_ERROR, std::string("invalid value for --restart: ") + std::to_string(arg_rs));
     }
     restart_inc = arg_rs;
   }
@@ -170,22 +184,22 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
   if (ec)
     throw std::runtime_error("boost hostname collection error: " + ec.message());
 
-  cout << " Host name: " << hostname << std::endl;
-  cout << " User name: " << get_username() << std::endl << std::endl;
+  cout << " Host name: " << hostname << "\n";
+  cout << " User name: " << get_username() << "\n\n";
   cout << " Command line call:  ";
   for (auto& arg : args) {
     cout << arg << " ";
   }
-  cout << std::endl;
-  cout << " Working directory:  " << fs::current_path().string() << std::endl;
-  cout << " Geometry:           " << geom_path << std::endl;
-  cout << " Load case:          " << loadfile_path << std::endl;
-  cout << " Material config:    " << material_path << std::endl;
+  cout << "\n";
+  cout << " Working directory:  " << fs::current_path().string() << "\n";
+  cout << " Geometry:           " << geom_path << "\n";
+  cout << " Load case:          " << loadfile_path << "\n";
+  cout << " Material config:    " << material_path << "\n";
   if (vm.count("numericsconfig")) {
-    cout << " Numerics config:  " << numerics_path << std::endl;
+    cout << " Numerics config:  " << numerics_path << "\n";
   }
-  cout << " Job name:           " << jobname << std::endl;
-  cout << " Job ID:             " << uuid << std::endl;
+  cout << " Job name:           " << jobname << "\n";
+  cout << " Job ID:             " << uuid << "\n";
   if (restart_inc != -1) {
     cout << " Restart increment:  " << restart_inc << std::endl;
   }
@@ -193,12 +207,12 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
 
 void CLI::init_print() {
 #ifdef DEBUG
-  constexpr std::array<int, 3> red = {255, 0, 0};
-  cout << add_text_color(red);
-  cout << "debug version - debug version - debug version - debug version - debug version" << std::endl;
+  constexpr std::array<int, 3> RED = {255, 0, 0};
+  cout << add_text_color(RED);
+  cout << "debug version - debug version - debug version - debug version - debug version\n";
 #else
-  constexpr std::array<int, 3> damask_blue = {67, 128, 208};
-  cout << add_text_color(damask_blue);
+  constexpr std::array<int, 3> DAMASK_BLUE = {67, 128, 208};
+  cout << add_text_color(DAMASK_BLUE);
 #endif
   cout << R"(
      _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/    _/_/_/
@@ -210,62 +224,70 @@ void CLI::init_print() {
 )";
 
 #ifdef GRID
-  constexpr std::array<int, 3> damask_green = {123, 207, 68};
-  cout << add_text_color(damask_green);
-  cout << " Grid solver" << std::endl << std::endl;
+  constexpr std::array<int, 3> DAMASK_GREEN = {123, 207, 68};
+  cout << add_text_color(DAMASK_GREEN);
+  cout << " Grid solver\n\n";
 #elif defined(MESH)
-  constexpr std::array<int, 3> damask_orange = {230, 150, 68};
-  cout << add_text_color(damask_orange);
-  cout << " Mesh solver" << std::endl << std::endl;
+  constexpr std::array<int, 3> DAMASK_ORANGE = {230, 150, 68};
+  cout << add_text_color(DAMASK_ORANGE);
+  cout << " Mesh solver\n\n";
 #endif
 
 #ifdef DEBUG
-  cout << add_text_color(red);
-  cout << " debug version - debug version - debug version - debug version - debug version" << std::endl << std::endl;
+  cout << add_text_color(RED);
+  cout << " debug version - debug version - debug version - debug version - debug version\n\n";
 #endif
 
   cout << reset_text_color();
-  cout << " F. Roters et al., Computational Materials Science 158:420–478, 2019" << std::endl
-       << " https://doi.org/10.1016/j.commatsci.2018.04.030" << std::endl
-       << std::endl;
+  cout << " F. Roters et al., Computational Materials Science 158:420–478, 2019\n"
+       << " https://doi.org/10.1016/j.commatsci.2018.04.030\n\n";
 
-#if PETSC_VERSION_MAJOR != 3 || PETSC_VERSION_MINOR < PETSC_MINOR_MIN || PETSC_VERSION_MINOR > PETSC_MINOR_MAX
-#error "--  UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION ---"
+#if PETSC_VERSION_MAJOR != 3
+#error "--  UNSUPPORTED PETSc VERSION ---"
+#elif PETSC_VERSION_MINOR < PETSC_MINOR_MIN
+#error "--  UNSUPPORTED PETSc VERSION ---"
+#elif PETSC_VERSION_MINOR > PETSC_MINOR_MAX
+#error "--  UNSUPPORTED PETSc VERSION ---"
 #else
-  cout << " S. Balay et al., PETSc/TAO User Manual Revision " << PETSC_VERSION_MAJOR << "." << PETSC_VERSION_MINOR << std::endl;
+  cout << " S. Balay et al., PETSc/TAO User Manual Revision " << PETSC_VERSION_MAJOR << "."
+       << PETSC_VERSION_MINOR << "\n";
 #if PETSC_VERSION_MINOR == 19
-  cout << " https://doi.org/10.2172/1968587" << endl;
+  cout << " https://doi.org/10.2172/1968587\n";
 #elif PETSC_VERSION_MINOR == 20
-  cout << " https://doi.org/10.2172/2205494" << endl;
+  cout << " https://doi.org/10.2172/2205494\n";
 #elif PETSC_VERSION_MINOR == 21
-  cout << " https://doi.org/10.2172/2337606" << endl;
+  cout << " https://doi.org/10.2172/2337606\n";
 #elif PETSC_VERSION_MINOR == 22
-  cout << " https://doi.org/10.2172/2476320" << endl;
+  cout << " https://doi.org/10.2172/2476320\n";
 #elif PETSC_VERSION_MINOR == 23
-  cout << " https://doi.org/10.2172/2565610" << endl;
+  cout << " https://doi.org/10.2172/2565610\n";
 #elif PETSC_VERSION_MINOR == 24
-  cout << " https://doi.org/10.2172/2998643" << endl;
+  cout << " https://doi.org/10.2172/2998643\n";
 #elif PETSC_VERSION_MINOR == 25
-  cout << " https://doi.org/10.2172/3025790" << endl;
+  cout << " https://doi.org/10.2172/3025790\n";
 #endif
-  cout << endl;
+  cout << "\n";
 #endif
 
-  cout << " Version: " << DAMASK_VERSION << std::endl << std::endl;
+  cout << " Version: " << DAMASK_VERSION << "\n\n";
   cout << " Compiled with:";
 #if defined(__clang__)
-  cout << " Clang version " << __clang_major__ << "." << __clang_minor__ << "." << __clang_patchlevel__ << std::endl;
+  cout << " Clang version " << __clang_major__ << "." << __clang_minor__ << "."
+       << __clang_patchlevel__ << std::endl;
 #elif defined(__GNUC__)
-  cout << " GCC version " << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__ << std::endl;
+  cout << " GCC version " << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__
+       << std::endl;
 #elif defined(__INTEL_COMPILER)
-  cout << " Intel Compiler version " << __INTEL_COMPILER << "." << __INTEL_COMPILER_UPDATE << std::endl;
+  cout << " Intel Compiler version " << __INTEL_COMPILER << "." << __INTEL_COMPILER_UPDATE
+       << std::endl;
 #endif
   F_printCompileOptions();
-  cout << std::endl;
-  cout << " PETSc version: " << PETSC_VERSION_MAJOR << "." << PETSC_VERSION_MINOR << "." << PETSC_VERSION_SUBMINOR << std::endl
-       << std::endl;
+  cout << "\n";
+  cout << " PETSc version: "
+       << PETSC_VERSION_MAJOR << "." << PETSC_VERSION_MINOR << "." << PETSC_VERSION_SUBMINOR << "\n\n";
 
-  cout << " Compiled at: " << __DATE__ << " at " << __TIME__ << std::endl << std::endl;
+  cout << " Compiled at: " << __DATE__ << " at " << __TIME__ << "\n"
+       << std::endl;
 }
 
 void CLI::help_print(const po::options_description& flags) {
@@ -463,7 +485,8 @@ static void strcopy_to_fortran(const std::string& src, char* dest) {
  * @param[out] uuid      UUID buffer
  * @param[out] jobname   Jobname buffer
  * @param[out] restart   Restart increment (only relevant for grid solver)
- * @param[out] stat      Status flag: always returns 0 here, failure will be implicit from buffer error
+ * @param[out] stat      Status flag: always returns 0 here, failure will be implicit from
+ *                       buffer error
  */
 void C_CLI_getParsedArgs(CLI* cli,
                          char geom[],

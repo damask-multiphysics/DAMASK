@@ -25,7 +25,8 @@
 // Guideline Support Library is used when pointers own memory and need to be manually freed.
 // https://clang.llvm.org/extra/clang-tidy/checks/cppcoreguidelines/owning-memory.html
 namespace gsl {
-template <typename T> using owner = T;
+template <typename T>
+using owner = T;
 }
 
 namespace pt = boost::property_tree;
@@ -147,7 +148,8 @@ private:
    * @param raw  Vector of raw bytes
    * @return     Span of type T pointing into @p raw.
    */
-  template <class T> std::vector<T> view(const std::vector<uint8_t>& raw) const;
+  template <class T>
+  std::vector<T> view(const std::vector<uint8_t>& raw) const;
 
   /**
    * @brief Allocate a Fortran array and convert the VTK byte stream into it.
@@ -157,7 +159,8 @@ private:
    * @param d     Decoded VTK Dataarray plus type tag.
    * @param desc  Fortran descriptor whose base-address will receive the data.
    */
-  template <typename T> void allocate_and_convert(const DecodedBuffer& d, CFI_cdesc_t* desc);
+  template <typename T>
+  void allocate_and_convert(const DecodedBuffer& d, CFI_cdesc_t* desc);
 };
 
 extern "C" {

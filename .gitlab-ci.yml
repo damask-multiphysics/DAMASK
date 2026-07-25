@@ -12,7 +12,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: normal
   # Shortcut names
   MARC_VERSION: '2025.1'
-  PETSC_GCC_LATEST: '2026.04.03'
+  PETSC_GCC_LATEST: '2026.04.03a'
   PETSC_ONEAPI_LATEST: '2026.04.03'
   PETSC_LLVM_LATEST: '2026.04.04'
   PYTHON_LATEST: '2026.02.24'
@@ -259,12 +259,12 @@ c++-linter:
   stage: core
   extends: .petsc_gcc_default
   script:
-    # for now only capture non-solver and test modules
     - BOOST_MAPPINGS=/usr/share/include-what-you-use/boost-all.imp
     - cmake -B build -DTEST=ON
        -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="include-what-you-use;-Xiwyu;--error;-Xiwyu;--mapping_file=${BOOST_MAPPINGS}"
        -DCMAKE_CXX_CLANG_TIDY="clang-tidy;--config-file=${PWD}/.clang-tidy"
     - cmake --build build --parallel --target install
+    - clang-format --style=file:.clang-format --dry-run --Werror $(git ls-files -- '*.c' '*.cpp' '*.h')
 
 .unittest:
   stage: core

@@ -90,7 +90,15 @@ TEST_F(CwdGuard, InitializationInvalidWorkingDirectory) {
   const fs::path missing_workdir = tempdir.path / "missing_workdir";
 
   std::vector<const char*> argv = {
-      "dummysolver", "-g", "geom.vti", "-l", "load.yaml", "-m", "material.yaml", "-w", missing_workdir.c_str()};
+      "dummysolver",
+      "-g",
+      "geom.vti",
+      "-l",
+      "load.yaml",
+      "-m",
+      "material.yaml",
+      "-w",
+      missing_workdir.c_str()};
   auto args = std::span(argv.data(), std::size(argv));
 
   EXPECT_THROW(CLI cli(args, &mpi_world_rank), FIOErrorCalled);

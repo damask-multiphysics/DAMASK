@@ -25,7 +25,6 @@ class options_description;
 }
 } // namespace boost
 namespace po = boost::program_options;
-using namespace std;
 
 extern "C" {
 /**
