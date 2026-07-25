@@ -35,10 +35,9 @@ program DAMASK_mesh
   integer, parameter :: &
     sub_step_factor = 2                                                                             !< for each substep, divide the last time increment by 2.0
   real(pREAL) :: &
-    t   = 0.0_pREAL, &                                                                              !< elapsed time
-    t_0 = 0.0_pREAL, &                                                                              !< begin of interval
-    Delta_t = 0.0_pREAL, &                                                                          !< current time interval
-    Delta_t_prev = 0.0_pREAL                                                                        !< previous time interval
+    t = 0.0_pREAL, &                                                                                !< elapsed time
+    Delta_t, &                                                                                      !< current time interval
+    Delta_t_prev                                                                                    !< previous time interval
   logical :: &
     guess
   integer :: &
@@ -107,8 +106,8 @@ program DAMASK_mesh
   flush(IO_STDOUT)
   call materialpoint_result(0,0.0_pREAL)
 
+  Delta_t = load_cases(1)%t/real(load_cases(1)%N,pREAL)
   loadCaseLooping: do l = 1, size(load_cases)
-    t_0 = t                                                                                         ! load case start time
     guess = load_cases(l)%estimate_rate                                                             ! change of load case? homogeneous guess for the first inc
     call FEM_mechanical_assembleFext(load_cases(l)%mechBC, load_cases(l)%t)                         ! assemble external loads vector
     call FEM_mechanical_assembleU(load_cases(l)%mechBC, load_cases(l)%t)                            ! assemble vector of displacements (Dirichlet) BC
