@@ -160,8 +160,9 @@ subroutine CLI_init()
 #endif
   print'(/,1x,a)', 'Version: '//DAMASK_VERSION
 
-  ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
-  print'(/,1x,a)', 'Compiled with: '//compiler_version()
+  print'(/,1x,a)', 'Fortran Compiler: '//DAMASK_FORTRAN_COMPILER_ID//' '//DAMASK_FORTRAN_COMPILER_VERSION
+  print'(1x,a)',   'C Compiler: '//DAMASK_C_COMPILER_ID//' '//DAMASK_C_COMPILER_VERSION
+  print'(1x,a)',   'C++ Compiler: '//DAMASK_CXX_COMPILER_ID//' '//DAMASK_CXX_COMPILER_VERSION
   call printCompileOptions()
   print'(1x,a,1x,i0,a,i0,a,i0)', &
                    'PETSc version:',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.',PETSC_VERSION_SUBMINOR
