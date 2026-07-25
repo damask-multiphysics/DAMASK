@@ -459,26 +459,6 @@ class Colormap(mpl.colors.ListedColormap):
             t.save(fhandle)
 
 
-    def save_GOM(self, fname: Optional[FileHandle] = None):
-        """
-        Save as ASCII file for use in GOM Aramis.
-
-        Parameters
-        ----------
-        fname : file, str, or pathlib.Path, optional
-            File to store results. Defaults to colormap name + '.legend'.
-        """
-        # ToDo: test in GOM
-        GOM_str = '1 1 {name} 9 {name} '.format(name=self.name.replace(" ","_")) \
-                +  '0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 ' \
-                + f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 {self.N}' \
-                + ' '.join([f' 0 {c[0]} {c[1]} {c[2]} 255 1' for c in reversed((self.colors*255).astype(np.int64))]) \
-                + '\n'
-
-        with util.open_text(self.name.replace(' ','_')+'.legend' if fname is None else fname, 'w') as fhandle:
-            fhandle.write(GOM_str)
-
-
     def save_gmsh(self,
                   fname: Optional[FileHandle] = None):
         """
