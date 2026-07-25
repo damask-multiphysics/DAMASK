@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from scipy import interpolate, ndimage, spatial
 
-from . import VTK, Colormap, Rotation, Table, grid_filters, util
+from . import VTK, Colormap, Rotation, Table, grid, util
 from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
 
 
@@ -507,7 +507,7 @@ class GeomGrid:
         new : damask.GeomGrid
             Grid-based geometry from values in table.
         """
-        cells,size,origin = grid_filters.cellsSizeOrigin_coordinates0_point(table.get(coordinates),atol=atol)
+        cells,size,origin = grid.cellsSizeOrigin_coordinates0_point(table.get(coordinates),atol=atol)
 
         unique,inverse = table[labels].unique(return_inverse=True)
 
@@ -555,7 +555,7 @@ class GeomGrid:
         -----
         damask.seeds contains functionality for seed generation.
         """
-        coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
+        coords = grid.coordinates0_point(cells,size).reshape(-1,3)
         weights_ = np.asarray(weights)
 
         if periodic:
@@ -626,7 +626,7 @@ class GeomGrid:
         origin: 0.0   0.0   0.0 m
         # materials: 3
         """
-        coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
+        coords = grid.coordinates0_point(cells,size).reshape(-1,3)
         tree = spatial.KDTree(seeds,boxsize=np.asarray(size) if periodic else None)
         material_ = np.asarray(tree.query(coords, workers = int(os.environ.get('OMP_NUM_THREADS',4)))[1])
 
@@ -1089,7 +1089,7 @@ class GeomGrid:
                                      self.origin + self.size - self.size/self.cells*.5,self.cells))
         interpolator = partial(interpolate.RegularGridInterpolator,
                                points=orig,method='nearest',bounds_error=False,fill_value=None)
-        new = grid_filters.coordinates0_point(cells,self.size,self.origin)
+        new = grid.coordinates0_point(cells,self.size,self.origin)
 
         return GeomGrid(material = interpolator(values=self.material)(new).astype(int),
                         size     = self.size,
@@ -1117,7 +1117,7 @@ class GeomGrid:
             Cell count of resulting grid matches shape of index map.
         """
         cells = idx.shape[:3]
-        flat = (idx if idx.ndim==3 else grid_filters.ravel_index(idx)).flatten(order='F')
+        flat = (idx if idx.ndim==3 else grid.ravel_index(idx)).flatten(order='F')
         ic = {k: v.reshape((-1,)+v.shape[3:],order='F')[flat]
                   .reshape(cells+v.shape[3:],order='F') for k,v in self.initial_conditions.items()}
 
@@ -1353,10 +1353,10 @@ class GeomGrid:
         c = (np.array(center) + .5)*self.size/self.cells if np.issubdtype(np.array(center).dtype,   np.integer) else \
             (np.array(center) - self.origin)
 
-        coords = grid_filters.coordinates0_point(self.cells,self.size,
-                                          -(0.5*(self.size + (self.size/self.cells
-                                                              if np.issubdtype(np.array(center).dtype,np.integer) else
-                                                              0)) if periodic else c))
+        coords = grid.coordinates0_point(self.cells,self.size,
+                                         -(0.5*(self.size + (self.size/self.cells
+                                                             if np.issubdtype(np.array(center).dtype,np.integer) else
+                                                             0)) if periodic else c))
         coords_rot = R.broadcast_to(tuple(self.cells))@coords
 
         with np.errstate(all='ignore'):
@@ -1474,5 +1474,5 @@ class GeomGrid:
             base_nodes = np.argwhere(mask.flatten(order='F')).reshape((-1,1))
             connectivity.append(np.block([base_nodes + o[i][k] for k in range(4)]))
 
-        coords = grid_filters.coordinates0_node(self.cells,self.size,self.origin).reshape((-1,3),order='F')
+        coords = grid.coordinates0_node(self.cells,self.size,self.origin).reshape((-1,3),order='F')
         return VTK.from_unstructured_grid(coords,np.vstack(connectivity),'QUADRILATERAL')

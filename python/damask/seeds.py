@@ -7,7 +7,7 @@ from typing import Optional as _Optional
 import numpy as _np
 from scipy import spatial as _spatial
 
-from . import grid_filters as _grid_filters
+from . import grid as _grid
 from . import util as _util
 from ._typehints import FloatSequence as _FloatSequence
 from ._typehints import IntSequence as _IntSequence
@@ -57,7 +57,7 @@ def from_random(size: _FloatSequence,
     if cells is None:
         coords = rng.random((N_seeds,3)) * size_
     else:
-        grid_coords = _grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
+        grid_coords = _grid.coordinates0_point(cells,size).reshape(-1,3,order='F')
         coords = grid_coords[rng.choice(_np.prod(cells),N_seeds,replace=False)] \
                + (size_/_np.array(cells,_np.int64))*(rng.random((N_seeds,3))*.5-.25) # wobble w/o leaving grid
 
@@ -177,7 +177,7 @@ def from_grid(grid,
     material = grid.material.reshape((-1,1),order='F')
     mask = _np.full(grid.cells.prod(),True,dtype=bool) if selection is None else \
            _np.isin(material,selection,invert=invert_selection).flatten()
-    coords = _grid_filters.coordinates0_point(grid.cells,grid.size).reshape(-1,3,order='F')
+    coords = _grid.coordinates0_point(grid.cells,grid.size).reshape(-1,3,order='F')
 
     if not average:
         return FromGridTuple(coords[mask],material[mask])

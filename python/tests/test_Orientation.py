@@ -11,7 +11,7 @@ from damask import Orientation
 from damask import Table
 from damask import Crystal
 from damask import util
-from damask import grid_filters
+from damask import grid
 from damask import tensor
 from damask import _crystal
 
@@ -237,8 +237,8 @@ def test_reduced_corner_cases(np_rng,family):
     # test whether there is always exactly one sym-eq rotation that falls into the FZ
     N = np_rng.integers(10,40)
     size = np.ones(3)*np.pi**(2./3.)
-    grid = grid_filters.coordinates0_node([N+1,N+1,N+1],size,-size*.5)
-    evenly_distributed = Orientation.from_cubochoric(x=grid,family=family)
+    g = grid.coordinates0_node([N+1,N+1,N+1],size,-size*.5)
+    evenly_distributed = Orientation.from_cubochoric(x=g,family=family)
     assert evenly_distributed.shape == evenly_distributed.reduced.shape
 
 @pytest.mark.parametrize('family',crystal_families)

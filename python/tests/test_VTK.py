@@ -53,8 +53,8 @@ def test_imageData(np_rng,tmp_path):
     assert string == vtr.as_ASCII() == vtk.as_ASCII()
 
 def test_rectilinearGrid(np_rng,tmp_path):
-    grid = np.sort(np_rng.random((3,10)))
-    v = VTK.from_rectilinear_grid(grid)
+    g = np.sort(np_rng.random((3,10)))
+    v = VTK.from_rectilinear_grid(g)
     string = str(v)
     string = v.as_ASCII()
     v.save(tmp_path/'rectilinearGrid',False)
@@ -259,13 +259,11 @@ def test_compare_reference_polyData(update,res_path):
                 np.allclose(polyData.get('coordinates'),points)
 
 def test_compare_reference_rectilinearGrid(update,res_path):
-    grid = [np.arange(4)**2.,
-            np.arange(5)**2.,
-            np.arange(6)**2.]                                               # ParaView renders tetrahedral meshing unless using float coordinates!
-    coords = np.stack(np.meshgrid(*grid,indexing='ij'),axis=-1)
+    g = [np.arange(4)**2., np.arange(5)**2., np.arange(6)**2.]                                      # ParaView renders tetrahedral meshing unless using float coordinates!
+    coords = np.stack(np.meshgrid(*g,indexing='ij'),axis=-1)
     c = coords[:-1,:-1,:-1,:].reshape(-1,3,order='F')
     n = coords[:,:,:,:].reshape(-1,3,order='F')
-    rectilinearGrid = VTK.from_rectilinear_grid(grid) \
+    rectilinearGrid = VTK.from_rectilinear_grid(g) \
                     .set('cell',np.ascontiguousarray(c)) \
                     .set('node',np.ascontiguousarray(n))
     if update:

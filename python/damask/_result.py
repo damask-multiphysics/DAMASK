@@ -18,7 +18,7 @@ from numpy import ma
 from scipy import interpolate
 
 import damask
-from . import VTK, Orientation, Rotation, grid_filters, mechanics, tensor, util
+from . import VTK, Orientation, Rotation, grid, mechanics, tensor, util
 from ._typehints import BravaisLattice, DADF5Dataset, FloatSequence, IntSequence
 
 
@@ -681,7 +681,7 @@ class Result:
     def coordinates0_point(self) -> np.ndarray:
         """Initial/undeformed cell center coordinates."""
         if self.structured:
-            return grid_filters.coordinates0_point(self.cells,self.size,self.origin).reshape(-1,3,order='F')
+            return grid.coordinates0_point(self.cells,self.size,self.origin).reshape(-1,3,order='F')
         else:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_p'][()]
@@ -690,7 +690,7 @@ class Result:
     def coordinates0_node(self) -> np.ndarray:
         """Initial/undeformed nodal coordinates."""
         if self.structured:
-            return grid_filters.coordinates0_node(self.cells,self.size,self.origin).reshape(-1,3,order='F')
+            return grid.coordinates0_node(self.cells,self.size,self.origin).reshape(-1,3,order='F')
         else:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_n'][()]
@@ -1534,14 +1534,14 @@ class Result:
 
         Notes
         -----
-        For details refer to :func:`damask.grid_filters.curl`.
+        For details refer to :func:`damask.grid.curl`.
 
         This function is implemented only for structured grids
         with one constituent and a single phase.
         """
         def curl(f: DADF5Dataset, size: np.ndarray) -> DADF5Dataset:
             return {
-                    'data':  grid_filters.curl(size,f['data']),
+                    'data':  grid.curl(size,f['data']),
                     'label': f"curl({f['label']})",
                     'meta':  {
                               'unit':        f['meta']['unit']+'/m',
@@ -1564,14 +1564,14 @@ class Result:
 
         Notes
         -----
-        For details refer to :func:`damask.grid_filters.divergence`.
+        For details refer to :func:`damask.grid.divergence`.
 
         This function is implemented only for structured grids
         with one constituent and a single phase.
         """
         def divergence(f: DADF5Dataset, size: np.ndarray) -> DADF5Dataset:
             return {
-                    'data':  grid_filters.divergence(size,f['data']),
+                    'data':  grid.divergence(size,f['data']),
                     'label': f"divergence({f['label']})",
                     'meta':  {
                               'unit':        f['meta']['unit']+'/m',
@@ -1594,14 +1594,14 @@ class Result:
 
         Notes
         -----
-        For details refer to :func:`damask.grid_filters.gradient`.
+        For details refer to :func:`damask.grid.gradient`.
 
         This function is implemented only for structured grids
         with one constituent and a single phase.
         """
         def gradient(f: DADF5Dataset, size: np.ndarray) -> DADF5Dataset:
             return {
-                    'data':  grid_filters.gradient(size,f['data'] if len(f['data'].shape) == 4 else \
+                    'data':  grid.gradient(size,f['data'] if len(f['data'].shape) == 4 else \
                                                         f['data'].reshape(f['data'].shape+(1,))),
                     'label': f"gradient({f['label']})",
                     'meta':  {
@@ -1646,11 +1646,11 @@ class Result:
                         d: np.ma.MaskedArray = list(field[1].values())[0]
                         if np.any(d.mask): continue
 
-                        dataset = {'f':{'data':grid_filters.unravel(d.data,self.cells),
+                        dataset = {'f':{'data':grid.unravel(d.data,self.cells),
                                         'label':list(datasets.values())[0],
                                         'meta':d.data.dtype.metadata}}
                         r = func(**dataset,**args)
-                        result = grid_filters.ravel(r['data'])
+                        result = grid.ravel(r['data'])
                         for label in self._visible[kind[0]+'s']:
                             path = '/'.join(['/',inc[0],kind[0],label,field[0]])
                             if kind[0] == 'phase':
@@ -1999,15 +1999,15 @@ class Result:
         with h5py.File(self.fname,'r') as f:
             for inc in self._visible['increments']:
 
-                grid = ET.SubElement(collection,'Grid')
-                grid.attrib = {'GridType': 'Uniform',
-                               'Name':      inc}
+                g = ET.SubElement(collection,'Grid')
+                g.attrib = {'GridType': 'Uniform',
+                            'Name':      inc}
 
-                topology = ET.SubElement(grid, 'Topology')
+                topology = ET.SubElement(g, 'Topology')
                 topology.attrib = {'TopologyType': '3DCoRectMesh',
                                    'Dimensions':   '{} {} {}'.format(*(self.cells[::-1]+1))}
 
-                geometry = ET.SubElement(grid, 'Geometry')
+                geometry = ET.SubElement(g, 'Geometry')
                 geometry.attrib = {'GeometryType':'Origin_DxDyDz'}
 
                 origin = ET.SubElement(geometry, 'DataItem')
@@ -2022,7 +2022,7 @@ class Result:
                                 'Dimensions': '3'}
                 delta.text="{} {} {}".format(*(self.size/self.cells)[::-1])
 
-                attributes.append(ET.SubElement(grid, 'Attribute'))
+                attributes.append(ET.SubElement(g, 'Attribute'))
                 attributes[-1].attrib = {'Name':          'u / m',
                                          'Center':        'Node',
                                          'AttributeType': 'Vector'}
@@ -2041,7 +2041,7 @@ class Result:
 
                                 unit = f[dset_path].attrs['unit']
 
-                                attributes.append(ET.SubElement(grid, 'Attribute'))
+                                attributes.append(ET.SubElement(g, 'Attribute'))
                                 attributes[-1].attrib = {'Name': '/'.join([kind,field,dset_name])+f' / {unit}',
                                                          'Center':       'Cell',
                                                          'AttributeType': attribute_type_map.get(shape,'Matrix')}
@@ -2382,7 +2382,7 @@ class Result:
                     c_0_p = tuple([np.linspace(delta[i]/2,self.size[i]-delta[i]/2,mapping.shape[i]) for i in [0,1,2]])
                     interpolator = interpolate.RegularGridInterpolator(c_0_p,np.reshape(u_p,tuple(cells)+(3,)),
                                                                        fill_value=None,bounds_error=False,method='linear')
-                    c_0_n = grid_filters.coordinates0_node(mapping.shape,self.size).reshape(-1,3)
+                    c_0_n = grid.coordinates0_node(mapping.shape,self.size).reshape(-1,3)
                     f_out[inc]['geometry'].create_dataset('u_n',data=interpolator(c_0_n))
                     f_out[inc]['geometry/u_n'].attrs.update(f_in[inc]['geometry/u_n'].attrs)
 
