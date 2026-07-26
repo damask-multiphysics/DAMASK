@@ -88,7 +88,6 @@ module grid_mech_spectral_polarization                                          
     C_minMaxAvg = 0.0_pREAL, &                                                                      !< current (min+max)/2 stiffness
     C_minMaxAvgLastInc = 0.0_pREAL, &                                                               !< previous (min+max)/2 stiffness
     C_minMaxAvgRestart = 0.0_pREAL, &                                                              !< (min+max)/2 stiffnes (restart)
-    S = 0.0_pREAL, &                                                                                !< current compliance (filled up with zeros)
     C_scale = 0.0_pREAL, &
     S_scale = 0.0_pREAL
 
@@ -288,7 +287,6 @@ function grid_mech_spectral_polarization_solution(incInfoIn) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
-  S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
   if (num%update_gamma) then
     call utilities_updateGamma(C_minMaxAvg)
     C_scale = C_minMaxAvg
@@ -625,7 +623,8 @@ subroutine form_residual(residual_subdomain, FandF_tau, &
   end associate
 #endif
 
-  F_aim = F_aim - math_mul3333xx33(S, P_av - P_aim)                                                 ! S = 0.0 for no bc
+  F_aim = F_aim &
+        - utilities_defGradAdjustment(params%rotation_BC,params%stress_mask,C_volAvg,P_av - P_aim)
   err_BC = maxval(abs(merge(math_mul3333xx33(C_scale,F_aim-params%rotation_BC%rotate(F_av)), &
                             P_av-P_aim, &
                             params%stress_mask)))

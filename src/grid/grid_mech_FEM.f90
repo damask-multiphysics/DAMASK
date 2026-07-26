@@ -79,8 +79,7 @@ module grid_mechanical_FEM
   character(len=:), allocatable :: incInfo                                                          !< time and increment information
   real(pREAL), dimension(3,3,3,3) :: &
     C_volAvg = 0.0_pREAL, &                                                                         !< current volume average stiffness
-    C_volAvgLastInc = 0.0_pREAL, &                                                                  !< previous volume average stiffness
-    S = 0.0_pREAL                                                                                   !< current compliance (filled up with zeros)
+    C_volAvgLastInc = 0.0_pREAL                                                                     !< previous volume average stiffness
 
   real(pREAL) :: &
     err_BC                                                                                          !< deviation from stress BC
@@ -299,8 +298,6 @@ function grid_mechanical_FEM_solution(incInfoIn) result(solution)
 
 
   incInfo = incInfoIn
-
-  S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
 
   call SNESsolve(SNES_mech,PETSC_NULL_VEC,u_vec,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -565,7 +562,8 @@ subroutine form_residual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
-  F_aim = F_aim - math_mul3333xx33(S, P_av - P_aim)                                                 ! S = 0.0 for no bc
+  F_aim = F_aim &
+        - utilities_defGradAdjustment(params%rotation_BC,params%stress_mask,C_volAvg,P_av - P_aim)
   err_BC = maxval(abs(merge(.0_pREAL,P_av - P_aim,params%stress_mask)))
 
 !--------------------------------------------------------------------------------------------------
