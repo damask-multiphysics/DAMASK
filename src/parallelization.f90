@@ -172,7 +172,7 @@ end subroutine parallelization_chkerr
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Broadcast a string from process 0.
+!> @brief Broadcast a variable-length string from process 0.
 !--------------------------------------------------------------------------------------------------
 subroutine parallelization_bcast_str(str)
 
@@ -183,7 +183,10 @@ subroutine parallelization_bcast_str(str)
 
   if (worldrank == 0) strlen = len(str,MPI_INTEGER_KIND)
   call MPI_Bcast(strlen,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
-  if (worldrank /= 0) allocate(character(len=strlen)::str)
+  if (worldrank /= 0) then
+    if (allocated(str)) deallocate(str)
+    allocate(character(len=strlen)::str)
+  end if
 
   call MPI_Bcast(str,strlen,MPI_CHARACTER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
 

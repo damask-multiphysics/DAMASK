@@ -11,6 +11,9 @@
 
 #ifdef BOOST
 
+#if !defined(TEST)
+#include <mpi.h>
+#endif
 #include <cstring>
 #include <filesystem>
 #include <stdexcept>
@@ -43,6 +46,7 @@
 namespace fs = std::filesystem;
 constexpr int CLI_ERROR = 610;
 constexpr int INVALID_WORKING_DIRECTORY_ERROR = 640;
+constexpr int UUID_LEN = 36;
 
 std::string add_text_color(const std::array<int, 3>& rgb) {
   if (isatty(STDOUT_FILENO) && !IO_redirectedSTDOUT) {
@@ -174,9 +178,14 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
     restart_inc = arg_rs;
   }
 
-  if (*worldrank == 0) {
+  if (*worldrank == 0)
     uuid = generate_uuid();
+  else {
+    uuid.resize(UUID_LEN);
   }
+#if !defined(TEST)
+  MPI_Bcast(uuid.data(), UUID_LEN, MPI_CHAR, 0, MPI_COMM_WORLD);
+#endif
 
   boost::system::error_code ec;
   std::string hostname = boost::asio::ip::host_name(ec);
@@ -198,7 +207,7 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
     cout << " Numerics config:  " << numerics_path << "\n";
   }
   cout << " Job name:           " << jobname << "\n";
-  cout << " Job ID:             " << uuid << "\n";
+  cout << " Job ID:             " << uuid << std::endl;
   if (restart_inc != -1) {
     cout << " Restart increment:  " << restart_inc << std::endl;
   }
