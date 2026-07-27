@@ -74,7 +74,7 @@ def test_grid_restart_MPI(res_path,tmp_path,copy_files,mpi_launcher,h5py_dataset
     assert (damask.Table.load(tmp_path/'normal.sta').get('IterationsNeeded') ==
             damask.Table.load(tmp_path/'restart.sta').get('IterationsNeeded')).all()
     h5py_compare_files_statistically(h5py_dataset_iterator,
-                                        assert_allclose,
-                                        tmp_path/'normal.hdf5',
-                                        tmp_path/'restart.hdf5',
-                                        derivative)
+                                     assert_allclose,
+                                     tmp_path/'normal.hdf5',
+                                     tmp_path/'restart.hdf5',
+                                     derivative)
