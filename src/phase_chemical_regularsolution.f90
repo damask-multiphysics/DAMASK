@@ -217,7 +217,8 @@ pure function get_L0(ph, en) result(L0)
   real(pREAL), dimension(:, :),allocatable :: L0
 
   real(pREAL) :: T
-  integer :: com_i, com_j, i, j, k
+  integer :: com_i, com_j, k
+
 
   T = thermal_T(ph,en)
 

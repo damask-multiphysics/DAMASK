@@ -3,6 +3,7 @@
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Denny Tjahjanto, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Tilak Raj Pant, Indian Institute of Science
 !> @brief homogenization manager, organizing deformation partitioning and stress homogenization
 !--------------------------------------------------------------------------------------------------
 module homogenization
@@ -39,7 +40,8 @@ module homogenization
     CHEMICAL_PASS_ID
   end enum
   integer(kind(THERMAL_UNDEFINED_ID)), dimension(:),   allocatable :: &
-    thermal_type, &
+    thermal_type
+  integer(kind(CHEMICAL_UNDEFINED_ID)), dimension(:),   allocatable :: &
     chemical_type                                                                                   !< type of each homogenization
 
   type(tState),        allocatable, dimension(:), public :: &
@@ -49,8 +51,8 @@ module homogenization
   logical,             allocatable, dimension(:) :: &
     thermal_active, &
     chemical_active, &
-    damage_active
-
+    damage_active, &
+    electrical_active
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
   real(pREAL),   dimension(:,:,:),     allocatable, public :: &
@@ -59,7 +61,6 @@ module homogenization
     homogenization_P                                                                                !< first P--K stress of IP
   real(pREAL),   dimension(:,:,:,:,:), allocatable, public, protected :: &
     homogenization_dPdF                                                                             !< tangent of first P--K stress at IP
-
 !--------------------------------------------------------------------------------------------------
   interface
 
@@ -74,6 +75,9 @@ module homogenization
 
     module subroutine damage_init()
     end subroutine damage_init
+
+    module subroutine electrical_init()
+    end subroutine electrical_init
 
     module subroutine mechanical_partition(subF,ce)
       real(pREAL), intent(in), dimension(3,3) :: &
@@ -94,6 +98,11 @@ module homogenization
       real(pREAL), intent(in) :: Delta_t
       integer,     intent(in) :: ce
     end subroutine chemical_partition
+
+    module subroutine electrical_partition(E, ce)
+      real(pREAL), intent(in), dimension(3) :: E
+      integer, intent(in) :: ce
+    end subroutine electrical_partition
 
     module subroutine mechanical_homogenize(Delta_t,ce)
       real(pREAL), intent(in) :: Delta_t
@@ -119,6 +128,11 @@ module homogenization
       integer,          intent(in) :: ho
       character(len=*), intent(in) :: group
     end subroutine chemical_result
+
+    module subroutine electrical_result(ho,group)
+      integer,          intent(in) :: ho
+      character(len=*), intent(in) :: group
+    end subroutine electrical_result
 
     module function mechanical_updateState(subdt,subF,ce) result(doneAndHappy)
       real(pREAL), intent(in) :: &
@@ -181,6 +195,10 @@ module homogenization
       logical :: active
     end function homogenization_chemical_active
 
+    module function homogenization_electrical_active() result(active)
+      logical :: active
+    end function homogenization_electrical_active
+
     module function homogenization_composition(mu, Delta_t, ce) result(comp)
       real(pREAL), dimension(:), intent(in) :: mu
       real(pREAL), intent(in) :: Delta_t
@@ -207,12 +225,23 @@ module homogenization
       integer, intent(in) :: ce
     end subroutine homogenization_chemical_setField
 
+    module function homogenization_sigma(ce) result(sigma)
+      integer, intent(in) :: ce
+      real(pREAL), dimension(3,3) :: sigma
+    end function homogenization_sigma
+
+    module subroutine electrical_homogenize(E,ce)
+      real(pREAL), intent(in), dimension(3) :: E
+      integer, intent(in) :: ce
+    end subroutine electrical_homogenize
+
   end interface
 
   public ::  &
     homogenization_init, &
     homogenization_mechanical_response, &
     homogenization_thermal_response, &
+    homogenization_electrical_response, &
     homogenization_thermal_active, &
     homogenization_chemical_active, &
     homogenization_mu_T, &
@@ -231,10 +260,11 @@ module homogenization
     homogenization_forward, &
     homogenization_result, &
     homogenization_restartRead, &
-    homogenization_restartWrite
+    homogenization_restartWrite, &
+    homogenization_electrical_active, &
+    homogenization_sigma
 
 contains
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Module initialization.
@@ -246,10 +276,12 @@ subroutine homogenization_init()
 
   allocate(homogState      (size(material_name_homogenization)))
   allocate(damageState_h   (size(material_name_homogenization)))
+
   call parseHomogenization()
 
   call mechanical_init()
   call thermal_init()
+  call electrical_init()
   call damage_init()
   call chemical_init()
 
@@ -364,6 +396,35 @@ end subroutine homogenization_thermal_response
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Calculate electrical constitutive response over a block range of cells.
+!--------------------------------------------------------------------------------------------------
+subroutine homogenization_electrical_response(status, E, cell_start, cell_end)
+
+  integer(kind(STATUS_OK)), intent(out) :: status
+  real(pREAL), intent(in), dimension(:,:) :: E
+  integer, intent(in) :: cell_start, cell_end
+  integer :: ce
+
+  status = STATUS_OK
+
+  !$OMP PARALLEL DO
+  do ce = cell_start, cell_end
+    if (status /= STATUS_OK) cycle
+    call electrical_partition(E(1:3,ce), ce)
+  end do
+  !$OMP END PARALLEL DO
+
+  if (status /= STATUS_OK) return
+
+  !$OMP PARALLEL DO
+  do ce = cell_start, cell_end
+    call electrical_homogenize(E(1:3,ce),ce)
+  end do
+  !$OMP END PARALLEL DO
+
+end subroutine homogenization_electrical_response
+
+!--------------------------------------------------------------------------------------------------
 !> @brief writes homogenization results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_result()
@@ -398,6 +459,11 @@ subroutine homogenization_result()
       call chemical_result(ho,group)
     end if
 
+    if (electrical_active(ho)) then
+      group = trim(group_base)//'/electrical'
+      call result_closeGroup(result_addGroup(group))
+      call electrical_result(ho,group)
+    end if
  end do
 
 end subroutine homogenization_result
@@ -491,7 +557,8 @@ subroutine parseHomogenization
     homog, &
     homogThermal, &
     homogDamage, &
-    homogChemical
+    homogChemical, &
+    homogElectrical
 
   integer :: h
 
@@ -502,6 +569,7 @@ subroutine parseHomogenization
   allocate(thermal_active(size(material_name_homogenization)),source=.false.)
   allocate(damage_active(size(material_name_homogenization)),source=.false.)
   allocate(chemical_active(size(material_name_homogenization)),source=.false.)
+  allocate(electrical_active(size(material_name_homogenization)),source=.false.)
 
   do h=1, size(material_name_homogenization)
     homog => material_homogenization%get_dict(h)
@@ -534,14 +602,22 @@ subroutine parseHomogenization
       homogChemical => homog%get_dict('chemical')
         select case (homogChemical%get_asStr('type'))
           case('pass')
-            chemical_type(h) = CHEMICAL_PASS_ID
             chemical_active(h) = .true.
           case default
             call IO_error(500,ext_msg=homogChemical%get_asStr('type'))
         end select
     end if
-  end do
 
+    if (homog%contains('electrical')) then
+      homogElectrical => homog%get_dict('electrical')
+      select case (homogElectrical%get_asStr('type'))
+        case('pass')
+          electrical_active(h) = .true.
+        case default
+          call IO_error(500,ext_msg='electrical homogenization: '//homogElectrical%get_asStr('type'))
+      end select
+    end if
+  end do
 
 end subroutine parseHomogenization
 

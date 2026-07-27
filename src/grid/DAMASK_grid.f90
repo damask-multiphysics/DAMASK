@@ -4,6 +4,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Fotios Tsiolis, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Tilak Raj Pant, Indian Institute of Science
 !> @brief Driver controlling inner and outer load case looping of the various spectral solvers
 !> @details doing cutbacking, forwarding in case of restart, reporting statistics, writing
 !> results
@@ -35,6 +36,7 @@ program DAMASK_grid
   use grid_chemical_FDM
   use grid_damage_spectral
   use grid_thermal_spectral
+  use grid_electrical_spectral
   use result
 
 #ifndef PETSC_EXPOSES_MPIF90
@@ -45,9 +47,11 @@ program DAMASK_grid
 
   type :: tLoadCase
     type(tRotation)          :: rot                                                                 !< rotation of BC
-    type(tBCmech) :: stress, &                                                           !< stress BC
+    type(tBCmech)            :: stress, &                                                           !< stress BC
                                 deformation                                                         !< deformation BC (dot_F, F, or L)
     type(tBCthermal) ::         temperature                                                         !< thermal BC; unallocated = free
+    type(tBCelectrical)      :: electric_field, &                                                   !< E field BC (E)
+                                current_density                                                     !< current density BC (J)
     real(pREAL) ::              t, &                                                                !< length of increment
                                 r                                                                   !< ratio of geometric progression
     integer ::                  N, &                                                                !< number of increments
@@ -63,7 +67,8 @@ program DAMASK_grid
     FIELD_MECH_ID, &
     FIELD_THERMAL_ID, &
     FIELD_DAMAGE_ID, &
-    FIELD_CHEMICAL_ID
+    FIELD_CHEMICAL_ID, &
+    FIELD_ELECTRICAL_ID
   end enum
 
   integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
@@ -202,9 +207,10 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! initialize field solver information
-  if (solver%get_asStr('thermal',defaultVal = 'n/a') == 'spectral') nActiveFields = nActiveFields + 1
-  if (solver%get_asStr('damage', defaultVal = 'n/a') == 'spectral') nActiveFields = nActiveFields + 1
-  if (solver%get_asStr('chemical', defaultVal = 'n/a') == 'FDM')    nActiveFields = nActiveFields + 1
+  if (solver%get_asStr('thermal',defaultVal = 'n/a') == 'spectral')     nActiveFields = nActiveFields + 1
+  if (solver%get_asStr('damage', defaultVal = 'n/a') == 'spectral')     nActiveFields = nActiveFields + 1
+  if (solver%get_asStr('chemical', defaultVal = 'n/a') == 'FDM')        nActiveFields = nActiveFields + 1
+  if (solver%get_asStr('electrical', defaultVal = 'n/a') == 'spectral') nActiveFields = nActiveFields + 1
 
   allocate(solres(nActiveFields))
   allocate(    ID(nActiveFields))
@@ -226,6 +232,11 @@ program DAMASK_grid
     ID(field) = FIELD_CHEMICAL_ID
     active_parabolic = .true.
   end if chemicalActive
+  electricalActive: if (solver%get_asStr('electrical',defaultVal = 'n/a') == 'spectral') then
+    field = field + 1
+    ID(field) = FIELD_ELECTRICAL_ID
+    active_parabolic = .true.
+  end if electricalActive
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
@@ -236,6 +247,9 @@ program DAMASK_grid
 
       case (FIELD_THERMAL_ID)
         call grid_thermal_spectral_init(num_grid%get_dict('thermal',defaultVal=emptyDict))
+
+      case (FIELD_ELECTRICAL_ID)
+        call grid_electrical_spectral_init(num_grid)
 
       case (FIELD_DAMAGE_ID)
         call grid_damage_spectral_init(num_grid%get_dict('damage',defaultVal=emptyDict))
@@ -323,7 +337,13 @@ program DAMASK_grid
                         deformation_BC = loadCases(l)%deformation, &
                         stress_BC      = loadCases(l)%stress, &
                         rotation_BC    = loadCases(l)%rot)
-
+              case(FIELD_ELECTRICAL_ID)
+                call grid_electrical_spectral_forward( &
+                     cutBack, &
+                     Delta_t, &
+                     t_remaining, &
+                     electric_field_BC = loadCases(l)%electric_field, &
+                     current_density_BC = loadCases(l)%current_density )
               case(FIELD_THERMAL_ID)
                 if (allocated(loadCases(l)%temperature%myType)) then
                   call grid_thermal_spectral_forward(cutBack, guess, Delta_t, Delta_t_prev, t_remaining, &
@@ -348,6 +368,8 @@ program DAMASK_grid
               select case(ID(field))
                 case(FIELD_MECH_ID)
                   solres(field) = grid_mechanical_solution(incInfo)
+                case(FIELD_ELECTRICAL_ID)
+                  solres(field) = grid_electrical_spectral_solution(incInfo)
                 case(FIELD_THERMAL_ID)
                   solres(field) = grid_thermal_spectral_solution(Delta_t)
                 case(FIELD_DAMAGE_ID)
@@ -419,6 +441,8 @@ program DAMASK_grid
             select case (ID(field))
               case(FIELD_MECH_ID)
                 call grid_mechanical_restartWrite()
+              case(FIELD_ELECTRICAL_ID)
+                call grid_electrical_spectral_restartWrite()
               case(FIELD_THERMAL_ID)
                 call grid_thermal_spectral_restartWrite()
               case(FIELD_DAMAGE_ID)
@@ -459,7 +483,7 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
   use math
   use parallelization
 
-  import, only: tLoadCase, get_masked_tensor
+  import, only: tLoadCase, get_masked_tensor, get_masked_vector
 #endif
 
   type(tList), intent(in), target :: load_steps
@@ -472,6 +496,7 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
     step_bc, &
     step_mech, &
     step_therm, &
+    step_electrical, &
     step_discretization
 
 
@@ -483,6 +508,7 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
     else
       step_bc => load_step%get_dict('boundary_conditions')
     end if
+
     step_mech => step_bc%get_dict('mechanical')
     load_cases(l)%stress%myType=''
     readMech: do m = 1, size(step_mech)
@@ -504,6 +530,36 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
     end do readMech
     if (.not. allocated(load_cases(l)%deformation%myType)) &
       call IO_error(830_pI16, 'load case', l, 'is incomplete: L, F_dot/dot_F, or F missing', emph=[2])
+
+    if (step_bc%contains('electrical')) then
+      step_electrical => step_bc%get_dict('electrical')
+
+      load_cases(l)%electric_field%myType = 'E'
+      load_cases(l)%electric_field%values = 0.0_pREAL
+      load_cases(l)%electric_field%mask   = .true.
+
+      load_cases(l)%current_density%myType = 'J'
+      load_cases(l)%current_density%values = 0.0_pREAL
+      load_cases(l)%current_density%mask   = .true.
+
+      if (step_electrical%contains('E')) then
+        call get_masked_vector(load_cases(l)%electric_field%values, &
+                               load_cases(l)%electric_field%mask, &
+                               step_electrical%get_list('E'))
+      end if
+
+      if (step_electrical%contains('J')) then
+        call get_masked_vector(load_cases(l)%current_density%values, &
+                               load_cases(l)%current_density%mask, &
+                               step_electrical%get_list('J'))
+      end if
+
+      do i = 1,3
+        if (load_cases(l)%electric_field%mask(i) .eqv. load_cases(l)%current_density%mask(i)) &
+          call IO_error(830_pI16, 'mask consistency for electrical violated in load case', l, &
+                        'for component', i, emph=[2,4])
+      end do
+    end if
 
     if (step_bc%contains('thermal')) then
       step_therm => step_bc%get_dict('thermal')
@@ -555,7 +611,7 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
         end do; write(IO_STDOUT,'(/)',advance='no')
       end do
       if (any(load_cases(l)%stress%mask .eqv. load_cases(l)%deformation%mask)) &
-        call IO_error(830_pI16, 'mask consistency violated in load case', l, emph=[2])
+        call IO_error(830_pI16, 'mask consistency for mechanical violated in load case', l, emph=[2])
       if (any(.not.(load_cases(l)%stress%mask .or. transpose(load_cases(l)%stress%mask)) .and. (math_I3<1))) &
         call IO_error(830_pI16, 'mixed boundary conditions allow rotation in load case', l, emph=[2])
 
@@ -575,7 +631,29 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
       if (any(dNeq(load_cases(l)%rot%asMatrix(), math_I3))) &
         write(IO_STDOUT,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'R:',&
                  transpose(load_cases(l)%rot%asMatrix())
+      if (allocated(load_cases(l)%electric_field%myType)) then
+        print'(2x,a)', 'E / V/m:'
+        do i = 1, 3
+          if (load_cases(l)%electric_field%mask(i)) then
+            write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
+          else
+            write(IO_STDOUT,'(2x,f12.4)',advance='no') load_cases(l)%electric_field%values(i)
+          end if
+        end do
+        write(IO_STDOUT,'(/)',advance='no')
+      end if
 
+      if (allocated(load_cases(l)%current_density%myType)) then
+        print'(2x,a)', 'J / A/m^2:'
+        do i = 1, 3
+          if (load_cases(l)%current_density%mask(i)) then
+            write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
+          else
+            write(IO_STDOUT,'(2x,es12.4)',advance='no') load_cases(l)%current_density%values(i)
+          end if
+        end do
+        write(IO_STDOUT,'(/)',advance='no')
+      end if
       if (allocated(load_cases(l)%temperature%myType)) then
         if (load_cases(l)%temperature%myType == 'T') then
           print'(2x,a,1x,f0.3)', 'T / K:', load_cases(l)%temperature%value
@@ -643,5 +721,23 @@ subroutine get_masked_tensor(values,mask,tensor)
   end do
 
 end subroutine get_masked_tensor
+
+
+subroutine get_masked_vector(values,mask,vector)
+
+  real(pREAL), intent(out), dimension(3) :: values
+  logical,     intent(out), dimension(3) :: mask
+  type(tList), pointer                   :: vector
+
+  integer :: i
+
+
+  values = 0.0_pREAL
+  do i = 1, 3
+    mask(i) = vector%get_asStr(i) == 'x'
+    if (.not. mask(i)) values(i) = vector%get_asReal(i)
+  end do
+
+end subroutine get_masked_vector
 
 end program DAMASK_grid

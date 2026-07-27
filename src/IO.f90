@@ -510,7 +510,6 @@ subroutine IO_error_new(error_ID, &
       msg = 'invalid VTI file'
     case (894)
       msg = 'MPI error'
-
     case (950)
       msg = 'max number of cutbacks exceeded, terminating'
 

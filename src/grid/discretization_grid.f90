@@ -488,5 +488,4 @@ function get_initial_condition(label) result(ic_local)
 
 end function get_initial_condition
 
-
 end module discretization_grid

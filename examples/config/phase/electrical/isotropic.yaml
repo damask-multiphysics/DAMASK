@@ -1,0 +1,3 @@
+sigma: 1.0e7
+type: iso
+output: [E, J]
