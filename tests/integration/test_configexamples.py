@@ -13,111 +13,118 @@ def res_path(res_path_base):
     """Directory containing testing resources."""
     return res_path_base/'configexamples'
 
+fields = ['mechanical','thermal','damage','chemical','electrical']
 
 config_homogenization = \
    [
     # mechanical
-    ('direct','pass_direct', None,None,None),
-    ('bicrystal','isostrain_polycrystal', None,None,None),
-    ('8grains','RGC_8grains', None,None,None),
+    ('direct','pass_direct',None,None,None,None),
+    ('bicrystal','isostrain_polycrystal',None,None,None,None),
+    ('8grains','RGC_8grains',None,None,None,None),
     # mechanical + thermal
-    ('direct','pass_direct','pass_direct',None,None),
-    ('8grains','isostrain_polycrystal','isotemperature_polycrystal',None,None),
+    ('direct','pass_direct','pass_direct',None,None,None),
+    ('8grains','isostrain_polycrystal','isotemperature_polycrystal',None,None,None),
     # mechanical + thermal + damage
-    ('direct','pass_direct','pass_direct','pass_direct',None),
+    ('direct','pass_direct','pass_direct','pass_direct',None,None),
     # mechanical + thermal + damage + chemical
-    ('direct','pass_direct','pass_direct','pass_direct','pass_direct'),
+    ('direct','pass_direct','pass_direct','pass_direct','pass_direct',None),
+    # mechanical + thermal + damage + chemical + electrical
+    ('direct','pass_direct','pass_direct','pass_direct','pass_direct','pass_direct')
    ]
 
 
 config_phase = \
    [
     # elastic
-    ('fcc', 'Hooke_TWIP-steel', None, None, None, None, None, None),
-    ('bcc', 'Hooke_Nb', None, None, None, None, None, None),
-    ('bcc', 'Hooke_Ta', None, None, None, None, None, None),
-    ('bct', 'Hooke_Sn-beta', None, None, None, None, None, None),
-    ('hcp', 'Hooke_SiC-6H', None, None, None, None, None, None),
-    ('Al', 'Hooke_Al', None, None, None, None, None, None),
-    ('Cd', 'Hooke_Cd', None, None, None, None, None, None),
-    ('Fe', 'Hooke_C50E-martensite', None, None, None, None, None, None),
-    ('Mg', 'Hooke_Mg', None, None, None, None, None, None),
-    ('Ni', 'Hooke_Ni', None, None, None, None, None, None),
-    ('Ni', 'Hooke_IN625', None, None, None, None, None, None),
-    ('Sn-beta', 'Hooke_Sn-beta', None, None, None, None, None, None),
-    ('Pt', 'Hooke_Pt', None, None, None, None, None, None),
-    ('Si', 'Hooke_Si', None, None, None, None, None, None),
-    ('Ti', 'Hooke_Ti', None, None, None, None, None, None),
-    ('W', 'Hooke_W', None, None, None, None, None, None),
-    ('W', 'Hooke_W-3at.%Re', None, None, None, None, None, None),
-    ('W', 'Hooke_W-10at.%Re', None, None, None, None, None, None),
+    ('fcc', 'Hooke_TWIP-steel',None,None,None,None,None,None,None),
+    ('bcc', 'Hooke_Nb',None,None,None,None,None,None,None),
+    ('bcc', 'Hooke_Ta',None,None,None,None,None,None,None),
+    ('bct', 'Hooke_Sn-beta',None,None,None,None,None,None,None),
+    ('hcp', 'Hooke_SiC-6H',None,None,None,None,None,None,None),
+    ('Al', 'Hooke_Al',None,None,None,None,None,None,None),
+    ('Cd', 'Hooke_Cd',None,None,None,None,None,None,None),
+    ('Fe', 'Hooke_C50E-martensite',None,None,None,None,None,None,None),
+    ('Mg', 'Hooke_Mg',None,None,None,None,None,None,None),
+    ('Ni', 'Hooke_Ni',None,None,None,None,None,None,None),
+    ('Ni', 'Hooke_IN625',None,None,None,None,None,None,None),
+    ('Sn-beta', 'Hooke_Sn-beta',None,None,None,None,None,None,None),
+    ('Pt', 'Hooke_Pt',None,None,None,None,None,None,None),
+    ('Si', 'Hooke_Si',None,None,None,None,None,None,None),
+    ('Ti', 'Hooke_Ti',None,None,None,None,None,None,None),
+    ('W', 'Hooke_W',None,None,None,None,None,None,None),
+    ('W', 'Hooke_W-3at.%Re',None,None,None,None,None,None,None),
+    ('W', 'Hooke_W-10at.%Re',None,None,None,None,None,None,None),
     # elastic + damage
-    ('Al', 'Hooke_Al', None, None, 'anisobrittle_cubic', None, None, None),
-    ('Fe', 'Hooke_Fe', None, None, 'isobrittle_generic', None, None, None),
+    ('Al', 'Hooke_Al',None,None, 'anisobrittle_cubic',None,None,None,None),
+    ('Fe', 'Hooke_Fe',None,None, 'isobrittle_generic',None,None,None,None),
     # elastic + plastic
-    ('fcc', 'Hooke_vanishing-Poisson-ratio', 'dislotwin_alpha-Brass-shearbanding', None, None, None, None, None),
-    ('fcc', 'Hooke_vanishing-Poisson-ratio', 'isotropic_free-surface', None, None, None, None, None),
-    ('fcc', 'Hooke_TWIP-steel', 'dislotwin_TWIP-TRIP', None, None, None, None, None),
-    ('Al', 'Hooke_Al', 'phenopowerlaw_Al', None, None, None, None, None),
-    ('Al', 'Hooke_Al', 'phenopowerlaw_AA6022-T4', None, None, None, None, None),
-    ('Al', 'Hooke_Al', 'nonlocal_Al', None, None, None, None, None),
-    ('Au', 'Hooke_Au', 'phenopowerlaw_Au', None, None, None, None, None),
-    ('Cu', 'Hooke_Cu', 'phenopowerlaw_Cu', None, None, None, None, None),
-    ('Fe', 'Hooke_Fe', 'phenopowerlaw_bcc-martensite', None, None, None, None, None),
-    ('Fe', 'Hooke_Fe', 'phenopowerlaw_DP-steel-ferrite', None, None, None, None, None),
-    ('Fe', 'Hooke_Fe', 'phenopowerlaw_polygonal-ferrite', None, None, None, None, None),
-    ('Fe', 'Hooke_Fe', 'dislotwin_IF-steel', None, None, None, None, None),
-    ('Mg', 'Hooke_Mg', 'phenopowerlaw_Mg', None, None, None, None, None),
-    ('Ni', 'Hooke_Ni', 'nonlocal_Ni', None, None, None, None, None),
-    ('Ni', 'Hooke_IN625', 'phenopowerlaw_IN625', None, None, None, None, None),
-    ('Ni', 'Hooke_IN625', 'dislotwin_IN625', None, None, None, None, None),
-    ('Pt', 'Hooke_Pt', 'phenopowerlaw_Pt-5%Cu', None, None, None, None, None),
-    ('Sn-beta', 'Hooke_Sn-beta', 'phenopowerlaw_Sn-beta', None, None, None, None, None),
-    ('Ti', 'Hooke_Ti', 'phenopowerlaw_Ti', None, None, None, None, None),
-    ('W', 'Hooke_W', 'dislotungsten_W', None, None, None, None, None),
-    ('X5CrNi18-10', 'Hooke_X5CrNi18-10', 'kinehardening_X2CrNiMo18-15-4', None, None, None, None, None),
+    ('fcc', 'Hooke_vanishing-Poisson-ratio', 'dislotwin_alpha-Brass-shearbanding',None,None,None,None,None,None),
+    ('fcc', 'Hooke_vanishing-Poisson-ratio', 'isotropic_free-surface',None,None,None,None,None,None),
+    ('fcc', 'Hooke_TWIP-steel', 'dislotwin_TWIP-TRIP',None,None,None,None,None,None),
+    ('Al', 'Hooke_Al', 'phenopowerlaw_Al',None,None,None,None,None,None),
+    ('Al', 'Hooke_Al', 'phenopowerlaw_AA6022-T4',None,None,None,None,None,None),
+    ('Al', 'Hooke_Al', 'nonlocal_Al',None,None,None,None,None,None),
+    ('Au', 'Hooke_Au', 'phenopowerlaw_Au',None,None,None,None,None,None),
+    ('Cu', 'Hooke_Cu', 'phenopowerlaw_Cu',None,None,None,None,None,None),
+    ('Fe', 'Hooke_Fe', 'phenopowerlaw_bcc-martensite',None,None,None,None,None,None),
+    ('Fe', 'Hooke_Fe', 'phenopowerlaw_DP-steel-ferrite',None,None,None,None,None,None),
+    ('Fe', 'Hooke_Fe', 'phenopowerlaw_polygonal-ferrite',None,None,None,None,None,None),
+    ('Fe', 'Hooke_Fe', 'dislotwin_IF-steel',None,None,None,None,None,None),
+    ('Mg', 'Hooke_Mg', 'phenopowerlaw_Mg',None,None,None,None,None,None),
+    ('Ni', 'Hooke_Ni', 'nonlocal_Ni',None,None,None,None,None,None),
+    ('Ni', 'Hooke_IN625', 'phenopowerlaw_IN625',None,None,None,None,None,None),
+    ('Ni', 'Hooke_IN625', 'dislotwin_IN625',None,None,None,None,None,None),
+    ('Pt', 'Hooke_Pt', 'phenopowerlaw_Pt-5%Cu',None,None,None,None,None,None),
+    ('Sn-beta', 'Hooke_Sn-beta', 'phenopowerlaw_Sn-beta',None,None,None,None,None,None),
+    ('Ti', 'Hooke_Ti', 'phenopowerlaw_Ti',None,None,None,None,None,None),
+    ('W', 'Hooke_W', 'dislotungsten_W',None,None,None,None,None,None),
+    ('X5CrNi18-10', 'Hooke_X5CrNi18-10', 'kinehardening_X2CrNiMo18-15-4',None,None,None,None,None,None),
     # elastic + plastic + damage
-    ('Cu', 'Hooke_Cu', 'phenopowerlaw_Cu', None, 'isobrittle_generic', None, None, None),
-    ('Fe', 'Hooke_Fe', 'dislotwin_IF-steel', None, 'anisobrittle_cubic', None, None, None),
+    ('Cu', 'Hooke_Cu', 'phenopowerlaw_Cu',None, 'isobrittle_generic',None,None,None,None),
+    ('Fe', 'Hooke_Fe', 'dislotwin_IF-steel',None, 'anisobrittle_cubic',None,None,None,None),
     # elastic + thermal
-    ('Al', 'Hooke_Al', None, None, None, 'Al', None, None),
-    ('Ag', 'Hooke_Ag', None, None, None, 'Ag', None, None),
-    ('Pt', 'Hooke_Pt', None, None, None, 'Pt', None, None),
+    ('Al', 'Hooke_Al',None,None,None, 'Al',None,None,None),
+    ('Ag', 'Hooke_Ag',None,None,None, 'Ag',None,None,None),
+    ('Pt', 'Hooke_Pt',None,None,None, 'Pt',None,None,None),
     # elastic + thermal + source
-    ('Fe', 'Hooke_Fe', None, None, None, 'Fe', 'externalheat_ramp-and-hold', None),
-    ('Ni', 'Hooke_Ni', None, None, None, 'Ni', 'externalheat_ramp-and-hold', None),
-    ('Ti', 'Hooke_Ti', None, None, None, 'adiabatic', 'externalheat_ramp-and-hold', None),
+    ('Fe', 'Hooke_Fe',None,None,None, 'Fe', 'externalheat_ramp-and-hold',None,None),
+    ('Ni', 'Hooke_Ni',None,None,None, 'Ni', 'externalheat_ramp-and-hold',None,None),
+    ('Ti', 'Hooke_Ti',None,None,None, 'adiabatic', 'externalheat_ramp-and-hold',None,None),
     # elastic + plastic + thermal + source
-    ('Al', 'Hooke_Al', 'phenopowerlaw_Al', None, None, 'Al', 'dissipation_generic', None),
-    ('Au', 'Hooke_Au', 'phenopowerlaw_Au', None, None, 'fast-convection', 'externalheat_ramp-and-hold', None),
-    ('Au', 'Hooke_Au', 'phenopowerlaw_Au', None, None, 'adiabatic', 'dissipation_generic', None),
-    ('Fe', 'Hooke_Fe', 'dislotwin_IF-steel', None, None, 'steel-0.5C', 'dissipation_generic', None),
+    ('Al', 'Hooke_Al', 'phenopowerlaw_Al',None,None, 'Al', 'dissipation_generic',None,None),
+    ('Au', 'Hooke_Au', 'phenopowerlaw_Au',None,None, 'fast-convection', 'externalheat_ramp-and-hold',None,None),
+    ('Au', 'Hooke_Au', 'phenopowerlaw_Au',None,None, 'adiabatic', 'dissipation_generic',None,None),
+    ('Fe', 'Hooke_Fe', 'dislotwin_IF-steel',None,None, 'steel-0.5C', 'dissipation_generic',None,None),
     # elastic + eigen
-    ('bcc', 'Hooke_W', None, 'thermalexpansion_SiC-beta', None, None, None, None),
-    ('hcp', 'Hooke_Mg', None, 'thermalexpansion_SiC-alpha', None, None, None, None),
-    ('Mg', 'Hooke_Mg', None, 'thermalexpansion_Mg', None, None, None, None),
-    ('W', 'Hooke_W', None, 'thermalexpansion_W', None, None, None, None),
+    ('bcc', 'Hooke_W',None, 'thermalexpansion_SiC-beta',None,None,None,None,None),
+    ('hcp', 'Hooke_Mg',None, 'thermalexpansion_SiC-alpha',None,None,None,None,None),
+    ('Mg', 'Hooke_Mg',None, 'thermalexpansion_Mg',None,None,None,None,None),
+    ('W', 'Hooke_W',None, 'thermalexpansion_W',None,None,None,None,None),
     # elastic + eigen + thermal + source
-    ('Al', 'Hooke_Al', None, 'thermalexpansion_Al', None, 'Al', 'externalheat_ramp-and-hold', None),
-    ('Au', 'Hooke_Au', None, 'thermalexpansion_Au', None, 'Au', 'externalheat_ramp-and-hold', None),
-    ('Cu', 'Hooke_Cu', None, 'thermalexpansion_Cu', None, 'Cu', 'externalheat_ramp-and-hold', None),
-    ('Fe', 'Hooke_Fe', None, 'thermalexpansion_Fe', None, 'steel-0.5C', 'externalheat_ramp-and-hold', None),
-    ('Fe', 'Hooke_Fe', None, 'thermalexpansion_C35E', None, 'steel-0.5C', 'externalheat_ramp-and-hold', None),
-    ('Fe', 'Hooke_Fe', None, 'thermalexpansion_X20Cr13', None, 'steel-0.5C', 'externalheat_ramp-and-hold', None),
-    ('Si', 'Hooke_Si', None, 'thermalexpansion_Si', None, 'Si','externalheat_ramp-and-hold', None),
-    ('Sn-beta', 'Hooke_Sn-beta', None, 'thermalexpansion_Sn-beta', None, 'Sn-beta','externalheat_ramp-and-hold', None),
-    ('W', 'Hooke_W', None, 'thermalexpansion_W', None, 'W', 'externalheat_ramp-and-hold', None),
-    ('X2CrNi18-10', 'Hooke_X6CrNiMo17-12-2', None, 'thermalexpansion_X2CrNi18-10', None, 'X2CrNi18-10',
-                                                                                     'externalheat_ramp-and-hold', None),
-    ('X2CrNiMo17-12-2', 'Hooke_X2CrNiMo17-12-2', None, 'thermalexpansion_X2CrNiMo17-12-2', None, 'X2CrNiMo17-12-2',
-                                                                                     'externalheat_ramp-and-hold', None),
-    ('X5CrNi18-10', 'Hooke_X5CrNi18-10', None, 'thermalexpansion_X5CrNi18-10', None, 'X5CrNi18-10',
-                                                                                     'externalheat_ramp-and-hold', None),
+    ('Al', 'Hooke_Al',None, 'thermalexpansion_Al',None, 'Al', 'externalheat_ramp-and-hold',None,None),
+    ('Au', 'Hooke_Au',None, 'thermalexpansion_Au',None, 'Au', 'externalheat_ramp-and-hold',None,None),
+    ('Cu', 'Hooke_Cu',None, 'thermalexpansion_Cu',None, 'Cu', 'externalheat_ramp-and-hold',None,None),
+    ('Fe', 'Hooke_Fe',None, 'thermalexpansion_Fe',None, 'steel-0.5C', 'externalheat_ramp-and-hold',None,None),
+    ('Fe', 'Hooke_Fe',None, 'thermalexpansion_C35E',None, 'steel-0.5C', 'externalheat_ramp-and-hold',None,None),
+    ('Fe', 'Hooke_Fe',None, 'thermalexpansion_X20Cr13',None, 'steel-0.5C', 'externalheat_ramp-and-hold',None,None),
+    ('Si', 'Hooke_Si',None, 'thermalexpansion_Si',None, 'Si','externalheat_ramp-and-hold',None,None),
+    ('Sn-beta', 'Hooke_Sn-beta',None, 'thermalexpansion_Sn-beta',None, 'Sn-beta','externalheat_ramp-and-hold',None,None),
+    ('W', 'Hooke_W',None, 'thermalexpansion_W',None, 'W', 'externalheat_ramp-and-hold',None,None),
+    ('X2CrNi18-10', 'Hooke_X6CrNiMo17-12-2',None, 'thermalexpansion_X2CrNi18-10',None, 'X2CrNi18-10',
+                                                                                     'externalheat_ramp-and-hold',None,None),
+    ('X2CrNiMo17-12-2', 'Hooke_X2CrNiMo17-12-2',None, 'thermalexpansion_X2CrNiMo17-12-2',None, 'X2CrNiMo17-12-2',
+                                                                                     'externalheat_ramp-and-hold',None,None),
+    ('X5CrNi18-10', 'Hooke_X5CrNi18-10',None, 'thermalexpansion_X5CrNi18-10',None, 'X5CrNi18-10',
+                                                                                     'externalheat_ramp-and-hold',None,None),
     # elastic + chemical
-    ('Al', 'Hooke_Al', None, None, None, None, None, 'quadenergy_example'),
-    ('Al', 'Hooke_Al', None, None, None, None, None, 'regularsolution_AlZn'),
-    ('Mg', 'Hooke_Mg', None, None, None, None, None, 'regularsolution_AlMg'),
-    ('Fe', 'Hooke_Fe', None, None, None, None, None, 'regularsolution_FeNb'),
+    ('Al', 'Hooke_Al',None,None,None,None,None, 'quadenergy_example',None),
+    ('Al', 'Hooke_Al',None,None,None,None,None, 'regularsolution_AlZn',None),
+    ('Mg', 'Hooke_Mg',None,None,None,None,None, 'regularsolution_AlMg',None),
+    ('Fe', 'Hooke_Fe',None,None,None,None,None, 'regularsolution_FeNb',None),
+    # elastic + electrical
+    ('Fe', 'Hooke_Fe',None,None,None,None,None,None,'Zn'),
+    ('Fe', 'Hooke_Fe',None,None,None,None,None,None,'isotropic'),
+    ('Al', 'Hooke_Al',None, 'thermalexpansion_Al',None, 'Al', 'joule_heating',None,'isotropic'),
    ]
 
 
@@ -125,7 +132,7 @@ def test_coverage_homogenization(damask_root):
     existing = set((damask_root/'examples/config/homogenization').glob('**/*.yaml'))
 
     tested   = set()
-    path = ['.','mechanical','thermal','damage','chemical']
+    path = ['.'] + fields
     for combination in config_homogenization:
         tested.update([damask_root/f'examples/config/homogenization/{path[i]}/{config}.yaml'
                        for i,config in enumerate(combination) if config is not None])
@@ -133,15 +140,15 @@ def test_coverage_homogenization(damask_root):
     assert len(existing ^ tested) == 0, existing ^ tested
 
 
-@pytest.mark.parametrize('N_constituents,mechanical,thermal,damage,chemical',config_homogenization)
+@pytest.mark.parametrize('N_constituents,'+','.join(fields),config_homogenization)
 def test_homogenization(damask_root,tmp_path,
-                        N_constituents,mechanical,thermal,damage,chemical):
+                        N_constituents,mechanical,thermal,damage,chemical,electrical):
     def get_output(config,label='DAMASK'):
         output = {}
         homogenization = config['homogenization'][label]
-        for t in ['mechanical','thermal','damage','chemical']:
-            if t in homogenization.keys():
-                output[t] = homogenization[t].get('output', [])
+        for f in fields:
+            if f in homogenization.keys():
+                output[f] = homogenization[f].get('output', [])
         return output
 
     grid = 'SX'
@@ -191,8 +198,17 @@ def test_homogenization(damask_root,tmp_path,
         for component in config['phase']['iso']['chemical']['components']:
             g.initial_conditions[component] = 1.0
 
+    if electrical is not None:
+        config['homogenization'][label]['electrical'] \
+            = damask.YAML.load(base_path/'electrical'/f'{chemical}.yaml')
+        config['phase']['iso']['electrical'] \
+            = damask.YAML.load(damask_root/'examples'/'config'/'phase'/'electrical'/'isotropic.yaml')
+        load_case['solver']['electrical'] = 'spectral'
+        load_case['loadstep'][0]['boundary_conditions']['electrical'] = {'J': [0.0, 0.0, 0.0],
+                                                                            'E': ['x', 'x', 'x']}
 
-    config.material_add(phase='iso',O=damask.Rotation().broadcast_to((1,N)),                    # noqa
+
+    config.material_add(phase='iso',O=damask.Rotation().broadcast_to((1,N)),                        # noqa
                         homogenization=label).save(tmp_path/f'{material}.yaml')
     load_case.save(tmp_path/f'{load}.yaml')
     g.save(tmp_path/f'{grid}.vti')
@@ -211,7 +227,7 @@ def test_coverage_phase(damask_root):
 
     tested   = set()
     path = ['.','mechanical/elastic','mechanical/plastic','mechanical/eigen',
-            'damage','thermal','thermal/source', 'chemical',
+            'damage','thermal','thermal/source', 'chemical', 'electrical'
            ]
     for combination in config_phase:
         tested.update([damask_root/f'examples/config/phase/{path[i]}/{config}.yaml'
@@ -220,25 +236,26 @@ def test_coverage_phase(damask_root):
     assert len(existing ^ tested) == 0, existing ^ tested
 
 
-@pytest.mark.parametrize('lattice,elastic,plastic,eigen,damage,thermal,source,chemical',config_phase)
+@pytest.mark.parametrize('lattice,elastic,plastic,eigen,damage,thermal,source,chemical,electrical',
+                         config_phase)
 def test_phase(damask_root,tmp_path,
-               lattice,elastic,plastic,eigen,damage,thermal,source,chemical):
+               lattice,elastic,plastic,eigen,damage,thermal,source,chemical,electrical):
 
     def get_output(config,label='DAMASK'):
         output = {}
         phase = config['phase'][label]
-        for t in ['mechanical','thermal','damage','chemical']:
-            if t in phase.keys():
-                output[t] = []
-                if t == 'mechanical':
+        for f in fields:
+            if f in phase.keys():
+                output[f] = []
+                if f == 'mechanical':
                     for m in ['elastic','plastic']:
-                        if m in phase[t].keys():
-                            output[t] += phase[t][m].get('output', [])
-                    if 'eigen' in phase[t].keys():
-                        for e in phase[t]['eigen']:
-                            output[t] += e.get('output', [])
+                        if m in phase[f].keys():
+                            output[f] += phase[f][m].get('output', [])
+                    if 'eigen' in phase[f].keys():
+                        for e in phase[f]['eigen']:
+                            output[f] += e.get('output', [])
                 else:
-                    output[t] += phase[t].get('output', [])
+                    output[f] += phase[f].get('output', [])
         return output
 
     grid = 'SX'
@@ -295,6 +312,15 @@ def test_phase(damask_root,tmp_path,
         for component in components:
             g.initial_conditions[component] = 1.0
         load_case['solver']['chemical'] = 'FDM'
+
+    if electrical is not None:
+        config['phase'][label]['electrical'] \
+            = damask.YAML.load(base_path/'electrical'/f'{electrical}.yaml')
+        config['homogenization']['SX']['electrical'] = {'type':'pass'}
+        load_case['solver']['electrical'] = 'spectral'
+        load_case['loadstep'][0]['boundary_conditions']['electrical'] = {'J': [0.0, 0.0, 0.0],
+                                                                            'E': ['x', 'x', 'x']}
+
 
     config.material_add(phase=label,O=[1.,0.,0.,0.],homogenization='SX').save(tmp_path/f'{material}.yaml') # noqa
     load_case.save(tmp_path/f'{load}.yaml')

@@ -3,6 +3,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Yi Hu, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Tilak Raj Pant, Indian Institute of Science
 !> @brief Utilities used by the different spectral solver variants
 !--------------------------------------------------------------------------------------------------
 #include <petsc/finclude/petscsys.h>
@@ -56,6 +57,7 @@ module spectral_utilities
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:),         pointer     :: scalarField_fourier           !< scalar field in Fourier space
   complex(pREAL),            dimension(:,:,:,:,:,:,:), allocatable :: Gamma_hat                     !< gamma operator (field) for spectral method
   complex(pREAL),            dimension(:,:,:,:,:,:,:), allocatable :: G_hat                         !< G operator (field) for Galerkin method
+  complex(pREAL),            dimension(:,:,:,:,:),     allocatable :: G_hat_electrical              !< Gamma operator (field) for electrical
   complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi1st                         !< wave vector field for first derivatives
   complex(pREAL),            dimension(:,:,:,:),       allocatable :: xi2nd                         !< wave vector field for second derivatives
   real(pREAL),               dimension(3,3,3,3)                    :: C_ref                         !< mechanic reference stiffness
@@ -101,9 +103,11 @@ module spectral_utilities
   public :: &
     spectral_utilities_init, &
     utilities_updateGamma, &
+    utilities_updateGamma_electrical, &
     utilities_GammaConvolution, &
     utilities_G_Convolution, &
     utilities_GreenConvolution, &
+    utilities_GreenConvolution_electrical, &
     utilities_divergenceRMS, &
     utilities_curlRMS, &
     utilities_scalarGradient, &
@@ -327,7 +331,7 @@ subroutine spectral_utilities_init(active_Gamma, active_G, active_parabolic)
               xi1st(1:3,i,k,j-cells2Offset) = xi2nd(1:3,i,k,j-cells2Offset)
             endwhere
   end do; end do; end do
-
+  allocate (G_hat_electrical(3,3,cells1Red,cells(3),cells2), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
   if (active_Gamma) then
     if (num%memory_efficient) then                                                                  ! allocate just single fourth order tensor
       allocate (Gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pREAL,0.0_pREAL,pREAL))
@@ -389,6 +393,40 @@ subroutine utilities_updateGamma(C)
   end if
 
 end subroutine utilities_updateGamma
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Update reference electrical conductivity and precalculate G_hat_electrical.
+!--------------------------------------------------------------------------------------------------
+subroutine utilities_updateGamma_electrical()
+
+  integer :: i, j, k
+  real(pREAL), dimension(3)    :: k_vec
+  real(pREAL), dimension(3,3)  :: k_dyad
+  real(pREAL)                  :: k_squared
+
+
+  do j = cells2Offset+1, cells2Offset+cells2
+    do k = 1, cells(3)
+      do i = 1, cells1Red
+        ! Get the k-vector (imaginary part of xi1st)
+        k_vec = aimag(xi1st(1:3,i,k,j-cells2Offset))
+        k_vec = merge(sin(k_vec * geomSize / real(cells, kind=pREAL)), &
+                      0.0_pREAL, &
+                      abs(k_vec) > 1.0e-12_pREAL)
+        k_squared = sum(k_vec**2)
+        ! Calculate the modified tensor numerator: (K_i * K_j)
+        k_dyad = math_outer(k_vec,k_vec)
+        if (abs(k_squared) > 1.0e-12_pREAL) then
+          G_hat_electrical(:,:,i,k,j-cells2Offset) = cmplx(-k_dyad/k_squared,0.0_pREAL,pREAL)
+        else
+          ! Avoid division by zero at the DC component (k=0)
+          G_hat_electrical(:,:,i,k,j-cells2Offset) = cmplx(0.0_pREAL,0.0_pREAL,pREAL)
+        end if
+      end do
+    end do
+  end do
+
+end subroutine utilities_updateGamma_electrical
 
 
 !--------------------------------------------------------------------------------------------------
@@ -577,6 +615,34 @@ function utilities_GreenConvolution(field, D_ref, mu_ref, Delta_t) result(greenF
 
 end function utilities_GreenConvolution
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Green's convolution for a 3-component vector field using the Gamma operator.
+!--------------------------------------------------------------------------------------------------
+function utilities_GreenConvolution_electrical(field) result(greenField)
+
+  real(pREAL), intent(in), dimension(3,cells(1),cells(2),cells3) :: field
+  real(pREAL), dimension(3,cells(1),cells(2),cells3) :: greenField
+
+  complex(pREAL), dimension(3)    :: field_fourier_vec
+  integer                         :: i, j, k
+
+  vectorField_real(1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pREAL                      ! set up FFT plans and buffers for a vector field
+  vectorField_real(1:3,1:cells(1),            1:cells(2),1:cells3) = field
+
+  call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
+
+  !$OMP PARALLEL DO PRIVATE(field_fourier_vec)
+  do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
+    field_fourier_vec = vectorField_fourier(1:3,i,k,j)                                              ! apply the Gamma operator: e_corr_hat = Gamma * p_hat
+    vectorField_fourier(1:3,i,k,j) = matmul(G_hat_electrical(:,:,i,k,j), field_fourier_vec)         ! use the pre-computed operator
+  end do; end do; end do
+  !$OMP END PARALLEL DO
+
+  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
+
+  greenField = vectorField_real(1:3,1:cells(1),1:cells(2),1:cells3)*wgt
+
+end function utilities_GreenConvolution_electrical
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate root mean square of divergence.

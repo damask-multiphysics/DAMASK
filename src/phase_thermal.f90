@@ -26,9 +26,6 @@ submodule(phase) thermal
 
   integer :: thermal_source_maxSizeDotState
 
-  integer(kind(UNDEFINED)),  dimension(:,:), allocatable :: &
-    thermal_source_type
-
 
   interface
 
@@ -36,6 +33,11 @@ submodule(phase) thermal
       integer, intent(in) :: maxNsources
       logical, dimension(:,:), allocatable :: isMySource
     end function source_dissipation_init
+
+    module function source_Joule_init(maxNsources) result(isMySource)
+      integer, intent(in) :: maxNsources
+      logical, dimension(:,:), allocatable :: isMySource
+    end function source_Joule_init
 
     module function source_externalheat_init(maxNsources) result(isMySource)
       integer, intent(in) :: maxNsources
@@ -55,6 +57,13 @@ submodule(phase) thermal
         en
       real(pREAL) :: f_T
     end function source_dissipation_f_T
+
+    module function source_Joule_f_T(ph,en) result(f_T)
+      integer, intent(in) :: &
+        ph, &
+        en
+      real(pREAL) :: f_T
+    end function source_Joule_f_T
 
     module function source_externalheat_f_T(ph,en)  result(f_T)
       integer, intent(in) :: &
@@ -149,6 +158,7 @@ module subroutine thermal_init(phases)
   if (maxval(thermal_Nsources) /= 0) then
     where(source_dissipation_init (maxval(thermal_Nsources))) thermal_source_type = THERMAL_SOURCE_DISSIPATION
     where(source_externalheat_init(maxval(thermal_Nsources))) thermal_source_type = THERMAL_SOURCE_EXTERNALHEAT
+    where(source_Joule_init(maxval(thermal_Nsources)))        thermal_source_type = THERMAL_SOURCE_JOULE
   end if
 
   thermal_source_maxSizeDotState = 0
@@ -181,12 +191,14 @@ module function phase_f_T(ph,en) result(f)
 
   do so = 1, thermal_Nsources(ph)
    select case(thermal_source_type(so,ph))
-
      case (THERMAL_SOURCE_DISSIPATION)
        f = f + source_dissipation_f_T(ph,en)
 
      case (THERMAL_SOURCE_EXTERNALHEAT)
        f = f + source_externalheat_f_T(ph,en)
+
+     case (THERMAL_SOURCE_JOULE)
+       f = f + source_Joule_f_T(ph,en)
 
    end select
 

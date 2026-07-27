@@ -19,6 +19,8 @@ module grid_utilities
   use discretization
   use spectral_utilities
   use homogenization
+  use material !ToDo: should not be used to bypass homogenization
+  use phase !ToDo: should not be used to bypass homogenization
   use constants
 
 #ifndef PETSC_EXPOSES_MPIF90
@@ -30,11 +32,17 @@ module grid_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! derived types
-  type, public :: tBCmech                                                                !< set of parameters defining a boundary condition
+  type, public :: tBCmech                                                                            !< mechanical boundary condition
     real(pREAL), dimension(3,3)   :: values = 0.0_pREAL
     logical,     dimension(3,3)   :: mask   = .true.
     character(len=:), allocatable :: myType
   end type tBCmech
+
+  type, public :: tBCelectrical                                                                     !< electrical boundary conditions
+    real(pREAL), dimension(3)     :: values = 0.0_pREAL
+    logical,     dimension(3)     :: mask   = .true.
+    character(len=:), allocatable :: myType
+  end type tBCelectrical
 
   type, public :: tBCthermal                                                                        !< thermal boundary condition parameters
     real(pREAL)                   :: value = 0.0_pREAL                                              !< temperature [K] or rate [K/s]
@@ -52,6 +60,7 @@ module grid_utilities
   public :: &
     utilities_maskedCompliance, &
     utilities_constitutiveResponse, &
+    utilities_electricalResponse, &
     utilities_calculateRate, &
     utilities_forwardTensorField, &
     utilities_forwardScalarField
@@ -196,6 +205,38 @@ subroutine utilities_constitutiveResponse(status, P,P_av,C_volAvg,C_minmaxAvg,&
 
 
 end subroutine utilities_constitutiveResponse
+
+subroutine utilities_electricalResponse(status, J, J_av, E_field)
+  integer(kind(STATUS_OK)), intent(out)                             :: status
+  real(pREAL), intent(out), dimension(3,cells(1),cells(2),cells3)   :: J
+  real(pREAL), intent(out), dimension(3)                            :: J_av
+  real(pREAL), intent(in),  dimension(3,cells(1),cells(2),cells3)   :: E_field
+
+  integer :: i, jj, k, ce, co
+  integer(MPI_INTEGER_KIND) :: err_MPI
+
+  status = STATUS_OK
+
+  do k = 1, cells3
+    do jj = 1, cells(2)
+      do i = 1, cells(1)
+        ce = (k-1)*cells(2)*cells(1) + (jj-1)*cells(1) + i
+        J(:, i, jj, k) = matmul(phase_sigma(1, ce), E_field(:, i, jj, k)) * material_v(1, ce)
+        do co = 2, homogenization_Nconstituents(material_ID_homogenization(ce))
+          J(:, i, jj, k) = J(:, i, jj, k) &
+                        + matmul(phase_sigma(co, ce), E_field(:, i, jj, k)) * material_v(co, ce)
+        end do
+      end do
+    end do
+  end do
+
+  ! Volume average aggregation
+  J_av = sum(sum(sum(J, dim=4), dim=3), dim=2) * wgt
+  call MPI_Allreduce(MPI_IN_PLACE, J_av, 3_MPI_INTEGER_KIND, &
+                     MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD, err_MPI)
+  call parallelization_chkerr(err_MPI)
+
+end subroutine utilities_electricalResponse
 
 
 !--------------------------------------------------------------------------------------------------

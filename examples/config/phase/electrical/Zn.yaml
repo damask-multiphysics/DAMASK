@@ -1,0 +1,5 @@
+references: https://doi.org/10.1103/PhysRev.38.820
+sigma_11: 1.612e7
+sigma_33: 1.704e7
+type: aniso
+output: [E, J]

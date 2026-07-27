@@ -63,13 +63,17 @@ module phase
     THERMAL_SOURCE_DISSIPATION, &
     THERMAL_SOURCE_EXTERNALHEAT, &
     CHEMICAL_REGULARSOLUTION, &
-    CHEMICAL_QUADENERGY
+    CHEMICAL_QUADENERGY, &
+    THERMAL_SOURCE_JOULE
   end enum
 
 
   integer(kind(UNDEFINED)), dimension(:), allocatable :: &
     mechanical_plasticity_type, &                                                                   !< plasticity of each phase
     damage_type                                                                                     !< damage type of each phase
+  integer(kind(UNDEFINED)),  dimension(:,:), allocatable :: &
+    thermal_source_type, &
+    mechanical_eigen_kinematics_type
 
   character(len=2), allocatable, dimension(:) :: phase_lattice
   real(pREAL),      allocatable, dimension(:) :: phase_cOverA
@@ -105,9 +109,6 @@ module phase
     plasticState
   type(tState),  allocatable, dimension(:), public :: &
     damageState
-!  type(tState),  allocatable, dimension(:), public :: &
-!    chemicalState
-
 
   interface
 
@@ -126,6 +127,10 @@ module phase
     module subroutine chemical_init(phases)
       type(tDict), pointer :: phases
     end subroutine chemical_init
+
+    module subroutine electrical_init(phases)
+       type(tDict), pointer :: phases
+    end subroutine electrical_init
 
     module subroutine mechanical_result(group,ph)
       character(len=*), intent(in) :: group
@@ -147,6 +152,11 @@ module phase
       integer,          intent(in) :: ph
     end subroutine chemical_result
 
+    module subroutine electrical_result(group,ph)
+      character(len=*), intent(in) :: group
+      integer,          intent(in) :: ph
+    end subroutine electrical_result
+
     module subroutine mechanical_forward()
     end subroutine mechanical_forward
 
@@ -159,6 +169,8 @@ module phase
     module subroutine chemical_forward()
     end subroutine chemical_forward
 
+    module subroutine electrical_forward()
+    end subroutine electrical_forward
 
     module subroutine mechanical_restore(ce)
       integer, intent(in) :: ce
@@ -197,6 +209,11 @@ module phase
       integer, intent(in) :: ph
     end subroutine chemical_restartWrite
 
+    module subroutine electrical_restartWrite(groupHandle,ph)
+      integer(HID_T), intent(in) :: groupHandle
+      integer, intent(in) :: ph
+    end subroutine electrical_restartWrite
+
     module subroutine mechanical_restartRead(groupHandle,ph)
       integer(HID_T), intent(in) :: groupHandle
       integer, intent(in) :: ph
@@ -216,6 +233,11 @@ module phase
       integer(HID_T), intent(in) :: groupHandle
       integer, intent(in) :: ph
     end subroutine chemical_restartRead
+
+    module subroutine electrical_restartRead(groupHandle,ph)
+      integer(HID_T), intent(in) :: groupHandle
+      integer, intent(in) :: ph
+    end subroutine electrical_restartRead
 
     module function mechanical_S(ph,en) result(S)
       integer, intent(in) :: ph,en
@@ -273,6 +295,21 @@ module phase
       integer, intent(in) :: co, ce
     end subroutine phase_thermal_setField
 
+    module subroutine phase_electrical_setField(E, co,ce)
+      real(pREAL), dimension(3), intent(in) :: E
+      integer, intent(in) :: co, ce
+    end subroutine phase_electrical_setField
+
+    module function electrical_E(ph,en) result(E)
+      integer, intent(in) :: ph,en
+      real(pREAL), dimension(3) :: E
+    end function electrical_E
+
+    module function electrical_J(ph,en) result(J)
+      integer, intent(in) :: ph,en
+      real(pREAL), dimension(3) :: J
+    end function electrical_J
+
     module subroutine phase_set_phi(phi,co,ce)
       real(pREAL), intent(in) :: phi
       integer, intent(in) :: co, ce
@@ -300,7 +337,10 @@ module phase
       real(pREAL), dimension(3,3) :: K
     end function phase_K_T
 
-! == cleaned:end ===================================================================================
+    module function phase_sigma(co,ce) result(sigma)
+      integer, intent(in) :: co, ce
+      real(pREAL), dimension(3,3) :: sigma
+    end function phase_sigma
 
     module function phase_thermal_constitutive(Delta_t,ph,en) result(status)
       real(pREAL), intent(in) :: Delta_t
@@ -319,6 +359,12 @@ module phase
       integer, intent(in) :: co, ce
       integer(kind(STATUS_OK)) :: status
     end function phase_mechanical_constitutive
+
+    module function phase_electrical_constitutive(Delta_t,ph,en) result(status)
+        real(pREAL), intent(in) :: Delta_t
+        integer,     intent(in) :: ph,en
+        integer(kind(STATUS_OK)) :: status
+    end function phase_electrical_constitutive
 
     !ToDo: Merge all the stiffness functions
     module function phase_homogenizedC66(ph,en) result(C)
@@ -403,12 +449,14 @@ module phase
     phase_mechanical_constitutive, &
     phase_thermal_constitutive, &
     phase_damage_constitutive, &
+    phase_electrical_constitutive, &
     phase_mechanical_dPdF, &
     crystallite_orientations, &
     crystallite_push33ToRef, &
     phase_restartWrite, &
     phase_restartRead, &
     phase_thermal_setField, &
+    phase_electrical_setField, &
     phase_set_phi, &
     phase_P, &
     phase_set_F, &
@@ -416,7 +464,9 @@ module phase
     phase_calculate_composition, &
     phase_get_mobility, &
     phase_chemical_setField, &
-    phase_compositionTangent
+    phase_compositionTangent, &
+    phase_sigma
+
 
 contains
 
@@ -476,6 +526,7 @@ subroutine phase_init()
   call mechanical_init(phases,num_mech)
   call damage_init()
   call thermal_init(phases)
+  call electrical_init(phases)
   call chemical_init(phases)
 
   call crystallite_init()
@@ -541,6 +592,7 @@ subroutine phase_forward()
   call mechanical_forward()
   call damage_forward()
   call thermal_forward()
+  call electrical_forward()
   call chemical_forward()
 
 end subroutine phase_forward
@@ -567,6 +619,7 @@ subroutine phase_result()
     call mechanical_result(group,ph)
     call damage_result(group,ph)
     call thermal_result(group,ph)
+    call electrical_result(group,ph)
     call chemical_result(group,ph)
 
   end do
@@ -682,6 +735,7 @@ subroutine phase_restartWrite(fileHandle)
 
     call mechanical_restartWrite(groupHandle(2),ph)
     call thermal_restartWrite(groupHandle(2),ph)
+    call electrical_restartWrite(groupHandle(2),ph)
     call damage_restartWrite(groupHandle(2),ph)
     call chemical_restartWrite(groupHandle(2),ph)
 
@@ -714,6 +768,7 @@ subroutine phase_restartRead(fileHandle)
     call mechanical_restartRead(groupHandle(2),ph)
     call thermal_restartRead(groupHandle(2),ph)
     call damage_restartRead(groupHandle(2),ph)
+    call electrical_restartRead(groupHandle(2),ph)
     call chemical_restartRead(groupHandle(2),ph)
 
     call HDF5_closeGroup(groupHandle(2))
