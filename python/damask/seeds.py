@@ -22,7 +22,7 @@ class FromGridTuple(_NamedTuple):
     and cells and size using Voronoi tessellation.
     """
 
-    coords: _np.ndarray
+    coordinates: _np.ndarray
     materials: _np.ndarray
 
 
@@ -49,7 +49,7 @@ def from_random(size: _FloatSequence,
 
     Returns
     -------
-    coords : numpy.ndarray, shape (N_seeds,3)
+    coordinates : numpy.ndarray, shape (N_seeds,3)
         Seed coordinates in 3D space.
     """
     size_ = _np.asarray(size,float)

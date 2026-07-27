@@ -352,13 +352,13 @@ class VTK:
 
 
     @staticmethod
-    def from_rectilinear_grid(grid: FloatSequence) -> 'VTK':
+    def from_rectilinear_grid(coordinates: FloatSequence) -> 'VTK':
         """
         Create VTK of type vtkRectilinearGrid.
 
         Parameters
         ----------
-        grid : sequence of sequences of floats, len (3)
+        coordinates : sequence of sequences of floats, len (3)
             Grid coordinates along x, y, and z directions.
 
         Returns
@@ -367,8 +367,8 @@ class VTK:
             VTK-based geometry without nodal or cell data.
         """
         vtk_data = vtkRectilinearGrid()
-        vtk_data.SetDimensions(*map(len,grid))
-        coord = [numpy_to_vtk(np.array(grid[i]),deep=True) for i in [0,1,2]]
+        vtk_data.SetDimensions(*map(len,coordinates))
+        coord = [numpy_to_vtk(np.array(coordinates[i]),deep=True) for i in [0,1,2]]
         [coord[i].SetName(n) for i,n in enumerate(['x','y','z'])]
         vtk_data.SetXCoordinates(coord[0])
         vtk_data.SetYCoordinates(coord[1])
