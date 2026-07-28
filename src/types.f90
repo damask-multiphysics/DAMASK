@@ -229,6 +229,7 @@ subroutine types_selfTest()
     s2 = '2'
     allocate(l)
     l_pointer => l%asList()
+    if (l%asFormattedStr() /= '[]')                    error stop 'empty tList_asFormattedStr'
     if (l%contains('1'))                               error stop 'empty tList_contains'
     if (l_pointer%contains('1'))                       error stop 'empty tList_contains(pointer)'
     call l%append(s1)
@@ -269,6 +270,7 @@ subroutine types_selfTest()
     s4 = '4'
     allocate(d)
     d_pointer => d%asDict()
+    if (d%asFormattedStr() /= '{}')                   error stop 'empty tDict_asFormattedStr'
     if (d%contains('one-two'))                        error stop 'empty tDict_contains'
     if (d_pointer%contains('one-two'))                error stop 'empty tDict_contains(pointer)'
     if (d%get_asInt('one-two',defaultVal=-1) /= -1)   error stop 'empty tDict_get'
@@ -375,7 +377,7 @@ end subroutine tScalar_assign__
 !--------------------------------------------------------------------------------------------------
 !> @brief Format as string (YAML flow style).
 !--------------------------------------------------------------------------------------------------
-recursive function tScalar_asFormattedStr(self) result(str)
+recursive pure function tScalar_asFormattedStr(self) result(str)
 
   class (tScalar), intent(in), target    :: self
   character(len=:), allocatable          :: str
@@ -491,7 +493,7 @@ end function tScalar_asBool
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert to string.
 !--------------------------------------------------------------------------------------------------
-function tScalar_asStr(self)
+pure function tScalar_asStr(self)
 
   class(tScalar), intent(in), target :: self
   character(len=:), allocatable :: tScalar_asStr
@@ -507,19 +509,21 @@ end function tScalar_asStr
 !--------------------------------------------------------------------------------------------------
 recursive function tList_asFormattedStr(self) result(str)
 
-  class(tList),intent(in),target      :: self
+  class(tList), intent(in), target :: self
 
-  type(tItem), pointer  :: item
-  character(len=:), allocatable :: str
-  integer :: i
+  type(tItem), pointer             :: item
+  character(len=:), allocatable    :: str
 
   str = '['
   item => self%first
-  do i = 2, size(self)
-    str = str//item%node%asFormattedStr()//', '
+
+  do while (associated(item))
+    str = str // item%node%asFormattedStr()
     item => item%next
+    if (associated(item)) str = str // ', '
   end do
-  str = str//item%node%asFormattedStr()//']'
+
+  str = str // ']'
 
 end function tList_asFormattedStr
 
@@ -966,22 +970,21 @@ end subroutine tList_finalize
 !> @brief Format as string (YAML flow style).
 !--------------------------------------------------------------------------------------------------
 recursive function tDict_asFormattedStr(self) result(str)
+  class(tDict), intent(in), target :: self
 
-  class(tDict),intent(in),target      :: self
-
-  type(tItem),pointer  :: item
+  type(tItem), pointer :: item
   character(len=:), allocatable :: str
-  integer :: i
-
 
   str = '{'
   item => self%first
-  do i = 2, size(self)
-    str = str//trim(item%key)//': '//item%node%asFormattedStr()//', '
-    item => item%next
-  end do
-  str = str//trim(item%key)//': '//item%node%asFormattedStr()//'}'
 
+  do while (associated(item))
+    str = str // trim(item%key) // ': ' // item%node%asFormattedStr()
+    item => item%next
+    if (associated(item)) str = str // ', '
+  end do
+
+  str = str // '}'
 end function tDict_asFormattedStr
 
 
