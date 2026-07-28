@@ -259,7 +259,7 @@ def test_compare_reference_polyData(update,res_path):
                 np.allclose(polyData.get('coordinates'),points)
 
 def test_compare_reference_rectilinearGrid(update,res_path):
-    g = [np.arange(4)**2., np.arange(5)**2., np.arange(6)**2.]                                      # ParaView renders tetrahedral meshing unless using float coordinates!
+    g = [np.arange(n)**2. for n in [4,5,6]]
     coords = np.stack(np.meshgrid(*g,indexing='ij'),axis=-1)
     c = coords[:-1,:-1,:-1,:].reshape(-1,3,order='F')
     n = coords[:,:,:,:].reshape(-1,3,order='F')
