@@ -456,7 +456,7 @@ subroutine form_residual(residual_subdomain, x_vec, r_vec, dummy, err_PETSc)
     do j = 1, cells(2)
       do i = 1, cells(1)
         ce = (k-1) * cells(2) * cells(1) + (j-1) * cells(1) + i
-        Psig = matmul(sigma_ref_inv, homogenization_sigma(ce)) - math_I3
+        Psig = matmul(sigma_ref_inv, homogenization_sigma_E(ce)) - math_I3
         polarization(:,i,j,k) = matmul(Psig, x_vec(:,i,j,k))
       end do
     end do
@@ -495,7 +495,7 @@ subroutine updateReference()
 
   sigma_ref = 0.0_pREAL
   do ce = 1, product(cells(1:2))*cells3
-    sigma_ref = sigma_ref + homogenization_sigma(ce)
+    sigma_ref = sigma_ref + homogenization_sigma_E(ce)
   end do
   sigma_ref = sigma_ref * wgt
 

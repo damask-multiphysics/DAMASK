@@ -225,10 +225,10 @@ module homogenization
       integer, intent(in) :: ce
     end subroutine homogenization_chemical_setField
 
-    module function homogenization_sigma(ce) result(sigma)
+    module function homogenization_sigma_E(ce) result(sigma)
       integer, intent(in) :: ce
       real(pREAL), dimension(3,3) :: sigma
-    end function homogenization_sigma
+    end function homogenization_sigma_E
 
     module subroutine electrical_homogenize(E,ce)
       real(pREAL), intent(in), dimension(3) :: E
@@ -262,7 +262,7 @@ module homogenization
     homogenization_restartRead, &
     homogenization_restartWrite, &
     homogenization_electrical_active, &
-    homogenization_sigma
+    homogenization_sigma_E
 
 contains
 

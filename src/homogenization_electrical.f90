@@ -79,7 +79,7 @@ end function homogenization_electrical_active
 !--------------------------------------------------------------------------------------------------
 !> @brief Homogenized electrical conductivity via rule of mixtures.
 !--------------------------------------------------------------------------------------------------
-module function homogenization_sigma(ce) result(sigma)
+module function homogenization_sigma_E(ce) result(sigma)
 
   integer, intent(in)         :: ce
   real(pREAL), dimension(3,3) :: sigma
@@ -91,7 +91,7 @@ module function homogenization_sigma(ce) result(sigma)
     sigma = sigma + phase_sigma(co,ce) * material_v(co,ce)
   end do
 
-end function homogenization_sigma
+end function homogenization_sigma_E
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Partition macro electric field onto the individual phase constituents of a cell.
