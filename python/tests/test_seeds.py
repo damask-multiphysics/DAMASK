@@ -11,7 +11,7 @@ from damask import GeomGrid
 @pytest.mark.parametrize('cells',[None,np.ones(3,dtype='i')*10])
 def test_from_random(np_rng,cells):
     N_seeds = np_rng.integers(30,300)
-    size = np.ones(3) + np_rng.random(3)
+    size = np_rng.random(3) + 1.
     coords = seeds.from_random(size,N_seeds,cells,rng_seed=np_rng)
     assert (0<=coords).all() and (coords<size).all()
 
@@ -38,7 +38,7 @@ def test_from_Poisson_disc_invalid(np_rng,periodic):
 def test_from_grid_reconstruct(np_rng):
     cells = np_rng.integers(10,20,3)
     N_seeds = np_rng.integers(30,300)
-    size = np.ones(3) + np_rng.random(3)
+    size = np_rng.random(3) + 1.
     coords = seeds.from_random(size,N_seeds,cells,rng_seed=np_rng)
     grid_1 = GeomGrid.from_Voronoi_tessellation(cells,size,coords)
     coords,material = seeds.from_grid(grid_1)
@@ -49,7 +49,7 @@ def test_from_grid_reconstruct(np_rng):
 @pytest.mark.parametrize('average',[True,False])
 def test_from_grid_grid(np_rng,periodic,average):
     cells = np_rng.integers(10,20,3)
-    size  = np.ones(3) + np_rng.random(3)
+    size = np_rng.random(3) + 1.
     coords = grid.coordinates0_point(cells,size).reshape(-1,3)
     np_rng.shuffle(coords)
     grid_1 = GeomGrid.from_Voronoi_tessellation(cells,size,coords)
@@ -63,7 +63,7 @@ def test_from_grid_grid(np_rng,periodic,average):
 def test_from_grid_selection(np_rng,periodic,average,invert):
     cells = np_rng.integers(10,20,3)
     N_seeds = np_rng.integers(30,300)
-    size = np.ones(3) + np_rng.random(3)
+    size = np_rng.random(3) + 1.
     coords = seeds.from_random(size,N_seeds,cells,rng_seed=np_rng)
     g = GeomGrid.from_Voronoi_tessellation(cells,size,coords)
     selection=np_rng.integers(N_seeds)+1

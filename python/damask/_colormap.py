@@ -19,7 +19,7 @@ from numpy import typing as npt
 from PIL import Image
 
 from . import Table, util
-from ._typehints import FileHandle, FloatSequence
+from ._typehints import FileHandleText, FloatSequence
 
 
 _EPS   = 216./24389.
@@ -420,7 +420,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def save_paraview(self,
-                      fname: Optional[FileHandle] = None):
+                      fname: Optional[FileHandleText] = None):
         """
         Save as JSON file for use in Paraview.
 
@@ -443,7 +443,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def save_ASCII(self,
-                   fname: Optional[FileHandle] = None):
+                   fname: Optional[FileHandleText] = None):
         """
         Save as ASCII file.
 
@@ -460,7 +460,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def save_gmsh(self,
-                  fname: Optional[FileHandle] = None):
+                  fname: Optional[FileHandleText] = None):
         """
         Save as ASCII file for use in gmsh.
 

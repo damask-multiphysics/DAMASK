@@ -11,7 +11,7 @@ import pandas as pd
 from scipy import interpolate, ndimage, spatial
 
 from . import VTK, Colormap, Rotation, Table, grid, util
-from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
+from ._typehints import FileHandleBinary, FloatSequence, IntSequence, NumpyRngSeed
 
 
 class IcDict(dict):
@@ -477,6 +477,37 @@ class GeomGrid:
                         size     = size,
                         origin   = origin,
                         comments = util.execution_stamp('GeomGrid','load_DREAM3D'),
+                       )
+
+
+    @staticmethod
+    def load_SynthetMic(fname: FileHandleBinary) -> 'GeomGrid':
+        """
+        Load from SynethetMic npz dump.
+
+        Parameters
+        ----------
+        fname : file, str, or pathlib.Path
+            SynthetMic npz dump file to read.
+            Valid extension is .npz.
+
+        Returns
+        -------
+        loaded : damask.GeomGrid
+            Grid-based geometry from file.
+
+        Notes
+        -----
+        A valid SynthetMic npz file contains three arrays which
+        correspond to the material, size and origin parameters of
+        the damask.GeomGrid class.
+        """
+        g = np.load(fname, allow_pickle=True)
+
+        return GeomGrid(material = g['material'],
+                        size     = g['size'],
+                        origin   = g['origin'],
+                        comments = util.execution_stamp('GeomGrid', 'load_SynthetMic'),
                        )
 
 

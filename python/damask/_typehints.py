@@ -2,7 +2,7 @@
 """Functionality for typehints."""
 
 from pathlib import Path
-from typing import Literal, Sequence, TextIO, TypedDict, Union
+from typing import BinaryIO, Literal, Sequence, TextIO, TypedDict, Union
 
 import numpy as np
 
@@ -10,7 +10,8 @@ import numpy as np
 FloatSequence = Union[np.ndarray,Sequence[float]]
 IntSequence = Union[np.ndarray,Sequence[int]]
 StrSequence = Union[np.ndarray,Sequence[str]]
-FileHandle = Union[TextIO, str, Path]
+FileHandleText = Union[TextIO, str, Path]
+FileHandleBinary = Union[BinaryIO, str, Path]
 CrystalFamily = Literal['triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic']
 BravaisLattice = Literal['aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF']
 CrystalKinematics = Literal['slip', 'twin']

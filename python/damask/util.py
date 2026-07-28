@@ -29,7 +29,7 @@ import h5py as _h5py
 import numpy as _np
 
 from . import version as _version
-from ._typehints import FileHandle as _FileHandle
+from ._typehints import FileHandleText as _FileHandleText
 from ._typehints import FloatSequence as _FloatSequence
 from ._typehints import IntSequence as _IntSequence
 from ._typehints import NumpyRngSeed as _NumpyRngSeed
@@ -215,7 +215,7 @@ def run(cmd: str,
 
 
 @_contextlib.contextmanager
-def open_text(fname: _FileHandle,
+def open_text(fname: _FileHandleText,
               mode: _Literal['r','w'] = 'r') -> _Generator[_TextIO, None, None]:                    # noqa
     """
     Open a text file with Unix line endings.

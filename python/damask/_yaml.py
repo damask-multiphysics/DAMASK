@@ -18,7 +18,7 @@ except ImportError:
     from yaml import SafeDumper                                                                     # type: ignore[assignment]
 
 from . import Rotation, util
-from ._typehints import FileHandle
+from ._typehints import FileHandleText
 
 
 MyType = TypeVar('MyType', bound='YAML')
@@ -184,7 +184,7 @@ class YAML(dict):
 
     @classmethod
     def load(cls: Type[MyType],
-             fname: FileHandle) -> MyType:
+             fname: FileHandleText) -> MyType:
         """
         Load from YAML file with a dictionary at the top-level.
 
@@ -203,7 +203,7 @@ class YAML(dict):
 
 
     def save(self,
-             fname: FileHandle,
+             fname: FileHandleText,
              **kwargs):
         """
         Save to YAML file.

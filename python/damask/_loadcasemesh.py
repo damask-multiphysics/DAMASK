@@ -2,7 +2,7 @@
 from typing import Any, Optional, Union
 
 from . import YAML
-from ._typehints import FileHandle
+from ._typehints import FileHandleText
 from ._yaml import MaskedMatrixDumper
 
 
@@ -34,7 +34,7 @@ class LoadcaseMesh(YAML):
 
 
     def save(self,
-             fname: FileHandle,
+             fname: FileHandleText,
              **kwargs):
         """
         Save to YAML file.

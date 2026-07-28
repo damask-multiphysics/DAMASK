@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from . import util
-from ._typehints import FileHandle
+from ._typehints import FileHandleText
 
 
 class Table:
@@ -264,7 +264,7 @@ class Table:
 
 
     @staticmethod
-    def load(fname: FileHandle) -> 'Table':
+    def load(fname: FileHandleText) -> 'Table':
         """
         Load from ASCII table file.
 
@@ -311,7 +311,7 @@ class Table:
 
 
     @staticmethod
-    def load_ang(fname: FileHandle,
+    def load_ang(fname: FileHandleText,
                  shapes = {'eu':3,
                            'pos':2,
                            'IQ':1,
@@ -642,7 +642,7 @@ class Table:
 
 
     def save(self,
-             fname: FileHandle,
+             fname: FileHandleText,
              with_labels: bool = True):
         """
         Save as plain text file.
