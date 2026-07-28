@@ -478,7 +478,7 @@ def test_tessellate_bicrystal(np_rng,approach,periodic):
                                     ])
 def test_minimal_surface_basic_properties(np_rng,surface):
     cells = np_rng.integers(60,100,3)
-    size  = np.ones(3)+np_rng.random(3)
+    size = np_rng.random(3) + 1.
     threshold = 2*np_rng.random()-1.
     periods = np_rng.integers(2)+1
     materials = np_rng.integers(0,40,2)
@@ -506,7 +506,7 @@ def test_minimal_surface_volume(surface,threshold):
 
 def test_from_table(np_rng):
     cells = np_rng.integers(60,100,3)
-    size = np.ones(3)+np_rng.random(3)
+    size = np_rng.random(3) + 1.
     coords = grid.coordinates0_point(cells,size).reshape(-1,3,order='F')
     z = np.ones(cells.prod())
     z[cells[:2].prod()*int(cells[2]/2):] = 0
@@ -517,7 +517,7 @@ def test_from_table(np_rng):
 
 def test_from_table_recover(np_rng,tmp_path):
     cells = np_rng.integers(60,100,3)
-    size = np.ones(3)+np_rng.random(3)
+    size = np_rng.random(3) + 1.
     s = seeds.from_random(size,np_rng.integers(60,100),rng_seed=np_rng)
     g = GeomGrid.from_Voronoi_tessellation(cells,size,s)
     coords = grid.coordinates0_point(cells,size)
@@ -570,6 +570,18 @@ def test_load_DREAM3D_reference(res_path,update,file_version):
         current.save(res_path/'measured.vti')
 
     assert current == reference
+
+
+def test_load_SynthetMic(tmp_path,np_rng,assert_allclose):
+    size = np_rng.random(3) + 1.
+    origin = np_rng.random(3)
+    material = np_rng.integers(0,100,size=np_rng.integers(60,100,3))
+    np.savez(tmp_path/'SynthetMic.npz', size=size,origin=origin,material=material, allow_pickle=True)
+    g = GeomGrid.load_SynthetMic(tmp_path/'SynthetMic.npz')
+    assert_allclose(size,g.size)
+    assert_allclose(origin,g.origin)
+    assert (material == g.material).all()
+
 
 def test_load_Neper_reference(res_path,update):
     current   = GeomGrid.load_Neper(res_path/'n10-id1_scaled.vtk').renumber()

@@ -186,7 +186,6 @@ def test_load_DREAM3D(res_path,cell_ensemble_data,file_version):
         assert point_c['material'][i]['constituents'][0]['phase'] == \
                 grain_c['material'][j]['constituents'][0]['phase']
 
-
 @pytest.mark.parametrize('file_version',[7,8])
 def test_load_DREAM3D_reference(tmp_path,res_path,file_version,update):
     cur = ConfigMaterial.load_DREAM3D(res_path/f'measured_v{file_version}.dream3d')
@@ -196,3 +195,17 @@ def test_load_DREAM3D_reference(tmp_path,res_path,file_version,update):
     for i,m in enumerate(ref['material']):
         assert Rotation(m['constituents'][0]['O']).isclose(Rotation(cur['material'][i]['constituents'][0]['O']))
     assert cur.is_valid and cur['phase'] == ref['phase'] and cur['homogenization'] == ref['homogenization']
+
+
+def test_load_SynthetMic(tmp_path,np_rng,assert_allclose):
+    N = np_rng.integers(4,100)
+    phase = np_rng.integers(80,size=N)
+    O = Rotation.from_random(N,np_rng)
+    np.savez(tmp_path/'SynthetMic.npz', O=O,phase=phase, allow_pickle=True)
+
+    cfg = ConfigMaterial.load_SynthetMic(tmp_path/'SynthetMic.npz')
+    O_ = np.array([m['constituents'][0]['O'] for m in cfg['material']])
+    phase_ = np.array([m['constituents'][0]['phase'] for m in cfg['material']])
+
+    assert_allclose(O,O_)
+    assert (phase_ == phase).all()

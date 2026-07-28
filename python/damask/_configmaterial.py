@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import logging
+from os import PathLike
 from typing import Any, Sequence
 
 import h5py
@@ -53,7 +54,7 @@ class ConfigMaterial(YAML):
 
 
     @staticmethod
-    def load_DREAM3D(fname: str,
+    def load_DREAM3D(fname: str | PathLike[str],
                      grain_data: str | None = None,
                      cell_data: str | None = None,
                      cell_ensemble_data: str = 'CellEnsembleData',
@@ -153,6 +154,40 @@ class ConfigMaterial(YAML):
         constituent = {k:np.atleast_1d(v[idx].squeeze()) for k,v in zip(['O','phase'],[O,phase])}
 
         return base_config.material_add(**constituent,homogenization='direct')
+
+
+    @staticmethod
+    def load_SynthetMic(fname: FileHandleBinary) -> 'ConfigMaterial':
+        """
+        Load from SynethetMic npz dump.
+
+        Parameters
+        ----------
+        fname : file, str, or pathlib.Path
+            SynthetMic npz dump file to read.
+            Valid extension is .npz.
+
+        Returns
+        -------
+        loaded : damask.ConfigMaterial
+            Material configuration from file.
+
+        Notes
+        -----
+        A valid SynthetMic configmaterial npz file contains two arrays which
+        correspond to the O (orientation) and phase parameters of the
+        damask.ConfigMaterial class.
+        """
+        params = np.load(fname, allow_pickle=True)
+
+        base_config = ConfigMaterial(
+            {'phase': {str(k): None for k in np.unique(params['phase'])},
+             'homogenization': {'direct': {'N_constituents': 1}},
+            }
+        )
+
+        return base_config.material_add(phase=params['phase'], O=params['O'],
+                                        homogenization='direct')
 
 
     @staticmethod
