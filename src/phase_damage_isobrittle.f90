@@ -112,16 +112,16 @@ module subroutine isobrittle_deltaState(C, Fe, ph,en)
     C
 
   real(pREAL), dimension(6) :: &
-    epsilon
+    epsilon_tilde
   real(pREAL) :: &
     r_W
 
 
-  epsilon = math_33toVoigt6_strain(0.5_pREAL*(matmul(transpose(Fe),Fe)-math_I3))
+  epsilon_tilde = math_sym33to6(0.5_pREAL*(matmul(transpose(Fe),Fe)-math_I3))
 
   associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph))
 
-    r_W = (0.5_pREAL*dot_product(epsilon,matmul(C,epsilon)))/prm%W_crit
+    r_W = (0.5_pREAL*dot_product(epsilon_tilde,matmul(C,epsilon_tilde)))/prm%W_crit
     dlt%r_W(en) = merge(r_W - stt%r_W(en), 0.0_pREAL, r_W > stt%r_W(en))
 
   end associate

@@ -71,11 +71,10 @@ module rotations
       !------------------------------------------
       procedure, private :: rotRot__
       generic,   public  :: operator(*) => rotRot__
-      generic,   public  :: rotate => rotVector,rotTensor2,rotTensor4
-      procedure, public  :: rotVector
-      procedure, public  :: rotTensor2
-      procedure, public  :: rotTensor4
-      procedure, public  :: rotStiffness
+      generic,   public  :: rotate => rotate3,rotate3x3,rotate3x3x3x3
+      procedure, public  :: rotate3,rotate3x3,rotate3x3x3x3
+      generic,   public  :: rotate_Mandel => rotate6x6
+      procedure, public  :: rotate6x6
       procedure, public  :: misorientation
       procedure, public  :: standardize
   end type tRotation
@@ -260,7 +259,7 @@ end subroutine standardize
 !> @brief Rotate a vector passively (default) or actively.
 !> @details: Apply Rodrigues formula.
 !--------------------------------------------------------------------------------------------------
-pure function rotVector(self,v,active) result(vRot)
+pure function rotate3(self,v,active) result(vRot)
 
   real(pREAL),                 dimension(3) :: vRot
   class(tRotation), intent(in)              :: self
@@ -273,14 +272,14 @@ pure function rotVector(self,v,active) result(vRot)
   q = merge(conjugateQuaternion(self%q), self%q, misc_optional(active,.false.))
   vRot = rotate_vector(v, q)
 
-end function rotVector
+end function rotate3
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Rotate a rank-2 tensor passively (default) or actively.
 !> @details: Apply Rodrigues formula to each index sequentially.
 !--------------------------------------------------------------------------------------------------
-pure function rotTensor2(self,T,active) result(tRot)
+pure function rotate3x3(self,T,active) result(tRot)
 
   real(pREAL),                 dimension(3,3) :: tRot
   class(tRotation), intent(in)                :: self
@@ -301,14 +300,14 @@ pure function rotTensor2(self,T,active) result(tRot)
     tRot(:,j) = rotate_vector(tRot(:,j), q)
   end do
 
-end function rotTensor2
+end function rotate3x3
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Rotate a rank-4 tensor passively (default) or actively.
 !> @details: Apply Rodrigues formula to each index sequentially.
 !--------------------------------------------------------------------------------------------------
-pure function rotTensor4(self,T,active) result(tRot)
+pure function rotate3x3x3x3(self,T,active) result(tRot)
 
   real(pREAL),                 dimension(3,3,3,3) :: tRot
   class(tRotation), intent(in)                    :: self
@@ -337,15 +336,15 @@ pure function rotTensor4(self,T,active) result(tRot)
     tRot(:,j,k,l) = rotate_vector(tRot(:,j,k,l), q)
   end do; end do; end do
 
-end function rotTensor4
+end function rotate3x3x3x3
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Rotate a rank-4 stiffness tensor in Voigt 6x6 notation passively (default) or actively.
+!> @brief Rotate a 6x6 matrix in Mandel notation passively (default) or actively.
 !> @details: https://scicomp.stackexchange.com/questions/35600
 !! ToDo: Need to check active/passive !!!
 !--------------------------------------------------------------------------------------------------
-pure function rotStiffness(self,C,active) result(cRot)
+pure function rotate6x6(self,C,active) result(cRot)
 
   real(pREAL),                 dimension(6,6) :: cRot
   class(tRotation), intent(in)                :: self
@@ -358,22 +357,25 @@ pure function rotStiffness(self,C,active) result(cRot)
 
   R = merge(transpose(self%asMatrix()),self%asMatrix(),misc_optional(active,.false.))
 
-  M = reshape([R(1,1)**2,                   R(2,1)**2,                   R(3,1)**2, &
-               R(2,1)*R(3,1),               R(1,1)*R(3,1),               R(1,1)*R(2,1), &
-               R(1,2)**2,                   R(2,2)**2,                   R(3,2)**2, &
-               R(2,2)*R(3,2),               R(1,2)*R(3,2),               R(1,2)*R(2,2), &
-               R(1,3)**2,                   R(2,3)**2,                   R(3,3)**2, &
-               R(2,3)*R(3,3),               R(1,3)*R(3,3),               R(1,3)*R(2,3), &
-               2.0_pREAL*R(1,2)*R(1,3),     2.0_pREAL*R(2,2)*R(2,3),     2.0_pREAL*R(3,2)*R(3,3), &
-               R(2,2)*R(3,3)+R(2,3)*R(3,2), R(1,2)*R(3,3)+R(1,3)*R(3,2), R(1,2)*R(2,3)+R(1,3)*R(2,2), &
-               2.0_pREAL*R(1,3)*R(1,1),     2.0_pREAL*R(2,3)*R(2,1),     2.0_pREAL*R(3,3)*R(3,1), &
-               R(2,3)*R(3,1)+R(2,1)*R(3,3), R(1,3)*R(3,1)+R(1,1)*R(3,3), R(1,3)*R(2,1)+R(1,1)*R(2,3), &
-               2.0_pREAL*R(1,1)*R(1,2),     2.0_pREAL*R(2,1)*R(2,2),     2.0_pREAL*R(3,1)*R(3,2), &
-               R(2,1)*R(3,2)+R(2,2)*R(3,1), R(1,1)*R(3,2)+R(1,2)*R(3,1), R(1,1)*R(2,2)+R(1,2)*R(2,1)],[6,6])
+  associate(WM1 => WGT_MANDEL(1))
+    M = reshape([R(1,1)**2,                   R(2,1)**2,                   R(3,1)**2, &
+                   WM1*R(2,1)*R(3,1),           WM1*R(1,1)*R(3,1),           WM1*R(1,1)*R(2,1), &
+                 R(1,2)**2,                   R(2,2)**2,                   R(3,2)**2, &
+                   WM1*R(2,2)*R(3,2),           WM1*R(1,2)*R(3,2),           WM1*R(1,2)*R(2,2), &
+                 R(1,3)**2,                   R(2,3)**2,                   R(3,3)**2, &
+                   WM1*R(2,3)*R(3,3),           WM1*R(1,3)*R(3,3),           WM1*R(1,3)*R(2,3), &
+                !
+                 WM1*R(1,2)*R(1,3),           WM1*R(2,2)*R(2,3),           WM1*R(3,2)*R(3,3), &
+                   R(2,2)*R(3,3)+R(2,3)*R(3,2), R(1,2)*R(3,3)+R(1,3)*R(3,2), R(1,2)*R(2,3)+R(1,3)*R(2,2), &
+                 WM1*R(1,3)*R(1,1),           WM1*R(2,3)*R(2,1),           WM1*R(3,3)*R(3,1), &
+                   R(2,3)*R(3,1)+R(2,1)*R(3,3), R(1,3)*R(3,1)+R(1,1)*R(3,3), R(1,3)*R(2,1)+R(1,1)*R(2,3), &
+                 WM1*R(1,1)*R(1,2),           WM1*R(2,1)*R(2,2),           WM1*R(3,1)*R(3,2), &
+                   R(2,1)*R(3,2)+R(2,2)*R(3,1), R(1,1)*R(3,2)+R(1,2)*R(3,1), R(1,1)*R(2,2)+R(1,2)*R(2,1)],[6,6])
+  end associate
 
   cRot = matmul(M,matmul(C,transpose(M)))
 
-end function rotStiffness
+end function rotate6x6
 
 
 !--------------------------------------------------------------------------------------------------
@@ -836,22 +838,21 @@ subroutine rotations_selfTest()
     call R%fromMatrix(om)
 
     call random_number(v3)
-    if (any(dNeq(R%rotVector(R%rotVector(v3),active=.true.),v3,1.0e-12_pREAL))) &
-      error stop 'rotVector'
+    if (any(dNeq(R%rotate(R%rotate(v3),active=.true.),v3,1.0e-12_pREAL))) &
+      error stop 'rotate 3'
 
     call random_number(t33)
-    if (any(dNeq(R%rotTensor2(R%rotTensor2(t33),active=.true.),t33,1.0e-12_pREAL))) &
-      error stop 'rotTensor2'
+    if (any(dNeq(R%rotate(R%rotate(t33),active=.true.),t33,1.0e-12_pREAL))) &
+      error stop 'rotate 3x3'
 
     call random_number(t3333)
-    if (any(dNeq(R%rotTensor4(R%rotTensor4(t3333),active=.true.),t3333,1.0e-12_pREAL))) &
-      error stop 'rotTensor4'
+    if (any(dNeq(R%rotate(R%rotate(t3333),active=.true.),t3333,1.0e-12_pREAL))) &
+      error stop 'rotate 3x3x3x3'
 
     call random_number(C)
     C = C+transpose(C)
-    if (any(dNeq(R%rotStiffness(C), &
-                 math_3333toVoigt66_stiffness(R%rotate(math_Voigt66to3333_stiffness(C))),1.0e-12_pREAL))) &
-      error stop 'rotStiffness'
+    if (any(dNeq(R%rotate_Mandel(C),math_sym3333to66(R%rotate(math_66toSym3333(C))),1.0e-12_pREAL))) &
+      error stop 'rotate 6x6'
 
     call R%fromQuaternion(qu * (1.0_pREAL + merge(+5.e-9_pREAL,-5.e-9_pREAL, mod(i,2) == 0)))       ! allow reasonable tolerance for ASCII/YAML
 

@@ -480,13 +480,13 @@ end function crystal_characteristicShear_Twin
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Rotated elasticity matrices for twinning in 6x6-matrix notation
+!> @brief Rotated elasticity matrices for twinning in Mandel notation.
 !--------------------------------------------------------------------------------------------------
-function crystal_C66_twin(Ntwin,C66,lattice,CoverA)
+function crystal_C66_twin(Ntwin,C_tilde,lattice,CoverA)
 
   integer,     dimension(:),            intent(in) :: Ntwin                                         !< number of active twin systems per family
   character(len=*),                     intent(in) :: lattice                                       !< Bravais lattice (Pearson symbol)
-  real(pREAL), dimension(6,6),          intent(in) :: C66                                           !< unrotated parent stiffness matrix
+  real(pREAL), dimension(6,6),          intent(in) :: C_tilde                                       !< unrotated parent stiffness matrix in Mandel notation
   real(pREAL),                          intent(in) :: cOverA                                        !< c/a ratio
   real(pREAL), dimension(6,6,sum(Ntwin))           :: crystal_C66_twin
 
@@ -511,26 +511,27 @@ function crystal_C66_twin(Ntwin,C66,lattice,CoverA)
 
   do i = 1, sum(Ntwin)
     call R%fromAxisAngle([coordinateSystem(1:3,2,i),PI])                                            ! mirror on habit (twin shear) plane
-    crystal_C66_twin(1:6,1:6,i) = R%rotStiffness(C66)
+    crystal_C66_twin(1:6,1:6,i) = R%rotate_Mandel(C_tilde)
   end do
 
 end function crystal_C66_twin
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Rotated elasticity matrices for transformation in 6x6-matrix notation
+!> @brief Rotated elasticity matrices for transformation in Mandel notation.
 !--------------------------------------------------------------------------------------------------
 function crystal_C66_trans(Ntrans,C_parent_tilde,lattice_target, cOverA_trans,a_cF,a_cI)
 
   integer,     dimension(:),             intent(in) :: Ntrans                                       !< number of active twin systems per family
   character(len=*),                      intent(in) :: lattice_target                               !< Bravais lattice (Pearson symbol)
-  real(pREAL), dimension(6,6),           intent(in) :: C_parent_tilde
+  real(pREAL), dimension(6,6),           intent(in) :: C_parent_tilde                               !< unrotated parent stiffness matrix in Mandel notation
   real(pREAL),                 optional, intent(in) :: cOverA_trans, a_cF, a_cI
   real(pREAL), dimension(6,6,sum(Ntrans))           :: crystal_C66_trans
 
-  real(pREAL), dimension(6,6)             :: C_target_tilde                                         !< target stiffness matrix in Voigt notation (unrotated)
+  real(pREAL), dimension(6,6)             :: C_target_tilde                                         !< unrotated target stiffness matrix in Mandel notation
   real(pREAL), dimension(3,3,sum(Ntrans)) :: Q,S
-  real(pREAL) :: C_bar_11, C_bar_12, C_bar_33, C_bar_13, C_bar_44, C_bar_14                         !< average elastic constants in Voigt notation
+  real(pREAL) :: C_bar_11, C_bar_12, C_bar_33, C_bar_13, C_bar_44, &                                !< average elastic constants in Voigt notation
+                 Delta_14                                                                           !< difference elastic constant in Voigt notation
   type(tRotation) :: R
   integer :: i
 
@@ -544,20 +545,21 @@ function crystal_C66_trans(Ntrans,C_parent_tilde,lattice_target, cOverA_trans,a_
   elseif (lattice_target == 'hP' .and. present(cOverA_trans)) then
     ! https://doi.org/10.1063/1.1663858 eq. (16), eq. (18), eq. (19)
     ! https://doi.org/10.1016/j.actamat.2016.07.032 eq. (47), eq. (48)
+    ! adjusted to use Mandel notation for C_parent_tilde (factor 2 for C_44)
     if (cOverA_trans < 1.0_pREAL .or. cOverA_trans > 3.0_pREAL) &
       call IO_error(130_pI16,'c/a for hP target lattice not in range [1,3]', cOverA_trans, emph=[2])
-    C_bar_11 = (C_parent_tilde(1,1) + C_parent_tilde(1,2) + 2.0_pREAL*C_parent_tilde(4,4))/2.0_pREAL
-    C_bar_12 = (C_parent_tilde(1,1) + 5.0_pREAL*C_parent_tilde(1,2) - 2.0_pREAL*C_parent_tilde(4,4))/6.0_pREAL
-    C_bar_33 = (C_parent_tilde(1,1) + 2.0_pREAL*C_parent_tilde(1,2) + 4.0_pREAL*C_parent_tilde(4,4))/3.0_pREAL
-    C_bar_13 = (C_parent_tilde(1,1) + 2.0_pREAL*C_parent_tilde(1,2) - 2.0_pREAL*C_parent_tilde(4,4))/3.0_pREAL
-    C_bar_44 = (C_parent_tilde(1,1) - C_parent_tilde(1,2) + C_parent_tilde(4,4))/3.0_pREAL
-    C_bar_14 = (C_parent_tilde(1,1) - C_parent_tilde(1,2) - 2.0_pREAL*C_parent_tilde(4,4)) /(3.0_pREAL*sqrt(2.0_pREAL))
+    C_bar_11 = (C_parent_tilde(1,1) + C_parent_tilde(1,2) + C_parent_tilde(4,4))/2.0_pREAL
+    C_bar_12 = (C_parent_tilde(1,1) + 5.0_pREAL*C_parent_tilde(1,2) - C_parent_tilde(4,4))/6.0_pREAL
+    C_bar_33 = (C_parent_tilde(1,1) + 2.0_pREAL*C_parent_tilde(1,2) + 2.0_pREAL*C_parent_tilde(4,4))/3.0_pREAL
+    C_bar_13 = (C_parent_tilde(1,1) + 2.0_pREAL*C_parent_tilde(1,2) - C_parent_tilde(4,4))/3.0_pREAL
+    C_bar_44 = (C_parent_tilde(1,1) - C_parent_tilde(1,2) + C_parent_tilde(4,4)/2.0_pREAL)/3.0_pREAL
+    Delta_14 = (C_parent_tilde(1,1) - C_parent_tilde(1,2) - C_parent_tilde(4,4))/(3.0_pREAL*sqrt(2.0_pREAL))
 
-    C_target_tilde = crystal_assembleStiffness(C_11 = C_bar_11 - C_bar_14**2/C_bar_44, &
-                                               C_12 = C_bar_12 + C_bar_14**2/C_bar_44, &
+    C_target_tilde = crystal_assembleStiffness(C_11 = C_bar_11 - Delta_14**2/C_bar_44, &
+                                               C_12 = C_bar_12 + Delta_14**2/C_bar_44, &
                                                C_13 = C_bar_13, &
                                                C_33 = C_bar_33, &
-                                               C_44 = C_bar_44 - C_bar_14**2/(0.5_pREAL*(C_bar_11 - C_bar_12)), &
+                                               C_44 = C_bar_44 - Delta_14**2/(0.5_pREAL*(C_bar_11 - C_bar_12)), &
                                                lattice='hP')
   elseif (all(lattice_target /= ['cI','hP'])) then
     call IO_error(130_pI16, 'invalid target lattice', lattice_target, emph=[2])
@@ -574,7 +576,7 @@ function crystal_C66_trans(Ntrans,C_parent_tilde,lattice_target, cOverA_trans,a_
 
   do i = 1,sum(Ntrans)
     call R%fromMatrix(Q(1:3,1:3,i))
-    crystal_C66_trans(1:6,1:6,i) = R%rotStiffness(C_target_tilde)
+    crystal_C66_trans(1:6,1:6,i) = R%rotate_Mandel(C_target_tilde)
   end do
 
  end function crystal_C66_trans
@@ -1702,8 +1704,9 @@ end function crystal_symmetrize_33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return stiffness matrix in 6x6 notation with symmetry according to given Bravais lattice
-!> @details J. A. Rayne and B. S. Chandrasekhar Phys. Rev. 120, 1658 Erratum Phys. Rev. 122, 1962
+!> @brief Assemble unrotated stiffness matrix in Mandel notation.
+!> @details J.F. Nye, Physical Properties of Crystals, 1985. Table 9, page 140
+!>          https://doi.org/10.1016/j.euromechsol.2021.104357
 !--------------------------------------------------------------------------------------------------
 pure function crystal_assembleStiffness(C_11,C_12,C_44, &
                                         C_13,C_33, &
@@ -1712,9 +1715,9 @@ pure function crystal_assembleStiffness(C_11,C_12,C_44, &
 
   real(pREAL), dimension(6,6) :: C_tilde
 
-  real(pREAL),      intent(in) :: C_11, C_12, C_44
-  real(pREAL),      intent(in), optional :: C_13, C_33, C_66
-  character(len=*), intent(in) :: lattice                                                            !< Bravais lattice (Pearson symbol)
+  real(pREAL),      intent(in) :: C_11, C_12, C_44                                                  !< elastic constants in Voigt notation
+  real(pREAL),      intent(in), optional :: C_13, C_33, C_66                                        !< elastic constants in Voigt notation
+  character(len=*), intent(in) :: lattice                                                           !< Bravais lattice (Pearson symbol)
 
   integer :: i,j
 
@@ -1726,25 +1729,25 @@ pure function crystal_assembleStiffness(C_11,C_12,C_44, &
 
   C_tilde(1,2) = C_12
 
-  C_tilde(4,4) = C_44
-  C_tilde(5,5) = C_44
+  C_tilde(4,4) = C_44*WGT_MANDEL(2)
+  C_tilde(5,5) = C_44*WGT_MANDEL(2)
 
   select case(lattice)
     case ('cF','cI')
       C_tilde(3,3) = C_11
       C_tilde(1,3) = C_12
       C_tilde(2,3) = C_12
-      C_tilde(6,6) = C_44
+      C_tilde(6,6) = C_44*WGT_MANDEL(2)
     case ('hP')
       C_tilde(3,3) = C_33
       C_tilde(1,3) = C_13
       C_tilde(2,3) = C_13
-      C_tilde(6,6) = 0.5_pREAL * (C_11 - C_12)
+      C_tilde(6,6) = 0.5_pREAL * (C_11 - C_12)*WGT_MANDEL(2)
     case ('tI')
       C_tilde(3,3) = C_33
       C_tilde(1,3) = C_13
       C_tilde(2,3) = C_13
-      C_tilde(6,6) = C_66
+      C_tilde(6,6) = C_66*WGT_MANDEL(2)
    end select
 
    do i = 1, 3
@@ -2182,34 +2185,34 @@ end function getlabels
 !> @brief Equivalent Poisson's ratio (ν).
 !> @details https://doi.org/10.1088/0370-1298/65/5/307
 !--------------------------------------------------------------------------------------------------
-pure function crystal_isotropic_nu(C,assumption,lattice) result(nu)
+pure function crystal_isotropic_nu(C_tilde,assumption,lattice) result(nu)
 
-  real(pREAL), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
+  real(pREAL), dimension(6,6), intent(in) :: C_tilde                                                !< Stiffness matrix in Mandel notation
   character(len=*),            intent(in) :: assumption                                             !< Assumption (isostrain = 'Voigt', isostress = 'Reuss')
   character(len=*), optional,  intent(in) :: lattice
   real(pREAL) :: nu
 
   real(pREAL) :: K, mu
   logical                       :: error
-  real(pREAL), dimension(6,6)   :: S
+  real(pREAL), dimension(6,6)   :: S_tilde
 
 
   select case(misc_optional(lattice,''))
     case('cF','cI')
-      K = (C(1,1) + C(1,2)*2.0_pREAL)/3.0_pREAL                                                     ! eq (9a)
+      K = (C_tilde(1,1) + C_tilde(1,2)*2.0_pREAL)/3.0_pREAL                                         ! eq (9a)
     case default
       if     (assumption == 'isostrain') then
-        K = sum(C(1:3,1:3)) / 9.0_pREAL                                                             ! eq (6a)
+        K = sum(C_tilde(1:3,1:3)) / 9.0_pREAL                                                       ! eq (6a)
       elseif (assumption == 'isostress') then
-        call math_invert(S,error,C)
+        call math_invert(S_tilde,error,C_tilde)
         if (error) error stop 'matrix inversion failed'
-        K = 1.0_pREAL / sum(S(1:3,1:3))                                                             ! eq (7a)
+        K = 1.0_pREAL / sum(S_tilde(1:3,1:3))                                                       ! eq (7a)
      else
        error stop 'invalid assumption'
      end if
   end select
 
-  mu = crystal_isotropic_mu(C,assumption,lattice)
+  mu = crystal_isotropic_mu(C_tilde,assumption,lattice)
   nu = (1.5_pREAL*K-mu)/(3.0_pREAL*K+mu)
 
 end function crystal_isotropic_nu
@@ -2219,25 +2222,25 @@ end function crystal_isotropic_nu
 !> @brief Equivalent shear modulus (μ).
 !> @details https://doi.org/10.1088/0370-1298/65/5/307
 !--------------------------------------------------------------------------------------------------
-pure function crystal_isotropic_mu(C,assumption,lattice) result(mu)
+pure function crystal_isotropic_mu(C_tilde,assumption,lattice) result(mu)
 
-  real(pREAL), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
+  real(pREAL), dimension(6,6), intent(in) :: C_tilde                                                !< Stiffness matrix in Mandel notation
   character(len=*),            intent(in) :: assumption                                             !< Assumption (isostrain = 'Voigt', isostress = 'Reuss')
   character(len=*), optional,  intent(in) :: lattice
   real(pREAL) :: mu
 
   logical                       :: error
-  real(pREAL), dimension(6,6)   :: S
+  real(pREAL), dimension(6,6)   :: S_tilde
 
 
   if     (assumption == 'isostrain') then
     select case(misc_optional(lattice,''))
       case('cF','cI')
-        mu = ( C(1,1) - C(1,2) + C(4,4)*3.0_pREAL) / 5.0_pREAL                                      ! eq (9b)
+        mu = ( C_tilde(1,1) - C_tilde(1,2) + C_tilde(4,4)*3.0_pREAL/WGT_MANDEL(2)) / 5.0_pREAL      ! eq (9b)
       case default
-        mu = (  C(1,1)+C(2,2)+C(3,3) &
-              - C(1,2)-C(2,3)-C(1,3) &
-              +(C(4,4)+C(5,5)+C(6,6)) * 3.0_pREAL &
+        mu = (  C_tilde(1,1)+C_tilde(2,2)+C_tilde(3,3) &
+              - C_tilde(1,2)-C_tilde(2,3)-C_tilde(1,3) &
+              +(C_tilde(4,4)+C_tilde(5,5)+C_tilde(6,6)) * 3.0_pREAL/WGT_MANDEL(2) &
              ) / 15.0_pREAL                                                                         ! eq (6b)
     end select
 
@@ -2245,12 +2248,13 @@ pure function crystal_isotropic_mu(C,assumption,lattice) result(mu)
     select case(misc_optional(lattice,''))
       case('cF','cI')
         mu = 5.0_pREAL &
-           / (4.0_pREAL/(C(1,1)-C(1,2)) + 3.0_pREAL/C(4,4))                                         ! eq (9c), (8a), (8c)
+           / (4.0_pREAL/(C_tilde(1,1)-C_tilde(1,2)) + 3.0_pREAL*WGT_MANDEL(2)/C_tilde(4,4))         ! eq (9c), (8a), (8c)
       case default
-        call math_invert(S,error,C)
+        call math_invert(S_tilde,error,C_tilde)
         if (error) error stop 'matrix inversion failed'
         mu = 15.0_pREAL &
-           / (4.0_pREAL*(S(1,1)+S(2,2)+S(3,3)-S(1,2)-S(2,3)-S(1,3)) + 3.0_pREAL*(S(4,4)+S(5,5)+S(6,6))) ! eq (7b)
+           / ( 4.0_pREAL*(S_tilde(1,1)+S_tilde(2,2)+S_tilde(3,3)-S_tilde(1,2)-S_tilde(2,3)-S_tilde(1,3)) \
+              +3.0_pREAL*WGT_MANDEL(2)*(S_tilde(4,4)+S_tilde(5,5)+S_tilde(6,6)))                    ! eq (7b)
     end select
   else
     error stop 'invalid assumption'
@@ -2298,17 +2302,17 @@ subroutine crystal_selfTest()
     if (any(dNeq(C_hP,transpose(C_hP))))                   error stop 'SymmetryC66/hP'
     if (any(dNeq(C_tI,transpose(C_tI))))                   error stop 'SymmetryC66/tI'
 
-    if (any(dNeq(C(1,1),[C_cF(1,1),C_cF(2,2),C_cF(3,3)]))) error stop 'SymmetryC_11-22-33/c'
-    if (any(dNeq(C(1,2),[C_cF(1,2),C_cF(1,3),C_cF(2,3)]))) error stop 'SymmetryC_12-13-23/c'
-    if (any(dNeq(C(4,4),[C_cF(4,4),C_cF(5,5),C_cF(6,6)]))) error stop 'SymmetryC_44-55-66/c'
+    if (any(dNeq(C(1,1),[C_cF(1,1),C_cF(2,2),C_cF(3,3)])))               error stop 'SymmetryC_11-22-33/c'
+    if (any(dNeq(C(1,2),[C_cF(1,2),C_cF(1,3),C_cF(2,3)])))               error stop 'SymmetryC_12-13-23/c'
+    if (any(dNeq(C(4,4)*WGT_MANDEL(2),[C_cF(4,4),C_cF(5,5),C_cF(6,6)]))) error stop 'SymmetryC_44-55-66/c'
 
-    if (any(dNeq(C(1,1),[C_hP(1,1),C_hP(2,2)])))           error stop 'SymmetryC_11-22/hP'
-    if (any(dNeq(C(1,3),[C_hP(1,3),C_hP(2,3)])))           error stop 'SymmetryC_13-23/hP'
-    if (any(dNeq(C(4,4),[C_hP(4,4),C_hP(5,5)])))           error stop 'SymmetryC_44-55/hP'
+    if (any(dNeq(C(1,1),[C_hP(1,1),C_hP(2,2)])))                         error stop 'SymmetryC_11-22/hP'
+    if (any(dNeq(C(1,3),[C_hP(1,3),C_hP(2,3)])))                         error stop 'SymmetryC_13-23/hP'
+    if (any(dNeq(C(4,4)*WGT_MANDEL(2),[C_hP(4,4),C_hP(5,5)])))           error stop 'SymmetryC_44-55/hP'
 
-    if (any(dNeq(C(1,1),[C_tI(1,1),C_tI(2,2)])))           error stop 'SymmetryC_11-22/tI'
-    if (any(dNeq(C(1,3),[C_tI(1,3),C_tI(2,3)])))           error stop 'SymmetryC_13-23/tI'
-    if (any(dNeq(C(4,4),[C_tI(4,4),C_tI(5,5)])))           error stop 'SymmetryC_44-55/tI'
+    if (any(dNeq(C(1,1),[C_tI(1,1),C_tI(2,2)])))                         error stop 'SymmetryC_11-22/tI'
+    if (any(dNeq(C(1,3),[C_tI(1,3),C_tI(2,3)])))                         error stop 'SymmetryC_13-23/tI'
+    if (any(dNeq(C(4,4)*WGT_MANDEL(2),[C_tI(4,4),C_tI(5,5)])))           error stop 'SymmetryC_44-55/tI'
 
     call random_number(T)
     T_cF = crystal_symmetrize_33(T,'cI')

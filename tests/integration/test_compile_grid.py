@@ -66,4 +66,4 @@ def test_compile_grid(damask_root,res_path,tmp_path,copy_files,h5py_dataset_iter
                 else:
                     m = max(np.amax(np.abs(dset)),np.amax(np.abs(cur[path])))
                     if m < 1: continue
-                    assert_allclose(dset,cur[path],rtol=.0,atol=m*1e-4)
+                    assert_allclose(dset,cur[path],atol=m*1e-4)
