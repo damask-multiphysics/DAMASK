@@ -17,6 +17,7 @@
 #include <ISO_Fortran_binding.h>
 #include <cctype>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <span>
@@ -42,13 +43,13 @@
 
 constexpr int VTK_ERROR = 844;
 
-VTI::VTI(const char* file_path) {
-  if (!file_path)
+VTI::VTI(const fs::path& file_path) {
+  if (file_path.empty())
     IO::error(VTK_ERROR, "no valid geometry file path supplied");
   this->file_path = file_path;
   std::ifstream f(file_path, std::ios::binary);
   if (!f)
-    IO::error(VTK_ERROR, std::string("cannot open file '") + file_path + '\'');
+    IO::error(VTK_ERROR, std::string("cannot open file '") + file_path.string() + '\'');
   pt::read_xml(f, vti_tree);
 }
 
@@ -137,8 +138,8 @@ static void increment_integer_array(CFI_cdesc_t* desc) {
     v += 1;
 }
 
-void VTI::read_dataset_int(const char* name, CFI_cdesc_t* desc) {
-  DecodedBuffer d = parse_cell_data_array(name);
+void VTI::read_dataset_int(const std::string_view label, CFI_cdesc_t* desc) {
+  DecodedBuffer d = parse_cell_data_array(label);
   if (desc->elem_len == sizeof(int32_t)) {
     allocate_and_convert<int32_t>(d, desc);
     increment_integer_array<int32_t>(desc);
@@ -146,12 +147,12 @@ void VTI::read_dataset_int(const char* name, CFI_cdesc_t* desc) {
     allocate_and_convert<int64_t>(d, desc);
     increment_integer_array<int64_t>(desc);
   } else {
-    IO::error(VTK_ERROR, "unsupported integer type for dataset '" + std::string(name) + "'");
+    IO::error(VTK_ERROR, "unsupported integer type for dataset '" + std::string(label) + "'");
   }
 }
 
-void VTI::read_dataset_real(const char* name, CFI_cdesc_t* desc) {
-  DecodedBuffer d = parse_cell_data_array(name);
+void VTI::read_dataset_real(const std::string_view label, CFI_cdesc_t* desc) {
+  DecodedBuffer d = parse_cell_data_array(label);
   allocate_and_convert<double>(d, desc);
 }
 
@@ -274,7 +275,7 @@ void VTI::read_geometry(int* cells_ptr,
   }
 }
 
-DecodedBuffer VTI::parse_cell_data_array(const char* array_name) {
+DecodedBuffer VTI::parse_cell_data_array(const std::string_view array_name) {
   boost::optional<pt::ptree&> root = vti_tree.get_child_optional("VTKFile");
   if (!root)
     IO::error(VTK_ERROR, "missing <VTKFile> element");
@@ -416,21 +417,28 @@ void VTI::allocate_and_convert(const DecodedBuffer& d, CFI_cdesc_t* desc) {
   }
 }
 
+static std::string_view descriptor_to_string_view(const CFI_cdesc_t* desc) {
+  if (desc->type != CFI_type_char)
+    throw std::runtime_error("descriptor does not hold a character string");
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+  return {reinterpret_cast<const char*>(desc->base_addr), desc->elem_len};
+}
+
 extern "C" {
-gsl::owner<VTI*> C_VTI_new(const char* vti_path) {
-  return new VTI(vti_path); // NOLINT(cppcoreguidelines-owning-memory)
+gsl::owner<VTI*> C_VTI_new(const CFI_cdesc_t* vti_path) {
+  return new VTI(fs::path(descriptor_to_string_view(vti_path))); // NOLINT(cppcoreguidelines-owning-memory)
 }
 
 void C_VTI_delete(gsl::owner<VTI*> vti) {
   delete vti; // NOLINT(cppcoreguidelines-owning-memory)
 }
 
-void C_VTI_readDatasetInt(VTI* vti, const char* name, CFI_cdesc_t* desc) {
-  vti->read_dataset_int(name, desc);
+void C_VTI_readDatasetInt(VTI* vti, const CFI_cdesc_t* label, CFI_cdesc_t* desc) {
+  vti->read_dataset_int(descriptor_to_string_view(label), desc);
 }
 
-void C_VTI_readDatasetReal(VTI* vti, const char* name, CFI_cdesc_t* desc) {
-  vti->read_dataset_real(name, desc);
+void C_VTI_readDatasetReal(VTI* vti, const CFI_cdesc_t* label, CFI_cdesc_t* desc) {
+  vti->read_dataset_real(descriptor_to_string_view(label), desc);
 }
 
 // https://clang.llvm.org/extra/clang-tidy/checks/bugprone/easily-swappable-parameters.html

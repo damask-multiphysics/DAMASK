@@ -22,7 +22,6 @@
 #endif
 
 #include "../prec.f90"
-#include "../C_interfacing.f90"
 #include "../constants.f90"
 #include "../parallelization.f90"
 #include "../misc.f90"

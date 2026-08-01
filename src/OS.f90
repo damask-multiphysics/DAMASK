@@ -8,7 +8,6 @@ module OS
   use, intrinsic :: ISO_fortran_env
 
   use prec
-  use C_interfacing
   use IO
 
   implicit none(type,external)
@@ -29,7 +28,7 @@ module OS
 
       implicit none(type,external)
       integer(C_INT) :: set_CWD_C
-      character(kind=C_CHAR), dimension(*), intent(in) :: cwd
+      character(kind=C_CHAR,len=*), intent(in) :: cwd
     end function set_CWD_C
 
     subroutine get_CWD_C(cwd, stat) bind(C)
@@ -81,7 +80,7 @@ logical function OS_setCWD(path)
   character(len=*), intent(in) :: path
 
 
-  OS_setCWD = set_CWD_C(f_c_string(path)) /= 0_C_INT
+  OS_setCWD = set_CWD_C(path) /= 0_C_INT
 
 end function OS_setCWD
 

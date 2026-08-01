@@ -35,8 +35,11 @@ void init_signal_c() {
 }
 #endif
 
-int set_cwd_c(const char* cwd) {
-  return chdir(cwd);
+int set_cwd_c(const CFI_cdesc_t* cwd) {
+  char cwd_tmp[cwd->elem_len + 1];
+  memcpy(cwd_tmp, cwd->base_addr, cwd->elem_len);
+  cwd_tmp[cwd->elem_len] = '\0';
+  return chdir(cwd_tmp);
 }
 
 void get_cwd_c(CFI_cdesc_t* cwd, int* stat) {
@@ -109,7 +112,7 @@ void inflate_c(const uLong* s_deflated,
 #endif
 
 #ifdef FYAML
-void to_flow_c(CFI_cdesc_t* flow, const char* mixed, int* stat) {
+void to_flow_c(CFI_cdesc_t* flow, const CFI_cdesc_t* mixed, int* stat) {
   struct fy_document* fyd = NULL;
   // clang-format off
   enum fy_emitter_cfg_flags emit_flags = FYECF_MODE_FLOW_ONELINE
@@ -119,7 +122,7 @@ void to_flow_c(CFI_cdesc_t* flow, const char* mixed, int* stat) {
                                        | FYECF_STRIP_DOC
                                        | FYECF_DOC_START_MARK_OFF;
   // clang-format on
-  fyd = fy_document_build_from_string(NULL, mixed, -1);
+  fyd = fy_document_build_from_string(NULL, mixed->base_addr, mixed->elem_len);
   if (!fyd) {
     *stat = 1;
     return;
