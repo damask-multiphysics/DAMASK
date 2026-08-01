@@ -146,8 +146,11 @@ subroutine discretization_grid_init()
 #else
     print'(/,1x,a)', 'Using Fortran XML parser'
     call VTI_readGeometry(cells,geomSize,origin,labels,fileContent)
-    materialAt_global = VTI_readDataset_int(fileContent,'material') + 1
+    materialAt_global = VTI_readDataset_int(fileContent,'material')
 #endif
+    ! materialAt_global = materialAt_global + 1 fails for oneAPI.
+    ! https://community.intel.com/t5/Intel-Fortran-Compiler/Issue-with-array-allocation-in-C-ISO-Fortran-binding-h/m-p/1755394
+    materialAt_global(:) = materialAt_global(:) + 1                                                 ! convert to one-based indexing (Fortran)
     n_labels = size(labels)
     if (any(materialAt_global < 1)) &
       call IO_error(180_pI16,'material ID < 1')

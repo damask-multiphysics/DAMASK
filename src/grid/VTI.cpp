@@ -130,21 +130,12 @@ std::vector<uint8_t> VTI::decode_uncompressed_vti(const std::string& b64_string,
   return res_vec;
 }
 
-template <typename T>
-static void increment_integer_array(CFI_cdesc_t* desc) {
-  std::span<T> data(static_cast<T*>(desc->base_addr), static_cast<std::size_t>(desc->dim[0].extent));
-  for (T& v : data)
-    v += 1;
-}
-
 void VTI::read_dataset_int(const std::string_view label, CFI_cdesc_t* desc) {
   DecodedBuffer d = parse_cell_data_array(label);
   if (desc->type == CFI_type_int32_t) {
     allocate_and_convert<int32_t>(d, desc);
-    increment_integer_array<int32_t>(desc);
   } else if (desc->type == CFI_type_int64_t) {
     allocate_and_convert<int64_t>(d, desc);
-    increment_integer_array<int64_t>(desc);
   } else {
     IO::error(VTK_ERROR, "unsupported integer type for dataset '" + std::string(label) + "'");
   }
