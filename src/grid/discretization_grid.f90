@@ -125,11 +125,11 @@ subroutine discretization_grid_init()
   character(len=:), allocatable :: &
     fileContent, fname
 #if defined(BOOST)
-  character(kind=C_CHAR, len=:), allocatable :: &
+  character(kind=C_CHAR, len=:), dimension(:), allocatable :: &                                     !< Boost parser will set len=256=pSTRLEN
 #else
-  character(len=pSTRLEN), dimension(:), allocatable :: &
+  character(len=pSTRLEN),        dimension(:), allocatable :: &
 #endif
-    labels(:)     ! ToDo double dimension/len                                                       !< cell data labels in VTI file
+    labels                                                                                          !< cell data labels in VTI file
   integer(HID_T) :: handle
 
 
@@ -142,16 +142,13 @@ subroutine discretization_grid_init()
     print'(/,1x,a)', 'Using C++ XML parser'
     VTI_ = C_VTI_new(CLI_geomFile)
     call C_VTI_readGeometry(VTI_,cells,geomSize,origin,labels)
+    call C_VTI_readDatasetInt(VTI_,'material',materialAt_global)
 #else
     print'(/,1x,a)', 'Using Fortran XML parser'
     call VTI_readGeometry(cells,geomSize,origin,labels,fileContent)
-#endif
-    n_labels = size(labels)
-#if defined(BOOST)
-    call C_VTI_readDatasetInt(VTI_,'material',materialAt_global)
-#else
     materialAt_global = VTI_readDataset_int(fileContent,'material') + 1
 #endif
+    n_labels = size(labels)
     if (any(materialAt_global < 1)) &
       call IO_error(180_pI16,'material ID < 1')
     if (size(materialAt_global) /= product(cells)) &
