@@ -246,9 +246,6 @@ subroutine CLI_init()
   if (allocated(numericsArg)) &
     print'(1x,a)',      'Numerics config:    '//IO_glueDiffering(CLI_numericsFile,numericsArg)
   print'(1x,a)',        'Job name:           '//CLI_jobName
-#ifdef BOOST
-  print'(1x,a)',        'Job ID:             '//CLI_jobID
-#endif
   if (CLI_restartInc /= -1) &
     print'(1x,a,i0)',   'Restart increment:  ', CLI_restartInc
 #endif

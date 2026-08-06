@@ -1,18 +1,18 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import bz2
-import pickle
-import time
-import shutil
-import os
-import sys
-import hashlib
 import fnmatch
+import hashlib
+import os
+import pickle
 import random
+import shutil
+import sys
+import time
 from datetime import datetime
 
 import pytest
-from vtkmodules.vtkIOXML import vtkXMLImageDataReader
 from vtkmodules.vtkCommonCore import vtkVersion
+from vtkmodules.vtkIOXML import vtkXMLImageDataReader
 try:
     from vtkmodules.vtkIOXdmf2 import vtkXdmfReader
 except ImportError:
@@ -25,7 +25,7 @@ from damask import Orientation
 from damask import VTK
 from damask import tensor
 from damask import mechanics
-from damask import grid_filters
+from damask import grid
 from damask import util
 
 
@@ -386,7 +386,7 @@ def test_add_curl(default,shape):
     x = default.place('x')
     default.add_curl('x')
     in_file   = default.place('curl(x)')
-    in_memory = grid_filters.ravel(grid_filters.curl(default.size,grid_filters.unravel(x,default.cells)))
+    in_memory = grid.ravel(grid.curl(default.size,grid.unravel(x,default.cells)))
     assert (in_file == in_memory).all()
 
 @pytest.mark.parametrize('shape',['vector','tensor'])
@@ -396,7 +396,7 @@ def test_add_divergence(default,shape):
     x = default.place('x')
     default.add_divergence('x')
     in_file   = default.place('divergence(x)')
-    in_memory = grid_filters.ravel(grid_filters.divergence(default.size,grid_filters.unravel(x,default.cells)))
+    in_memory = grid.ravel(grid.divergence(default.size,grid.unravel(x,default.cells)))
     assert (in_file == in_memory).all()
 
 @pytest.mark.parametrize('shape',['scalar','pseudo_scalar','vector'])
@@ -407,7 +407,7 @@ def test_add_gradient(default,shape):
     x = default.place('x').reshape((np.prod(default.cells),-1))
     default.add_gradient('x')
     in_file   = default.place('gradient(x)')
-    in_memory = grid_filters.ravel(grid_filters.gradient(default.size,grid_filters.unravel(x,default.cells)))
+    in_memory = grid.ravel(grid.gradient(default.size,grid.unravel(x,default.cells)))
     assert (in_file == in_memory).all()
 
 @pytest.mark.parametrize('overwrite',['off','on'])
@@ -460,10 +460,10 @@ def test_remove(default,allowed):
 @pytest.mark.parametrize('mode',['cell','node'])
 def test_coordinates(default,mode):
     if   mode == 'cell':
-        a = grid_filters.coordinates0_point(default.cells,default.size,default.origin)
+        a = grid.coordinates0_point(default.cells,default.size,default.origin)
         b = default.coordinates0_point.reshape(tuple(default.cells)+(3,),order='F')
     elif mode == 'node':
-        a = grid_filters.coordinates0_node(default.cells,default.size,default.origin)
+        a = grid.coordinates0_node(default.cells,default.size,default.origin)
         b = default.coordinates0_node.reshape(tuple(default.cells+1)+(3,),order='F')
     assert np.allclose(a,b)
 
@@ -750,6 +750,6 @@ def test_export_DADF5_name_clash(res_path,tmp_path,fname):
                                   '12grains6x7x8_tensionY.hdf5'])
 def test_export_DADF5_regrid(res_path,tmp_path,fname):
     r = Result(res_path/fname)
-    m = grid_filters.regrid(r.size,np.broadcast_to(np.eye(3),tuple(r.cells)+(3,3)),r.cells*2)
+    m = grid.regrid(r.size,np.broadcast_to(np.eye(3),tuple(r.cells)+(3,3)),r.cells*2)
     r.export_DADF5(tmp_path/'regridded.hdf5',mapping=m)
     assert np.all(Result(tmp_path/'regridded.hdf5').cells == r.cells*2)

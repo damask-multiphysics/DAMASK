@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import pytest
 import numpy as np
+import pytest
 
 from damask import tensor
+
 
 def traceless(T):
     return T - spherical(T)

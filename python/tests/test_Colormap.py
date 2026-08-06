@@ -1,18 +1,19 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import os
 import filecmp
+import os
 import time
 
-import numpy as np
-import pytest
-from PIL import Image
-from PIL import ImageChops
 import matplotlib as mpl
 if os.name == 'posix' and 'DISPLAY' not in os.environ:
     mpl.use('Agg')
 import matplotlib.pyplot as plt
+import numpy as np
+import pytest
+from PIL import Image
+from PIL import ImageChops
 
 from damask import Colormap
+
 
 @pytest.fixture
 def res_path(res_path_base):
@@ -88,14 +89,14 @@ def test_eq():
 def test_from_range_types(low,high):
     assert Colormap.from_range(low,high) == Colormap.from_range(np.array(low),np.array(high))
 
-@pytest.mark.parametrize('format',['ASCII','paraview','GOM','gmsh'])
+@pytest.mark.parametrize('format',['ASCII','paraview','gmsh'])
 @pytest.mark.parametrize('model',['rgb','hsv','hsl','xyz','lab','msh'])
 def test_from_range(np_rng,model,format,tmp_path):
     N = np_rng.integers(2,256)
     c = Colormap.from_range(np_rng.random(3),np_rng.random(3),model=model,N=N)                      # noqa
     eval(f'c.save_{format}(tmp_path/"color_out")')
 
-@pytest.mark.parametrize('format',['ASCII','paraview','GOM','gmsh'])
+@pytest.mark.parametrize('format',['ASCII','paraview','gmsh'])
 @pytest.mark.parametrize('name',['strain','gnuplot','Greys','PRGn','viridis'])
 def test_from_predefined(np_rng,name,format,tmp_path):
     N = np_rng.integers(2,256)
@@ -105,7 +106,6 @@ def test_from_predefined(np_rng,name,format,tmp_path):
 
 @pytest.mark.parametrize('format,name',[('ASCII','test.txt'),
                                         ('paraview','test.json'),
-                                        ('GOM','test.legend'),
                                         ('gmsh','test.msh')
                                         ])
 def test_write_filehandle(format,name,tmp_path):
@@ -171,7 +171,6 @@ def test_predefined():
 
 @pytest.mark.parametrize('format,ext',[('ASCII','.txt'),
                                        ('paraview','.json'),
-                                       ('GOM','.legend'),
                                        ('gmsh','.msh')
                                        ])
 def test_compare_reference(format,ext,tmp_path,res_path,update):

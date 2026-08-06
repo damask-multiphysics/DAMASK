@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import sys
 
-import pytest
 import numpy as np
+import pytest
 from vtkmodules.vtkCommonCore import vtkVersion
 
 from damask import VTK
@@ -13,7 +13,7 @@ from damask import Colormap
 from damask import ConfigMaterial
 from damask import util
 from damask import seeds
-from damask import grid_filters
+from damask import grid
 
 
 @pytest.fixture
@@ -98,7 +98,7 @@ def test_save_load_SPPARKS(res_path,tmp_path):
     v = VTK.load(res_path/'SPPARKS_dump.vti')
     v.set('material',v.get('Spin')).delete('Spin').save(tmp_path/'SPPARKS_dump.vti',parallel=False)
     assert GeomGrid.load_SPPARKS(res_path/'SPPARKS_dump.vti') == \
-            GeomGrid.load(tmp_path/'SPPARKS_dump.vti')
+           GeomGrid.load(tmp_path/'SPPARKS_dump.vti')
 
 def test_invalid_origin(default):
     with pytest.raises(ValueError):
@@ -348,9 +348,9 @@ def test_add_primitive_shape_symmetry(np_rng,exponent):
     """Shapes defined in the center should always produce a grid with reflection symmetry along the coordinate axis."""
     o = np_rng.random(3)-.5
     s = np_rng.random(3)*5.
-    grid = GeomGrid(np.zeros(np_rng.integers(8,32,3),'i'),s,o).add_primitive(np_rng.random(3)*3.,o+s/2.,exponent)
+    g = GeomGrid(np.zeros(np_rng.integers(8,32,3),'i'),s,o).add_primitive(np_rng.random(3)*3.,o+s/2.,exponent)
     for axis in [0,1,2]:
-        assert np.all(grid.material==np.flip(grid.material,axis=axis))
+        assert np.all(g.material==np.flip(g.material,axis=axis))
 
 @pytest.mark.parametrize('selection',[1,None])
 def test_vicinity_offset(np_rng,selection):
@@ -368,9 +368,9 @@ def test_vicinity_offset(np_rng,selection):
     if selection == 1:
         m2[m==1] = 1
 
-    grid = GeomGrid(m,np_rng.random(3)).vicinity_offset(distance,offset,selection=selection)
+    m3 = GeomGrid(m,np_rng.random(3)).vicinity_offset(distance,offset,selection=selection).material
 
-    assert np.all(m2==grid.material)
+    assert np.all(m2==m3)
 
 @pytest.mark.parametrize('data_type',['array','list'])
 @pytest.mark.parametrize('invert',[True,False])
@@ -443,7 +443,7 @@ def test_Laguerre_correctness(np_rng,periodic):
         weights_p = np.array(weights,float)
         seeds_p   = seeds
 
-    coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
+    coords = grid.coordinates0_point(cells,size).reshape(-1,3)
     material = np.array([find_closest_seed(seeds_p,weights_p,coord) for coord in coords]).reshape(cells)
     if periodic: material %= len(weights)
     from_bias = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,weights,periodic=periodic)
@@ -458,10 +458,10 @@ def test_tessellate_bicrystal(np_rng,approach,periodic):
     material = np.zeros(cells)
     material[:,cells[1]//2:,:] = 1
     if   approach == 'Laguerre':
-        grid = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,[np_rng.random()]*2,periodic=periodic)
+        g = GeomGrid.from_Laguerre_tessellation(cells,size,seeds,[np_rng.random()]*2,periodic=periodic)
     elif approach == 'Voronoi':
-        grid = GeomGrid.from_Voronoi_tessellation(cells,size,seeds,                     periodic=periodic)
-    assert np.all(grid.material == material)
+        g = GeomGrid.from_Voronoi_tessellation(cells,size,seeds,                     periodic=periodic)
+    assert np.all(g.material == material)
 
 @pytest.mark.parametrize('surface',['Schwarz P',
                                     'Double Primitive',
@@ -482,9 +482,9 @@ def test_minimal_surface_basic_properties(np_rng,surface):
     threshold = 2*np_rng.random()-1.
     periods = np_rng.integers(2)+1
     materials = np_rng.integers(0,40,2)
-    grid = GeomGrid.from_minimal_surface(cells,size,surface,threshold,periods,materials)
-    assert set(grid.material.flatten()) | set(materials) == set(materials) \
-            and (grid.size == size).all() and (grid.cells == cells).all()
+    g = GeomGrid.from_minimal_surface(cells,size,surface,threshold,periods,materials)
+    assert set(g.material.flatten()) | set(materials) == set(materials) \
+           and (g.size == size).all() and (g.cells == cells).all()
 
 @pytest.mark.parametrize('surface,threshold',[('Schwarz P',0),
                                               ('Double Primitive',-1./6.),
@@ -501,13 +501,13 @@ def test_minimal_surface_basic_properties(np_rng,surface):
                                              ])
 def test_minimal_surface_volume(surface,threshold):
     cells = np.ones(3,dtype=int)*64
-    grid = GeomGrid.from_minimal_surface(cells,np.ones(3),surface,threshold)
-    assert np.isclose(np.count_nonzero(grid.material==1)/np.prod(grid.cells),.5,rtol=1e-3)
+    g = GeomGrid.from_minimal_surface(cells,np.ones(3),surface,threshold)
+    assert np.isclose(np.count_nonzero(g.material==1)/np.prod(g.cells),.5,rtol=1e-3)
 
 def test_from_table(np_rng):
     cells = np_rng.integers(60,100,3)
     size = np.ones(3)+np_rng.random(3)
-    coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
+    coords = grid.coordinates0_point(cells,size).reshape(-1,3,order='F')
     z = np.ones(cells.prod())
     z[cells[:2].prod()*int(cells[2]/2):] = 0
     t = Table({'coords':3,'z':1},np.column_stack((coords,z)))
@@ -519,17 +519,17 @@ def test_from_table_recover(np_rng,tmp_path):
     cells = np_rng.integers(60,100,3)
     size = np.ones(3)+np_rng.random(3)
     s = seeds.from_random(size,np_rng.integers(60,100),rng_seed=np_rng)
-    grid = GeomGrid.from_Voronoi_tessellation(cells,size,s)
-    coords = grid_filters.coordinates0_point(cells,size)
-    t = Table({'c':3,'m':1},np.column_stack((coords.reshape(-1,3,order='F'),grid.material.flatten(order='F'))))
-    assert grid.sort().renumber() == GeomGrid.from_table(t,'c',['m'])
+    g = GeomGrid.from_Voronoi_tessellation(cells,size,s)
+    coords = grid.coordinates0_point(cells,size)
+    t = Table({'c':3,'m':1},np.column_stack((coords.reshape(-1,3,order='F'),g.material.flatten(order='F'))))
+    assert g.sort().renumber() == GeomGrid.from_table(t,'c',['m'])
 
 @pytest.mark.parametrize('periodic',[True,False])
 @pytest.mark.parametrize('direction',['x','y','z',['x','y'],'zy','xz',['x','y','z']])
 @pytest.mark.xfail(vtkVersion.GetVTKMajorVersion()<8, reason='missing METADATA')
 def test_get_grain_boundaries(update,res_path,periodic,direction):
-    grid = GeomGrid.load(res_path/'get_grain_boundaries_8g12x15x20.vti')
-    current = grid.get_grain_boundaries(periodic,direction)
+    g = GeomGrid.load(res_path/'get_grain_boundaries_8g12x15x20.vti')
+    current = g.get_grain_boundaries(periodic,direction)
     if update:
         current.save(res_path/f'get_grain_boundaries_8g12x15x20_{"".join(direction)}_{periodic}.vtu',parallel=False)
     reference = VTK.load(res_path/f'get_grain_boundaries_8g12x15x20_{"".join(direction)}_{periodic}.vtu')

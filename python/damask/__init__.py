@@ -7,7 +7,7 @@ References
 D. Otto de Mentock et al., Journal of Open Source Software, 10(105):7164, 2025
 https://doi.org/10.21105/joss.07164
 """
-
+# isort: skip_file
 import logging as _logging
 from pathlib import Path as _Path
 
@@ -24,7 +24,7 @@ from .                 import seeds            # noqa
 from .                 import tensor           # noqa
 from .                 import mechanics        # noqa
 from .                 import solver           # noqa
-from .                 import grid_filters     # noqa
+from .                 import grid             # noqa
 # Modules that contain only one class (of the same name), are prefixed by a '_'.
 # For example, '_colormap' contains a class called 'Colormap' which is imported as 'damask.Colormap'.
 from ._rotation        import Rotation         # noqa

@@ -759,7 +759,7 @@ end subroutine IO_selfTest
 !> @details exits the program and reports current time and duration. Exit code 0 signals
 !> everything is fine. Exit code 1 signals an error, message according to IO_error.
 !--------------------------------------------------------------------------------------------------
-subroutine quit(stop_id)
+subroutine quit(stop_id) bind(C, name='quit')
 #include <petsc/finclude/petscsys.h>
   use PETScSys
 #ifndef PETSC_EXPOSES_MPI
@@ -767,7 +767,7 @@ subroutine quit(stop_id)
 #endif
   use HDF5
 
-  integer, intent(in) :: stop_id
+  integer, intent(in), value :: stop_id
 
   integer, dimension(8) :: date_time
   integer :: err_HDF5

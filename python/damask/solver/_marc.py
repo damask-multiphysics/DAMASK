@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import subprocess
-import shlex
-import re
-from pathlib import Path
 import logging
+import re
+import shlex
+import subprocess
+from pathlib import Path
 from typing import Literal
 
 

@@ -10,7 +10,7 @@ import numpy.typing as npt
 import scipy
 from scipy.spatial.transform import Rotation as ScipyRotation
 
-from . import grid_filters, tensor, util
+from . import grid, tensor, util
 from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
 
 
@@ -1328,7 +1328,7 @@ class Rotation:
         def _dg(eu,deg):
             """Return infinitesimal Euler space volume of bin(s)."""
             phi_sorted = eu[np.lexsort((eu[:,0],eu[:,1],eu[:,2]))]
-            steps,size,_ = grid_filters.cellsSizeOrigin_coordinates0_point(phi_sorted)
+            steps,size,_ = grid.cellsSizeOrigin_coordinates0_point(phi_sorted)
             delta = np.radians(size/steps) if deg else size/steps
             return delta[0]*2.*np.sin(delta[1]/2.)*delta[2] / 8. / np.pi**2 * np.sin(np.radians(eu[:,1]) if deg else eu[:,1])
 

@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import pytest
 import numpy as np
+import pytest
 from scipy import stats
 from scipy.spatial.transform import Rotation as ScipyRotation
 
 from damask import Rotation
 from damask import Table
 from damask import _rotation
-from damask import grid_filters
+from damask import grid
 from damask import tensor
 from damask import util
 
@@ -1315,7 +1315,7 @@ def test_ODF_cell(res_path,fractions,degrees,shape):
     rng = tuple(zip(np.zeros(3),limits))
 
     weights = Table.load(res_path/'ODF_experimental_cell.txt').get('intensity').flatten()
-    Eulers = grid_filters.coordinates0_point(steps,limits)
+    Eulers = grid.coordinates0_point(steps,limits)
     Eulers = np.radians(Eulers) if not degrees else Eulers
 
     Eulers_r = Rotation.from_ODF(weights,Eulers.reshape(-1,3,order='F'),shape,degrees,fractions).as_Euler_angles(True)
@@ -1333,7 +1333,7 @@ def test_ODF_node(res_path,degrees,shape):
     weights = Table.load(res_path/'ODF_experimental.txt').get('intensity')
     weights = weights.reshape(steps+1,order='F')[:-1,:-1,:-1].reshape(-1,order='F')
 
-    Eulers = grid_filters.coordinates0_node(steps,limits)[:-1,:-1,:-1]
+    Eulers = grid.coordinates0_node(steps,limits)[:-1,:-1,:-1]
     Eulers = np.radians(Eulers) if not degrees else Eulers
 
     Eulers_r = Rotation.from_ODF(weights,Eulers.reshape(-1,3,order='F'),shape,degrees).as_Euler_angles(True)

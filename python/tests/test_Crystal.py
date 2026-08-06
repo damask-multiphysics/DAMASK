@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import pytest
-import numpy as np
 from pathlib import Path
+
+import numpy as np
+import pytest
 
 import damask
 from damask import Table

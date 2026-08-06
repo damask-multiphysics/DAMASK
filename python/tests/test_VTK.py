@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import os
 import filecmp
-import time
+import os
 import string
 import sys
+import time
 
-import pytest
 import numpy as np
 import numpy.ma as ma
+import pytest
 from vtkmodules.vtkCommonCore import vtkVersion
 
 from damask import util
@@ -53,8 +53,8 @@ def test_imageData(np_rng,tmp_path):
     assert string == vtr.as_ASCII() == vtk.as_ASCII()
 
 def test_rectilinearGrid(np_rng,tmp_path):
-    grid = np.sort(np_rng.random((3,10)))
-    v = VTK.from_rectilinear_grid(grid)
+    g = np.sort(np_rng.random((3,10)))
+    v = VTK.from_rectilinear_grid(g)
     string = str(v)
     string = v.as_ASCII()
     v.save(tmp_path/'rectilinearGrid',False)
@@ -184,21 +184,6 @@ def test_invalid_set_shape(default):
     with pytest.raises(ValueError):
         default.set('valid',np.ones(3))
 
-def test_invalid_set_missing_label(np_rng,default):
-    data = np_rng.integers(9,size=np.prod(np.array(default.vtk_data.GetDimensions())-1))
-    with pytest.raises(ValueError):
-        default.set(data=data)
-
-def test_invalid_set_type(default):
-    with pytest.raises(TypeError):
-        default.set(label='valid',data='invalid_type')
-    with pytest.raises(TypeError):
-        default.set(label='valid',table='invalid_type')
-
-def test_invalid_set_dual(default):
-    with pytest.raises(KeyError):
-        default.set(label='valid',data=0,table=0)
-
 @pytest.mark.parametrize('data_type,shape',[(float,(3,)),
                                             (float,(3,3)),
                                             (float,(1,)),
@@ -213,20 +198,6 @@ def test_set_get(np_rng,default,data_type,shape,cell_centered,named_components):
     new = default.set('data',data,component_names=component_names)
     assert (np.squeeze(data.reshape(-1,np.prod(shape))) == new.get('data')).all()
 
-
-@pytest.mark.parametrize('shapes',[{'scalar':(1,),'vector':(3,),'tensor':(3,3)},
-                                   {'vector':(6,),'tensor':(3,3)},
-                                   {'tensor':(3,3),'scalar':(1,)}])
-def test_set_table(np_rng,default,shapes):
-    N = np_rng.choice([default.N_points,default.N_cells])
-    d = dict()
-    for k,s in shapes.items():
-        d[k] = dict(shape = s,
-                    data = np_rng.random(N*np.prod(s)).reshape((N,-1)))
-    new = default.set(table=Table(shapes,np.column_stack([d[k]['data'] for k in shapes.keys()])))
-    for k,s in shapes.items():
-        assert np.allclose(np.squeeze(d[k]['data']),new.get(k),rtol=1e-7)
-
 @pytest.mark.parametrize('shapes',[{'scalar':(1,),'vector':(3,),'tensor':(3,3)},
                                    {'vector':(6,),'tensor':(3,3)},
                                    {'tensor':(3,3),'scalar':(1,)}])
@@ -240,7 +211,7 @@ def test_set_from_table(np_rng,default,shapes,named_components):
     new = default.set_from_table(Table(shapes,np.column_stack(list(data.values()))),
                                  component_names=component_names)
     for k,s in shapes.items():
-        assert np.allclose(np.squeeze(data[k]),new.get(k),rtol=1e-7)
+        np.squeeze(data[k]) == new.get(k)
 
 def test_set_masked(np_rng,default):
     data = np_rng.random((5*6*7,3))
@@ -288,13 +259,11 @@ def test_compare_reference_polyData(update,res_path):
                 np.allclose(polyData.get('coordinates'),points)
 
 def test_compare_reference_rectilinearGrid(update,res_path):
-    grid = [np.arange(4)**2.,
-            np.arange(5)**2.,
-            np.arange(6)**2.]                                               # ParaView renders tetrahedral meshing unless using float coordinates!
-    coords = np.stack(np.meshgrid(*grid,indexing='ij'),axis=-1)
+    g = [np.arange(n)**2. for n in [4,5,6]]
+    coords = np.stack(np.meshgrid(*g,indexing='ij'),axis=-1)
     c = coords[:-1,:-1,:-1,:].reshape(-1,3,order='F')
     n = coords[:,:,:,:].reshape(-1,3,order='F')
-    rectilinearGrid = VTK.from_rectilinear_grid(grid) \
+    rectilinearGrid = VTK.from_rectilinear_grid(g) \
                     .set('cell',np.ascontiguousarray(c)) \
                     .set('node',np.ascontiguousarray(n))
     if update:

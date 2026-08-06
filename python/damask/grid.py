@@ -12,16 +12,17 @@ the following operations are required for tensorial data:
     - D1 = D3.reshape(cells+(-1,),order='C').reshape(-1,9,order='F')
 """
 
-from typing import (NamedTuple as _NamedTuple,
-                    Tuple as _Tuple,
-                    Union as _Union,
-                    Literal as _Literal,
-                    overload as _overload)
+from typing import Literal as _Literal
+from typing import NamedTuple as _NamedTuple
+from typing import Tuple as _Tuple
+from typing import Union as _Union
+from typing import overload as _overload
 
 import numpy as _np
 from scipy import spatial as _spatial
 
-from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence
+from ._typehints import FloatSequence as _FloatSequence
+from ._typehints import IntSequence as _IntSequence
 
 
 class CellsSizeOriginTuple(_NamedTuple):
@@ -351,7 +352,7 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
 
     >>> import numpy as np
     >>> import damask
-    >>> damask.grid_filters.cellsSizeOrigin_coordinates0_point(coordinates0=np.array([[0,0,0],[0,0,4],[0,0,8]]))
+    >>> damask.grid.cellsSizeOrigin_coordinates0_point(coordinates0=np.array([[0,0,0],[0,0,4],[0,0,8]]))
     CellsSizeOriginTuple(cells=array([1, 1, 3]), size=array([ 4.,  4., 12.]), origin=array([-2., -2., -2.]))
     """
     coords    = [_unique(coordinates0[:,i],atol=atol,repeats=True) for i in range(3)]
@@ -626,7 +627,7 @@ def ravel_index(idx: _np.ndarray) -> _np.ndarray:
             [[0, 1, 0]]],
            [[[1, 0, 0]],
             [[0, 0, 0]]]])
-    >>> (flat_idx := damask.grid_filters.ravel_index(idx=rev))
+    >>> (flat_idx := damask.grid.ravel_index(idx=rev))
     array([[[3],
             [2]],
            [[1],
@@ -659,7 +660,7 @@ def unravel_index(idx: _np.ndarray) -> _np.ndarray:
     >>> import numpy as np
     >>> import damask
     >>> seq = np.arange(6).reshape((3,2,1),order='F')
-    >>> (coord_idx := damask.grid_filters.unravel_index(idx=seq))
+    >>> (coord_idx := damask.grid.unravel_index(idx=seq))
     array([[[[0, 0, 0]],
             [[0, 1, 0]]],
            [[[1, 0, 0]],

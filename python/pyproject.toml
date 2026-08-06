@@ -84,3 +84,5 @@ ignore_missing_imports = true
 
 [tool.isort]
 lines_after_imports = 2
+line_length = 100
+combine_as_imports = false

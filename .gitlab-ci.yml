@@ -255,15 +255,27 @@ open-source:
     - damask_mesh -l tensionY.yaml -m material.yaml -n numerics.yaml -g notch_3D_hex_13k.msh        # temporary until we have a good test
 
 
-c++-linter:
+include-what-you-use:
   stage: core
   extends: .petsc_gcc_default
   script:
     - BOOST_MAPPINGS=/usr/share/include-what-you-use/boost-all.imp
-    - cmake -B build -DTEST=ON
-       -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="include-what-you-use;-Xiwyu;--error;-Xiwyu;--mapping_file=${BOOST_MAPPINGS}"
+    - cmake -B build-iwyu -DTEST=ON
+       -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="include-what-you-use;-Xiwyu;--error;-Xiwyu;--mapping_file=${BOOST_MAPPINGS};-Xiwyu;--verbose=3"
+    - cmake --build build-iwyu --target install --verbose
+
+clang-tidy:
+  stage: core
+  extends: .petsc_gcc_default
+  script:
+    - cmake -B build-clang-tidy -DTEST=ON
        -DCMAKE_CXX_CLANG_TIDY="clang-tidy;--config-file=${PWD}/.clang-tidy"
-    - cmake --build build --parallel --target install
+    - cmake --build build-clang-tidy --target install --verbose
+
+clang-format:
+  stage: core
+  extends: .petsc_gcc_default
+  script:
     - clang-format --style=file:.clang-format --dry-run --Werror $(git ls-files -- '*.c' '*.cpp' '*.h')
 
 .unittest:
