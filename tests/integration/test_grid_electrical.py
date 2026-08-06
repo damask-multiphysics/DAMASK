@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 import damask
 import matplotlib
-matplotlib.use("Agg")
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
@@ -104,7 +104,7 @@ material:
 
 
 def analytical_electric_field(cells,size,radius,sigma_inclusion,sigma_matrix,e0):
-    coordinates = damask.grid_filters.coordinates0_point(cells,size,origin=-size/2.)
+    coordinates = damask.grid.coordinates0_point(cells,size,origin=-size/2.)
     r = np.linalg.norm(coordinates,axis=-1)
     r_safe = np.where(r == 0.0, 1.0, r)
     dipole_factor = (sigma_inclusion - sigma_matrix) / (sigma_inclusion + 2.0 * sigma_matrix)
@@ -217,7 +217,7 @@ def test_analytical(tmp_path):
 
     analytical = analytical_electric_field(cells,size,radius,sigma_inclusion,sigma_matrix,e0)
     numerical = damask.Result(tmp_path/f'{job}.hdf5').view(increments=-1,phases=False).place('E')
-    numerical = damask.grid_filters.unravel(numerical,cells)
+    numerical = damask.grid.unravel(numerical,cells)
 
     rel_l2, max_abs = compare_fields(numerical, analytical)
     make_plot(numerical, analytical, length, radius,
