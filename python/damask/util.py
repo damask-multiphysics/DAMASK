@@ -11,6 +11,7 @@ import shlex as _shlex
 import signal as _signal
 import subprocess as _subprocess
 import sys as _sys
+from os import PathLike as _PathLike
 from collections import abc as _abc
 from collections import defaultdict as _defaultdict
 from functools import partial as _partial
@@ -21,15 +22,13 @@ from typing import Generator as _Generator
 from typing import Iterable as _Iterable
 from typing import Literal as _Literal
 from typing import NamedTuple as _NamedTuple
-from typing import Optional as _Optional
 from typing import TextIO as _TextIO
-from typing import Union as _Union
 
 import h5py as _h5py
 import numpy as _np
 
 from . import version as _version
-from ._typehints import FileHandle as _FileHandle
+from ._typehints import FileHandleText as _FileHandleText
 from ._typehints import FloatSequence as _FloatSequence
 from ._typehints import IntSequence as _IntSequence
 from ._typehints import NumpyRngSeed as _NumpyRngSeed
@@ -162,8 +161,8 @@ def strikeout(msg) -> str:
 
 def run(cmd: str,
         wd: str = './',
-        env: _Optional[dict[str, str]] = None,
-        timeout: _Optional[int] = None) -> stdioTuple:
+        env: dict[str, str] | None = None,
+        timeout: int | None = None) -> stdioTuple:
     """
     Run a command.
 
@@ -215,7 +214,7 @@ def run(cmd: str,
 
 
 @_contextlib.contextmanager
-def open_text(fname: _FileHandle,
+def open_text(fname: _FileHandleText,
               mode: _Literal['r','w'] = 'r') -> _Generator[_TextIO, None, None]:                    # noqa
     """
     Open a text file with Unix line endings.
@@ -236,7 +235,7 @@ def open_text(fname: _FileHandle,
     f : file handle
         File handle for a text file.
     """
-    if isinstance(fname, (str,_Path)):
+    if isinstance(fname, (str,_PathLike)):
         fhandle = open(_Path(fname).expanduser(),mode,newline=('\n' if mode == 'w' else None))
         yield fhandle
         fhandle.close()
@@ -256,7 +255,7 @@ def time_stamp() -> str:
     return _datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
 
 def execution_stamp(class_name: str,
-                    function_name: _Optional[str] = None) -> str:
+                    function_name: str | None = None) -> str:
     """
     Timestamp the execution of a (function within a) class.
 
@@ -268,7 +267,7 @@ def execution_stamp(class_name: str,
     return f'damask.{class_name}{_function_name} v{_version} ({time_stamp()})'
 
 
-def natural_sort(key: str) -> list[_Union[int, str]]:
+def natural_sort(key: str) -> list[int | str]:
     """
     Natural sort.
 
@@ -282,7 +281,7 @@ def natural_sort(key: str) -> list[_Union[int, str]]:
 
 
 def show_progress(iterable: _Iterable,
-                  N_iter: _Optional[int] = None,
+                  N_iter: int | None = None,
                   prefix: str = '',
                   bar_length: int = 50) -> _Any:
     """
@@ -459,7 +458,7 @@ def project_equal_area(vector: _np.ndarray,
 
 def hybrid_IA(dist: _FloatSequence,
               N: int,
-              rng_seed: _Optional[_NumpyRngSeed] = None) -> _np.ndarray:
+              rng_seed: _NumpyRngSeed | None = None) -> _np.ndarray:
     """
     Hybrid integer approximation.
 
@@ -607,7 +606,7 @@ def shapeblender(a: tuple[int, ...],
         return _np.broadcast_shapes(a_,_b)
 
 
-def DREAM3D_base_group(fname: _Union[str, _Path, _h5py.File],
+def DREAM3D_base_group(fname: str | _PathLike | _h5py.File,
                        file_version: _Literal['7.0', '8.0']) -> str:
     """
     Determine the base group of a DREAM3D file.
@@ -642,7 +641,7 @@ def DREAM3D_base_group(fname: _Union[str, _Path, _h5py.File],
     with _h5py.File(_Path(fname).expanduser(),'r') as f:
         return get_base_group(f, file_version)
 
-def DREAM3D_cell_data_group(fname: _Union[str, _Path, _h5py.File],
+def DREAM3D_cell_data_group(fname: str | _PathLike | _h5py.File,
                             file_version: _Literal['7.0', '8.0']) -> str:
     """
     Determine the cell data group of a DREAM3D file.
@@ -725,8 +724,8 @@ def _standardize_MillerBravais(idx: _IntSequence) -> _np.ndarray:
 
 
 def Bravais_to_Miller(*,
-                      uvtw: _Optional[_IntSequence] = None,
-                      hkil: _Optional[_IntSequence] = None) -> _np.ndarray:                         # numpydoc ignore=PR01,PR02
+                      uvtw: _IntSequence | None = None,
+                      hkil: _IntSequence | None = None) -> _np.ndarray:                             # numpydoc ignore=PR01,PR02
     """
     Transform 4 Miller–Bravais indices to 3 Miller indices of crystal direction [uvw] or plane normal (hkl).
 
@@ -760,8 +759,8 @@ MillerBravais_to_Miller = Bravais_to_Miller
 
 
 def Miller_to_Bravais(*,
-                      uvw: _Optional[_IntSequence] = None,
-                      hkl: _Optional[_IntSequence] = None) -> _np.ndarray:                          # numpydoc ignore=PR01,PR02
+                      uvw: _IntSequence | None = None,
+                      hkl: _IntSequence | None = None) -> _np.ndarray:                               # numpydoc ignore=PR01,PR02
     """
     Transform 3 Miller indices to 4 Miller–Bravais indices of crystal direction [uvtw] or plane normal (hkil).
 

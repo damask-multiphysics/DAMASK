@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-from typing import Any, Optional, Union
+from typing import Any
 
 from . import YAML
-from ._typehints import FileHandle
+from ._typehints import FileHandleText
 from ._yaml import MaskedMatrixDumper
 
 
@@ -10,10 +10,10 @@ class LoadcaseGrid(YAML):
     """Load case for grid solver."""
 
     def __init__(self,
-                 config: Optional[Union[str,dict[str,Any]]] = None,
+                 config: str | dict[str, Any] | None = None,
                  *,
-                 solver: Optional[dict[str,str]] = None,
-                 loadstep: Optional[list[dict[str,Any]]] = None):
+                 solver: dict[str, str] | None = None,
+                 loadstep: list[dict[str, Any]] | None = None):
         """
         New grid solver load case.
 
@@ -28,8 +28,8 @@ class LoadcaseGrid(YAML):
             Load step configuration.
             Defaults to an empty list if 'config' is not given.
         """
-        kwargs: dict[str,Union[dict[str,str],list[dict[str,Any]]]] = {}
-        default: Union[list,dict]
+        kwargs: dict[str,dict[str,str] | list[dict[str,Any]]] = {}
+        default: list | dict
         for arg,value,default in [('solver',solver,{}),('loadstep',loadstep,[])]:                   # type: ignore[assignment]
             if value is not None:
                 kwargs[arg] = value
@@ -40,7 +40,7 @@ class LoadcaseGrid(YAML):
 
 
     def save(self,
-             fname: FileHandle,
+             fname: FileHandleText,
              **kwargs):
         """
         Save to YAML file.

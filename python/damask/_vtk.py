@@ -3,8 +3,9 @@ import contextlib
 import logging
 import os
 import threading
+from os import PathLike
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Literal
 
 import numpy as np
 
@@ -378,7 +379,7 @@ class VTK:
 
 
     @staticmethod
-    def load(fname: Union[str, Path],
+    def load(fname: str | PathLike,
              dataset_type: Literal[None, 'ImageData', 'UnstructuredGrid', 'PolyData', 'RectilinearGrid'] = None) -> 'VTK':
         """
         Load from VTK file.
@@ -455,7 +456,7 @@ class VTK:
         writer.Write()
 
     def save(self,
-             fname: Union[str, Path],
+             fname: str | PathLike,
              parallel: bool = True,
              compress: bool = True):
         """
@@ -470,7 +471,7 @@ class VTK:
         compress : bool, optional
             Compress with zlib algorithm. Defaults to True.
         """
-        writer: Optional[vtkXMLWriter] = (
+        writer: vtkXMLWriter | None = (
             vtkXMLImageDataWriter() if isinstance(self.vtk_data, vtkImageData) else
             vtkXMLUnstructuredGridWriter() if isinstance(self.vtk_data, vtkUnstructuredGrid) else
             vtkXMLPolyDataWriter() if isinstance(self.vtk_data, vtkPolyData) else
@@ -502,7 +503,7 @@ class VTK:
 
 
     def save_VTKHDF(self,
-                    fname: Union[str, Path]):
+                    fname: str | PathLike):
         """
         Save as VTKHDF file.
 
@@ -530,9 +531,9 @@ class VTK:
 
     def set(self,
             label: str,
-            data: Union[np.ndarray, np.ma.MaskedArray],
-            component_names: Optional[StrSequence] = None,
-            info: Optional[str] = None) -> 'VTK':
+            data: np.ndarray | np.ma.MaskedArray,
+            component_names: StrSequence | None = None,
+            info: str | None = None) -> 'VTK':
         """
         Add new or replace existing point or cell data.
 
@@ -613,9 +614,9 @@ class VTK:
 
     def set_from_table(self,
                        table: 'Table',
-                       labels: Optional[StrSequence] = None,
-                       component_names: Optional[dict[str,StrSequence]] = None,
-                       info: Optional[str] = None) -> 'VTK':
+                       labels: StrSequence | None = None,
+                       component_names: dict[str,StrSequence] | None = None,
+                       info: str | None = None) -> 'VTK':
         """
         Add new or replace existing point or cell data from damask.Table.
 
@@ -673,7 +674,7 @@ class VTK:
         point_data: vtkPointData = self.vtk_data.GetPointData()
 
         if label in [cell_data.GetArrayName(i) for i in range(cell_data.GetNumberOfArrays())]:
-            vtk_container: Union[vtkPointData,vtkCellData] = cell_data
+            vtk_container: vtkPointData | vtkCellData = cell_data
         elif label in [point_data.GetArrayName(i) for i in range(point_data.GetNumberOfArrays())]:
             vtk_container = point_data
         else:
@@ -721,8 +722,8 @@ class VTK:
 
 
     def show(self,
-             label: Optional[str] = None,
-             colormap: Union[Colormap, str] = 'cividis'):
+             label: str | None = None,
+             colormap: str | Colormap = 'cividis'):
         """
         Render.
 

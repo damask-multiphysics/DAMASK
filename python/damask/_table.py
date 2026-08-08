@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import copy
 import re
-from typing import Iterable, Mapping, Optional, Sequence, Union
+from typing import Iterable, Mapping, Sequence, Union
 
 import numpy as np
 import pandas as pd
 
 from . import util
-from ._typehints import FileHandle
+from ._typehints import FileHandleText
 
 
 class Table:
@@ -15,9 +15,9 @@ class Table:
 
     def __init__(self,
                  shapes: Mapping[str,Union[Union[int,np.integer],tuple[Union[int,np.integer],...]]] = {},
-                 data: Optional[Union[np.ndarray,pd.DataFrame]] = None,
-                 comments: Union[None, str, Iterable[str]] = None,
-                 dtypes: Optional[Mapping[str,Union[str,np.dtype]]] = None):
+                 data: np.ndarray | pd.DataFrame | None = None,
+                 comments: str | Iterable[str] | None = None,
+                 dtypes: Mapping[str,str | np.dtype] | None = None):
         """
         New spreadsheet.
 
@@ -154,7 +154,7 @@ class Table:
 
 
     def _label(self,
-               what: Union[str, Sequence[str]],
+               what: str | Sequence[str],
                how: str) -> list[str]:
         """
         Expand labels according to data shape.
@@ -264,7 +264,7 @@ class Table:
 
 
     @staticmethod
-    def load(fname: FileHandle) -> 'Table':
+    def load(fname: FileHandleText) -> 'Table':
         """
         Load from ASCII table file.
 
@@ -311,7 +311,7 @@ class Table:
 
 
     @staticmethod
-    def load_ang(fname: FileHandle,
+    def load_ang(fname: FileHandleText,
                  shapes = {'eu':3,
                            'pos':2,
                            'IQ':1,
@@ -392,7 +392,7 @@ class Table:
     def set(self,
             label: str,
             data: np.ndarray,
-            info: Optional[str] = None) -> 'Table':
+            info: str | None = None) -> 'Table':
         """
         Add new or replace existing column data.
 
@@ -465,9 +465,9 @@ class Table:
 
 
     def rename(self,
-               old: Union[str, Iterable[str]],
-               new: Union[str, Iterable[str]],
-               info: Optional[str] = None) -> 'Table':
+               old: str | Iterable[str],
+               new: str | Iterable[str],
+               info: str | None = None) -> 'Table':
         """
         Rename column data.
 
@@ -493,8 +493,8 @@ class Table:
 
 
     def sort_by(self,
-                labels: Union[str, list[str]],
-                ascending: Union[bool, list[bool]] = True) -> 'Table':
+                labels: str | list[str],
+                ascending: bool | list[bool] = True) -> 'Table':
         """
         Sort table by data of given columns.
 
@@ -642,7 +642,7 @@ class Table:
 
 
     def save(self,
-             fname: FileHandle,
+             fname: FileHandleText,
              with_labels: bool = True):
         """
         Save as plain text file.

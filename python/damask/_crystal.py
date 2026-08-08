@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import math
-from typing import Literal, Optional, Union
+from typing import Literal
 
 import numpy as np
 
@@ -245,7 +245,7 @@ _kinematics: dict[BravaisLattice, dict[CrystalKinematics, list[np.ndarray]]] = {
 }
 
 
-lattice_symmetries: dict[Optional[BravaisLattice], CrystalFamily] = {
+lattice_symmetries: dict[BravaisLattice | None, CrystalFamily] = {
                 'aP': 'triclinic',
 
                 'mP': 'monoclinic',
@@ -709,10 +709,10 @@ class Crystal():
     """
 
     def __init__(self, *,
-                 family: Optional[CrystalFamily] = None,
-                 lattice: Optional[BravaisLattice] = None,
-                 a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                 alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                 family: CrystalFamily | None = None,
+                 lattice: BravaisLattice | None = None,
+                 a: float | None = None, b: float | None = None, c: float | None = None,
+                 alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                  degrees: bool = False):
         """
         New representation of a crystal.
@@ -825,7 +825,7 @@ class Crystal():
                 self.family == other.family)
 
     @property
-    def parameters(self) -> Optional[dict]:
+    def parameters(self) -> dict | None:
         """
         Return lattice parameters.
 
@@ -900,7 +900,7 @@ class Crystal():
 
 
     @property
-    def standard_triangle(self) -> Union[dict[str, np.ndarray], None]:
+    def standard_triangle(self) -> dict[str, np.ndarray] | None:
         """
         Return corners of the standard triangle.
 
@@ -1167,8 +1167,8 @@ class Crystal():
                                            ])
 
     def to_lattice(self, *,
-                   direction: Optional[FloatSequence] = None,
-                   plane: Optional[FloatSequence] = None) -> np.ndarray:                            # numpydoc ignore=PR01,PR02
+                   direction: FloatSequence | None = None,
+                   plane: FloatSequence | None = None) -> np.ndarray:                            # numpydoc ignore=PR01,PR02
         """
         Calculate lattice vector corresponding to crystal frame direction or plane normal.
 
@@ -1193,10 +1193,10 @@ class Crystal():
 
 
     def to_frame(self, *,
-                 uvw: Optional[IntSequence] = None,
-                 hkl: Optional[IntSequence] = None,
-                 uvtw: Optional[IntSequence] = None,
-                 hkil: Optional[IntSequence] = None) -> np.ndarray:                                 # numpydoc ignore=PR01,PR02
+                 uvw: IntSequence | None = None,
+                 hkl: IntSequence | None = None,
+                 uvtw: IntSequence | None = None,
+                 hkil: IntSequence | None = None) -> np.ndarray:                                 # numpydoc ignore=PR01,PR02
         """
         Calculate crystal frame vector corresponding to lattice direction [uvw]/[uvtw] or plane normal (hkl)/(hkil).
 
@@ -1273,7 +1273,7 @@ class Crystal():
 
 
     def characteristic_shear_twin(self,
-                                  N_twin: Union[list[int], Literal['*']] = '*') -> np.ndarray:
+                                  N_twin: list[int] | Literal['*'] = '*') -> np.ndarray:
         """
         Return characteristic shear for twinning.
 
@@ -1375,8 +1375,8 @@ class Crystal():
 
 
     def Schmid(self, *,
-               N_slip: Optional[Union[IntSequence, Literal['*']]] = None,
-               N_twin: Optional[Union[IntSequence, Literal['*']]] = None) -> np.ndarray:            # numpydoc ignore=PR01,PR02
+               N_slip: IntSequence | Literal['*'] | None = None,
+               N_twin: IntSequence | Literal['*'] | None = None) -> np.ndarray:            # numpydoc ignore=PR01,PR02
         u"""
         Calculate Schmid matrix P = d ⨂ n for selected deformation systems.
 

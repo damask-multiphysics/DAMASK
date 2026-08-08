@@ -4,7 +4,6 @@ import functools
 import json
 import os
 from itertools import chain
-from typing import Optional, Union
 
 import matplotlib as mpl
 
@@ -19,7 +18,7 @@ from numpy import typing as npt
 from PIL import Image
 
 from . import Table, util
-from ._typehints import FileHandle, FloatSequence
+from ._typehints import FileHandleText, FloatSequence
 
 
 _EPS   = 216./24389.
@@ -321,7 +320,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def at(self,
-           fraction : Union[float,FloatSequence]) -> np.ndarray:
+           fraction : float | FloatSequence) -> np.ndarray:
         """
         Interpolate color at fraction.
 
@@ -352,8 +351,8 @@ class Colormap(mpl.colors.ListedColormap):
 
     def shade(self,
               field: np.ndarray,
-              bounds: Optional[FloatSequence] = None,
-              gap: Optional[float] = None) -> Image.Image:
+              bounds: FloatSequence | None = None,
+              gap: float | None = None) -> Image.Image:
         """
         Generate PIL image of 2D field using colormap.
 
@@ -394,7 +393,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def reversed(self,
-                 name: Optional[str] = None) -> 'Colormap':
+                 name: str | None = None) -> 'Colormap':
         """
         Reverse.
 
@@ -420,7 +419,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def save_paraview(self,
-                      fname: Optional[FileHandle] = None):
+                      fname: FileHandleText | None = None):
         """
         Save as JSON file for use in Paraview.
 
@@ -443,7 +442,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def save_ASCII(self,
-                   fname: Optional[FileHandle] = None):
+                   fname: FileHandleText | None = None):
         """
         Save as ASCII file.
 
@@ -460,7 +459,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def save_gmsh(self,
-                  fname: Optional[FileHandle] = None):
+                  fname: FileHandleText | None = None):
         """
         Save as ASCII file for use in gmsh.
 

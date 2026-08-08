@@ -15,7 +15,6 @@ the following operations are required for tensorial data:
 from typing import Literal as _Literal
 from typing import NamedTuple as _NamedTuple
 from typing import Tuple as _Tuple
-from typing import Union as _Union
 from typing import overload as _overload
 
 import numpy as _np
@@ -727,7 +726,7 @@ def regrid(size: _FloatSequence,
            F: _np.ndarray,
            cells: _IntSequence,
            max_coeff: int = 3,
-           max_candidates: _Union[None, int] = 200,
+           max_candidates: int | None = 200,
            return_size: _Literal[False] = False) -> _np.ndarray:
     ...
 @_overload
@@ -735,15 +734,15 @@ def regrid(size: _FloatSequence,
            F: _np.ndarray,
            cells: _IntSequence,
            max_coeff: int = 3,
-           max_candidates: _Union[None, int] = 200,
+           max_candidates: int | None = 200,
            return_size: _Literal[True] = True) -> RegridTuple:
     ...
 def regrid(size: _FloatSequence,
            F: _np.ndarray,
            cells: _IntSequence,
            max_coeff: int = 3,
-           max_candidates: _Union[None, int] = 200,
-           return_size: bool = False) -> _Union[_np.ndarray,RegridTuple]:
+           max_candidates: int | None = 200,
+           return_size: bool = False) -> _np.ndarray | RegridTuple:
     """
     Map a deformed grid A back to a rectilinear grid B.
 
@@ -777,7 +776,7 @@ def regrid(size: _FloatSequence,
     """
     def shortest_linear_combinations(bases: _np.ndarray,
                                      max_coeff: int,
-                                     max_candidates: _Union[None, int] = None) -> _np.ndarray:
+                                     max_candidates: int | None = None) -> _np.ndarray:
         """
         Generate candidate vectors as linear combinations of basis vectors.
 
