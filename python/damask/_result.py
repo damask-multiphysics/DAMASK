@@ -8,9 +8,10 @@ import os
 import re
 import xml.dom.minidom
 import xml.etree.ElementTree as ET                                                                  # noqa
+from os import PathLike
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Callable, Literal, NamedTuple, Optional, Sequence, Union
+from typing import Any, Callable, Literal, NamedTuple, Sequence
 
 import h5py
 import numpy as np
@@ -89,7 +90,7 @@ def _times_to_increments(choice: list[str],
     return resolved
 
 def _match(requested,
-           existing: Union[h5py.Group,list[str]]) -> list[str]:
+           existing: h5py.Group | list[str]) -> list[str]:
     """Find matches among two sets of labels."""
     def flatten_list(list_of_lists):
         return [e for e_ in list_of_lists for e in e_]
@@ -165,7 +166,7 @@ class Result:
     ...
     """
 
-    def __init__(self, fname: Union[str, Path]):
+    def __init__(self, fname: str | PathLike):
         """
         New result view bound to a DADF5 file.
 
@@ -266,11 +267,11 @@ class Result:
 
     def _manage_view(self,
                      action: Literal['set', 'add', 'del'],
-                     increments: Optional[Union[int, Sequence[int], str, Sequence[str], bool]] = None,
-                     times: Optional[Union[float, Sequence[float], Literal['*'], bool]] = None,
-                     phases: Optional[Union[str, Sequence[str], bool]] = None,
-                     homogenizations: Optional[Union[str, Sequence[str], bool]] = None,
-                     fields: Optional[Union[str, Sequence[str], bool]] = None) -> "Result":
+                     increments: int | Sequence[int] | str | Sequence[str] | bool | None = None,
+                     times: float | Sequence[float] | Literal['*'] | bool | None = None,
+                     phases: str | Sequence[str] | bool | None = None,
+                     homogenizations: str | Sequence[str] | bool | None = None,
+                     fields: str | Sequence[str] | bool | None = None) -> "Result":
         """
         Manage the visibility of the groups.
 
@@ -339,8 +340,8 @@ class Result:
 
 
     def increments_in_range(self,
-                            start: Union[None, str, int] = None,
-                            end: Union[None, str, int] = None) -> Sequence[int]:
+                            start: str | int | None = None,
+                            end: str | int | None = None) -> Sequence[int]:
         """
         Get all increments within a given range.
 
@@ -362,8 +363,8 @@ class Result:
         return [i for i in self._incs if s <= i <= e]
 
     def times_in_range(self,
-                       start: Optional[float] = None,
-                       end: Optional[float] = None) -> Sequence[float]:
+                       start: float | None = None,
+                       end: float | None = None) -> Sequence[float]:
         """
         Get times of all increments within a given time range.
 
@@ -385,12 +386,12 @@ class Result:
 
 
     def view(self,*,
-             increments: Optional[Union[int, Sequence[int], str, Sequence[str], bool]] = None,
-             times: Optional[Union[float, Sequence[float], Literal['*'], bool]] = None,
-             phases: Optional[Union[str, Sequence[str], bool]] = None,
-             homogenizations: Optional[Union[str, Sequence[str], bool]] = None,
-             fields: Optional[Union[str, Sequence[str], bool]] = None,
-             protected: Optional[bool] = None) -> "Result":
+             increments: int | Sequence[int] | str | Sequence[str] | bool | None = None,
+             times: float | Sequence[float] | Literal['*'] | bool | None = None,
+             phases: str | Sequence[str] | bool | None = None,
+             homogenizations: str | Sequence[str] | bool | None = None,
+             fields: str | Sequence[str] | bool | None = None,
+             protected: bool | None = None) -> "Result":
         """
         Set view.
 
@@ -442,11 +443,11 @@ class Result:
 
 
     def view_more(self,*,
-                  increments: Optional[Union[int, Sequence[int], str, Sequence[str], bool]] = None,
-                  times: Optional[Union[float, Sequence[float], Literal['*'], bool]] = None,
-                  phases: Optional[Union[str, Sequence[str], bool]] = None,
-                  homogenizations: Optional[Union[str, Sequence[str], bool]] = None,
-                  fields: Optional[Union[str, Sequence[str], bool]] = None) -> "Result":
+                  increments: int | Sequence[int] | str | Sequence[str] | bool | None = None,
+                  times: float | Sequence[float] | Literal['*'] | bool | None = None,
+                  phases: str | Sequence[str] | bool | None = None,
+                  homogenizations: str | Sequence[str] | bool | None = None,
+                  fields: str | Sequence[str] | bool | None = None) -> "Result":
         """
         Add to view.
 
@@ -485,11 +486,11 @@ class Result:
 
 
     def view_less(self,*,
-                  increments: Optional[Union[int, Sequence[int], str, Sequence[str], bool]] = None,
-                  times: Optional[Union[float, Sequence[float], Literal['*'], bool]] = None,
-                  phases: Optional[Union[str, Sequence[str], bool]] = None,
-                  homogenizations: Optional[Union[str, Sequence[str], bool]] = None,
-                  fields: Optional[Union[str, Sequence[str], bool]] = None) -> "Result":
+                  increments: int | Sequence[int] | str | Sequence[str] | bool | None = None,
+                  times: float | Sequence[float] | Literal['*'] | bool | None = None,
+                  phases: str | Sequence[str] | bool | None = None,
+                  homogenizations: str | Sequence[str] | bool | None = None,
+                  fields: str | Sequence[str] | bool | None = None) -> "Result":
         """
         Remove from view.
 
@@ -738,7 +739,7 @@ class Result:
                         formula: str,
                         name: str,
                         unit: str = 'n/a',
-                        description: Optional[str] = None):
+                        description: str | None = None):
         """
         Add result of a general formula.
 
@@ -962,7 +963,7 @@ class Result:
 
     def add_equivalent_Mises(self,
                              T_sym: str,
-                             kind: Optional[Literal['stress', 'strain']] = None):
+                             kind: Literal['stress', 'strain'] | None = None):
         """
         Add the equivalent von Mises stress or strain of a symmetric tensor.
 
@@ -993,7 +994,7 @@ class Result:
         >>> r = damask.Result(fname='my_file.hdf5')
         >>> r.add_equivalent_Mises(T_sym='epsilon_V^0.0(F)')
         """
-        def equivalent_Mises(T_sym: DADF5Dataset, kind: Optional[Literal['stress', 'strain']]) -> DADF5Dataset:
+        def equivalent_Mises(T_sym: DADF5Dataset, kind: Literal['stress', 'strain'] | None) -> DADF5Dataset:
             if (k := kind) is None:
                 match T_sym['meta']['unit']:
                     case '1':  k = 'strain'
@@ -1090,7 +1091,7 @@ class Result:
 
     def add_norm(self,
                  x: str,
-                 ord: Optional[Union[int, float, Literal['fro', 'nuc']]] = None):
+                 ord: int | float | Literal['fro', 'nuc'] | None = None):
         """
         Add the norm of a vector or tensor.
 
@@ -1105,10 +1106,10 @@ class Result:
         -----
         For details refer to ``numpy.linalg.norm``.
         """
-        def norm(x: DADF5Dataset, ord: Optional[Union[int, float, Literal['fro', 'nuc']]]) -> DADF5Dataset:
+        def norm(x: DADF5Dataset, ord: int | float | Literal['fro', 'nuc'] | None) -> DADF5Dataset:
             o = ord
             if len(x['data'].shape) == 2:
-                axis: Union[int, tuple[int, int]] = 1
+                axis: int | tuple[int, int] = 1
                 t = 'vector'
                 if o is None: o = 2
             elif len(x['data'].shape) == 3:
@@ -1134,8 +1135,8 @@ class Result:
     def add_pole(self,
                  q: str = 'O',
                  *,
-                 uvw: Optional[IntSequence] = None,
-                 hkl: Optional[IntSequence] = None,
+                 uvw: IntSequence | None = None,
+                 hkl: IntSequence | None = None,
                  with_symmetry: bool = False,
                  normalize: bool = True):
         """
@@ -1190,8 +1191,8 @@ class Result:
 
 
     def _add_resolved_shear_stress(self,
-                                   N_slip: Optional[Union[IntSequence, Literal['*']]] = None,
-                                   N_twin: Optional[Union[IntSequence, Literal['*']]] = None,
+                                   N_slip: IntSequence | Literal['*'] | None = None,
+                                   N_twin: IntSequence | Literal['*'] | None = None,
                                    P: str = 'P',
                                    F: str = 'F',
                                    q: str = 'O'):                                                   # numpydoc ignore=PR01,PR02
@@ -1216,7 +1217,7 @@ class Result:
         def format_idx(idx):
             return ' '.join([f'{i:2}' for i in idx])
 
-        def rss(N_def: Union[IntSequence, Literal['*']], mode: Literal['slip', 'twin'],
+        def rss(N_def: IntSequence | Literal['*'], mode: Literal['slip', 'twin'],
                 P: DADF5Dataset, F: DADF5Dataset, q: DADF5Dataset) -> DADF5Dataset:
             lattice: BravaisLattice = q['meta']['lattice']                                           # type: ignore[assignment]
             c_a: float = q['meta'].get('c/a',1.0)
@@ -1252,7 +1253,7 @@ class Result:
             self._add_generic_pointwise(rss,{'F':F, 'P':P, 'q':q},
                                             {'N_def': N_twin, 'mode': 'twin'})
 
-    def add_resolved_shear_stress_slip(self, N_slip: Union[IntSequence, Literal['*']],
+    def add_resolved_shear_stress_slip(self, N_slip: IntSequence | Literal['*'],
                                        P: str = 'P', F: str = 'F', q: str = 'O'):
         """
         Add resolved shear stress on slip systems.
@@ -1274,7 +1275,7 @@ class Result:
         """
         self._add_resolved_shear_stress(N_slip = N_slip, P = P, F = F, q = q)
 
-    def add_resolved_shear_stress_twin(self, N_twin: Union[IntSequence, Literal['*']],
+    def add_resolved_shear_stress_twin(self, N_twin: IntSequence | Literal['*'],
                                        P: str = 'P', F: str = 'F', q: str = 'O'):
         """
         Add resolved shear stress on twin  systems.
@@ -1675,7 +1676,7 @@ class Result:
     def _add_generic_pointwise(self,
                                func: Callable[..., DADF5Dataset],
                                datasets: dict[str, str],
-                               args: Optional[dict[str, Any]] = None):
+                               args: dict[str, Any] | None = None):
         """
         General function to add pointwise data.
 
@@ -1695,7 +1696,7 @@ class Result:
         def job_pointwise(group: str,
                           callback: Callable[..., DADF5Dataset],
                           datasets: dict[str, str],
-                          args: dict[str, str]) -> Union[None, DADF5Dataset]:
+                          args: dict[str, str]) -> DADF5Dataset | None:
             try:
                 datasets_in = {}
                 with h5py.File(self.fname,'r') as f:
@@ -1776,9 +1777,9 @@ class Result:
 
 
     def get(self,
-            output: Union[str, list[str]] = '*',
+            output: str | list[str] = '*',
             flatten: bool = True,
-            prune: bool = True) -> Union[None,dict[str,Any]]:
+            prune: bool = True) -> dict[str,Any] | None:
         """
         Collect data per phase/homogenization reflecting the group/folder structure in the DADF5 file.
 
@@ -1826,12 +1827,12 @@ class Result:
 
 
     def place(self,
-              output: Union[str, list[str]] = '*',
+              output: str | list[str] = '*',
               flatten: bool = True,
               prune: bool = True,
-              constituents: Optional[IntSequence] = None,
+              constituents: IntSequence | None = None,
               fill_float: float = np.nan,
-              fill_int: int = 0) -> Optional[dict[str,Any]]:
+              fill_int: int = 0) -> dict[str,Any] | None:
         """
         Merge data into spatial order that is compatible with the damask.VTK geometry representation.
 
@@ -1929,8 +1930,8 @@ class Result:
 
 
     def export_XDMF(self,
-                    output: Union[str, list[str]] = '*',
-                    target_dir: Union[None, str, Path] = None,
+                    output: str | list[str] = '*',
+                    target_dir: str | PathLike | None = None,
                     absolute_path: bool = False):
         """
         Write XDMF file to directly visualize data from DADF5 file.
@@ -2059,10 +2060,10 @@ class Result:
 
 
     def export_VTK(self,
-                   output: Union[str,list[str]] = '*',
+                   output: str | list[str] = '*',
                    mode: str = 'cell',
-                   constituents: Optional[IntSequence] = None,
-                   target_dir: Union[None, str, Path] = None,
+                   constituents: IntSequence | None = None,
+                   target_dir: str | PathLike | None = None,
                    fill_float: float = np.nan,
                    fill_int: int = 0,
                    parallel: bool = True):
@@ -2174,7 +2175,7 @@ class Result:
 
     def export_DREAM3D(self,
                        q: str = 'O',
-                       target_dir: Union[None, str, Path] = None):
+                       target_dir: str | PathLike | None = None):
         """
         Export the visible components to DREAM3D compatible files.
 
@@ -2303,7 +2304,7 @@ class Result:
 
     def export_DADF5(self,
                      fname,
-                     output: Union[str, list[str]] = '*',
+                     output: str | list[str] = '*',
                      mapping = None):
         """
         Export visible components into a new DADF5 file.
@@ -2401,8 +2402,8 @@ class Result:
                                    None if mapping is None else mappings[kind][label.encode()])
 
     def export_simulation_setup(self,
-                     output: Union[str, list[str]] = '*',
-                     target_dir: Union[None, str, Path] = None,
+                     output: str | list[str] = '*',
+                     target_dir: str | PathLike | None = None,
                      overwrite: bool = False,
                      ):
         """
@@ -2420,8 +2421,8 @@ class Result:
             Defaults to False.
         """
         def export(name: str,
-                   obj: Union[h5py.Dataset,h5py.Group],
-                   output: Union[str,list[str]],
+                   obj: h5py.Dataset | h5py.Group,
+                   output: str | list[str],
                    cfg_dir: Path,
                    overwrite: bool):
 
@@ -2445,7 +2446,7 @@ class Result:
                     f: h5py.File,
                     inc: str,
                     kind: str,
-                    output: Union[str, list[str]] = '*'):
+                    output: str | list[str] = '*'):
         """
         Get the layout of visible groups/datasets for selected datasets.
 

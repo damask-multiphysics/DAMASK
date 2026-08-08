@@ -3,7 +3,7 @@ import builtins
 import copy
 import re
 import sys
-from typing import Literal, NamedTuple, Optional, Sequence, TypeVar, Union
+from typing import Literal, NamedTuple, Sequence, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -137,7 +137,7 @@ class Rotation:
 
 
     def __copy__(self: MyType,
-                 rotation: Optional[Union[FloatSequence, 'Rotation']] = None) -> MyType:
+                 rotation: Union[None, FloatSequence, 'Rotation'] = None) -> MyType:
         """
         Return deepcopy(self).
 
@@ -269,9 +269,9 @@ class Rotation:
 
 
     def __array__(self: MyType,
-                  dtype: Optional[npt.DTypeLike] = None,
+                  dtype: npt.DTypeLike | None = None,
                   *,
-                  copy: Optional[bool] = None) -> np.ndarray:
+                  copy: bool | None = None) -> np.ndarray:
         """Initializer for numpy."""
         return np.asarray(self.quaternion,dtype) if util.version(np.__version__) < '2.0.0' else \
                np.asarray(self.quaternion,dtype,copy=copy)
@@ -298,7 +298,7 @@ class Rotation:
 
 
     def __pow__(self: MyType,
-                exp: Union[float, int]) -> MyType:
+                exp: float | int) -> MyType:
         """
         Return self**exp.
 
@@ -314,7 +314,7 @@ class Rotation:
         return self.copy(Rotation(np.block([np.cos(exp*phi),np.sin(exp*phi)*p]))._standardize())
 
     def __ipow__(self: MyType,
-                 exp: Union[float, int]) -> MyType:
+                 exp: float | int) -> MyType:
         """
         Return self**=exp.
 
@@ -519,7 +519,7 @@ class Rotation:
 
 
     def append(self: MyType,
-               other: Union[MyType, list[MyType]]) -> MyType:
+               other: MyType | list[MyType]) -> MyType:
         """
         Extend array along first dimension with other array(s).
 
@@ -556,7 +556,7 @@ class Rotation:
 
 
     def reshape(self: MyType,
-                newshape: Union[int, IntSequence],
+                newshape: int | IntSequence,
                 order: Literal['C','F','A'] = 'C') -> MyType:
         """
         Reshape array.
@@ -583,7 +583,7 @@ class Rotation:
 
 
     def broadcast_to(self: MyType,
-                     shape: Union[int, IntSequence],
+                     shape: int | IntSequence,
                      mode: Literal['left', 'right'] = 'right') -> MyType:
         """
         Broadcast array.
@@ -607,7 +607,7 @@ class Rotation:
 
 
     def average(self: MyType,
-                weights: Optional[FloatSequence] = None) -> MyType:
+                weights: FloatSequence | None = None) -> MyType:
         """
         Average along last array dimension.
 
@@ -739,7 +739,7 @@ class Rotation:
 
     def as_axis_angle(self,
                       degrees: bool = False,
-                      pair: bool = False) -> Union[AxisAngleTuple, np.ndarray]:
+                      pair: bool = False) -> AxisAngleTuple | np.ndarray:
         """
         Represent as axis–angle pair.
 
@@ -867,7 +867,7 @@ class Rotation:
     # Static constructors. The input data needs to follow the conventions, options allow to
     # relax the conventions.
     @staticmethod
-    def from_quaternion(q: Union[Sequence[FloatSequence], np.ndarray],
+    def from_quaternion(q: Sequence[FloatSequence] | np.ndarray,
                         accept_homomorph: bool = False,
                         normalize: bool = False,
                         P: Literal[1, -1] = -1) -> 'Rotation':
@@ -1249,8 +1249,8 @@ class Rotation:
 
 
     @staticmethod
-    def from_random(shape: Union[None, int, IntSequence] = None,
-                    rng_seed: Optional[NumpyRngSeed] = None) -> 'Rotation':
+    def from_random(shape: int | IntSequence | None = None,
+                    rng_seed: NumpyRngSeed | None = None) -> 'Rotation':
         """
         Initialize with samples from a uniform distribution.
 
@@ -1283,10 +1283,10 @@ class Rotation:
     @staticmethod
     def from_ODF(weights: np.ndarray,
                  phi: np.ndarray,
-                 shape: Union[None, int, IntSequence] = None,
+                 shape: int | IntSequence | None = None,
                  degrees: bool = False,
                  fractions: bool = True,
-                 rng_seed: Optional[NumpyRngSeed] = None) -> 'Rotation':
+                 rng_seed: NumpyRngSeed | None = None) -> 'Rotation':
         """
         Initialize with samples from a binned orientation distribution function (ODF).
 
@@ -1342,9 +1342,9 @@ class Rotation:
     @staticmethod
     def from_spherical_component(center: 'Rotation',
                                  sigma: float,
-                                 shape: Union[None, int, IntSequence] = None,
+                                 shape: int | IntSequence | None = None,
                                  degrees: bool = False,
-                                 rng_seed: Optional[NumpyRngSeed] = None) -> 'Rotation':
+                                 rng_seed: NumpyRngSeed | None = None) -> 'Rotation':
         """
         Initialize with samples from a Gaussian distribution around a given center.
 
@@ -1399,9 +1399,9 @@ class Rotation:
     def from_fiber_component(crystal: IntSequence,
                              sample: IntSequence,
                              sigma: float = 0.,
-                             shape: Union[None, int, IntSequence] = None,
+                             shape: int | IntSequence | None = None,
                              degrees: bool = False,
-                             rng_seed: Optional[NumpyRngSeed] = None) -> 'Rotation':
+                             rng_seed: NumpyRngSeed | None = None) -> 'Rotation':
         """
         Initialize with samples from a Gaussian distribution around a given direction.
 

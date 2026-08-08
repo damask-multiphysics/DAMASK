@@ -2,8 +2,8 @@
 import copy
 import os
 from functools import partial
-from pathlib import Path
-from typing import Optional, Sequence, Union
+from os import PathLike
+from typing import Sequence
 
 import h5py
 import numpy as np
@@ -29,7 +29,7 @@ class IcDict(dict):
         super().__init__()
         self.cells = cells
 
-    def __setitem__(self, k: str, v: Union[float, np.ndarray]):
+    def __setitem__(self, k: str, v: float | np.ndarray):
         """
         Set a single initial condition key with validation and broadcasting.
 
@@ -77,8 +77,8 @@ class GeomGrid:
                  material: np.ndarray,
                  size: FloatSequence,
                  origin: FloatSequence = np.zeros(3),
-                 initial_conditions: Optional[dict[str,np.ndarray]] = None,
-                 comments: Union[None, str, Sequence[str]] = None):
+                 initial_conditions: dict[str,np.ndarray] | None = None,
+                 comments: str | Sequence[str] | None = None):
         """
         New geometry definition for grid solvers.
 
@@ -266,7 +266,7 @@ class GeomGrid:
 
 
     @staticmethod
-    def _load(fname: Union[str, Path], label: str) -> 'GeomGrid':
+    def _load(fname: str | PathLike, label: str) -> 'GeomGrid':
         """
         Load from VTK ImageData file.
 
@@ -296,7 +296,7 @@ class GeomGrid:
                        )
 
     @staticmethod
-    def load(fname: Union[str, Path]) -> 'GeomGrid':
+    def load(fname: str | PathLike) -> 'GeomGrid':
         """
         Load from VTK ImageData file with material IDs stored as 'material'.
 
@@ -315,7 +315,7 @@ class GeomGrid:
 
 
     @staticmethod
-    def load_SPPARKS(fname: Union[str, Path]) -> 'GeomGrid':
+    def load_SPPARKS(fname: str | PathLike) -> 'GeomGrid':
         """
         Load from SPPARKS VTK dump.
 
@@ -339,7 +339,7 @@ class GeomGrid:
 
 
     @staticmethod
-    def load_Neper(fname: Union[str, Path]) -> 'GeomGrid':
+    def load_Neper(fname: str | PathLike) -> 'GeomGrid':
         """
         Load from Neper VTK file.
 
@@ -385,12 +385,12 @@ class GeomGrid:
 
 
     @staticmethod
-    def load_DREAM3D(fname: Union[str, Path],
-                     feature_IDs: Optional[str] = None,
-                     cell_data: Optional[str] = None,
+    def load_DREAM3D(fname: str | PathLike,
+                     feature_IDs: str | None = None,
+                     cell_data: str | None = None,
                      phases: str = 'Phases',
                      Euler_angles: str = 'EulerAngles',
-                     base_group: Optional[str] = None) -> 'GeomGrid':
+                     base_group: str | None = None) -> 'GeomGrid':
         """
         Load DREAM3D (HDF5) file.
 
@@ -483,7 +483,7 @@ class GeomGrid:
     @staticmethod
     def from_table(table: Table,
                    coordinates: str,
-                   labels: Union[str, Sequence[str]],
+                   labels: str | Sequence[str],
                    atol: float = 0.0) -> 'GeomGrid':
         """
         Create grid from ASCII table.
@@ -523,7 +523,7 @@ class GeomGrid:
                                    size: FloatSequence,
                                    seeds: np.ndarray,
                                    weights: FloatSequence,
-                                   material: Optional[IntSequence] = None,
+                                   material: IntSequence | None = None,
                                    periodic: bool = True):
         """
         Create grid from Laguerre tessellation.
@@ -580,7 +580,7 @@ class GeomGrid:
     def from_Voronoi_tessellation(cells: IntSequence,
                                   size: FloatSequence,
                                   seeds: np.ndarray,
-                                  material: Optional[IntSequence] = None,
+                                  material: IntSequence | None = None,
                                   periodic: bool = True) -> 'GeomGrid':
         """
         Create grid from Voronoi tessellation.
@@ -770,7 +770,7 @@ class GeomGrid:
 
 
     def save(self,
-             fname: Union[str, Path],
+             fname: str | PathLike,
              compress: bool = True):
         """
         Save as VTK ImageData file.
@@ -794,7 +794,7 @@ class GeomGrid:
 
 
     def show(self,
-             colormap: Union[Colormap, str] = 'cividis') -> None:
+             colormap: Colormap | str = 'cividis') -> None:
         """
         Show on screen.
 
@@ -809,9 +809,9 @@ class GeomGrid:
 
 
     def canvas(self,
-               cells: Optional[IntSequence] = None,
-               offset: Optional[IntSequence] = None,
-               fill: Optional[int] = None) -> 'GeomGrid':
+               cells: IntSequence | None = None,
+               offset: IntSequence | None = None,
+               fill: int | None = None) -> 'GeomGrid':
         """
         Crop or enlarge/pad grid.
 
@@ -921,7 +921,7 @@ class GeomGrid:
         if not set(directions).issubset(valid):
             raise ValueError(f'invalid direction "{set(directions).difference(valid)}" specified')
 
-        limits: Sequence[Optional[int]] = [None,None] if reflect else [-2,0]
+        limits: Sequence[int | None] = [None,None] if reflect else [-2,0]
         selection = (slice(limits[0],limits[1],-1),slice(None),slice(None))
         mat = self.material.copy()
         ic = self.initial_conditions.copy()
@@ -994,7 +994,7 @@ class GeomGrid:
 
     def rotate(self,
                R: Rotation,
-               fill: Optional[int] = None) -> 'GeomGrid':
+               fill: int | None = None) -> 'GeomGrid':
         """
         Rotate grid (possibly extending its bounding box).
 
@@ -1149,8 +1149,8 @@ class GeomGrid:
 
 
     def substitute(self,
-                   from_material: Union[int,IntSequence],
-                   to_material: Union[int,IntSequence]) -> 'GeomGrid':
+                   from_material: int | IntSequence,
+                   to_material: int | IntSequence) -> 'GeomGrid':
         """
         Substitute material indices.
 
@@ -1204,10 +1204,10 @@ class GeomGrid:
 
     def clean(self,
               distance: float = np.sqrt(3),
-              selection: Optional[IntSequence] = None,
+              selection: IntSequence | None = None,
               invert_selection: bool = False,
               periodic: bool = True,
-              rng_seed: Optional[NumpyRngSeed] = None) -> 'GeomGrid':
+              rng_seed: NumpyRngSeed | None = None) -> 'GeomGrid':
         """
         Smooth grid by selecting most frequent material ID within given stencil at each location.
 
@@ -1236,7 +1236,7 @@ class GeomGrid:
         If multiple material IDs are most frequent within a stencil, a random choice is taken.
         """
         def most_frequent(stencil: np.ndarray,
-                          selection: Union[None,np.ndarray],
+                          selection: np.ndarray | None,
                           rng: np.random.Generator):
             me = stencil[stencil.size//2]
             if selection is None or me in selection:
@@ -1270,10 +1270,10 @@ class GeomGrid:
 
 
     def add_primitive(self,
-                      dimension: Union[FloatSequence, IntSequence],
-                      center: Union[FloatSequence, IntSequence],
-                      exponent: Union[FloatSequence, float],
-                      fill: Optional[int] = None,
+                      dimension: FloatSequence | IntSequence,
+                      center: FloatSequence | IntSequence,
+                      exponent: FloatSequence | float,
+                      fill: int | None = None,
                       R: Rotation = Rotation(),
                       inverse: bool = False,
                       periodic: bool = True) -> 'GeomGrid':
@@ -1377,8 +1377,8 @@ class GeomGrid:
 
     def vicinity_offset(self,
                         distance: float = np.sqrt(3),
-                        offset: Optional[int] = None,
-                        selection: Optional[IntSequence] = None,
+                        offset: int | None = None,
+                        selection: IntSequence | None = None,
                         invert_selection: bool = False,
                         periodic: bool = True) -> 'GeomGrid':
         """

@@ -3,7 +3,7 @@ import abc
 import copy
 from collections.abc import Iterable
 from io import StringIO
-from typing import Any, Optional, Type, TypeVar, Union
+from typing import Any, Type, TypeVar
 
 import numpy as np
 import yaml
@@ -18,7 +18,7 @@ except ImportError:
     from yaml import SafeDumper                                                                     # type: ignore[assignment]
 
 from . import Rotation, util
-from ._typehints import FileHandle
+from ._typehints import FileHandleText
 
 
 MyType = TypeVar('MyType', bound='YAML')
@@ -46,7 +46,7 @@ class NiceDumper(SafeDumper):
         return True
 
     def write_line_break(self,
-                         data: Optional[str] = None):                                               # not for CSafeDumper
+                         data: str | None = None):                                                  # not for CSafeDumper
         """From https://github.com/yaml/pyyaml/issues/127."""
         super().write_line_break(data)                                                              # type: ignore[misc]
 
@@ -72,7 +72,7 @@ class YAML(dict):
     """YAML-based configuration."""
 
     def __init__(self,
-                 config: Optional[Union[str, dict[str, Any]]] = None,
+                 config: str | dict[str, Any] | None = None,
                  **kwargs):
         """
         New YAML-based configuration.
@@ -162,7 +162,7 @@ class YAML(dict):
 
 
     def delete(self: MyType,
-               keys: Union[Iterable, str]) -> MyType:
+               keys: str | Iterable[str]) -> MyType:
         """
         Remove configuration keys.
 
@@ -184,7 +184,7 @@ class YAML(dict):
 
     @classmethod
     def load(cls: Type[MyType],
-             fname: FileHandle) -> MyType:
+             fname: FileHandleText) -> MyType:
         """
         Load from YAML file with a dictionary at the top-level.
 
@@ -203,7 +203,7 @@ class YAML(dict):
 
 
     def save(self,
-             fname: FileHandle,
+             fname: FileHandleText,
              **kwargs):
         """
         Save to YAML file.

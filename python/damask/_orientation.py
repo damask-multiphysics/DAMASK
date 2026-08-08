@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import copy
 import warnings
-from typing import Literal, NamedTuple, Optional, Sequence, TypeVar, Union, overload
+from typing import Literal, NamedTuple, Sequence, Union, TypeVar, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -86,12 +86,12 @@ class Orientation(Rotation,Crystal):
     """
 
     def __init__(self,
-                 rotation: Union[FloatSequence, Rotation] = np.array([1.,0.,0.,0.]),
+                 rotation: FloatSequence | Rotation = np.array([1.,0.,0.,0.]),
                  *,
-                 family: Optional[CrystalFamily] = None,
-                 lattice: Optional[BravaisLattice] = None,
-                 a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                 alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                 family: CrystalFamily | None = None,
+                 lattice: BravaisLattice | None = None,
+                 a: float | None = None, b: float | None = None, c: float | None = None,
+                 alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                  degrees: bool = False):
         """
         New orientation.
@@ -140,7 +140,7 @@ class Orientation(Rotation,Crystal):
 
 
     def __copy__(self: MyType,
-                 rotation: Optional[Union[FloatSequence, Rotation]] = None) -> MyType:
+                 rotation: FloatSequence | Rotation | None = None) -> MyType:
         """
         Return deepcopy(self).
 
@@ -274,15 +274,15 @@ class Orientation(Rotation,Crystal):
 
 
     @staticmethod
-    def from_quaternion(q: Union[Sequence[FloatSequence], np.ndarray],
+    def from_quaternion(q: Sequence[FloatSequence] | np.ndarray,
                         accept_homomorph: bool = False,
                         normalize: bool = False,
                         P: Literal[1, -1] = -1,
                         *,
-                        family: Optional[CrystalFamily] = None,
-                        lattice: Optional[BravaisLattice] = None,
-                        a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                        alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                        family: CrystalFamily | None = None,
+                        lattice: BravaisLattice | None = None,
+                        a: float | None = None, b: float | None = None, c: float | None = None,
+                        alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                         degrees: bool = False) -> 'Orientation':
         """
         Initialize from quaternion.
@@ -332,10 +332,10 @@ class Orientation(Rotation,Crystal):
     def from_Euler_angles(phi: np.ndarray,
                           degrees: bool = False,
                           *,
-                          family: Optional[CrystalFamily] = None,
-                          lattice: Optional[BravaisLattice] = None,
-                          a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                          alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                          family: CrystalFamily | None = None,
+                          lattice: BravaisLattice | None = None,
+                          a: float | None = None, b: float | None = None, c: float | None = None,
+                          alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                           ) -> 'Orientation':
         """
         Initialize from Bunge Euler angles.
@@ -385,10 +385,10 @@ class Orientation(Rotation,Crystal):
                         normalize: bool = False,
                         P: Literal[1, -1] = -1,
                         *,
-                        family: Optional[CrystalFamily] = None,
-                        lattice: Optional[BravaisLattice] = None,
-                        a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                        alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                        family: CrystalFamily | None = None,
+                        lattice: BravaisLattice | None = None,
+                        a: float | None = None, b: float | None = None, c: float | None = None,
+                        alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                         ) -> 'Orientation':
         """
         Initialize from axis–angle pair.
@@ -437,10 +437,10 @@ class Orientation(Rotation,Crystal):
                    orthonormal: bool = True,
                    reciprocal: bool = False,
                    *,
-                   family: Optional[CrystalFamily] = None,
-                   lattice: Optional[BravaisLattice] = None,
-                   a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                   alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                   family: CrystalFamily | None = None,
+                   lattice: BravaisLattice | None = None,
+                   a: float | None = None, b: float | None = None, c: float | None = None,
+                   alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                    degrees: bool = False) -> 'Orientation':
         """
         Initialize from basis vector triplet.
@@ -487,10 +487,10 @@ class Orientation(Rotation,Crystal):
     def from_matrix(R: np.ndarray,
                     normalize: bool = False,
                     *,
-                    family: Optional[CrystalFamily] = None,
-                    lattice: Optional[BravaisLattice] = None,
-                    a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                    alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                    family: CrystalFamily | None = None,
+                    lattice: BravaisLattice | None = None,
+                    a: float | None = None, b: float | None = None, c: float | None = None,
+                    alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                     degrees: bool = False) -> 'Orientation':
         """
         Initialize from rotation matrix.
@@ -536,10 +536,10 @@ class Orientation(Rotation,Crystal):
                       target: np.ndarray,
                       active: bool = False,
                       *,
-                      family: Optional[CrystalFamily] = None,
-                      lattice: Optional[BravaisLattice] = None,
-                      a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                      alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                      family: CrystalFamily | None = None,
+                      lattice: BravaisLattice | None = None,
+                      a: float | None = None, b: float | None = None, c: float | None = None,
+                      alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                       degrees: bool = False) -> 'Orientation':
         """
         Initialize from pairs of two orthogonal basis vectors.
@@ -594,10 +594,10 @@ class Orientation(Rotation,Crystal):
                               normalize: bool = False,
                               P: Literal[1, -1] = -1,
                               *,
-                              family: Optional[CrystalFamily] = None,
-                              lattice: Optional[BravaisLattice] = None,
-                              a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                              alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                              family: CrystalFamily | None = None,
+                              lattice: BravaisLattice | None = None,
+                              a: float | None = None, b: float | None = None, c: float | None = None,
+                              alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                               degrees: bool = False) -> 'Orientation':
         """
         Initialize from Rodrigues–Frank vector (with angle separated from axis).
@@ -644,10 +644,10 @@ class Orientation(Rotation,Crystal):
     def from_homochoric(h: np.ndarray,
                         P: Literal[1, -1] = -1,
                         *,
-                        family: Optional[CrystalFamily] = None,
-                        lattice: Optional[BravaisLattice] = None,
-                        a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                        alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                        family: CrystalFamily | None = None,
+                        lattice: BravaisLattice | None = None,
+                        a: float | None = None, b: float | None = None, c: float | None = None,
+                        alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                         degrees: bool = False) -> 'Orientation':
         """
         Initialize from homochoric vector.
@@ -692,10 +692,10 @@ class Orientation(Rotation,Crystal):
     def from_cubochoric(x: np.ndarray,
                         P: Literal[1, -1] = -1,
                         *,
-                        family: Optional[CrystalFamily] = None,
-                        lattice: Optional[BravaisLattice] = None,
-                        a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                        alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                        family: CrystalFamily | None = None,
+                        lattice: BravaisLattice | None = None,
+                        a: float | None = None, b: float | None = None, c: float | None = None,
+                        alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                         degrees: bool = False) -> 'Orientation':
         """
         Initialize from cubochoric vector.
@@ -737,13 +737,13 @@ class Orientation(Rotation,Crystal):
                            degrees=degrees)
 
     @staticmethod
-    def from_random(shape: Union[None, int, IntSequence] = None,
-                    rng_seed: Optional[NumpyRngSeed] = None,
+    def from_random(shape: int | IntSequence | None = None,
+                    rng_seed: NumpyRngSeed | None = None,
                     *,
-                    family: Optional[CrystalFamily] = None,
-                    lattice: Optional[BravaisLattice] = None,
-                    a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                    alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                    family: CrystalFamily | None = None,
+                    lattice: BravaisLattice | None = None,
+                    a: float | None = None, b: float | None = None, c: float | None = None,
+                    alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                     degrees: bool = False) -> 'Orientation':
         """
         Initialize with samples from a uniform distribution.
@@ -788,15 +788,15 @@ class Orientation(Rotation,Crystal):
     @staticmethod
     def from_ODF(weights: np.ndarray,
                  phi: np.ndarray,
-                 shape: Union[None, int, IntSequence] = None,
+                 shape: int | IntSequence | None = None,
                  degrees: bool = False,
                  fractions: bool = True,
-                 rng_seed: Optional[NumpyRngSeed] = None,
+                 rng_seed: NumpyRngSeed | None = None,
                  *,
-                 family: Optional[CrystalFamily] = None,
-                 lattice: Optional[BravaisLattice] = None,
-                 a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                 alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                 family: CrystalFamily | None = None,
+                 lattice: BravaisLattice | None = None,
+                 a: float | None = None, b: float | None = None, c: float | None = None,
+                 alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                  ) -> 'Orientation':
         """
         Initialize with samples from a binned orientation distribution function (ODF).
@@ -859,16 +859,16 @@ class Orientation(Rotation,Crystal):
                            degrees=degrees)
 
     @staticmethod
-    def from_spherical_component(center: Union[Rotation,'Orientation'],
+    def from_spherical_component(center: Union[Rotation, 'Orientation'],
                                  sigma: float,
-                                 shape: Union[None, int, IntSequence] = None,
+                                 shape: int | IntSequence | None = None,
                                  degrees: bool = False,
-                                 rng_seed: Optional[NumpyRngSeed] = None,
+                                 rng_seed: NumpyRngSeed | None = None,
                                  *,
-                                 family: Optional[CrystalFamily] = None,
-                                 lattice: Optional[BravaisLattice] = None,
-                                 a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                                 alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                                 family: CrystalFamily | None = None,
+                                 lattice: BravaisLattice | None = None,
+                                 a: float | None = None, b: float | None = None, c: float | None = None,
+                                 alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                                  ) -> 'Orientation':
         """
         Initialize with samples from a Gaussian distribution around a given center.
@@ -918,14 +918,14 @@ class Orientation(Rotation,Crystal):
     def from_fiber_component(crystal: IntSequence,
                              sample: IntSequence,
                              sigma: float = 0.,
-                             shape: Union[None, int, IntSequence] = None,
+                             shape: int | IntSequence | None = None,
                              degrees: bool = False,
-                             rng_seed: Optional[NumpyRngSeed] = None,
+                             rng_seed: NumpyRngSeed | None = None,
                              *,
-                             family: Optional[CrystalFamily] = None,
-                             lattice: Optional[BravaisLattice] = None,
-                             a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                             alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                             family: CrystalFamily | None = None,
+                             lattice: BravaisLattice | None = None,
+                             a: float | None = None, b: float | None = None, c: float | None = None,
+                             alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                              ) -> 'Orientation':
         """
         Initialize with samples from a Gaussian distribution around a given direction.
@@ -1004,10 +1004,10 @@ class Orientation(Rotation,Crystal):
     def from_directions(uvw: IntSequence,
                         hkl: IntSequence,
                         *,
-                        family: Optional[CrystalFamily] = None,
-                        lattice: Optional[BravaisLattice] = None,
-                        a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
-                        alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
+                        family: CrystalFamily | None = None,
+                        lattice: BravaisLattice | None = None,
+                        a: float | None = None, b: float | None = None, c: float | None = None,
+                        alpha: float | None = None, beta: float | None = None, gamma: float | None = None,
                         degrees: bool = False) -> 'Orientation':
         """
         Initialize orientation object from the crystallographic direction and plane parallel to lab x and z, respectively.
@@ -1079,7 +1079,7 @@ class Orientation(Rotation,Crystal):
 
 
     @property
-    def in_FZ(self) -> Union[np.bool_, np.ndarray]:
+    def in_FZ(self) -> np.bool_ | np.ndarray:
         """
         Check whether orientation falls into fundamental zone of own symmetry.
 
@@ -1170,7 +1170,7 @@ class Orientation(Rotation,Crystal):
         ...
     def disorientation(self: MyType,
                        other: MyType,
-                       return_operators: bool = False) -> Union[MyType, DisorientationTuple]:
+                       return_operators: bool = False) -> MyType |  DisorientationTuple:
         """
         Calculate disorientation between self and given other orientation.
 
@@ -1340,8 +1340,8 @@ class Orientation(Rotation,Crystal):
 
 
     def average(self: MyType,                                                                       # type: ignore[override]
-                weights: Optional[FloatSequence] = None,
-                return_cloud: Optional[bool] = False) -> Union[MyType, AverageTuple]:
+                weights: FloatSequence | None = None,
+                return_cloud: bool | None = False) -> MyType |  AverageTuple:
         """
         Return orientation average over last dimension.
 
@@ -1393,7 +1393,7 @@ class Orientation(Rotation,Crystal):
                vector: FloatSequence,
                proper: bool = False,
                return_operator: bool = False,
-               return_operators: bool = False) -> Union[np.ndarray, ToSSTTuple]:
+               return_operators: bool = False) -> np.ndarray | ToSSTTuple:
         """
         Rotate lab frame vector to ensure it falls into (improper or proper) standard stereographic triangle of crystal symmetry.
 
@@ -1440,7 +1440,7 @@ class Orientation(Rotation,Crystal):
 
     def in_SST(self,
                vector: FloatSequence,
-               proper: bool = False) -> Union[np.bool_, np.ndarray]:
+               proper: bool = False) -> np.bool_ | np.ndarray:
         """
         Check whether given crystal frame vector falls into standard stereographic triangle of own symmetry.
 
@@ -1570,8 +1570,8 @@ class Orientation(Rotation,Crystal):
     # functions that require lattice, not just family
 
     def to_lattice(self, *,
-                   direction: Optional[FloatSequence] = None,
-                   plane: Optional[FloatSequence] = None) -> np.ndarray:                            # numpydoc ignore=PR01,PR02
+                   direction: FloatSequence | None = None,
+                   plane: FloatSequence | None = None) -> np.ndarray:                            # numpydoc ignore=PR01,PR02
         """
         Calculate lattice vector corresponding to lab frame direction or plane normal.
 
@@ -1614,10 +1614,10 @@ class Orientation(Rotation,Crystal):
 
 
     def to_frame(self, *,
-                 uvw: Optional[IntSequence] = None,
-                 hkl: Optional[IntSequence] = None,
-                 uvtw: Optional[IntSequence] = None,
-                 hkil: Optional[IntSequence] = None,
+                 uvw: IntSequence | None = None,
+                 hkl: IntSequence | None = None,
+                 uvtw: IntSequence | None = None,
+                 hkil: IntSequence | None = None,
                  with_symmetry: bool = False,
                  normalize: bool = True,
                  ) -> np.ndarray:                                                                   # numpydoc ignore=PR01,PR02
@@ -1661,8 +1661,8 @@ class Orientation(Rotation,Crystal):
 
 
     def Schmid(self, *,
-               N_slip: Optional[Union[IntSequence, Literal['*']]] = None,
-               N_twin: Optional[Union[IntSequence, Literal['*']]] = None) -> np.ndarray:            # numpydoc ignore=PR01,PR02
+               N_slip: IntSequence | Literal['*'] | None = None,
+               N_twin: IntSequence | Literal['*'] | None = None) -> np.ndarray:            # numpydoc ignore=PR01,PR02
         u"""
         Calculate Schmid matrix P = d ⨂ n in the lab frame for selected deformation systems.
 
@@ -1787,8 +1787,8 @@ class Orientation(Rotation,Crystal):
 
 
     def resolved_shear_stress(self, sigma: np.ndarray, *,
-                              N_slip: Optional[Union[IntSequence, Literal['*']]] = None,
-                              N_twin: Optional[Union[IntSequence, Literal['*']]] = None) -> npt.NDArray: # numpydoc ignore=PR01,PR02
+                              N_slip: IntSequence | Literal['*'] | None = None,
+                              N_twin: IntSequence | Literal['*'] | None = None) -> npt.NDArray: # numpydoc ignore=PR01,PR02
         """
         Calculate resolved shear stress on slip or twin systems.
 

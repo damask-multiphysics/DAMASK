@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import logging
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Sequence
 
 import h5py
 import numpy as np
@@ -21,10 +21,10 @@ class ConfigMaterial(YAML):
     """
 
     def __init__(self,
-                 config: Optional[Union[str,dict[str,Any]]] = None,*,
-                 homogenization: Optional[dict[str,dict]] = None,
-                 phase: Optional[dict[str,dict]] = None,
-                 material: Optional[list[dict[str,Any]]] = None):
+                 config: str | dict[str, Any] | None = None,*,
+                 homogenization: dict[str,dict] | None = None,
+                 phase: dict[str,dict] | None = None,
+                 material: list[dict[str,Any]] | None = None):
         """
         New material configuration.
 
@@ -42,7 +42,7 @@ class ConfigMaterial(YAML):
             Materialpoint configuration.
             Defaults to an empty list if 'config' is not given.
         """
-        kwargs: dict[str,Union[dict[str,dict],list[dict[str,Any]]]] = {}
+        kwargs: dict[str,dict[str,dict] | list[dict[str,Any]]] = {}
         for arg,value in zip(['homogenization','phase','material'],[homogenization,phase,material]):
             if value is None and config is None:
                 kwargs[arg] = [] if arg == 'material' else {}
@@ -54,13 +54,13 @@ class ConfigMaterial(YAML):
 
     @staticmethod
     def load_DREAM3D(fname: str,
-                     grain_data: Optional[str] = None,
-                     cell_data: Optional[str] = None,
+                     grain_data: str | None = None,
+                     cell_data: str | None = None,
                      cell_ensemble_data: str = 'CellEnsembleData',
                      phases: str = 'Phases',
                      Euler_angles: str = 'EulerAngles',
                      phase_names: str = 'PhaseName',
-                     base_group: Optional[str] = None) -> 'ConfigMaterial':
+                     base_group: str | None = None) -> 'ConfigMaterial':
         """
         Load DREAM3D (HDF5) file.
 
@@ -157,11 +157,11 @@ class ConfigMaterial(YAML):
 
     @staticmethod
     def from_table(table: Table,*,
-                   homogenization: Optional[Union[str,StrSequence]] = None,
-                   phase: Optional[Union[str,StrSequence]] = None,
-                   v: Optional[Union[str,FloatSequence]] = None,
-                   O: Optional[Union[str,FloatSequence]] = None,
-                   V_e: Optional[Union[str,FloatSequence]] = None) -> 'ConfigMaterial':
+                   homogenization: str | StrSequence | None = None,
+                   phase: str | StrSequence | None = None,
+                   v: str | FloatSequence | None = None,
+                   O: str | FloatSequence | None = None,
+                   V_e: str | FloatSequence | None = None) -> 'ConfigMaterial':
         """
         Generate from an ASCII table.
 
@@ -357,8 +357,8 @@ class ConfigMaterial(YAML):
 
     def material_rename_phase(self,
                               mapping: dict[str, str],
-                              ID: Optional[Sequence[int]] = None,
-                              constituent: Optional[Sequence[int]] = None) -> 'ConfigMaterial':
+                              ID: Sequence[int] | None = None,
+                              constituent: Sequence[int] | None = None) -> 'ConfigMaterial':
         """
         Change phase name in material.
 
@@ -390,7 +390,7 @@ class ConfigMaterial(YAML):
 
     def material_rename_homogenization(self,
                                        mapping: dict[str, str],
-                                       ID: Optional[Sequence[int]] = None) -> 'ConfigMaterial':
+                                       ID: Sequence[int] | None = None) -> 'ConfigMaterial':
         """
         Change homogenization name in material.
 
@@ -417,11 +417,11 @@ class ConfigMaterial(YAML):
 
 
     def material_add(self,*,
-                     homogenization: Optional[Union[str,StrSequence]] = None,
-                     phase: Optional[Union[str,StrSequence]] = None,
-                     v: Optional[Union[float,FloatSequence]] = None,
-                     O: Optional[Union[float,FloatSequence]] = None,
-                     V_e: Optional[Union[float,FloatSequence]] = None) -> 'ConfigMaterial':
+                     homogenization: str | StrSequence | None = None,
+                     phase: str | StrSequence | None = None,
+                     v: float | FloatSequence | None = None,
+                     O: float | FloatSequence | None = None,
+                     V_e: float | FloatSequence | None = None) -> 'ConfigMaterial':
         """
         Add material entries.
 

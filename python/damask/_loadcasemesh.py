@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-from typing import Any, Optional, Union
+from typing import Any
 
 from . import YAML
-from ._typehints import FileHandle
+from ._typehints import FileHandleText
 from ._yaml import MaskedMatrixDumper
 
 
@@ -10,9 +10,9 @@ class LoadcaseMesh(YAML):
     """Load case for mesh solver."""
 
     def __init__(self,
-                 config: Optional[Union[str,dict[str,Any]]] = None,
+                 config: str | dict[str, Any] | None = None,
                  *,
-                 loadstep: Optional[list[dict[str,Any]]] = None):
+                 loadstep: list[dict[str, Any]] | None = None):
         """
         New mesh solver load case.
 
@@ -24,7 +24,7 @@ class LoadcaseMesh(YAML):
             Load step configuration.
             Defaults to an empty list if 'config' is not given.
         """
-        kwargs: dict[str,Union[dict[str,str],list[dict[str,Any]]]] = {}
+        kwargs: dict[str,dict[str,str] | list[dict[str,Any]]] = {}
         if loadstep is not None:
             kwargs['loadstep'] = loadstep
         elif config is None:
@@ -34,7 +34,7 @@ class LoadcaseMesh(YAML):
 
 
     def save(self,
-             fname: FileHandle,
+             fname: FileHandleText,
              **kwargs):
         """
         Save to YAML file.
