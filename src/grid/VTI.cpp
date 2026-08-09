@@ -17,8 +17,8 @@
 #include <ISO_Fortran_binding.h>
 #include <cctype>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
-#include <functional>
 #include <span>
 #include <sstream>
 #include <stdexcept>
@@ -42,13 +42,13 @@
 
 constexpr int VTK_ERROR = 844;
 
-VTI::VTI(const char* file_path) {
-  if (!file_path)
+VTI::VTI(const fs::path& file_path) {
+  if (file_path.empty())
     IO::error(VTK_ERROR, "no valid geometry file path supplied");
   this->file_path = file_path;
   std::ifstream f(file_path, std::ios::binary);
   if (!f)
-    IO::error(VTK_ERROR, std::string("cannot open file '") + file_path + '\'');
+    IO::error(VTK_ERROR, std::string("cannot open file '") + file_path.string() + '\'');
   pt::read_xml(f, vti_tree);
 }
 
@@ -130,28 +130,19 @@ std::vector<uint8_t> VTI::decode_uncompressed_vti(const std::string& b64_string,
   return res_vec;
 }
 
-template <typename T>
-static void increment_integer_array(CFI_cdesc_t* desc) {
-  std::span<T> data(static_cast<T*>(desc->base_addr), static_cast<std::size_t>(desc->dim[0].extent));
-  for (T& v : data)
-    v += 1;
-}
-
-void VTI::read_dataset_int(const char* name, CFI_cdesc_t* desc) {
-  DecodedBuffer d = parse_cell_data_array(name);
-  if (desc->elem_len == sizeof(int32_t)) {
+void VTI::read_dataset_int(const std::string_view label, CFI_cdesc_t* desc) {
+  DecodedBuffer d = parse_cell_data_array(label);
+  if (desc->type == CFI_type_int32_t) {
     allocate_and_convert<int32_t>(d, desc);
-    increment_integer_array<int32_t>(desc);
-  } else if (desc->elem_len == sizeof(int64_t)) {
+  } else if (desc->type == CFI_type_int64_t) {
     allocate_and_convert<int64_t>(d, desc);
-    increment_integer_array<int64_t>(desc);
   } else {
-    IO::error(VTK_ERROR, "unsupported integer type for dataset '" + std::string(name) + "'");
+    IO::error(VTK_ERROR, "unsupported integer type for dataset '" + std::string(label) + "'");
   }
 }
 
-void VTI::read_dataset_real(const char* name, CFI_cdesc_t* desc) {
-  DecodedBuffer d = parse_cell_data_array(name);
+void VTI::read_dataset_real(const std::string_view label, CFI_cdesc_t* desc) {
+  DecodedBuffer d = parse_cell_data_array(label);
   allocate_and_convert<double>(d, desc);
 }
 
@@ -236,45 +227,43 @@ void VTI::read_geometry(int* cells_ptr,
   if (cells[0] < 1 || cells[1] < 1 || cells[2] < 1)
     IO::error(VTK_ERROR, "one or more entries < 1 for 'cells'");
 
-  if (labels_desc) {
-    if (auto cell_data = img->get_child_optional("Piece.CellData")) {
-      std::vector<std::string> labels;
-      labels.reserve(cell_data->size());
-      for (auto& child : *cell_data) {
-        if (child.first != "DataArray")
-          continue;
-        std::string name = get_attr(child.second, "Name");
-        if (name.empty())
-          continue;
-        if (std::find(labels.begin(), labels.end(), name) != labels.end()) {
-          IO::error(VTK_ERROR, "repeated label '" + name + '\'');
-        }
-        labels.push_back(std::move(name));
+  if (auto cell_data = img->get_child_optional("Piece.CellData")) {
+    std::vector<std::string> labels;
+    labels.reserve(cell_data->size());
+    for (auto& child : *cell_data) {
+      if (child.first != "DataArray")
+        continue;
+      std::string name = get_attr(child.second, "Name");
+      if (name.empty())
+        continue;
+      if (std::find(labels.begin(), labels.end(), name) != labels.end()) {
+        IO::error(VTK_ERROR, "repeated label '" + name + '\'');
       }
-      if (labels_desc->attribute != CFI_attribute_allocatable && labels_desc->attribute != CFI_attribute_pointer)
-        throw std::runtime_error("labels descriptor must be allocatable or pointer");
-      if (labels_desc->base_addr)
-        CFI_deallocate(labels_desc);
-      if (!labels.empty()) {
-        constexpr std::size_t CHAR_LEN = 256;
-        const CFI_index_t lb = 1;
-        const CFI_index_t ext = static_cast<CFI_index_t>(labels.size());
-        if (CFI_allocate(labels_desc, &lb, &ext, CHAR_LEN) != CFI_SUCCESS)
-          throw std::runtime_error("CFI allocation failed for labels");
+      labels.push_back(std::move(name));
+    }
+    if (labels_desc->attribute != CFI_attribute_allocatable && labels_desc->attribute != CFI_attribute_pointer)
+      throw std::runtime_error("labels descriptor must be allocatable or pointer");
+    if (labels_desc->base_addr)
+      CFI_deallocate(labels_desc);
+    if (!labels.empty()) {
+      constexpr std::size_t CHAR_LEN = 256;
+      const CFI_index_t lb = 1;
+      const CFI_index_t ext = static_cast<CFI_index_t>(labels.size());
+      if (CFI_allocate(labels_desc, &lb, &ext, CHAR_LEN) != CFI_SUCCESS)
+        throw std::runtime_error("CFI allocation failed for labels");
 
-        for (std::size_t i = 0; i < labels.size(); ++i) {
-          std::array<CFI_index_t, 1> sub = {static_cast<CFI_index_t>(i + 1)};
-          char* dst = static_cast<char*>(CFI_address(labels_desc, sub.data()));
-          std::memset(dst, ' ', CHAR_LEN);
-          const std::size_t copy_len = std::min<std::size_t>(labels.at(i).size(), CHAR_LEN);
-          std::copy_n(labels.at(i).data(), copy_len, dst);
-        }
+      for (std::size_t i = 0; i < labels.size(); ++i) {
+        std::array<CFI_index_t, 1> sub = {static_cast<CFI_index_t>(i + 1)};
+        char* dst = static_cast<char*>(CFI_address(labels_desc, sub.data()));
+        std::memset(dst, ' ', CHAR_LEN);
+        const std::size_t copy_len = std::min<std::size_t>(labels.at(i).size(), CHAR_LEN);
+        std::copy_n(labels.at(i).data(), copy_len, dst);
       }
     }
   }
 }
 
-DecodedBuffer VTI::parse_cell_data_array(const char* array_name) {
+DecodedBuffer VTI::parse_cell_data_array(const std::string_view array_name) {
   boost::optional<pt::ptree&> root = vti_tree.get_child_optional("VTKFile");
   if (!root)
     IO::error(VTK_ERROR, "missing <VTKFile> element");
@@ -373,38 +362,40 @@ std::vector<T> VTI::view(const std::vector<uint8_t>& raw) const {
 }
 
 template <typename T>
-void VTI::allocate_and_convert(const DecodedBuffer& d, CFI_cdesc_t* desc) {
-  std::function<T*(std::size_t)> allocate_fortran_array = [&](std::size_t n) -> T* {
-    if (desc->base_addr)
-      CFI_deallocate(desc);
-    CFI_index_t lb = 1, ext = static_cast<CFI_index_t>(n);
-    if (CFI_allocate(desc, &lb, &ext, 0) != CFI_SUCCESS)
-      throw std::runtime_error("CFI allocation failed");
-    return static_cast<T*>(desc->base_addr);
-  };
+static T* allocate_fortran_array(CFI_cdesc_t* desc, const std::size_t n) {
+  if (desc->base_addr)
+    CFI_deallocate(desc);
+  const CFI_index_t lower_bound = 1;
+  const CFI_index_t extent = static_cast<CFI_index_t>(n);
+  if (CFI_allocate(desc, &lower_bound, &extent, 0) != CFI_SUCCESS)
+    throw std::runtime_error("CFI allocation failed");
+  return static_cast<T*>(desc->base_addr);
+}
 
+template <typename T>
+void VTI::allocate_and_convert(const DecodedBuffer& d, CFI_cdesc_t* desc) {
   const std::string& type = d.vtk_type;
   if (type == "Int32") {
     const std::vector<int32_t> src = view<int32_t>(d.raw_bytes);
-    T* dst = allocate_fortran_array(src.size());
+    T* dst = allocate_fortran_array<T>(desc, src.size());
     std::transform(src.begin(), src.end(), dst, [](int32_t v) {
       return static_cast<T>(v);
     });
   } else if (type == "Int64") {
     const std::vector<int64_t> src = view<int64_t>(d.raw_bytes);
-    T* dst = allocate_fortran_array(src.size());
+    T* dst = allocate_fortran_array<T>(desc, src.size());
     std::transform(src.begin(), src.end(), dst, [](int64_t v) {
       return static_cast<T>(v);
     });
   } else if (type == "Float32") {
     const std::vector<float> src = view<float>(d.raw_bytes);
-    T* dst = allocate_fortran_array(src.size());
+    T* dst = allocate_fortran_array<T>(desc, src.size());
     std::transform(src.begin(), src.end(), dst, [](float v) {
       return static_cast<T>(v);
     });
   } else if (type == "Float64") {
     const std::vector<double> src = view<double>(d.raw_bytes);
-    T* dst = allocate_fortran_array(src.size());
+    T* dst = allocate_fortran_array<T>(desc, src.size());
     if constexpr (std::is_same_v<T, double>)
       std::memcpy(dst, src.data(), src.size() * sizeof(double)); // exact Float64 -> double copy
     else
@@ -416,21 +407,28 @@ void VTI::allocate_and_convert(const DecodedBuffer& d, CFI_cdesc_t* desc) {
   }
 }
 
+static std::string_view descriptor_to_string_view(const CFI_cdesc_t* desc) {
+  if (desc->type != CFI_type_char)
+    throw std::runtime_error("descriptor does not hold a character string");
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+  return {reinterpret_cast<const char*>(desc->base_addr), desc->elem_len};
+}
+
 extern "C" {
-gsl::owner<VTI*> C_VTI_new(const char* vti_path) {
-  return new VTI(vti_path); // NOLINT(cppcoreguidelines-owning-memory)
+gsl::owner<VTI*> C_VTI_new(const CFI_cdesc_t* vti_path) {
+  return new VTI(fs::path(descriptor_to_string_view(vti_path))); // NOLINT(cppcoreguidelines-owning-memory)
 }
 
 void C_VTI_delete(gsl::owner<VTI*> vti) {
   delete vti; // NOLINT(cppcoreguidelines-owning-memory)
 }
 
-void C_VTI_readDatasetInt(VTI* vti, const char* name, CFI_cdesc_t* desc) {
-  vti->read_dataset_int(name, desc);
+void C_VTI_readDatasetInt(VTI* vti, const CFI_cdesc_t* label, CFI_cdesc_t* desc) {
+  vti->read_dataset_int(descriptor_to_string_view(label), desc);
 }
 
-void C_VTI_readDatasetReal(VTI* vti, const char* name, CFI_cdesc_t* desc) {
-  vti->read_dataset_real(name, desc);
+void C_VTI_readDatasetReal(VTI* vti, const CFI_cdesc_t* label, CFI_cdesc_t* desc) {
+  vti->read_dataset_real(descriptor_to_string_view(label), desc);
 }
 
 // https://clang.llvm.org/extra/clang-tidy/checks/bugprone/easily-swappable-parameters.html

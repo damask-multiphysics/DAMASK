@@ -10,9 +10,6 @@ module YAML
   use misc
   use IO
   use types
-#ifdef FYAML
-  use C_interfacing
-#endif
 
   implicit none(type,external)
   private
@@ -30,7 +27,7 @@ module YAML
 
       character(kind=C_CHAR,len=:), allocatable, intent(out) :: flow
       integer(C_INT), intent(out) :: stat
-      character(kind=C_CHAR), dimension(*), intent(in) :: mixed
+      character(kind=C_CHAR,len=*), intent(in) :: mixed
     end subroutine to_flow_C
   end interface
 #endif
@@ -218,7 +215,7 @@ function to_flow(mixed) result(flow)
   integer(C_INT) :: stat
 
 
-  call to_flow_C(flow,f_c_string(mixed),stat)
+  call to_flow_C(flow,mixed,stat)
   if (stat /= 0_C_INT) call IO_error(703_pI16,'libyfaml parser error')
 
 end function to_flow

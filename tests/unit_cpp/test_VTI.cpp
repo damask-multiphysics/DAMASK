@@ -238,7 +238,7 @@ using ReadDatasetIntTypes = ::testing::Types<int32_t, int64_t>;
 TYPED_TEST_SUITE(ReadDatasetInt, ReadDatasetIntTypes);
 
 TYPED_TEST(ReadDatasetInt, ConvertsInt64Input) {
-  // CAAAACkAAAAAAAAA -> 41 in Int64, + padding equals 42
+  // CAAAACkAAAAAAAAA -> 41 in Int64
   std::string xml =
       R"(<?xml version="1.0"?>
            <VTKFile type="ImageData" version="1.0" byte_order="LittleEndian">
@@ -265,6 +265,6 @@ TYPED_TEST(ReadDatasetInt, ConvertsInt64Input) {
   vti.read_dataset_int("mydata", desc);
   std::span<TypeParam> data(static_cast<TypeParam*>(desc->base_addr), static_cast<std::size_t>(desc->dim[0].extent));
   ASSERT_EQ(data.size(), std::size_t{1});
-  EXPECT_EQ(data[0], TypeParam{42});
+  EXPECT_EQ(data[0], TypeParam{41});
   EXPECT_EQ(CFI_deallocate(desc), CFI_SUCCESS);
 }

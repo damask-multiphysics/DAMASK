@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <filesystem>
 #include <format> // IWYU pragma: keep
 #include <string>
 #include <string_view>
@@ -30,6 +31,7 @@ using owner = T;
 }
 
 namespace pt = boost::property_tree;
+namespace fs = std::filesystem;
 
 struct DecodedBuffer {
   std::string vtk_type;
@@ -43,10 +45,10 @@ class VTI {
 public:
   /**
    * @brief Construct by reading and parsing a VTI file from disk.
-   * @param file_path Null-terminated path to a .vti file.
+   * @param file_path Path to a .vti file.
    * @throws std::runtime_error on I/O or parse/validation errors.
    */
-  VTI(const char* file_path);
+  VTI(const fs::path& file_path);
 
   /**
    * @brief Read a little-endian word of size @p n_bytes_per_word from @p p.
@@ -81,7 +83,7 @@ public:
    * @param name  Name of target attribute.
    * @param desc  Pre-allocated descriptor to be filled by \c CFI_allocate.
    */
-  void read_dataset_int(const char* name, CFI_cdesc_t* desc);
+  void read_dataset_int(const std::string_view name, CFI_cdesc_t* desc);
 
   /**
    * @brief Read a floating-point DataArray into a Fortran pointer descriptor.
@@ -89,7 +91,7 @@ public:
    * @param name  Name of target attribute.
    * @param desc  Pre-allocated descriptor to be filled by \c CFI_allocate.
    */
-  void read_dataset_real(const char* name, CFI_cdesc_t* desc);
+  void read_dataset_real(const std::string_view name, CFI_cdesc_t* desc);
 
   /**
    * @brief Extract grid size, physical extent and origin from a VTI file.
@@ -111,9 +113,9 @@ public:
    * @param array_name Name of the target DataArray.
    * @return           Struct with vtk datatype and the raw decoded bytes.
    */
-  DecodedBuffer parse_cell_data_array(const char* array_name);
+  DecodedBuffer parse_cell_data_array(const std::string_view array_name);
   pt::ptree vti_tree;
-  std::string file_path;
+  fs::path file_path;
 
 private:
   /**
@@ -168,9 +170,9 @@ extern "C" {
  * @brief C-interface constructor for the C++ VTI object.
  *
  * @param vti_path Path to VTI file
- * @return VTI*       VTI object pointer
+ * @return VTI*    VTI object pointer
  */
-gsl::owner<VTI*> C_VTI_new(const char* vti_path);
+gsl::owner<VTI*> C_VTI_new(const CFI_cdesc_t* vti_path);
 
 /**
  * @brief Read an integer DataArray into a Fortran pointer descriptor.
@@ -179,7 +181,7 @@ gsl::owner<VTI*> C_VTI_new(const char* vti_path);
  * @param name  Name of target attribute.
  * @param desc  Pre-allocated descriptor to be filled by \c CFI_allocate.
  */
-void C_VTI_readDatasetInt(VTI* vti, const char* name, CFI_cdesc_t* desc);
+void C_VTI_readDatasetInt(VTI* vti, const CFI_cdesc_t* label, CFI_cdesc_t* desc);
 
 /**
  * @brief Read a floating-point DataArray into a Fortran pointer descriptor.
@@ -188,7 +190,7 @@ void C_VTI_readDatasetInt(VTI* vti, const char* name, CFI_cdesc_t* desc);
  * @param name  Name of target attribute.
  * @param desc  Pre-allocated descriptor to be filled by \c CFI_allocate.
  */
-void C_VTI_readDatasetReal(VTI* vti, const char* name, CFI_cdesc_t* desc);
+void C_VTI_readDatasetReal(VTI* vti, const CFI_cdesc_t* label, CFI_cdesc_t* desc);
 
 /**
  * @brief Extract grid size, physical extent and origin from a VTI file.

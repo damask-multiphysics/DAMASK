@@ -166,7 +166,7 @@ subroutine grid_chemical_FDM_init(num_grid_chemical)
     mu_0 = reshape(tempN,[N_components,cells(1),cells(2),cells3])
   else
     do com = 1, N_components
-      mu_0(com,:,:,:) = discretization_grid_getScalarInitialCondition(material_name_species(com))
+      mu_0(com,:,:,:) = discretization_grid_getScalarInitialCondition(trim(material_name_species(com)))
     end do
   end if restartRead
 

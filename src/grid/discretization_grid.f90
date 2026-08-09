@@ -26,7 +26,6 @@ module discretization_grid
 #endif
   use CLI
   use IO
-  use C_interfacing
   use config
   use HDF5_utilities
   use result
@@ -64,21 +63,21 @@ module discretization_grid
 interface
   function C_VTI_new(vtiPath) result(this) bind(C, name='C_VTI_new')
     use, intrinsic :: ISO_C_binding, only: C_PTR, C_CHAR
-    character(kind=C_CHAR), dimension(*), intent(in) :: vtiPath
+    character(kind=C_CHAR,len=*), intent(in) :: vtiPath
     type(C_PTR) :: this
   end function C_VTI_new
 
   subroutine C_VTI_readDatasetInt(this, label, data) bind(C, name='C_VTI_readDatasetInt')
     use, intrinsic :: ISO_C_binding, only: C_PTR, C_CHAR, C_INT
     type(C_PTR), value :: this
-    character(kind=C_CHAR), dimension(*), intent(in) :: label
+    character(kind=C_CHAR,len=*), intent(in) :: label
     integer(C_INT), allocatable, intent(out) :: data(:)
   end subroutine C_VTI_readDatasetInt
 
   subroutine C_VTI_readDatasetReal(this, label, data) bind(C, name='C_VTI_readDatasetReal')
     use, intrinsic :: ISO_C_binding, only: C_PTR, C_CHAR, C_INT, C_DOUBLE
     type(C_PTR), value :: this
-    character(kind=C_CHAR), dimension(*), intent(in) :: label
+    character(kind=C_CHAR,len=*), intent(in) :: label
     real(C_DOUBLE), allocatable, intent(out) :: data(:)
   end subroutine C_VTI_readDatasetReal
 
@@ -117,7 +116,7 @@ subroutine discretization_grid_init()
 
   integer :: &
     i, &
-    n_labels                                                                                         !< number cell datasets in VTI file
+    n_labels                                                                                        !< number cell datasets in VTI file
   integer(MPI_INTEGER_KIND) :: err_MPI
   integer(C_INTPTR_T) :: &
     devNull, cells3_, cells3Offset_
@@ -126,11 +125,11 @@ subroutine discretization_grid_init()
   character(len=:), allocatable :: &
     fileContent, fname
 #if defined(BOOST)
-  character(kind=C_CHAR, len=:), allocatable :: &
+  character(kind=C_CHAR, len=:), dimension(:), allocatable :: &                                     !< Boost parser will set len=256=pSTRLEN
 #else
-  character(len=pSTRLEN), dimension(:), allocatable :: &
+  character(len=pSTRLEN),        dimension(:), allocatable :: &
 #endif
-    labels(:)     ! ToDo double dimension/len                                                        !< cell data labels in VTI file
+    labels                                                                                          !< cell data labels in VTI file
   integer(HID_T) :: handle
 
 
@@ -138,22 +137,21 @@ subroutine discretization_grid_init()
 
 
   if (worldrank == 0) then
+    fileContent = IO_read(CLI_geomFile)
 #if defined(BOOST)
     print'(/,1x,a)', 'Using C++ XML parser'
-    VTI_ = C_VTI_new(f_c_string(CLI_geomFile))
-    fileContent = IO_read(CLI_geomFile)                                                            ! still needed for job file
+    VTI_ = C_VTI_new(CLI_geomFile)
     call C_VTI_readGeometry(VTI_,cells,geomSize,origin,labels)
+    call C_VTI_readDatasetInt(VTI_,'material',materialAt_global)
 #else
     print'(/,1x,a)', 'Using Fortran XML parser'
-    fileContent = IO_read(CLI_geomFile)
     call VTI_readGeometry(cells,geomSize,origin,labels,fileContent)
+    materialAt_global = VTI_readDataset_int(fileContent,'material')
 #endif
+    ! materialAt_global = materialAt_global + 1 fails for oneAPI.
+    ! https://community.intel.com/t5/Intel-Fortran-Compiler/Issue-with-array-allocation-in-C-ISO-Fortran-binding-h/m-p/1755394
+    materialAt_global(:) = materialAt_global(:) + 1                                                 ! convert to one-based indexing (Fortran)
     n_labels = size(labels)
-#if defined(BOOST)
-    call C_VTI_readDatasetInt(VTI_,f_c_string('material'),materialAt_global)
-#else
-    materialAt_global = VTI_readDataset_int(fileContent,'material') + 1
-#endif
     if (any(materialAt_global < 1)) &
       call IO_error(180_pI16,'material ID < 1')
     if (size(materialAt_global) /= product(cells)) &
@@ -459,7 +457,7 @@ function get_initial_condition(label) result(ic_local)
 
   if (worldrank == 0) then
 #if defined(BOOST)
-    call C_VTI_readDatasetReal(VTI_,f_c_string(label),ic_global)
+    call C_VTI_readDatasetReal(VTI_,label,ic_global)
 #else
     ic_global = VTI_readDataset_real(IO_read(CLI_geomFile),label)
 #endif
