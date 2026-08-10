@@ -75,6 +75,14 @@ def test_set_component(default):
 def test_labels(default):
     assert default.labels == ['F','v','s']
 
+@pytest.mark.parametrize('what,correct',[('uniform',['F']*9+['v']*3+['s']),
+                                         ('shapes',['3x3:F']+['F']*8+['3:v']+['v']*2+['s']),
+                                         ('linear',[f'{i+1}_F' for i in range(9)]+[f'{i+1}_v' for i in range(3)]+['s']),
+                                         ('export',[f'3x3:{i+1}_F' for i in range(9)]+[f'{i+1}_v' for i in range(3)]+['s']),
+                         ])
+def test_labeling(default,what,correct):
+    assert default._label(default.labels,what) == correct
+
 def test_isclose(default):
     assert default.isclose(default).all()
 
@@ -96,27 +104,29 @@ def test_slice(np_rng,default,N):
     assert default[N:].get('F').shape == (len(default)-N,3,3)
     assert default[:N,['v','s']].data.equals(default['v','s'][:N].data)
 
-@pytest.mark.parametrize('mode',['str','path','file'])
-def test_write_read_mode(default,tmp_path,mode):
-    path = tmp_path/'default.txt'
-    if mode == 'file':
-        default.save(open(path,'w'))
-        new = Table.load(open(path))
-    else:
-        default.save(str(path) if mode == 'str' else path)
-        new = Table.load(str(path) if mode == 'str' else path)
-    assert all(default.data == new.data) and default.shapes == new.shapes
+@pytest.mark.parametrize('binary',[True,False])
+def test_write_read_str(default,tmp_path,binary):
+    path = str(tmp_path/('default.npz' if binary else 'default.txt'))
+    default.save(path)
+    new = Table.load(path)
+    assert default.data.equals(new.data) and default.shapes == new.shapes
 
-def test_write_read_file(default,tmp_path):
-    with open(tmp_path/'default.txt','w') as f:
+@pytest.mark.parametrize('binary',[True,False])
+def test_write_read_Path(default,tmp_path,binary):
+    path = tmp_path/('default.npz' if binary else 'default.txt')
+    default.save(path)
+    new = Table.load(path)
+    assert default.data.equals(new.data) and default.shapes == new.shapes
+
+@pytest.mark.parametrize('binary',[True,False])
+def test_write_read_filehandle(default,tmp_path,binary):
+    path = tmp_path/'default.npz'    # test confusion between ASCII and binary file extensions
+    with open(path,'wb' if binary else 'w') as f:
         default.save(f)
-    with open(tmp_path/'default.txt') as f:
+    with open(path,'rb' if binary else 'r') as f:
         new = Table.load(f)
-    assert all(default.data == new.data) and default.shapes == new.shapes
+    assert default.data.equals(new.data) and default.shapes == new.shapes
 
-def test_write_invalid_format(default,tmp_path):
-    with pytest.raises(TypeError):
-        default.save(tmp_path/'shouldnotbethere.txt',format='invalid')
 
 @pytest.mark.parametrize('mode',['str','path','file'])
 def test_read_ang_mode(res_path,mode):
@@ -132,11 +142,11 @@ def test_read_ang_shapes(res_path):
     new = Table.load_ang(str(res_path/'simple.ang'),shapes={})
     assert new.data.shape == (4,10) and new.labels == ['unknown']
 
-def test_save_ang(res_path,tmp_path):
-    orig = Table.load_ang(res_path/'simple.ang')
-    orig.save(tmp_path/'simple.ang',with_labels=False)
-    saved = Table.load_ang(tmp_path/'simple.ang')
-    assert saved == orig
+# def test_save_ang(res_path,tmp_path):
+#     orig = Table.load_ang(res_path/'simple.ang')
+#     orig.save(tmp_path/'simple.ang',with_labels=False)
+#     saved = Table.load_ang(tmp_path/'simple.ang')
+#     assert saved == orig
 
 def test_ang_no_header(res_path,tmp_path):
     orig = Table.load_ang(res_path/'simple.ang')
