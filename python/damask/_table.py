@@ -1,13 +1,16 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import copy
 import re
-from typing import Iterable, Mapping, Sequence, Union
+from os import PathLike
+from io import TextIOBase
+from pathlib import Path
+from typing import Iterable, Mapping, Sequence, Union, TextIO, BinaryIO, Any, cast
 
 import numpy as np
 import pandas as pd
 
 from . import util
-from ._typehints import FileHandleText
+from ._typehints import FileHandleText, FileHandleBinary
 
 
 class Table:
@@ -168,6 +171,7 @@ class Table:
             'uniform' ==> v v v
             'shapes'  ==> 3:v v v
             'linear'  ==> 1_v 2_v 3_v
+            'export'  ==> 3x3:1_t 3x3:2_t 3x3:3_t 3x3:4_t 3x3:5_t 3x3:6_t 3x3:7_t 3x3:8_t 3x3:9_t
         """
         what = [what] if isinstance(what,str) else what
         labels = []
@@ -180,6 +184,10 @@ class Table:
                 labels += [('' if size == 1 or i>0 else f'{util.srepr(shape,"x")}:')+label for i in range(size)]
             elif how == 'linear':
                 labels += [('' if size == 1 else f'{i+1}_')+label for i in range(size)]
+            elif how == 'export':
+                labels += [ ('' if len(shape)<2 else f'{util.srepr(shape,"x")}:')
+                           +('' if size == 1 else f'{i+1}_')
+                           +label  for i in range(size)]
             else:
                 raise KeyError
         return labels
@@ -197,6 +205,7 @@ class Table:
             'uniform' ==> v v v
             'shapes'  ==> 3:v v v
             'linear'  ==> 1_v 2_v 3_v
+            'export'  ==> 3x3:1_t 3x3:2_t 3x3:3_t 3x3:4_t 3x3:5_t 3x3:6_t 3x3:7_t 3x3:8_t 3x3:9_t
         """
         self.data.columns = self._label(self.shapes,how)                                            # type: ignore
 
@@ -266,48 +275,83 @@ class Table:
     @staticmethod
     def load(fname: FileHandleText) -> 'Table':
         """
-        Load from ASCII table file.
+        Load a table from text table or NumPy archive format.
 
-        Initial comments are marked by '#'.
-        The first non-comment line contains the column labels.
+        For path-like inputs, a case-insensitive ``.npz`` suffix selects
+        NumPy archive format; all other suffixes select text table format.
+        Open binary streams are interpreted as NumPy archives, while open
+        text streams are interpreted as text tables.
 
-        - Vector data column labels are indicated by '1_v, 2_v, ..., n_v'.
-        - Tensor data column labels are indicated by '3x3:1_T, 3x3:2_T, ..., 3x3:9_T'.
+        Text tables contain whitespace-separated fields. Leading comment
+        lines begin with ``#``, and the first non-comment line contains the
+        column labels.
+
+        Component labels encode the shape of vector and tensor data:
+
+        - Vector components are labeled ``1_v, 2_v, ..., n_v``.
+        - Tensor components are labeled ``3x3:1_T, 3x3:2_T, ..., 3x3:9_T``.
 
         Parameters
         ----------
-        fname : file, str, or pathlib.Path
-            Filename or file to read.
+        fname : str, path-like, or file-like object
+            Input path or open stream. Text streams must contain a text
+            table, and binary streams must contain a NumPy archive.
 
         Returns
         -------
-        loaded : damask.Table
-            Table data from file.
+        table : damask.Table
+            Loaded table.
         """
-        with util.open_text(fname) as f:
-            f.seek(0)
+        def infer_shapes(labels: list[str]) -> dict[str, tuple[int, ...]]:
+            shapes: dict[str, tuple[int, ...]] = {}
 
-            comments = []
-            while (line := f.readline().strip()).startswith('#'):
-                comments.append(line.lstrip('#').strip())
+            for label in labels:
+                if (tensor_column := re.search(r'[0-9,x]*?:[0-9]*?_', label)) is not None:
+                    shape = tensor_column.group().split(':', 1)[0].split('x')
+                    shapes[label.split('_', 1)[1]] = tuple(int(d) for d in shape)
+                elif re.match(r'[0-9]*?_', label) is not None:
+                    shapes[label.split('_',1)[1]] = (int(label.split('_',1)[0]),)
+                else:
+                    shapes[label] = (1,)
+            return shapes
+
+        def load_npz(source: FileHandleBinary) -> 'Table':
+            if not isinstance(source, (str, PathLike)):
+                source.seek(0)
+
+            if not isinstance(loaded := np.load(source), np.lib.npyio.NpzFile):
+                raise ValueError('expected a NumPy .npz archive, not a .npy array')
+
+            with loaded as content:
+                return Table(
+                    shapes=infer_shapes(content.files),
+                    data=np.column_stack([content[name] for name in content.files]) if content.files else np.empty((0, 0)),
+                )
+
+        def load_text(stream: TextIO) -> 'Table':
+            stream.seek(0)
+            comments: list[str] = []
+            while (line := stream.readline().strip()).startswith('#'):
+                comments.append(line.removeprefix('#').strip())
             labels = line.split()
 
-            shapes = {}
-            for label in labels:
-                tensor_column = re.search(r'[0-9,x]*?:[0-9]*?_',label)
-                if tensor_column:
-                    my_shape = tensor_column.group().split(':',1)[0].split('x')
-                    shapes[label.split('_',1)[1]] = tuple([int(d) for d in my_shape])
-                else:
-                    vector_column = re.match(r'[0-9]*?_',label)
-                    if vector_column:
-                        shapes[label.split('_',1)[1]] = (int(label.split('_',1)[0]),)
-                    else:
-                        shapes[label] = (1,)
+            return Table(
+                shapes=infer_shapes(labels),
+                data=pd.read_csv(stream,names=list(range(len(labels))),sep=r'\s+'),
+                comments=comments,
+            )
 
-            data = pd.read_csv(f,names=list(range(len(labels))),sep=r'\s+')
+        if isinstance(fname, (str, PathLike)):
+            if Path(fname).suffix.casefold() == '.npz':
+                return load_npz(fname)
 
-        return Table(shapes,data,comments)
+            with util.open_text(fname) as stream:
+                return load_text(stream)
+
+        if isinstance(fname, TextIOBase):
+            return load_text(cast(TextIO,fname))
+
+        return load_npz(cast(BinaryIO,fname))
 
 
     @staticmethod
@@ -642,33 +686,86 @@ class Table:
 
 
     def save(self,
-             fname: FileHandleText,
-             with_labels: bool = True):
+             fname: FileHandleText | FileHandleBinary) -> None:
         """
-        Save as plain text file.
+        Save the table in text table or NumPy archive format.
+
+        For path-like outputs, a case-insensitive ``.npz`` suffix selects
+        NumPy archive format; all other suffixes select text table format.
+        Open binary streams produce NumPy archives, while open text streams
+        produce text tables.
+
+        NumPy archives are written in compressed ``.npz`` format.
+        Text tables contain leading comments marked by ``#``, a column-label line,
+        and whitespace-separated fields.
 
         Parameters
         ----------
-        fname : file, str, or pathlib.Path
-            Filename or file to write.
-        with_labels : bool, optional
-            Write column labels. Defaults to True.
+        fname : str, path-like, or file-like object
+            Output path or open stream. Text streams must be opened in text
+            mode, and NumPy archive streams must be opened in binary mode.
         """
-        labels = []
-        if with_labels:
-            for l in list(dict.fromkeys(self.data.columns)):
-                if self.shapes[l] == (1,):
-                    labels.append(f'{l}')
-                elif len(self.shapes[l]) == 1:
-                    labels += [f'{i+1}_{l}'
-                               for i in range(self.shapes[l][0])]
-                else:
-                    labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}'
-                               for i in range(np.prod(self.shapes[l],dtype=np.int64))]                 # type: ignore
+        labels = self._label(self.labels, "export")
+        data = self.data.to_numpy()
 
-        with util.open_text(fname,'w') as f:
-            f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+('\n' if labels else ''))
-            try:                                                                                       # backward compatibility (pandas<1.5)
-                self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,lineterminator='\n')
+        def save_npz(target: FileHandleBinary) -> None:
+            arrays = {
+                label: column
+                for label, column in zip(labels, data.T)
+            }
+
+            # These names collide with parameters of savez_compressed().
+            reserved = arrays.keys() & {'file', 'allow_pickle'}
+            if reserved:
+                names = ', '.join(sorted(reserved))
+                raise ValueError(
+                    f'column labels reserved by '
+                    f'np.savez_compressed: {names}'
+                )
+
+            # NumPy uses arbitrary keyword arguments as archive member names.
+            np.savez_compressed(
+                target,
+                **cast(dict[str, Any], arrays),
+            )
+
+        def save_text(stream: TextIO) -> None:
+            header = '\n'.join(
+                [f'# {comment}' for comment in self.comments]
+                + [' '.join(labels)]
+            )
+            stream.write(header + '\n')
+
+            csv_options = {
+                'sep': ' ',
+                'na_rep': 'nan',
+                'index': False,
+                'header': False,
+            }
+
+            try:
+                # pandas >= 1.5
+                self.data.to_csv(
+                    stream,
+                    **csv_options,
+                    lineterminator='\n',
+                )  # type: ignore[call-overload]
             except TypeError:
-                self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,line_terminator='\n') # type: ignore
+                # Backward compatibility with pandas < 1.5.
+                self.data.to_csv(
+                    stream,
+                    **csv_options,
+                    line_terminator='\n',
+                )  # type: ignore[call-overload]
+
+        if isinstance(fname, (str, PathLike)):
+            if Path(fname).suffix.casefold() == '.npz':
+                save_npz(fname)
+            else:
+                with util.open_text(fname, 'w') as stream:
+                    save_text(stream)
+
+        elif isinstance(fname, TextIOBase):
+            save_text(cast(TextIO, fname))
+        else:
+            save_npz(cast(FileHandleBinary, fname))
