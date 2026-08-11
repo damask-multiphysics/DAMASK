@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import copy
 
+import h5py
 import pytest
 import numpy as np
 
@@ -59,6 +60,42 @@ def test_homogenization_equivalent(res_path,tmp_path,copy_files,phase,homogeniza
     assert 0.99 < results[phase]['F']/F_11 < 1.01 and \
            0.99 < results[phase]['P']/P_11 < 1.01
 
+
+def test_multiple_homogenization_schemes_and_constituent_numbers(res_path,tmp_path,copy_files,np_rng):
+    copy_files(res_path,tmp_path)
+
+    load = 'compressionX'
+    material = 'material'
+    job = f'combined_{load}'
+
+    schemes = ['RGC','none','Taylor2','RGC']
+    damask.GeomGrid(np.arange(len(schemes)).reshape(len(schemes),1,1),
+                    np.array([len(schemes),1,1])*1e-4).save(tmp_path/'combined.vti')
+
+    material_config = damask.ConfigMaterial.load(tmp_path/f'{material}.yaml')
+    N_constituents = [material_config['homogenization'][ho]['N_constituents'] for ho in schemes]
+    assert len(set(N_constituents)) > 1 # make sure we also test different numbers of constituents
+    O = damask.Rotation.from_random((len(schemes),max(N_constituents)),rng_seed=np_rng)
+    material_config['material'] = [
+        dict(homogenization=ho,
+             constituents=[
+                 dict(phase='Isotropic' if ho=='none' or (ho=='Taylor2' and co==0) else 'Phenopowerlaw',
+                      v=1/N,
+                      O=O[ma,co].as_quaternion().tolist()
+                     ) for co in range(N)]
+            ) for ma,(ho,N) in enumerate(zip(schemes,N_constituents))]
+    material_config.save(tmp_path/f'{material}.yaml')
+
+    damask.util.run(f'damask_grid -l {load}.yaml -g combined.vti -m {material}.yaml -j {job}',
+                    wd=tmp_path)
+    result = damask.Result(tmp_path/f'{job}.hdf5')
+    assert result.phases == ['Isotropic', 'Phenopowerlaw']
+    with h5py.File(tmp_path/f'{job}.hdf5','r') as f:
+        label = f['cell_to/phase']['label'][()].astype(str)
+        entry = f['cell_to/phase']['entry'][()]
+
+    assert np.array_equal(np.sum(label != '',axis=1),N_constituents)
+    assert np.all(entry[label == ''] == -1)
 
 def test_homogenization_many(tmp_path,res_path,copy_files,np_rng):
     grid = damask.GeomGrid(np.zeros([2,1,1],int),np.array([2,1,1])*1e-4)

@@ -195,7 +195,7 @@ subroutine parse()
       material_entry_homogenization(ce) = counterHomogenization(ho)
     end do
 
-    do co = 1, size(ph_of(ma,:)>0)
+    do co = 1, count(ph_of(ma,:)>0)
 
       v  =  v_of(ma,co)
       ph = ph_of(ma,co)
