@@ -106,42 +106,40 @@ subroutine discretization_mesh_init()
                p_s, p_i, &                                                                          ! shape function/integration order
                cell_sets_size, &                                                                    ! size of 'Cell Sets' label
                n_mesh_labels, &                                                                     ! total number of labels in mesh file
-               cell_start, cell_end, point_start, &
-               j
-  IS        :: label_values_IS                                                                      ! BC label values IS
+               cell_start, cell_end, point_start, &                                                 ! first/last point values
+               j                                                                                    ! loop
   PetscBool :: has_label, &                                                                         ! label exists in the mesh
-               is_simplex                                                                           ! simplex mesh
+               is_simplex                                                                           ! simplex mesh (tri or tet elements)
+  DMLabel   :: label
+  PetscSF   :: SF
+  PetscDS   :: global_DS
+  PetscFE   :: global_FE
+  IS        :: label_values_IS, ID_material_IS, cells_IS                                            ! BC label values IS, 'Cell Sets' label/stratum values
 #if PETSC_VERSION_MINOR>=24
   IS        :: cell_types_IS                                                                        ! 'celltype' label IS
   PetscInt  :: n_polytopes                                                                          ! number of different polytopes in the mesh
-  PetscInt,    dimension(:),     pointer     :: cell_types                                          ! cell_types_IS values
+  PetscInt,    dimension(:),     pointer     :: cell_types                                          ! array for cell_types_IS
   PetscInt,    dimension(:,:),   allocatable :: T_e                                                 ! element connectivity (node numbers in each cell)
 #else
   real(pREAL), dimension(:),     pointer     :: qPointsP                                            ! quadrature points coordinates
   real(pREAL), dimension(:),     pointer     :: PETSC_NULL_REAL_POINTER => NULL()
 #endif
-  DMLabel :: label
-  PetscSF :: SF
-  PetscDS :: global_DS
-  PetscFE :: global_FE
-  PetscQuadrature :: quadrature
+  PetscQuadrature :: quadrature                                                                     ! quadrature object
   PetscErrorCode  :: err_PETSc
 
-  type(tDict), pointer :: &
-    num_solver, &
-    num_mesh
-  integer                                    :: dim, n, m, k
+  integer                                    :: dim, n, m, k                                        ! loop / counters
   integer(MPI_INTEGER_KIND)                  :: err_MPI
   integer,     dimension(:),     allocatable :: BC_set_idx                                          ! index for PETSc set labels (no 'edges' in 2D)
-  PetscInt,    dimension(:),     pointer     :: label_values                                        ! BC label values (from IS)
+  PetscInt,    dimension(:),     pointer     :: label_values, ID_material, cells                    ! arrays for [label_values/ID_material/cells]_IS
   PetscInt,    dimension(:),     allocatable :: materialAt, &                                       ! material ID per cell
                                                 label_tmp
   real(pREAL), dimension(:,:),   allocatable :: v_0                                                 ! volume associated with IP (initially!)
   real(pREAL), dimension(:,:,:), allocatable :: x_p                                                 ! IP x,y,z coordinates
 
-  character(pSTRLEN)            :: BC_label                                                         ! label (string, defined in mesh file)
-  character(len=:), allocatable :: PETSc_options, &                                                 ! options to set up DM (from numerics file)
-                                   fname, file_content
+  type(tDict),        pointer     :: num_solver, num_mesh                                           ! numerics file dictionary entries
+  character(pSTRLEN)              :: BC_label                                                       ! label (string, defined in mesh file)
+  character(len=:),   allocatable :: PETSc_options, &                                               ! options to set up DM (from numerics file)
+                                     fname, file_content                                            ! mesh file name/content
 
 
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'; flush(IO_STDOUT)
@@ -383,10 +381,28 @@ subroutine discretization_mesh_init()
   CHKERRQ(err_PETSc)
 
   allocate(materialAt(mesh_nElems))
-  do j = 1_pPETSCINT, mesh_nElems
-    call DMGetLabelValue(geom,'Cell Sets',j-1_pPETSCINT,materialAt(j),err_PETSc)
+  call DMGetLabel(geom,'Cell Sets',label,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMLabelGetValueIS(label,ID_material_IS,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call ISGetIndices(ID_material_IS,ID_material,err_PETSc)
+  CHKERRQ(err_PETSc)
+  do n = 1, size(ID_material)
+    call DMLabelGetStratumIS(label,ID_material(n),cells_IS,err_PETSc)
+    CHKERRQ(err_PETSc)
+    call ISGetIndices(cells_IS,cells,err_PETSc)
+    CHKERRQ(err_PETSc)
+    materialAt(cells+1_pPETSCINT) = ID_material(n)
+    CHKERRQ(err_PETSc)
+    call ISRestoreIndices(cells_IS,cells,err_PETSc)
     CHKERRQ(err_PETSc)
   end do
+  call ISRestoreIndices(ID_material_IS,ID_material,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call ISDestroy(cells_IS,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call ISDestroy(ID_material_IS,err_PETSc)
+  CHKERRQ(err_PETSc)
 
   call discretization_init(int(materialAt),reshape(x_p,[3,int(mesh_maxNips*mesh_nElems)]),x_n)
 
@@ -776,3 +792,4 @@ subroutine writeGeometry(x_p,x_n,T_e)
 end subroutine writeGeometry
 
 end module discretization_mesh
+
