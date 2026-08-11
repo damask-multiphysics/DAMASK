@@ -201,7 +201,7 @@ class Result:
             self.homogenization   = f['cell_to/homogenization']['label'].astype('str')
             self._homogenizations = sorted(np.unique(self.homogenization),key=util.natural_sort)
             self.phase            = f['cell_to/phase']['label'].astype('str')
-            self._phases          = sorted(np.unique(self.phase),key=util.natural_sort)
+            self._phases          = sorted(np.unique(self.phase[self.phase != '']), key=util.natural_sort)
 
             fields = []
             for kind, labels in zip(['phase','homogenization'],[self._phases,self._homogenizations]):
