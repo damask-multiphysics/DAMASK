@@ -6,22 +6,24 @@ import damask
 
     *** TEST COHERENCE OF BOUNDARY CONDITIONS ***
 
-    Check boundary conditions are properly applied, such that:
-    - Discretization-independency i.e. the number of discretization steps `N`
-      does not change the solution.
-      - Test versions 1, 3, 4
+    Check boundary conditions are properly applied, requiring:
+    - Time discretization independence of:
+      - Number of increments `N`
+        - Test versions 1, 3, 4
+      - Scaling factor 'r'
     - Rates and aim equivalence i.e. the solution is the same when BC
       are applied using equivalent rates (x_dot) or aim (x) values
-      - Example: {x_dot=5, t = 2} is equivalent to {x = 10, t = []}
-    - Time-independence for aim BC
-      - Example: {x = 10, t = ..} should give the same result regardless of 't'
+      - Example: {x_dot=5, t = 2} is equivalent to {x = 10, t = ..}
+    - Time step independence for aim BC
+      - Example: {x = 10, t = ..}; same result regardless of 't'
       - Test version 2
     - For the linear case, additive BC
       - Test versions 3, 4
 
     Parametrization:
-     - Dimension (2 or 3)
-     - Boundary condition type (u_dot / u / f_dot / f)
+     - Dimension (2 | 3)
+     - Boundary condition type (u_dot | u | f_dot | f)
+     - Time discretization scaling factor (linear r = 1.0 | nonlinear r ≠ 1.0 )
 
     Randomization:
      - Elastic constants (C_11, C_12, ...)
@@ -57,8 +59,9 @@ import damask
         simulated by consecutive steps of opposite displacement/force i.e.
         {+u, -u, +u, -u...}/{+F, -F, +F, -F...}.
 
-    - All versions (0..5) are run for both rates (x_dot) and aim (x)
-      boundary conditions. Version 0 with rate x_dot is used as reference.
+    All versions (0..5) are run for both rates (x_dot) and aim (x) boundary
+    conditions, and both for linear and nonlinear time discretization.
+    Version 0 with rate x_dot and linear discretization is used as reference.
 
     ------------------------------------------------------------------------ """
 
@@ -79,7 +82,7 @@ def BC_setup(np_rng, n_D, BC_type):
     return BC_values
 
 
-def load_dict(n_D, BC_values, BC_key, N = 1, t = 1.0):
+def load_dict(n_D, BC_values, BC_key, N = 1, t = 1.0, r = 1.0):
     """Create a new load dictionary."""
     if n_D == 2:
         mech = [{'label': 'load',   BC_key: BC_values},
@@ -92,55 +95,57 @@ def load_dict(n_D, BC_values, BC_key, N = 1, t = 1.0):
                 {'label': 'fix_w',   'u': ['x', 'x', 0.0]}]
 
     d = {'boundary_conditions': {'mechanical': mech},
-         'discretization': {'t': t, 'N': N},
+         'discretization': {'t': t, 'N': N, 'r': r},
          'f_out': N
         }
 
     return d
 
 
-def load_setup(np_rng, load_config, BC_values, n_D, key, version):
+def load_setup(np_rng, load_config, BC_values, n_D, scaling, key, version):
     """Randomized displacement boundary conditions."""
     # Randomize the number of steps, discretization per step "N"
     # and/or time step length "t"
-    rate = key[-4:] == '_dot'
+    rate = key.endswith('_dot')
     k = np_rng.integers(2,6)
     N = np_rng.integers(2,10)
-    if version == 0:
-        load_config['loadstep'][0] = load_dict(n_D, BC_values, key)
-    elif version == 1:
-        load_config['loadstep'][0] = load_dict(n_D, BC_values, key, N = N)
-    elif version == 2:
-        BC_new = BC_values[:]
-        if rate: BC_new[n_D-1] /= k
-        load_config['loadstep'][0] = load_dict(n_D, BC_new, key, t = k)
-    elif version == 3:
-        BC_new = BC_values[:]
-        BC_new[n_D-1] /= k
-        d = load_dict(n_D, BC_new, key, N = N)
-        load_config['loadstep'][0] = d
-        for m in np.arange(1,k):
-            load_config['loadstep'].append(d)
-            if not rate:
-                BC_incr = BC_new[:]
-                BC_incr[n_D-1] *= m+1
-                load_config['loadstep'][m] = load_dict(n_D, BC_incr, key, N = N)
-    elif version == 4:
-        BC_new = BC_values[:]
-        BC_new[n_D-1] /= 2
-        load_config['loadstep'][0] = load_dict(n_D, BC_new, key, N = N)
-        for m in np.arange(1,k):
-            load_config['loadstep'].append(load_dict(n_D, ['x', 'x', 'x'], key))
-        load_config['loadstep'].append(load_config['loadstep'][0] if rate else
-                                       load_dict(n_D, BC_values, key, N = N))
-    elif version == 5:
-        BC_new = BC_values[:]
-        BC_new[n_D-1] = -BC_new[n_D-1] if rate else 0.0
-        load_config['loadstep'][0] = load_dict(n_D, BC_values, key, N = N)
-        load_config['loadstep'].append(load_dict(n_D, BC_new, key, N = N))
-        for m in np.arange(1,k):
-            load_config['loadstep'].append(load_dict(n_D, BC_values, key, N = N))
+    r = 1.0 if scaling == 'linear' else np_rng.uniform(0.875,1.125)
+    match version:
+        case 0:
+            load_config['loadstep'][0] = load_dict(n_D, BC_values, key)
+        case 1:
+            load_config['loadstep'][0] = load_dict(n_D, BC_values, key, N = N, r = r)
+        case 2:
+            BC_new = BC_values[:]
+            if rate: BC_new[n_D-1] /= k
+            load_config['loadstep'][0] = load_dict(n_D, BC_new, key, t = k)
+        case 3:
+            BC_new = BC_values[:]
+            BC_new[n_D-1] /= k
+            d = load_dict(n_D, BC_new, key, N = N)
+            load_config['loadstep'][0] = d
+            for m in np.arange(1,k):
+                load_config['loadstep'].append(d)
+                if not rate:
+                    BC_incr = BC_new[:]
+                    BC_incr[n_D-1] *= m+1
+                    load_config['loadstep'][m] = load_dict(n_D, BC_incr, key, N = N, r = r)
+        case 4:
+            BC_new = BC_values[:]
+            BC_new[n_D-1] /= 2
+            load_config['loadstep'][0] = load_dict(n_D, BC_new, key, N = N)
+            for m in np.arange(1,k):
+                load_config['loadstep'].append(load_dict(n_D, ['x', 'x', 'x'], key))
+            load_config['loadstep'].append(load_config['loadstep'][0] if rate else
+                                           load_dict(n_D, BC_values, key, N = N, r = r))
+        case 5:
+            BC_new = BC_values[:]
+            BC_new[n_D-1] *= -1 if rate else 0.0
+            load_config['loadstep'][0] = load_dict(n_D, BC_values, key, N = N)
             load_config['loadstep'].append(load_dict(n_D, BC_new, key, N = N))
+            for m in np.arange(1,k):
+                load_config['loadstep'].append(load_dict(n_D, BC_values, key, N = N, r = r))
+                load_config['loadstep'].append(load_dict(n_D, BC_new, key, N = N, r = r))
 
     return load_config
 
@@ -184,10 +189,10 @@ def material_setup(mat_config, np_rng):
 
 @pytest.mark.parametrize('n_D', [2, 3])
 @pytest.mark.parametrize('BC_type', ['u', 'f'])
+@pytest.mark.parametrize('scaling', ['linear', 'nonlin'])
 def test_mesh_BC_coherence(res_path, copy_files, tmp_path, np_rng,
-                           n_D, BC_type, petsc_version):
-    copy_files(res_path, tmp_path, [f'mesh_{n_D}D.msh', f'load_{n_D}D.yaml', \
-                                    'numerics.yaml'])
+                           n_D, BC_type, scaling, petsc_version):
+    copy_files(res_path, tmp_path, [f'mesh_{n_D}D.msh', f'load_{n_D}D.yaml', 'numerics.yaml'])
 
     load_config = damask.LoadcaseMesh.load(tmp_path/f'load_{n_D}D.yaml')
     mat_config = damask.ConfigMaterial.load(res_path/'material_base.yaml')
@@ -195,10 +200,11 @@ def test_mesh_BC_coherence(res_path, copy_files, tmp_path, np_rng,
     BC_values = BC_setup(np_rng, n_D, BC_type)
 
     """ Reference solution (version 0, x_dot)"""
-    load_setup(np_rng, load_config, BC_values, n_D, f'{BC_type}_dot', 0).save(tmp_path/f'load_v0_{n_D}D_{BC_type}_dot.yaml')
-    damask.util.run(f'damask_mesh -m material.yaml -l load_v0_{n_D}D_{BC_type}_dot.yaml ' +
-                    f'-g mesh_{n_D}D.msh -n numerics.yaml -j v0_{n_D}D_{BC_type}_dot', wd = tmp_path)
-    u_ref = damask.Result(tmp_path/f'v0_{n_D}D_{BC_type}_dot.hdf5').view(increments=-1).get('u_n')
+    load_setup(np_rng, load_config, BC_values, n_D, 'linear', f'{BC_type}_dot', 0).save(
+               tmp_path/f'load_v0_{n_D}D_{BC_type}_dot_linear.yaml')
+    damask.util.run(f'damask_mesh -m material.yaml -l load_v0_{n_D}D_{BC_type}_dot_linear.yaml ' +
+                    f'-g mesh_{n_D}D.msh -n numerics.yaml -j v0_{n_D}D_{BC_type}_dot_linear', wd = tmp_path)
+    u_ref = damask.Result(tmp_path/f'v0_{n_D}D_{BC_type}_dot_linear.hdf5').view(increments=-1).get('u_n')
     u_ref[np.abs(u_ref) < 1.0e-12] = 0.0
 
     """Numerical solution."""
@@ -206,21 +212,22 @@ def test_mesh_BC_coherence(res_path, copy_files, tmp_path, np_rng,
         BC_key = BC_type + ('_dot' if t == 'rate' else '')
         for v in range(4+1):
             if v == 0 and t == 'rate': continue
-            load_config = damask.LoadcaseMesh.load(tmp_path/f'load_v0_{n_D}D_{BC_type}_dot.yaml')
-            load_setup(np_rng, load_config, BC_values, n_D, BC_key, v).save(tmp_path/f'load_v{v}_{n_D}D_{BC_key}.yaml')
-            damask.util.run(f'damask_mesh -m material.yaml -l load_v{v}_{n_D}D_{BC_key}.yaml ' +
-                            f'-g mesh_{n_D}D.msh -n numerics.yaml -j v{v}_{n_D}D_{BC_key}', wd = tmp_path)
-            u_n = damask.Result(tmp_path/f'v{v}_{n_D}D_{BC_key}.hdf5').view(increments=-1).get('u_n')
+            load_config = damask.LoadcaseMesh.load(tmp_path/f'load_v0_{n_D}D_{BC_type}_dot_linear.yaml')
+            load_setup(np_rng, load_config, BC_values, n_D, scaling, BC_key, v).save(
+                       tmp_path/f'load_v{v}_{n_D}D_{BC_key}_{scaling}.yaml')
+            damask.util.run(f'damask_mesh -m material.yaml -l load_v{v}_{n_D}D_{BC_key}_{scaling}.yaml ' +
+                            f'-g mesh_{n_D}D.msh -n numerics.yaml -j v{v}_{n_D}D_{BC_key}_{scaling}', wd = tmp_path)
+            u_n = damask.Result(tmp_path/f'v{v}_{n_D}D_{BC_key}_{scaling}.hdf5').view(increments=-1).get('u_n')
             u_n[np.abs(u_n) < 1.0e-12] = 0.0
             assert(np.allclose(u_ref, u_n, rtol = 1.0e-5, atol = 1.0e-7))
 
 
 @pytest.mark.parametrize('n_D', [2, 3])
 @pytest.mark.parametrize('BC_type', ['u', 'f'])
+@pytest.mark.parametrize('scaling', ['linear', 'nonlin'])
 def test_mesh_BC_coherence_cyclic(res_path, copy_files, tmp_path, np_rng,
-                                  n_D, BC_type, petsc_version):
-    copy_files(res_path, tmp_path, [f'mesh_{n_D}D.msh', f'load_{n_D}D.yaml', \
-                                    'numerics.yaml'])
+                                  n_D, BC_type, scaling, petsc_version):
+    copy_files(res_path, tmp_path, [f'mesh_{n_D}D.msh', f'load_{n_D}D.yaml', 'numerics.yaml'])
 
     mat_config = damask.ConfigMaterial.load(res_path/'material_base.yaml')
     material_setup(mat_config, np_rng).save(tmp_path/'material.yaml')
@@ -230,8 +237,9 @@ def test_mesh_BC_coherence_cyclic(res_path, copy_files, tmp_path, np_rng,
     for t in ['rate', 'aim']:
         BC_key = BC_type + ('_dot' if t == 'rate' else '')
         load_config = damask.LoadcaseMesh.load(res_path/f'load_{n_D}D.yaml')
-        load_setup(np_rng, load_config, BC_values, n_D, BC_key, 5).save(tmp_path/f'load_v5_{n_D}D_{BC_key}.yaml')
-        damask.util.run(f'damask_mesh -m material.yaml -l load_v5_{n_D}D_{BC_key}.yaml ' +
-                        f'-g mesh_{n_D}D.msh -n numerics.yaml -j v5_{n_D}D_{BC_key}', wd = tmp_path)
-        u_n = damask.Result(tmp_path/f'v5_{n_D}D_{BC_key}.hdf5').view(increments=-1).get('u_n')
+        load_setup(np_rng, load_config, BC_values, n_D, scaling, BC_key, 5).save(
+                   tmp_path/f'load_v5_{n_D}D_{BC_key}_{scaling}.yaml')
+        damask.util.run(f'damask_mesh -m material.yaml -l load_v5_{n_D}D_{BC_key}_{scaling}.yaml ' +
+                        f'-g mesh_{n_D}D.msh -n numerics.yaml -j v5_{n_D}D_{BC_key}_{scaling}', wd = tmp_path)
+        u_n = damask.Result(tmp_path/f'v5_{n_D}D_{BC_key}_{scaling}.hdf5').view(increments=-1).get('u_n')
         assert(np.abs(u_n) < 1.0e-8).all()

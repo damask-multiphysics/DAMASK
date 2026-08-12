@@ -1141,6 +1141,24 @@ end function math_clip
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Calculate element of a normalized geometric sequence.
+!--------------------------------------------------------------------------------------------------
+real(pREAL) pure elemental function math_geometricFraction(r,i,N)
+
+  real(pREAL), intent(in) :: r                                                                      !< scaling factor
+  integer,     intent(in) :: i, N                                                                   !< increment, number of steps
+
+
+  if (dEq(r,1.0_pREAL,1.0e-9_pREAL)) then
+    math_geometricFraction = 1.0_pREAL / real(N,pREAL)
+  else
+    math_geometricFraction = (1.0_pREAL - r) * r**i / (r - r**(N + 1))
+  end if
+
+end function math_geometricFraction
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some math functions.
 !--------------------------------------------------------------------------------------------------
 subroutine math_selfTest()
@@ -1343,6 +1361,11 @@ subroutine math_selfTest()
   if (any(dNeq(math_I3(1:3,mod(d+1,3)+1),t33_2(1:3,1)))) error stop 'math_eigh33/min eigenvector'
   if (any(dNeq(math_I3(1:3,d           ),t33_2(1:3,2)))) error stop 'math_eigh33/mid eigenvector'
   if (any(dNeq(math_I3(1:3,mod(d,3)+1  ),t33_2(1:3,3)))) error stop 'math_eigh33/max eigenvector'
+
+  r = 0.5_pREAL + r
+  d = nint(r*10.0_pREAL) + 2
+  if (dNeq(sum(math_geometricFraction(r,math_range(d),d)),1.0_pREAL,1.0e-9_pREAL)) &
+    error stop 'math_geometricFraction'
 
 end subroutine math_selfTest
 

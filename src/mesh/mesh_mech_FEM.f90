@@ -376,18 +376,14 @@ end subroutine FEM_mechanical_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the FEM load step
 !--------------------------------------------------------------------------------------------------
-  type(tSolutionState) function FEM_mechanical_solution( &
-             incInfoIn,Delta_t,Delta_t_prev,mechBC)
+  type(tSolutionState) function FEM_mechanical_solution(incInfoIn,Delta_t,mechBC)
 
-!--------------------------------------------------------------------------------------------------
-! input data for solution
-  real(pREAL), intent(in) :: &
-    Delta_t, &                                                                                      !< increment in time for current solution
-    Delta_t_prev                                                                                    !< increment in time of last increment
-  type(tMechBC), dimension(:),intent(in) :: &
-    mechBC
-  character(len=*), intent(in) :: &
-    incInfoIn
+  character(len=*),               intent(in) :: &
+    incInfoIn                                                                                       !< step information (iterations, cut backs, etc)
+  real(pREAL),                    intent(in) :: &
+    Delta_t                                                                                         !< increment in time for current solution
+  type(tMechBC),    dimension(:), intent(in) :: &
+    mechBC                                                                                          !< boundary conditions data
 
   PetscErrorCode :: err_PETSc
   SNESConvergedReason :: reason
@@ -789,8 +785,8 @@ subroutine FEM_mechanical_forward(guess,Delta_t,Delta_t_prev)
   logical,     intent(in) :: &
     guess
   real(pREAL), intent(in) :: &
-    Delta_t_prev, &
-    Delta_t
+    Delta_t, &
+    Delta_t_prev
 
   PetscErrorCode :: err_PETSc
 
