@@ -1,0 +1,113 @@
+---
++++
+@@ -218,6 +218,12 @@ if test -n "$MSCCOSIM_HOME"; then
+  MARC_COSIM_LIB="$MSCCOSIM_HOME/CoSim$MSCCOSIM_VERSION/Dcosim$MSCCOSIM_VERSION/lib"
+ fi
+
++# DAMASK uses the HDF5 compiler wrapper around the Intel compiler
++HDF5_LIB=$(h5fc -shlib -show)
++HDF5_LIB=${HDF5_LIB#*ifx}
++HDF5_LIB="$HDF5_LIB -Wl,--disable-new-dtags"
++FCOMP=ifx
++
+ # AEM
+ if test "$MARCDLLOUTDIR" = ""; then
+  DLLOUTDIR="$MARC_LIB"
+@@ -717,6 +724,11 @@ CCHIGH="$C_COMP -c $CC_OPT -O3 $I8DEFINES -DLinux -DLINUX -DLinux_intel $CDEFINES $C
+ CC_TETMESH="$CP_COMP -c -O2 -I$TETMESHDIR/include ${CC_OPENMP} -ansi-alias -m64 -pipe -fPIC -falign-functions=16 -fstrict-aliasing -fno-jump-tables -MMD -DLINUX -D_CRT_SECURE_NO_WARNINGS -DX64 -DMESHINGAPI_LIB -DNDEBUG"
+ CC_CAEFATIGUE="$CP_COMP -c -O2 -I$CAEFATIGUEDIR/linux64/include ${CC_OPENMP} -ansi-alias -m64 -pipe -fPIC -falign-functions=16 -fstrict-aliasing -fno-jump-tables -MMD -DLINUX -D_CRT_SECURE_NO_WARNINGS -DX64 -DNDEBUG"
+
++# DAMASK compiler calls
++DCCLOW="$C_COMP -c $CC_OPT -O0 $I8DEFINES -DLinux -DLINUX -DLinux_intel -DFYAML -DMARC_SOURCE $CDEFINES $CINCL $SOLVERFLAGS $OPENSSL_INCLUDE "
++DCC="$C_COMP -c $CC_OPT -O1 $I8DEFINES -DLinux -DLINUX -DLinux_intel -DFYAML -DMARC_SOURCE $CDEFINES $CINCL $SOLVERFLAGS $OPENSSL_INCLUDE -I$MPI_ROOT/include"
++DCCHIGH="$C_COMP -c $CC_OPT -O3 $I8DEFINES -DLinux -DLINUX -DLinux_intel -DFYAML -DMARC_SOURCE $CDEFINES $CINCL $SOLVERFLAGS $OPENSSL_INCLUDE "
++
+ if test "$MARCDEBUG" = "ON"
+ then
+   CC="$C_COMP -c $CC_OPT -DLinux $I8DEFINES -DLINUX -DLinux_intel $CDEFINES $CINCL $SOLVERFLAGS $OPENSSL_INCLUDE -I$MPI_ROOT/include "
+@@ -754,7 +766,7 @@
+ if test "${COMP_ENV}" = "gcc" ; then
+   FORT_OPT="-c -cpp -fcray-pointer -fallow-argument-mismatch -fd-lines-as-comments -Wno-missing-include-dirs -Wno-argument-mismatch -std=legacy -D_GCC_PORTING_PATCH_"
+ else
+-  FORT_OPT="-c -assume byterecl -safe-cray-ptr -WB -fp-model source -diag-disable:10448"
++  FORT_OPT="-c -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr -WB -fp-model source -diag-disable:10448"
+ fi
+ if test "$MTHREAD" = "OPENMP"
+ then
+@@ -771,7 +783,7 @@ else
+   fi
+ fi
+ if test "$MARCHDF_HDF" = "HDF"; then
+-  FORT_OPT="$FORT_OPT -DMARCHDF_HDF=$MARCHDF_HDF $HDF_INCLUDE"
++  FORT_OPT="$FORT_OPT -DMARCHDF=$MARCHDF_HDF"
+ fi
+ if test "$NASTRAN_LIB" = "on" ; then
+   FORT_OPT="$FORT_OPT -fPIC "
+@@ -788,6 +800,41 @@ FORTNA="$FCOMP $FORT_OPT -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
+ #  for compiling free form f90 files.
+ FORTF90="$FCOMP -c -cpp -O1 $FORT_OPT $I8FFLAGS"
+
++# determine DAMASK version
++if test -n "$DAMASK_USER"; then
++  DAMASKROOT=`dirname $DAMASK_USER`/../..
++  read DAMASK_VERSION < $DAMASKROOT/VERSION
++  DAMASK_VERSION_MAJOR="'`echo $DAMASK_VERSION | cut -d. -f1`'"
++  DAMASK_VERSION_MINOR="'`echo $DAMASK_VERSION | cut -d. -f2`'"
++  DAMASK_VERSION_PATCH=`echo $DAMASK_VERSION | cut -d. -f3`
++  if [[ $DAMASK_VERSION_PATCH == *"-"* ]]; then
++   DAMASK_VERSION_HASH="'`echo $DAMASK_VERSION_PATCH | cut -d- -f3`'"
++  fi
++  DAMASK_VERSION_PATCH="'`echo $DAMASK_VERSION_PATCH | cut -d- -f1`'"
++  DAMASK_VERSION="'"$DAMASK_VERSION"'"
++else
++  DAMASK_VERSION="'N/A'"
++fi
++if [[ -n $DAMASK_VERSION_HASH ]]; then
++  DAMASK_INFO="-DDAMASKVERSION=$DAMASK_VERSION -DDAMASK_VERSION_MAJOR=$DAMASK_VERSION_MAJOR -DDAMASK_VERSION_MINOR=$DAMASK_VERSION_MINOR -DDAMASK_VERSION_PATCH=$DAMASK_VERSION_PATCH -DDAMASK_VERSION_HASH=$DAMASK_VERSION_HASH"
++else
++  DAMASK_INFO="-DDAMASKVERSION=$DAMASK_VERSION -DDAMASK_VERSION_MAJOR=$DAMASK_VERSION_MAJOR -DDAMASK_VERSION_MINOR=$DAMASK_VERSION_MINOR -DDAMASK_VERSION_PATCH=$DAMASK_VERSION_PATCH"
++fi
++
++# DAMASK compiler calls
++DFORTLOWMP="$FCOMP -c -O0 -fPIC -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr $PROFILE -zero -WB $I8FFLAGS -I$MARC_SOURCE/common \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DFYAML -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
++ -qopenmp -qopenmp-threadprivate=compat\
++  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS $KDTREE2_MOD -I$MARC_MOD $HDF5_LIB"
++DFORTRANMP="$FCOMP -c -O1 -fPIC -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr $PROFILE -zero -WB $I8FFLAGS -I$MARC_SOURCE/common \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
++ -qopenmp -qopenmp-threadprivate=compat\
++  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS $KDTREE2_MOD -I$MARC_MOD $HDF5_LIB"
++DFORTHIGHMP="$FCOMP -c -O3 -fPIC -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe-cray-ptr $PROFILE -zero -WB $I8FFLAGS -I$MARC_SOURCE/common \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC_SOURCE=$MARC_SOURCE $DAMASK_INFO \
++ -qopenmp -qopenmp-threadprivate=compat\
++  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS $KDTREE2_MOD -I$MARC_MOD $HDF5_LIB"
++
+ if test "$MARCDEBUG" = "ON"
+ then
+   FORTLOW="$FCOMP $FORT_OPT $PROFILE $I8FFLAGS -I$MARC_SOURCE/common \
+@@ -955,7 +1002,7 @@ SOLVERLIBS="${BCSSOLVERLIBS} ${VKISOLVERLIBS} ${CASISOLVERLIBS} ${MF2SOLVERLIBS}
+   -lmg-hybrid \
+   -lmg-cadsurf \
+   -lmg-hexa \
+-  $HDF_LIBS \
++  $HDF5_LIB \
+   $RTREE_LIB/librtree_lib.a \
+   $SFGEO_LIB/libgeo_lib.a"
+
+@@ -1003,7 +1050,7 @@
+ if test "${COMP_ENV}" = "gcc" ; then
+   SYSLIBS=" $OPENMP -lpthread -shared-libgcc $RPCLIB -ldl "
+ else
+-  SYSLIBS=" $OPENMP -lpthread -shared-intel -cxxlib $RPCLIB"
++  SYSLIBS=" $OPENMP -lpthread -static-intel -cxxlib $RPCLIB"
+ fi
+
+ # Uncomment the following lines to turn on the trace and comment out the next 4 lines
+@@ -1020,6 +1067,6 @@ if test $MPITYPE = intelmpi
+  if test "${COMP_ENV}" = "gcc" ; then
+  SYSLIBS="$SYSLIBS -lrt $OPENMP -lpthread -shared-libgcc $RPCLIB -ldl "
+  else
+- SYSLIBS="$SYSLIBS -L${MPI_ROOT}/lib/release -lmpi -L${MPI_ROOT}/lib -lmpifort -lrt $OPENMP -threads -lpthread -shared-intel -cxxlib $RPCLIB"
++ SYSLIBS="$SYSLIBS -L${MPI_ROOT}/lib/release -lmpi -L${MPI_ROOT}/lib -lmpifort -lrt $OPENMP -threads -lpthread -static-intel -cxxlib $RPCLIB"
+  fi
+ fi
