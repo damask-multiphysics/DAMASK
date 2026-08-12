@@ -99,7 +99,7 @@ print('compiling Mentat menu binaries...')
 
 executable = marc_root/f'mentat{marc_version}/bin/mentat'
 menu_file  = marc_root/f'mentat{marc_version}/menus/linux64/main.msb'
-subprocess.run(shlex.split(f'xvfb-run -a {executable} -compile {menu_file}'), check=True)
+subprocess.run(['xvfb-run', '-a', str(executable), '-compile', str(menu_file)], check=True)
 
 print('setting file access rights...')
 

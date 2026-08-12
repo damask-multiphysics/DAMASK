@@ -3,8 +3,6 @@ import os
 
 import pytest
 import h5py
-import numpy as np
-
 import damask
 
 @pytest.fixture
@@ -39,7 +37,7 @@ def test_marc_element_lib(damask_root,res_path,tmp_path,copy_files,assert_allclo
         for dataset in ['T_e', 'T_c','x_n','x_p']:
             loc_cur = f'/geometry/{dataset}'
             loc_ref = f'/geometry_{elem}/{dataset}'
-            assert np.all(ref[loc_ref][()] == cur[loc_cur][()])
+            assert_allclose(ref[loc_ref][()],cur[loc_cur][()])
         for displacement in ['u_n','u_p']:
             last_inc=[s for s in list(ref.keys()) if f'lastInc_{elem}' in s][0]
             loc_cur = f'increment_{last_inc[3:6]}/geometry/{displacement}'

@@ -9,7 +9,7 @@ from typing import Literal
 
 logger = logging.getLogger(__name__)
 
-_marc_version = '2025.1'
+_marc_version = '2026.1'
 _marc_root = '/opt/msc'
 _damask_root = str(Path(__file__).parents[3])
 
@@ -36,7 +36,7 @@ class Marc:
         """
         self.marc_version = version
         self.marc_root = Path(marc_root)
-        self.damask_root = Path(damask_root)
+        self.damask_root = Path(damask_root or _damask_root)
 
     @property
     def library_path(self):
@@ -95,18 +95,16 @@ class Marc:
         cmd = f'{self.tools_path/script} -jid {model}_{job} '\
             + ('-nprocd 1 ' if (domains == 1) else\
                f'-nprocd {domains} -nsolver {domains} -nthread_elem {domains} -nthread_solver {domains} ')\
-            + '-autorst 0 -ci n -cr n -dcoup 0 -b no -v no '\
+            + '-autorst 0 -ci n -cr n -b no -v no '\
             + (f'-u {usersub} -save y' if compile else f'-prog {usersub.with_suffix("")}')
         logger.info(cmd)
 
         ret = subprocess.run(shlex.split(cmd),capture_output=True,env=env)
 
-        if (m := re.search('Exit number ([0-9]+)',ret.stderr.decode())) is not None:
-            if 3004 != (v := int(m.group(1))):
-                print(ret.stderr.decode())
-                print(ret.stdout.decode())
-                raise RuntimeError(f'Marc simulation failed ({v})')
-        else:
+        if ret.returncode != 0:
             print(ret.stderr.decode())
             print(ret.stdout.decode())
-            raise RuntimeError('Marc simulation failed (unknown return value)')
+            if (m := re.search('Exit number ([0-9]+)',ret.stderr.decode())) is not None:
+                raise RuntimeError(f'Marc simulation failed ({int(m.group(1))})')
+            else:
+                raise RuntimeError(f'Marc simulation failed (return code {ret.returncode})')

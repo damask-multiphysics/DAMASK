@@ -885,7 +885,7 @@
                $RSH $i /bin/rm $remoteprog 2> /dev/null
                echo
 -              $RSH $i $DIR2/tools/comp_user $DIR2 $DIR1 $remoteuser $remoteprog
-+              $RSH $i $DIR2/tools/comp_damask_lmp $DIR2 $DIR1 $remoteuser $remoteprog
++              $RSH $i $DIR2/tools/comp_damask_mp $DIR2 $DIR1 $remoteuser $remoteprog
                # check if successful, the new executable should be there
                line=`$RSH $i /bin/ls $remoteprog 2> /dev/null`
                if test "$line"
@@ -1010,7 +1010,7 @@
                $RSH $i /bin/rm $remoteprog 2> /dev/null
                echo
 -              $RSH $i $DIR2/tools/comp_user $DIR2 $DIR1 $remoteuser $remoteprog
-+              $RSH $i $DIR2/tools/comp_damask_lmp $DIR2 $DIR1 $remoteuser $remoteprog
++              $RSH $i $DIR2/tools/comp_damask_mp $DIR2 $DIR1 $remoteuser $remoteprog
                # check if successful, the new executable should be there
                line=`$RSH $i /bin/ls $remoteprog 2> /dev/null`
                if test "$line"
