@@ -13,6 +13,7 @@ program DAMASK_mesh
   use prec
   use CLI
   use IO
+  use math
   use parallelization
   use materialpoint
   use discretization_mesh
@@ -22,10 +23,11 @@ program DAMASK_mesh
   implicit none(type,external)
 
   type :: tLoadCase
-    real(pREAL)   :: t                   = 0.0_pREAL                                                !< length of increment
-    integer       :: N                   = 0, &                                                     !< number of increments
-                     f_out               = 1                                                        !< frequency of result writes
-    logical       :: estimate_rate       = .true.                                                   !< follow trajectory of former loadcase
+    real(pREAL) :: t             = 0.0_pREAL, &                                                     !< length of increment
+                   r             = 1.0_pREAL                                                        !< ratio of geometric progression
+    integer     :: N             = 0, &                                                             !< number of increments
+                   f_out         = 1                                                                !< frequency of result writes
+    logical     :: estimate_rate = .true.                                                           !< follow trajectory of former loadcase
     type(tMechBC),  allocatable, dimension(:) :: mechBC
   end type tLoadCase
 
@@ -70,20 +72,20 @@ program DAMASK_mesh
 
 !--------------------------------------------------------------------------------------------------
 ! reading field information from numerics file and do sanity checks
-  num_solver => config_numerics%get_dict('solver',defaultVal=emptyDict)
-  num_mesh   => num_solver%get_dict('mesh',defaultVal=emptyDict)
-  max_cutback   = num_mesh%get_asInt('N_cutback_max',defaultVal=3)
-
-  if (max_cutback < 0) call IO_error(301,ext_msg='N_cutback_max')
+  num_solver => config_numerics%get_dict('solver', defaultVal = emptyDict)
+  num_mesh   => num_solver%get_dict('mesh', defaultVal = emptyDict)
+  max_cutback = num_mesh%get_asInt('N_cutback_max', defaultVal = 3)
+  if (max_cutback < 0) &
+    call IO_error(301_pI16, 'Maximum cutback level', 'N_cutback_max', 'must be >= 0', emph = [2])
 
 !--------------------------------------------------------------------------------------------------
 ! parse load life, do all necessary checks for correct BC, and output load case information
   if (worldrank == 0) then
     f_content = IO_read(CLI_loadFile)
     f_name = CLI_loadFile
-    if (scan(f_name,'/') /= 0) f_name = f_name(scan(f_name,'/',.true.)+1:)
-    call result_openJobFile(parallel=.false.)
-    call result_addSetupFile(f_content,f_name,'load case definition (mesh solver)')
+    if (scan(f_name,'/') /= 0) f_name = f_name(scan(f_name, '/', .true.) + 1:)
+    call result_openJobFile(parallel = .false.)
+    call result_addSetupFile(f_content, f_name, 'load case definition (mesh solver)')
     call result_closeJobFile()
   end if
 
@@ -94,11 +96,11 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
   call FEM_Utilities_init(num_mesh)
-  call FEM_mechanical_init(load_cases(1)%mechBC,num_mesh)
+  call FEM_mechanical_init(load_cases(1)%mechBC, num_mesh)
   call config_numerics_deallocate()
 
   if (worldrank == 0) then
-    open(newunit=unit_stat,file=trim(CLI_jobName)//'.sta',form='FORMATTED',status='REPLACE')
+    open(newunit=unit_stat,file=trim(CLI_jobName)//'.sta', form = 'FORMATTED', status = 'REPLACE')
     write(unit_stat,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                 ! statistics file
   end if
 
@@ -106,7 +108,7 @@ program DAMASK_mesh
   flush(IO_STDOUT)
   call materialpoint_result(0,0.0_pREAL)
 
-  Delta_t = load_cases(1)%t/real(load_cases(1)%N,pREAL)
+  Delta_t = load_cases(1)%t * math_geometricFraction(load_cases(1)%r,1,load_cases(1)%N)
   loadCaseLooping: do l = 1, size(load_cases)
     guess = load_cases(l)%estimate_rate                                                             ! change of load case? homogeneous guess for the first inc
     call FEM_mechanical_assembleFext(load_cases(l)%mechBC, load_cases(l)%t)                         ! assemble external loads vector
@@ -114,12 +116,11 @@ program DAMASK_mesh
 
     incLooping: do inc = 1, load_cases(l)%N
       n_total_inc = n_total_inc + 1
-
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
       Delta_t_prev = Delta_t                                                                        ! last timeinc that brought former inc to an end
-      Delta_t = load_cases(l)%t/real(load_cases(l)%N,pREAL)
-      Delta_t = Delta_t * real(sub_step_factor,pREAL)**real(-cut_back_level,pREAL)                  ! depending on cut back level, decrease time step
+      Delta_t = load_cases(l)%t * math_geometricFraction(load_cases(l)%r,inc,load_cases(l)%N) &     ! geometric scaling
+              * real(sub_step_factor,pREAL)**real(-cut_back_level,pREAL)                            ! depending on cut back level, decrease time step
       step_fraction = 0                                                                             ! fraction scaled by stepFactor**cutLevel
 
       subStepLooping: do while (step_fraction < sub_step_factor**cut_back_level)
@@ -129,21 +130,21 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! report begin of new step
         print'(/,1x,a)', '###########################################################################'
-        print'(1x,a,es12.5,6(a,i0))',&
+        print'(1x,a,es12.5,6(a,i0))', &
                 'Time', t, &
-                's: Increment ', inc, '/', load_cases(l)%N,&
-                '-', step_fraction, '/', sub_step_factor**cut_back_level,&
+                ' s: Increment ', inc, '/', load_cases(l)%N, &
+                '-', step_fraction, '/', sub_step_factor**cut_back_level, &
                 ' of load case ', l,'/', size(load_cases)
         write(inc_info,'(4(a,i0))') &
-               'Increment ',n_total_inc,'/',sum(load_cases%N),&
-               '-',step_fraction, '/', sub_step_factor**cut_back_level
+               'Increment ', n_total_inc, '/', sum(load_cases%N), &
+               '-', step_fraction, '/', sub_step_factor**cut_back_level
         flush(IO_STDOUT)
 
         call FEM_mechanical_forward(guess,Delta_t,Delta_t_prev)
 
 !--------------------------------------------------------------------------------------------------
 ! solve fields
-        sol_state = FEM_mechanical_solution(inc_info,Delta_t,Delta_t_prev,load_cases(l)%mechBC)
+        sol_state = FEM_mechanical_solution(inc_info,Delta_t,load_cases(l)%mechBC)
         cutBack = .False.
 
         if (.not. sol_state%converged) then                                                         ! no solution found
@@ -152,7 +153,7 @@ program DAMASK_mesh
             step_fraction = (step_fraction - 1) * sub_step_factor                                   ! adjust to new denominator
             cut_back_level = cut_back_level + 1
             t = t - Delta_t                                                                         ! rewind time
-            Delta_t = Delta_t/2.0_pREAL
+            Delta_t = Delta_t / real(sub_step_factor, pREAL)
             print'(/,1x,a)', 'cutting back'
           else                                                                                      ! default behavior, exit if spectral solver does not converge
             if (worldrank == 0) close(unit_stat)
@@ -356,7 +357,7 @@ function parse_and_print_load_cases(load_steps) result(load_cases)
     end do
 
 !--------------------------------------------------------------------------------------------------
-! store discretization, time and frequency; check values
+! store discretization, time, scaling factor and frequency; check values
     step_discretization => load_step%get_dict('discretization')
     load_cases(l)%t = step_discretization%get_asReal('t')
     if (load_cases(l)%t < 0.0_pREAL) &
@@ -366,15 +367,19 @@ function parse_and_print_load_cases(load_steps) result(load_cases)
     if (load_cases(l)%N < 1) &
       call IO_error(301_pI16, 'loadcase', l, 'has non-positive number of steps', 'N', emph = [2,4])
 
-    if (load_step%get_asStr('f_out',defaultVal='n/a') == 'none') then
+    load_cases(l)%r = step_discretization%get_asReal('r', defaultVal = 1.0_pREAL)
+    if (load_cases(l)%r <= 0.0_pREAL) &
+      call IO_error(301_pI16, 'loadcase', l, 'has non-positive geometric progression ratio', 'r', emph = [2,4])
+
+    if (load_step%get_asStr('f_out', defaultVal = 'n/a') == 'n/a') then
       load_cases(l)%f_out = huge(0)
     else
-      load_cases(l)%f_out = load_step%get_asInt('f_out', defaultVal=1)
+      load_cases(l)%f_out = load_step%get_asInt('f_out', defaultVal = 1)
     end if
     if (load_cases(l)%f_out < 1) &
       call IO_error(301_pI16, 'loadcase', l, 'has non-positive output frequency', 'f_out', emph = [2,4])
 
-    load_cases(l)%estimate_rate = (load_step%get_asBool('estimate_rate',defaultVal=.true.) .and. l>1)
+    load_cases(l)%estimate_rate = (load_step%get_asBool('estimate_rate', defaultVal = .true.) .and. l>1)
 
 !--------------------------------------------------------------------------------------------------
 ! output of load case information

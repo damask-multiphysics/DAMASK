@@ -295,13 +295,8 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
       Delta_t_prev = Delta_t                                                                        ! last time intervall that brought former inc to an end
-      if (dEq(loadCases(l)%r,1.0_pREAL,1.e-9_pREAL)) then                                           ! linear scale
-        Delta_t = loadCases(l)%t/real(loadCases(l)%N,pREAL)
-      else
-        Delta_t = loadCases(l)%t * (loadCases(l)%r**(inc-1)-loadCases(l)%r**inc) &
-                                 / (1.0_pREAL-loadCases(l)%r**loadCases(l)%N)
-      end if
-      Delta_t = Delta_t * real(subStepFactor,pREAL)**real(-cutBackLevel,pREAL)                      ! depending on cut back level, decrease time step
+      Delta_t = loadCases(l)%t * math_geometricFraction(loadCases(l)%r,inc,loadCases(l)%N) &        ! geometric scaling
+              * real(subStepFactor,pREAL)**real(-cutBackLevel,pREAL)                                ! depending on cut back level, decrease time step
 
       skipping: if (totalIncsCounter <= CLI_restartInc) then                                        ! not yet at restart inc?
         t = t + Delta_t                                                                             ! just advance time, skip already performed calculation
