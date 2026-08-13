@@ -93,6 +93,11 @@ def from_Poisson_disc(size: _FloatSequence,
     -------
     coords : numpy.ndarray, shape (N_seeds,3)
         Seed coordinates in 3D space.
+
+    Raises
+    ------
+    ValueError
+        If 'N_seeds' seeds cannot be placed with the given minimum 'distance'.
     """
     size_ = _np.asarray(size,float)
     rng = _np.random.default_rng(rng_seed)

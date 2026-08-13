@@ -181,6 +181,11 @@ def run(cmd: str,
     -------
     stdout, stderr : (str, str)
         Output of the executed command.
+
+    Raises
+    ------
+    RuntimeError
+        If the command fails, i.e. exits with a non-zero return code.
     """
     def pass_signal(sig,_,proc,default):
         proc.send_signal(sig)

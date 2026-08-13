@@ -342,12 +342,14 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
 
     Notes
     -----
-    Cell size along single-cell dimensions is set to the geometric mean of remaining cell sizes.
+    Cell size along single-cell dimensions is set to the geometric mean
+    of remaining cell sizes.
 
     Examples
     --------
     Cells, size, and origin of a 1 × 1 × 3 grid.
-    Cell sizes along x and y result as (the geometric mean of) the cell size along z.
+    Cell sizes along x and y result as (the geometric mean of) the cell
+    size along z.
 
     >>> import numpy as np
     >>> import damask
@@ -746,7 +748,8 @@ def regrid(size: _FloatSequence,
     """
     Map a deformed grid A back to a rectilinear grid B.
 
-    The size of grid B is chosen as the smallest periodic box that holds the deformed grid A.
+    The size of grid B is chosen as the smallest periodic box that
+    holds the deformed grid A.
 
     Parameters
     ----------
@@ -757,12 +760,14 @@ def regrid(size: _FloatSequence,
     cells : sequence of int, len (3)
         Cell count along x,y,z of grid B.
     max_coeff : int, optional
-        Largest multiplier in the linear combinations of deformed edges of grid A that are
-        used as basis vectors in search for an aligned orthogonal frame of grid B.
+        Largest multiplier in the linear combinations of deformed edges of
+        grid A that are used as basis vectors in search for an aligned
+        orthogonal frame of grid B.
         Defaults to 3.
     max_candidates : int, optional
         Number of shortest candidate vectors to include in search.
-        Defaults to 200. 'None' means all possible candidates (up to max_coeff) are checked.
+        Defaults to 200. 'None' means all possible candidates (up to `max_coeff`)
+        are checked.
     return_size : bool, optional
         If True, also return the size of grid B.
         Defaults to False.
@@ -773,6 +778,12 @@ def regrid(size: _FloatSequence,
         Flat index of closest point on deformed grid A for each point on grid B.
     size : numpy.ndarray of float, shape (3), optional
         Physical size of grid B, if return_size is True.
+
+    Raises
+    ------
+    ValueError
+        If no orthogonal basis aligned with the average deformation gradient
+        can be found.
     """
     def shortest_linear_combinations(bases: _np.ndarray,
                                      max_coeff: int,
