@@ -541,7 +541,7 @@ def test_get_grain_boundaries_invalid(default,directions):
         default.get_grain_boundaries(directions=directions)
 
 @pytest.mark.parametrize('file_version',[7,8])
-def test_load_DREAM3D(res_path,file_version):
+def test_load_DREAM3D(assert_allclose,res_path,file_version):
     """
     For synthetic microstructures (no in-grain scatter), check that:
     1) the sorted and renumbered grain-wise representation is equivalent to the cell-wise representation.
@@ -557,10 +557,10 @@ def test_load_DREAM3D(res_path,file_version):
     material_cell = ConfigMaterial.load_DREAM3D(fname)
     O_cell = np.array([material['constituents'][0]['O'] for material in material_cell['material']])
 
-    assert np.allclose(grid_grain.origin,grid_cell.origin) and \
-            np.allclose(grid_grain.size,grid_cell.size) and \
-            np.allclose(O_grain[grid_grain.material],O_cell[grid_cell.material]) and \
-            (grid_grain.renumber().sort().material == grid_cell.material).all()
+    assert_allclose(grid_grain.origin,grid_cell.origin)
+    assert_allclose(grid_grain.size,grid_cell.size)
+    assert_allclose(O_grain[grid_grain.material],O_cell[grid_cell.material])
+    assert (grid_grain.renumber().sort().material == grid_cell.material).all()
 
 @pytest.mark.parametrize('file_version',[7,8])
 def test_load_DREAM3D_reference(res_path,update,file_version):

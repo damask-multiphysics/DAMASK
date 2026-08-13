@@ -190,7 +190,7 @@ def material_setup(mat_config, np_rng):
 @pytest.mark.parametrize('n_D', [2, 3])
 @pytest.mark.parametrize('BC_type', ['u', 'f'])
 @pytest.mark.parametrize('scaling', ['linear', 'nonlin'])
-def test_mesh_BC_coherence(res_path, copy_files, tmp_path, np_rng,
+def test_mesh_BC_coherence(assert_allclose,res_path, copy_files, tmp_path, np_rng,
                            n_D, BC_type, scaling, petsc_version):
     copy_files(res_path, tmp_path, [f'mesh_{n_D}D.msh', f'load_{n_D}D.yaml', 'numerics.yaml'])
 
@@ -219,7 +219,7 @@ def test_mesh_BC_coherence(res_path, copy_files, tmp_path, np_rng,
                             f'-g mesh_{n_D}D.msh -n numerics.yaml -j v{v}_{n_D}D_{BC_key}_{scaling}', wd = tmp_path)
             u_n = damask.Result(tmp_path/f'v{v}_{n_D}D_{BC_key}_{scaling}.hdf5').view(increments=-1).get('u_n')
             u_n[np.abs(u_n) < 1.0e-12] = 0.0
-            assert(np.allclose(u_ref, u_n, rtol = 1.0e-5, atol = 1.0e-7))
+            assert_allclose(u_ref, u_n, rtol = 1.0e-5, atol = 1.0e-7)
 
 
 @pytest.mark.parametrize('n_D', [2, 3])

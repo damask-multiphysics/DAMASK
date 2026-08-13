@@ -48,9 +48,9 @@ def test_srepr(input,glue,quote,output):
                          ([0.666666666666,-0.33333333333,-0.33333],[2,-1,-1]),
                          ([1./3., 1./4., 1./22],[536870912, 402653184,  73209669]),
                         ])
-def test_scale2coprime(input,output,N):
+def test_scale2coprime(assert_allclose,input,output,N):
     res = util.scale_to_coprime(input,N)
-    assert np.allclose(res/np.max(np.abs(res)),output/np.max(np.abs(output)),atol=1e-2,rtol=0)
+    assert_allclose(res/np.max(np.abs(res)),output/np.max(np.abs(output)),atol=1e-2,rtol=0)
 
 
 @pytest.mark.parametrize('rv',[stats.rayleigh(),stats.weibull_min(1.2),stats.halfnorm(),stats.pareto(2.62)])
@@ -87,9 +87,9 @@ def test_hybridIA_linear(np_rng):
                           ([1,1,0],'x',False,False,[0.5,0]),
                           ([1,1,1],'y',True, True, [0.3660254, 0,0.3660254]),
                          ])
-def test_project_equal_angle(point,direction,normalize,keepdims,answer):
-    assert np.allclose(util.project_equal_angle(np.array(point),direction=direction,
-                                                normalize=normalize,keepdims=keepdims),answer)
+def test_project_equal_angle(assert_allclose,point,direction,normalize,keepdims,answer):
+    assert_allclose(util.project_equal_angle(np.array(point),direction=direction,
+                                             normalize=normalize,keepdims=keepdims),answer)
 
 @pytest.mark.parametrize('point,direction,normalize,keepdims,answer',
                          [
@@ -100,9 +100,9 @@ def test_project_equal_angle(point,direction,normalize,keepdims,answer):
                           ([1,1,0],'x',False,False,[0.70710678,0]),
                           ([1,1,1],'y',True, True, [0.45970084,0,0.45970084]),
                          ])
-def test_project_equal_area(point,direction,normalize,keepdims,answer):
-    assert np.allclose(util.project_equal_area(np.array(point),direction=direction,
-                                                normalize=normalize,keepdims=keepdims),answer)
+def test_project_equal_area(assert_allclose,point,direction,normalize,keepdims,answer):
+    assert_allclose(util.project_equal_area(np.array(point),direction=direction,
+                                            normalize=normalize,keepdims=keepdims),answer)
 
 @pytest.mark.parametrize('fro,to,mode,answer',
                          [

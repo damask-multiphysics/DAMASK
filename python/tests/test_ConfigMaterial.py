@@ -168,7 +168,7 @@ def test_material_add_invalid_v(v):
 
 @pytest.mark.parametrize('cell_ensemble_data',[None,'CellEnsembleData'])
 @pytest.mark.parametrize('file_version',[7,8])
-def test_load_DREAM3D(res_path,cell_ensemble_data,file_version):
+def test_load_DREAM3D(assert_allclose,res_path,cell_ensemble_data,file_version):
     fname = res_path/f'2phase_irregularGrid_v{file_version}.dream3d'
     grain_c = ConfigMaterial.load_DREAM3D(fname,'Grain Data',cell_ensemble_data = cell_ensemble_data)
     point_c = ConfigMaterial.load_DREAM3D(fname,             cell_ensemble_data = cell_ensemble_data)
@@ -181,8 +181,8 @@ def test_load_DREAM3D(res_path,cell_ensemble_data,file_version):
 
     for i in np.unique(point_m):
         j = int(grain_m[(point_m==i).nonzero()[0][0]])
-        assert np.allclose(point_c['material'][i]['constituents'][0]['O'],
-                           grain_c['material'][j]['constituents'][0]['O'])
+        assert_allclose(point_c['material'][i]['constituents'][0]['O'],
+                        grain_c['material'][j]['constituents'][0]['O'])
         assert point_c['material'][i]['constituents'][0]['phase'] == \
                 grain_c['material'][j]['constituents'][0]['phase']
 
