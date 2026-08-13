@@ -186,7 +186,7 @@ def run(cmd: str,
     Raises
     ------
     RuntimeError
-        If the command fails, i.e. exits with a non-zero return code.
+        If the command exits with a non-zero return code.
     """
     def pass_signal(sig,_,proc,default):
         proc.send_signal(sig)

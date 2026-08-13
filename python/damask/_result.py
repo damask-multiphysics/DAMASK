@@ -180,8 +180,8 @@ class Result:
         TypeError
             If the DADF5 version of the file is not supported.
         ValueError
-            If the file does not contain any increments, i.e.
-            is not a valid DADF5 result file.
+            If the file is not a valid DADF5 result file because it contains
+            no increments.
         """
         with h5py.File(fname,'r') as f:
 
