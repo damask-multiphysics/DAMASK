@@ -146,6 +146,9 @@ def assert_allclose():
         Relative tolerance.
     atol : float
         Absolute tolerance.
+    equal_nan : bool
+        Whether NaNs in the same positions compare as equal.
+        Defaults to False.
     N : int
         Maximum number of reported deviating values.
         Defaults to 16. N=None outputs all values.
@@ -156,16 +159,17 @@ def assert_allclose():
     def _assert_allclose(a,b,
                          rtol: float = 1e-05,
                          atol: float = 1e-08,
+                         equal_nan: bool = False,
                          N = 16,
                          msg = '',
                          ):
-        assert np.logical_or(np.isclose(a,b, rtol=rtol,atol=atol),
-                             np.isclose(b,a, rtol=rtol,atol=atol)).all(), \
-               report_nonclose(a,b, rtol=rtol,atol=atol, N=N, msg=msg)
+        assert np.logical_or(np.isclose(a,b, rtol=rtol,atol=atol,equal_nan=equal_nan),
+                             np.isclose(b,a, rtol=rtol,atol=atol,equal_nan=equal_nan)).all(), \
+               report_nonclose(a,b, rtol=rtol,atol=atol, equal_nan=equal_nan, N=N, msg=msg)
 
     return _assert_allclose
 
-def report_nonclose(a, b, rtol, atol, N, msg):
+def report_nonclose(a, b, rtol, atol, equal_nan, N, msg):
     """
     Report where values of two arrays deviate from each other.
 
@@ -181,6 +185,8 @@ def report_nonclose(a, b, rtol, atol, N, msg):
         Relative tolerance.
     atol : float
         Absolute tolerance.
+    equal_nan : bool
+        Whether NaNs in the same positions compare as equal.
     N : int
         Maximum number of reported deviating values.
         Defaults to all.
@@ -194,14 +200,16 @@ def report_nonclose(a, b, rtol, atol, N, msg):
         Description of differences.
 
     """
-    a_ = np.atleast_1d(np.asarray(a))
-    b_ = np.atleast_1d(np.asarray(b))
-    if a_.shape != b_.shape: b_ = np.broadcast_to(b_,a.shape)
+    a_,b_ = np.broadcast_arrays(np.atleast_1d(np.asarray(a)),
+                                np.atleast_1d(np.asarray(b)))
 
     absdiff = np.abs(a_ - b_)
     absmax  = np.max(np.abs(np.stack((a_, b_))), axis=0)
 
-    idx = (absdiff > atol + rtol * absmax).nonzero()
+    idx = np.logical_not(
+              np.logical_or(np.isclose(a_,b_,rtol=rtol,atol=atol,equal_nan=equal_nan),
+                            np.isclose(b_,a_,rtol=rtol,atol=atol,equal_nan=equal_nan))
+            ).nonzero()
     ids = np.argsort(absdiff[idx])[::-1]
     n = len(idx[0])
     split = N is not None and N<n
