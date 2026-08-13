@@ -11,7 +11,7 @@ import pandas as pd
 from scipy import interpolate, ndimage, spatial
 
 from . import VTK, Colormap, Rotation, Table, grid, util
-from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
+from ._typehints import FloatSequence, IntSequence, RNGLike, SeedLike
 
 
 class IcDict(dict):
@@ -1207,7 +1207,7 @@ class GeomGrid:
               selection: IntSequence | None = None,
               invert_selection: bool = False,
               periodic: bool = True,
-              rng_seed: NumpyRngSeed | None = None) -> 'GeomGrid':
+              rng: RNGLike | SeedLike | None = None) -> 'GeomGrid':
         """
         Smooth grid by selecting most frequent material ID within given stencil at each location.
 
@@ -1222,9 +1222,11 @@ class GeomGrid:
             Consider all material IDs except those in selection. Defaults to False.
         periodic : bool, optional
             Assume grid to be periodic. Defaults to True.
-        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator. Defaults to None.
-            If None, then fresh, unpredictable entropy will be pulled from the OS.
+        rng : numpy.random.Generator, optional
+            Pseudorandom number generator state. When rng is None, a new
+            numpy.random.Generator is created using entropy from the operating
+            system. Types other than numpy.random.Generator are passed to
+            numpy.random.default_rng to instantiate a ``Generator``.
 
         Returns
         -------
@@ -1245,7 +1247,7 @@ class GeomGrid:
             else:
                 return me
 
-        rng = np.random.default_rng(rng_seed)
+        rng = np.random.default_rng(rng)
 
         d = np.floor(distance).astype(np.int64)
         ext = np.linspace(-d,d,1+2*d,dtype=float),

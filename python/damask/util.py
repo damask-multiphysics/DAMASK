@@ -31,7 +31,8 @@ from . import version as _version
 from ._typehints import FileHandleText as _FileHandleText
 from ._typehints import FloatSequence as _FloatSequence
 from ._typehints import IntSequence as _IntSequence
-from ._typehints import NumpyRngSeed as _NumpyRngSeed
+from ._typehints import RNGLike as _RNGLike
+from ._typehints import SeedLike as _SeedLike
 
 
 class stdioTuple(_NamedTuple):
@@ -463,7 +464,7 @@ def project_equal_area(vector: _np.ndarray,
 
 def hybrid_IA(dist: _FloatSequence,
               N: int,
-              rng_seed: _NumpyRngSeed | None = None) -> _np.ndarray:
+              rng: _RNGLike | _SeedLike | None = None) -> _np.ndarray:
     """
     Hybrid integer approximation.
 
@@ -473,9 +474,11 @@ def hybrid_IA(dist: _FloatSequence,
         Distribution to be approximated.
     N : int
         Number of samples to draw.
-    rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-        A seed to initialize the BitGenerator. Defaults to None.
-        If None, then fresh, unpredictable entropy will be pulled from the OS.
+    rng : numpy.random.Generator, optional
+        Pseudorandom number generator state. When rng is None, a new
+        numpy.random.Generator is created using entropy from the operating
+        system. Types other than numpy.random.Generator are passed to
+        numpy.random.default_rng to instantiate a ``Generator``.
 
     Returns
     -------
@@ -493,7 +496,7 @@ def hybrid_IA(dist: _FloatSequence,
                                    if N_inv_samples < N_opt_samples else \
                                   (scale_,0.5*(scale_ + scale), 1.0)
 
-    return _np.repeat(_np.arange(len(dist)),repeats)[_np.random.default_rng(rng_seed).permutation(N_inv_samples)[:N]]
+    return _np.repeat(_np.arange(len(dist)),repeats)[_np.random.default_rng(rng).permutation(N_inv_samples)[:N]]
 
 
 def shapeshifter(fro: tuple[int, ...],

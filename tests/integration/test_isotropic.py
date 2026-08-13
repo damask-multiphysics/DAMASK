@@ -59,7 +59,7 @@ def test_phenopowerlaw_equivalence(res_path,tmp_path,copy_files,mat_configs,np_r
 
     cell = 11
     grid = damask.GeomGrid(np.arange(cell**3).reshape([cell]*3),np.ones(3)*1e-5)
-    rot = damask.Rotation.from_random(cell**3,rng_seed=np_rng)
+    rot = damask.Rotation.from_random(cell**3,rng=np_rng)
 
     stress = []
     for model,mat_config in mat_configs.items():

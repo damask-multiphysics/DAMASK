@@ -139,7 +139,7 @@ def test_grid_restart_thermo_mechanical(res_path,tmp_path,copy_files,h5py_datase
     config_material['homogenization'] = {'SX': {'N_constituents': 1,'mechanical': {'type': 'pass'},
                                                                     'thermal': {'type': 'pass', 'output': ['T']}}}
     config_material = config_material.material_add(phase=['Phenopowerlaw'],
-                                                   O=damask.Rotation.from_random(np.prod(g.cells),rng_seed=1),
+                                                   O=damask.Rotation.from_random(np.prod(g.cells),rng=1),
                                                    homogenization = 'SX')
     config_material['phase']['Phenopowerlaw'] = damask.ConfigMaterial.load(res_path/'material.yaml')['phase']['A']
     config_material['phase']['Phenopowerlaw']['rho'] = 1

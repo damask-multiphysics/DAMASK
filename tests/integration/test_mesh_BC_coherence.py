@@ -182,7 +182,7 @@ def material_setup(mat_config, np_rng):
         {'type':'Hooke', 'C_11': C_11, 'C_12': C_12, 'C_44': C_44,
                          'C_33': C_33, 'C_13': C_13, 'C_66': C_66}
     mat_config = mat_config.material_add(phase = ['phase_0'],
-                                         O = damask.Rotation.from_random(1,rng_seed=np_rng),
+                                         O = damask.Rotation.from_random(1,rng=np_rng),
                                          homogenization = 'SX')
     return mat_config
 

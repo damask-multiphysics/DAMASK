@@ -12,7 +12,7 @@ from damask import GeomGrid
 def test_from_random(np_rng,cells):
     N_seeds = np_rng.integers(30,300)
     size = np.ones(3) + np_rng.random(3)
-    coords = seeds.from_random(size,N_seeds,cells,rng_seed=np_rng)
+    coords = seeds.from_random(size,N_seeds,cells,rng=np_rng)
     assert (0<=coords).all() and (coords<size).all()
 
 @pytest.mark.parametrize('periodic',[True,False])
@@ -39,7 +39,7 @@ def test_from_grid_reconstruct(np_rng):
     cells = np_rng.integers(10,20,3)
     N_seeds = np_rng.integers(30,300)
     size = np.ones(3) + np_rng.random(3)
-    coords = seeds.from_random(size,N_seeds,cells,rng_seed=np_rng)
+    coords = seeds.from_random(size,N_seeds,cells,rng=np_rng)
     grid_1 = GeomGrid.from_Voronoi_tessellation(cells,size,coords)
     coords,material = seeds.from_grid(grid_1)
     grid_2 = GeomGrid.from_Voronoi_tessellation(cells,size,coords,material)
@@ -64,7 +64,7 @@ def test_from_grid_selection(np_rng,periodic,average,invert):
     cells = np_rng.integers(10,20,3)
     N_seeds = np_rng.integers(30,300)
     size = np.ones(3) + np_rng.random(3)
-    coords = seeds.from_random(size,N_seeds,cells,rng_seed=np_rng)
+    coords = seeds.from_random(size,N_seeds,cells,rng=np_rng)
     g = GeomGrid.from_Voronoi_tessellation(cells,size,coords)
     selection=np_rng.integers(N_seeds)+1
     coords,material = seeds.from_grid(g,average=average,periodic=periodic,invert_selection=invert,selection=[selection])

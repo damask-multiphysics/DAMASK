@@ -13,7 +13,7 @@ def test_initial_eigenstrain(tmp_path,assert_allclose,np_rng):
       g = np.array([2,3,4])
       N = np.prod(g)
 
-      O_0 = damask.Rotation.from_random(N,rng_seed=np_rng)
+      O_0 = damask.Rotation.from_random(N,rng=np_rng)
       V_e_0 = damask.tensor.symmetric(np.broadcast_to(np.eye(3),(N,3,3))+ 0.05*(np_rng.random((N,3,3))-0.5))
 
       damask.GeomGrid(np.arange(N,dtype=int).reshape(g,order='F'),

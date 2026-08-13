@@ -456,7 +456,7 @@ class ConfigMaterial(YAML):
         >>> import damask
         >>> m = damask.ConfigMaterial()
         >>> m = m.material_add(phase = ['Ferrite','Martensite','Ferrite'],
-        ...                    O = damask.Rotation.from_random(shape=3,rng_seed=20191102),
+        ...                    O = damask.Rotation.from_random(shape=3,rng=20191102),
         ...                    homogenization = 'SX')
         >>> m
         homogenization: {SX: null}
@@ -486,7 +486,7 @@ class ConfigMaterial(YAML):
         >>> m = damask.ConfigMaterial()
         >>> N_materials = 5
         >>> m = m.material_add(phase = np.array([['Austenite']*3+['Ferrite']]),
-        ...                    O = damask.Rotation.from_random(shape=(N_materials,4),rng_seed=20191102),
+        ...                    O = damask.Rotation.from_random(shape=(N_materials,4),rng=20191102),
         ...                    v = np.array([[0.2]*3+[0.4]]),
         ...                    homogenization = 'Taylor')
         >>> m

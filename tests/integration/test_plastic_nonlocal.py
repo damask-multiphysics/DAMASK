@@ -51,7 +51,7 @@ def test_Hall_Petch(res_path,tmp_path,copy_files,assert_allclose,np_rng,flux):
 
    N_grains = 18
    cells = np.array([16]*3)
-   seeds = damask.seeds.from_random(size=np.ones(3),cells=cells,N_seeds=N_grains,rng_seed=np_rng)
+   seeds = damask.seeds.from_random(size=np.ones(3),cells=cells,N_seeds=N_grains,rng=np_rng)
    grid = damask.GeomGrid.from_Voronoi_tessellation(size=np.ones(3),cells=cells,seeds=seeds)
 
    config_material = damask.ConfigMaterial.load(res_path/'material.yaml')
@@ -60,7 +60,7 @@ def test_Hall_Petch(res_path,tmp_path,copy_files,assert_allclose,np_rng,flux):
    config_material['phase']['Aluminum']['mechanical']['plastic']['flux'] = flux
 
    config_material.material_add(phase='Aluminum',homogenization='SX',
-                                O = damask.Rotation.from_random(N_grains,rng_seed=np_rng)) \
+                                O = damask.Rotation.from_random(N_grains,rng=np_rng)) \
                                .save(tmp_path/'material.yaml')
 
    stress_prev = None

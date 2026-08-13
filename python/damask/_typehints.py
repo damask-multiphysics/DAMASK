@@ -54,12 +54,16 @@ CrystalKinematics = Literal[
     'twin',
 ]
 
-NumpyRngSeed = (
+# https://scientific-python.org/specs/spec-0007/
+SeedLike = (
     int
+    | np.integer
     | IntSequence
     | np.random.SeedSequence
+)
+RNGLike = (
+    np.random.Generator
     | np.random.BitGenerator
-    | np.random.Generator
 )
 
 # https://peps.python.org/pep-0655/
