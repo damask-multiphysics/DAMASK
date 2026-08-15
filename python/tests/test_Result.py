@@ -170,15 +170,15 @@ def test_add_generic_dataset_overwrite(default, protected, func):
 def test_add_invalid(default):
     default.add_absolute('xxxx')
 
-def test_add_absolute(default):
+def test_add_absolute(assert_allclose,default):
     default.add_absolute('F_e')
     in_memory = np.abs(default.place('F_e'))
     in_file   = default.place('|F_e|')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
 @pytest.mark.parametrize('mode',
     ['direct',pytest.param('function',marks=pytest.mark.xfail(sys.platform in ['darwin','win32'], reason='n/a'))])
-def test_add_calculation(default,tmp_path,mode):
+def test_add_calculation(assert_allclose,default,tmp_path,mode):
 
     if mode == 'direct':
         default.add_calculation('2.0*np.abs(#F#)-1.0','x','-','my notes')
@@ -192,64 +192,64 @@ def test_add_calculation(default,tmp_path,mode):
 
     in_memory = 2.0*np.abs(default.place('F'))-1.0
     in_file   = default.place('x')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
 def test_add_calculation_invalid(default):
     default.add_calculation('np.linalg.norm(#F#,axis=0)','wrong_dim')
     assert default.get('wrong_dim') is None
 
-def test_add_stress_Cauchy(default):
+def test_add_stress_Cauchy(assert_allclose,default):
     default.add_stress_Cauchy('P','F')
     in_memory = mechanics.stress_Cauchy(default.place('P'), default.place('F'))
     in_file   = default.place('sigma')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
-def test_add_determinant(default):
+def test_add_determinant(assert_allclose,default):
     default.add_determinant('P')
     in_memory = np.linalg.det(default.place('P'))
     in_file   = default.place('det(P)')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
-def test_add_deviator(default):
+def test_add_deviator(assert_allclose,default):
     default.add_deviator('P')
     in_memory = tensor.deviatoric(default.place('P'))
     in_file   = default.place('s_P')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
 @pytest.mark.parametrize('eigenvalue,function',[('max',np.amax),('min',np.amin)])
-def test_add_eigenvalue(default,eigenvalue,function):
+def test_add_eigenvalue(assert_allclose,default,eigenvalue,function):
     default.add_stress_Cauchy('P','F')
     default.add_eigenvalue('sigma',eigenvalue)
     in_memory = function(tensor.eigenvalues(default.place('sigma')),axis=1)
     in_file   = default.place(f'lambda_{eigenvalue}(sigma)')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
 @pytest.mark.parametrize('eigenvalue,idx',[('max',2),('mid',1),('min',0)])
-def test_add_eigenvector(default,eigenvalue,idx):
+def test_add_eigenvector(assert_allclose,default,eigenvalue,idx):
     default.add_stress_Cauchy('P','F')
     default.add_eigenvector('sigma',eigenvalue)
     in_memory = tensor.eigenvectors(default.place('sigma'))[:,idx]
     in_file   = default.place(f'v_{eigenvalue}(sigma)')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
 @pytest.mark.parametrize('d',[[1,0,0],[0,1,0],[0,0,1]])
-def test_add_IPF_color(default,d):
+def test_add_IPF_color(assert_allclose,default,d):
     default.add_IPF_color(d,'O')
     qu = default.place('O')
     assert 'lattice' not in qu.dtype.metadata # default result object has both cI and cF phases
     c = Orientation(rotation=qu, family='cubic')
     in_memory = np.uint8(c.IPF_color(np.array(d))*255)
     in_file = default.place('IPFcolor_({} {} {})'.format(*d))
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
-def test_add_maximum_shear(default):
+def test_add_maximum_shear(assert_allclose,default):
     default.add_stress_Cauchy('P','F')
     default.add_maximum_shear('sigma')
     in_memory = mechanics.maximum_shear(default.place('sigma'))
     in_file   = default.place('max_shear(sigma)')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
-def test_add_Mises_strain(np_rng,default):
+def test_add_Mises_strain(assert_allclose,np_rng,default):
     t = ['V','U'][np_rng.integers(0,2)]
     m = np_rng.random()*2.0 - 1.0
     default.add_strain('F',t,m)
@@ -257,14 +257,14 @@ def test_add_Mises_strain(np_rng,default):
     default.add_equivalent_Mises(label)
     in_memory = mechanics.equivalent_strain_Mises(default.place(label))
     in_file   = default.place(label+'_vM')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
-def test_add_Mises_stress(default):
+def test_add_Mises_stress(assert_allclose,default):
     default.add_stress_Cauchy('P','F')
     default.add_equivalent_Mises('sigma')
     in_memory = mechanics.equivalent_stress_Mises(default.place('sigma'))
     in_file   = default.place('sigma_vM')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
 def test_add_Mises_invalid(default):
     default.add_stress_Cauchy('P','F')
@@ -282,24 +282,24 @@ def test_add_Mises_stress_strain(default):
 
 @pytest.mark.parametrize('ord',[1,2])
 @pytest.mark.parametrize('dataset,axis',[('F',(1,2)),('xi_sl',(1,))])
-def test_add_norm(default,ord,dataset,axis):
+def test_add_norm(assert_allclose,default,ord,dataset,axis):
     default.add_norm(dataset,ord)
     in_memory = np.linalg.norm(default.place(dataset),ord=ord,axis=axis,keepdims=True)
     in_file   = default.place(f'|{dataset}|_{ord}')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
-def test_add_stress_second_Piola_Kirchhoff(default):
+def test_add_stress_second_Piola_Kirchhoff(assert_allclose,default):
     default.add_stress_second_Piola_Kirchhoff('P','F')
     in_memory = mechanics.stress_second_Piola_Kirchhoff(default.place('P'),default.place('F'))
     in_file   = default.place('S')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
 @pytest.mark.parametrize('options',[{'uvw':[1,0,0],'with_symmetry':False},
                                     {'uvw':[1,1,0],'with_symmetry':True},
                                     {'hkl':[0,1,1],'with_symmetry':True},
                                     {'hkl':[1,1,1],'with_symmetry':False},
                                    ])
-def test_add_pole(default,options):
+def test_add_pole(assert_allclose,default,options):
     default.add_pole(**options)
     rot = default.place('O')
     assert 'lattice' not in rot.dtype.metadata
@@ -310,9 +310,9 @@ def test_add_pole(default,options):
                                     *(list(options.values())[0]),
                                     brackets[-1])
     in_file = default.place(label)
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
-def test_add_resolved_shear_stress_slip(np_rng,default):
+def test_add_resolved_shear_stress_slip(assert_allclose,np_rng,default):
     for label,data in default.get(['P','F','O']).items():
         O = Orientation(data['O'],lattice=data['O'].dtype.metadata['lattice'])
         N_slip_max = [len(system)+1 for system in O.kinematics('slip')['direction']]
@@ -322,9 +322,9 @@ def test_add_resolved_shear_stress_slip(np_rng,default):
         single_phase.add_resolved_shear_stress_slip(N_slip)
         in_file = single_phase.get('tau_sl')
         in_memory = np.einsum('...ij,k...ij',mechanics.stress_Cauchy(data['P'],data['F']),O.Schmid(N_slip=N_slip))
-        assert np.allclose(in_memory,in_file)
+        assert_allclose(in_memory,in_file)
 
-def test_add_resolved_shear_stress_twin(np_rng,default):
+def test_add_resolved_shear_stress_twin(assert_allclose,np_rng,default):
     for label,data in default.get(['P','F','O']).items():
         O = Orientation(data['O'],lattice=data['O'].dtype.metadata['lattice'])
         N_twin_max = [len(system)+1 for system in O.kinematics('twin')['direction']]
@@ -334,40 +334,40 @@ def test_add_resolved_shear_stress_twin(np_rng,default):
         single_phase.add_resolved_shear_stress_twin(N_twin)
         in_file = single_phase.get('tau_tw')
         in_memory = np.einsum('...ij,k...ij',mechanics.stress_Cauchy(data['P'],data['F']),O.Schmid(N_twin=N_twin))
-        assert np.allclose(in_memory,in_file)
+        assert_allclose(in_memory,in_file)
 
-def test_add_rotation(default):
+def test_add_rotation(assert_allclose,default):
     default.add_rotation('F')
     in_memory = mechanics.rotation(default.place('F')).as_matrix()
     in_file   = default.place('R(F)')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
-def test_add_spherical(default):
+def test_add_spherical(assert_allclose,default):
     default.add_spherical('P')
     in_memory = tensor.spherical(default.place('P'),False)
     in_file   = default.place('p_P')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
-def test_add_strain(np_rng,default):
+def test_add_strain(assert_allclose,np_rng,default):
     t = ['V','U'][np_rng.integers(0,2)]
     m = np_rng.random()*2.0 - 1.0
     default.add_strain('F',t,m)
     label = f'epsilon_{t}^{m}(F)'
     in_memory = mechanics.strain(default.place('F'),t,m)
     in_file   = default.place(label)
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
-def test_add_stretch_right(default):
+def test_add_stretch_right(assert_allclose,default):
     default.add_stretch_tensor('F','U')
     in_memory = mechanics.stretch_right(default.place('F'))
     in_file   = default.place('U(F)')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
-def test_add_stretch_left(default):
+def test_add_stretch_left(assert_allclose,default):
     default.add_stretch_tensor('F','V')
     in_memory = mechanics.stretch_left(default.place('F'))
     in_file   = default.place('V(F)')
-    assert np.allclose(in_memory,in_file)
+    assert_allclose(in_memory,in_file)
 
 def test_add_invalid_dataset(default):
     with pytest.raises(TypeError):
@@ -411,7 +411,7 @@ def test_add_gradient(default,shape):
     assert (in_file == in_memory).all()
 
 @pytest.mark.parametrize('overwrite',['off','on'])
-def test_add_overwrite(single_phase,overwrite):
+def test_add_overwrite(assert_allclose,single_phase,overwrite):
     last = single_phase.view(increments=-1)
 
     last.add_stress_Cauchy()
@@ -431,7 +431,8 @@ def test_add_overwrite(single_phase,overwrite):
     created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
 
     if overwrite == 'on':
-        assert created_first  < created_second and     np.allclose(last.place('sigma'),311.)
+        assert created_first  < created_second
+        assert_allclose(last.place('sigma'),311.)
     else:
         assert created_first == created_second and not np.allclose(last.place('sigma'),311.)
 
@@ -458,14 +459,14 @@ def test_remove(default,allowed):
             default.remove('F')
 
 @pytest.mark.parametrize('mode',['cell','node'])
-def test_coordinates(default,mode):
+def test_coordinates(assert_allclose,default,mode):
     if   mode == 'cell':
         a = grid.coordinates0_point(default.cells,default.size,default.origin)
         b = default.coordinates0_point.reshape(tuple(default.cells)+(3,),order='F')
     elif mode == 'node':
         a = grid.coordinates0_node(default.cells,default.size,default.origin)
         b = default.coordinates0_node.reshape(tuple(default.cells+1)+(3,),order='F')
-    assert np.allclose(a,b)
+    assert_allclose(a,b)
 
 @pytest.mark.parametrize('output',['F','*',['P'],['P','F']],ids=range(4))
 @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5',

@@ -127,7 +127,7 @@ except EnvironmentError:
                           ('2', 'bicrystal_2D',  'tensionX'),
                           ('3', 'bicrystal_3D',  'tensionX'),
                           ('2', 'singleCrystal', 'tensionZ')])
-def test_mesh_tags_labels(res_path, copy_files, tmp_path, np_rng,
+def test_mesh_tags_labels(assert_allclose,res_path, copy_files, tmp_path, np_rng,
                           n_D, mesh_file, label, petsc_version):
     copy_files(res_path, tmp_path, [f'{mesh_file}.msh', 'numerics.yaml'])
 
@@ -147,4 +147,4 @@ def test_mesh_tags_labels(res_path, copy_files, tmp_path, np_rng,
     # Results comparison
     u_n_label = damask.Result(tmp_path/'label.hdf5').view(increments=-1).get('u_n')
     u_n_tag = damask.Result(tmp_path/'tag.hdf5').view(increments=-1).get('u_n')
-    assert(np.allclose(u_n_label, u_n_tag, rtol = 1.0e-14, atol = 1.0e-14))
+    assert_allclose(u_n_label, u_n_tag, rtol = 1.0e-14, atol = 1.0e-14)

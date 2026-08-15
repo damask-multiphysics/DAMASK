@@ -248,17 +248,17 @@ def test_comments(tmp_path,default):
     new = VTK.load(tmp_path/'with_comments.vti')
     assert new.comments == ['this is a comment']
 
-def test_compare_reference_polyData(update,res_path):
+def test_compare_reference_polyData(assert_allclose,update,res_path):
     points=np.dstack((np.linspace(0.,1.,10),np.linspace(0.,2.,10),np.linspace(-1.,1.,10))).squeeze()
     polyData = VTK.from_poly_data(points).set('coordinates',points)
     if update:
         polyData.save(res_path/'polyData')
     else:
         reference = VTK.load(res_path/'polyData.vtp')
-        assert polyData.as_ASCII() == reference.as_ASCII() and \
-                np.allclose(polyData.get('coordinates'),points)
+        assert polyData.as_ASCII() == reference.as_ASCII()
+        assert_allclose(polyData.get('coordinates'),points)
 
-def test_compare_reference_rectilinearGrid(update,res_path):
+def test_compare_reference_rectilinearGrid(assert_allclose,update,res_path):
     g = [np.arange(n)**2. for n in [4,5,6]]
     coords = np.stack(np.meshgrid(*g,indexing='ij'),axis=-1)
     c = coords[:-1,:-1,:-1,:].reshape(-1,3,order='F')
@@ -270,5 +270,5 @@ def test_compare_reference_rectilinearGrid(update,res_path):
         rectilinearGrid.save(res_path/'rectilinearGrid')
     else:
         reference = VTK.load(res_path/'rectilinearGrid.vtr')
-        assert rectilinearGrid.as_ASCII() == reference.as_ASCII() and \
-                np.allclose(rectilinearGrid.get('cell'),c)
+        assert rectilinearGrid.as_ASCII() == reference.as_ASCII()
+        assert_allclose(rectilinearGrid.get('cell'),c)

@@ -8,29 +8,31 @@ from damask import seeds
 from damask import GeomGrid
 
 
-def test_coordinates0_point(np_rng):
+def test_coordinates0_point(assert_allclose,np_rng):
     size = np_rng.random(3)
     cells = np_rng.integers(8,32,(3))
     coord = grid.coordinates0_point(cells,size)
-    assert np.allclose(coord[0,0,0],size/cells*.5) and coord.shape == tuple(cells) + (3,)
+    assert_allclose(coord[0,0,0],size/cells*.5)
+    assert coord.shape == tuple(cells) + (3,)
 
-def test_coordinates0_node(np_rng):
+def test_coordinates0_node(assert_allclose,np_rng):
     size = np_rng.random(3)
     cells = np_rng.integers(8,32,(3))
     coord = grid.coordinates0_node(cells,size)
-    assert np.allclose(coord[-1,-1,-1],size) and coord.shape == tuple(cells+1) + (3,)
+    assert_allclose(coord[-1,-1,-1],size)
+    assert coord.shape == tuple(cells+1) + (3,)
 
-def test_coord0(np_rng):
+def test_coord0(assert_allclose,np_rng):
     size = np_rng.random(3)
     cells = np_rng.integers(8,32,(3))
     c = grid.coordinates0_point(cells+1,size+size/cells)
     n = grid.coordinates0_node(cells,size) + size/cells*.5
-    assert np.allclose(c,n)
+    assert_allclose(c,n)
 
 
 @pytest.mark.parametrize('mode',['point','node'])
 @pytest.mark.parametrize('atol',[0.0,1.0e-5])
-def test_grid_DNA(np_rng,mode,atol):
+def test_grid_DNA(assert_allclose,np_rng,mode,atol):
     """Ensure that cellsSizeOrigin_coordinates0_xx is the inverse of coordinates0_xx."""
     cells  = np_rng.integers(8,32,(3))
     size   = np_rng.random(3) + atol*100.
@@ -38,17 +40,19 @@ def test_grid_DNA(np_rng,mode,atol):
     coord0 = eval(f'grid.coordinates0_{mode}(cells,size,origin)')                         # noqa
     coord0 += (np_rng.random(coord0.shape)-0.5) * atol                                            # add noise
     _cells,_size,_origin = eval(f'grid.cellsSizeOrigin_coordinates0_{mode}(coord0.reshape(-1,3,order="F"),atol={atol})')
-    assert np.allclose(cells,_cells) and np.allclose(size,_size,atol=atol) and np.allclose(origin,_origin,atol=atol)
+    assert_allclose(cells,_cells)
+    assert_allclose(size,_size,atol=atol)
+    assert_allclose(origin,_origin,atol=atol)
 
 
-def test_interpolation_to_node(np_rng):
+def test_interpolation_to_node(assert_allclose,np_rng):
     size  = np_rng.random(3)
     cells = np_rng.integers(8,32,(3))
     F     = np_rng.random(tuple(cells)+(3,3))
-    assert np.allclose(grid.coordinates_node(size,F) [1:-1,1:-1,1:-1],
-                       grid.point_to_node(grid.coordinates_point(size,F))[1:-1,1:-1,1:-1])
+    assert_allclose(grid.coordinates_node(size,F) [1:-1,1:-1,1:-1],
+                    grid.point_to_node(grid.coordinates_point(size,F))[1:-1,1:-1,1:-1])
 
-def test_interpolation_to_cell(np_rng):
+def test_interpolation_to_cell(assert_allclose,np_rng):
     cells = np_rng.integers(1,30,(3))
 
     coordinates_node_x = np.linspace(0,np.pi*2,num=cells[0]+1)
@@ -59,34 +63,34 @@ def test_interpolation_to_cell(np_rng):
     cell_field_x = np.interp(coordinates0_point_x,coordinates_node_x,node_field_x,period=np.pi*2.)
     cell_field   = np.broadcast_to(cell_field_x.reshape(-1,1,1),cells)
 
-    assert np.allclose(cell_field,grid.node_to_point(node_field))
+    assert_allclose(cell_field,grid.node_to_point(node_field))
 
 
 @pytest.mark.parametrize('mode',['point','node'])
-def test_coordinates0_origin(np_rng,mode):
+def test_coordinates0_origin(assert_allclose,np_rng,mode):
     origin= np_rng.random(3)
     size  = np_rng.random(3)
     cells  = np_rng.integers(8,32,(3))
     shifted   = eval(f'grid.coordinates0_{mode}(cells,size,origin)')
     unshifted = eval(f'grid.coordinates0_{mode}(cells,size)')
     if   mode == 'cell':
-        assert  np.allclose(shifted,unshifted+np.broadcast_to(origin,tuple(cells)  +(3,)))
+        assert_allclose(shifted,unshifted+np.broadcast_to(origin,tuple(cells)  +(3,)))
     elif mode == 'node':
-        assert  np.allclose(shifted,unshifted+np.broadcast_to(origin,tuple(cells+1)+(3,)))
+        assert_allclose(shifted,unshifted+np.broadcast_to(origin,tuple(cells+1)+(3,)))
 
 @pytest.mark.parametrize('function',[grid.displacement_avg_point,
                                      grid.displacement_avg_node])
-def test_displacement_avg_vanishes(np_rng,function):
+def test_displacement_avg_vanishes(assert_allclose,np_rng,function):
     """Ensure that random fluctuations in F do not result in average displacement."""
     size = np_rng.random(3) + 1.0
     cells = np_rng.integers(8,32,(3))
     F  = np_rng.random(tuple(cells)+(3,3))
     F += np.eye(3) - np.average(F,axis=(0,1,2))
-    assert np.allclose(function(size,F),0.0)
+    assert_allclose(function(size,F),0.0)
 
 @pytest.mark.parametrize('function',[grid.displacement_avg_point,
                                      grid.displacement_avg_node])
-def test_displacement_avg_vanishes_simple(np_rng,function):
+def test_displacement_avg_vanishes_simple(assert_allclose,np_rng,function):
     F = np.eye(3)
     size = np_rng.random(3) + 1.0
     F_c = F.copy()
@@ -96,16 +100,16 @@ def test_displacement_avg_vanishes_simple(np_rng,function):
     F_t[0,0] = 1.2
 
     F_no_avg = np.concatenate([np.broadcast_to(_,(10,20,20,3,3)) for _ in [F_t,F_c]])
-    assert np.allclose(function(size,F_no_avg),0.0)
+    assert_allclose(function(size,F_no_avg),0.0)
 
 @pytest.mark.parametrize('function',[grid.displacement_fluct_point,
                                      grid.displacement_fluct_node])
-def test_displacement_fluct_vanishes_avg(np_rng,function):
+def test_displacement_fluct_vanishes_avg(assert_allclose,np_rng,function):
     """Ensure that constant F does not result in fluctuating displacement."""
     size = np_rng.random(3)
     cells = np_rng.integers(8,32,(3))
     F    = np.broadcast_to(np_rng.random((3,3)), tuple(cells)+(3,3))
-    assert np.allclose(function(size,F),0.0)
+    assert_allclose(function(size,F),0.0)
 
 displacement_fluct_test_data = [
 (['np.sin(np.pi*2*nodes[...,0]/size[0])', '0.0', '0.0',
@@ -121,7 +125,7 @@ displacement_fluct_test_data = [
   'np.sin(np.pi*2*nodes[...,2]/size[2])/np.pi/2*size[2]']
 )]
 @pytest.mark.parametrize('F_def,u_def',displacement_fluct_test_data)
-def test_displacment_fluct_analytic(np_rng,F_def,u_def):
+def test_displacment_fluct_analytic(assert_allclose,np_rng,F_def,u_def):
     size = np_rng.random(3)+1.0
     cells = np_rng.integers(8,32,(3))
 
@@ -131,15 +135,15 @@ def test_displacment_fluct_analytic(np_rng,F_def,u_def):
     F = np.stack([np.broadcast_to(eval(F,globals(),my_locals),cells) for F in F_def],axis=-1).reshape(tuple(cells) + (3,3))
     u = np.stack([np.broadcast_to(eval(u,globals(),my_locals),cells) for u in u_def],axis=-1).reshape(tuple(cells) + (3,))
 
-    assert np.allclose(u,grid.displacement_fluct_point(size,F))
+    assert_allclose(u,grid.displacement_fluct_point(size,F))
 
-def test_displacement_fluct_periodic(np_rng):
+def test_displacement_fluct_periodic(assert_allclose,np_rng):
     """Ensure that fluctuations are periodic."""
     size  = np_rng.random(3)
     cells = np_rng.integers(8,32,(3))
     F     = np_rng.random(tuple(cells)+(3,3))
-    assert np.allclose(grid.displacement_fluct_node(size,F),
-                       grid.point_to_node(grid.displacement_fluct_point(size,F)))
+    assert_allclose(grid.displacement_fluct_node(size,F),
+                    grid.point_to_node(grid.displacement_fluct_point(size,F)))
 
 
 def test_coordinates(np_rng):
@@ -210,7 +214,7 @@ def test_regrid_identity(np_rng):
         assert (grid.regrid(size,F,cells).flatten(order='F') == np.arange(cells.prod())).all()
 
 @pytest.mark.parametrize('factor',[2,3,4])
-def test_regrid_fractional_shear(np_rng,factor):
+def test_regrid_fractional_shear(assert_allclose,np_rng,factor):
         size = np.ones(3)
         scaling = np.array([1,1,factor])
         res = np_rng.integers(4,12)
@@ -228,7 +232,7 @@ def test_regrid_fractional_shear(np_rng,factor):
                                       return_size=True)
         counts = np.unique(idx, return_counts=True)[1]
         assert (counts == factor).all(), f'number of mismatches {np.count_nonzero(counts!=factor)}'
-        assert np.allclose(box,size*scaling)
+        assert_allclose(box,size*scaling)
 
 @pytest.mark.parametrize('factor',[1,2,3])
 @pytest.mark.parametrize('noise',[1.1,1.0,0.9])
@@ -258,7 +262,7 @@ def test_regrid_double_cells(np_rng):
 @pytest.mark.parametrize('differential_operator',[grid.curl,
                                                   grid.divergence,
                                                   grid.gradient])
-def test_differential_operator_constant(np_rng,differential_operator):
+def test_differential_operator_constant(assert_allclose,np_rng,differential_operator):
     size = np_rng.random(3)+1.0
     cells = np_rng.integers(8,32,(3))
     shapes = {
@@ -268,7 +272,7 @@ def test_differential_operator_constant(np_rng,differential_operator):
              }
     for shape in shapes[differential_operator]:
         field = np.ones(tuple(cells)+shape)*np_rng.random()*1.0e5
-        assert np.allclose(differential_operator(size,field),0.0)
+        assert_allclose(differential_operator(size,field),0.0)
 
 
 grad_test_data = [
@@ -306,7 +310,7 @@ grad_test_data = [
  ['0.0', '0.0', '0.0' ]
 )]
 @pytest.mark.parametrize('field_def,grad_def',grad_test_data)
-def test_grad(np_rng,field_def,grad_def):
+def test_grad(assert_allclose,np_rng,field_def,grad_def):
     size = np_rng.random(3)+1.0
     cells = np_rng.integers(8,32,(3))
 
@@ -318,7 +322,7 @@ def test_grad(np_rng,field_def,grad_def):
     grad = np.stack([np.broadcast_to(eval(c,globals(),my_locals),cells) for c in grad_def], axis=-1)
     grad = grad.reshape(tuple(cells) + ((3,3) if len(grad_def)==9 else (3,)))
 
-    assert np.allclose(grad,grid.gradient(size,field))
+    assert_allclose(grad,grid.gradient(size,field))
 
 
 curl_test_data = [
@@ -365,7 +369,7 @@ curl_test_data = [
   '-np.sin(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]']
 )]
 @pytest.mark.parametrize('field_def,curl_def',curl_test_data)
-def test_curl(np_rng,field_def,curl_def):
+def test_curl(assert_allclose,np_rng,field_def,curl_def):
     size = np_rng.random(3)+1.0
     cells = np_rng.integers(8,32,(3))
 
@@ -377,7 +381,7 @@ def test_curl(np_rng,field_def,curl_def):
     curl = np.stack([np.broadcast_to(eval(c,globals(),my_locals),cells) for c in curl_def], axis=-1)
     curl = curl.reshape(tuple(cells) + ((3,3) if len(curl_def)==9 else (3,)))
 
-    assert np.allclose(curl,grid.curl(size,field))
+    assert_allclose(curl,grid.curl(size,field))
 
 
 div_test_data =[
@@ -415,7 +419,7 @@ div_test_data =[
  ['-np.sin(np.pi*2*nodes[...,1]/size[1])*np.pi*2/size[1]']
 )]
 @pytest.mark.parametrize('field_def,div_def',div_test_data)
-def test_div(np_rng,field_def,div_def):
+def test_div(assert_allclose,np_rng,field_def,div_def):
     size = np_rng.random(3)+1.0
     cells = np_rng.integers(8,32,(3))
 
@@ -427,7 +431,7 @@ def test_div(np_rng,field_def,div_def):
     div = np.stack([np.broadcast_to(eval(c,globals(),my_locals),cells) for c in div_def], axis=-1)
     div = div.reshape(tuple(cells) + ((3,) if len(div_def)==3 else ()))
 
-    assert np.allclose(div,grid.divergence(size,field))
+    assert_allclose(div,grid.divergence(size,field))
 
 
 def test_ravel_index(np_rng):

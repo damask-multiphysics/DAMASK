@@ -26,19 +26,22 @@ def test_repr(default):
 def test_len(np_rng,N):
     assert len(Table({'X':3},np_rng.random((N,3)))) == N
 
-def test_get_scalar(default):
+def test_get_scalar(assert_allclose,default):
     d = default.get('s')
-    assert np.allclose(d,1.0) and d.shape[1:] == (1,)
+    assert_allclose(d,1.0)
+    assert d.shape[1:] == (1,)
 
-def test_get_vector(default):
+def test_get_vector(assert_allclose,default):
     d = default.get('v')
-    assert np.allclose(d,1.0) and d.shape[1:] == (3,)
+    assert_allclose(d,1.0)
+    assert d.shape[1:] == (3,)
 
-def test_get_tensor(default):
+def test_get_tensor(assert_allclose,default):
     d = default.get('F')
-    assert np.allclose(d,1.0) and d.shape[1:] == (3,3)
+    assert_allclose(d,1.0)
+    assert d.shape[1:] == (3,3)
 
-def test_empty_init():
+def test_empty_init(assert_allclose):
     N = 3
     D = dict(
              scal=np.arange(10),
@@ -47,30 +50,32 @@ def test_empty_init():
     t = Table()
     for label,data in D.items():
         t = t.set(label,data)
-    assert np.allclose(t.get('scal').flatten()*3,t.get('vctr')[:,0])
+    assert_allclose(t.get('scal').flatten()*3,t.get('vctr')[:,0])
 
-def test_set_tensor(default):
+def test_set_tensor(assert_allclose,default):
     d = default.set('F',np.zeros((5,3,3)),'set to zero').get('F')
-    assert np.allclose(d,0.0) and d.shape[1:] == (3,3)
+    assert_allclose(d,0.0)
+    assert d.shape[1:] == (3,3)
 
-def test_set_scalar(np_rng,default):
+def test_set_scalar(assert_allclose,np_rng,default):
     d = np_rng.random((5,9))
-    assert np.allclose(d,
-                        default
-                        .set('nine',d,'random data')
-                        .get('nine'))
+    assert_allclose(d,
+                    default
+                    .set('nine',d,'random data')
+                    .get('nine'))
 
-def test_set_overwrite(np_rng,default):
+def test_set_overwrite(assert_allclose,np_rng,default):
     d = np_rng.random((5,9))
-    assert np.allclose(d,
-                       default
-                              .set('nine',np.ones((5,9)),'zeros')
-                              .set('nine',d,'random data')
-                              .get('nine'))
+    assert_allclose(d,
+                    default
+                           .set('nine',np.ones((5,9)),'zeros')
+                           .set('nine',d,'random data')
+                           .get('nine'))
 
-def test_set_component(default):
+def test_set_component(assert_allclose,default):
     d = default.set('F[0,0]',np.zeros((5)),'set to zero').get('F')
-    assert np.allclose(d[...,0,0],0.0) and d.shape[1:] == (3,3)
+    assert_allclose(d[...,0,0],0.0)
+    assert d.shape[1:] == (3,3)
 
 def test_labels(default):
     assert default.labels == ['F','v','s']

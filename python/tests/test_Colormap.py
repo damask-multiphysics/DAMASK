@@ -36,7 +36,7 @@ def patch_plt_show(monkeypatch):
 def test_repr(patch_plt_show):
     print(Colormap.from_predefined('stress'))
 
-def test_conversion(np_rng):
+def test_conversion(assert_allclose,np_rng):
     specials = np.array([[0.,0.,0.],
                          [1.,0.,0.],
                          [0.,1.,0.],
@@ -49,34 +49,34 @@ def test_conversion(np_rng):
     rgbs = np.vstack((specials,np_rng.random((100,3))))
     for rgb in rgbs:
         # rgb2hsv2rgb
-        assert np.allclose(Colormap._hsv2rgb(hsv := Colormap._rgb2hsv(rgb)),rgb)
+        assert_allclose(Colormap._hsv2rgb(hsv := Colormap._rgb2hsv(rgb)),rgb)
 
         # rgb2hsl2rgb
-        assert np.allclose(Colormap._hsl2rgb(hsl := Colormap._rgb2hsl(rgb)),rgb)
+        assert_allclose(Colormap._hsl2rgb(hsl := Colormap._rgb2hsl(rgb)),rgb)
 
         # rgb2xyz2rgb
-        assert np.allclose(Colormap._xyz2rgb(xyz := Colormap._rgb2xyz(rgb)),rgb,atol=1.e-6,rtol=0)
+        assert_allclose(Colormap._xyz2rgb(xyz := Colormap._rgb2xyz(rgb)),rgb,atol=1.e-6,rtol=0)
 
         # xyz2lab2xyz
-        assert np.allclose(Colormap._lab2xyz(lab := Colormap._xyz2lab(xyz)),xyz)
+        assert_allclose(Colormap._lab2xyz(lab := Colormap._xyz2lab(xyz)),xyz)
 
         # lab2msh2lab
-        assert np.allclose(Colormap._msh2lab(msh := Colormap._lab2msh(lab)),lab)
+        assert_allclose(Colormap._msh2lab(msh := Colormap._lab2msh(lab)),lab)
 
         # lab2rgb2lab
-        assert np.allclose(Colormap._rgb2lab(Colormap._lab2rgb(lab)),lab,atol=1.e-6,rtol=0)
+        assert_allclose(Colormap._rgb2lab(Colormap._lab2rgb(lab)),lab,atol=1.e-6,rtol=0)
 
         # rgb2msh2rgb
-        assert np.allclose(Colormap._msh2rgb(Colormap._rgb2msh(rgb)),rgb,atol=1.e-6,rtol=0)
+        assert_allclose(Colormap._msh2rgb(Colormap._rgb2msh(rgb)),rgb,atol=1.e-6,rtol=0)
 
         # hsv2msh
-        assert np.allclose(Colormap._hsv2msh(hsv),msh,atol=1.e-6,rtol=0)
+        assert_allclose(Colormap._hsv2msh(hsv),msh,atol=1.e-6,rtol=0)
 
         # hsl2msh
-        assert np.allclose(Colormap._hsv2msh(hsv),msh,atol=1.e-6,rtol=0)
+        assert_allclose(Colormap._hsv2msh(hsv),msh,atol=1.e-6,rtol=0)
 
         # xyz2msh
-        assert np.allclose(Colormap._xyz2msh(xyz),msh,atol=1.e-6,rtol=0)
+        assert_allclose(Colormap._xyz2msh(xyz),msh,atol=1.e-6,rtol=0)
 
 def test_eq():
     assert Colormap.from_predefined('strain') == Colormap.from_predefined('strain')
@@ -123,22 +123,22 @@ def test_invalid_color(np_rng,model):
     with pytest.raises(ValueError):
         c = Colormap.from_range(-2.+np_rng.random(3),np_rng.random(3),N=10,model=model)             # noqa
 
-def test_reversed():
+def test_reversed(assert_allclose):
     c_1 = Colormap.from_predefined('stress')
     c_2 = c_1.reversed()
-    assert (not np.allclose(c_1.colors,c_2.colors)) and \
-                np.allclose(c_1.colors,c_2.reversed().colors)
+    assert not np.allclose(c_1.colors,c_2.colors)
+    assert_allclose(c_1.colors,c_2.reversed().colors)
 
-def test_invert():
+def test_invert(assert_allclose):
     c_1 = Colormap.from_predefined('strain')
     c_2 = ~c_1
-    assert (not np.allclose(c_1.colors,  c_2.colors)) and \
-                np.allclose(c_1.colors,(~c_2).colors)
+    assert not np.allclose(c_1.colors,  c_2.colors)
+    assert_allclose(c_1.colors,(~c_2).colors)
 
-def test_add():
+def test_add(assert_allclose):
     c = Colormap.from_predefined('jet')
     c += c
-    assert (np.allclose(c.colors[:len(c.colors)//2],c.colors[len(c.colors)//2:]))
+    assert_allclose(c.colors[:len(c.colors)//2],c.colors[len(c.colors)//2:])
 
 def test_mul():
     c = o = Colormap.from_predefined('jet')
@@ -150,10 +150,10 @@ def test_mul():
         (17,'gray',0.5,[0.5,0.5,0.5]),
         (17,'gray',[0.5,0.75],[[0.5,0.5,0.5],[0.75,0.75,0.75]]),
         ])
-def test_at_value(N, cmap, at, result):
-    assert np.allclose(Colormap.from_predefined(cmap,N=N).at(at)[...,:3],
-                       result,
-                       rtol=0.005)
+def test_at_value(assert_allclose,N, cmap, at, result):
+    assert_allclose(Colormap.from_predefined(cmap,N=N).at(at)[...,:3],
+                    result,
+                    rtol=0.005)
 
 @pytest.mark.parametrize('bounds',[None,[2,10]])
 def test_shade(res_path,update,bounds):

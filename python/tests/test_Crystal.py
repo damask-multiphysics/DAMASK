@@ -44,17 +44,17 @@ def test_double_to_frame():
                          ('hP',1.0,None,1.6,np.pi/2,np.pi/2,2*np.pi/3),
                          ('cF',1.0,1.0,None,np.pi/2,np.pi/2,np.pi/2),
                         ])
-def test_bases_contraction(lattice,a,b,c,alpha,beta,gamma):
+def test_bases_contraction(assert_allclose,lattice,a,b,c,alpha,beta,gamma):
     c = Crystal(lattice=lattice,
                 a=a,b=b,c=c,
                 alpha=alpha,beta=beta,gamma=gamma)
-    assert np.allclose(np.eye(3),np.einsum('ik,jk',c.basis_real,c.basis_reciprocal))
+    assert_allclose(np.eye(3),np.einsum('ik,jk',c.basis_real,c.basis_reciprocal))
 
 def test_basis_invalid():
     with pytest.raises(KeyError):
         Crystal(family='cubic').basis_real
 
-def test_basis_real(np_rng):
+def test_basis_real(assert_allclose,np_rng):
     for gamma in np_rng.random(2**8)*np.pi:
         basis = np.tril(np_rng.random((3,3))+1e-6)
         basis[1,:2] = basis[1,1]*np.array([np.cos(gamma),np.sin(gamma)])
@@ -65,7 +65,7 @@ def test_basis_real(np_rng):
                     **dict(zip(['a','b','c'],lengths)),
                     **dict(zip(['alpha','beta','gamma'],np.arccos(cosines))),
                     )
-        assert np.allclose(o.to_frame(uvw=np.eye(3)),basis,rtol=1e-4), 'Lattice basis disagrees with initialization'
+        assert_allclose(o.to_frame(uvw=np.eye(3)),basis,rtol=1e-4, msg='Lattice basis disagrees with initialization')
 
 @pytest.mark.parametrize('keyFrame,keyLattice',[('uvw','direction'),('hkl','plane'),])
 @pytest.mark.parametrize('vector',np.array([
@@ -85,12 +85,11 @@ def test_basis_real(np_rng):
                          ('hP',1.0,1.0,1.6,np.pi/2,np.pi/2,2*np.pi/3),
                          ('cF',1.0,1.0,1.0,np.pi/2,np.pi/2,np.pi/2),
                         ])
-def test_to_frame_to_lattice(lattice,a,b,c,alpha,beta,gamma,vector,keyFrame,keyLattice):
+def test_to_frame_to_lattice(assert_allclose,lattice,a,b,c,alpha,beta,gamma,vector,keyFrame,keyLattice):
     c = Crystal(lattice=lattice,
                 a=a,b=b,c=c,
                 alpha=alpha,beta=beta,gamma=gamma)
-    assert np.allclose(vector,
-                        c.to_frame(**{keyFrame:c.to_lattice(**{keyLattice:vector})}))
+    assert_allclose(vector,c.to_frame(**{keyFrame:c.to_lattice(**{keyLattice:vector})}))
 
 @pytest.mark.parametrize('lattice,a,b,c,alpha,beta,gamma,points',
                         [
@@ -100,11 +99,11 @@ def test_to_frame_to_lattice(lattice,a,b,c,alpha,beta,gamma,vector,keyFrame,keyL
                          ('hP',1.0,1.0,1.6,np.pi/2,np.pi/2,2*np.pi/3,[[0,0,0],[2./3.,1./3.,0.5]]),
                          ('cF',1.0,1.0,1.0,np.pi/2,np.pi/2,np.pi/2,[[0,0,0],[0.0,0.5,0.5],[0.5,0.0,0.5],[0.5,0.5,0.0]]),
                         ])
-def test_lattice_points(lattice,a,b,c,alpha,beta,gamma,points):
+def test_lattice_points(assert_allclose,lattice,a,b,c,alpha,beta,gamma,points):
     c = Crystal(lattice=lattice,
                 a=a,b=b,c=c,
                 alpha=alpha,beta=beta,gamma=gamma)
-    assert np.allclose(points,c.lattice_points)
+    assert_allclose(points,c.lattice_points)
 
 @pytest.mark.parametrize('crystal,length',
                         [(Crystal(lattice='cF'),[12,6]),
@@ -126,14 +125,14 @@ def test_N_twin(crystal,length):
     assert [len(s) for s in crystal.kinematics('twin')['plane']] == length
 
 @pytest.mark.parametrize('lattice',['hP','cI','cF','tI'])
-def test_Schmid(update,res_path,lattice):
+def test_Schmid(assert_allclose,update,res_path,lattice):
     C = Crystal(lattice=lattice,c=(1.2 if lattice == 'tI' else None))                               # noqa
     for mode in ['slip']+([] if lattice == 'tI' else ['twin']):
         reference = res_path/f'{lattice}_{mode}.txt'
         P = C.Schmid(N_slip='*') if mode == 'slip' else C.Schmid(N_twin='*')
         if update:
             Table({'Schmid':(3,3,)},P.reshape(-1,9)).save(reference)
-        assert np.allclose(P,Table.load(reference).get('Schmid'))
+        assert_allclose(P,Table.load(reference).get('Schmid'))
 
 def test_Schmid_invalid():
     with pytest.raises(KeyError):

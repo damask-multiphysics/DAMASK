@@ -170,9 +170,9 @@ def test_from_fiber_component(np_rng):
 
 @pytest.mark.parametrize('crystal,sample,direction,color',[([np.pi/4,0],[np.pi/2,0],[1,0,0],[0,1,0]),
                                                             ([np.arccos(3**(-.5)),np.pi/4,0],[0,0],[0,0,1],[0,0,1])])
-def test_fiber_IPF(crystal,sample,direction,color):
+def test_fiber_IPF(assert_allclose,crystal,sample,direction,color):
     fiber = Orientation.from_fiber_component(crystal=crystal,sample=sample,family='cubic',shape=200)
-    assert np.allclose(fiber.IPF_color(direction),color)
+    assert_allclose(fiber.IPF_color(direction),color)
 
 
 @pytest.mark.parametrize('kwargs',[
@@ -260,10 +260,10 @@ def test_disorientation(np_rng,family,N):
                                   .as_quaternion())
 
 @pytest.mark.parametrize('family',crystal_families)
-def test_disorientation360(family):
+def test_disorientation360(assert_allclose,family):
     o_1 = Orientation(Rotation(),family=family)
     o_2 = Orientation.from_Euler_angles(family=family,phi=[360,0,0],degrees=True)
-    assert np.allclose((o_1.disorientation(o_2)).as_matrix(),np.eye(3))
+    assert_allclose((o_1.disorientation(o_2)).as_matrix(),np.eye(3))
 
 @pytest.mark.parametrize('family',crystal_families)
 @pytest.mark.parametrize('shapes',[[None,None],
@@ -311,19 +311,19 @@ def test_disorientation_zero(assert_allclose,set_of_quaternions,family):
                                   {'label':'green','RGB':[0,1,0],'direction':[0,1,1]},
                                   {'label':'blue', 'RGB':[0,0,1],'direction':[1,1,1]}])
 @pytest.mark.parametrize('proper',[True,False])
-def test_IPF_cubic(color,proper):
+def test_IPF_cubic(assert_allclose,color,proper):
     cube = Orientation(family='cubic')
     for direction in set(itertools.permutations(np.array(color['direction']))):
-        assert np.allclose(np.array(color['RGB']),
-                            cube.IPF_color(vector=np.array(direction),proper=proper))
+        assert_allclose(np.array(color['RGB']),
+                        cube.IPF_color(vector=np.array(direction),proper=proper))
 
 @pytest.mark.parametrize('family',crystal_families)
 @pytest.mark.parametrize('proper',[True,False])
-def test_IPF_equivalent(np_rng,set_of_quaternions,family,proper):
+def test_IPF_equivalent(assert_allclose,np_rng,set_of_quaternions,family,proper):
     direction = np_rng.random(3)*2.0-1.0
     o = Orientation(rotation=set_of_quaternions,family=family).equivalent
     color = o.IPF_color(vector=direction,proper=proper)
-    assert np.allclose(np.broadcast_to(color[0,...],color.shape),color)
+    assert_allclose(np.broadcast_to(color[0,...],color.shape),color)
 
 @pytest.mark.parametrize('relation',[None,'Peter','Paul'])
 def test_unknown_relation(relation):
@@ -358,7 +358,7 @@ def test_invalid_argument(function):
 
 @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch','Burgers'])
 @pytest.mark.parametrize('lattice',['cF','cI'])                                                     # will be adjusted for Burgers
-def test_relationship_reference(update,res_path,model,lattice):
+def test_relationship_reference(assert_allclose,update,res_path,model,lattice):
     lattice_ = 'hP' if lattice=='cF' and model=='Burgers' else lattice
     reference = res_path/f'{lattice_}_{model}.txt'
     o = Orientation(lattice=lattice_)
@@ -366,7 +366,7 @@ def test_relationship_reference(update,res_path,model,lattice):
     if update:
         coords = np.array([(1,i+1) for i,x in enumerate(eu)])
         Table({'Eulers':(3,)},eu).set('pos',coords).save(reference)
-    assert np.allclose(eu,Table.load(reference).get('Eulers'))
+    assert_allclose(eu,Table.load(reference).get('Eulers'))
 
 @pytest.mark.parametrize('lattice,a,b,c,alpha,beta,gamma',
                         [
@@ -495,10 +495,10 @@ def test_reduced_vectorization(np_rng,family,shape):
 @pytest.mark.parametrize('shape',[(1),(2,3),(4,3,2)])
 @pytest.mark.parametrize('vector',np.array([[1,0,0],[1,2,3],[-1,1,-1]]))
 @pytest.mark.parametrize('proper',[True,False])
-def test_to_SST_vectorization(np_rng,family,shape,vector,proper):
+def test_to_SST_vectorization(assert_allclose,np_rng,family,shape,vector,proper):
     o = Orientation.from_random(family=family,shape=shape,rng_seed=np_rng)
     for r, theO in zip(o.to_SST(vector=vector,proper=proper).reshape((-1,3)),o.flatten()):
-        assert np.allclose(r,theO.to_SST(vector=vector,proper=proper))
+        assert_allclose(r,theO.to_SST(vector=vector,proper=proper))
 
 @pytest.mark.parametrize('proper',[True,False])
 @pytest.mark.parametrize('family',crystal_families)
@@ -513,10 +513,10 @@ def test_in_SST_vectorization(np_rng,family,proper):
 @pytest.mark.parametrize('vector',np.array([[1,0,0],[1,2,3],[-1,1,-1]]))
 @pytest.mark.parametrize('proper',[True,False])
 @pytest.mark.parametrize('in_SST',[True,False])
-def test_IPF_color_vectorization(np_rng,family,shape,vector,proper,in_SST):
+def test_IPF_color_vectorization(assert_allclose,np_rng,family,shape,vector,proper,in_SST):
     o = Orientation.from_random(family=family,shape=shape,rng_seed=np_rng)
     for r, theO in zip(o.IPF_color(vector,in_SST=in_SST,proper=proper).reshape((-1,3)),o.flatten()):
-        assert np.allclose(r,theO.IPF_color(vector,in_SST=in_SST,proper=proper))
+        assert_allclose(r,theO.IPF_color(vector,in_SST=in_SST,proper=proper))
 
 @pytest.mark.parametrize('family',crystal_families)
 def test_in_FZ_vectorization(set_of_rodrigues,family):
@@ -564,15 +564,15 @@ def test_disorientation_blending(np_rng,family,left,right):
                                        (None,(3,)),
                                        (None,()),
                                       ])
-def test_IPF_color_blending(np_rng,family,left,right):
+def test_IPF_color_blending(assert_allclose,np_rng,family,left,right):
     o = Orientation.from_random(family=family,shape=left,rng_seed=np_rng)
     v = np_rng.random(right+(3,))
     blend = util.shapeblender(o.shape,v.shape[:-1])
     for loc in np_rng.integers(0,blend,(10,len(blend))):
         l = () if  left is None else tuple(np.minimum(np.array(left )-1,loc[:len(left)]))
         r = () if right is None else tuple(np.minimum(np.array(right)-1,loc[-len(right):]))
-        assert np.allclose(o[l].IPF_color(v[r]),
-                            o.IPF_color(v)[tuple(loc)])
+        assert_allclose(o[l].IPF_color(v[r]),
+                        o.IPF_color(v)[tuple(loc)])
 
 @pytest.mark.parametrize('family',crystal_families)
 @pytest.mark.parametrize('left,right',[
@@ -581,15 +581,15 @@ def test_IPF_color_blending(np_rng,family,left,right):
                                        ((3,1),(1,3)),
                                        (None,(3,)),
                                       ])
-def test_to_SST_blending(np_rng,family,left,right):
+def test_to_SST_blending(assert_allclose,np_rng,family,left,right):
     o = Orientation.from_random(family=family,shape=left,rng_seed=np_rng)
     v = np_rng.random(right+(3,))
     blend = util.shapeblender(o.shape,v.shape[:-1])
     for loc in np_rng.integers(0,blend,(10,len(blend))):
         l = () if  left is None else tuple(np.minimum(np.array(left )-1,loc[:len(left)]))
         r = () if right is None else tuple(np.minimum(np.array(right)-1,loc[-len(right):]))
-        assert np.allclose(o[l].to_SST(v[r]),
-                            o.to_SST(v)[tuple(loc)])
+        assert_allclose(o[l].to_SST(v[r]),
+                        o.to_SST(v)[tuple(loc)])
 
 @pytest.mark.parametrize('lattice,a,b,c,alpha,beta,gamma',
                         [
@@ -606,7 +606,7 @@ def test_to_SST_blending(np_rng,family,left,right):
                                        ((3,1),(1,3)),
                                        (None,(3,)),
                                       ])
-def test_to_frame_blending(np_rng,lattice,a,b,c,alpha,beta,gamma,left,right):
+def test_to_frame_blending(assert_allclose,np_rng,lattice,a,b,c,alpha,beta,gamma,left,right):
     o = Orientation.from_random(shape=left,
                                 lattice=lattice,
                                 a=a,b=b,c=c,
@@ -617,8 +617,8 @@ def test_to_frame_blending(np_rng,lattice,a,b,c,alpha,beta,gamma,left,right):
     for loc in np_rng.integers(0,blend,(10,len(blend))):
         l = () if  left is None else tuple(np.minimum(np.array(left )-1,loc[:len(left)]))
         r = () if right is None else tuple(np.minimum(np.array(right)-1,loc[-len(right):]))
-    assert np.allclose(o[l].to_frame(uvw=v[r]),
-                       o.to_frame(uvw=v)[tuple(loc)])
+    assert_allclose(o[l].to_frame(uvw=v[r]),
+                    o.to_frame(uvw=v)[tuple(loc)])
 
 def test_mul_invalid(np_rng):
     with pytest.raises(TypeError):
@@ -626,7 +626,7 @@ def test_mul_invalid(np_rng):
 
 @pytest.mark.parametrize('OR',['KS','NW','GT','GT_prime','Bain','Pitsch','Burgers'])
 @pytest.mark.parametrize('pole',[[0,0,1],[0,1,1],[1,1,1]])
-def test_OR_plot(update,res_path,tmp_path,OR,pole):
+def test_OR_plot(assert_allclose,update,res_path,tmp_path,OR,pole):
     # comparison
     # https://doi.org/10.3390/cryst13040663 (except Burgers)
     # https://doi.org/10.1016/j.actamat.2003.12.029 (Burgers)
@@ -646,4 +646,4 @@ def test_OR_plot(update,res_path,tmp_path,OR,pole):
     plt.close()
     current = np.array(Image.open(tmp_path/fname))
     reference = np.array(Image.open(res_path/fname))
-    assert np.allclose(current,reference)
+    assert_allclose(current,reference)
