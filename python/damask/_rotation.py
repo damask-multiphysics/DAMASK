@@ -11,7 +11,7 @@ import scipy
 from scipy.spatial.transform import Rotation as ScipyRotation
 
 from . import grid, tensor, util
-from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
+from ._typehints import FloatSequence, IntSequence, RNGLike, SeedLike
 
 
 class AxisAngleTuple(NamedTuple):
@@ -1250,7 +1250,7 @@ class Rotation:
 
     @staticmethod
     def from_random(shape: int | IntSequence | None = None,
-                    rng_seed: NumpyRngSeed | None = None) -> 'Rotation':
+                    rng: RNGLike | SeedLike | None = None) -> 'Rotation':
         """
         Initialize with samples from a uniform distribution.
 
@@ -1258,9 +1258,11 @@ class Rotation:
         ----------
         shape : (sequence of) int, optional
             Output shape. Defaults to None, which gives a scalar.
-        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator.
-            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+        rng : numpy.random.Generator, optional
+            Pseudorandom number generator state. When rng is None, a new
+            numpy.random.Generator is created using entropy from the operating
+            system. Types other than numpy.random.Generator are passed to
+            numpy.random.default_rng to instantiate a ``Generator``.
 
         Returns
         -------
@@ -1273,7 +1275,7 @@ class Rotation:
         Morgan Kaufmann Publishers, 2024. Chapter 6
         https://doi.org/10.1016/C2021-0-01777-6
         """
-        rng = np.random.default_rng(rng_seed)
+        rng = np.random.default_rng(rng)
         q = rng.normal(size = (4 if shape is None else tuple(shape)+(4,) if hasattr(shape, '__iter__') else (shape,4)))
         q /= np.linalg.norm(q,axis=-1,keepdims=True)                                                # assuming no division by zero
 
@@ -1286,7 +1288,7 @@ class Rotation:
                  shape: int | IntSequence | None = None,
                  degrees: bool = False,
                  fractions: bool = True,
-                 rng_seed: NumpyRngSeed | None = None) -> 'Rotation':
+                 rng: RNGLike | SeedLike | None = None) -> 'Rotation':
         """
         Initialize with samples from a binned orientation distribution function (ODF).
 
@@ -1303,9 +1305,11 @@ class Rotation:
         fractions : bool, optional
             ODF values correspond to volume fractions, not probability densities.
             Defaults to True.
-        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator.
-            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+        rng : numpy.random.Generator, optional
+            Pseudorandom number generator state. When rng is None, a new
+            numpy.random.Generator is created using entropy from the operating
+            system. Types other than numpy.random.Generator are passed to
+            numpy.random.default_rng to instantiate a ``Generator``.
 
         Returns
         -------
@@ -1336,7 +1340,7 @@ class Rotation:
         dV_V = dg * np.maximum(0.,weights.squeeze())
 
         N = 1 if shape is None else np.prod(shape).astype(int)
-        return Rotation.from_Euler_angles(phi[util.hybrid_IA(dV_V,N,rng_seed)],degrees).reshape(() if shape is None else shape)
+        return Rotation.from_Euler_angles(phi[util.hybrid_IA(dV_V,N,rng)],degrees).reshape(() if shape is None else shape)
 
 
     @staticmethod
@@ -1344,7 +1348,7 @@ class Rotation:
                                  sigma: float,
                                  shape: int | IntSequence | None = None,
                                  degrees: bool = False,
-                                 rng_seed: NumpyRngSeed | None = None) -> 'Rotation':
+                                 rng: RNGLike | SeedLike | None = None) -> 'Rotation':
         """
         Initialize with samples from a Gaussian distribution around a given center.
 
@@ -1358,9 +1362,11 @@ class Rotation:
             Output shape. Defaults to None, which gives a scalar.
         degrees : bool, optional
             Standard deviation is given in degrees. Defaults to False.
-        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator.
-            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+        rng : numpy.random.Generator, optional
+            Pseudorandom number generator state. When rng is None, a new
+            numpy.random.Generator is created using entropy from the operating
+            system. Types other than numpy.random.Generator are passed to
+            numpy.random.default_rng to instantiate a ``Generator``.
 
         Returns
         -------
@@ -1383,7 +1389,7 @@ class Rotation:
         >>> center = damask.Rotation.from_Euler_angles(phi=[0.,45.,0.],degrees=True)
         >>> goss = damask.Rotation.from_spherical_component(center=center,sigma=3.,shape=100,degrees=True)
         """
-        rng = np.random.default_rng(rng_seed)
+        rng = np.random.default_rng(rng)
         sigma = np.radians(sigma) if degrees else sigma
         N = 1 if shape is None else np.prod(shape)
         u,Theta  = (rng.random((N,2)) * 2. * np.array([1.,np.pi]) - np.array([1.,0.])).T
@@ -1401,7 +1407,7 @@ class Rotation:
                              sigma: float = 0.,
                              shape: int | IntSequence | None = None,
                              degrees: bool = False,
-                             rng_seed: NumpyRngSeed | None = None) -> 'Rotation':
+                             rng: RNGLike | SeedLike | None = None) -> 'Rotation':
         """
         Initialize with samples from a Gaussian distribution around a given direction.
 
@@ -1421,9 +1427,11 @@ class Rotation:
         degrees : bool, optional
             Standard deviation and polar coordinates are given in degrees.
             Defaults to False.
-        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator.
-            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+        rng : numpy.random.Generator, optional
+            Pseudorandom number generator state. When rng is None, a new
+            numpy.random.Generator is created using entropy from the operating
+            system. Types other than numpy.random.Generator are passed to
+            numpy.random.default_rng to instantiate a ``Generator``.
 
         Returns
         -------
@@ -1466,7 +1474,7 @@ class Rotation:
         >>> basal = damask.Rotation.from_fiber_component(crystal=[0.,0.],sample=[0.,0.],
         ...                                              shape=320,sigma=.15)
         """
-        rng = np.random.default_rng(rng_seed)
+        rng = np.random.default_rng(rng)
         sigma_,alpha,beta = (np.radians(c) for c in (sigma,crystal,sample)) if degrees else \
                              map(np.asarray, (sigma,crystal,sample))
 

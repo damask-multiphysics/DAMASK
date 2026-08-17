@@ -75,7 +75,7 @@ def test_multiple_homogenization_schemes_and_constituent_numbers(res_path,tmp_pa
     material_config = damask.ConfigMaterial.load(tmp_path/f'{material}.yaml')
     N_constituents = [material_config['homogenization'][ho]['N_constituents'] for ho in schemes]
     assert len(set(N_constituents)) > 1 # make sure we also test different numbers of constituents
-    O = damask.Rotation.from_random((len(schemes),max(N_constituents)),rng_seed=np_rng)
+    O = damask.Rotation.from_random((len(schemes),max(N_constituents)),rng=np_rng)
     material_config['material'] = [
         dict(homogenization=ho,
              constituents=[
@@ -102,7 +102,7 @@ def test_homogenization_many(tmp_path,res_path,copy_files,np_rng):
     grid.save(tmp_path/'small')
 
     N = np_rng.integers(100,2000)
-    O = damask.Rotation.from_random(N,rng_seed=np_rng)
+    O = damask.Rotation.from_random(N,rng=np_rng)
 
     m = damask.ConfigMaterial()
     m['homogenization']={'Taylor':{'N_constituents':N,'mechanical':{'type':'isostrain'}}}

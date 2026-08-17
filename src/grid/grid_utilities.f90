@@ -91,7 +91,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
   character(len=pSTRLEN):: formatString
 
 
-  mask_stressVector = .not. reshape(transpose(mask_stress), [9])
+  mask_stressVector = .not. math_33to9(mask_stress)
   size_reduced = count(mask_stressVector)
   if (size_reduced > 0) then
     temp99_real = math_3333to99(rot_BC%rotate(C))

@@ -174,6 +174,14 @@ class Result:
         ----------
         fname : str or pathlib.Path
             Name of the DADF5 file to be opened.
+
+        Raises
+        ------
+        TypeError
+            If the DADF5 version of the file is not supported.
+        ValueError
+            If the file is not a valid DADF5 result file because it contains
+            no increments.
         """
         with h5py.File(fname,'r') as f:
 
@@ -555,6 +563,12 @@ class Result:
         name_dst : str
             New name of the datasets.
 
+        Raises
+        ------
+        PermissionError
+            If the view is protected. Use `damask.Result.view(protected=False)`
+            to allow renaming.
+
         Examples
         --------
         Rename datasets containing the deformation gradient from 'F' to 'def_grad':
@@ -589,6 +603,12 @@ class Result:
         ----------
         name : str
             Name of the datasets to be deleted.
+
+        Raises
+        ------
+        PermissionError
+            If the view is protected. Use `damask.Result.view(protected=False)`
+            to allow deletion.
 
         Examples
         --------
@@ -1936,10 +1956,6 @@ class Result:
         """
         Write XDMF file to directly visualize data from DADF5 file.
 
-        The XDMF format is only supported for structured grids
-        with single phase and single constituent.
-        For other cases use `export_VTK`.
-
         Parameters
         ----------
         output : (list of) str, optional
@@ -1954,8 +1970,9 @@ class Result:
 
         Notes
         -----
-        This function is implemented only for structured grids with
-        one constituent and a single phase.
+        The XDMF format is only supported for structured grids
+        with single phase and single constituent.
+        For other cases use `export_VTK`.
         """
         if self.N_constituents != 1 or len(self.phases) != 1 or not self.structured:
             raise NotImplementedError('not a structured grid with one constituent and a single phase')
@@ -2322,6 +2339,11 @@ class Result:
         mapping : numpy.ndarray of int, shape (:,:,:), optional
             Indices for regridding. Only applicable for grid
             solver results.
+
+        Raises
+        ------
+        PermissionError
+            If `fname` refers to the source DADF5 file itself.
         """
         if Path(fname).expanduser().absolute() == self.fname:
             raise PermissionError(f'cannot overwrite "{self.fname}"')

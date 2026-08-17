@@ -109,9 +109,13 @@ subroutine IO_init()
 #ifndef MARC_SOURCE
   ! redirection occurs in parallelization_init before any output is written
   inquire(unit=IO_STDOUT,name=fname)
-  IO_redirectedSTDOUT = logical(fname(:4) == 'out.',C_BOOL)
+  IO_redirectedSTDOUT = logical(index(fname,'out') /= 0 .and. &
+                                index(fname,'out.',back=.true.) == len_trim(fname)-7, &
+                                C_BOOL)
   inquire(unit=IO_STDERR,name=fname)
-  IO_redirectedSTDERR = logical(fname(:4) == 'err.',C_BOOL)
+  IO_redirectedSTDERR = logical(index(fname,'err') /= 0 .and. &
+                                index(fname,'err.',back=.true.) == len_trim(fname)-7,&
+                                C_BOOL)
 #endif
   call get_environment_variable('NO_COLOR',status=status)                                           !< https://no-color.org
   IO_colored = 0 /= status

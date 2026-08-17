@@ -106,7 +106,7 @@ def test_vectorize_1_arg(np_rng,assert_allclose,vectorized,single):
         assert_allclose(single(epsilon[i]),v)
 
 def test_vectorize_rotation(np_rng,assert_allclose):
-    epsilon     = Rotation.from_random(n,rng_seed=np_rng).as_matrix()
+    epsilon     = Rotation.from_random(n,rng=np_rng).as_matrix()
     epsilon_vec = np.reshape(epsilon,(n//10,10,3,3))
     for i,v in enumerate(np.reshape(mechanics.rotation(epsilon_vec).as_matrix(),
                                     mechanics.rotation(epsilon).as_matrix().shape)):
@@ -184,7 +184,7 @@ def test_strain_rotation_equivalence(np_rng,assert_allclose,m_factor):
 def test_strain_rotation(np_rng,assert_allclose,m_factor,t):
     """Ensure that pure rotation results in no strain."""
     m = np_rng.random()*m_factor
-    F = Rotation.from_random(n,rng_seed=np_rng).as_matrix()
+    F = Rotation.from_random(n,rng=np_rng).as_matrix()
     assert_allclose(mechanics.strain(F,t,m),
                     0.0)
 

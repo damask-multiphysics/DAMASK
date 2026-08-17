@@ -35,6 +35,26 @@ module math
     module procedure math_expand_real
   end interface math_expand
 
+  interface math_33to9
+    module procedure math_33to9_real
+    module procedure math_33to9_bool
+  end interface math_33to9
+
+  interface math_9to33
+    module procedure math_9to33_real
+    module procedure math_9to33_bool
+  end interface math_9to33
+
+  interface math_3333to99
+    module procedure math_3333to99_real
+    module procedure math_3333to99_bool
+  end interface math_3333to99
+
+  interface math_99to3333
+    module procedure math_99to3333_real
+    module procedure math_99to3333_bool
+  end interface math_99to3333
+
   real(pREAL), parameter :: &
     PI = acos(-1.0_pREAL), &                                                                        !< ratio of a circle's circumference to its diameter
     TAU = 2.0_pREAL*PI, &                                                                           !< ratio of a circle's circumference to its radius
@@ -655,59 +675,115 @@ end function math_det
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Flatten: 3x3 -> 9.
+!> @brief Flatten: 3x3 -> 9 (real).
 !--------------------------------------------------------------------------------------------------
-pure function math_33to9(m33)
+pure function math_33to9_real(m33)
 
-  real(pREAL), dimension(9)               :: math_33to9
+  real(pREAL), dimension(9)               :: math_33to9_real
   real(pREAL), dimension(3,3), intent(in) :: m33
 
 
-  math_33to9 = reshape(transpose(m33), [9])
+  math_33to9_real = reshape(transpose(m33), [9])
 
-end function math_33to9
+end function math_33to9_real
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Unflatten 9 -> 3x3.
+!> @brief Flatten: 3x3 -> 9 (logical).
 !--------------------------------------------------------------------------------------------------
-pure function math_9to33(v9)
+pure function math_33to9_bool(m33) result(m9)
 
-  real(pREAL), dimension(3,3)           :: math_9to33
+  logical, dimension(9)               :: m9
+  logical, dimension(3,3), intent(in) :: m33
+
+
+  m9 = reshape(transpose(m33), [9])
+
+end function math_33to9_bool
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Unflatten 9 -> 3x3 (real).
+!--------------------------------------------------------------------------------------------------
+pure function math_9to33_real(v9)
+
+  real(pREAL), dimension(3,3)           :: math_9to33_real
   real(pREAL), dimension(9), intent(in) :: v9
 
 
-  math_9to33 = transpose(reshape(v9, [3,3]))
+  math_9to33_real = transpose(reshape(v9, [3,3]))
 
-end function math_9to33
+end function math_9to33_real
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Flatten 3x3x3x3 -> 9x9.
+!> @brief Unflatten 9 -> 3x3 (logical).
 !--------------------------------------------------------------------------------------------------
-pure function math_3333to99(m3333)
+pure function math_9to33_bool(v9) result(m33)
 
-  real(pREAL), dimension(9,9)                 :: math_3333to99
+  logical, dimension(3,3)           :: m33
+  logical, dimension(9), intent(in) :: v9
+
+
+  m33 = transpose(reshape(v9, [3,3]))
+
+end function math_9to33_bool
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Flatten 3x3x3x3 -> 9x9 (real).
+!--------------------------------------------------------------------------------------------------
+pure function math_3333to99_real(m3333)
+
+  real(pREAL), dimension(9,9)                 :: math_3333to99_real
   real(pREAL), dimension(3,3,3,3), intent(in) :: m3333
 
 
-  math_3333to99 = reshape(reshape(m3333, [3,3,3,3], order=[2,1,4,3]), [9,9])
+  math_3333to99_real = reshape(reshape(m3333, [3,3,3,3], order=[2,1,4,3]), [9,9])
 
-end function math_3333to99
+end function math_3333to99_real
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Unflatten 9x9 -> 3x3x3x3.
+!> @brief Flatten 3x3x3x3 -> 9x9 (logical).
 !--------------------------------------------------------------------------------------------------
-pure function math_99to3333(m99)
+pure function math_3333to99_bool(m3333) result(m99)
 
-  real(pREAL), dimension(3,3,3,3)         :: math_99to3333
+  logical, dimension(9,9)                 :: m99
+  logical, dimension(3,3,3,3), intent(in) :: m3333
+
+
+  m99 = reshape(reshape(m3333, [3,3,3,3], order=[2,1,4,3]), [9,9])
+
+end function math_3333to99_bool
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Unflatten 9x9 -> 3x3x3x3 (real).
+!--------------------------------------------------------------------------------------------------
+pure function math_99to3333_real(m99)
+
+  real(pREAL), dimension(3,3,3,3)         :: math_99to3333_real
   real(pREAL), dimension(9,9), intent(in) :: m99
 
 
-  math_99to3333 = reshape(reshape(m99, [3,3,3,3]), [3,3,3,3], order=[2,1,4,3])
+  math_99to3333_real = reshape(reshape(m99, [3,3,3,3]), [3,3,3,3], order=[2,1,4,3])
 
-end function math_99to3333
+end function math_99to3333_real
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Unflatten 9x9 -> 3x3x3x3 (logical).
+!--------------------------------------------------------------------------------------------------
+pure function math_99to3333_bool(m99) result(m3333)
+
+  logical, dimension(3,3,3,3)         :: m3333
+  logical, dimension(9,9), intent(in) :: m99
+
+
+  m3333 = reshape(reshape(m99, [3,3,3,3]), [3,3,3,3], order=[2,1,4,3])
+
+end function math_99to3333_bool
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1183,6 +1259,8 @@ subroutine math_selfTest()
   real(pREAL)                 :: r
   integer                     :: d
   logical                     :: e
+  logical, dimension(9)       :: v9_l
+  logical, dimension(9,9)     :: t99_l
 
 
   if (any(abs([1.0_pREAL,2.0_pREAL,2.0_pREAL,3.0_pREAL,3.0_pREAL,3.0_pREAL] - &
@@ -1214,11 +1292,19 @@ subroutine math_selfTest()
 
   call random_number(v9)
   if (any(dNeq(math_33to9(math_9to33(v9)),v9))) &
-    error stop 'math_33to9/math_9to33'
+    error stop 'math_33to9/math_9to33 (real)'
+
+  v9_l = v9 > 0.5_pREAL
+  if (any(math_33to9(math_9to33(v9_l)) .neqv. v9_l)) &
+    error stop 'math_33to9/math_9to33 (bool)'
 
   call random_number(t99)
   if (any(dNeq(math_3333to99(math_99to3333(t99)),t99))) &
-    error stop 'math_3333to99/math_99to3333'
+    error stop 'math_3333to99/math_99to3333 (real)'
+
+  t99_l = t99 > 0.5_pREAL
+  if (any(math_3333to99(math_99to3333(t99_l)) .neqv. t99_l)) &
+    error stop 'math_3333to99/math_99to3333 (bool)'
 
   call random_number(v6)
   if (any(dNeq(math_sym33to6(math_6toSym33(v6)),v6))) &

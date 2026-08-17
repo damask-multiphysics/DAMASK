@@ -40,7 +40,7 @@ def random(np_rng):
     """Simple geometry."""
     size = (1+np_rng.random(3))*1e-5
     cells = np_rng.integers(10,20,3)
-    s = seeds.from_random(size,np_rng.integers(5,25),cells,rng_seed=np_rng)
+    s = seeds.from_random(size,np_rng.integers(5,25),cells,rng=np_rng)
     return GeomGrid.from_Voronoi_tessellation(cells,size,s)
 
 @pytest.fixture
@@ -184,7 +184,7 @@ def test_flip_invalid(default,directions):
 @pytest.mark.parametrize('selection',[None,1,[1],[1,2,3]])
 @pytest.mark.parametrize('periodic',[True,False])
 def test_clean_reference(default,update,res_path,distance,selection,periodic):
-    current = default.clean(distance,selection,periodic=periodic,rng_seed=0)
+    current = default.clean(distance,selection,periodic=periodic,rng=0)
     reference = res_path/f'clean_{distance}_{util.srepr(selection,"+")}_{periodic}.vti'
     if update:
         current.save(reference)
@@ -195,12 +195,12 @@ def test_clean_reference(default,update,res_path,distance,selection,periodic):
 def test_clean_invert(np_rng,default,data_type,invert):
     selection = np_rng.integers(1,20,6) if data_type == 'array' else list(np_rng.integers(1,20,6))
     selection_inverse = np.setdiff1d(default.material,selection)
-    assert default.clean(selection=selection,invert_selection=invert,rng_seed=0) == \
-           default.clean(selection=selection_inverse,invert_selection=not invert,rng_seed=0)
+    assert default.clean(selection=selection,invert_selection=invert,rng=0) == \
+           default.clean(selection=selection_inverse,invert_selection=not invert,rng=0)
 
 def test_clean_selection_empty(random):
-    assert random.clean(selection=None,invert_selection=True,rng_seed=0) == random.clean(rng_seed=0) and \
-           random.clean(selection=None,invert_selection=False,rng_seed=0) == random.clean(rng_seed=0)
+    assert random.clean(selection=None,invert_selection=True,rng=0) == random.clean(rng=0) and \
+           random.clean(selection=None,invert_selection=False,rng=0) == random.clean(rng=0)
 
 @pytest.mark.parametrize('cells',[
                                   (10,11,10),
@@ -518,7 +518,7 @@ def test_from_table(np_rng):
 def test_from_table_recover(np_rng,tmp_path):
     cells = np_rng.integers(60,100,3)
     size = np.ones(3)+np_rng.random(3)
-    s = seeds.from_random(size,np_rng.integers(60,100),rng_seed=np_rng)
+    s = seeds.from_random(size,np_rng.integers(60,100),rng=np_rng)
     g = GeomGrid.from_Voronoi_tessellation(cells,size,s)
     coords = grid.coordinates0_point(cells,size)
     t = Table({'c':3,'m':1},np.column_stack((coords.reshape(-1,3,order='F'),g.material.flatten(order='F'))))

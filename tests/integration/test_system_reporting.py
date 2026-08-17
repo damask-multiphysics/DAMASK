@@ -23,7 +23,7 @@ def test_system_reporting(copy_files,res_path,tmp_path,np_rng):
     config = damask.ConfigMaterial.load(tmp_path/f'{material}.yaml')
     config['phase']['Mg']['mechanical']['plastic']['N_sl'] = N_sl.tolist()
     config['phase']['Mg']['mechanical']['plastic']['N_tw'] = N_tw.tolist()
-    config['material'][0]['constituents'][0]['O']=damask.Rotation.from_random(rng_seed=np_rng)
+    config['material'][0]['constituents'][0]['O']=damask.Rotation.from_random(rng=np_rng)
     config.save(tmp_path/f'{material}.yaml')
 
     damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {grid}_{load}',

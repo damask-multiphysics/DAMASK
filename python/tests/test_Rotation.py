@@ -717,7 +717,7 @@ def test_invalid_init():
         Rotation(np.ones(3))
 
 def test_to_numpy(np_rng):
-    r = Rotation.from_random(np_rng.integers(0,10,4),rng_seed=np_rng)
+    r = Rotation.from_random(np_rng.integers(0,10,4),rng=np_rng)
     assert (r.as_quaternion() == np.array(r)).all()
 
 def test_bounds(assert_allclose,multidim_rotations):
@@ -889,22 +889,22 @@ def test_random(np_rng):
 
 @pytest.mark.parametrize('shape',[None,1,(4,4)])
 def test_random_shape(np_rng,shape):
-    r = Rotation.from_random(shape,rng_seed=np_rng)
+    r = Rotation.from_random(shape,rng=np_rng)
     assert r.shape == () if shape is None else (1,) if shape == 1 else shape
 
 @pytest.mark.parametrize('shape',[None,5,(4,6)])
 def test_equal(np_rng,shape):
-    R = Rotation.from_random(shape,rng_seed=np_rng)
+    R = Rotation.from_random(shape,rng=np_rng)
     assert R == R if shape is None else (R == R).all()
 
 @pytest.mark.parametrize('shape',[None,5,(4,6)])
 def test_allclose(np_rng,shape):
-    R = Rotation.from_random(shape,rng_seed=np_rng)
+    R = Rotation.from_random(shape,rng=np_rng)
     assert R.allclose(R)
 
 @pytest.mark.parametrize('shape',[None,5,(4,6)])
 def test_comparison_NotImplemented(np_rng,shape):
-    R = Rotation.from_random(shape,rng_seed=np_rng)
+    R = Rotation.from_random(shape,rng=np_rng)
     assert type(R != None) is bool
     assert type(R == None) is bool
     assert type(R != 15) is bool
@@ -912,7 +912,7 @@ def test_comparison_NotImplemented(np_rng,shape):
 
 @pytest.mark.parametrize('shape',[None,5,(4,6)])
 def test_unequal(np_rng,shape):
-    R = Rotation.from_random(shape,rng_seed=np_rng)
+    R = Rotation.from_random(shape,rng=np_rng)
     assert not (R != R if shape is None else (R != R).any())
 
 
@@ -927,22 +927,22 @@ def test_inversion(multidim_rotations):
 
 @pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(1,1,1),tuple(np.random.randint(0,10,4))])
 def test_ndim(np_rng,shape):
-    r = Rotation.from_random(shape=shape,rng_seed=np_rng)
+    r = Rotation.from_random(shape=shape,rng=np_rng)
     assert r.ndim == (len(shape) if isinstance(shape,tuple) else 1 if shape else 0)
 
 @pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(1,1,1),tuple(np.random.randint(0,10,4))])
 def test_shape(np_rng,shape):
-    r = Rotation.from_random(shape=shape,rng_seed=np_rng)
+    r = Rotation.from_random(shape=shape,rng=np_rng)
     assert r.shape == (shape if isinstance(shape,tuple) else (shape,) if shape else ())
 
 @pytest.mark.parametrize('shape',[1,(1,),(4,2),(1,1,1),tuple(np.random.randint(0,10,4))])
 def test_size(np_rng,shape):
-    assert Rotation.from_random(shape,rng_seed=np_rng).size == np.prod(shape)
+    assert Rotation.from_random(shape,rng=np_rng).size == np.prod(shape)
 
 @pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(3,3,2)])
 def test_append(np_rng,shape):
-    r = Rotation.from_random(shape=shape,rng_seed=np_rng)
-    p = Rotation.from_random(shape=shape,rng_seed=np_rng)
+    r = Rotation.from_random(shape=shape,rng=np_rng)
+    p = Rotation.from_random(shape=shape,rng=np_rng)
     s = r.append(p)
     print(f'append 2x {shape} --> {s.shape}')
     if shape is None:
@@ -952,8 +952,8 @@ def test_append(np_rng,shape):
 
 @pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(3,3,2)])
 def test_append_list(np_rng,shape):
-    r = Rotation.from_random(shape=shape,rng_seed=np_rng)
-    p = Rotation.from_random(shape=shape,rng_seed=np_rng)
+    r = Rotation.from_random(shape=shape,rng=np_rng)
+    p = Rotation.from_random(shape=shape,rng=np_rng)
     s = r.append([r,p])
     print(f'append 3x {shape} --> {s.shape}')
     if shape is None:
@@ -974,13 +974,13 @@ def test_standardization(quat,standardized):
                                          ((),0)
                                         ])
 def test_len(np_rng,shape,length):
-    r = Rotation.from_random(shape=shape,rng_seed=np_rng)
+    r = Rotation.from_random(shape=shape,rng=np_rng)
     assert len(r) == length
 
 @pytest.mark.parametrize('shape',[(4,6),(2,3,4),(3,3,3)])
 @pytest.mark.parametrize('order',['C','F'])
 def test_flatten_reshape(np_rng,shape,order):
-    r = Rotation.from_random(shape=shape,rng_seed=np_rng)
+    r = Rotation.from_random(shape=shape,rng=np_rng)
     assert (r == r.flatten(order).reshape(shape,order)).all()
 
 @pytest.mark.parametrize('function',[Rotation.from_quaternion,
@@ -1008,22 +1008,22 @@ def test_invalid_shape_parallel(np_rng):
                                   (Rotation.from_homochoric,'as_homochoric'),
                                   (Rotation.from_cubochoric,'as_cubochoric')])
 def test_invalid_P(np_rng,fr,to):
-    R = Rotation.from_random(np_rng.integers(8,32,(3)),rng_seed=np_rng)                             # noqa
+    R = Rotation.from_random(np_rng.integers(8,32,(3)),rng=np_rng)                             # noqa
     with pytest.raises(ValueError):
         fr(eval(f'R.{to}()'),P=-30)
 
 
 def test_invalid_multiplication(np_rng):
-    rot = Rotation.from_random(rng_seed=np_rng)
+    rot = Rotation.from_random(rng=np_rng)
     with pytest.raises(TypeError):
-        rot@Rotation.from_random(rng_seed=np_rng)
+        rot@Rotation.from_random(rng=np_rng)
     with pytest.raises(TypeError):
         rot@[1,2,3,4]
 
 
 @pytest.mark.parametrize('shape',[None,(3,),(4,2)])
 def test_broadcast(assert_allclose,np_rng,shape):
-    rot = Rotation.from_random(shape,rng_seed=np_rng)
+    rot = Rotation.from_random(shape,rng=np_rng)
     new_shape = tuple(np_rng.integers(8,32,(3))) if shape is None else \
                 rot.shape + (np_rng.integers(8,32),)
     rot_broadcast = rot.broadcast_to(tuple(new_shape))
@@ -1033,8 +1033,8 @@ def test_broadcast(assert_allclose,np_rng,shape):
 
 @pytest.mark.parametrize('shape',[(3,2),(4,6)])
 def test_broadcastcomposition(np_rng,shape):
-    a = Rotation.from_random(shape[0],rng_seed=np_rng)
-    b = Rotation.from_random(shape[1],rng_seed=np_rng)
+    a = Rotation.from_random(shape[0],rng=np_rng)
+    b = Rotation.from_random(shape[1],rng=np_rng)
     assert (a[:,np.newaxis]*b[np.newaxis,:]).allclose(a.broadcast_to(shape)*b.broadcast_to(shape))
 
 
@@ -1102,7 +1102,7 @@ def test_rotate_360deg(assert_allclose,np_rng,data_shape):
 
 @pytest.mark.parametrize('pwr',[-10,0,1,2.5,np.pi,np.random.random()])
 def test_rotate_power(np_rng,pwr):
-    R = Rotation.from_random(rng_seed=np_rng)
+    R = Rotation.from_random(rng=np_rng)
     axis_angle = R.as_axis_angle()
     axis_angle[ 3] = (pwr*axis_angle[-1])%(2.*np.pi)
     if axis_angle[3] > np.pi:
@@ -1111,7 +1111,7 @@ def test_rotate_power(np_rng,pwr):
     assert (R**pwr).isclose(Rotation.from_axis_angle(axis_angle))
 
 def test_rotate_inverse(assert_allclose,np_rng):
-    R = Rotation.from_random(rng_seed=np_rng)
+    R = Rotation.from_random(rng=np_rng)
     assert (~R).allclose(R**-1)
     assert_allclose(np.eye(3),(~R*R).as_matrix())
 
@@ -1214,7 +1214,7 @@ def test_composition_inverse_invalid():
         Rotation()/np.ones(3)
 
 def test_power(np_rng):
-    a = Rotation.from_random(rng_seed=np_rng)
+    a = Rotation.from_random(rng=np_rng)
     r = (np_rng.random()-.5)*4
     b = a**r
     a **= r

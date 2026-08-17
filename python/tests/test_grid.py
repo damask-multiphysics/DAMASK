@@ -254,7 +254,7 @@ def test_regrid_stretch_with_shear(np_rng,factor,noise):
 def test_regrid_double_cells(np_rng):
         size = np_rng.random(3)
         cells = np_rng.integers(8,32,(3))
-        g = GeomGrid.from_Voronoi_tessellation(cells,size,seeds.from_random(size,10,rng_seed=np_rng))
+        g = GeomGrid.from_Voronoi_tessellation(cells,size,seeds.from_random(size,10,rng=np_rng))
         F = np.broadcast_to(np.eye(3), (*cells,3,3))
         assert g.scale(cells*2) == g.assemble(grid.regrid(size,F,cells*2))
 

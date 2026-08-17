@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 
 from . import Crystal, Rotation, tensor, util
-from ._typehints import BravaisLattice, CrystalFamily, FloatSequence, IntSequence, NumpyRngSeed
+from ._typehints import BravaisLattice, CrystalFamily, FloatSequence, IntSequence, RNGLike, SeedLike
 
 
 MyType = TypeVar('MyType', bound='Orientation')
@@ -738,7 +738,7 @@ class Orientation(Rotation,Crystal):
 
     @staticmethod
     def from_random(shape: int | IntSequence | None = None,
-                    rng_seed: NumpyRngSeed | None = None,
+                    rng: RNGLike | SeedLike | None = None,
                     *,
                     family: CrystalFamily | None = None,
                     lattice: BravaisLattice | None = None,
@@ -752,9 +752,11 @@ class Orientation(Rotation,Crystal):
         ----------
         shape : (sequence of) int, optional
             Output shape. Defaults to None, which gives a scalar.
-        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator.
-            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+        rng : numpy.random.Generator, optional
+            Pseudorandom number generator state. When rng is None, a new
+            numpy.random.Generator is created using entropy from the operating
+            system. Types other than numpy.random.Generator are passed to
+            numpy.random.default_rng to instantiate a ``Generator``.
         family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional
             Name of the crystal family.
             Will be inferred if 'lattice' is given.
@@ -780,7 +782,7 @@ class Orientation(Rotation,Crystal):
         new : damask.Orientation
             Random orientation of given shape.
         """
-        return Orientation(Rotation.from_random(shape,rng_seed),
+        return Orientation(Rotation.from_random(shape,rng),
                            family=family,lattice=lattice,
                            a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
                            degrees=degrees)
@@ -791,7 +793,7 @@ class Orientation(Rotation,Crystal):
                  shape: int | IntSequence | None = None,
                  degrees: bool = False,
                  fractions: bool = True,
-                 rng_seed: NumpyRngSeed | None = None,
+                 rng: RNGLike | SeedLike | None = None,
                  *,
                  family: CrystalFamily | None = None,
                  lattice: BravaisLattice | None = None,
@@ -814,9 +816,11 @@ class Orientation(Rotation,Crystal):
         fractions : bool, optional
             ODF values correspond to volume fractions, not probability densities.
             Defaults to True.
-        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator.
-            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+        rng : numpy.random.Generator, optional
+            Pseudorandom number generator state. When rng is None, a new
+            numpy.random.Generator is created using entropy from the operating
+            system. Types other than numpy.random.Generator are passed to
+            numpy.random.default_rng to instantiate a ``Generator``.
         family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional
             Name of the crystal family.
             Will be inferred if 'lattice' is given.
@@ -853,7 +857,7 @@ class Orientation(Rotation,Crystal):
         P. Eisenlohr and F. Roters, Computational Materials Science 42(4):670-678, 2008
         https://doi.org/10.1016/j.commatsci.2007.09.015
         """
-        return Orientation(Rotation.from_ODF(weights,phi,shape,degrees,fractions,rng_seed),
+        return Orientation(Rotation.from_ODF(weights,phi,shape,degrees,fractions,rng),
                            family=family,lattice=lattice,
                            a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
                            degrees=degrees)
@@ -863,7 +867,7 @@ class Orientation(Rotation,Crystal):
                                  sigma: float,
                                  shape: int | IntSequence | None = None,
                                  degrees: bool = False,
-                                 rng_seed: NumpyRngSeed | None = None,
+                                 rng: RNGLike | SeedLike | None = None,
                                  *,
                                  family: CrystalFamily | None = None,
                                  lattice: BravaisLattice | None = None,
@@ -883,9 +887,11 @@ class Orientation(Rotation,Crystal):
             Output shape. Defaults to None, which gives a scalar.
         degrees : bool, optional
             Standard deviation is given in degrees. Defaults to False.
-        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator.
-            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+        rng : numpy.random.Generator, optional
+            Pseudorandom number generator state. When rng is None, a new
+            numpy.random.Generator is created using entropy from the operating
+            system. Types other than numpy.random.Generator are passed to
+            numpy.random.default_rng to instantiate a ``Generator``.
         family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional
             Name of the crystal family.
             Will be inferred if 'lattice' is given.
@@ -909,7 +915,7 @@ class Orientation(Rotation,Crystal):
         new : damask.Orientation
             Orientation sampled from normal distribution around a center.
         """
-        return Orientation(Rotation.from_spherical_component(center,sigma,shape,degrees,rng_seed),
+        return Orientation(Rotation.from_spherical_component(center,sigma,shape,degrees,rng),
                            family=family,lattice=lattice,
                            a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
                            degrees=degrees)
@@ -920,7 +926,7 @@ class Orientation(Rotation,Crystal):
                              sigma: float = 0.,
                              shape: int | IntSequence | None = None,
                              degrees: bool = False,
-                             rng_seed: NumpyRngSeed | None = None,
+                             rng: RNGLike | SeedLike | None = None,
                              *,
                              family: CrystalFamily | None = None,
                              lattice: BravaisLattice | None = None,
@@ -945,9 +951,11 @@ class Orientation(Rotation,Crystal):
             Output shape. Defaults to None, which gives a scalar.
         degrees : bool, optional
             Angles are given in degrees. Defaults to False.
-        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator.
-            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+        rng : numpy.random.Generator, optional
+            Pseudorandom number generator state. When rng is None, a new
+            numpy.random.Generator is created using entropy from the operating
+            system. Types other than numpy.random.Generator are passed to
+            numpy.random.default_rng to instantiate a ``Generator``.
         family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional
             Name of the crystal family.
             Will be inferred if 'lattice' is given.
@@ -995,7 +1003,7 @@ class Orientation(Rotation,Crystal):
         A. Heinz and P. Neumann, Acta Crystallographica Section A 47:780-789, 1991
         https://doi.org/10.1107/S0108767391006864
         """
-        return Orientation(Rotation.from_fiber_component(crystal,sample,sigma,shape,degrees,rng_seed),
+        return Orientation(Rotation.from_fiber_component(crystal,sample,sigma,shape,degrees,rng),
                            family=family,lattice=lattice,
                            a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
                            degrees=degrees)

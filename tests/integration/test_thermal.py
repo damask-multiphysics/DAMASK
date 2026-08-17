@@ -69,7 +69,7 @@ def test_linear_expansion(res_path,tmp_path,copy_files,assert_allclose,np_rng,
                                                         'T_ref':np_rng.integers(1,1000), 'type': 'thermalexpansion'}]
     mat['phase']['matrix']['thermal']['source'] = [{'type':'externalheat', 'f':[1,1], 't':[0,100]}]
 
-    mat['material'][0]['constituents'][0]['O'] = damask.Rotation.from_random(rng_seed=np_rng)
+    mat['material'][0]['constituents'][0]['O'] = damask.Rotation.from_random(rng=np_rng)
     mat.save(tmp_path/f'{material}.yaml')
 
     damask.util.run(f'damask_grid -l {load}.yaml -g {grid}.vti -m {material}.yaml -j {job}',wd=tmp_path)
@@ -329,7 +329,7 @@ def test_thermal_dissipation(res_path,tmp_path,np_rng,assert_allclose):
     mat['phase']['heatsource']['rho'] = rho
     mat['phase']['heatsource']['thermal']['C_p'] = C_p
     mat['phase']['heatsource']['thermal']['source'] = [{'type':'dissipation', 'kappa': k}]
-    mat = mat.material_add(phase='heatsource',O=damask.Rotation.from_random(shape=8, rng_seed=np_rng), homogenization='direct')
+    mat = mat.material_add(phase='heatsource',O=damask.Rotation.from_random(shape=8, rng=np_rng), homogenization='direct')
     mat.save(tmp_path/f'{material}.yaml')
 
     g = damask.GeomGrid(np.ones((2,2,2)),np.ones(3)*1e-4)

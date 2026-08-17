@@ -186,7 +186,7 @@ def material_setup(file_in, file_out, np_rng, xtropy):
         {'type':'Hooke', 'C_11': C_11, 'C_12': C_12, 'C_44': C_44,
                          'C_33': C_33, 'C_13': C_13, 'C_66': C_66}
     mat_config = mat_config.material_add(phase = ['phase_0'],
-                                         O = (damask.Rotation.from_random(rng_seed=np_rng) if xtropy == 'iso' else
+                                         O = (damask.Rotation.from_random(rng=np_rng) if xtropy == 'iso' else
                                               damask.Rotation()),
                                          homogenization = 'SX')
     mat_config.save(file_out)
