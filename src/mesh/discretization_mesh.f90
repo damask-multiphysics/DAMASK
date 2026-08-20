@@ -123,6 +123,9 @@ subroutine discretization_mesh_init()
   PetscQuadrature :: quadrature                                                                     ! quadrature object
   PetscErrorCode  :: err_PETSc
 
+#if PETSC_VERSION_MINOR>25
+  logical :: r_int                                                                                  ! reduced integration flag
+#endif
   logical                                  :: to_complete                                           ! perform label completion
   integer                                  :: p_s, &                                                ! shape function order
                                               n, m, k                                               ! loop / counters
@@ -156,16 +159,8 @@ subroutine discretization_mesh_init()
 #if PETSC_VERSION_MINOR<23
   if (worldsize > 1) call IO_error(800_pI16, 'parallel simulations require PETSc >= 3.23')          ! not supported
 #endif
-
-!--------------------------------------------------------------------------------------------------
-! read numerics parameter
-  num_solver => config_numerics%get_dict('solver',defaultVal=emptyDict)
-  num_mesh   => num_solver%get_dict('mesh',defaultVal=emptyDict)
-  p_i = int(num_mesh%get_asInt('p_i',defaultVal=2),pPETSCINT)
-  p_s = num_mesh%get_asInt('p_s',defaultVal=2)
-
-!--------------------------------------------------------------------------------------------------
-! set up DM
+!--------------------------------------------------------------------------------
+! set up DMPlex
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,                      &
                                 ' -dm_plex_filename ' // CLI_geomFile // &
                                 ' -dm_plex_interpolate 1                 &
@@ -230,14 +225,10 @@ subroutine discretization_mesh_init()
 ! simplicial mesh
   call DMPlexIsSimplex(geom,is_simplex,err_PETSc)
   CHKERRQ(err_PETSc)
-  if (.not. is_simplex) then
 #if PETSC_VERSION_MINOR<24
+  if (.not. is_simplex) &
     call IO_error(800_pI16, 'mesh is not a simplex')
 #endif
-    p_i = p_i + 1_pPETSCINT                                                                         ! adjust for quad/hex (non-simplex)
-  end if
-  call DMGetStratumSize(geom,'depth',dimPlex,mesh_nElems,err_PETSc)
-  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! read mesh tags
@@ -329,6 +320,19 @@ subroutine discretization_mesh_init()
   else
     mesh_BCLabels = emptyStrArray
   end if
+
+!--------------------------------------------------------------------------------------------------
+! read numerics parameters
+  num_solver => config_numerics%get_dict('solver',defaultVal=emptyDict)
+  num_mesh   => num_solver%get_dict('mesh',defaultVal=emptyDict)
+  p_s = int(num_mesh%get_asInt('p_s',defaultVal=2),pPETSCINT)
+#if PETSC_VERSION_MINOR>25
+  r_int = num_mesh%get_asBool('reduced_integration',defaultVal=.false.)
+  p_i = int(quadrature_order(p_s,int(dimPlex),r_int,is_simplex),pPETSCINT)
+#else
+  p_i = int(num_mesh%get_asInt('p_i',defaultVal=2),pPETSCINT)
+  if (.not. is_simplex) p_i = p_i + 1_pPETSCINT                                                     ! adjust for quad/hex (non-simplex)
+#endif
 
 !--------------------------------------------------------------------------------------------------
 ! set up quadrature, fields (mechanical, thermal...) and DS
@@ -480,6 +484,33 @@ subroutine discretization_mesh_init()
   end if
 
 end subroutine discretization_mesh_init
+
+
+#if PETSC_VERSION_MINOR>25
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculate quadrature order based on element order and full/reduced integration flag
+!--------------------------------------------------------------------------------------------------
+integer function quadrature_order(p_s,dimPlex,r_int,is_simplex)
+
+  integer,   intent(in) :: p_s, &                                                                   ! shape function order
+                           dimPlex                                                                  ! dimension (2/3)
+  logical,   intent(in) :: r_int                                                                    ! reduced integration flag
+  PetscBool, intent(in) :: is_simplex                                                               ! simplex (tri/tet) or not (quad/hex)
+
+
+  quadrature_order = merge(max(1,2*(p_s-1)),p_s+1,is_simplex)
+  if (r_int) then
+    if (is_simplex .and. dimPlex * p_s > 6) then                                                    ! only available for (TRI,p_s>3) and (TET,p_s>2)
+      quadrature_order = quadrature_order - 1
+    else if (.not. is_simplex .and. p_s == 1) then                                                  ! only available for first order QUAD/HEX
+      quadrature_order = 1
+    else
+      call IO_error(301,'reduced integration not available for this element and order')
+    end if
+  end if
+
+end function quadrature_order
+#endif
 
 
 !--------------------------------------------------------------------------------------------------
