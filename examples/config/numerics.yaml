@@ -6,6 +6,11 @@ solver:
     N_staggered_iter_max: 10            # max number of field-level staggered iterations
     N_cutback_max:        3             # maximum cutback level (0: 1, 1: 0.5, 2: 0.25, etc)
 
+    chemical:
+      N_iter_max: 250                   # maximum iteration number
+      eps_abs_conc: 1.0e-6              # absolute tolerance for concentration evolution
+      eps_rel_conc: 1.0e-6              # relative tolerance for concentration evolution
+
     damage:
       N_iter_max: 100                   # maximum iteration number
       eps_abs_phi: 1.0e-2               # absolute tolerance for damage evolution

@@ -1,0 +1,14 @@
+type: quadenergy
+V_m: 1.0e-5
+output: [x]
+
+species:
+  Ni:
+    M: 1.0e-20
+    c_0: 0.35
+    c_eq: 0.3376
+    G,c: -16.111
+    G,c^2: 8177.39
+  Cu:
+    M: 1.0
+    c_0: 0.65

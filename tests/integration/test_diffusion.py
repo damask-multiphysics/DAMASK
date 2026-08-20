@@ -64,15 +64,15 @@ def test_chemical_diffusion(res_path,tmp_path,np_rng,assert_allclose):
     g = damask.GeomGrid.load(res_path/f'{grid}.vti')
     a = np.full((32,2,2), C_l)
     a[8:24,:,:] = C_h
-    g.initial_conditions['Li'] = a
-    g.initial_conditions['Al'] = 1.0 - a
+    g.initial_conditions['mu_Li'] = a
+    g.initial_conditions['mu_Al'] = 1.0 - a
     g.save(tmp_path/grid)
 
     mat = damask.ConfigMaterial.load(res_path/f'{material}.yaml')
-    mat['phase']['Aluminum_1']['chemical']['components']['Li']['c_0'] = C_h
-    mat['phase']['Aluminum_1']['chemical']['components']['Al']['c_0'] = 1 - C_h
-    mat['phase']['Aluminum_2']['chemical']['components']['Li']['c_0'] = C_l
-    mat['phase']['Aluminum_2']['chemical']['components']['Al']['c_0'] = 1 - C_l
+    mat['phase']['Aluminum_1']['chemical']['species']['Li']['c_0'] = C_h
+    mat['phase']['Aluminum_1']['chemical']['species']['Al']['c_0'] = 1 - C_h
+    mat['phase']['Aluminum_2']['chemical']['species']['Li']['c_0'] = C_l
+    mat['phase']['Aluminum_2']['chemical']['species']['Al']['c_0'] = 1 - C_l
     mat.save(tmp_path/f'{material}.yaml')
 
     D = 1.0
@@ -96,7 +96,7 @@ def test_chemical_diffusion(res_path,tmp_path,np_rng,assert_allclose):
     assert_allclose(C_analytic, Li[tstep][16:], rtol=5e-2,atol=1e-4)
 
 
-def test_chemical_regularsolution_reference(res_path,tmp_path,assert_allclose,update):
+def test_chemical_calphaddisordered_reference(res_path,tmp_path,assert_allclose,update):
 
     grid = 'regular'
     load = 'no_deformation'
@@ -125,7 +125,7 @@ def test_chemical_regularsolution_reference(res_path,tmp_path,assert_allclose,up
     h5py_compare_files(res_path/f'regular_load_material.hdf5', tmp_path/f'{job}.hdf5', assert_allclose)
 
 
-def test_chemical_regularsolution_plausibility(res_path,tmp_path,np_rng,assert_allclose):
+def test_chemical_calphaddisordered_plausibility(res_path,tmp_path,np_rng,assert_allclose):
 
     grid = 'regular'
     load = 'no_deformation'

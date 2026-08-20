@@ -1,25 +1,20 @@
 type: quadenergy
+V_m: 1.0e-5
 output: [x]
 
-components:
+species:
   H:
     M: 1
     c_0: 1
     c_eq: 1
     G,c: 1
     G,c^2: 1
-    dependent: False
   Cl:
     M: 1
     c_0: 1
     c_eq: 1
     G,c: 1
     G,c^2: 1
-    dependent: False # default
   Cu:
     M: 1
     c_0: 1
-    c_eq: 1
-    G,c: 1
-    G,c^2: 1
-    dependent: True

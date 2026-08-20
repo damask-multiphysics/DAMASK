@@ -1,21 +1,20 @@
 ! SPDX-License-Identifier: AGPL-3.0-or-later
 !--------------------------------------------------------------------------------------------------
 !> @author Aadhithyan Kannan, KU Leuven
-!> @brief regular solution model for free energy using SGTE representation (second generation)
-!> @details input from CALPHAD-based databases
-!> @details no contribution to free energy from other physics. For example, magnetic
+!> @author Sharan Roongta, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief Disordered regular solution for free energy using SGTE representation (second generation)
+!> @details Thermodynamic data from CALPHAD-based databases
+!> @details no contribution from other physics. For example, magnetic and pressure dependance
 !--------------------------------------------------------------------------------------------------
-submodule(phase:chemical) regularsolution
-
-  real(pREAL), parameter :: &
-    R = 8.314459848_pREAL                                      ! check: add reference for value or have it in constant.f90
+submodule(phase:chemical) calphaddisordered
 
   type :: tParameters                                                                       !< container type for internal constitutive parameters
     integer :: &
       N_components
     real(pREAL), dimension(:), allocatable :: &
       Mobility, &
-      c_0                                                      ! check: needs to be defined? initial composition corresponding to mu initialized in VTI
+      c_0
     real(pREAL), dimension(:,:,:), allocatable :: &
       G0_coeff                                                 ! for each component, for each temperature range, and third dimension: Temp range(2) + coefficients(8)
     real(pREAL), dimension(:, :, :, :), allocatable :: &
@@ -29,9 +28,9 @@ contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief module initialization
-!> @details reads in material parameters and allocates arrays
+!> @details Read in material parameters, allocate arrays and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function regularsolution_init() result(myChemicalEnergy)
+module function calphaddisordered_init() result(myChemicalEnergy)
 
   logical, dimension(:), allocatable :: myChemicalEnergy
 
@@ -39,7 +38,7 @@ module function regularsolution_init() result(myChemicalEnergy)
     phases, &
     phase, &
     chemical, components, component, &
-    G_xs, &                                         ! dictionary keys are component for excess interactions
+    G_xs, &
     G0_range, Gxs_range
 
   type(tList), pointer :: &
@@ -48,23 +47,27 @@ module function regularsolution_init() result(myChemicalEnergy)
 
   integer :: ph, Nmembers, com, xs_com, maxSize_G0lists, maxSize_Gxscomlists, i
 
-  character(len=:), allocatable :: refs
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
 
-  myChemicalEnergy = chemical_active('regularsolution')
+  myChemicalEnergy = chemical_active('calphaddisordered')
   if (count(myChemicalEnergy) == 0) return
 
-  print'(/,a)', ' <<<+-  phase:chemical:regularsolution init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:chemical:calphaddisordered init  -+>>>'
   print'(a,i2)', ' # phases: ',count(myChemicalEnergy); flush(IO_STDOUT)
 
   phases => config_material%get_dict('phase')
   allocate(param(size(phases)))
+
+  extmsg = ''
 
   do ph = 1, size(phases)
     if ( .not. myChemicalEnergy(ph)) cycle
 
     phase => phases%get_dict(ph)
     chemical => phase%get_dict('chemical')
-    components => chemical%get_dict('components',defaultVal=emptyDict)
+    components => chemical%get_dict('species',defaultVal=emptyDict)
 
     print'(/,1x,a,1x,i0,a)', 'phase',ph,': '//phases%key(ph)
     refs = config_listReferences(chemical,indent=3)
@@ -73,14 +76,14 @@ module function regularsolution_init() result(myChemicalEnergy)
     maxSize_G0lists = 0
     maxSize_Gxscomlists = 0
 
-! parse to allocate. ToDo: add all warnings and error before allocate
+    ! parse to allocate
     do com = 1, size(components)
       component => components%get_dict(com)
-      maxSize_G0lists = max(maxSize_G0lists, size(component%get_list('G_0', defaultVal=emptyList))) ! check: size can never be zero. at least one temp range needed
+      maxSize_G0lists = max(maxSize_G0lists, size(component%get_list('G_0', defaultVal=emptyList)))
       if (com > 1) then
-        G_xs => component%get_dict('G_xs',defaultVal=emptyDict)     ! check: should not be empty. no interactions must need zeros as interaction coefficients. specify in documentation
+        G_xs => component%get_dict('G_xs',defaultVal=emptyDict)
         do xs_com = 1, size(G_xs)
-          maxSize_Gxscomlists = max(maxSize_Gxscomlists, size(G_xs%get_list(G_xs%key(xs_com), defaultVal=emptyList))) ! check: size can never be zero. at least one temp range needed
+          maxSize_Gxscomlists = max(maxSize_Gxscomlists, size(G_xs%get_list(G_xs%key(xs_com), defaultVal=emptyList)))
         end do
       endif
     end do
@@ -94,7 +97,7 @@ module function regularsolution_init() result(myChemicalEnergy)
       allocate(prm%L0_T(size(components),size(components),maxSize_Gxscomlists))
       allocate(prm%Tranges_L0(size(components),size(components),maxSize_Gxscomlists,2), source=0.0_pREAL)
 
-! parse and store
+      ! parse and store
       do com = 1, size(components)
         component => components%get_dict(com)
         prm%Mobility(com)           = component%get_asReal('M')
@@ -103,23 +106,29 @@ module function regularsolution_init() result(myChemicalEnergy)
         G_0 => component%get_list('G_0')
         do i = 1, size(G_0)
           G0_range  => G_0%get_dict(i)
-          prm%G0_coeff (com, i, 1:2)  = G0_range%get_as1dReal('T_range', requiredSize=2)     ! check: handle size mismatch
-          prm%G0_coeff (com, i, 3:)   = G0_range%get_as1dReal('SGTE_coeff', requiredSize=8)  ! check: handle size mismatch
+          prm%G0_coeff (com, i, 1:2)  = G0_range%get_as1dReal('T_range', requiredSize=2)
+          prm%G0_coeff (com, i, 3:)   = G0_range%get_as1dReal('SGTE_coeff', requiredSize=8)
         end do
 
-        if (com > 1) then                  ! by default expect interactions for the second component onwards. Should be present as zero in material.yaml for non-interacting components
+        if (com > 1) then                  ! by default expect interactions for the second component onwards
           G_xs => component%get_dict('G_xs')
-          do xs_com = 1, size(G_xs)        ! size(G_xs) should be com-1. add check? ensures keys for dict: component, are already present before in components:material.yaml get added for xs
-            Gxs_comp => G_xs%get_list(components%key(xs_com)) ! order corresponds to order in components dictionary. same component raise error
+          do xs_com = 1, size(G_xs)
+            Gxs_comp => G_xs%get_list(components%key(xs_com)) ! order corresponds to order in components dictionary
             do i = 1, size(Gxs_comp)
               Gxs_range => Gxs_comp%get_dict(i)
-              prm%Tranges_L0 (com, xs_com, i, :) = Gxs_range%get_as1dReal('T_range', requiredSize=2)  ! check: handle size mismatch
+              prm%Tranges_L0 (com, xs_com, i, :) = Gxs_range%get_as1dReal('T_range', requiredSize=2)
               prm%L0_T(com, xs_com, i) = polynomial(Gxs_range, 'L_0', 'T')   ! only lower triangle of interaction matrix. symmetry applied later
             end do
           end do
         endif
       end do
 
+      ! sanity checks
+      if (any(prm%Mobility < 0.0_pREAL)) extmsg = trim(extmsg)//' M'
+      if (any(prm%c_0      < 0.0_pREAL)) extmsg = trim(extmsg)//' c_0'
+      if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg))
+
+      ! allocate fieldQuantities
       Nmembers = count(material_ID_phase == ph)
       ! call phase_allocateState(chemicalState(ph),Nmembers,1,1,0)
       allocate(current(ph)%C(prm%N_components,Nmembers),source=spread(prm%c_0,2,Nmembers))
@@ -130,13 +139,13 @@ module function regularsolution_init() result(myChemicalEnergy)
 
   end do
 
-end function regularsolution_init
+end function calphaddisordered_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return chemical potential explicit.
+!> @brief Calculate chemical potential explicit.
 !--------------------------------------------------------------------------------------------------
-module function regularsolution_mu_explicit(ph,en,comp_prev) result(mu_explicit)
+module function calphaddisordered_mu_explicit(ph,en,comp_prev) result(mu_explicit)
 
   integer, intent(in) :: &
     ph, &
@@ -167,11 +176,11 @@ module function regularsolution_mu_explicit(ph,en,comp_prev) result(mu_explicit)
 
  end associate
 
-end function regularsolution_mu_explicit
+end function calphaddisordered_mu_explicit
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Returns G0: reference free energy for pure components evaluated at temperature T
+!> @brief Calculate G0: reference free energy for pure components evaluated at temperature T
 !--------------------------------------------------------------------------------------------------
 pure function get_G0(ph, en) result(G0)
 
@@ -193,8 +202,8 @@ pure function get_G0(ph, en) result(G0)
       do i = 1, size(prm%G0_coeff,2)
         if (prm%G0_coeff(com_i,i,1) <= T .and. T <= prm%G0_coeff(com_i,i,2)) then
           G0(com_i) = prm%G0_coeff(com_i, i, 3) + prm%G0_coeff(com_i, i, 4)*T + prm%G0_coeff(com_i, i, 5)*T*log(T) + &
-                                                  prm%G0_coeff(com_i, i, 6)*T**2 + prm%G0_coeff(com_i, i, 7)/T + &
-                                                  prm%G0_coeff(com_i, i, 8)*T**3 + prm%G0_coeff(com_i, i, 9)*T**7 + &
+                                                  prm%G0_coeff(com_i, i, 6)*T**2 + prm%G0_coeff(com_i, i, 7)*T**3 + &
+                                                  prm%G0_coeff(com_i, i, 8)*T**(-1) + prm%G0_coeff(com_i, i, 9)*T**7 + &
                                                   prm%G0_coeff(com_i, i, 10)*T**(-9)
           exit
         endif
@@ -207,7 +216,7 @@ end function get_G0
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Returns L0: interaction coefficients(zero order) evaluated at temperature T
+!> @brief calculates L0: interaction coefficients(zero order) evaluated at temperature T
 !--------------------------------------------------------------------------------------------------
 pure function get_L0(ph, en) result(L0)
 
@@ -243,9 +252,9 @@ end function get_L0
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return composition from chemical potential.
+!> @brief calculate composition from diffusion potential.
 !--------------------------------------------------------------------------------------------------
-module function regularsolution_composition(mu_chemical,comp_prev,ph,en) result(comp)
+module function calphaddisordered_composition(mu_chemical,comp_prev,ph,en) result(comp)
   real(pREAL), dimension(:), intent(in) :: mu_chemical
   real(pREAL), dimension(:), intent(in) :: comp_prev
   integer, intent(in) :: &
@@ -261,7 +270,7 @@ module function regularsolution_composition(mu_chemical,comp_prev,ph,en) result(
     allocate(comp(prm%N_components), source=0.0_pREAL)
     T = thermal_T(ph,en)
 
-    mu_explicit = regularsolution_mu_explicit(ph,en,comp_prev)
+    mu_explicit = calphaddisordered_mu_explicit(ph,en,comp_prev)
     comp(1:prm%N_components-1) = exp((mu_chemical - mu_explicit)/R/T)/ &
           (1.0_pREAL+sum(exp((mu_chemical - mu_explicit)/R/T)))
 
@@ -269,13 +278,13 @@ module function regularsolution_composition(mu_chemical,comp_prev,ph,en) result(
 
   end associate
 
-end function regularsolution_composition
+end function calphaddisordered_composition
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return derivative of composition with respect to chemical potential.
+!> @brief Calculate derivative of composition with respect to diffusion potential.
 !--------------------------------------------------------------------------------------------------
-module function regularsolution_compositionTangent(mu_chemical,comp_prev,ph,en) result(comp_tangent)
+module function calphaddisordered_compositionTangent(mu_chemical,comp_prev,ph,en) result(comp_tangent)
 
   real(pREAL), dimension(:), intent(in) :: mu_chemical
   real(pREAL), dimension(:), intent(in) :: comp_prev
@@ -294,7 +303,7 @@ module function regularsolution_compositionTangent(mu_chemical,comp_prev,ph,en) 
     allocate(comp_tangent(prm%N_components-1,prm%N_components-1), source= 0.0_pREAL)
     T = thermal_T(ph,en)
 
-    comp = regularsolution_composition(mu_chemical,comp_prev,ph,en)
+    comp = calphaddisordered_composition(mu_chemical,comp_prev,ph,en)
     do com_i = 1, prm%N_components-1
       comp_tangent(com_i,com_i) = comp(com_i)/R/T
       do com_j = 1, prm%N_components-1
@@ -304,13 +313,13 @@ module function regularsolution_compositionTangent(mu_chemical,comp_prev,ph,en) 
 
   end associate
 
-end function regularsolution_compositionTangent
+end function calphaddisordered_compositionTangent
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return mobility. ToDo: from mobility database?
+!> @brief Return mobility. ToDo: from mobility database?
 !--------------------------------------------------------------------------------------------------
-module function regularsolution_mobility(ph,en) result(mobility)
+module function calphaddisordered_mobility(ph,en) result(mobility)
   integer, intent(in) :: &
     ph, &
     en
@@ -327,29 +336,7 @@ module function regularsolution_mobility(ph,en) result(mobility)
 
   end associate
 
-end function regularsolution_mobility
+end function calphaddisordered_mobility
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief Write results to HDF5 output file.
-!--------------------------------------------------------------------------------------------------
-module subroutine regularsolution_result(ph,comp,group)
-  integer,          intent(in) :: ph
-  real(pREAL), dimension(:,:), intent(in) :: comp
-  character(len=*), intent(in) :: group
-
-  integer :: ou
-
-  associate(prm => param(ph))
-
-    do ou = 1,prm%N_components
-        call result_writeDataset(comp(ou,:),group,trim(material_name_species(ou)), &
-                                 'concentration of '//trim(material_name_species(ou)),'mole fraction')
-    end do
-
-  end associate
-
-end subroutine regularsolution_result
-
-
-end submodule regularsolution
+end submodule calphaddisordered

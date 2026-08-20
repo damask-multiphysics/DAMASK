@@ -13,11 +13,11 @@ submodule(phase) chemical
   integer(kind(UNDEFINED)),  dimension(:), allocatable :: &
     chemical_energy
 
-  type :: tDataContainer             ! ?? not very telling name. Better: "fieldQuantities" ??
+  type :: tFieldQuantities
     real(pREAL), dimension(:,:), allocatable :: C, dot_C, C0
-  end type tDataContainer
+  end type tFieldQuantities
 
-  type(tDataContainer), dimension(:), allocatable  :: current         ! ?? not very telling name. Better: "field" ?? MD: current(ho)%T(en) reads quite good
+  type(tFieldQuantities), dimension(:), allocatable  :: current         ! ?? not very telling name. Better: "field" ?? MD: current(ho)%T(en) reads quite good
 
   type(tChemicalParameters), dimension(:), allocatable :: param
 
@@ -25,45 +25,39 @@ submodule(phase) chemical
   interface
 
 
-    module function regularsolution_init() result(myChemicalEnergy)
+    module function calphaddisordered_init() result(myChemicalEnergy)
       logical, dimension(:), allocatable :: mychemicalEnergy
-    end function regularsolution_init
+    end function calphaddisordered_init
 
-    module function regularsolution_mu_explicit(ph,en,comp_prev) result(mu_explicit)
+    module function calphaddisordered_mu_explicit(ph,en,comp_prev) result(mu_explicit)
       integer, intent(in) :: &
         ph, &
         en
       real(pREAL), dimension(:), intent(in) :: comp_prev
       real(pREAL), dimension(:),allocatable :: mu_explicit
-    end function regularsolution_mu_explicit
+    end function calphaddisordered_mu_explicit
 
-    module function regularsolution_composition(mu_chemical,comp_prev,ph,en) result(comp)
+    module function calphaddisordered_composition(mu_chemical,comp_prev,ph,en) result(comp)
       real(pREAL), dimension(:), intent(in) :: mu_chemical, comp_prev
       integer, intent(in) :: &
         ph, &
         en
       real(pREAL), dimension(:),allocatable :: comp
-    end function regularsolution_composition
+    end function calphaddisordered_composition
 
-    module function regularsolution_compositionTangent(mu_chemical,comp_prev,ph,en) result(comp_tangent)
+    module function calphaddisordered_compositionTangent(mu_chemical,comp_prev,ph,en) result(comp_tangent)
       real(pREAL), dimension(:), intent(in) :: mu_chemical
       real(pREAL), dimension(:), intent(in) :: comp_prev
       integer, intent(in) :: &
         ph, &
         en
       real(pREAL), dimension(:,:),allocatable :: comp_tangent
-    end function regularsolution_compositionTangent
+    end function calphaddisordered_compositionTangent
 
-    module function regularsolution_mobility(ph,en) result(mobility)
+    module function calphaddisordered_mobility(ph,en) result(mobility)
       integer, intent(in) :: ph, en
       real(pREAL), dimension(:,:),allocatable :: mobility
-    end function regularsolution_mobility
-
-    module subroutine regularsolution_result(ph,comp,group)
-      integer,          intent(in) :: ph
-      real(pREAL), dimension(:,:),intent(in) :: comp
-      character(len=*), intent(in) :: group
-    end subroutine regularsolution_result
+    end function calphaddisordered_mobility
 
     module function quadenergy_init() result(myChemicalEnergy)
       logical, dimension(:), allocatable :: mychemicalEnergy
@@ -151,7 +145,7 @@ module subroutine chemical_init(phases)
 
   !initialize chemical energy model
   where(quadenergy_init())      chemical_energy = CHEMICAL_QUADENERGY
-  where(regularsolution_init()) chemical_energy = CHEMICAL_REGULARSOLUTION
+  where(calphaddisordered_init()) chemical_energy = CHEMICAL_CALPHADDISORDERED
 
   do ph = 1, size(phases)
 
@@ -188,8 +182,8 @@ module function phase_calculate_composition(mu,co,ce) result(conc)
   mu_chemical = mu
   chemicalEnergyType: select case (chemical_energy(ph))
 
-    case (CHEMICAL_REGULARSOLUTION)
-      conc =  regularsolution_composition(mu_chemical,current(ph)%C0(:,en),ph,en)
+    case (CHEMICAL_CALPHADDISORDERED)
+      conc =  calphaddisordered_composition(mu_chemical,current(ph)%C0(:,en),ph,en)
     case (CHEMICAL_QUADENERGY)
       conc = quadenergy_composition(mu_chemical,ph,en)
 
@@ -220,7 +214,7 @@ end subroutine phase_chemical_setField
 
 
 !----------------------------------------------------------------------------------------------
-!< @brief
+!< @brief return mobility.
 !----------------------------------------------------------------------------------------------
 module function phase_get_mobility(co,ce) result(mobility)
 
@@ -236,8 +230,8 @@ module function phase_get_mobility(co,ce) result(mobility)
 
   chemicalEnergyType: select case (chemical_energy(ph))
 
-    case (CHEMICAL_REGULARSOLUTION)
-      mobility =  regularsolution_mobility(ph,en)
+    case (CHEMICAL_CALPHADDISORDERED)
+      mobility = calphaddisordered_mobility(ph,en)
     case (CHEMICAL_QUADENERGY)
       mobility = quadenergy_mobility(ph,en)
 
@@ -247,7 +241,7 @@ end function phase_get_mobility
 
 
 !----------------------------------------------------------------------------------------------
-!< @brief
+!< @brief return derivative of composition with respect to diffusion potential.
 !----------------------------------------------------------------------------------------------
 module function phase_compositionTangent(mu,co,ce) result(comp_tangent)
 
@@ -266,8 +260,8 @@ module function phase_compositionTangent(mu,co,ce) result(comp_tangent)
   mu_chemical = mu
   chemicalEnergyType: select case (chemical_energy(ph))
 
-    case (CHEMICAL_REGULARSOLUTION)
-      comp_tangent =  regularsolution_compositionTangent(mu_chemical,current(ph)%C0(:,en),ph,en)
+    case (CHEMICAL_CALPHADDISORDERED)
+      comp_tangent =  calphaddisordered_compositionTangent(mu_chemical,current(ph)%C0(:,en),ph,en)
     case (CHEMICAL_QUADENERGY)
       comp_tangent = quadenergy_compositionTangent(mu_chemical,ph,en)
 

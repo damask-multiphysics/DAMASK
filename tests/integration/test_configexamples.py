@@ -118,9 +118,10 @@ config_phase = \
                                                                                      'externalheat_ramp-and-hold',None,None),
     # elastic + chemical
     ('Al', 'Hooke_Al',None,None,None,None,None, 'quadenergy_example',None),
-    ('Al', 'Hooke_Al',None,None,None,None,None, 'regularsolution_AlZn',None),
-    ('Mg', 'Hooke_Mg',None,None,None,None,None, 'regularsolution_AlMg',None),
-    ('Fe', 'Hooke_Fe',None,None,None,None,None, 'regularsolution_FeNb',None),
+    ('Al', 'Hooke_Al',None,None,None,None,None, 'calphaddisordered_AlZn',None),
+    ('Fe', 'Hooke_Fe',None,None,None,None,None, 'calphaddisordered_FeNb',None),
+    ('Mg', 'Hooke_Mg',None,None,None,None,None, 'calphaddisordered_AlMg',None),
+    ('Ni', 'Hooke_Ni',None,None,None,None,None, 'quadenergy_NiCu',None),
     # elastic + electrical
     ('Fe', 'Hooke_Fe',None,None,None,None,None,None,'Zn'),
     ('Fe', 'Hooke_Fe',None,None,None,None,None,None,'isotropic'),
@@ -195,8 +196,8 @@ def test_homogenization(damask_root,tmp_path,
         config['phase']['iso']['chemical'] \
             = damask.YAML.load(damask_root/'examples'/'config'/'phase'/'chemical'/'quadenergy_example.yaml')
         load_case['solver']['chemical'] = 'FDM'
-        for component in config['phase']['iso']['chemical']['components']:
-            g.initial_conditions[component] = 1.0
+        for component in config['phase']['iso']['chemical']['species']:
+            g.initial_conditions['mu_' + component] = 1.0
 
     if electrical is not None:
         config['homogenization'][label]['electrical'] \
@@ -307,10 +308,10 @@ def test_phase(damask_root,tmp_path,
     if chemical is not None:
         config['phase'][label]['chemical'] \
             = damask.YAML.load(damask_root/'examples'/'config'/'phase'/'chemical'/f'{chemical}.yaml')
-        components = config['phase'][label]['chemical']['components']
-        config['homogenization']['SX']['chemical'] = {'type':'pass','N_components': len(components)}
+        components = config['phase'][label]['chemical']['species']
+        config['homogenization']['SX']['chemical'] = {'type':'pass'}
         for component in components:
-            g.initial_conditions[component] = 1.0
+            g.initial_conditions['mu_' + component] = 1.0
         load_case['solver']['chemical'] = 'FDM'
 
     if electrical is not None:
