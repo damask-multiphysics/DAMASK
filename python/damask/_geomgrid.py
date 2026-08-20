@@ -265,8 +265,10 @@ class GeomGrid:
         return np.unique(self.material).size
 
 
-    @staticmethod
-    def _load(fname: str | PathLike, label: str) -> 'GeomGrid':
+    @classmethod
+    def _load(cls,
+              fname: str | PathLike,
+              label: str) -> 'GeomGrid':
         """
         Load from VTK ImageData file.
 
@@ -288,15 +290,16 @@ class GeomGrid:
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
         ic = {l:v.get(l).reshape(cells+v.get(l).shape[1:],order='F') for l in set(v.labels['Cell Data']) - {label}}
 
-        return GeomGrid(material = v.get(label).reshape(cells,order='F'),
-                        size     = bbox[1] - bbox[0],
-                        origin   = bbox[0],
-                        initial_conditions = ic,
-                        comments = v.comments,
-                       )
+        return cls(material = v.get(label).reshape(cells,order='F'),
+                   size     = bbox[1] - bbox[0],
+                   origin   = bbox[0],
+                   initial_conditions = ic,
+                   comments = v.comments,
+                  )
 
-    @staticmethod
-    def load(fname: str | PathLike) -> 'GeomGrid':
+    @classmethod
+    def load(cls,
+             fname: str | PathLike) -> 'GeomGrid':
         """
         Load from VTK ImageData file with material IDs stored as 'material'.
 
@@ -311,11 +314,12 @@ class GeomGrid:
         loaded : damask.GeomGrid
             Grid-based geometry from file.
         """
-        return GeomGrid._load(fname,'material')
+        return cls._load(fname,'material')
 
 
-    @staticmethod
-    def load_SPPARKS(fname: str | PathLike) -> 'GeomGrid':
+    @classmethod
+    def load_SPPARKS(cls,
+                     fname: str | PathLike) -> 'GeomGrid':
         """
         Load from SPPARKS VTK dump.
 
@@ -335,11 +339,12 @@ class GeomGrid:
         A SPPARKS VTI dump is equivalent to a DAMASK VTI file,
         but stores the materialID information as 'Spin' rather than 'material'.
         """
-        return GeomGrid._load(fname,'Spin')
+        return cls._load(fname,'Spin')
 
 
-    @staticmethod
-    def load_Neper(fname: str | PathLike) -> 'GeomGrid':
+    @classmethod
+    def load_Neper(cls,
+                   fname: str | PathLike) -> 'GeomGrid':
         """
         Load from Neper VTK file.
 
@@ -377,15 +382,16 @@ class GeomGrid:
         cells = np.array(v.vtk_data.GetDimensions())-1                                              # type: ignore[attr-defined]
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
 
-        return GeomGrid(material = v.get('MaterialId').reshape(cells,order='F').astype('int32',casting='unsafe'),
-                        size     = bbox[1] - bbox[0],
-                        origin   = bbox[0],
-                        comments = util.execution_stamp('GeomGrid','load_Neper'),
-                       )
+        return cls(material = v.get('MaterialId').reshape(cells,order='F').astype('int32',casting='unsafe'),
+                   size     = bbox[1] - bbox[0],
+                   origin   = bbox[0],
+                   comments = util.execution_stamp('GeomGrid','load_Neper'),
+                  )
 
 
-    @staticmethod
-    def load_DREAM3D(fname: str | PathLike,
+    @classmethod
+    def load_DREAM3D(cls,
+                     fname: str | PathLike,
                      feature_IDs: str | None = None,
                      cell_data: str | None = None,
                      phases: str = 'Phases',
@@ -473,15 +479,16 @@ class GeomGrid:
             else:
                 ma = f['/'.join([b,c,feature_IDs])][()].flatten()
 
-        return GeomGrid(material = ma.reshape(cells,order='F'),
-                        size     = size,
-                        origin   = origin,
-                        comments = util.execution_stamp('GeomGrid','load_DREAM3D'),
-                       )
+        return cls(material = ma.reshape(cells,order='F'),
+                   size     = size,
+                   origin   = origin,
+                   comments = util.execution_stamp('GeomGrid','load_DREAM3D'),
+                  )
 
 
-    @staticmethod
-    def from_table(table: Table,
+    @classmethod
+    def from_table(cls,
+                   table: Table,
                    coordinates: str,
                    labels: str | Sequence[str],
                    atol: float = 0.0) -> 'GeomGrid':
@@ -511,15 +518,16 @@ class GeomGrid:
 
         unique,inverse = table[labels].unique(return_inverse=True)
 
-        return GeomGrid(material = np.arange(len(unique))[inverse].reshape(cells,order='F'),
-                        size     = size,
-                        origin   = origin,
-                        comments = util.execution_stamp('GeomGrid','from_table'),
-                       )
+        return cls(material = np.arange(len(unique))[inverse].reshape(cells,order='F'),
+                   size     = size,
+                   origin   = origin,
+                   comments = util.execution_stamp('GeomGrid','from_table'),
+                  )
 
 
-    @staticmethod
-    def from_Laguerre_tessellation(cells: IntSequence,
+    @classmethod
+    def from_Laguerre_tessellation(cls,
+                                   cells: IntSequence,
                                    size: FloatSequence,
                                    seeds: np.ndarray,
                                    weights: FloatSequence,
@@ -570,14 +578,15 @@ class GeomGrid:
         material_ = np.asarray(tree.query(np.column_stack((coords, np.zeros(len(coords)))),
                                           workers=int(os.environ.get('OMP_NUM_THREADS',4)))[1]).reshape(cells)
 
-        return GeomGrid(material = material_ if material is None else np.array(material)[material_],
-                        size     = size,
-                        comments = util.execution_stamp('GeomGrid','from_Laguerre_tessellation'),
-                       )
+        return cls(material = material_ if material is None else np.array(material)[material_],
+                   size     = size,
+                   comments = util.execution_stamp('GeomGrid','from_Laguerre_tessellation'),
+                  )
 
 
-    @staticmethod
-    def from_Voronoi_tessellation(cells: IntSequence,
+    @classmethod
+    def from_Voronoi_tessellation(cls,
+                                  cells: IntSequence,
                                   size: FloatSequence,
                                   seeds: np.ndarray,
                                   material: IntSequence | None = None,
@@ -630,10 +639,10 @@ class GeomGrid:
         tree = spatial.KDTree(seeds,boxsize=np.asarray(size) if periodic else None)
         material_ = np.asarray(tree.query(coords, workers = int(os.environ.get('OMP_NUM_THREADS',4)))[1])
 
-        return GeomGrid(material = (material_ if material is None else np.array(material)[material_]).reshape(cells),
-                        size     = size,
-                        comments = util.execution_stamp('GeomGrid','from_Voronoi_tessellation'),
-                       )
+        return cls(material = (material_ if material is None else np.array(material)[material_]).reshape(cells),
+                   size     = size,
+                   comments = util.execution_stamp('GeomGrid','from_Voronoi_tessellation'),
+                  )
 
 
     _minimal_surface = \
@@ -678,8 +687,9 @@ class GeomGrid:
       }
 
 
-    @staticmethod
-    def from_minimal_surface(cells: IntSequence,
+    @classmethod
+    def from_minimal_surface(cls,
+                             cells: IntSequence,
                              size: FloatSequence,
                              surface: str,
                              threshold: float = 0.0,
@@ -763,10 +773,10 @@ class GeomGrid:
                             periods*2.0*np.pi*(np.arange(cells[1])+0.5)/cells[1],
                             periods*2.0*np.pi*(np.arange(cells[2])+0.5)/cells[2],
                             indexing='ij',sparse=True)
-        return GeomGrid(material = np.where(threshold < GeomGrid._minimal_surface[surface](x,y,z),materials[1],materials[0]),
-                        size     = size,
-                        comments = util.execution_stamp('GeomGrid','from_minimal_surface'),
-                       )
+        return cls(material = np.where(threshold < cls._minimal_surface[surface](x,y,z),materials[1],materials[0]),
+                   size     = size,
+                   comments = util.execution_stamp('GeomGrid','from_minimal_surface'),
+                  )
 
 
     def save(self,

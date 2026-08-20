@@ -196,8 +196,9 @@ class Colormap(mpl.colors.ListedColormap):
         return f'Colormap: {self.name}'
 
 
-    @staticmethod
-    def from_range(low: FloatSequence,
+    @classmethod
+    def from_range(cls,
+                   low: FloatSequence,
                    high: FloatSequence,
                    name: str = 'DAMASK colormap',
                    N: int = 256,
@@ -244,11 +245,11 @@ class Colormap(mpl.colors.ListedColormap):
         Colormap: blue_to_black
         """
         toMsh = dict(
-            rgb=Colormap._rgb2msh,
-            hsv=Colormap._hsv2msh,
-            hsl=Colormap._hsl2msh,
-            xyz=Colormap._xyz2msh,
-            lab=Colormap._lab2msh,
+            rgb=cls._rgb2msh,
+            hsv=cls._hsv2msh,
+            hsl=cls._hsl2msh,
+            xyz=cls._xyz2msh,
+            lab=cls._lab2msh,
             msh=lambda x:x,
         )
 
@@ -271,14 +272,15 @@ class Colormap(mpl.colors.ListedColormap):
             raise ValueError(f'{model.upper()} colors {low_high[0]} | {low_high[1]} are out of bounds')
 
         low_,high_ = map(toMsh[model.lower()],low_high)
-        msh = map(functools.partial(Colormap._interpolate_msh,low=low_,high=high_),np.linspace(0,1,N))
-        rgb = np.array(list(map(Colormap._msh2rgb,msh)))
+        msh = map(functools.partial(cls._interpolate_msh,low=low_,high=high_),np.linspace(0,1,N))
+        rgb = np.array(list(map(cls._msh2rgb,msh)))
 
-        return Colormap(rgb,name=name)
+        return cls(rgb,name=name)
 
 
-    @staticmethod
-    def from_predefined(name: str,
+    @classmethod
+    def from_predefined(cls,
+                        name: str,
                         N: int = 256) -> 'Colormap':
         """
         Select from a set of predefined colormaps.
@@ -309,14 +311,14 @@ class Colormap(mpl.colors.ListedColormap):
         if name in cm.__dict__:
             # matplotlib presets
             colormap = cm.__dict__[name]
-            return Colormap(np.array(list(map(colormap,np.linspace(0,1,N)))
+            return cls(np.array(list(map(colormap,np.linspace(0,1,N)))
                                      if isinstance(colormap,mpl.colors.LinearSegmentedColormap) else
                                      colormap.colors),
                             name=name)
         else:
             # DAMASK presets
-            definition = Colormap._predefined_DAMASK[name]
-            return Colormap.from_range(definition['low'],definition['high'],name,N)
+            definition = cls._predefined_DAMASK[name]
+            return cls.from_range(definition['low'],definition['high'],name,N)
 
 
     def at(self,

@@ -272,8 +272,9 @@ class Table:
                            equal_nan=equal_nan)
 
 
-    @staticmethod
-    def load(fname: FileHandleText) -> 'Table':
+    @classmethod
+    def load(cls,
+             fname: FileHandleText) -> 'Table':
         """
         Load a table from text table or NumPy archive format.
 
@@ -323,7 +324,7 @@ class Table:
                 raise ValueError('expected a NumPy .npz archive, not a .npy array')
 
             with loaded as content:
-                return Table(
+                return cls(
                     shapes=infer_shapes(content.files),
                     data=np.column_stack([content[name] for name in content.files]) if content.files else np.empty((0, 0)),
                 )
@@ -335,7 +336,7 @@ class Table:
                 comments.append(line.removeprefix('#').strip())
             labels = line.split()
 
-            return Table(
+            return cls(
                 shapes=infer_shapes(labels),
                 data=pd.read_csv(stream,names=list(range(len(labels))),sep=r'\s+'),
                 comments=comments,
@@ -354,8 +355,9 @@ class Table:
         return load_npz(cast(BinaryIO,fname))
 
 
-    @staticmethod
-    def load_ang(fname: FileHandleText,
+    @classmethod
+    def load_ang(cls,
+                 fname: FileHandleText,
                  shapes = {'eu':3,
                            'pos':2,
                            'IQ':1,
@@ -405,7 +407,7 @@ class Table:
         if (remainder := data.shape[1]-sum(shapes.values())) > 0:
             shapes['unknown'] = remainder
 
-        return Table(shapes,data,comments)
+        return cls(shapes,data,comments)
 
 
     @property
