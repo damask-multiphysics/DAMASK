@@ -59,7 +59,10 @@ module material
   character(len=:), dimension(:), public, allocatable :: &
     material_name_species
 
-    public :: &
+  integer, public, protected :: &
+    material_N_species                                                                             !< Number of species
+
+  public :: &
     material_init
 
 
@@ -126,6 +129,7 @@ subroutine parse()
   material_name_phase          = phases%keys()
   material_name_homogenization = homogenizations%keys()
   material_name_species = get_chemical_species(phases)
+  material_N_species = size(material_name_species)
 
   allocate(homogenization_Nconstituents(size(homogenizations)))
   do ho=1, size(homogenizations)
@@ -255,10 +259,11 @@ function get_chemical_species(phases)
 
 
   ! SR: sanity check probably required if other phases have the same set of components defined or not
-  phase => phases%get_dict(material_name_phase(1))
+  ! AK: all phases have same number of species defined and the number is same for homogenization
+  phase => phases%get_dict(material_name_phase(1)) ! only one phase is considered
   if (phase%contains('chemical')) then
     chemical => phase%get_dict('chemical')
-    components => chemical%get_dict('components')
+    components => chemical%get_dict('species')
     get_chemical_species = components%keys()
   else
     get_chemical_species = emptyStrArray

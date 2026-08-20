@@ -2,7 +2,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief elasticity, plasticity, damage & thermal internal microstructure state
+!> @brief elasticity, plasticity, chemical, damage & thermal internal microstructure state
 !--------------------------------------------------------------------------------------------------
 module phase
   use prec
@@ -62,7 +62,7 @@ module phase
     DAMAGE_ANISOBRITTLE, &
     THERMAL_SOURCE_DISSIPATION, &
     THERMAL_SOURCE_EXTERNALHEAT, &
-    CHEMICAL_REGULARSOLUTION, &
+    CHEMICAL_CALPHADDISORDERED, &
     CHEMICAL_QUADENERGY, &
     THERMAL_SOURCE_JOULE
   end enum

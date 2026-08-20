@@ -13,10 +13,10 @@
       <DataArray type="Int64" Name="material" format="binary" RangeMin="0" RangeMax="1">
         AQAAAACAAAAABAAAKQAAAA==eF5jZIAARjLpgQaE3EdreqABIffRmh5oQMh9tKYHGhByHyEaAIUAAEE=
       </DataArray>
-      <DataArray type="Float32" Name="Li" format="binary" RangeMin="0.07999999821186066" RangeMax="0.10000000149011612">
+      <DataArray type="Float32" Name="mu_Li" format="binary" RangeMin="0.07999999821186066" RangeMax="0.10000000149011612">
         AQAAAACAAAAAAgAALwAAAA==eF7jur7YlgsPPnvmDEUYn9nEYELmE8KEzCeECZlPCBMynxAmZD4hTMh8AIg3GNA=
       </DataArray>
-      <DataArray type="Float32" Name="Al" format="binary" RangeMin="0.8999999761581421" RangeMax="0.9200000166893005">
+      <DataArray type="Float32" Name="mu_Al" format="binary" RangeMin="0.8999999761581421" RangeMax="0.9200000166893005">
         AQAAAACAAAAAAgAALwAAAA==eF6Tb822l8eD09LSKML4zCYGEzKfECZkPiFMyHxCmJD5hDAh8wlhQuYDACoQr8E=
       </DataArray>
     </CellData>

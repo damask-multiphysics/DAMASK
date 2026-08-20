@@ -13,11 +13,6 @@ submodule(homogenization) chemical
     real(pREAL), dimension(:,:), allocatable :: mu                                                  ! Diffusion potential
   end type tDataContainer
 
-!  integer, dimension(:), allocatable :: &
-!    homogenization_chemical_Ncomponents
-!  integer :: &
-!    homogenization_chemical_maxNcomponents
-!
   type(tDataContainer), dimension(:), allocatable :: current
 
   type :: tParameters
@@ -57,7 +52,7 @@ module subroutine chemical_init()
     associate(prm => param(ho))
       if (configHomogenization%contains('chemical')) then
         configHomogenizationChemical => configHomogenization%get_dict('chemical')
-        homogenization_chemical_Ncomponents(ho) = configHomogenizationChemical%get_asInt('N_components',defaultVal=0) ! should probably not be defined in homogenization?
+        homogenization_chemical_Ncomponents(ho) = material_N_species
 #if defined (__GFORTRAN__)
         prm%output = output_as1dStr(configHomogenizationChemical)
 #else
@@ -70,7 +65,7 @@ module subroutine chemical_init()
     end associate
   end do
 
-  homogenization_chemical_maxNcomponents = maxval(homogenization_chemical_Ncomponents)
+  homogenization_chemical_maxNcomponents = material_N_species
 
   call pass_init()
 

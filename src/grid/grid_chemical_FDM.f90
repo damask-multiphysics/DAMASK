@@ -97,9 +97,9 @@ subroutine grid_chemical_FDM_init(num_grid_chemical)
   allocate(tempN(N_components,product(cells(1:2))*cells3), source=0.0_pREAL)
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num%itmax             = num_grid_chemical%get_asInt  ('itmax',           defaultVal=250)
-  num%eps_chemical_atol = num_grid_chemical%get_asReal('eps_chemical_atol',defaultVal=1.0e-6_pREAL)
-  num%eps_chemical_rtol = num_grid_chemical%get_asReal('eps_chemical_rtol',defaultVal=1.0e-6_pREAL)
+  num%itmax             = num_grid_chemical%get_asInt ('N_iter_max',   defaultVal=250)
+  num%eps_chemical_atol = num_grid_chemical%get_asReal('eps_abs_conc', defaultVal=1.0e-6_pREAL)
+  num%eps_chemical_rtol = num_grid_chemical%get_asReal('eps_rel_conc', defaultVal=1.0e-6_pREAL)
 
   if (num%itmax <= 1)                     call IO_error(301,ext_msg='itmax')
   if (num%eps_chemical_atol <= 0.0_pREAL) call IO_error(301,ext_msg='eps_chemical_atol')
@@ -166,7 +166,7 @@ subroutine grid_chemical_FDM_init(num_grid_chemical)
     mu_0 = reshape(tempN,[N_components,cells(1),cells(2),cells3])
   else
     do com = 1, N_components
-      mu_0(com,:,:,:) = discretization_grid_getScalarInitialCondition(trim(material_name_species(com)))
+      mu_0(com,:,:,:) = discretization_grid_getScalarInitialCondition('mu_' // trim(material_name_species(com)))
     end do
   end if restartRead
 

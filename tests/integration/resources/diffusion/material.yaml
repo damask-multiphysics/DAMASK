@@ -4,7 +4,6 @@ homogenization:
     N_constituents: 1
     mechanical: {type: pass}
     chemical:
-      N_components: 2
       type: pass
       output: [mu, x]
 
@@ -16,10 +15,11 @@ phase:
     chemical:
       V_m: 1.0e-5
       type: quadenergy
-      components:
+      species:
         Li:
           M: 1.0
           c_0: 0.1
+          c_eq: 0.0
           G,c: 0.0
           G,c^2: 0.5
         Al:
@@ -33,10 +33,11 @@ phase:
     chemical:
       V_m: 1.0e-5
       type: quadenergy
-      components:
+      species:
         Li:
           M: 1.0
           c_0: 0.08
+          c_eq: 0.0
           G,c: 0.0
           G,c^2: 0.5
         Al:
