@@ -149,15 +149,15 @@ module function plastic_kinehardening_init() result(myPlasticity)
 
       prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
 
-      xi_0            = math_expand(pl%get_as1dReal('xi_0',        requiredSize=size(N_sl)),N_sl)
-      prm%dot_gamma_0 = math_expand(pl%get_as1dReal('dot_gamma_0', requiredSize=size(N_sl)),N_sl)
-      prm%n           = math_expand(pl%get_as1dReal('n',           requiredSize=size(N_sl)),N_sl)
-      prm%xi_inf      = math_expand(pl%get_as1dReal('xi_inf',      requiredSize=size(N_sl)),N_sl)
-      prm%chi_inf     = math_expand(pl%get_as1dReal('chi_inf',     requiredSize=size(N_sl)),N_sl)
-      prm%h_0_xi      = math_expand(pl%get_as1dReal('h_0_xi',      requiredSize=size(N_sl)),N_sl)
-      prm%h_0_chi     = math_expand(pl%get_as1dReal('h_0_chi',     requiredSize=size(N_sl)),N_sl)
-      prm%h_inf_xi    = math_expand(pl%get_as1dReal('h_inf_xi',    requiredSize=size(N_sl)),N_sl)
-      prm%h_inf_chi   = math_expand(pl%get_as1dReal('h_inf_chi',   requiredSize=size(N_sl)),N_sl)
+      xi_0            = pl%get_as1dReal('xi_0',        requiredChunks=N_sl)
+      prm%dot_gamma_0 = pl%get_as1dReal('dot_gamma_0', requiredChunks=N_sl)
+      prm%n           = pl%get_as1dReal('n',           requiredChunks=N_sl)
+      prm%xi_inf      = pl%get_as1dReal('xi_inf',      requiredChunks=N_sl)
+      prm%chi_inf     = pl%get_as1dReal('chi_inf',     requiredChunks=N_sl)
+      prm%h_0_xi      = pl%get_as1dReal('h_0_xi',      requiredChunks=N_sl)
+      prm%h_0_chi     = pl%get_as1dReal('h_0_chi',     requiredChunks=N_sl)
+      prm%h_inf_xi    = pl%get_as1dReal('h_inf_xi',    requiredChunks=N_sl)
+      prm%h_inf_chi   = pl%get_as1dReal('h_inf_chi',   requiredChunks=N_sl)
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks

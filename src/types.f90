@@ -300,7 +300,6 @@ subroutine types_selfTest()
 
   end block dict
 
-#ifdef __GFORTRAN__
   dict_get_as1dReal_chunked: block
     type(tDict),   pointer :: d
     type(tList),   pointer :: l_outer, l_inner
@@ -342,7 +341,6 @@ subroutine types_selfTest()
       error stop 'dict_get_as1dReal_shape scalar'
 
   end block dict_get_as1dReal_chunked
-#endif
 
 end subroutine types_selfTest
 
@@ -1417,11 +1415,7 @@ function tDict_get_as2dReal_a(self,key,requiredShape) result(nodeAs2dReal)
     list => self%get_list(key)
     nodeAs2dReal = list%as2dReal()
   else
-#ifndef __GFORTRAN__
-    call IO_error(143_pI16,key,'not in',join_str_array(self%keys()),emph=[1,3])
-#else
     call IO_error(143_pI16,key,'not found',emph=[1])
-#endif
   end if
 
   if (present(requiredShape)) then

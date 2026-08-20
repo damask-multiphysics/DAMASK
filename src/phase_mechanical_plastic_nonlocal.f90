@@ -271,23 +271,23 @@ module function plastic_nonlocal_init() result(myPlasticity)
         end do
       end do
 
-      ini%rho_u_ed_pos_0  = pl%get_as1dReal('rho_u_ed_pos_0',   requiredSize=size(ini%N_sl))
-      ini%rho_u_ed_neg_0  = pl%get_as1dReal('rho_u_ed_neg_0',   requiredSize=size(ini%N_sl))
-      ini%rho_u_sc_pos_0  = pl%get_as1dReal('rho_u_sc_pos_0',   requiredSize=size(ini%N_sl))
-      ini%rho_u_sc_neg_0  = pl%get_as1dReal('rho_u_sc_neg_0',   requiredSize=size(ini%N_sl))
-      ini%rho_d_ed_0      = pl%get_as1dReal('rho_d_ed_0',       requiredSize=size(ini%N_sl))
-      ini%rho_d_sc_0      = pl%get_as1dReal('rho_d_sc_0',       requiredSize=size(ini%N_sl))
+      ini%rho_u_ed_pos_0  = pl%get_as1dReal('rho_u_ed_pos_0',   requiredChunks=ini%N_sl)
+      ini%rho_u_ed_neg_0  = pl%get_as1dReal('rho_u_ed_neg_0',   requiredChunks=ini%N_sl)
+      ini%rho_u_sc_pos_0  = pl%get_as1dReal('rho_u_sc_pos_0',   requiredChunks=ini%N_sl)
+      ini%rho_u_sc_neg_0  = pl%get_as1dReal('rho_u_sc_neg_0',   requiredChunks=ini%N_sl)
+      ini%rho_d_ed_0      = pl%get_as1dReal('rho_d_ed_0',       requiredChunks=ini%N_sl)
+      ini%rho_d_sc_0      = pl%get_as1dReal('rho_d_sc_0',       requiredChunks=ini%N_sl)
 
-      prm%i_sl            = math_expand(pl%get_as1dReal('i_sl', requiredSize=size(ini%N_sl)),ini%N_sl)
-      prm%b_sl            = math_expand(pl%get_as1dReal('b_sl', requiredSize=size(ini%N_sl)),ini%N_sl)
+      prm%i_sl            = pl%get_as1dReal('i_sl', requiredChunks=ini%N_sl)
+      prm%b_sl            = pl%get_as1dReal('b_sl', requiredChunks=ini%N_sl)
 
       allocate(prm%minDipoleHeight(prm%sum_N_sl,2))
-      prm%minDipoleHeight(:,1) = math_expand(pl%get_as1dReal('d_ed', requiredSize=size(ini%N_sl)),ini%N_sl)
-      prm%minDipoleHeight(:,2) = math_expand(pl%get_as1dReal('d_sc', requiredSize=size(ini%N_sl)),ini%N_sl)
+      prm%minDipoleHeight(:,1) = pl%get_as1dReal('d_ed', requiredChunks=ini%N_sl)
+      prm%minDipoleHeight(:,2) = pl%get_as1dReal('d_sc', requiredChunks=ini%N_sl)
 
       allocate(prm%peierlsstress(prm%sum_N_sl,2))
-      prm%peierlsstress(:,1)   = math_expand(pl%get_as1dReal('tau_Peierls_ed', requiredSize=size(ini%N_sl)),ini%N_sl)
-      prm%peierlsstress(:,2)   = math_expand(pl%get_as1dReal('tau_Peierls_sc', requiredSize=size(ini%N_sl)),ini%N_sl)
+      prm%peierlsstress(:,1)   = pl%get_as1dReal('tau_Peierls_ed', requiredChunks=ini%N_sl)
+      prm%peierlsstress(:,2)   = pl%get_as1dReal('tau_Peierls_sc', requiredChunks=ini%N_sl)
 
       prm%rho_significant = pl%get_asReal('rho_significant')
       prm%rho_min         = pl%get_asReal('rho_min', 0.0_pREAL)
