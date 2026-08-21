@@ -4,7 +4,7 @@ import re
 from os import PathLike
 from io import TextIOBase
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence, Union, TextIO, BinaryIO, Any, cast
+from typing import Iterable, Mapping, Sequence, TextIO
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,7 @@ class Table:
     """Manipulate multi-dimensional spreadsheet-like data."""
 
     def __init__(self,
-                 shapes: Mapping[str,Union[Union[int,np.integer],tuple[Union[int,np.integer],...]]] = {},
+                 shapes: Mapping[str,int | np.integer | tuple[int | np.integer,...]] = {},
                  data: np.ndarray | pd.DataFrame | None = None,
                  comments: str | Iterable[str] | None = None,
                  dtypes: Mapping[str,str | np.dtype] | None = None):
@@ -26,9 +26,9 @@ class Table:
 
         Parameters
         ----------
-        shapes : dict with str:tuple pairs, optional
+        shapes : dict with str:tuple/int pairs, optional
             Shapes of the data columns. Mandatory if 'data' is given.
-            For instance, 'F':(3,3) for a deformation gradient, or 'r':(1,) for a scalar.
+            For instance, 'F':(3,3) for a deformation gradient, or 'r':1 for a scalar.
         data : numpy.ndarray or pandas.DataFrame, optional
             Data. Existing column labels of a pandas.DataFrame will be replaced.
         comments : (iterable of) str, optional
@@ -44,8 +44,7 @@ class Table:
         self.data = pd.DataFrame(data=data)
         self._relabel('uniform')
         if dtypes is not None:
-            self.data = self.data.astype({k:v for k,v in dtypes.items()
-                                          if k in set(self.shapes.keys())})
+            self.data = self.data.astype({k:v for k,v in dtypes.items() if k in set(self.shapes.keys())})
 
 
     def __repr__(self) -> str:
@@ -274,7 +273,7 @@ class Table:
 
     @classmethod
     def load(cls,
-             fname: FileHandleText) -> 'Table':
+             fname: FileHandleText | FileHandleBinary) -> 'Table':
         """
         Load a table from text table or NumPy archive format.
 
@@ -320,14 +319,10 @@ class Table:
             if not isinstance(source, (str, PathLike)):
                 source.seek(0)
 
-            if not isinstance(loaded := np.load(source), np.lib.npyio.NpzFile):
-                raise ValueError('expected a NumPy .npz archive, not a .npy array')
-
-            with loaded as content:
-                return cls(
-                    shapes=infer_shapes(content.files),
-                    data=np.column_stack([content[name] for name in content.files]) if content.files else np.empty((0, 0)),
-                )
+            with np.load(source) as content:
+                return cls(shapes=infer_shapes(content.files),
+                           data=np.column_stack([content[name] for name in content.files])
+                          )
 
         def load_text(stream: TextIO) -> 'Table':
             stream.seek(0)
@@ -336,23 +331,20 @@ class Table:
                 comments.append(line.removeprefix('#').strip())
             labels = line.split()
 
-            return cls(
-                shapes=infer_shapes(labels),
-                data=pd.read_csv(stream,names=list(range(len(labels))),sep=r'\s+'),
-                comments=comments,
-            )
+            return cls(shapes=infer_shapes(labels),
+                       data=pd.read_csv(stream,names=list(range(len(labels))),sep=r'\s+'),
+                       comments=comments
+                      )
 
         if isinstance(fname, (str, PathLike)):
-            if Path(fname).suffix.casefold() == '.npz':
+            if Path(fname).suffix == '.npz':
                 return load_npz(fname)
-
             with util.open_text(fname) as stream:
                 return load_text(stream)
-
-        if isinstance(fname, TextIOBase):
-            return load_text(cast(TextIO,fname))
-
-        return load_npz(cast(BinaryIO,fname))
+        elif isinstance(fname, (TextIOBase, TextIO)):
+            return load_text(fname)
+        else:
+            return load_npz(fname)
 
 
     @classmethod
@@ -692,8 +684,8 @@ class Table:
         """
         Save the table in text table or NumPy archive format.
 
-        For path-like outputs, a case-insensitive ``.npz`` suffix selects
-        NumPy archive format; all other suffixes select text table format.
+        For path-like outputs, a ``.npz`` suffix selects NumPy archive
+        format; all other suffixes select text table format.
         Open binary streams produce NumPy archives, while open text streams
         produce text tables.
 
@@ -707,67 +699,33 @@ class Table:
             Output path or open stream. Text streams must be opened in text
             mode, and NumPy archive streams must be opened in binary mode.
         """
-        labels = self._label(self.labels, "export")
+        labels = self._label(self.labels, 'export')
         data = self.data.to_numpy()
 
         def save_npz(target: FileHandleBinary) -> None:
-            arrays = {
-                label: column
-                for label, column in zip(labels, data.T)
-            }
+            arrays = {label: column for label, column in zip(labels, data.T)}
 
             # These names collide with parameters of savez_compressed().
-            reserved = arrays.keys() & {'file', 'allow_pickle'}
-            if reserved:
+            if reserved := arrays.keys() & {'file', 'allow_pickle'}:
                 names = ', '.join(sorted(reserved))
-                raise ValueError(
-                    f'column labels reserved by '
-                    f'np.savez_compressed: {names}'
-                )
+                raise ValueError(f'column labels reserved by np.savez_compressed: {names}')
 
-            # NumPy uses arbitrary keyword arguments as archive member names.
-            np.savez_compressed(
-                target,
-                **cast(dict[str, Any], arrays),
-            )
+            np.savez_compressed(target, **arrays)                                                   # type: ignore[arg-type]
 
         def save_text(stream: TextIO) -> None:
-            header = '\n'.join(
-                [f'# {comment}' for comment in self.comments]
-                + [' '.join(labels)]
-            )
+            header = '\n'.join([f'# {comment}' for comment in self.comments] + [' '.join(labels)])
             stream.write(header + '\n')
 
-            csv_options = {
-                'sep': ' ',
-                'na_rep': 'nan',
-                'index': False,
-                'header': False,
-            }
-
-            try:
-                # pandas >= 1.5
-                self.data.to_csv(
-                    stream,
-                    **csv_options,
-                    lineterminator='\n',
-                )  # type: ignore[call-overload]
-            except TypeError:
-                # Backward compatibility with pandas < 1.5.
-                self.data.to_csv(
-                    stream,
-                    **csv_options,
-                    line_terminator='\n',
-                )  # type: ignore[call-overload]
+            self.data.to_csv(stream, index=False, header=False,
+                             sep=' ', na_rep='nan', lineterminator='\n')
 
         if isinstance(fname, (str, PathLike)):
-            if Path(fname).suffix.casefold() == '.npz':
+            if Path(fname).suffix == '.npz':
                 save_npz(fname)
             else:
                 with util.open_text(fname, 'w') as stream:
                     save_text(stream)
-
-        elif isinstance(fname, TextIOBase):
-            save_text(cast(TextIO, fname))
+        elif isinstance(fname, (TextIOBase, TextIO)):
+            save_text(fname)
         else:
-            save_npz(cast(FileHandleBinary, fname))
+            save_npz(fname)
