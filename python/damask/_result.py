@@ -2116,6 +2116,18 @@ class Result:
             Write VTK files in parallel in a separate background process.
             Defaults to True.
         """
+        def get_component_names(dataset):
+            if 'systems' in dataset.dtype.metadata:
+                return dataset.dtype.metadata['systems']
+            elif dataset.dtype.metadata.get('unit') == '8-bit RGB':
+                return ['R','G','B']
+            elif dataset.shape[1:] == (3,3):
+                return ['11','12','13','21','22','23','31','32','33']
+            elif dataset.ndim == 2:
+                return [str(c+1) for c in range(dataset.shape[-1])]
+            else:
+                return None
+
         match mode.lower():
             case 'cell':
                 v = self.geometry0
@@ -2168,7 +2180,8 @@ class Result:
 
                             for name,dataset in d.items():
                                 v = v.set(':'.join([kind,field,name])\
-                                          +f' ({dataset.dtype.metadata["unit"]})',dataset)          # type: ignore[index]
+                                          +f' ({dataset.dtype.metadata["unit"]})',                  # type: ignore[index]
+                                          dataset,component_names=get_component_names(dataset))
 
                     for field, dsets in not_mergeable.items():
                         for dset_name, dset in dsets.items():
@@ -2184,7 +2197,8 @@ class Result:
                                         d[dset_name][at_cell_ho[label]] = data[in_data_ho[label]]
                                 for name,dataset in d.items():
                                     v = v.set(':'.join([kind,field,label,name])\
-                                              +f' ({dataset.dtype.metadata["unit"]})',dataset)      # type: ignore[index]
+                                              +f' ({dataset.dtype.metadata["unit"]})',              # type: ignore[index]
+                                              dataset,component_names=get_component_names(dataset))
 
                 v.save(out_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
                        parallel=parallel)
