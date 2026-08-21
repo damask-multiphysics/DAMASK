@@ -147,12 +147,6 @@ def test_read_ang_shapes(res_path):
     new = Table.load_ang(str(res_path/'simple.ang'),shapes={})
     assert new.data.shape == (4,10) and new.labels == ['unknown']
 
-# def test_save_ang(res_path,tmp_path):
-#     orig = Table.load_ang(res_path/'simple.ang')
-#     orig.save(tmp_path/'simple.ang',with_labels=False)
-#     saved = Table.load_ang(tmp_path/'simple.ang')
-#     assert saved == orig
-
 def test_ang_no_header(res_path,tmp_path):
     orig = Table.load_ang(res_path/'simple.ang')
     with open(res_path/'simple.ang') as f_in, open(tmp_path/'no_header.ang','w') as f_out:
