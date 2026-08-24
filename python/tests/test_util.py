@@ -298,3 +298,21 @@ def test_NestedDefaultDict():
     d = util.NestedDefaultDict()
     d['a']['b']['c'] = 'hello'
     d.to_regular() == {'a':{'b':{'c':'hello'}}}
+
+
+@pytest.mark.parametrize('d1,d2',[({1:np.ones(3)},{1:np.ones(3)}),
+                                  ({1:{2:np.ones(3)}},{1:{2:np.ones(3)}}),
+                                  ({'one':1.0},{'one':1}),
+                                  ({1:{'a':4}},{1:{'a':4}})
+                                 ])
+def test_dict_equal_equal(d1,d2):
+    assert util.dict_equal(d1,d2)
+
+@pytest.mark.parametrize('d1,d2',[({1:{2:np.ones(3)}},{1:{2:np.zeros(3)}}),
+                                  ({1:{'a':4}},{1:{'b':4}}),
+                                  ({1:np.ones(3)},{1:1.0}),
+                                  ({1:{'a':{1:2}}},{1:{'b':{1:2}}}),
+                                  ({1:{'a':{1:np.ones(3)}}},{1:{'b':{1:22}}})
+                                 ])
+def test_dict_equal_not_equal(d1,d2):
+    assert not util.dict_equal(d1,d2)

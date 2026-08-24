@@ -104,14 +104,14 @@ def _match(requested,
     return sorted(set(flatten_list([fnmatch.filter(existing_,r) for r in util.to_list(requested)])),
                   key=util.natural_sort)
 
-def _empty_like(metadata: DatasetMetadata,
+def _zeros_like(metadata: DatasetMetadata,
                 N_materialpoints: int,
                 fill_float: float,
                 fill_int: int) -> np.ma.core.MaskedArray:
     """Create empty numpy.ma.MaskedArray."""
     shape = (N_materialpoints,) + metadata['shape']
     dtype = np.dtype(metadata['dtype'], metadata=metadata['attrs'])
-    return ma.array(np.empty(shape, dtype=dtype),
+    return ma.array(np.zeros(shape, dtype=dtype),
                     fill_value=fill_float if np.issubdtype(dtype, np.floating) else fill_int,
                     mask=True)
 
@@ -1916,7 +1916,7 @@ class Result:
                     for field, dsets in mergeable.items():
                         for dset_name, dset in dsets.items():
                             dset_metadata = util.get_value0(dset)
-                            d = {dset_name+suffix:_empty_like(dset_metadata,self.N_materialpoints,
+                            d = {dset_name+suffix:_zeros_like(dset_metadata,self.N_materialpoints,
                                                               fill_float,fill_int) for suffix in suffixes_}
                             for label, dset_metadata in dset.items():
                                 data = ma.array(_read(f['/'.join([inc,kind,label,field,dset_name])]))
@@ -1931,7 +1931,7 @@ class Result:
                     for field, dsets in not_mergeable.items():
                         for dset_name, dset in dsets.items():
                             for label, dset_metadata in dset.items():
-                                d = {dset_name+suffix:_empty_like(dset_metadata,self.N_materialpoints,
+                                d = {dset_name+suffix:_zeros_like(dset_metadata,self.N_materialpoints,
                                                                   fill_float,fill_int) for suffix in suffixes_}
                                 data = ma.array(_read(f['/'.join([inc,kind,label,field,dset_name])]))
                                 match kind:
@@ -2155,7 +2155,7 @@ class Result:
                     for field, dsets in mergeable.items():
                         for dset_name, dset in dsets.items():
                             dset_metadata = util.get_value0(dset)
-                            d = {dset_name+suffix:_empty_like(dset_metadata,self.N_materialpoints,
+                            d = {dset_name+suffix:_zeros_like(dset_metadata,self.N_materialpoints,
                                                               fill_float,fill_int) for suffix in suffixes_}
                             for label, dset_metadata in dset.items():
                                 data = ma.array(_read(f['/'.join([inc,kind,label,field,dset_name])]))
@@ -2173,7 +2173,7 @@ class Result:
                     for field, dsets in not_mergeable.items():
                         for dset_name, dset in dsets.items():
                             for label, dset_metadata in dset.items():
-                                d = {dset_name+suffix:_empty_like(dset_metadata,self.N_materialpoints,
+                                d = {dset_name+suffix:_zeros_like(dset_metadata,self.N_materialpoints,
                                                                   fill_float,fill_int) for suffix in suffixes_}
                                 data = ma.array(_read(f['/'.join([inc,kind,label,field,dset_name])]))
                                 match kind:

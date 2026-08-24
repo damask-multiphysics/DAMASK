@@ -48,18 +48,6 @@ def res_path(res_path_base):
     """Directory containing testing resources."""
     return res_path_base/'Result'
 
-def dict_equal(d1, d2):
-    for k in d1:
-        if (k not in d2):
-            return False
-        else:
-            if type(d1[k]) is dict:
-                return dict_equal(d1[k],d2[k])
-            else:
-                if not np.allclose(d1[k],d2[k]):
-                    return False
-    return True
-
 @pytest.fixture
 def h5py_dataset_iterator():
     """Iterate over all datasets in an HDF5 file."""
@@ -80,12 +68,12 @@ def test_view_all(default):
     default = Result(default.fname)
     a = default.view_all().get('F')
 
-    assert dict_equal(a,default.view(increments='*').get('F'))
-    assert dict_equal(a,default.view(increments=default.increments_in_range(0,np.iinfo(int).max)).get('F'))
+    assert util.dict_equal(a,default.view(increments='*').get('F'))
+    assert util.dict_equal(a,default.view(increments=default.increments_in_range(0,np.iinfo(int).max)).get('F'))
 
-    assert dict_equal(a,default.view(times=True).get('F'))
-    assert dict_equal(a,default.view(times='*').get('F'))
-    assert dict_equal(a,default.view(times=default.times_in_range(0.0,np.inf)).get('F'))
+    assert util.dict_equal(a,default.view(times=True).get('F'))
+    assert util.dict_equal(a,default.view(times='*').get('F'))
+    assert util.dict_equal(a,default.view(times=default.times_in_range(0.0,np.inf)).get('F'))
 
 @pytest.mark.parametrize('what',['increments','times','phases','fields'])                           # ToDo: discuss homogenizations
 def test_view_none(default,what):
@@ -104,7 +92,7 @@ def test_view_more(default,what):
     a = empty.view_more(**{what:'*'}).get('F')
     b = empty.view_more(**{what:True}).get('F')
 
-    assert dict_equal(a,b)
+    assert util.dict_equal(a,b)
 
 @pytest.mark.parametrize('what',['increments','times','phases','fields'])                           # ToDo: discuss homogenizations
 def test_view_less(default,what):
@@ -639,7 +627,7 @@ def test_get(update,request,res_path,view,output,flatten,prune):
 
     with bz2.BZ2File((res_path/'get'/fname).with_suffix('.pbz2')) as f:
         ref = pickle.load(f)
-        assert cur is None if ref is None else dict_equal(cur,ref)
+        assert cur is None if ref is None else util.dict_equal(cur,ref)
 
 @pytest.mark.parametrize('view,output,flatten,constituents,prune',
         [({},['F','P','F','L_p','F_e','F_p'],True,True,None),
@@ -664,7 +652,7 @@ def test_place(update,request,res_path,view,output,flatten,prune,constituents):
 
     with bz2.BZ2File((res_path/'place'/fname).with_suffix('.pbz2')) as f:
         ref = pickle.load(f)
-        assert cur is None if ref is None else dict_equal(cur,ref)
+        assert cur is None if ref is None else util.dict_equal(cur,ref)
 
 def test_place_non_mergeable(res_path):
     result = Result(res_path/'merge-datasets.hdf5').view(increments=-1)
