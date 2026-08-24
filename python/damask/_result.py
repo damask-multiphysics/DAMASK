@@ -20,7 +20,7 @@ from scipy import interpolate
 
 import damask
 from . import VTK, Orientation, Rotation, grid, mechanics, tensor, util
-from ._typehints import BravaisLattice, DADF5Dataset, FloatSequence, IntSequence
+from ._typehints import DADF5Dataset, FloatSequence, IntSequence
 
 
 logger = logging.getLogger(__name__)
@@ -126,7 +126,7 @@ def _is_mergeable(layout):
                     mergeable[field][dset_name] = {label:v}
                 else:
                     if dset_name in mergeable[field]:
-                        if v == util.get_value0(mergeable[field][dset_name]):
+                        if util.dict_equal(v,util.get_value0(mergeable[field][dset_name])):
                             mergeable[field][dset_name][label] = v
                         else:
                             not_mergeable[field][dset_name] = mergeable[field].pop(dset_name) | {label : v}
@@ -1065,15 +1065,15 @@ class Result:
         """
         def IPF_color(l: FloatSequence, q: DADF5Dataset) -> DADF5Dataset:
             m = util.scale_to_coprime(np.array(l))
-            lattice: BravaisLattice = q['meta']['lattice']                                          # type: ignore[assignment]
-            o = Orientation(rotation = q['data'],lattice=lattice)                                   # ToDo: consider c/a
+            lattice = q['meta']['lattice']
+            o = Orientation(rotation = q['data'],lattice=lattice,c=q['meta'].get('c/a'))
 
             return {
                     'data': (o.IPF_color(l)*255).astype(np.uint8),
                     'label': 'IPFcolor_({} {} {})'.format(*m),
                     'meta' : {
                               'unit':        '8-bit RGB',
-                              'lattice':     lattice,
+                              'family':      o.family,
                               'description': 'Inverse Pole Figure (IPF) colors along sample direction ({} {} {})'.format(*m),
                               'creator':     'add_IPF_color'
                              }
@@ -1184,13 +1184,13 @@ class Result:
                  uvw: IntSequence, hkl: IntSequence,
                  with_symmetry: bool,
                  normalize: bool) -> DADF5Dataset:
-            c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1.0
             brackets = ['[]','()','⟨⟩','{}'][(uvw is None)*1+with_symmetry*2]
             label = 'p^' + '{}{} {} {}{}'.format(brackets[0],
                                                  *(uvw if uvw else hkl),
                                                  brackets[-1],)
-            lattice: BravaisLattice = q['meta']['lattice']                                          # type: ignore[assignment]
-            ori = Orientation(q['data'],lattice=lattice,a=1,c=c)
+            lattice = q['meta']['lattice']
+            c_a = q['meta'].get('c/a')
+            ori = Orientation(q['data'],lattice=lattice,c=c_a)
 
             return {
                     'data': np.moveaxis(ori.to_frame(uvw=uvw,hkl=hkl,
@@ -1203,7 +1203,7 @@ class Result:
                                              + ('plane' if uvw is None else 'direction') \
                                              + ('s' if with_symmetry else ''),
                               'creator':     'add_pole'
-                              }
+                              } | ({'c/a': c_a} if c_a is not None else {}) # type: ignore[typeddict-item]
                     }
 
         self._add_generic_pointwise(pole,{'q':q},{'uvw':uvw,'hkl':hkl,'with_symmetry':with_symmetry,'normalize':normalize})
@@ -1239,7 +1239,7 @@ class Result:
 
         def rss(N_def: IntSequence | Literal['*'], mode: Literal['slip', 'twin'],
                 P: DADF5Dataset, F: DADF5Dataset, q: DADF5Dataset) -> DADF5Dataset:
-            lattice: BravaisLattice = q['meta']['lattice']                                           # type: ignore[assignment]
+            lattice = q['meta']['lattice']
             c_a: float = q['meta'].get('c/a',1.0)
             o = Orientation(rotation = q['data'],lattice=lattice,a=1.0,c=c_a)
             tau = o.resolved_shear_stress(**{f'N_{mode}':N_def,
@@ -2490,9 +2490,7 @@ class Result:
                 dset_grp = f'{inc}/{kind}/{label}/{field}'
 
                 for dset_name in _match(output, f[dset_grp]):
-                    layout[label][field][dset_name] = DatasetMetadata(
-                        f[f'{dset_grp}/{dset_name}'],
-                        ['creator', 'created'] + ['lattice', 'systems', 'c/a']   # latter: 3.x compatibility
-                    )
+                    layout[label][field][dset_name] = DatasetMetadata(f[f'{dset_grp}/{dset_name}'],
+                                                                      ['creator', 'created', 'overwritten'])
 
         return layout.to_regular()

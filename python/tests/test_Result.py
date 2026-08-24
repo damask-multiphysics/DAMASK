@@ -223,12 +223,13 @@ def test_add_eigenvector(assert_allclose,default,eigenvalue,idx):
 @pytest.mark.parametrize('d',[[1,0,0],[0,1,0],[0,0,1]])
 def test_add_IPF_color(assert_allclose,default,d):
     default.add_IPF_color(d,'O')
-    qu = default.place('O')
-    assert 'lattice' not in qu.dtype.metadata # default result object has both cI and cF phases
-    c = Orientation(rotation=qu, family='cubic')
-    in_memory = np.uint8(c.IPF_color(np.array(d))*255)
-    in_file = default.place('IPFcolor_({} {} {})'.format(*d))
-    assert_allclose(in_memory,in_file)
+    for phase in default._phases:
+        r = default.view(phases=phase)
+        qu = r.get('O')
+        c = Orientation(rotation=qu, lattice=qu.dtype.metadata['lattice'])
+        in_memory = np.uint8(c.IPF_color(np.array(d))*255)
+        in_file = r.get('IPFcolor_({} {} {})'.format(*d))
+        assert_allclose(in_memory,in_file)
 
 def test_add_maximum_shear(assert_allclose,default):
     default.add_stress_Cauchy('P','F')
@@ -272,9 +273,11 @@ def test_add_Mises_stress_strain(default):
 @pytest.mark.parametrize('dataset,axis',[('F',(1,2)),('xi_sl',(1,))])
 def test_add_norm(assert_allclose,default,ord,dataset,axis):
     default.add_norm(dataset,ord)
-    in_memory = np.linalg.norm(default.place(dataset),ord=ord,axis=axis,keepdims=True)
-    in_file   = default.place(f'|{dataset}|_{ord}')
-    assert_allclose(in_memory,in_file)
+    for phase in default._phases:
+        r = default.view(phases=phase)
+        in_memory = np.linalg.norm(r.get(dataset),ord=ord,axis=axis,keepdims=True)
+        in_file   = r.get(f'|{dataset}|_{ord}')
+        assert_allclose(in_memory,in_file)
 
 def test_add_stress_second_Piola_Kirchhoff(assert_allclose,default):
     default.add_stress_second_Piola_Kirchhoff('P','F')
@@ -289,16 +292,17 @@ def test_add_stress_second_Piola_Kirchhoff(assert_allclose,default):
                                    ])
 def test_add_pole(assert_allclose,default,options):
     default.add_pole(**options)
-    rot = default.place('O')
-    assert 'lattice' not in rot.dtype.metadata
-    in_memory = np.moveaxis(Orientation(rot,lattice='cI').to_frame(**options),
-                            0,-2 if options['with_symmetry'] else 0)
-    brackets = [['[[]','[]]'],'()','⟨⟩','{}'][('hkl' in options)*1+(options['with_symmetry'])*2]    # escape fnmatch
-    label = 'p^{}{} {} {}{}'.format(brackets[0],
-                                    *(list(options.values())[0]),
-                                    brackets[-1])
-    in_file = default.place(label)
-    assert_allclose(in_memory,in_file)
+    for phase in default._phases:
+        r = default.view(phases=phase)
+        rot = r.get('O')
+        in_memory = np.moveaxis(Orientation(rot,lattice='cI').to_frame(**options),
+                                0,-2 if options['with_symmetry'] else 0)
+        brackets = [['[[]','[]]'],'()','⟨⟩','{}'][('hkl' in options)*1+(options['with_symmetry'])*2]    # escape fnmatch
+        label = 'p^{}{} {} {}{}'.format(brackets[0],
+                                        *(list(options.values())[0]),
+                                        brackets[-1])
+        in_file = r.get(label)
+        assert_allclose(in_memory,in_file)
 
 def test_add_resolved_shear_stress_slip(assert_allclose,np_rng,default):
     for label,data in default.get(['P','F','O']).items():
