@@ -252,16 +252,12 @@ void CLI::init_print() {
 #endif
 
   cout << " Version: " << DAMASK_VERSION << std::endl << std::endl;
-  cout << " Compiled with:";
-#if defined(__clang__)
-  cout << " Clang version " << __clang_major__ << "." << __clang_minor__ << "." << __clang_patchlevel__ << std::endl;
-#elif defined(__GNUC__)
-  cout << " GCC version " << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__ << std::endl;
-#elif defined(__INTEL_COMPILER)
-  cout << " Intel Compiler version " << __INTEL_COMPILER << "." << __INTEL_COMPILER_UPDATE << std::endl;
-#endif
+  cout << " Fortran Compiler: " << DAMASK_FORTRAN_COMPILER_ID << " " << DAMASK_FORTRAN_COMPILER_VERSION << "\n"
+       << " C Compiler: " << DAMASK_C_COMPILER_ID << " " << DAMASK_C_COMPILER_VERSION << "\n"
+       << " C++ Compiler: " << DAMASK_CXX_COMPILER_ID << " " << DAMASK_CXX_COMPILER_VERSION << std::endl;
   F_printCompileOptions();
   cout << std::endl;
+
   cout << " PETSc version: " << PETSC_VERSION_MAJOR << "." << PETSC_VERSION_MINOR << "." << PETSC_VERSION_SUBMINOR << std::endl
        << std::endl;
 

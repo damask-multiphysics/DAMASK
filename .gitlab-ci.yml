@@ -469,9 +469,10 @@ publish_website_master:
     branch: master
   rules: [if: $CI_COMMIT_BRANCH == 'development']
 
-publish_website_3.0:
+publish_website_release:
   stage: documentation
   trigger:
     project: damask/website
-    branch: '3.0'
-  rules: [if: $CI_COMMIT_BRANCH == '3.0']
+    branch: $CI_COMMIT_BRANCH
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /^\d+\.\d+$/'
