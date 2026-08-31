@@ -238,7 +238,7 @@ function parse_and_print_load_cases(load_steps) result(load_cases)
     BC_load_comps       => NULL()                                                                   ! u/f[_dot] components list
 
 
-  call DMGetDimension(geomMesh, dimPlex, err_PETSc)
+  call DMGetDimension(geom,dimPlex,err_PETSc)
   CHKERRA(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------

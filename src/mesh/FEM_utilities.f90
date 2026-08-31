@@ -85,46 +85,10 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_utilities_init(num_mesh)
 
-  type(tDict), pointer, intent(in) :: &
-    num_mesh
-
-  type(tDict), pointer :: &
-    num_mech
-  character(len=:), allocatable :: &
-    PETSc_options
-  integer :: &
-    p_s, &                                                                                          !< order of shape functions
-    p_i                                                                                             !< integration order (quadrature rule)
-  PetscErrorCode :: err_PETSc
+  type(tDict), pointer, intent(in) :: num_mesh                                                      !< 'mesh' dictionary from numerics file
 
 
-  print'(/,1x,a)',   '<<<+-  FEM_utilities init  -+>>>'
-
-  num_mech => num_mesh%get_dict('mechanical', defaultVal=emptyDict)
-
-  p_s = num_mesh%get_asInt('p_s',defaultVal = 2)
-  p_i = num_mesh%get_asInt('p_i',defaultVal = p_s)
-
-  if (p_s < 1) &
-    call IO_error(301,ext_msg='shape function order (p_s) out of bounds')
-  if (p_i < max(1,p_s-1) .or. p_i > p_s) &
-    call IO_error(301,ext_msg='integration order (p_i) out of bounds')
-
-  flush(IO_STDOUT)
-
-  petsc_options = misc_prefixOptions('-snes_type newtonls &
-                                     &-ksp_type gmres -ksp_max_it 25 -pc_type eisenstat &
-                                     &-snes_ksp_ew &
-                                     &-petscspace_degree ' // IO_intAsStr(p_s) // ' &
-                                     &-petscdualspace_lagrange_node_type equispaced &
-                                     &-petscdualspace_lagrange_node_endpoints 1 '// &
-                                     num_mech%get_asStr('PETSc_options',defaultVal=''),&
-                                     'mechanical_')
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
-  CHKERRQ(err_PETSc)
-
-  call PetscOptionsSetValue(PETSC_NULL_OPTIONS,'-petscds_force_quad','0',err_PETSc)
-  CHKERRQ(err_PETSc)
+  print'(/,1x,a)',   '<<<+-  FEM_utilities init  -+>>>'; flush(IO_STDOUT)
 
 end subroutine FEM_utilities_init
 
