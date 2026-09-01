@@ -140,7 +140,8 @@ subroutine discretization_mesh_init()
   real(pREAL), dimension(:,:,:), allocatable :: x_p                                                 ! IP x,y,z coordinates
 
   character(pSTRLEN)            :: BC_label                                                         ! label (string, defined in mesh file)
-  character(len=:), allocatable :: PETSc_options                                                    ! options to set up DM (from numerics file)
+  character(len=:), allocatable :: PETSc_options, &                                                 ! options to set up DM (from numerics file)
+                                   fname, file_content
 
 
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'; flush(IO_STDOUT)
@@ -394,6 +395,14 @@ subroutine discretization_mesh_init()
 #else
   call writeGeometry(reshape(x_p,[3,int(mesh_maxNips*mesh_nElems)]),x_n)
 #endif
+  if (worldrank == 0) then
+    fname = CLI_geomFile
+    if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
+    file_content = IO_read(CLI_geomFile)
+    call result_openJobFile(parallel=.false.)
+    call result_addSetupFile(file_content,fname,'geometry definition (mesh solver)')
+    call result_closeJobFile()
+  end if
 
 end subroutine discretization_mesh_init
 
