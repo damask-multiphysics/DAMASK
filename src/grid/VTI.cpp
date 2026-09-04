@@ -90,8 +90,8 @@ void check_file_format(const pt::ptree& root) {
 template <typename T>
 std::vector<T> cast_buffer(const DecodedBuffer& d) {
   auto convert = [&]<typename SrcT>() -> std::vector<T> {
-    // if constexpr (std::is_floating_point_v<SrcT> && std::is_integral_v<T>)
-    //   IO::error(VTK_ERROR, "cannot cast floating-point to integer"); ToDo #479
+    if constexpr (std::is_floating_point_v<SrcT> && std::is_integral_v<T>)
+      IO::error(VTK_ERROR, "cannot cast floating-point to integer");
     if (d.raw_bytes.size() % sizeof(SrcT) != 0)
       IO::error(VTK_ERROR, "size mismatch");
     const std::size_t n = d.raw_bytes.size() / sizeof(SrcT);

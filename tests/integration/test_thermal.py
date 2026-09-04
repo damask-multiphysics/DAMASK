@@ -55,7 +55,7 @@ def test_linear_expansion(res_path,tmp_path,copy_files,assert_allclose,np_rng,
     job  = f'{grid}_{load}'
     copy_files(res_path,tmp_path,[f'{load}.yaml',f'{material}.yaml'])
 
-    g = damask.GeomGrid(np.zeros((2,2,2)),np.ones(3)*1e-6)
+    g = damask.GeomGrid(np.zeros((2,2,2),int),np.ones(3)*1e-6)
     g.initial_conditions['T'] = np_rng.integers(1000)
     g.save(tmp_path/grid)
 
@@ -112,7 +112,7 @@ def test_1D_expansion(res_path,tmp_path,copy_files,assert_allclose,np_rng):
     mat['phase']['heatsource']['thermal']['source'] = [{'type':'externalheat', 'f':[f]*2, 't':[0,100]}]
     mat.save(tmp_path/f'{material}.yaml')
 
-    g = damask.GeomGrid(np.ones((2,2,2)),np.ones(3)*1e-6)
+    g = damask.GeomGrid(np.ones((2,2,2),int),np.ones(3)*1e-6)
     g.initial_conditions['T'] = T_0
     g.save(tmp_path/grid)
 
@@ -160,11 +160,11 @@ def test_temperature_dependent_stiffness(res_path,tmp_path,copy_files,assert_all
     del(mat['phase']['heatsource']['thermal']['source'])
     mat.save(tmp_path/f'{material}.yaml')
 
-    v = damask.GeomGrid(np.zeros((2,2,2)),np.ones(3)*1e-6)
+    v = damask.GeomGrid(np.zeros((2,2,2),int),np.ones(3)*1e-6)
     v.initial_conditions['T'] = T
     v.save(tmp_path/'variable')
 
-    f = damask.GeomGrid(np.ones((2,2,2)),np.ones(3)*1e-6)
+    f = damask.GeomGrid(np.ones((2,2,2),int),np.ones(3)*1e-6)
     f.initial_conditions['T'] = T_ref
     f.save(tmp_path/'fixed')
 
@@ -216,7 +216,7 @@ def test_heat_capacity(res_path,tmp_path,np_rng):
     mat['phase']['heatsource']['thermal']['source'] = [{'type':'externalheat', 'f':[f]*2, 't':[0,t]}]
     mat.save(tmp_path/f'{material}.yaml')
 
-    g = damask.GeomGrid(np.ones((2,2,2)),np.ones(3)*1e-4)
+    g = damask.GeomGrid(np.ones((2,2,2),int),np.ones(3)*1e-4)
     g.initial_conditions['T'] = T_0
     g.save(tmp_path/grid)
 
@@ -271,7 +271,7 @@ def test_thermal_conductivity(res_path,tmp_path,np_rng,assert_allclose):
     T_ref = np_rng.integers(300,800)
     T_l = T_ref - np_rng.integers(50,200)
     T_h = T_ref + np_rng.integers(50,200)
-    g = damask.GeomGrid(np.ones((32,2,2)),np.array([32,2,2])*unit_len)
+    g = damask.GeomGrid(np.ones((32,2,2),int),np.array([32,2,2])*unit_len)
     T_init = np.full((32,2,2), T_l)
     T_init[8:24,:,:] = T_h
     g.initial_conditions['T'] = T_init
@@ -332,7 +332,7 @@ def test_thermal_dissipation(res_path,tmp_path,np_rng,assert_allclose):
     mat = mat.material_add(phase='heatsource',O=damask.Rotation.from_random(shape=8, rng=np_rng), homogenization='direct')
     mat.save(tmp_path/f'{material}.yaml')
 
-    g = damask.GeomGrid(np.ones((2,2,2)),np.ones(3)*1e-4)
+    g = damask.GeomGrid(np.ones((2,2,2),int),np.ones(3)*1e-4)
     g.initial_conditions['T'] = T_0
     g.save(tmp_path/grid)
 
@@ -367,7 +367,7 @@ def test_thermal_BC_T_target(res_path,tmp_path,copy_files,assert_allclose,np_rng
     mat['phase']['matrix']['thermal']['K_11'] = np_rng.uniform(70,90)
     mat.save(tmp_path/f'{material}.yaml')
 
-    g = damask.GeomGrid(np.zeros(shape),np.ones(3)*1.e-6)
+    g = damask.GeomGrid(np.zeros(shape,int),np.ones(3)*1.e-6)
     g.initial_conditions['T'] = T_0
     g.save(tmp_path/grid)
 
@@ -402,7 +402,7 @@ def test_thermal_BC_T_dot(res_path,tmp_path,copy_files,assert_allclose,np_rng,th
     mat['phase']['matrix']['thermal']['K_11'] = np_rng.uniform(70,90)
     mat.save(tmp_path/f'{material}.yaml')
 
-    g = damask.GeomGrid(np.zeros(shape),np.ones(3)*1.e-6)
+    g = damask.GeomGrid(np.zeros(shape,int),np.ones(3)*1.e-6)
     g.initial_conditions['T'] = T_0
     g.save(tmp_path/grid)
 
@@ -469,7 +469,7 @@ def test_thermal_BC_restart(res_path,tmp_path,copy_files,assert_allclose,np_rng)
     mat['phase']['matrix']['thermal']['K_11'] = np_rng.uniform(70,90)
     mat.save(tmp_path/f'{material}.yaml')
 
-    g = damask.GeomGrid(np.zeros((2,2,2)),np.ones(3)*1.e-6)
+    g = damask.GeomGrid(np.zeros((2,2,2),int),np.ones(3)*1.e-6)
     g.initial_conditions['T'] = T_0
     g.save(tmp_path/grid)
 
@@ -519,7 +519,7 @@ def test_thermal_BC_invalid(res_path,tmp_path,copy_files,thermal_bc,msg):
     mat['phase']['matrix']['thermal']['K_11'] = 0.0
     mat.save(tmp_path/f'{material}.yaml')
 
-    g = damask.GeomGrid(np.zeros((2,2,2)),np.ones(3)*1.e-6)
+    g = damask.GeomGrid(np.zeros((2,2,2),int),np.ones(3)*1.e-6)
     g.initial_conditions['T'] = 300.
     g.save(tmp_path/grid)
 

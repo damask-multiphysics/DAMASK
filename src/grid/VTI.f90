@@ -284,10 +284,6 @@ function as_Int(base64Str,headerType,compressed,dataType)
       as_Int = int(prec_bytesToC_INT32_T(asBytes(base64Str,headerType,compressed)))
     case('Int64')
       as_Int = int(prec_bytesToC_INT64_T(asBytes(base64Str,headerType,compressed)))
-    case('Float32')
-      as_Int = int(prec_bytesToC_FLOAT  (asBytes(base64Str,headerType,compressed)))
-    case('Float64')
-      as_Int = int(prec_bytesToC_DOUBLE (asBytes(base64Str,headerType,compressed)))
     case default
       call IO_error(844_pI16,'unknown data type',trim(dataType), emph=[2])
   end select

@@ -94,7 +94,7 @@ def test_density_initialization(res_path,tmp_path,np_rng):
                                  'discretization':{'t':1.,'N':1}})
    load_case.save(tmp_path/f'{load}.yaml')
 
-   g = damask.GeomGrid(np.zeros(32**3).reshape([32]*3).astype(int),np.ones(3)*1e-3)
+   g = damask.GeomGrid(np.zeros([32]*3,int),np.ones(3)*1e-3)
    g.save(tmp_path/grid)
 
    config_material = damask.ConfigMaterial.load(res_path/f'{material}.yaml')
