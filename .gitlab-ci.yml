@@ -195,6 +195,7 @@ mypy:
   script:
     - cd python
     - python3 -m build --wheel --no-isolation
+    - pip install damask*-any.whl
 
 create_package:
   extends: [.create_package, .python]
