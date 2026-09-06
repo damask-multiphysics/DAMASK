@@ -216,26 +216,19 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
       prm%Q_cl                 = pl%get_asReal('Q_cl')
 
-      f_edge       = math_expand(pl%get_as1dReal('f_edge',    requiredSize=size(N_sl), &
-                                                 defaultVal=[(0.5_pREAL,i=1,size(N_sl))]),N_sl)
-
-#ifdef __GFORTRAN__
+      f_edge       = pl%get_as1dReal('f_edge',    requiredChunks=N_sl, &
+                                                  defaultVal=[(0.5_pREAL,i=1,size(N_sl))])
       rho_mob_0    = pl%get_as1dReal('rho_mob_0', requiredChunks=N_sl)
       rho_dip_0    = pl%get_as1dReal('rho_dip_0', requiredChunks=N_sl)
-#else
-      rho_mob_0    = math_expand(pl%get_as1dReal('rho_mob_0', requiredSize=size(N_sl)),N_sl)
-      rho_dip_0    = math_expand(pl%get_as1dReal('rho_dip_0', requiredSize=size(N_sl)),N_sl)
-#endif
-
-      prm%v_0      = math_expand(pl%get_as1dReal('v_0',       requiredSize=size(N_sl)),N_sl)
-      prm%b_sl     = math_expand(pl%get_as1dReal('b_sl',      requiredSize=size(N_sl)),N_sl)
-      prm%Q_sl     = math_expand(pl%get_as1dReal('Q_sl',      requiredSize=size(N_sl)),N_sl)
-      prm%i_sl     = math_expand(pl%get_as1dReal('i_sl',      requiredSize=size(N_sl)),N_sl)
-      prm%p        = math_expand(pl%get_as1dReal('p_sl',      requiredSize=size(N_sl)),N_sl)
-      prm%q        = math_expand(pl%get_as1dReal('q_sl',      requiredSize=size(N_sl)),N_sl)
-      prm%tau_0    = math_expand(pl%get_as1dReal('tau_0',     requiredSize=size(N_sl)),N_sl)
-      prm%B        = math_expand(pl%get_as1dReal('B',         requiredSize=size(N_sl), &
-                                                 defaultVal=[(0.0_pREAL,i=1,size(N_sl))]),N_sl)
+      prm%v_0      = pl%get_as1dReal('v_0',       requiredChunks=N_sl)
+      prm%b_sl     = pl%get_as1dReal('b_sl',      requiredChunks=N_sl)
+      prm%Q_sl     = pl%get_as1dReal('Q_sl',      requiredChunks=N_sl)
+      prm%i_sl     = pl%get_as1dReal('i_sl',      requiredChunks=N_sl)
+      prm%p        = pl%get_as1dReal('p_sl',      requiredChunks=N_sl)
+      prm%q        = pl%get_as1dReal('q_sl',      requiredChunks=N_sl)
+      prm%tau_0    = pl%get_as1dReal('tau_0',     requiredChunks=N_sl)
+      prm%B        = pl%get_as1dReal('B',         requiredChunks=N_sl, &
+                                                  defaultVal=[(0.0_pREAL,i=1,size(N_sl))])
       prm%d_caron  = prm%b_sl * pl%get_asReal('D_a')
 
 
@@ -295,9 +288,9 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%L_tw = pl%get_asReal('L_tw')
       prm%i_tw = pl%get_asReal('i_tw')
 
-      prm%b_tw = math_expand(pl%get_as1dReal('b_tw', requiredSize=size(prm%N_tw)),prm%N_tw)
-      prm%t_tw = math_expand(pl%get_as1dReal('t_tw', requiredSize=size(prm%N_tw)),prm%N_tw)
-      prm%r    = math_expand(pl%get_as1dReal('p_tw', requiredSize=size(prm%N_tw)),prm%N_tw)
+      prm%b_tw = pl%get_as1dReal('b_tw', requiredChunks=prm%N_tw)
+      prm%t_tw = pl%get_as1dReal('t_tw', requiredChunks=prm%N_tw)
+      prm%r    = pl%get_as1dReal('p_tw', requiredChunks=prm%N_tw)
 
       ! sanity checks
       if (.not. prm%fccTwinTransNucleation)   extmsg = trim(extmsg)//' TWIP for non-fcc'
@@ -329,9 +322,9 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%cOverA_hP       = pl%get_asReal('c/a_hP')
       prm%V_mol           = pl%get_asReal('V_mol')
 
-      prm%b_tr = math_expand(pl%get_as1dReal('b_tr'),prm%N_tr)
-      prm%t_tr = math_expand(pl%get_as1dReal('t_tr'),prm%N_tr)
-      prm%s    = math_expand(pl%get_as1dReal('p_tr'),prm%N_tr)
+      prm%b_tr = pl%get_as1dReal('b_tr', requiredChunks=prm%N_tr)
+      prm%t_tr = pl%get_as1dReal('t_tr', requiredChunks=prm%N_tr)
+      prm%s    = pl%get_as1dReal('p_tr', requiredChunks=prm%N_tr)
 
       a_cF           = prm%b_tr(1)*sqrt(6.0_pREAL)                                                  ! b_tr is Shockley partial
       prm%h          = 5.0_pREAL * a_cF/sqrt(3.0_pREAL)

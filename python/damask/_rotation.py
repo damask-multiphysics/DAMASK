@@ -866,8 +866,9 @@ class Rotation:
     ################################################################################################
     # Static constructors. The input data needs to follow the conventions, options allow to
     # relax the conventions.
-    @staticmethod
-    def from_quaternion(q: Sequence[FloatSequence] | np.ndarray,
+    @classmethod
+    def from_quaternion(cls,
+                        q: Sequence[FloatSequence] | np.ndarray,
                         accept_homomorph: bool = False,
                         normalize: bool = False,
                         P: Literal[1, -1] = -1) -> 'Rotation':
@@ -915,10 +916,11 @@ class Rotation:
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'quaternion is not of unit length\n{qu}')
 
-        return Rotation(qu)
+        return cls(qu)
 
-    @staticmethod
-    def from_Euler_angles(phi: np.ndarray,
+    @classmethod
+    def from_Euler_angles(cls,
+                          phi: np.ndarray,
                           degrees: bool = False) -> 'Rotation':
         """
         Initialize from Bunge Euler angles.
@@ -954,10 +956,11 @@ class Rotation:
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'Euler angles outside of [0..2π],[0..π],[0..2π]\n{eu}')
 
-        return Rotation(Rotation._eu2qu(eu))
+        return cls(cls._eu2qu(eu))
 
-    @staticmethod
-    def from_axis_angle(n_omega: np.ndarray,
+    @classmethod
+    def from_axis_angle(cls,
+                        n_omega: np.ndarray,
                         degrees: bool = False,
                         normalize: bool = False,
                         P: Literal[1, -1] = -1) -> 'Rotation':
@@ -1004,10 +1007,11 @@ class Rotation:
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'axis–angle rotation axis is not of unit length\n{ax}')
 
-        return Rotation(Rotation._ax2qu(ax))
+        return cls(cls._ax2qu(ax))
 
-    @staticmethod
-    def from_basis(basis: np.ndarray,
+    @classmethod
+    def from_basis(cls,
+                   basis: np.ndarray,
                    orthonormal: bool = True,
                    reciprocal: bool = False) -> 'Rotation':
         """
@@ -1047,10 +1051,11 @@ class Rotation:
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'orientation matrix has determinant ≠ 1\n{om}')
 
-        return Rotation(Rotation._om2qu(om))
+        return cls(cls._om2qu(om))
 
-    @staticmethod
-    def from_matrix(R: np.ndarray,
+    @classmethod
+    def from_matrix(cls,
+                    R: np.ndarray,
                     normalize: bool = False) -> 'Rotation':
         """
         Initialize from rotation matrix.
@@ -1073,12 +1078,13 @@ class Rotation:
         >>> damask.Rotation.from_matrix(R=[[1,0,0],[0,0,-1],[0,1,0]])
         array(( 0.707,    -0.707, -0. , -0. ))
         """
-        return Rotation.from_basis(np.array(R,dtype=float) * (np.linalg.det(R)**(-1./3.))[...,np.newaxis,np.newaxis]
+        return cls.from_basis(np.array(R,dtype=float) * (np.linalg.det(R)**(-1./3.))[...,np.newaxis,np.newaxis]
                                    if normalize else
                                    R)
 
-    @staticmethod
-    def from_parallel(source: np.ndarray,
+    @classmethod
+    def from_parallel(cls,
+                      source: np.ndarray,
                       target: np.ndarray,
                       active: bool = False ) -> 'Rotation':
         """
@@ -1141,11 +1147,12 @@ class Rotation:
                                              t_[...,1,:],
                         np.cross(t_[...,0,:],t_[...,1,:]) ],axis=-1 if active else -2)
 
-        return Rotation.from_basis(sm).misorientation(Rotation.from_basis(tm))
+        return cls.from_basis(sm).misorientation(cls.from_basis(tm))
 
 
-    @staticmethod
-    def from_Rodrigues_vector(rho: np.ndarray,
+    @classmethod
+    def from_Rodrigues_vector(cls,
+                              rho: np.ndarray,
                               normalize: bool = False,
                               P: Literal[1, -1] = -1) -> 'Rotation':
         """
@@ -1186,10 +1193,11 @@ class Rotation:
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'Rodrigues vector rotation axis is not of unit length\n{ro}')
 
-        return Rotation(Rotation._ro2qu(ro))
+        return cls(cls._ro2qu(ro))
 
-    @staticmethod
-    def from_homochoric(h: np.ndarray,
+    @classmethod
+    def from_homochoric(cls,
+                        h: np.ndarray,
                         P: Literal[1, -1] = -1) -> 'Rotation':
         """
         Initialize from homochoric vector.
@@ -1216,10 +1224,11 @@ class Rotation:
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'homochoric coordinate outside of the sphere\n{ho}')
 
-        return Rotation(Rotation._ho2qu(ho))
+        return cls(cls._ho2qu(ho))
 
-    @staticmethod
-    def from_cubochoric(x: np.ndarray,
+    @classmethod
+    def from_cubochoric(cls,
+                        x: np.ndarray,
                         P: Literal[1, -1] = -1) -> 'Rotation':
         """
         Initialize from cubochoric vector.
@@ -1243,13 +1252,14 @@ class Rotation:
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'cubochoric coordinate outside of the cube\n{cu}')
 
-        ho = Rotation._cu2ho(cu) if P == -1 else Rotation._cu2ho(cu) * -1
+        ho = cls._cu2ho(cu) if P == -1 else cls._cu2ho(cu) * -1
 
-        return Rotation(Rotation._ho2qu(ho))
+        return cls(cls._ho2qu(ho))
 
 
-    @staticmethod
-    def from_random(shape: int | IntSequence | None = None,
+    @classmethod
+    def from_random(cls,
+                    shape: int | IntSequence | None = None,
                     rng: RNGLike | SeedLike | None = None) -> 'Rotation':
         """
         Initialize with samples from a uniform distribution.
@@ -1279,11 +1289,12 @@ class Rotation:
         q = rng.normal(size = (4 if shape is None else tuple(shape)+(4,) if hasattr(shape, '__iter__') else (shape,4)))
         q /= np.linalg.norm(q,axis=-1,keepdims=True)                                                # assuming no division by zero
 
-        return Rotation(q[:] if shape is None else q)._standardize()
+        return cls(q[:] if shape is None else q)._standardize()
 
 
-    @staticmethod
-    def from_ODF(weights: np.ndarray,
+    @classmethod
+    def from_ODF(cls,
+                 weights: np.ndarray,
                  phi: np.ndarray,
                  shape: int | IntSequence | None = None,
                  degrees: bool = False,
@@ -1340,11 +1351,12 @@ class Rotation:
         dV_V = dg * np.maximum(0.,weights.squeeze())
 
         N = 1 if shape is None else np.prod(shape).astype(int)
-        return Rotation.from_Euler_angles(phi[util.hybrid_IA(dV_V,N,rng)],degrees).reshape(() if shape is None else shape)
+        return cls.from_Euler_angles(phi[util.hybrid_IA(dV_V,N,rng)],degrees).reshape(() if shape is None else shape)
 
 
-    @staticmethod
-    def from_spherical_component(center: 'Rotation',
+    @classmethod
+    def from_spherical_component(cls,
+                                 center: 'Rotation',
                                  sigma: float,
                                  shape: int | IntSequence | None = None,
                                  degrees: bool = False,
@@ -1398,11 +1410,12 @@ class Rotation:
                              np.sqrt(1.-u**2)*np.sin(Theta),
                              u, omega])
 
-        return Rotation.from_axis_angle(p).reshape(() if shape is None else shape) * center
+        return cls.from_axis_angle(p).reshape(() if shape is None else shape) * center
 
 
-    @staticmethod
-    def from_fiber_component(crystal: IntSequence,
+    @classmethod
+    def from_fiber_component(cls,
+                             crystal: IntSequence,
                              sample: IntSequence,
                              sigma: float = 0.,
                              shape: int | IntSequence | None = None,
@@ -1482,7 +1495,7 @@ class Rotation:
         d_lab = np.array([np.sin( beta[0])*np.cos( beta[1]), np.sin( beta[0])*np.sin( beta[1]), np.cos( beta[0])])
         ax_align = np.append(np.cross(d_cr,d_lab), np.arccos(np.dot(d_cr,d_lab)))                   # align crystal frame direction to sample frame direction
         if np.isclose(ax_align[3],0.): ax_align[:3] = np.array([1.,0.,0.])
-        R_align = Rotation.from_axis_angle(ax_align if ax_align[3] > 0. else -ax_align,normalize=True)
+        R_align = cls.from_axis_angle(ax_align if ax_align[3] > 0. else -ax_align,normalize=True)
 
         N = 1 if shape is None else np.prod(shape).astype(int)
         u,Theta = (rng.random((N,2)) * 2. * np.array([1.,np.pi]) - np.array([1.,0.])).T
@@ -1495,8 +1508,8 @@ class Rotation:
         f[omega<0.0,:3] *= -1
 
         return (R_align.broadcast_to(N)
-                * Rotation.from_axis_angle(p,normalize=True)
-                * Rotation.from_axis_angle(f)).reshape(() if shape is None else shape)
+                * cls.from_axis_angle(p,normalize=True)
+                * cls.from_axis_angle(f)).reshape(() if shape is None else shape)
 
 
 ####################################################################################################

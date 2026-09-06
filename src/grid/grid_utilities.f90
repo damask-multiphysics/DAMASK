@@ -58,7 +58,7 @@ module grid_utilities
   end type tSolutionParams
 
   public :: &
-    utilities_maskedCompliance, &
+    utilities_defGradAdjustment, &
     utilities_constitutiveResponse, &
     utilities_electricalResponse, &
     utilities_calculateRate, &
@@ -69,62 +69,44 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculate masked compliance tensor used to adjust F to fullfill stress BC.
+!> @brief Solve masked compliance equation to adjust F to fulfill stress BC.
+!> @details Solves C_reduced * deltaF_reduced = rhs_reduced directly via LAPACK.
 !--------------------------------------------------------------------------------------------------
-function utilities_maskedCompliance(rot_BC,mask_stress,C)
+function utilities_defGradAdjustment(rot_BC,mask_stress,C,delta_P) result(Delta_F)
 
-  real(pREAL),                dimension(3,3,3,3) :: utilities_maskedCompliance                      !< masked compliance
-  real(pREAL),    intent(in), dimension(3,3,3,3) :: C                                               !< current average stiffness
-  type(tRotation), intent(in)                    :: rot_BC                                          !< rotation of load frame
-  logical,        intent(in), dimension(3,3)     :: mask_stress                                     !< mask of stress BC
+  real(pREAL),               dimension(3,3)         :: Delta_F                                      !< adjustment to F (masked)
+  real(pREAL),   intent(in), dimension(3,3,3,3)     :: C                                            !< current average stiffness
+  type(tRotation), intent(in)                       :: rot_BC                                       !< rotation of load frame
+  logical,       intent(in), dimension(3,3)         :: mask_stress                                  !< mask of stress BC
+  real(pREAL),   intent(in), dimension(3,3)         :: delta_P                                      !< P_av - P_aim (right-hand side)
 
-  integer :: i, j
+  integer :: i, info
   logical, dimension(9)   :: mask_stressVector
   logical, dimension(9,9) :: mask
-  real(pREAL), dimension(9,9) :: temp99_real
-  integer :: size_reduced = 0
-  real(pREAL),              dimension(:,:), allocatable ::  &
-    s_reduced, &                                                                                    !< reduced compliance matrix (depending on number of stress BC)
-    c_reduced, &                                                                                    !< reduced stiffness (depending on number of stress BC)
-    sTimesC                                                                                         !< temp variable to check inversion
-  logical :: errmatinv
-  character(len=pSTRLEN):: formatString
+  integer :: size_reduced
+  integer,     dimension(:), allocatable :: ipiv
+  real(pREAL), dimension(:),   allocatable :: rhs_reduced
+  real(pREAL), dimension(:,:), allocatable :: c_reduced
 
 
   mask_stressVector = .not. math_33to9(mask_stress)
   size_reduced = count(mask_stressVector)
+
   if (size_reduced > 0) then
-    temp99_real = math_3333to99(rot_BC%rotate(C))
-
-    do i = 1,9; do j = 1,9
-      mask(i,j) = mask_stressVector(i) .and. mask_stressVector(j)
-    end do; end do
-    c_reduced = reshape(pack(temp99_Real,mask),[size_reduced,size_reduced])
-
-    allocate(s_reduced,mold = c_reduced)
-    call math_invert(s_reduced, errmatinv, c_reduced)                                               ! invert reduced stiffness
-    if (any(IEEE_is_NaN(s_reduced))) errmatinv = .true.
-
-!--------------------------------------------------------------------------------------------------
-! check if inversion was successful
-    sTimesC = matmul(c_reduced,s_reduced)
-    errmatinv = errmatinv .or. any(dNeq(sTimesC,math_eye(size_reduced),1.0e-12_pREAL))
-    if (errmatinv) then
-      write(formatString, '(i2)') size_reduced
-      formatString = '(/,1x,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
-      print trim(formatString), 'C * S (load) ', transpose(matmul(c_reduced,s_reduced))
-      print trim(formatString), 'C (load) ', transpose(c_reduced)
-      print trim(formatString), 'S (load) ', transpose(s_reduced)
-      if (errmatinv) error stop 'matrix inversion error'
-    end if
-    temp99_real = reshape(unpack(reshape(s_reduced,[size_reduced**2]),reshape(mask,[81]),0.0_pREAL),[9,9])
+    do i = 1,9
+      mask(:,i) = mask_stressVector .and. mask_stressVector(i)
+    end do
+    c_reduced = reshape(pack(math_3333to99(rot_BC%rotate(C)),mask),[size_reduced,size_reduced])
+    rhs_reduced = pack(math_33to9(delta_P), mask_stressVector)
+    allocate(ipiv(size_reduced))
+    call dgesv(size_reduced, 1, c_reduced, size_reduced, ipiv, rhs_reduced, size_reduced, info)
+    if (info /= 0) error stop 'dgesv solver error in utilities_defGradAdjustment'
+    Delta_F = math_9to33(unpack(rhs_reduced, mask_stressVector, 0.0_pREAL))
   else
-    temp99_real = 0.0_pREAL
+    Delta_F = 0.0_pREAL
   end if
 
-  utilities_maskedCompliance = math_99to3333(temp99_Real)
-
-end function utilities_maskedCompliance
+end function utilities_defGradAdjustment
 
 
 !--------------------------------------------------------------------------------------------------

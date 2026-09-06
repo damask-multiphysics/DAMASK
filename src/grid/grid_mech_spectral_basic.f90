@@ -78,8 +78,7 @@ module grid_mechanical_spectral_basic
     C_volAvgLastInc = 0.0_pREAL, &                                                                  !< previous volume average stiffness
     C_minMaxAvg = 0.0_pREAL, &                                                                      !< current (min+max)/2 stiffness
     C_minMaxAvgLastInc = 0.0_pREAL, &                                                               !< previous (min+max)/2 stiffness
-    C_minMaxAvgRestart = 0.0_pREAL, &                                                               !< (min+max)/2 stiffnes (restart)
-    S = 0.0_pREAL                                                                                   !< current compliance (filled up with zeros)
+    C_minMaxAvgRestart = 0.0_pREAL                                                                  !< (min+max)/2 stiffnes (restart)
 
   real(pREAL) :: &
     err_BC, &                                                                                       !< deviation from stress BC
@@ -258,7 +257,6 @@ function grid_mechanical_spectral_basic_solution(incInfoIn) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
-  S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
   if (num%update_gamma) call utilities_updateGamma(C_minMaxAvg)
 
   call SNESsolve(SNES_mech,PETSC_NULL_VEC,F_vec,err_PETSc)
@@ -512,7 +510,7 @@ subroutine form_residual(residual_subdomain, F, &
     err_div = utilities_divergenceRMS(P)
   end associate
 
-  deltaF_aim = math_mul3333xx33(S, P_av - P_aim)                                                    ! S = 0.0 for no bc
+  deltaF_aim = utilities_defGradAdjustment(params%rotation_BC,params%stress_mask,C_volAvg,P_av - P_aim)
   F_aim = F_aim - deltaF_aim
   err_BC = maxval(abs(merge(.0_pREAL,P_av - P_aim,params%stress_mask)))
 

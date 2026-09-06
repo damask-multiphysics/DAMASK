@@ -35,4 +35,5 @@ def test_thermal_isotropic(assert_allclose,res_path,tmp_path,copy_files,np_rng):
 
     for cube,random in zip(r_cube,r_random):
         assert_allclose(cube['thermal'],random['thermal'])
-        assert not np.allclose(cube['mechanical'],random['mechanical'])
+        for O_cube,O_random in zip(cube['mechanical'].values(),random['mechanical'].values()):
+            assert not np.allclose(O_cube,O_random)

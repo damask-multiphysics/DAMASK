@@ -20,7 +20,7 @@ from scipy import interpolate
 
 import damask
 from . import VTK, Orientation, Rotation, grid, mechanics, tensor, util
-from ._typehints import BravaisLattice, DADF5Dataset, FloatSequence, IntSequence
+from ._typehints import DADF5Dataset, FloatSequence, IntSequence
 
 
 logger = logging.getLogger(__name__)
@@ -104,14 +104,14 @@ def _match(requested,
     return sorted(set(flatten_list([fnmatch.filter(existing_,r) for r in util.to_list(requested)])),
                   key=util.natural_sort)
 
-def _empty_like(metadata: DatasetMetadata,
+def _zeros_like(metadata: DatasetMetadata,
                 N_materialpoints: int,
                 fill_float: float,
                 fill_int: int) -> np.ma.core.MaskedArray:
     """Create empty numpy.ma.MaskedArray."""
     shape = (N_materialpoints,) + metadata['shape']
     dtype = np.dtype(metadata['dtype'], metadata=metadata['attrs'])
-    return ma.array(np.empty(shape, dtype=dtype),
+    return ma.array(np.zeros(shape, dtype=dtype),
                     fill_value=fill_float if np.issubdtype(dtype, np.floating) else fill_int,
                     mask=True)
 
@@ -126,7 +126,7 @@ def _is_mergeable(layout):
                     mergeable[field][dset_name] = {label:v}
                 else:
                     if dset_name in mergeable[field]:
-                        if v == util.get_value0(mergeable[field][dset_name]):
+                        if util.dict_equal(v,util.get_value0(mergeable[field][dset_name])):
                             mergeable[field][dset_name][label] = v
                         else:
                             not_mergeable[field][dset_name] = mergeable[field].pop(dset_name) | {label : v}
@@ -1065,15 +1065,15 @@ class Result:
         """
         def IPF_color(l: FloatSequence, q: DADF5Dataset) -> DADF5Dataset:
             m = util.scale_to_coprime(np.array(l))
-            lattice: BravaisLattice = q['meta']['lattice']                                          # type: ignore[assignment]
-            o = Orientation(rotation = q['data'],lattice=lattice)                                   # ToDo: consider c/a
+            lattice = q['meta']['lattice']
+            o = Orientation(rotation = q['data'],lattice=lattice,c=q['meta'].get('c/a'))
 
             return {
                     'data': (o.IPF_color(l)*255).astype(np.uint8),
                     'label': 'IPFcolor_({} {} {})'.format(*m),
                     'meta' : {
                               'unit':        '8-bit RGB',
-                              'lattice':     lattice,
+                              'family':      o.family,
                               'description': 'Inverse Pole Figure (IPF) colors along sample direction ({} {} {})'.format(*m),
                               'creator':     'add_IPF_color'
                              }
@@ -1184,13 +1184,13 @@ class Result:
                  uvw: IntSequence, hkl: IntSequence,
                  with_symmetry: bool,
                  normalize: bool) -> DADF5Dataset:
-            c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1.0
             brackets = ['[]','()','⟨⟩','{}'][(uvw is None)*1+with_symmetry*2]
             label = 'p^' + '{}{} {} {}{}'.format(brackets[0],
                                                  *(uvw if uvw else hkl),
                                                  brackets[-1],)
-            lattice: BravaisLattice = q['meta']['lattice']                                          # type: ignore[assignment]
-            ori = Orientation(q['data'],lattice=lattice,a=1,c=c)
+            lattice = q['meta']['lattice']
+            c_a = q['meta'].get('c/a')
+            ori = Orientation(q['data'],lattice=lattice,c=c_a)
 
             return {
                     'data': np.moveaxis(ori.to_frame(uvw=uvw,hkl=hkl,
@@ -1203,7 +1203,7 @@ class Result:
                                              + ('plane' if uvw is None else 'direction') \
                                              + ('s' if with_symmetry else ''),
                               'creator':     'add_pole'
-                              }
+                              } | ({'c/a': c_a} if c_a is not None else {}) # type: ignore[typeddict-item]
                     }
 
         self._add_generic_pointwise(pole,{'q':q},{'uvw':uvw,'hkl':hkl,'with_symmetry':with_symmetry,'normalize':normalize})
@@ -1239,7 +1239,7 @@ class Result:
 
         def rss(N_def: IntSequence | Literal['*'], mode: Literal['slip', 'twin'],
                 P: DADF5Dataset, F: DADF5Dataset, q: DADF5Dataset) -> DADF5Dataset:
-            lattice: BravaisLattice = q['meta']['lattice']                                           # type: ignore[assignment]
+            lattice = q['meta']['lattice']
             c_a: float = q['meta'].get('c/a',1.0)
             o = Orientation(rotation = q['data'],lattice=lattice,a=1.0,c=c_a)
             tau = o.resolved_shear_stress(**{f'N_{mode}':N_def,
@@ -1916,7 +1916,7 @@ class Result:
                     for field, dsets in mergeable.items():
                         for dset_name, dset in dsets.items():
                             dset_metadata = util.get_value0(dset)
-                            d = {dset_name+suffix:_empty_like(dset_metadata,self.N_materialpoints,
+                            d = {dset_name+suffix:_zeros_like(dset_metadata,self.N_materialpoints,
                                                               fill_float,fill_int) for suffix in suffixes_}
                             for label, dset_metadata in dset.items():
                                 data = ma.array(_read(f['/'.join([inc,kind,label,field,dset_name])]))
@@ -1931,7 +1931,7 @@ class Result:
                     for field, dsets in not_mergeable.items():
                         for dset_name, dset in dsets.items():
                             for label, dset_metadata in dset.items():
-                                d = {dset_name+suffix:_empty_like(dset_metadata,self.N_materialpoints,
+                                d = {dset_name+suffix:_zeros_like(dset_metadata,self.N_materialpoints,
                                                                   fill_float,fill_int) for suffix in suffixes_}
                                 data = ma.array(_read(f['/'.join([inc,kind,label,field,dset_name])]))
                                 match kind:
@@ -2116,6 +2116,18 @@ class Result:
             Write VTK files in parallel in a separate background process.
             Defaults to True.
         """
+        def get_component_names(dataset):
+            if 'systems' in dataset.dtype.metadata:
+                return dataset.dtype.metadata['systems']
+            elif dataset.dtype.metadata.get('unit') == '8-bit RGB':
+                return ['R','G','B']
+            elif dataset.shape[1:] == (3,3):
+                return ['11','12','13','21','22','23','31','32','33']
+            elif dataset.ndim == 2:
+                return [str(c+1) for c in range(dataset.shape[-1])]
+            else:
+                return None
+
         match mode.lower():
             case 'cell':
                 v = self.geometry0
@@ -2155,7 +2167,7 @@ class Result:
                     for field, dsets in mergeable.items():
                         for dset_name, dset in dsets.items():
                             dset_metadata = util.get_value0(dset)
-                            d = {dset_name+suffix:_empty_like(dset_metadata,self.N_materialpoints,
+                            d = {dset_name+suffix:_zeros_like(dset_metadata,self.N_materialpoints,
                                                               fill_float,fill_int) for suffix in suffixes_}
                             for label, dset_metadata in dset.items():
                                 data = ma.array(_read(f['/'.join([inc,kind,label,field,dset_name])]))
@@ -2168,12 +2180,13 @@ class Result:
 
                             for name,dataset in d.items():
                                 v = v.set(':'.join([kind,field,name])\
-                                          +f' ({dataset.dtype.metadata["unit"]})',dataset)          # type: ignore[index]
+                                          +f' ({dataset.dtype.metadata["unit"]})',                  # type: ignore[index]
+                                          dataset,component_names=get_component_names(dataset))
 
                     for field, dsets in not_mergeable.items():
                         for dset_name, dset in dsets.items():
                             for label, dset_metadata in dset.items():
-                                d = {dset_name+suffix:_empty_like(dset_metadata,self.N_materialpoints,
+                                d = {dset_name+suffix:_zeros_like(dset_metadata,self.N_materialpoints,
                                                                   fill_float,fill_int) for suffix in suffixes_}
                                 data = ma.array(_read(f['/'.join([inc,kind,label,field,dset_name])]))
                                 match kind:
@@ -2184,7 +2197,8 @@ class Result:
                                         d[dset_name][at_cell_ho[label]] = data[in_data_ho[label]]
                                 for name,dataset in d.items():
                                     v = v.set(':'.join([kind,field,label,name])\
-                                              +f' ({dataset.dtype.metadata["unit"]})',dataset)      # type: ignore[index]
+                                              +f' ({dataset.dtype.metadata["unit"]})',              # type: ignore[index]
+                                              dataset,component_names=get_component_names(dataset))
 
                 v.save(out_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
                        parallel=parallel)
@@ -2490,9 +2504,7 @@ class Result:
                 dset_grp = f'{inc}/{kind}/{label}/{field}'
 
                 for dset_name in _match(output, f[dset_grp]):
-                    layout[label][field][dset_name] = DatasetMetadata(
-                        f[f'{dset_grp}/{dset_name}'],
-                        ['creator', 'created'] + ['lattice', 'systems', 'c/a']   # latter: 3.x compatibility
-                    )
+                    layout[label][field][dset_name] = DatasetMetadata(f[f'{dset_grp}/{dset_name}'],
+                                                                      ['creator', 'created', 'overwritten'])
 
         return layout.to_regular()

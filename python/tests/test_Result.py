@@ -48,18 +48,6 @@ def res_path(res_path_base):
     """Directory containing testing resources."""
     return res_path_base/'Result'
 
-def dict_equal(d1, d2):
-    for k in d1:
-        if (k not in d2):
-            return False
-        else:
-            if type(d1[k]) is dict:
-                return dict_equal(d1[k],d2[k])
-            else:
-                if not np.allclose(d1[k],d2[k]):
-                    return False
-    return True
-
 @pytest.fixture
 def h5py_dataset_iterator():
     """Iterate over all datasets in an HDF5 file."""
@@ -80,12 +68,12 @@ def test_view_all(default):
     default = Result(default.fname)
     a = default.view_all().get('F')
 
-    assert dict_equal(a,default.view(increments='*').get('F'))
-    assert dict_equal(a,default.view(increments=default.increments_in_range(0,np.iinfo(int).max)).get('F'))
+    assert util.dict_equal(a,default.view(increments='*').get('F'))
+    assert util.dict_equal(a,default.view(increments=default.increments_in_range(0,np.iinfo(int).max)).get('F'))
 
-    assert dict_equal(a,default.view(times=True).get('F'))
-    assert dict_equal(a,default.view(times='*').get('F'))
-    assert dict_equal(a,default.view(times=default.times_in_range(0.0,np.inf)).get('F'))
+    assert util.dict_equal(a,default.view(times=True).get('F'))
+    assert util.dict_equal(a,default.view(times='*').get('F'))
+    assert util.dict_equal(a,default.view(times=default.times_in_range(0.0,np.inf)).get('F'))
 
 @pytest.mark.parametrize('what',['increments','times','phases','fields'])                           # ToDo: discuss homogenizations
 def test_view_none(default,what):
@@ -104,7 +92,7 @@ def test_view_more(default,what):
     a = empty.view_more(**{what:'*'}).get('F')
     b = empty.view_more(**{what:True}).get('F')
 
-    assert dict_equal(a,b)
+    assert util.dict_equal(a,b)
 
 @pytest.mark.parametrize('what',['increments','times','phases','fields'])                           # ToDo: discuss homogenizations
 def test_view_less(default,what):
@@ -235,12 +223,13 @@ def test_add_eigenvector(assert_allclose,default,eigenvalue,idx):
 @pytest.mark.parametrize('d',[[1,0,0],[0,1,0],[0,0,1]])
 def test_add_IPF_color(assert_allclose,default,d):
     default.add_IPF_color(d,'O')
-    qu = default.place('O')
-    assert 'lattice' not in qu.dtype.metadata # default result object has both cI and cF phases
-    c = Orientation(rotation=qu, family='cubic')
-    in_memory = np.uint8(c.IPF_color(np.array(d))*255)
-    in_file = default.place('IPFcolor_({} {} {})'.format(*d))
-    assert_allclose(in_memory,in_file)
+    for phase in default._phases:
+        r = default.view(phases=phase)
+        qu = r.get('O')
+        c = Orientation(rotation=qu, lattice=qu.dtype.metadata['lattice'])
+        in_memory = np.uint8(c.IPF_color(np.array(d))*255)
+        in_file = r.get('IPFcolor_({} {} {})'.format(*d))
+        assert_allclose(in_memory,in_file)
 
 def test_add_maximum_shear(assert_allclose,default):
     default.add_stress_Cauchy('P','F')
@@ -284,9 +273,11 @@ def test_add_Mises_stress_strain(default):
 @pytest.mark.parametrize('dataset,axis',[('F',(1,2)),('xi_sl',(1,))])
 def test_add_norm(assert_allclose,default,ord,dataset,axis):
     default.add_norm(dataset,ord)
-    in_memory = np.linalg.norm(default.place(dataset),ord=ord,axis=axis,keepdims=True)
-    in_file   = default.place(f'|{dataset}|_{ord}')
-    assert_allclose(in_memory,in_file)
+    for phase in default._phases:
+        r = default.view(phases=phase)
+        in_memory = np.linalg.norm(r.get(dataset),ord=ord,axis=axis,keepdims=True)
+        in_file   = r.get(f'|{dataset}|_{ord}')
+        assert_allclose(in_memory,in_file)
 
 def test_add_stress_second_Piola_Kirchhoff(assert_allclose,default):
     default.add_stress_second_Piola_Kirchhoff('P','F')
@@ -301,16 +292,17 @@ def test_add_stress_second_Piola_Kirchhoff(assert_allclose,default):
                                    ])
 def test_add_pole(assert_allclose,default,options):
     default.add_pole(**options)
-    rot = default.place('O')
-    assert 'lattice' not in rot.dtype.metadata
-    in_memory = np.moveaxis(Orientation(rot,lattice='cI').to_frame(**options),
-                            0,-2 if options['with_symmetry'] else 0)
-    brackets = [['[[]','[]]'],'()','⟨⟩','{}'][('hkl' in options)*1+(options['with_symmetry'])*2]    # escape fnmatch
-    label = 'p^{}{} {} {}{}'.format(brackets[0],
-                                    *(list(options.values())[0]),
-                                    brackets[-1])
-    in_file = default.place(label)
-    assert_allclose(in_memory,in_file)
+    for phase in default._phases:
+        r = default.view(phases=phase)
+        rot = r.get('O')
+        in_memory = np.moveaxis(Orientation(rot,lattice='cI').to_frame(**options),
+                                0,-2 if options['with_symmetry'] else 0)
+        brackets = [['[[]','[]]'],'()','⟨⟩','{}'][('hkl' in options)*1+(options['with_symmetry'])*2]    # escape fnmatch
+        label = 'p^{}{} {} {}{}'.format(brackets[0],
+                                        *(list(options.values())[0]),
+                                        brackets[-1])
+        in_file = r.get(label)
+        assert_allclose(in_memory,in_file)
 
 def test_add_resolved_shear_stress_slip(assert_allclose,np_rng,default):
     for label,data in default.get(['P','F','O']).items():
@@ -639,7 +631,7 @@ def test_get(update,request,res_path,view,output,flatten,prune):
 
     with bz2.BZ2File((res_path/'get'/fname).with_suffix('.pbz2')) as f:
         ref = pickle.load(f)
-        assert cur is None if ref is None else dict_equal(cur,ref)
+        assert cur is None if ref is None else util.dict_equal(cur,ref)
 
 @pytest.mark.parametrize('view,output,flatten,constituents,prune',
         [({},['F','P','F','L_p','F_e','F_p'],True,True,None),
@@ -664,7 +656,7 @@ def test_place(update,request,res_path,view,output,flatten,prune,constituents):
 
     with bz2.BZ2File((res_path/'place'/fname).with_suffix('.pbz2')) as f:
         ref = pickle.load(f)
-        assert cur is None if ref is None else dict_equal(cur,ref)
+        assert cur is None if ref is None else util.dict_equal(cur,ref)
 
 def test_place_non_mergeable(res_path):
     result = Result(res_path/'merge-datasets.hdf5').view(increments=-1)

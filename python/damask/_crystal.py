@@ -245,7 +245,7 @@ _kinematics: dict[BravaisLattice, dict[CrystalKinematics, list[np.ndarray]]] = {
 }
 
 
-lattice_symmetries: dict[BravaisLattice | None, CrystalFamily] = {
+lattice_symmetries: dict[BravaisLattice, CrystalFamily] = {
                 'aP': 'triclinic',
 
                 'mP': 'monoclinic',
@@ -742,14 +742,14 @@ class Crystal():
         def mask_None(values):
             return np.ma.array(values, mask=[v is None for v in values], dtype=float)
 
-        if not lattice and not family:
+        if lattice is None and family is None:
             raise KeyError('Crystal initialization requires either lattice or family information')
         if family is not None and family not in list(lattice_symmetries.values()):
             raise KeyError(f'invalid crystal family "{family}"')
         if lattice is not None and family is not None and family != lattice_symmetries[lattice]:
             raise KeyError(f'incompatible family "{family}" for lattice "{lattice}"')
 
-        self.family  = lattice_symmetries[lattice] if family is None else family
+        self.family  = lattice_symmetries[lattice] if family is None else family                    # type: ignore[index]
         self.lattice = lattice
 
         if self.lattice is not None:

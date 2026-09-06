@@ -80,17 +80,20 @@ RNGLike = (
 _Metadata = TypedDict(
     '_Metadata',
     {
-        'lattice': str,
+        'family': CrystalFamily,
+        'lattice': BravaisLattice,
         'c/a': float,
         'systems': list[str],
+        'created': str,
+        'overwritten': bool
     },
     total=False,
 )
 
 
 class Metadata(_Metadata):
-    unit: str
     description: str
+    unit: str
     creator: str
 
 

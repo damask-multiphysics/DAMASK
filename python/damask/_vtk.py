@@ -213,8 +213,9 @@ class VTK:
         return labels
 
 
-    @staticmethod
-    def from_image_data(cells: IntSequence,
+    @classmethod
+    def from_image_data(cls,
+                        cells: IntSequence,
                         size: FloatSequence,
                         origin: FloatSequence = np.zeros(3)) -> 'VTK':
         """
@@ -255,11 +256,12 @@ class VTK:
         vtk_data.SetOrigin(*(np.array(origin)))
         vtk_data.SetSpacing(*(np.array(size)/np.array(cells)))
 
-        return VTK(vtk_data)
+        return cls(vtk_data)
 
 
-    @staticmethod
-    def from_unstructured_grid(nodes: np.ndarray,
+    @classmethod
+    def from_unstructured_grid(cls,
+                               nodes: np.ndarray,
                                connectivity: np.ndarray,
                                cell_type: Literal['TRIANGLE', 'TETRAHEDRON', 'QUADRILATERAL', 'HEXAHEDRON']
                               ) -> 'VTK':
@@ -316,11 +318,12 @@ class VTK:
                       'TETR':VTK_LAGRANGE_TETRAHEDRON, 'HEXA':VTK_LAGRANGE_HEXAHEDRON}
         vtk_data.SetCells(cell_types[cell_type.split('_')[-1].upper()[:4]],cells)
 
-        return VTK(vtk_data)
+        return cls(vtk_data)
 
 
-    @staticmethod
-    def from_poly_data(points: np.ndarray) -> 'VTK':
+    @classmethod
+    def from_poly_data(cls,
+                       points: np.ndarray) -> 'VTK':
         """
         Create VTK of type polyData.
 
@@ -349,11 +352,11 @@ class VTK:
         vtk_data.SetPoints(vtk_points)
         vtk_data.SetVerts(vtk_cells)
 
-        return VTK(vtk_data)
+        return cls(vtk_data)
 
 
-    @staticmethod
-    def from_rectilinear_grid(coordinates: FloatSequence) -> 'VTK':
+    @classmethod
+    def from_rectilinear_grid(cls,coordinates: FloatSequence) -> 'VTK':
         """
         Create VTK of type vtkRectilinearGrid.
 
@@ -375,11 +378,12 @@ class VTK:
         vtk_data.SetYCoordinates(coord[1])
         vtk_data.SetZCoordinates(coord[2])
 
-        return VTK(vtk_data)
+        return cls(vtk_data)
 
 
-    @staticmethod
-    def load(fname: str | PathLike,
+    @classmethod
+    def load(cls,
+             fname: str | PathLike,
              dataset_type: Literal[None, 'ImageData', 'UnstructuredGrid', 'PolyData', 'RectilinearGrid'] = None) -> 'VTK':
         """
         Load from VTK file.
@@ -438,7 +442,8 @@ class VTK:
             reader.Update()
             vtk_data = reader.GetOutputAsDataSet()
 
-        return VTK(vtk_data)
+        return cls(vtk_data)
+
 
     def as_ASCII(self) -> str:
         """ASCII representation of the VTK data."""

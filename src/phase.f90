@@ -612,9 +612,6 @@ subroutine phase_result()
 
     group = '/current/phase/'//trim(material_name_phase(ph))//'/'
     call result_closeGroup(result_addGroup(group))
-    call result_addAttribute('lattice',phase_lattice(ph),group)
-    if (any(phase_lattice(ph) == ['hP','tI'])) &
-      call result_addAttribute('c/a',phase_cOverA(ph),group)
 
     call mechanical_result(group,ph)
     call damage_result(group,ph)

@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import logging
+from os import PathLike
 from typing import Any, Sequence
 
 import h5py
@@ -52,8 +53,9 @@ class ConfigMaterial(YAML):
         super().__init__(config,**kwargs)
 
 
-    @staticmethod
-    def load_DREAM3D(fname: str,
+    @classmethod
+    def load_DREAM3D(cls,
+                     fname: str | PathLike,
                      grain_data: str | None = None,
                      cell_data: str | None = None,
                      cell_ensemble_data: str = 'CellEnsembleData',
@@ -148,15 +150,16 @@ class ConfigMaterial(YAML):
                 except KeyError:
                     pass
 
-        base_config = ConfigMaterial({'phase':{k if isinstance(k,int) else str(k): None for k in np.unique(phase)},
-                                      'homogenization':{'direct':{'N_constituents':1}}})
+        base_config = cls({'phase':{k if isinstance(k,int) else str(k): None for k in np.unique(phase)},
+                           'homogenization':{'direct':{'N_constituents':1}}})
         constituent = {k:np.atleast_1d(v[idx].squeeze()) for k,v in zip(['O','phase'],[O,phase])}
 
         return base_config.material_add(**constituent,homogenization='direct')
 
 
-    @staticmethod
-    def from_table(table: Table,*,
+    @classmethod
+    def from_table(cls,
+                   table: Table,*,
                    homogenization: str | StrSequence | None = None,
                    phase: str | StrSequence | None = None,
                    v: str | FloatSequence | None = None,
@@ -242,7 +245,7 @@ class ConfigMaterial(YAML):
             tbl = tbl.set(k, table.get(v) if v in table.labels else np.atleast_2d([v]*len(table)).T)  # type: ignore [arg-type]
         tbl = tbl.unique()
 
-        return ConfigMaterial().material_add(**dict(zip(tbl.labels, [tbl.get(l) for l in tbl.labels])))
+        return cls().material_add(**dict(zip(tbl.labels, [tbl.get(l) for l in tbl.labels])))
 
 
     @property

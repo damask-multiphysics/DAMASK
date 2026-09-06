@@ -273,8 +273,9 @@ class Orientation(Rotation,Crystal):
         return self.copy(Rotation(self.quaternion)*Rotation(other.quaternion))
 
 
-    @staticmethod
-    def from_quaternion(q: Sequence[FloatSequence] | np.ndarray,
+    @classmethod
+    def from_quaternion(cls,
+                        q: Sequence[FloatSequence] | np.ndarray,
                         accept_homomorph: bool = False,
                         normalize: bool = False,
                         P: Literal[1, -1] = -1,
@@ -323,13 +324,14 @@ class Orientation(Rotation,Crystal):
         new : damask.Orientation
             Orientation representing the given quaternion.
         """
-        return Orientation(Rotation.from_quaternion(q,accept_homomorph,normalize,P),
-                           family=family,lattice=lattice,
-                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
-                           degrees=degrees)
+        return cls(Rotation.from_quaternion(q,accept_homomorph,normalize,P),
+                   family=family,lattice=lattice,
+                   a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                   degrees=degrees)
 
-    @staticmethod
-    def from_Euler_angles(phi: np.ndarray,
+    @classmethod
+    def from_Euler_angles(cls,
+                          phi: np.ndarray,
                           degrees: bool = False,
                           *,
                           family: CrystalFamily | None = None,
@@ -374,13 +376,14 @@ class Orientation(Rotation,Crystal):
         -----
         Bunge Euler angles correspond to a rotation axis sequence of z–x'–z''.
         """
-        return Orientation(Rotation.from_Euler_angles(phi,degrees),
-                           family=family,lattice=lattice,
-                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
-                           degrees=degrees)
+        return cls(Rotation.from_Euler_angles(phi,degrees),
+                   family=family,lattice=lattice,
+                   a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                   degrees=degrees)
 
-    @staticmethod
-    def from_axis_angle(n_omega: np.ndarray,
+    @classmethod
+    def from_axis_angle(cls,
+                        n_omega: np.ndarray,
                         degrees: bool = False,
                         normalize: bool = False,
                         P: Literal[1, -1] = -1,
@@ -427,13 +430,14 @@ class Orientation(Rotation,Crystal):
         new : damask.Orientation
             Orientation representing the given axis-angle pair.
         """
-        return Orientation(Rotation.from_axis_angle(n_omega,degrees,normalize,P),
-                           family=family,lattice=lattice,
-                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
-                           degrees=degrees)
+        return cls(Rotation.from_axis_angle(n_omega,degrees,normalize,P),
+                   family=family,lattice=lattice,
+                   a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                   degrees=degrees)
 
-    @staticmethod
-    def from_basis(basis: np.ndarray,
+    @classmethod
+    def from_basis(cls,
+                   basis: np.ndarray,
                    orthonormal: bool = True,
                    reciprocal: bool = False,
                    *,
@@ -478,13 +482,14 @@ class Orientation(Rotation,Crystal):
         new : damask.Orientation
             Orientation representing the given basis.
         """
-        return Orientation(Rotation.from_basis(basis,orthonormal,reciprocal),
-                           family=family,lattice=lattice,
-                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
-                           degrees=degrees)
+        return cls(Rotation.from_basis(basis,orthonormal,reciprocal),
+                   family=family,lattice=lattice,
+                   a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                   degrees=degrees)
 
-    @staticmethod
-    def from_matrix(R: np.ndarray,
+    @classmethod
+    def from_matrix(cls,
+                    R: np.ndarray,
                     normalize: bool = False,
                     *,
                     family: CrystalFamily | None = None,
@@ -526,13 +531,14 @@ class Orientation(Rotation,Crystal):
         new : damask.Orientation
             Orientation representing the given rotation matrix.
         """
-        return Orientation(Rotation.from_matrix(R,normalize),
-                           family=family,lattice=lattice,
-                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
-                           degrees=degrees)
+        return cls(Rotation.from_matrix(R,normalize),
+                   family=family,lattice=lattice,
+                   a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                   degrees=degrees)
 
-    @staticmethod
-    def from_parallel(source: np.ndarray,
+    @classmethod
+    def from_parallel(cls,
+                      source: np.ndarray,
                       target: np.ndarray,
                       active: bool = False,
                       *,
@@ -584,13 +590,14 @@ class Orientation(Rotation,Crystal):
         are considered "active", the resulting rotation will be $B^{-1}⋅A$ instead
         of the default result $B⋅A^{-1}$.
         """
-        return Orientation(Rotation.from_parallel(source,target,active),
-                           family=family,lattice=lattice,
-                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
-                           degrees=degrees)
+        return cls(Rotation.from_parallel(source,target,active),
+                   family=family,lattice=lattice,
+                   a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                   degrees=degrees)
 
-    @staticmethod
-    def from_Rodrigues_vector(rho: np.ndarray,
+    @classmethod
+    def from_Rodrigues_vector(cls,
+                              rho: np.ndarray,
                               normalize: bool = False,
                               P: Literal[1, -1] = -1,
                               *,
@@ -635,13 +642,14 @@ class Orientation(Rotation,Crystal):
         new : damask.Orientation
             Orientation representing the given Rodrigues–Frank vector.
         """
-        return Orientation(Rotation.from_Rodrigues_vector(rho,normalize,P),
-                           family=family,lattice=lattice,
-                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
-                           degrees=degrees)
+        return cls(Rotation.from_Rodrigues_vector(rho,normalize,P),
+                   family=family,lattice=lattice,
+                   a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                   degrees=degrees)
 
-    @staticmethod
-    def from_homochoric(h: np.ndarray,
+    @classmethod
+    def from_homochoric(cls,
+                        h: np.ndarray,
                         P: Literal[1, -1] = -1,
                         *,
                         family: CrystalFamily | None = None,
@@ -683,13 +691,14 @@ class Orientation(Rotation,Crystal):
         new : damask.Orientation
             Orientation representing the given homochoric vector.
         """
-        return Orientation(Rotation.from_homochoric(h,P),
-                           family=family,lattice=lattice,
-                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
-                           degrees=degrees)
+        return cls(Rotation.from_homochoric(h,P),
+                   family=family,lattice=lattice,
+                   a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                   degrees=degrees)
 
-    @staticmethod
-    def from_cubochoric(x: np.ndarray,
+    @classmethod
+    def from_cubochoric(cls,
+                        x: np.ndarray,
                         P: Literal[1, -1] = -1,
                         *,
                         family: CrystalFamily | None = None,
@@ -731,13 +740,14 @@ class Orientation(Rotation,Crystal):
         new : damask.Orientation
             Orientation representing the given cubochoric vector.
         """
-        return Orientation(Rotation.from_cubochoric(x,P),
-                           family=family,lattice=lattice,
-                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
-                           degrees=degrees)
+        return cls(Rotation.from_cubochoric(x,P),
+                   family=family,lattice=lattice,
+                   a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                   degrees=degrees)
 
-    @staticmethod
-    def from_random(shape: int | IntSequence | None = None,
+    @classmethod
+    def from_random(cls,
+                    shape: int | IntSequence | None = None,
                     rng: RNGLike | SeedLike | None = None,
                     *,
                     family: CrystalFamily | None = None,
@@ -782,13 +792,14 @@ class Orientation(Rotation,Crystal):
         new : damask.Orientation
             Random orientation of given shape.
         """
-        return Orientation(Rotation.from_random(shape,rng),
-                           family=family,lattice=lattice,
-                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
-                           degrees=degrees)
+        return cls(Rotation.from_random(shape,rng),
+                   family=family,lattice=lattice,
+                   a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                   degrees=degrees)
 
-    @staticmethod
-    def from_ODF(weights: np.ndarray,
+    @classmethod
+    def from_ODF(cls,
+                 weights: np.ndarray,
                  phi: np.ndarray,
                  shape: int | IntSequence | None = None,
                  degrees: bool = False,
@@ -857,13 +868,14 @@ class Orientation(Rotation,Crystal):
         P. Eisenlohr and F. Roters, Computational Materials Science 42(4):670-678, 2008
         https://doi.org/10.1016/j.commatsci.2007.09.015
         """
-        return Orientation(Rotation.from_ODF(weights,phi,shape,degrees,fractions,rng),
-                           family=family,lattice=lattice,
-                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
-                           degrees=degrees)
+        return cls(Rotation.from_ODF(weights,phi,shape,degrees,fractions,rng),
+                   family=family,lattice=lattice,
+                   a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                   degrees=degrees)
 
-    @staticmethod
-    def from_spherical_component(center: Union[Rotation, 'Orientation'],
+    @classmethod
+    def from_spherical_component(cls,
+                                 center: Union[Rotation, 'Orientation'],
                                  sigma: float,
                                  shape: int | IntSequence | None = None,
                                  degrees: bool = False,
@@ -915,13 +927,14 @@ class Orientation(Rotation,Crystal):
         new : damask.Orientation
             Orientation sampled from normal distribution around a center.
         """
-        return Orientation(Rotation.from_spherical_component(center,sigma,shape,degrees,rng),
-                           family=family,lattice=lattice,
-                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
-                           degrees=degrees)
+        return cls(Rotation.from_spherical_component(center,sigma,shape,degrees,rng),
+                   family=family,lattice=lattice,
+                   a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                   degrees=degrees)
 
-    @staticmethod
-    def from_fiber_component(crystal: IntSequence,
+    @classmethod
+    def from_fiber_component(cls,
+                             crystal: IntSequence,
                              sample: IntSequence,
                              sigma: float = 0.,
                              shape: int | IntSequence | None = None,
@@ -1003,13 +1016,14 @@ class Orientation(Rotation,Crystal):
         A. Heinz and P. Neumann, Acta Crystallographica Section A 47:780-789, 1991
         https://doi.org/10.1107/S0108767391006864
         """
-        return Orientation(Rotation.from_fiber_component(crystal,sample,sigma,shape,degrees,rng),
-                           family=family,lattice=lattice,
-                           a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
-                           degrees=degrees)
+        return cls(Rotation.from_fiber_component(crystal,sample,sigma,shape,degrees,rng),
+                   family=family,lattice=lattice,
+                   a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                   degrees=degrees)
 
-    @staticmethod
-    def from_directions(uvw: IntSequence,
+    @classmethod
+    def from_directions(cls,
+                        uvw: IntSequence,
                         hkl: IntSequence,
                         *,
                         family: CrystalFamily | None = None,
@@ -1052,10 +1066,10 @@ class Orientation(Rotation,Crystal):
             Orientation representing the relationship between direction and plane
             and lab x- and z-direction.
         """
-        o = Orientation(rotation=[1,0,0,0],
-                        family=family,lattice=lattice,
-                        a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
-                        degrees=degrees)
+        o = cls(rotation=[1,0,0,0],
+                family=family,lattice=lattice,
+                a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma,
+                degrees=degrees)
         x = o.to_frame(uvw=uvw)
         z = o.to_frame(hkl=hkl)
         om = np.stack([x,np.cross(z,x),z],axis=-2)

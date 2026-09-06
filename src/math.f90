@@ -677,13 +677,13 @@ end function math_det
 !--------------------------------------------------------------------------------------------------
 !> @brief Flatten: 3x3 -> 9 (real).
 !--------------------------------------------------------------------------------------------------
-pure function math_33to9_real(m33)
+pure function math_33to9_real(m33) result(m9)
 
-  real(pREAL), dimension(9)               :: math_33to9_real
+  real(pREAL), dimension(9)               :: m9
   real(pREAL), dimension(3,3), intent(in) :: m33
 
 
-  math_33to9_real = reshape(transpose(m33), [9])
+  m9 = reshape(transpose(m33), [9])
 
 end function math_33to9_real
 
@@ -705,13 +705,13 @@ end function math_33to9_bool
 !--------------------------------------------------------------------------------------------------
 !> @brief Unflatten 9 -> 3x3 (real).
 !--------------------------------------------------------------------------------------------------
-pure function math_9to33_real(v9)
+pure function math_9to33_real(m9) result(m33)
 
-  real(pREAL), dimension(3,3)           :: math_9to33_real
-  real(pREAL), dimension(9), intent(in) :: v9
+  real(pREAL), dimension(3,3)           :: m33
+  real(pREAL), dimension(9), intent(in) :: m9
 
 
-  math_9to33_real = transpose(reshape(v9, [3,3]))
+  m33 = transpose(reshape(m9, [3,3]))
 
 end function math_9to33_real
 
@@ -719,13 +719,13 @@ end function math_9to33_real
 !--------------------------------------------------------------------------------------------------
 !> @brief Unflatten 9 -> 3x3 (logical).
 !--------------------------------------------------------------------------------------------------
-pure function math_9to33_bool(v9) result(m33)
+pure function math_9to33_bool(m9) result(m33)
 
   logical, dimension(3,3)           :: m33
-  logical, dimension(9), intent(in) :: v9
+  logical, dimension(9), intent(in) :: m9
 
 
-  m33 = transpose(reshape(v9, [3,3]))
+  m33 = transpose(reshape(m9, [3,3]))
 
 end function math_9to33_bool
 
@@ -733,13 +733,13 @@ end function math_9to33_bool
 !--------------------------------------------------------------------------------------------------
 !> @brief Flatten 3x3x3x3 -> 9x9 (real).
 !--------------------------------------------------------------------------------------------------
-pure function math_3333to99_real(m3333)
+pure function math_3333to99_real(m3333) result(m99)
 
-  real(pREAL), dimension(9,9)                 :: math_3333to99_real
+  real(pREAL), dimension(9,9)                 :: m99
   real(pREAL), dimension(3,3,3,3), intent(in) :: m3333
 
 
-  math_3333to99_real = reshape(reshape(m3333, [3,3,3,3], order=[2,1,4,3]), [9,9])
+  m99 = reshape(reshape(m3333, [3,3,3,3], order=[2,1,4,3]), [9,9])
 
 end function math_3333to99_real
 
@@ -761,13 +761,13 @@ end function math_3333to99_bool
 !--------------------------------------------------------------------------------------------------
 !> @brief Unflatten 9x9 -> 3x3x3x3 (real).
 !--------------------------------------------------------------------------------------------------
-pure function math_99to3333_real(m99)
+pure function math_99to3333_real(m99) result(m3333)
 
-  real(pREAL), dimension(3,3,3,3)         :: math_99to3333_real
+  real(pREAL), dimension(3,3,3,3)         :: m3333
   real(pREAL), dimension(9,9), intent(in) :: m99
 
 
-  math_99to3333_real = reshape(reshape(m99, [3,3,3,3]), [3,3,3,3], order=[2,1,4,3])
+  m3333 = reshape(reshape(m99, [3,3,3,3]), [3,3,3,3], order=[2,1,4,3])
 
 end function math_99to3333_real
 

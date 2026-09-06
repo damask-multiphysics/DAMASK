@@ -884,6 +884,41 @@ def get_value0(d: dict) -> _Any:
     return next(iter(d.values()))
 
 
+def dict_equal(d1: dict, d2:dict) -> bool:
+    """
+    Check if two dictioaries are equal.
+
+    Default comparison fails for NumPy arrays.
+
+    Parameters
+    ----------
+    d1 : dict
+        Dictionary
+    d2: dict
+        Dictionary
+
+    Returns
+    -------
+    equal : bool
+        Whether keys and values of dictionaries are equal.
+
+    Notes
+    -----
+    Values of NumPy masked arrays at masked positions are
+    taken into account in the comparison.
+    """
+    if d1.keys() != d2.keys():
+        return False
+    for k in d1:
+        if type(d1[k]) is dict and type(d2[k]) is dict:
+            if not dict_equal(d1[k],d2[k]):
+                return False
+        else:
+            if not _np.array_equal(d1[k],d2[k]):
+                return False
+    return True
+
+
 ####################################################################################################
 # Classes
 ####################################################################################################
