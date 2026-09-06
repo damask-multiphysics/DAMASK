@@ -2,3 +2,5 @@ solver:
   mesh:
     p_s: 1
     p_i: 1
+    mechanical:
+      PETSc_options: -snes_rtol 1.0e-3 -snes_atol 1.0e-1 -snes_lag_jacobian 10
