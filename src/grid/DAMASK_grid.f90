@@ -510,21 +510,25 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
       select case (step_mech%key(m))
         case ('L','dot_F','F_dot','F')                                                              ! assign values for the deformation BC matrix
           if (allocated(load_cases(l)%deformation%myType)) &
-            call IO_error(830_pI16, 'load case', l, 'only one of L, dot_F, or F allowed in mechanical BC', emph=[2])
+            call IO_error(830_pI16, 'load case', l, 'only one of L, F_dot, or F allowed in mechanical BC', emph=[2])
           load_cases(l)%deformation%myType = step_mech%key(m)
+          if (load_cases(l)%deformation%myType == 'dot_F') &
+            call IO_warning(10, 'dot_F', 'is deprecated in favor of', 'F_dot',emph=[1,3])
           if (load_cases(l)%deformation%myType == 'F_dot') load_cases(l)%deformation%myType = 'dot_F'
           call get_masked_tensor(load_cases(l)%deformation%values,load_cases(l)%deformation%mask,step_mech%get_list(m))
         case ('dot_P','P','P_dot')
           if (load_cases(l)%stress%myType /= '') &
-            call IO_error(830_pI16, 'load case', l, 'only one of P or dot_P allowed in mechanical BC', emph=[2])
+            call IO_error(830_pI16, 'load case', l, 'only one of P or P_dot allowed in mechanical BC', emph=[2])
           load_cases(l)%stress%myType = step_mech%key(m)
+          if (load_cases(l)%stress%myType == 'dot_P') &
+            call IO_warning(10, 'dot_P', 'is deprecated in favor of', 'P_dot',emph=[1,3])
           if (load_cases(l)%stress%myType == 'P_dot') load_cases(l)%stress%myType = 'dot_P'
           call get_masked_tensor(load_cases(l)%stress%values,load_cases(l)%stress%mask,step_mech%get_list(m))
       end select
       call load_cases(l)%rot%fromAxisAngle(step_mech%get_as1dReal('R',defaultVal = real([0.0,0.0,1.0,0.0],pREAL)),degrees=.true.)
     end do readMech
     if (.not. allocated(load_cases(l)%deformation%myType)) &
-      call IO_error(830_pI16, 'load case', l, 'is incomplete: L, F_dot/dot_F, or F missing', emph=[2])
+      call IO_error(830_pI16, 'load case', l, 'is incomplete: L, F_dot, or F missing', emph=[2])
 
     if (step_bc%contains('electrical')) then
       step_electrical => step_bc%get_dict('electrical')
@@ -560,10 +564,13 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
       step_therm => step_bc%get_dict('thermal')
       readTherm: do m = 1, size(step_therm)
         select case (step_therm%key(m))
-          case ('T','dot_T')
+          case ('T','dot_T','T_dot')
             if (allocated(load_cases(l)%temperature%myType)) &
-              call IO_error(830_pI16, 'load case', l, 'only one of T or dot_T allowed in thermal BC', emph=[2])
+              call IO_error(830_pI16, 'load case', l, 'only one of T or T_dot allowed in thermal BC', emph=[2])
             load_cases(l)%temperature%myType = step_therm%key(m)
+            if (load_cases(l)%temperature%myType == 'dot_T') &
+              call IO_warning(10, 'dot_T', 'is deprecated in favor of', 'T_dot',emph=[1,3])
+            if (load_cases(l)%temperature%myType == 'T_dot') load_cases(l)%temperature%myType = 'dot_T'
             load_cases(l)%temperature%value  = step_therm%get_asReal(m)
           case ('thermostat')
             load_cases(l)%temperature%thermostat = step_therm%get_asStr(m)

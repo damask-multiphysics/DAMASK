@@ -56,17 +56,17 @@ def calculate_target(loadcase):
         if   'P' in l['boundary_conditions']['mechanical']:
             P_new = final(delta_t,P[-1],to_masked_array(l['boundary_conditions']['mechanical']['P']))
             M_new = [np.array(l['boundary_conditions']['mechanical']['P']).reshape(3,3) != 'x' for _ in delta_t]
-        elif 'dot_P' in l['boundary_conditions']['mechanical']:
-            P_new = rate_eng(delta_t,P[-1],to_masked_array(l['boundary_conditions']['mechanical']['dot_P']))
-            M_new = [np.array(l['boundary_conditions']['mechanical']['dot_P']).reshape(3,3) != 'x' for _ in delta_t]
+        elif 'P_dot' in l['boundary_conditions']['mechanical']:
+            P_new = rate_eng(delta_t,P[-1],to_masked_array(l['boundary_conditions']['mechanical']['P_dot']))
+            M_new = [np.array(l['boundary_conditions']['mechanical']['P_dot']).reshape(3,3) != 'x' for _ in delta_t]
         else:
             P_new = [np.zeros((3,3)) for _ in delta_t]
             M_new = [np.zeros((3,3),dtype='bool') for _ in delta_t]
 
         if 'L' in l['boundary_conditions']['mechanical']:
             F_new = rate_true(delta_t,F[-1],to_masked_array(l['boundary_conditions']['mechanical']['L']))
-        elif 'dot_F' in l['boundary_conditions']['mechanical']:
-            F_new = rate_eng(delta_t,F[-1],to_masked_array(l['boundary_conditions']['mechanical']['dot_F']))
+        elif 'F_dot' in l['boundary_conditions']['mechanical']:
+            F_new = rate_eng(delta_t,F[-1],to_masked_array(l['boundary_conditions']['mechanical']['F_dot']))
         elif 'F' in l['boundary_conditions']['mechanical']:
             F_new = final(delta_t,F[-1],to_masked_array(l['boundary_conditions']['mechanical']['F']))
 
@@ -80,56 +80,56 @@ def calculate_target(loadcase):
 
 s = (1+np.random.rand())*1e-3
 loadcases = [
-             [{'boundary_conditions': {'mechanical': {'dot_F': [[ 0,   s,   0],  [  0,  0,  0],  ['x','x','x']],
+             [{'boundary_conditions': {'mechanical': {'F_dot': [[ 0,   s,   0],  [  0,  0,  0],  ['x','x','x']],
                                                       'P':     [['x', 'x', 'x'], [ 'x','x','x'], [ 0,  0,  0 ]]}},
                'discretization': {'t': 100,'N': 100},'f_out': np.random.randint(2,50)}],
-             [{'boundary_conditions': {'mechanical': {'dot_F': [['x',  0,   0],  [  s, 'x', 0],  [  0,   0, 'x']],
+             [{'boundary_conditions': {'mechanical': {'F_dot': [['x',  0,   0],  [  s, 'x', 0],  [  0,   0, 'x']],
                                                       'P':     [[ 0,  'x', 'x'], [ 'x', 0, 'x'], [ 'x', 'x', 0 ]]}},
                'discretization': {'t': 100,'N': 100,'r': 1.0},'f_out': 10}],
-             [{'boundary_conditions': {'mechanical': {'dot_F': [['x',  0,   0],  [  0,   0,   s], [ 0,   0, 'x']],
+             [{'boundary_conditions': {'mechanical': {'F_dot': [['x',  0,   0],  [  0,   0,   s], [ 0,   0, 'x']],
                                                       'P':     [[ 0,  'x', 'x'], [ 'x', 'x', 'x'],['x', 'x', 0 ]]}},
                'discretization': {'t': 20, 'N': 20, 'r': 1.1}}],
              [{'boundary_conditions': {'mechanical': {'P':     [[ 0,   0,   0],  [ 'x', 'x', 'x'], [ 'x', 'x', 'x']],
                                                       'L':     [['x', 'x', 'x'], [  0,   0,   0],  [ 1e-3, 0 ,   s]]}},
                'discretization': {'t': 20, 'N': 20, 'r': 0.95}}],
-             [{'boundary_conditions': {'mechanical': {'dot_F': [['x', 0, 'x'],  [ 0,-1e-3,2e-3], [ 0,  0,  0]],
+             [{'boundary_conditions': {'mechanical': {'F_dot': [['x', 0, 'x'],  [ 0,-1e-3,2e-3], [ 0,  0,  0]],
                                                       'P':     [[ 0, 'x', 0],   ['x','x', 'x'],  ['x','x','x']]}},
                'discretization': {'t': 30,'N': 150},'f_out': 10}],
              [{'boundary_conditions': {'mechanical': {'F':     [[1.1,0,0],
                                                                 [0, float(np.sqrt(1/1.1)),0],
                                                                 [ 0, 0,float(np.sqrt(1/1.1))]]}},
                'discretization': {'t': 50,'N': 30}}],
-             [{'boundary_conditions': {'mechanical': {'dot_F': [['x',  0,   0],   [ 0,   0,   0],   [ 0,   0, 'x']],
+             [{'boundary_conditions': {'mechanical': {'F_dot': [['x',  0,   0],   [ 0,   0,   0],   [ 0,   0, 'x']],
                                                       'P':     [[4e7, 'x', 'x'],  ['x', 'x', 'x'],  ['x', 'x', 0 ]]}},
                'discretization': {'t': 40,'N': 200}},
-              {'boundary_conditions': {'mechanical': {'dot_F': [['x',  0,   0],   [1e-2,   0,   0], [   0,   0, 'x']],
+              {'boundary_conditions': {'mechanical': {'F_dot': [['x',  0,   0],   [1e-2,   0,   0], [   0,   0, 'x']],
                                                       'P':     [[1e2, 'x', 'x'],  [ 'x', 'x',  'x'],[  'x', 'x', 0 ]]}},
                'discretization': {'t': 40,'N': 200}}],
-             [{'boundary_conditions': {'mechanical': {'dot_F': [['x',  0,   0],   [ 0,   0,  -s],  [ 0,   0, 'x']],
+             [{'boundary_conditions': {'mechanical': {'F_dot': [['x',  0,   0],   [ 0,   0,  -s],  [ 0,   0, 'x']],
                                                       'P':     [[1e7, 'x', 'x'],  ['x', 'x', 'x'], ['x', 'x', 0 ]]}},
                'discretization': {'t': 20,'N': 20}},
-              {'boundary_conditions': {'mechanical': {'dot_F': [['x',  0,   0],   [ 0,   0,  -s],  [ 0,   0, 'x']],
+              {'boundary_conditions': {'mechanical': {'F_dot': [['x',  0,   0],   [ 0,   0,  -s],  [ 0,   0, 'x']],
                                                       'P':     [[1e7, 'x', 'x'],  ['x', 'x', 'x'], ['x', 'x', 0 ]]}},
                'discretization': {'t': 60,'N': 20}}],
-             [{'boundary_conditions': {'mechanical': {'dot_F': [['x', 0, 'x'],  [ 0,-1e-3,2e-3], [ 0,  0,  0]],
-                                                      'dot_P': [[ 0, 'x', 0],   ['x','x', 'x'],  ['x','x','x']]}},
+             [{'boundary_conditions': {'mechanical': {'F_dot': [['x', 0, 'x'],  [ 0,-1e-3,2e-3], [ 0,  0,  0]],
+                                                      'P_dot': [[ 0, 'x', 0],   ['x','x', 'x'],  ['x','x','x']]}},
                'discretization': {'t': 30,'N': 150},'f_out': np.random.randint(4,40)}],
-             [{'boundary_conditions': {'mechanical': {'dot_F': [['x',  0,   0],   [ 0,   0,  -s],  [ 0,   0, 'x']],
+             [{'boundary_conditions': {'mechanical': {'F_dot': [['x',  0,   0],   [ 0,   0,  -s],  [ 0,   0, 'x']],
                                                       'P':     [[1e7, 'x', 'x'],  ['x', 'x', 'x'], ['x', 'x', 0 ]]}},
                'discretization': {'t': 20,'N': 60}, 'f_out': 8},
-              {'boundary_conditions': {'mechanical': {'dot_F': [['x',  0,   0],   [ 0,   0,  -s],  [ 0,   0, 'x']],
+              {'boundary_conditions': {'mechanical': {'F_dot': [['x',  0,   0],   [ 0,   0,  -s],  [ 0,   0, 'x']],
                                                       'P':     [[1e7, 'x', 'x'],  ['x', 'x', 'x'], ['x', 'x', 0 ]]}},
                'discretization': {'t': 20,'N': 20}, 'f_out': 'none'},
-              {'boundary_conditions': {'mechanical': {'dot_F': [['x',  0,   0],   [ 0,   0,  -s],  [ 0,   0, 'x']],
+              {'boundary_conditions': {'mechanical': {'F_dot': [['x',  0,   0],   [ 0,   0,  -s],  [ 0,   0, 'x']],
                                                       'P':     [[1e7, 'x', 'x'],  ['x', 'x', 'x'], ['x', 'x', 0 ]]}},
                'discretization': {'t': 60,'N': 22}},
-              {'boundary_conditions': {'mechanical': {'dot_F': [['x',  0,   0],   [ 0,   0,  -s],  [ 0,   0, 'x']],
+              {'boundary_conditions': {'mechanical': {'F_dot': [['x',  0,   0],   [ 0,   0,  -s],  [ 0,   0, 'x']],
                                                       'P':     [[1e7, 'x', 'x'],  ['x', 'x', 'x'], ['x', 'x', 0 ]]}},
                'discretization': {'t': 60,'N': 22}, 'f_out': 30},
-              {'boundary_conditions': {'mechanical': {'dot_F': [['x',  0,   0],   [ 0,   0,  -s],  [ 0,   0, 'x']],
+              {'boundary_conditions': {'mechanical': {'F_dot': [['x',  0,   0],   [ 0,   0,  -s],  [ 0,   0, 'x']],
                                                       'P':     [[1e7, 'x', 'x'],  ['x', 'x', 'x'], ['x', 'x', 0 ]]}},
                'discretization': {'t': 60,'N': 20}, 'f_out': 'none'},
-              {'boundary_conditions': {'mechanical': {'dot_F': [['x',  0,   0],  [  s, 'x', 0],  [  0,   0, 'x']],
+              {'boundary_conditions': {'mechanical': {'F_dot': [['x',  0,   0],  [  s, 'x', 0],  [  0,   0, 'x']],
                                                       'P':     [[ 0,  'x', 'x'], [ 'x', 0, 'x'], [ 'x', 'x', 0 ]]}},
                'discretization': {'t': 100,'N': 100,'r': 1.1},'f_out': 100}],
             ]

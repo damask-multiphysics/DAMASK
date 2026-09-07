@@ -6,7 +6,7 @@ solver:
 loadstep:
   - boundary_conditions:
       mechanical:
-        dot_F: [[x,      0, 0],
+        F_dot: [[x,      0, 0],
                 [0, 1.0e-3, 0],
                 [0,      0, x]]
         P: [[0, x, x],

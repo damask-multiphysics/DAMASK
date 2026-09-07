@@ -13,7 +13,7 @@ phase:
       elastic: {type: Hooke, C_11: 100.0e+6, C_12: 60.0e+6, C_44: 20.0e+6}
       plastic:
         type: isotropic
-        dot_gamma_0: 0.001
+        gamma_dot_0: 0.001
         n: 20.
         xi_0: 3.0e+6
         xi_inf: 6.0e+6

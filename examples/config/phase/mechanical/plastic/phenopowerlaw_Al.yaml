@@ -10,7 +10,7 @@ output: [xi_sl, gamma_sl]
 
 N_sl: [12]
 
-dot_gamma_0_sl: [7.5e-5]
+gamma_dot_0_sl: [7.5e-5]
 n_sl: [20]
 a_sl: [5.4]
 xi_0_sl: [2.69e+6]

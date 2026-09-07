@@ -157,7 +157,12 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
       prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
 
-      prm%dot_gamma_0_sl = pl%get_as1dReal('dot_gamma_0_sl',requiredChunks=N_sl)
+      if (pl%contains('dot_gamma_0_sl')) then
+        prm%dot_gamma_0_sl = pl%get_as1dReal('dot_gamma_0_sl',requiredChunks=N_sl)
+        call IO_warning(10, 'dot_gamma_0_sl', 'is deprecated in favor of', 'gamma_dot_0_sl',emph=[1,3])
+      else
+        prm%dot_gamma_0_sl = pl%get_as1dReal('gamma_dot_0_sl',requiredChunks=N_sl)
+      end if
       prm%n_sl           = pl%get_as1dReal('n_sl',          requiredChunks=N_sl)
       prm%a_sl           = pl%get_as1dReal('a_sl',          requiredChunks=N_sl)
       prm%h_0_sl_sl      = pl%get_as1dReal('h_0_sl-sl',     requiredChunks=N_sl)
@@ -201,7 +206,12 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
       prm%h_tw_tw = crystal_interaction_TwinByTwin(N_tw,pl%get_as1dReal('h_tw-tw'),phase_lattice(ph))
 
-      prm%dot_gamma_0_tw = pl%get_as1dReal('dot_gamma_0_tw', requiredChunks=N_tw)
+      if (pl%contains('dot_gamma_0_tw')) then
+        prm%dot_gamma_0_tw = pl%get_as1dReal('dot_gamma_0_tw',requiredChunks=N_sl)
+        call IO_warning(10, 'dot_gamma_0_tw', 'is deprecated in favor of', 'gamma_dot_0_tw',emph=[1,3])
+      else
+        prm%dot_gamma_0_tw = pl%get_as1dReal('gamma_dot_0_tw', requiredChunks=N_tw)
+      end if
       prm%n_tw           = pl%get_as1dReal('n_tw',           requiredChunks=N_tw)
       prm%h_0_tw_tw      = pl%get_as1dReal('h_0_tw-tw',      requiredChunks=N_tw)
       xi_0_tw            = pl%get_as1dReal('xi_0_tw',        requiredChunks=N_tw)

@@ -43,7 +43,7 @@ def test_grid_thermal_large_strain(res_path,tmp_path,copy_files,assert_allclose,
           loadstep:
             - boundary_conditions:
                 mechanical:
-                  dot_F: [[0, 0, 0],
+                  F_dot: [[0, 0, 0],
                           [0, 0, 0],
                           [0, 0, 0]]
               discretization:

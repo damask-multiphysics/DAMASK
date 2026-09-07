@@ -150,7 +150,12 @@ module function plastic_kinehardening_init() result(myPlasticity)
       prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
 
       xi_0            = pl%get_as1dReal('xi_0',        requiredChunks=N_sl)
-      prm%dot_gamma_0 = pl%get_as1dReal('dot_gamma_0', requiredChunks=N_sl)
+      if (pl%contains('dot_gamma_0')) then
+        prm%dot_gamma_0 = pl%get_as1dReal('dot_gamma_0',requiredChunks=N_sl)
+        call IO_warning(10, 'dot_gamma_0', 'is deprecated in favor of', 'gamma_dot_0',emph=[1,3])
+      else
+        prm%dot_gamma_0 = pl%get_as1dReal('gamma_dot_0', requiredChunks=N_sl)
+      end if
       prm%n           = pl%get_as1dReal('n',           requiredChunks=N_sl)
       prm%xi_inf      = pl%get_as1dReal('xi_inf',      requiredChunks=N_sl)
       prm%chi_inf     = pl%get_as1dReal('chi_inf',     requiredChunks=N_sl)

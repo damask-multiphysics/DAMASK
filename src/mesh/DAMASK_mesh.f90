@@ -296,6 +296,7 @@ function parse_and_print_load_cases(load_steps) result(load_cases)
           BC_load_comps => BC_mechanical%get_list('u_dot')
         else if (BC_mechanical%contains('dot_u')) then
           BC_load_comps => BC_mechanical%get_list('dot_u')
+          call IO_warning(10, 'dot_u', 'is deprecated in favor of', 'u_dot',emph=[1,3])
         end if
         if (associated(BC_load_comps)) then
           do component = 1, int(dimPlex)
@@ -320,6 +321,7 @@ function parse_and_print_load_cases(load_steps) result(load_cases)
           BC_load_comps => BC_mechanical%get_list('f_dot')
         else if (BC_mechanical%contains('dot_f')) then
           BC_load_comps => BC_mechanical%get_list('dot_f')
+          call IO_warning(10, 'dot_f', 'is deprecated in favor of', 'f_dot',emph=[1,3])
         end if
         if (associated(BC_load_comps)) then
           do component = 1, int(dimPlex)

@@ -73,7 +73,12 @@ module function anisobrittle_init() result(mySources)
         prm%sum_N_cl = sum(abs(N_cl))
 
         prm%p       = src%get_asReal('p')
-        prm%dot_o_0 = src%get_asReal('dot_o_0')
+        if (src%contains('dot_o_0')) then
+          prm%dot_o_0 = src%get_asReal('dot_o_0')
+          call IO_warning(10, 'dot_o_0', 'is deprecated in favor of', 'o_dot_0',emph=[1,3])
+        else
+          prm%dot_o_0 = src%get_asReal('o_dot_0')
+        end if
 
         prm%s_crit  = src%get_as1dReal('s_crit',requiredSize=size(N_cl))
         prm%g_crit  = src%get_as1dReal('g_crit',requiredSize=size(N_cl))

@@ -11,7 +11,7 @@ def res_path(res_path_base):
     return res_path_base/'grid_loadcase_rotation'
 
 
-equivalent_loadcases = [{'N':250,'freq':25,'t':500,'deformation_type':'dot_F',
+equivalent_loadcases = [{'N':250,'freq':25,'t':500,'deformation_type':'F_dot',
                          'deformation':[[1e-4,0,0,  0, 'x',0,  0,0,0],
                                         [ 'x',0,0,  0,1e-4,0,  0,0,0],
                                         [ 'x',0,0,  0,1e-4,0,  0,0,0],

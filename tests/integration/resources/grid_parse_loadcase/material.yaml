@@ -21,7 +21,7 @@ phase:
         type: isotropic
         M: 3
         xi_0: 31e6
-        dot_gamma_0: 0.001
+        gamma_dot_0: 0.001
         n: 20
         h_0: 75e6
         xi_inf: 63e6

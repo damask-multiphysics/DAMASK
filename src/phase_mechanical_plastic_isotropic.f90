@@ -102,7 +102,12 @@ module function plastic_isotropic_init() result(myPlasticity)
 
     xi_0            = pl%get_asReal('xi_0')
     prm%xi_inf      = pl%get_asReal('xi_inf')
-    prm%dot_gamma_0 = pl%get_asReal('dot_gamma_0')
+    if (pl%contains('dot_gamma_0')) then
+      prm%dot_gamma_0 = pl%get_asReal('dot_gamma_0')
+      call IO_warning(10, 'dot_gamma_0', 'is deprecated in favor of', 'gamma_dot_0',emph=[1,3])
+    else
+      prm%dot_gamma_0 = pl%get_asReal('gamma_dot_0')
+    end if
     prm%n           = pl%get_asReal('n')
     prm%h_0         = pl%get_asReal('h_0')
     prm%h           = pl%get_asReal('h',    defaultVal=3.0_pREAL)                                   ! match for fcc random polycrystal
