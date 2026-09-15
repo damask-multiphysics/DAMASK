@@ -1,7 +1,7 @@
 ---
 
 loadstep:
-  - boundary_conditions:
+  - boundary_condition:
       mechanical:
         - label: 'bot_surf'
           u_dot: ['x', 0.0, 'x']

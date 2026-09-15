@@ -4,7 +4,7 @@ solver:
   mechanical: n/a
 
 loadstep:
-  - boundary_conditions:
+  - boundary_condition:
       mechanical:
         F_dot: [[1.0e-3, 0, 0],
                 [0,      x, 0],

@@ -278,8 +278,8 @@ def test_thermal_conductivity(res_path,tmp_path,np_rng,assert_allclose):
     g.save(tmp_path/grid)
 
     l = damask.LoadcaseGrid.load(res_path/f'{load}.yaml')
-    del l['loadstep'][0]['boundary_conditions']['mechanical']['P']
-    l['loadstep'][0]['boundary_conditions']['mechanical']['F'] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    del l['loadstep'][0]['boundary_condition']['mechanical']['P']
+    l['loadstep'][0]['boundary_condition']['mechanical']['F'] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
     t = (g.size[0]**2/alpha)/8.
     l['loadstep'][0]['discretization']['t'] = t
     l['loadstep'][0]['discretization']['N'] = 200
@@ -372,7 +372,7 @@ def test_thermal_BC_T_target(res_path,tmp_path,copy_files,assert_allclose,np_rng
     g.save(tmp_path/grid)
 
     l = damask.LoadcaseGrid.load(res_path/f'{load}.yaml')
-    l['loadstep'][0]['boundary_conditions']['thermal'] = {'T': T_target, 'thermostat': thermostat}
+    l['loadstep'][0]['boundary_condition']['thermal'] = {'T': T_target, 'thermostat': thermostat}
     l['loadstep'][0]['discretization']['t'] = 100.
     l['loadstep'][0]['discretization']['N'] = 10
     l.save(tmp_path/f'{load}.yaml')
@@ -407,7 +407,7 @@ def test_thermal_BC_T_dot(res_path,tmp_path,copy_files,assert_allclose,np_rng,th
     g.save(tmp_path/grid)
 
     l = damask.LoadcaseGrid.load(res_path/f'{load}.yaml')
-    l['loadstep'][0]['boundary_conditions']['thermal'] = {'T_dot': T_dot, 'thermostat': thermostat}
+    l['loadstep'][0]['boundary_condition']['thermal'] = {'T_dot': T_dot, 'thermostat': thermostat}
     l['loadstep'][0]['discretization']['t'] = t
     l['loadstep'][0]['discretization']['N'] = 10
     l.save(tmp_path/f'{load}.yaml')
@@ -440,7 +440,7 @@ def test_thermal_BC_gradient_preserved(res_path,tmp_path,copy_files,assert_allcl
     g.save(tmp_path/grid)
 
     l = damask.LoadcaseGrid.load(res_path/f'{load}.yaml')
-    l['loadstep'][0]['boundary_conditions']['thermal'] = {'T': T_target, 'thermostat': thermostat}
+    l['loadstep'][0]['boundary_condition']['thermal'] = {'T': T_target, 'thermostat': thermostat}
     l['loadstep'][0]['discretization']['t'] = 100.
     l['loadstep'][0]['discretization']['N'] = 10
     l.save(tmp_path/f'{load}.yaml')
@@ -474,7 +474,7 @@ def test_thermal_BC_restart(res_path,tmp_path,copy_files,assert_allclose,np_rng)
     g.save(tmp_path/grid)
 
     l = damask.LoadcaseGrid.load(res_path/f'{load}.yaml')
-    l['loadstep'][0]['boundary_conditions']['thermal'] = {'T_dot': T_dot, 'thermostat': 'shift'}
+    l['loadstep'][0]['boundary_condition']['thermal'] = {'T_dot': T_dot, 'thermostat': 'shift'}
     l['loadstep'][0]['f_out'] = 1
 
     for mode in ['normal','restart']:
@@ -524,7 +524,7 @@ def test_thermal_BC_invalid(res_path,tmp_path,copy_files,thermal_bc,msg):
     g.save(tmp_path/grid)
 
     l = damask.LoadcaseGrid.load(res_path/f'{load}.yaml')
-    l['loadstep'][0]['boundary_conditions']['thermal'] = thermal_bc
+    l['loadstep'][0]['boundary_condition']['thermal'] = thermal_bc
     l['loadstep'][0]['discretization']['t'] = 10.
     l['loadstep'][0]['discretization']['N'] = 1
     l.save(tmp_path/f'{load}.yaml')

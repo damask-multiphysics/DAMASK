@@ -42,7 +42,7 @@ def test_initial_eigenstrain(tmp_path,assert_allclose,np_rng):
            ['x','x', 0 ]]
 
       damask.YAML(solver={'mechanical':'spectral_basic'},
-                  loadstep=[{'boundary_conditions':{'mechanical':{'F':F,'P':P}},
+                  loadstep=[{'boundary_condition':{'mechanical':{'F':F,'P':P}},
                              'discretization':{'t':1.,'N':1}}])\
             .save(tmp_path/f'{load}.yaml')
 

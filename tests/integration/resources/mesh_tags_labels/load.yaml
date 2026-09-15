@@ -1,6 +1,6 @@
 ---
 loadstep:
-  - boundary_conditions:
+  - boundary_condition:
       mechanical:
         - label: 'fixed'
           u_dot: [0.0, 0.0, 0.0]

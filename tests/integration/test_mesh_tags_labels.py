@@ -49,11 +49,11 @@ def load_setup(load_config, mesh_file, np_rng, u_dot, n_D, key, label):
     # to 'label' from the mesh file
 
     if key == 'label':
-        load_config['loadstep'][0]['boundary_conditions']['mechanical'][1] = \
+        load_config['loadstep'][0]['boundary_condition']['mechanical'][1] = \
             {'label': label, 'u_dot': u_dot}
     else:
         tag = get_tag_from_label(mesh_file, label)
-        load_config['loadstep'][0]['boundary_conditions']['mechanical'][1] = \
+        load_config['loadstep'][0]['boundary_condition']['mechanical'][1] = \
             {'tag': tag, 'u_dot': u_dot}
 
     return load_config

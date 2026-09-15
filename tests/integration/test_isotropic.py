@@ -119,7 +119,7 @@ def test_analytic_reference(res_path,tmp_path,copy_files,mat_configs,np_rng):
     sim['xi'] = np.array([np.average(o) for o in r.get('xi').values()])
 
     load = damask.YAML.load(tmp_path/'tensionX.yaml')
-    F_dot = load['loadstep'][0]['boundary_conditions']['mechanical']['F_dot'][0][0]
+    F_dot = load['loadstep'][0]['boundary_condition']['mechanical']['F_dot'][0][0]
     t = load['loadstep'][0]['discretization']['t']
     N = load['loadstep'][0]['discretization']['N']
     Delta_t = t/N

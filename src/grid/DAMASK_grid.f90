@@ -502,6 +502,7 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
       step_bc => load_step%get_dict('boundary_condition')
     else
       step_bc => load_step%get_dict('boundary_conditions')
+      call IO_warning(10, 'boundary_conditions', 'is deprecated in favor of', 'boundary_condition',emph=[1,3])
     end if
 
     step_mech => step_bc%get_dict('mechanical')

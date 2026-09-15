@@ -161,7 +161,7 @@ def test_homogenization(damask_root,tmp_path,
     g = damask.GeomGrid(np.zeros([2,1,1]),np.ones(3))
 
     load_case = damask.YAML(solver={'mechanical':'spectral_basic'},loadstep=[])
-    load_case['loadstep'].append({'boundary_conditions':{'mechanical':{'F':np.eye(3).tolist()}},
+    load_case['loadstep'].append({'boundary_condition':{'mechanical':{'F':np.eye(3).tolist()}},
                                   'discretization':{'t':1.,'N':1}})
 
     config = damask.ConfigMaterial()
@@ -205,7 +205,7 @@ def test_homogenization(damask_root,tmp_path,
         config['phase']['iso']['electrical'] \
             = damask.YAML.load(damask_root/'examples'/'config'/'phase'/'electrical'/'isotropic.yaml')
         load_case['solver']['electrical'] = 'spectral'
-        load_case['loadstep'][0]['boundary_conditions']['electrical'] = {'J': [0.0, 0.0, 0.0],
+        load_case['loadstep'][0]['boundary_condition']['electrical'] = {'J': [0.0, 0.0, 0.0],
                                                                             'E': ['x', 'x', 'x']}
 
 
@@ -268,7 +268,7 @@ def test_phase(damask_root,tmp_path,
     g = damask.GeomGrid(np.zeros([2,1,1]),np.ones(3))
 
     load_case = damask.YAML(solver={'mechanical':'spectral_basic'},loadstep=[])
-    load_case['loadstep'].append({'boundary_conditions':{'mechanical':{'F':np.eye(3).tolist()}},
+    load_case['loadstep'].append({'boundary_condition':{'mechanical':{'F':np.eye(3).tolist()}},
                                   'discretization':{'t':1.,'N':1}})
 
     config = damask.ConfigMaterial()
@@ -319,7 +319,7 @@ def test_phase(damask_root,tmp_path,
             = damask.YAML.load(base_path/'electrical'/f'{electrical}.yaml')
         config['homogenization']['SX']['electrical'] = {'type':'pass'}
         load_case['solver']['electrical'] = 'spectral'
-        load_case['loadstep'][0]['boundary_conditions']['electrical'] = {'J': [0.0, 0.0, 0.0],
+        load_case['loadstep'][0]['boundary_condition']['electrical'] = {'J': [0.0, 0.0, 0.0],
                                                                             'E': ['x', 'x', 'x']}
 
 

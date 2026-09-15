@@ -250,6 +250,7 @@ function parse_and_print_load_cases(load_steps) result(load_cases)
       boundary_conditions => load_step%get_dict('boundary_condition')
     else
       boundary_conditions => load_step%get_dict('boundary_conditions')
+      call IO_warning(10, 'boundary_conditions', 'is deprecated in favor of', 'boundary_condition',emph=[1,3])
     end if
     BCs_mechanical => boundary_conditions%get_list('mechanical')
     allocate(load_cases(l)%mechBC(mesh_nBoundaries))

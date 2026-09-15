@@ -1,6 +1,6 @@
 ---
 loadstep:
-  - boundary_conditions:
+  - boundary_condition:
       mechanical:
         - label: 'tensionX'
           u_dot: [0.01, 0, 0]
@@ -11,7 +11,7 @@ loadstep:
       N: 1
     f_out: 5
 
-  - boundary_conditions:
+  - boundary_condition:
       mechanical:
         - label: 'tensionX'
           u_dot: [0.01, 0, 0]
