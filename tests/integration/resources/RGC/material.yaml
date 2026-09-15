@@ -6,7 +6,7 @@ homogenization:
       a_g: [0.0, 0.0, 0.0]
       c_alpha: 2.0
       cluster_size: [2, 2, 2]
-      output: [M, Delta_V, avg_dot_a, max_dot_a]
+      output: [M, Delta_V, a_dot_avg, a_dot_max]
       type: RGC
       xi_alpha: 10.0
 

@@ -1,7 +1,7 @@
 # For Relaxed Grain Cluster homogenization, requires N_constituents = 8
 type: RGC
 
-output: [F, P, M, Delta_V, max_dot_a, avg_dot_a]
+output: [F, P, M, Delta_V, a_dot_max, a_dot_avg]
 
 D_alpha: [4.0e-06, 4.0e-06, 2.0e-06]
 a_g: [0.0, 0.0, 0.0]
