@@ -80,9 +80,6 @@ module discretization_mesh
 
 #if PETSC_VERSION_MINOR<23
   external :: &
-#if PETSC_VERSION_MINOR<22
-    DMAddField, &
-#endif
     PetscDualSpaceGetFunctional, &
     PetscFEDestroy, &
     PetscFEGetDimension, &
@@ -346,11 +343,8 @@ subroutine discretization_mesh_init()
   call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                               mesh_maxNips,PETSC_NULL_REAL_POINTER, &
                               PETSC_NULL_REAL_POINTER,err_PETSc)
-#elif PETSC_VERSION_MINOR>21
-  call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                              mesh_maxNips,qPointsP,PETSC_NULL_REAL_POINTER,err_PETSc)
 #else
-  call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
+  call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                               mesh_maxNips,qPointsP,PETSC_NULL_REAL_POINTER,err_PETSc)
 #endif
   CHKERRQ(err_PETSc)
@@ -368,14 +362,11 @@ subroutine discretization_mesh_init()
   call build_nodes_and_connectivity(x_n,p_s)
 #endif
 
-#if (PETSC_VERSION_MINOR==22 || PETSC_VERSION_MINOR==23)
+#if PETSC_VERSION_MINOR<24
   call PetscQuadratureRestoreData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                                   PETSC_NULL_INTEGER,qPointsP,PETSC_NULL_REAL_POINTER,err_PETSc)
-#elif (PETSC_VERSION_MINOR<22)
-  call PetscQuadratureRestoreData(quadrature,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
-                                  PETSC_NULL_INTEGER(1),qPointsP,PETSC_NULL_REAL_POINTER,err_PETSc)
-#endif
   CHKERRQ(err_PETSc)
+#endif
 
   call PetscQuadratureDestroy(quadrature,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -603,12 +594,7 @@ subroutine build_nodes_and_connectivity(x_n, p_s)
   do basis = 0_pPETSCINT, FE_dim - 1_pPETSCINT, dimPlex                                             ! coordinates in the reference cell in [-1,+1]^d
     call PetscDualSpaceGetFunctional(dual_space,basis,quadrature,err_PETSc)
     CHKERRQ(err_PETSc)
-#if PETSC_VERSION_MINOR>21
     call PetscQuadratureGetData(quadrature,dimPlex,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-#else
-    call PetscQuadratureGetData(quadrature,dimPlex,PETSC_NULL_INTEGER(1), &
-                                PETSC_NULL_INTEGER(1),&
-#endif
                                 node_coords,PETSC_NULL_REAL_POINTER,err_PETSc)
     CHKERRQ(err_PETSc)
     ref_coords(basis+1_pPETSCINT:basis+dimPlex) = node_coords

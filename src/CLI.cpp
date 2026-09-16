@@ -259,13 +259,7 @@ void CLI::init_print() {
 #else
   cout << " S. Balay et al., PETSc/TAO User Manual Revision " << PETSC_VERSION_MAJOR << "."
        << PETSC_VERSION_MINOR << "\n";
-#if PETSC_VERSION_MINOR == 19
-  cout << " https://doi.org/10.2172/1968587\n";
-#elif PETSC_VERSION_MINOR == 20
-  cout << " https://doi.org/10.2172/2205494\n";
-#elif PETSC_VERSION_MINOR == 21
-  cout << " https://doi.org/10.2172/2337606\n";
-#elif PETSC_VERSION_MINOR == 22
+#if PETSC_VERSION_MINOR == 22
   cout << " https://doi.org/10.2172/2476320\n";
 #elif PETSC_VERSION_MINOR == 23
   cout << " https://doi.org/10.2172/2565610\n";
