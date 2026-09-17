@@ -292,7 +292,7 @@ module subroutine mechanical_init(phases, num_mech)
   num%stepSizeLi             = num_mech_eigen%get_asReal   ('r_linesearch_Li',    defaultVal=0.5_pREAL)
   num%rtol_Li                = num_mech_eigen%get_asReal   ('eps_rel_Li',         defaultVal=num%rtol_Lp)
   num%atol_Li                = num_mech_eigen%get_asReal   ('eps_abs_Li',         defaultVal=num%atol_Lp)
-  num%iJacoLiresiduum        = num_mech_eigen%get_asInt    ('f_update_jacobi_Li', defaultVal=num%iJacoLpresiduum)
+  num%iJacoLiresiduum        = num_mech_eigen%get_asInt    ('f_update_jacobi_Li', defaultVal=1)
 
   extmsg = ''
   if (num%stepMinCryst   <= 0.0_pREAL)     extmsg = trim(extmsg)//' r_cutback_min'
@@ -427,9 +427,7 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
                                       NiterationStressLi, &                                         ! number of inner stress integrations
                                       ierr, &                                                       ! error indicator for LAPACK
                                       o, &
-                                      p, &
-                                      jacoCounterLp, &
-                                      jacoCounterLi                                                 ! counters to check for Jacobian update
+                                      p
   logical :: error
 
 
@@ -446,7 +444,6 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
 
   A = matmul(F,invFp_current)                                                                       ! intermediate tensor needed later to calculate dFe_dLp
 
-  jacoCounterLi = 0
   steplengthLi  = 1.0_pREAL
   Liguess_old   = Liguess
   residuumLi_old_norm = huge(1.0_pREAL)
@@ -459,7 +456,6 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
     invFi_new = matmul(invFi_current,math_I3 - Delta_t*Liguess)
     Fi_new    = math_inv33(invFi_new)
 
-    jacoCounterLp = 0
     steplengthLp  = 1.0_pREAL
     Lpguess_old   = Lpguess
     residuumLp_old_norm = huge(1.0_pREAL)
@@ -500,8 +496,7 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
         cycle LpLoop
       end if
 
-      calculateJacobiLp: if (mod(jacoCounterLp, num%iJacoLpresiduum) == 0) then
-        jacoCounterLp = jacoCounterLp + 1
+      calculateJacobiLp: if (mod(NiterationStressLp-1, num%iJacoLpresiduum) == 0) then
 
         do o=1,3; do p=1,3
           dFe_dLp(o,1:3,p,1:3) = - Delta_t * A(o,p)*transpose(invFi_new)                            ! dFe_dLp(i,j,k,l) = -Delta_t * A(i,k) invFi(l,j)
@@ -543,8 +538,7 @@ function integrateStress(F,Fp0,Fi0,Delta_t,ph,en) result(status)
       cycle LiLoop
     end if
 
-    calculateJacobiLi: if (mod(jacoCounterLi, num%iJacoLiresiduum) == 0) then
-      jacoCounterLi = jacoCounterLi + 1
+    calculateJacobiLi: if (mod(NiterationStressLi-1, num%iJacoLiresiduum) == 0) then
 
       temp_33 = matmul(matmul(A,B),invFi_current)
       do o=1,3; do p=1,3
