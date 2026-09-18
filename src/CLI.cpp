@@ -204,7 +204,7 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
   cout << " Load case:          " << loadfile_path << "\n";
   cout << " Material config:    " << material_path << "\n";
   if (vm.count("numericsconfig")) {
-    cout << " Numerics config:  " << numerics_path << "\n";
+    cout << " Numerics config:    " << numerics_path << "\n";
   }
   cout << " Job name:           " << jobname << "\n";
   cout << " Job ID:             " << uuid << std::endl;
