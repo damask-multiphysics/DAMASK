@@ -13,7 +13,7 @@ submodule(phase:plastic) isotropic
   type :: tParameters
     real(pREAL) :: &
       M, &                                                                                          !< Taylor factor
-      dot_gamma_0, &                                                                                !< reference strain rate
+      gamma_dot_0, &                                                                                !< reference strain rate
       n, &                                                                                          !< stress exponent
       h_0, &
       h, &                                                                                          !< hardening pre-factor
@@ -103,10 +103,10 @@ module function plastic_isotropic_init() result(myPlasticity)
     xi_0            = pl%get_asReal('xi_0')
     prm%xi_inf      = pl%get_asReal('xi_inf')
     if (pl%contains('dot_gamma_0')) then
-      prm%dot_gamma_0 = pl%get_asReal('dot_gamma_0')
+      prm%gamma_dot_0 = pl%get_asReal('dot_gamma_0')
       call IO_warning(10, 'dot_gamma_0', 'is deprecated in favor of', 'gamma_dot_0',emph=[1,3])
     else
-      prm%dot_gamma_0 = pl%get_asReal('gamma_dot_0')
+      prm%gamma_dot_0 = pl%get_asReal('gamma_dot_0')
     end if
     prm%n           = pl%get_asReal('n')
     prm%h_0         = pl%get_asReal('h_0')
@@ -124,7 +124,7 @@ module function plastic_isotropic_init() result(myPlasticity)
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
     if (xi_0            <  0.0_pREAL) extmsg = trim(extmsg)//' xi_0'
-    if (prm%dot_gamma_0 <= 0.0_pREAL) extmsg = trim(extmsg)//' dot_gamma_0'
+    if (prm%gamma_dot_0 <= 0.0_pREAL) extmsg = trim(extmsg)//' gamma_dot_0'
     if (prm%n           <= 0.0_pREAL) extmsg = trim(extmsg)//' n'
     if (prm%a           <= 0.0_pREAL) extmsg = trim(extmsg)//' a'
     if (prm%M           <= 0.0_pREAL) extmsg = trim(extmsg)//' M'
@@ -175,7 +175,7 @@ module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
   real(pREAL), dimension(3,3) :: &
     Mp_dev                                                                                          !< deviatoric part of the Mandel stress
   real(pREAL) :: &
-    dot_gamma, &                                                                                    !< strainrate
+    gamma_dot, &                                                                                    !< strainrate
     norm_Mp_dev, &                                                                                  !< norm of the deviatoric part of the Mandel stress
     squarenorm_Mp_dev                                                                               !< square of the norm of the deviatoric part of the Mandel stress
   integer :: &
@@ -189,16 +189,16 @@ module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
     norm_Mp_dev = sqrt(squarenorm_Mp_dev)
 
     if (norm_Mp_dev > 0.0_pREAL) then
-      dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pREAL) * norm_Mp_dev/(prm%M*stt%xi(en)))**prm%n
+      gamma_dot = prm%gamma_dot_0 * (sqrt(1.5_pREAL) * norm_Mp_dev/(prm%M*stt%xi(en)))**prm%n
 
-      Lp = dot_gamma * Mp_dev/norm_Mp_dev
+      Lp = gamma_dot * Mp_dev/norm_Mp_dev
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLp_dMp(k,l,m,n) = (prm%n-1.0_pREAL) * Mp_dev(k,l)*Mp_dev(m,n) / squarenorm_Mp_dev
       forall (k=1:3,l=1:3) &
         dLp_dMp(k,l,k,l) = dLp_dMp(k,l,k,l) + 1.0_pREAL
       forall (k=1:3,m=1:3) &
         dLp_dMp(k,k,m,m) = dLp_dMp(k,k,m,m) - 1.0_pREAL/3.0_pREAL
-      dLp_dMp = dot_gamma * dLp_dMp / norm_Mp_dev
+      dLp_dMp = gamma_dot * dLp_dMp / norm_Mp_dev
     else
       Lp = 0.0_pREAL
       dLp_dMp = 0.0_pREAL
@@ -237,7 +237,7 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,en)
 
     if (prm%dilatation .and. abs(tr) > 0.0_pREAL) then                                              ! no stress or J2 plasticity --> Li and its derivative are zero
       Li = math_I3 &
-         * prm%dot_gamma_0 * (3.0_pREAL*prm%M*stt%xi(en))**(-prm%n) &
+         * prm%gamma_dot_0 * (3.0_pREAL*prm%M*stt%xi(en))**(-prm%n) &
          * tr * abs(tr)**(prm%n-1.0_pREAL)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) dLi_dMi(k,l,m,n) = prm%n / tr * Li(k,l) * math_I3(m,n)
     else
@@ -264,31 +264,31 @@ module function isotropic_dotState(Mp,ph,en) result(dotState)
     dotState
 
   real(pREAL) :: &
-    dot_gamma, &                                                                                    !< strainrate
+    gamma_dot, &                                                                                    !< strainrate
     xi_inf_star, &                                                                                  !< saturation xi
     norm_Mp                                                                                         !< norm of the (deviatoric) Mandel stress
 
-  associate(prm => param(ph), stt => state(ph), dot_xi => dotState(1))
+  associate(prm => param(ph), stt => state(ph), xi_dot => dotState(1))
 
     norm_Mp = merge(sqrt(math_tensordot(Mp,Mp)), &
                     sqrt(math_tensordot(math_deviatoric33(Mp),math_deviatoric33(Mp))), &
                     prm%dilatation)
 
-  dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pREAL) * norm_Mp /(prm%M*stt%xi(en))) **prm%n
+  gamma_dot = prm%gamma_dot_0 * (sqrt(1.5_pREAL) * norm_Mp /(prm%M*stt%xi(en))) **prm%n
 
-  if (dot_gamma > 1e-12_pREAL) then
+  if (gamma_dot > 1e-12_pREAL) then
     if (dEq0(prm%c_1)) then
       xi_inf_star = prm%xi_inf
     else
       xi_inf_star = prm%xi_inf &
-                  + asinh( (dot_gamma / prm%c_1)**(1.0_pREAL / prm%c_2))**(1.0_pREAL / prm%c_3) &
-                  / prm%c_4 * (dot_gamma / prm%dot_gamma_0)**(1.0_pREAL / prm%n)
+                  + asinh( (gamma_dot / prm%c_1)**(1.0_pREAL / prm%c_2))**(1.0_pREAL / prm%c_3) &
+                  / prm%c_4 * (gamma_dot / prm%gamma_dot_0)**(1.0_pREAL / prm%n)
     end if
-    dot_xi = dot_gamma &
-           * ( prm%h_0 + prm%h_ln * log(dot_gamma) ) &
+    xi_dot = gamma_dot &
+           * ( prm%h_0 + prm%h_ln * log(gamma_dot) ) &
            * sign(abs(1.0_pREAL - stt%xi(en)/xi_inf_star)**prm%a *prm%h, 1.0_pREAL-stt%xi(en)/xi_inf_star)
   else
-    dot_xi = 0.0_pREAL
+    xi_dot = 0.0_pREAL
   end if
 
   end associate

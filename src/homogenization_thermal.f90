@@ -15,7 +15,7 @@ submodule(homogenization) thermal
   end interface
 
   type :: tDataContainer
-    real(pREAL), dimension(:), allocatable :: T, dot_T
+    real(pREAL), dimension(:), allocatable :: T, T_dot
   end type tDataContainer
 
   type(tDataContainer), dimension(:), allocatable :: current
@@ -52,7 +52,7 @@ module subroutine thermal_init()
 
   do ho = 1, size(configHomogenizations)
     allocate(current(ho)%T(count(material_ID_homogenization==ho)), source=T_ROOM)
-    allocate(current(ho)%dot_T(count(material_ID_homogenization==ho)), source=0.0_pREAL)
+    allocate(current(ho)%T_dot(count(material_ID_homogenization==ho)), source=0.0_pREAL)
     configHomogenization => configHomogenizations%get_dict(ho)
     associate(prm => param(ho))
 
@@ -101,14 +101,14 @@ module subroutine thermal_partition(ce)
 
   integer, intent(in) :: ce
 
-  real(pREAL) :: T, dot_T
+  real(pREAL) :: T, T_dot
   integer :: co
 
 
   T     = current(material_ID_homogenization(ce))%T(material_entry_homogenization(ce))
-  dot_T = current(material_ID_homogenization(ce))%dot_T(material_entry_homogenization(ce))
+  T_dot = current(material_ID_homogenization(ce))%T_dot(material_entry_homogenization(ce))
   do co = 1, homogenization_Nconstituents(material_ID_homogenization(ce))
-    call phase_thermal_setField(T,dot_T,co,ce)
+    call phase_thermal_setField(T,T_dot,co,ce)
   end do
 
 end subroutine thermal_partition
@@ -172,20 +172,20 @@ end function homogenization_f_T
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Set thermal field and its rate (T and dot_T).
+!> @brief Set thermal field and its rate (T and T_dot).
 !--------------------------------------------------------------------------------------------------
-module subroutine homogenization_thermal_setField(T,dot_T)
+module subroutine homogenization_thermal_setField(T,T_dot)
 
-  real(pREAL), dimension(:), intent(in) :: T, dot_T
+  real(pREAL), dimension(:), intent(in) :: T, T_dot
 
   integer :: ho, en, ce
 
 
-  do ce=max(lbound(T,1),lbound(dot_T,1)), min(ubound(T,1),ubound(dot_T,1))
+  do ce=max(lbound(T,1),lbound(T_dot,1)), min(ubound(T,1),ubound(T_dot,1))
     ho = material_ID_homogenization(ce)
     en = material_entry_homogenization(ce)
     current(ho)%T(en) = T(ce)
-    current(ho)%dot_T(en) = dot_T(ce)
+    current(ho)%T_dot(en) = T_dot(ce)
     call thermal_partition(ce)
   end do
 

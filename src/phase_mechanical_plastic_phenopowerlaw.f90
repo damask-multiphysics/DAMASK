@@ -9,8 +9,8 @@ submodule(phase:plastic) phenopowerlaw
 
   type :: tParameters
     real(pREAL),               allocatable, dimension(:) :: &
-      dot_gamma_0_sl, &                                                                             !< reference shear strain rate for slip
-      dot_gamma_0_tw, &                                                                             !< reference shear strain rate for twin
+      gamma_dot_0_sl, &                                                                             !< reference shear strain rate for slip
+      gamma_dot_0_tw, &                                                                             !< reference shear strain rate for twin
       a_sl, &
       n_sl, &                                                                                       !< stress exponent for slip
       n_tw, &                                                                                       !< stress exponent for twin
@@ -158,10 +158,10 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%h_sl_sl = crystal_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
 
       if (pl%contains('dot_gamma_0_sl')) then
-        prm%dot_gamma_0_sl = pl%get_as1dReal('dot_gamma_0_sl',requiredChunks=N_sl)
+        prm%gamma_dot_0_sl = pl%get_as1dReal('dot_gamma_0_sl',requiredChunks=N_sl)
         call IO_warning(10, 'dot_gamma_0_sl', 'is deprecated in favor of', 'gamma_dot_0_sl',emph=[1,3])
       else
-        prm%dot_gamma_0_sl = pl%get_as1dReal('gamma_dot_0_sl',requiredChunks=N_sl)
+        prm%gamma_dot_0_sl = pl%get_as1dReal('gamma_dot_0_sl',requiredChunks=N_sl)
       end if
       prm%n_sl           = pl%get_as1dReal('n_sl',          requiredChunks=N_sl)
       prm%a_sl           = pl%get_as1dReal('a_sl',          requiredChunks=N_sl)
@@ -175,7 +175,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%f_sat_sl_tw    = pl%get_as1dReal('f_sat_sl-tw',   requiredChunks=N_sl, &
                                                             defaultVal=misc_zeros(size(N_sl)))
       ! sanity checks
-      if (any(prm%dot_gamma_0_sl <= 0.0_pREAL))   extmsg = trim(extmsg)//' dot_gamma_0_sl'
+      if (any(prm%gamma_dot_0_sl <= 0.0_pREAL))   extmsg = trim(extmsg)//' gamma_dot_0_sl'
       if (any(prm%n_sl           <= 0.0_pREAL))   extmsg = trim(extmsg)//' n_sl'
       if (any(prm%a_sl           <= 0.0_pREAL))   extmsg = trim(extmsg)//' a_sl'
       if (any(xi_0_sl            <= 0.0_pREAL))   extmsg = trim(extmsg)//' xi_0_sl'
@@ -183,7 +183,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
     else slipActive
       xi_0_sl = emptyRealArray
-      allocate(prm%dot_gamma_0_sl, &
+      allocate(prm%gamma_dot_0_sl, &
                prm%a_sl, &
                prm%n_sl, &
                prm%xi_inf_sl, &
@@ -207,10 +207,10 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%h_tw_tw = crystal_interaction_TwinByTwin(N_tw,pl%get_as1dReal('h_tw-tw'),phase_lattice(ph))
 
       if (pl%contains('dot_gamma_0_tw')) then
-        prm%dot_gamma_0_tw = pl%get_as1dReal('dot_gamma_0_tw',requiredChunks=N_sl)
+        prm%gamma_dot_0_tw = pl%get_as1dReal('dot_gamma_0_tw',requiredChunks=N_sl)
         call IO_warning(10, 'dot_gamma_0_tw', 'is deprecated in favor of', 'gamma_dot_0_tw',emph=[1,3])
       else
-        prm%dot_gamma_0_tw = pl%get_as1dReal('gamma_dot_0_tw', requiredChunks=N_tw)
+        prm%gamma_dot_0_tw = pl%get_as1dReal('gamma_dot_0_tw', requiredChunks=N_tw)
       end if
       prm%n_tw           = pl%get_as1dReal('n_tw',           requiredChunks=N_tw)
       prm%h_0_tw_tw      = pl%get_as1dReal('h_0_tw-tw',      requiredChunks=N_tw)
@@ -220,13 +220,13 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%c_4            = pl%get_as1dReal('c_4',            requiredChunks=N_tw, &
                                                              defaultVal=misc_zeros(size(N_tw)))
       ! sanity checks
-      if (any(prm%dot_gamma_0_tw <= 0.0_pREAL))   extmsg = trim(extmsg)//' dot_gamma_0_tw'
+      if (any(prm%gamma_dot_0_tw <= 0.0_pREAL))   extmsg = trim(extmsg)//' gamma_dot_0_tw'
       if (any(prm%n_tw           <= 0.0_pREAL))   extmsg = trim(extmsg)//' n_tw'
       if (any(xi_0_tw            <= 0.0_pREAL))   extmsg = trim(extmsg)//' xi_0_tw'
 
     else twinActive
       xi_0_tw = emptyRealArray
-      allocate(prm%dot_gamma_0_tw, &
+      allocate(prm%gamma_dot_0_tw, &
                prm%n_tw, &
                prm%c_3, &
                prm%c_4, &
@@ -321,11 +321,11 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
   integer :: &
     i,k,l,m,n
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
-    dot_gamma_sl,ddot_gamma_dtau_sl
+    gamma_dot_sl,dgamma_dot_dtau_sl
   real(pREAL), dimension(3,3,param(ph)%sum_N_sl) :: &
     P_nS
   real(pREAL), dimension(param(ph)%sum_N_tw) :: &
-    dot_gamma_tw,ddot_gamma_dtau_tw
+    gamma_dot_tw,dgamma_dot_dtau_tw
 
 
   Lp = 0.0_pREAL
@@ -333,21 +333,21 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
   associate(prm => param(ph))
 
-    call kinetics_sl(Mp,ph,en,dot_gamma_sl,ddot_gamma_dtau_sl)
-    P_nS = merge(prm%P_nS_pos,prm%P_nS_neg, spread(spread(dot_gamma_sl,1,3),2,3)>0.0_pREAL)         ! faster than 'merge' in loop
+    call kinetics_sl(Mp,ph,en,gamma_dot_sl,dgamma_dot_dtau_sl)
+    P_nS = merge(prm%P_nS_pos,prm%P_nS_neg, spread(spread(gamma_dot_sl,1,3),2,3)>0.0_pREAL)         ! faster than 'merge' in loop
     slipSystems: do i = 1, prm%sum_N_sl
-      Lp = Lp + dot_gamma_sl(i)*prm%P_sl(1:3,1:3,i)
+      Lp = Lp + gamma_dot_sl(i)*prm%P_sl(1:3,1:3,i)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                         + ddot_gamma_dtau_sl(i) * prm%P_sl(k,l,i) * P_nS(m,n,i)
+                         + dgamma_dot_dtau_sl(i) * prm%P_sl(k,l,i) * P_nS(m,n,i)
     end do slipSystems
 
-    call kinetics_tw(Mp,ph,en,dot_gamma_tw,ddot_gamma_dtau_tw)
+    call kinetics_tw(Mp,ph,en,gamma_dot_tw,dgamma_dot_dtau_tw)
     twinSystems: do i = 1, prm%sum_N_tw
-      Lp = Lp + dot_gamma_tw(i)*prm%P_tw(1:3,1:3,i)
+      Lp = Lp + gamma_dot_tw(i)*prm%P_tw(1:3,1:3,i)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                         + ddot_gamma_dtau_tw(i)*prm%P_tw(k,l,i)*prm%P_tw(m,n,i)
+                         + dgamma_dot_dtau_tw(i)*prm%P_tw(k,l,i)*prm%P_tw(m,n,i)
     end do twinSystems
 
   end associate
@@ -376,14 +376,14 @@ module function phenopowerlaw_dotState(Mp,ph,en) result(dotState)
 
 
   associate(prm => param(ph), stt => state(ph), &
-            dot_xi_sl => dotState(indexDotState(ph)%xi_sl(1):indexDotState(ph)%xi_sl(2)), &
-            dot_xi_tw => dotState(indexDotState(ph)%xi_tw(1):indexDotState(ph)%xi_tw(2)), &
-            dot_gamma_sl => dotState(indexDotState(ph)%gamma_sl(1):indexDotState(ph)%gamma_sl(2)), &
-            dot_gamma_tw => dotState(indexDotState(ph)%gamma_tw(1):indexDotState(ph)%gamma_tw(2)))
+            xi_dot_sl => dotState(indexDotState(ph)%xi_sl(1):indexDotState(ph)%xi_sl(2)), &
+            xi_dot_tw => dotState(indexDotState(ph)%xi_tw(1):indexDotState(ph)%xi_tw(2)), &
+            gamma_dot_sl => dotState(indexDotState(ph)%gamma_sl(1):indexDotState(ph)%gamma_sl(2)), &
+            gamma_dot_tw => dotState(indexDotState(ph)%gamma_tw(1):indexDotState(ph)%gamma_tw(2)))
 
-    call kinetics_sl(Mp,ph,en, dot_gamma_sl)
-    call kinetics_tw(Mp,ph,en, dot_gamma_tw)
-    dot_gamma_sl = abs(dot_gamma_sl)
+    call kinetics_sl(Mp,ph,en, gamma_dot_sl)
+    call kinetics_tw(Mp,ph,en, gamma_dot_tw)
+    gamma_dot_sl = abs(gamma_dot_sl)
     sumF = sum(stt%gamma_tw(:,en)/prm%gamma_char)
 
     xi_sl_sat_offset = prm%f_sat_sl_tw*sqrt(sumF)
@@ -391,13 +391,13 @@ module function phenopowerlaw_dotState(Mp,ph,en) result(dotState)
     left_SlipSlip = sign(abs(1.0_pREAL - stt%xi_sl(:,en) / (prm%xi_inf_sl+xi_sl_sat_offset))**prm%a_sl, &
                              1.0_pREAL - stt%xi_sl(:,en) / (prm%xi_inf_sl+xi_sl_sat_offset))
 
-    dot_xi_sl = prm%h_0_sl_sl * (1.0_pREAL + prm%c_1 * sumF**prm%c_2) &
+    xi_dot_sl = prm%h_0_sl_sl * (1.0_pREAL + prm%c_1 * sumF**prm%c_2) &
               * left_SlipSlip &
-              * matmul(prm%h_sl_sl,dot_gamma_sl) &
-              + matmul(prm%h_sl_tw,dot_gamma_tw)
+              * matmul(prm%h_sl_sl,gamma_dot_sl) &
+              + matmul(prm%h_sl_tw,gamma_dot_tw)
 
-    dot_xi_tw = prm%h_0_tw_sl * sum(stt%gamma_sl(:,en))**prm%c_3 * matmul(prm%h_tw_sl,dot_gamma_sl) &
-              + prm%h_0_tw_tw * sumF                   **prm%c_4 * matmul(prm%h_tw_tw,dot_gamma_tw)
+    xi_dot_tw = prm%h_0_tw_sl * sum(stt%gamma_sl(:,en))**prm%c_3 * matmul(prm%h_tw_sl,gamma_dot_sl) &
+              + prm%h_0_tw_tw * sumF                   **prm%c_4 * matmul(prm%h_tw_tw,gamma_dot_tw)
 
   end associate
 
@@ -447,12 +447,12 @@ end subroutine plastic_phenopowerlaw_result
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate shear rates on slip systems and their derivatives with respect to resolved
 !         stress.
-!> @details Sign of dot_gamma_sl conveys sense of shear.
+!> @details Sign of gamma_dot_sl conveys sense of shear.
 ! Derivatives are calculated only optionally, hence, contrary to common convention,
 ! here the result (i.e. intent(out)) variables have to be put at the end.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_sl(Mp,ph,en, &
-                            dot_gamma_sl,ddot_gamma_dtau_sl)
+                            gamma_dot_sl,dgamma_dot_dtau_sl)
 
   real(pREAL), dimension(3,3),                           intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -461,9 +461,9 @@ pure subroutine kinetics_sl(Mp,ph,en, &
     en
 
   real(pREAL), dimension(param(ph)%sum_N_sl),           intent(out) :: &
-    dot_gamma_sl
+    gamma_dot_sl
   real(pREAL), dimension(param(ph)%sum_N_sl), optional, intent(out) :: &
-    ddot_gamma_dtau_sl
+    dgamma_dot_dtau_sl
 
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     tau_sl_pos, &
@@ -476,15 +476,15 @@ pure subroutine kinetics_sl(Mp,ph,en, &
     tau_sl_pos = [(math_tensordot(Mp,prm%P_nS_pos(1:3,1:3,i)),i=1,prm%sum_N_sl)]
     tau_sl_neg = [(math_tensordot(Mp,prm%P_nS_neg(1:3,1:3,i)),i=1,prm%sum_N_sl)]
 
-    dot_gamma_sl = merge(+1.0_pREAL,-1.0_pREAL, tau_sl_pos>tau_sl_neg) &
-                 * prm%dot_gamma_0_sl  &
+    gamma_dot_sl = merge(+1.0_pREAL,-1.0_pREAL, tau_sl_pos>tau_sl_neg) &
+                 * prm%gamma_dot_0_sl  &
                  * (max(tau_sl_pos,tau_sl_neg)/stt%xi_sl(:,en))**prm%n_sl
 
-    if (present(ddot_gamma_dtau_sl)) then
-      where(dNeq0(dot_gamma_sl))
-        ddot_gamma_dtau_sl = dot_gamma_sl*prm%n_sl/max(tau_sl_pos,tau_sl_neg)
+    if (present(dgamma_dot_dtau_sl)) then
+      where(dNeq0(gamma_dot_sl))
+        dgamma_dot_dtau_sl = gamma_dot_sl*prm%n_sl/max(tau_sl_pos,tau_sl_neg)
       else where
-        ddot_gamma_dtau_sl = 0.0_pREAL
+        dgamma_dot_dtau_sl = 0.0_pREAL
       end where
     end if
 
@@ -501,7 +501,7 @@ end subroutine kinetics_sl
 ! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_tw(Mp,ph,en,&
-                            dot_gamma_tw,ddot_gamma_dtau_tw)
+                            gamma_dot_tw,dgamma_dot_dtau_tw)
 
   real(pREAL), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -510,9 +510,9 @@ pure subroutine kinetics_tw(Mp,ph,en,&
     en
 
   real(pREAL), dimension(param(ph)%sum_N_tw), intent(out) :: &
-    dot_gamma_tw
+    gamma_dot_tw
   real(pREAL), dimension(param(ph)%sum_N_tw), intent(out), optional :: &
-    ddot_gamma_dtau_tw
+    dgamma_dot_dtau_tw
 
   real(pREAL), dimension(param(ph)%sum_N_tw) :: &
     tau_tw
@@ -524,17 +524,17 @@ pure subroutine kinetics_tw(Mp,ph,en,&
     tau_tw = [(math_tensordot(Mp,prm%P_tw(1:3,1:3,i)),i=1,prm%sum_N_tw)]
 
     where(tau_tw > 0.0_pREAL)
-      dot_gamma_tw = (1.0_pREAL-sum(stt%gamma_tw(:,en)/prm%gamma_char)) &                           ! only twin in untwinned volume fraction
-                   * prm%dot_gamma_0_tw*(tau_tw/stt%xi_tw(:,en))**prm%n_tw
+      gamma_dot_tw = (1.0_pREAL-sum(stt%gamma_tw(:,en)/prm%gamma_char)) &                           ! only twin in untwinned volume fraction
+                   * prm%gamma_dot_0_tw*(tau_tw/stt%xi_tw(:,en))**prm%n_tw
     else where
-      dot_gamma_tw = 0.0_pREAL
+      gamma_dot_tw = 0.0_pREAL
     end where
 
-    if (present(ddot_gamma_dtau_tw)) then
-      where(dNeq0(dot_gamma_tw))
-        ddot_gamma_dtau_tw = dot_gamma_tw*prm%n_tw/tau_tw
+    if (present(dgamma_dot_dtau_tw)) then
+      where(dNeq0(gamma_dot_tw))
+        dgamma_dot_dtau_tw = gamma_dot_tw*prm%n_tw/tau_tw
       else where
-        ddot_gamma_dtau_tw = 0.0_pREAL
+        dgamma_dot_dtau_tw = 0.0_pREAL
       end where
     end if
 

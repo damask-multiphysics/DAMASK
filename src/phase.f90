@@ -274,10 +274,10 @@ module phase
       real(pREAL) :: T
     end function thermal_T
 
-    module function thermal_dot_T(ph,en) result(dot_T)
+    module function thermal_T_dot(ph,en) result(T_dot)
       integer, intent(in) :: ph,en
-      real(pREAL) :: dot_T
-    end function thermal_dot_T
+      real(pREAL) :: T_dot
+    end function thermal_T_dot
 
     module function damage_phi(ph,en) result(phi)
       integer, intent(in) :: ph,en
@@ -290,8 +290,8 @@ module phase
       integer, intent(in) :: co, ce
     end subroutine phase_set_F
 
-    module subroutine phase_thermal_setField(T,dot_T, co,ce)
-      real(pREAL), intent(in) :: T, dot_T
+    module subroutine phase_thermal_setField(T,T_dot, co,ce)
+      real(pREAL), intent(in) :: T, T_dot
       integer, intent(in) :: co, ce
     end subroutine phase_thermal_setField
 

@@ -354,7 +354,7 @@ subroutine grid_mech_spectral_polarization_forward(cutBack,guess,Delta_t,Delta_t
     if     (deformation_BC%myType=='L') then                                                        ! calculate F_aimDot from given L and current F
       F_aimDot = F_aimDot &
                + matmul(merge(.0_pREAL,deformation_BC%values,deformation_BC%mask),F_aim_lastinc)
-    elseif (deformation_BC%myType=='dot_F') then                                                    ! F_aimDot is prescribed
+    elseif (deformation_BC%myType=='F_dot') then                                                    ! F_aimDot is prescribed
       F_aimDot = F_aimDot &
                + merge(.0_pREAL,deformation_BC%values,deformation_BC%mask)
     elseif (deformation_BC%myType=='F') then                                                        ! aim at end of load case is prescribed
@@ -377,9 +377,9 @@ subroutine grid_mech_spectral_polarization_forward(cutBack,guess,Delta_t,Delta_t
 ! update average and local deformation gradients
   F_aim = F_aim_lastinc + F_aimDot * Delta_t
   if (stress_BC%myType=='P')     P_aim = P_aim &
-                                      + merge(.0_pREAL,(stress_BC%values - P_aim)/t_remaining,stress_BC%mask)*Delta_t
-  if (stress_BC%myType=='dot_P') P_aim = P_aim &
-                                      + merge(.0_pREAL,stress_BC%values,stress_BC%mask)*Delta_t
+                                       + merge(.0_pREAL,(stress_BC%values - P_aim)/t_remaining,stress_BC%mask)*Delta_t
+  if (stress_BC%myType=='P_dot') P_aim = P_aim &
+                                       + merge(.0_pREAL,stress_BC%values,stress_BC%mask)*Delta_t
 
   F = reshape(utilities_forwardTensorField(Delta_t,F_lastinc,Fdot, &                                ! estimate of F at end of time+Delta_t that matches rotated F_aim on average
                                            rotation_BC%rotate(F_aim,active=.true.)),&

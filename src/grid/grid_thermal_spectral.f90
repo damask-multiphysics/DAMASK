@@ -315,7 +315,7 @@ subroutine grid_thermal_spectral_forward(cutBack, guess, Delta_t, Delta_t_prev, 
     if (present(thermal_BC)) then
       T_BC_current = thermal_BC
       select case (thermal_BC%myType)
-        case ('dot_T')
+        case ('T_dot')
           T_aimDot = thermal_BC%value
         case ('T')
           T_aimDot = (thermal_BC%value - T_aim_lastinc)/t_remaining

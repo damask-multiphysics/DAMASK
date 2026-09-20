@@ -14,7 +14,7 @@ submodule(phase) chemical
     chemical_energy
 
   type :: tFieldQuantities
-    real(pREAL), dimension(:,:), allocatable :: C, dot_C, C0
+    real(pREAL), dimension(:,:), allocatable :: C, C_dot, C0
   end type tFieldQuantities
 
   type(tFieldQuantities), dimension(:), allocatable  :: current         ! ?? not very telling name. Better: "field" ?? MD: current(ho)%T(en) reads quite good
@@ -153,7 +153,7 @@ module subroutine chemical_init(phases)
 
     if (chemical_energy(ph) == UNDEFINED) then
       allocate(current(ph)%C(1,Nmembers),source=0.0_pREAL)
-      allocate(current(ph)%dot_C(1,Nmembers),source=0.0_pREAL)
+      allocate(current(ph)%C_dot(1,Nmembers),source=0.0_pREAL)
       allocate(current(ph)%C0(1,Nmembers),source=0.0_pREAL)
     end if
 
@@ -208,7 +208,7 @@ module subroutine phase_chemical_setField(comp, Delta_t, co, ce)
   en = material_entry_phase(co,ce)
 
   current(ph)%C(:,en) = comp
-  current(ph)%dot_C(:,en) = (current(ph)%C(:,en) - current(ph)%C0(:,en))/merge(1.0_pREAL,Delta_t,dEq0(Delta_t))
+  current(ph)%C_dot(:,en) = (current(ph)%C(:,en) - current(ph)%C0(:,en))/merge(1.0_pREAL,Delta_t,dEq0(Delta_t))
 
 end subroutine phase_chemical_setField
 
