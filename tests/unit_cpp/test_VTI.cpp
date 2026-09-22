@@ -1,15 +1,25 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+/**
+ * @file test_VTI.cpp
+ * @brief Unit tests for src/grid/VTI.cpp
+ *
+ * @author Daniel Otto de Mentock, Max‑Planck‑Institut für Nachhaltige Materialien GmbH
+ * @author Martin Diehl, KU Leuven
+ * @copyright
+ *   Max‑Planck‑Institut für Nachhaltige Materialien GmbH
+ */
+
 #include <gtest/gtest.h>
-#include <ISO_Fortran_binding.h>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
-#include <span>
 #include <stdexcept>
 #include <string>
-#include <type_traits>
 #include <vector>
+#include <span>
+#include <string_view>
 
 #include "../../src/grid/VTI.h"
 #include "conftest.h"
@@ -30,7 +40,7 @@ static TempVTIFile write_temp_vti(const std::string& xml) {
 }
 
 const std::string B64_UC32 = "BAAAAAECAwQAAAAA";             // [1,2,3,4] 32bit uncompressed
-const std::string B64_UC64 = "BAAAAAAAAAABAgMEAAAAAAAAAAA="; // [1,2,3,4] 64it uncompressed
+const std::string B64_UC64 = "BAAAAAAAAAABAgMEAAAAAAAAAAA="; // [1,2,3,4] 64bit uncompressed
 
 const std::string B64_COMP32 = "AgAAAAQAAAADAAAADAAAAAsAAAB4nGNgZGIGAAAOAAd4nOPi5gEAAEMAIg=="; // [0,1,2,3], [10,11,12] 32bit
                                                                                                // compressed
@@ -46,17 +56,17 @@ constexpr std::size_t N_BYTES_PER_WORD_64BIT = 8;
 TEST(ReadWordTest, ReadsLittleEndian) {
   const std::array<uint8_t, 4> d32 = {0x78, 0x56, 0x34, 0x12};
   const std::array<uint8_t, 8> d64 = {0xF0, 0xDE, 0xBC, 0x9A, 0x78, 0x56, 0x34, 0x12};
-  EXPECT_EQ(VTI::read_word(d32.data(), N_BYTES_PER_WORD_32BIT), 0x12345678ULL);
-  EXPECT_EQ(VTI::read_word(d64.data(), N_BYTES_PER_WORD_64BIT), 0x123456789ABCDEF0ULL);
+  EXPECT_EQ(VTI::read_word(d32), 0x12345678ULL);
+  EXPECT_EQ(VTI::read_word(d64), 0x123456789ABCDEF0ULL);
 }
 
 TEST(DecodeUncompressedVTI, Uncompressed32Bit) {
-  auto out = VTI::decode_uncompressed_vti(B64_UC32, N_BYTES_PER_WORD_32BIT);
+  auto out = VTI::decode_uncompressed(B64_UC32, N_BYTES_PER_WORD_32BIT);
   EXPECT_EQ(out, EXPECTED_UNCOMPRESSED);
 }
 
 TEST(DecodeUncompressedVTI, Uncompressed64Bit) {
-  auto out = VTI::decode_uncompressed_vti(B64_UC64, N_BYTES_PER_WORD_64BIT);
+  auto out = VTI::decode_uncompressed(B64_UC64, N_BYTES_PER_WORD_64BIT);
   EXPECT_EQ(out, EXPECTED_UNCOMPRESSED);
 }
 
@@ -64,21 +74,21 @@ TEST(DecodeUncompressedVTI, Uncompressed32BitUnderflowError) {
   // specify size 5, only provide 4
   const std::string bad = "BQAAAAECAwQ="; // hex: 05 00 00 00 01 02 03 04
   last_f_io_error_msg().clear();
-  EXPECT_THROW(VTI::decode_uncompressed_vti(bad, N_BYTES_PER_WORD_32BIT), FIOErrorCalled);
+  EXPECT_THROW(VTI::decode_uncompressed(bad, N_BYTES_PER_WORD_32BIT), FIOErrorCalled);
   EXPECT_NE(last_f_io_error_msg().find("data block exceeds payload"), std::string::npos);
 }
 
 TEST(DecodeCompressedVTI, Compressed32Bit) {
-  auto out = VTI::decode_compressed_vti(B64_COMP32, N_BYTES_PER_WORD_32BIT);
+  auto out = VTI::decode_compressed(B64_COMP32, N_BYTES_PER_WORD_32BIT);
   EXPECT_EQ(out, EXPECTED_COMPRESSED);
 }
 
 TEST(DecodeCompressedVTI, Compressed64Bit) {
-  auto out = VTI::decode_compressed_vti(B64_COMP64, N_BYTES_PER_WORD_64BIT);
+  auto out = VTI::decode_compressed(B64_COMP64, N_BYTES_PER_WORD_64BIT);
   EXPECT_EQ(out, EXPECTED_COMPRESSED);
 }
 
-TEST(ParseCellDataArray, Uncompressed32Bit) {
+TEST(ReadDatasetRaw, Uncompressed32Bit) {
   std::string xml =
       R"(<?xml version="1.0"?>
            <VTKFile type="ImageData" version="1.0" byte_order="LittleEndian" header_type="UInt32">
@@ -93,12 +103,12 @@ TEST(ParseCellDataArray, Uncompressed32Bit) {
            </VTKFile>)";
   auto file = write_temp_vti(xml);
   VTI vti(file.path.c_str());
-  auto vtk_array = vti.parse_cell_data_array("mydata");
+  auto vtk_array = vti.read_dataset_raw("mydata");
   EXPECT_EQ(vtk_array.vtk_type, "Int32");
   EXPECT_EQ(vtk_array.raw_bytes, EXPECTED_UNCOMPRESSED);
 }
 
-TEST(ParseCellDataArray, Compressed32Bit) {
+TEST(ReadDatasetRaw, Compressed32Bit) {
   std::string xml =
       R"(<?xml version="1.0"?>
            <VTKFile type="ImageData" version="1.0" byte_order="LittleEndian"
@@ -114,12 +124,12 @@ TEST(ParseCellDataArray, Compressed32Bit) {
            </VTKFile>)";
   auto file = write_temp_vti(xml);
   VTI vti(file.path.c_str());
-  auto vtk_array = vti.parse_cell_data_array("mydata");
+  auto vtk_array = vti.read_dataset_raw("mydata");
   EXPECT_EQ(vtk_array.vtk_type, "Int32");
   EXPECT_EQ(vtk_array.raw_bytes, EXPECTED_COMPRESSED);
 }
 
-TEST(ParseCellDataArray, TrailingWhitespaceInBase64) {
+TEST(ReadDatasetRaw, TrailingWhitespaceInBase64) {
   std::string xml =
       R"(<?xml version="1.0"?>
            <VTKFile type="ImageData" version="1.0" byte_order="LittleEndian"
@@ -135,7 +145,7 @@ TEST(ParseCellDataArray, TrailingWhitespaceInBase64) {
            </VTKFile>)";
   auto file = write_temp_vti(xml);
   VTI vti(file.path.c_str());
-  auto vtk_array = vti.parse_cell_data_array("mydata");
+  auto vtk_array = vti.read_dataset_raw("mydata");
   EXPECT_EQ(vtk_array.vtk_type, "Int32");
   EXPECT_EQ(vtk_array.raw_bytes, EXPECTED_UNCOMPRESSED);
 }
@@ -166,7 +176,7 @@ TEST(ReadCellsSizeOrigin, GeometryExtraction) {
   EXPECT_DOUBLE_EQ(org[2], 30.0);
 }
 
-TEST(ParseCellDataArray, ThrowsOnMissingArray) {
+TEST(ReadDatasetRaw, ThrowsOnMissingArray) {
   IOMockGuard io_mock;
   std::string xml =
       R"(<?xml version="1.0"?>
@@ -183,11 +193,11 @@ TEST(ParseCellDataArray, ThrowsOnMissingArray) {
   auto file = write_temp_vti(xml);
   VTI vti(file.path.c_str());
   last_f_io_error_msg().clear();
-  EXPECT_THROW((void)vti.parse_cell_data_array("testdata"), FIOErrorCalled);
+  EXPECT_THROW((void)vti.read_dataset_raw("testdata"), FIOErrorCalled);
   EXPECT_NE(last_f_io_error_msg().find("no DataArray with Name='testdata' found"), std::string::npos);
 }
 
-TEST(ParseCellDataArray, RejectsUnsupportedByteOrder) {
+TEST(ParseOnInit, RejectsUnsupportedByteOrder) {
   IOMockGuard io_mock;
   std::string xml =
       R"(<?xml version="1.0"?>
@@ -202,13 +212,12 @@ TEST(ParseCellDataArray, RejectsUnsupportedByteOrder) {
              </ImageData>
            </VTKFile>)";
   auto file = write_temp_vti(xml);
-  VTI vti(file.path.c_str());
   last_f_io_error_msg().clear();
-  EXPECT_THROW((void)vti.parse_cell_data_array("mydata"), FIOErrorCalled);
+  EXPECT_THROW(VTI{file.path.c_str()}, FIOErrorCalled);
   EXPECT_NE(last_f_io_error_msg().find("byte_order must be 'LittleEndian'"), std::string::npos);
 }
 
-TEST(ParseCellDataArray, RejectsUnsupportedCompressor) {
+TEST(ParseOnInit, RejectsUnsupportedCompressor) {
   IOMockGuard io_mock;
   std::string xml =
       R"(<?xml version="1.0"?>
@@ -224,9 +233,8 @@ TEST(ParseCellDataArray, RejectsUnsupportedCompressor) {
              </ImageData>
            </VTKFile>)";
   auto file = write_temp_vti(xml);
-  VTI vti(file.path.c_str());
   last_f_io_error_msg().clear();
-  EXPECT_THROW((void)vti.parse_cell_data_array("mydata"), FIOErrorCalled);
+  EXPECT_THROW(VTI{file.path.c_str()}, FIOErrorCalled);
   EXPECT_NE(last_f_io_error_msg().find("compressor is not vtkZLibDataCompressor"), std::string::npos);
 }
 
@@ -253,18 +261,8 @@ TYPED_TEST(ReadDatasetInt, ConvertsInt64Input) {
   auto file = write_temp_vti(xml);
   VTI vti(file.path.c_str());
 
-  CFI_CDESC_T(1) desc_storage;
-  // https://github.com/gcc-mirror/gcc/blob/master/libgfortran/ISO_Fortran_binding.h#L77
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-  CFI_cdesc_t* desc = reinterpret_cast<CFI_cdesc_t*>(&desc_storage);
-  std::array<CFI_index_t, 1> extents{};
-  CFI_type_t dtype = std::is_same_v<TypeParam, int32_t> ? CFI_type_int32_t : CFI_type_int64_t;
-  int rc = CFI_establish(desc, nullptr, CFI_attribute_allocatable, dtype, sizeof(TypeParam), 1, extents.data());
-  ASSERT_EQ(rc, CFI_SUCCESS);
-
-  vti.read_dataset_int("mydata", desc);
-  std::span<TypeParam> data(static_cast<TypeParam*>(desc->base_addr), static_cast<std::size_t>(desc->dim[0].extent));
+  const std::string_view label = "mydata";
+  const std::vector<TypeParam> data = vti.read_dataset<TypeParam>(label);
   ASSERT_EQ(data.size(), std::size_t{1});
   EXPECT_EQ(data[0], TypeParam{41});
-  EXPECT_EQ(CFI_deallocate(desc), CFI_SUCCESS);
 }
