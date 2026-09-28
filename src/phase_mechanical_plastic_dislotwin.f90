@@ -40,7 +40,7 @@ submodule(phase:plastic) dislotwin
       b_tr, &                                                                                       !< magnitude of Burgers vector (m) for each transformation system
       Q_sl,&                                                                                        !< activation energy for glide (J) for each slip system
       v_0, &                                                                                        !< dislocation velocity prefactor (m/s) for each slip system
-      dot_N_0_tw, &                                                                                 !< twin nucleation rate (1/m³s) for each twin system
+      N_dot_0_tw, &                                                                                 !< twin nucleation rate (1/m³s) for each twin system
       t_tw, &                                                                                       !< twin thickness (m) for each twin system
       i_sl, &                                                                                       !< Adj. parameter for distance between 2 forest dislocations for each slip system
       t_tr, &                                                                                       !< martensite lamellar thickness (m) for each trans system
@@ -516,16 +516,16 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
   real(pREAL) :: &
     f_matrix,StressRatio_p,&
     E_kB_T, &
-    ddot_gamma_dtau, &
+    dgamma_dot_dtau, &
     tau, &
     T
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
-    dot_gamma_sl,ddot_gamma_dtau_sl
+    gamma_dot_sl,dgamma_dot_dtau_sl
   real(pREAL), dimension(param(ph)%sum_N_tw) :: &
-    dot_gamma_tw,ddot_gamma_dtau_tw
+    gamma_dot_tw,dgamma_dot_dtau_tw
   real(pREAL), dimension(param(ph)%sum_N_tr) :: &
-    dot_gamma_tr,ddot_gamma_dtau_tr
-  real(pREAL):: dot_gamma_sb
+    gamma_dot_tr,dgamma_dot_dtau_tr
+  real(pREAL):: gamma_dot_sb
   real(pREAL), dimension(3,3) :: eigVectors, P_sb
   real(pREAL), dimension(3)   :: eigValues
   real(pREAL), dimension(3,6), parameter :: &
@@ -559,28 +559,28 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
              - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
              - sum(stt%f_tr(1:prm%sum_N_tr,en))
 
-    call kinetics_sl(Mp,T,ph,en,dot_gamma_sl,ddot_gamma_dtau_sl)
+    call kinetics_sl(Mp,T,ph,en,gamma_dot_sl,dgamma_dot_dtau_sl)
     slipContribution: do i = 1, prm%sum_N_sl
-      Lp = Lp + dot_gamma_sl(i)*prm%P_sl(1:3,1:3,i)
+      Lp = Lp + gamma_dot_sl(i)*prm%P_sl(1:3,1:3,i)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                         + ddot_gamma_dtau_sl(i) * prm%P_sl(k,l,i) * prm%P_sl(m,n,i)
+                         + dgamma_dot_dtau_sl(i) * prm%P_sl(k,l,i) * prm%P_sl(m,n,i)
     end do slipContribution
 
-    if (prm%sum_N_tw > 0) call kinetics_tw(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tw,ddot_gamma_dtau_tw)
+    if (prm%sum_N_tw > 0) call kinetics_tw(Mp,T,gamma_dot_sl,ph,en,gamma_dot_tw,dgamma_dot_dtau_tw)
     twinContibution: do i = 1, prm%sum_N_tw
-      Lp = Lp + dot_gamma_tw(i)*prm%P_tw(1:3,1:3,i)
+      Lp = Lp + gamma_dot_tw(i)*prm%P_tw(1:3,1:3,i)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                         + ddot_gamma_dtau_tw(i)* prm%P_tw(k,l,i)*prm%P_tw(m,n,i)
+                         + dgamma_dot_dtau_tw(i)* prm%P_tw(k,l,i)*prm%P_tw(m,n,i)
     end do twinContibution
 
-    if (prm%sum_N_tr > 0) call kinetics_tr(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tr,ddot_gamma_dtau_tr)
+    if (prm%sum_N_tr > 0) call kinetics_tr(Mp,T,gamma_dot_sl,ph,en,gamma_dot_tr,dgamma_dot_dtau_tr)
     transContibution: do i = 1, prm%sum_N_tr
-      Lp = Lp + dot_gamma_tr(i)*prm%P_tr(1:3,1:3,i)
+      Lp = Lp + gamma_dot_tr(i)*prm%P_tr(1:3,1:3,i)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                         + ddot_gamma_dtau_tr(i)* prm%P_tr(k,l,i)*prm%P_tr(m,n,i)
+                         + dgamma_dot_dtau_tr(i)* prm%P_tr(k,l,i)*prm%P_tr(m,n,i)
     end do transContibution
 
     Lp      = Lp      * f_matrix
@@ -598,15 +598,15 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
         significantShearBandStress: if (abs(tau) > tol_math_check) then
           StressRatio_p = (abs(tau)/prm%tau_sb)**prm%p_sb
-          dot_gamma_sb = sign(prm%gamma_0_sb*exp(-E_kB_T*(1-StressRatio_p)**prm%q_sb), tau)
-          ddot_gamma_dtau = abs(dot_gamma_sb)*E_kB_T*prm%p_sb*prm%q_sb/prm%tau_sb &
+          gamma_dot_sb = sign(prm%gamma_0_sb*exp(-E_kB_T*(1-StressRatio_p)**prm%q_sb), tau)
+          dgamma_dot_dtau = abs(gamma_dot_sb)*E_kB_T*prm%p_sb*prm%q_sb/prm%tau_sb &
                           * (abs(tau)/prm%tau_sb)**(prm%p_sb-1.0_pREAL) &
                           * (1.0_pREAL-StressRatio_p)**(prm%q_sb-1.0_pREAL)
 
-          Lp = Lp + dot_gamma_sb * P_sb
+          Lp = Lp + gamma_dot_sb * P_sb
           forall (k=1:3,l=1:3,m=1:3,n=1:3) &
             dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                             + ddot_gamma_dtau * P_sb(k,l) * P_sb(m,n)
+                             + dgamma_dot_dtau * P_sb(k,l) * P_sb(m,n)
         end if significantShearBandStress
       end do
 
@@ -639,22 +639,22 @@ module function dislotwin_dotState(Mp,ph,en) result(dotState)
     sigma_cl, &                                                                                     !< climb stress
     b_d                                                                                             !< ratio of Burgers vector to stacking fault width
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
-    dot_rho_dip_formation, &
-    dot_rho_dip_climb, &
-    dot_gamma_sl
+    rho_dot_dip_formation, &
+    rho_dot_dip_climb, &
+    gamma_dot_sl
   real(pREAL), dimension(param(ph)%sum_N_tw) :: &
-    dot_gamma_tw
+    gamma_dot_tw
   real(pREAL), dimension(param(ph)%sum_N_tr) :: &
-    dot_gamma_tr
+    gamma_dot_tr
   real(pREAL) :: &
     mu, nu, &
     T
 
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph), &
-            dot_rho_mob => dotState(indexDotState(ph)%rho_mob(1):indexDotState(ph)%rho_mob(2)), &
-            dot_rho_dip => dotState(indexDotState(ph)%rho_dip(1):indexDotState(ph)%rho_dip(2)), &
-            abs_dot_gamma_sl => dotState(indexDotState(ph)%gamma_sl(1):indexDotState(ph)%gamma_sl(2)), &
+            rho_dot_mob => dotState(indexDotState(ph)%rho_mob(1):indexDotState(ph)%rho_mob(2)), &
+            rho_dot_dip => dotState(indexDotState(ph)%rho_dip(1):indexDotState(ph)%rho_dip(2)), &
+            abs_gamma_dot_sl => dotState(indexDotState(ph)%gamma_sl(1):indexDotState(ph)%gamma_sl(2)), &
             dot_f_tw => dotState(indexDotState(ph)%f_tw(1):indexDotState(ph)%f_tw(2)), &
             dot_f_tr => dotState(indexDotState(ph)%f_tr(1):indexDotState(ph)%f_tr(2)))
 
@@ -666,26 +666,26 @@ module function dislotwin_dotState(Mp,ph,en) result(dotState)
              - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
              - sum(stt%f_tr(1:prm%sum_N_tr,en))
 
-    call kinetics_sl(Mp,T,ph,en,dot_gamma_sl)
-    abs_dot_gamma_sl = abs(dot_gamma_sl)
+    call kinetics_sl(Mp,T,ph,en,gamma_dot_sl)
+    abs_gamma_dot_sl = abs(gamma_dot_sl)
 
     slipState: do i = 1, prm%sum_N_sl
       tau = math_tensordot(Mp,prm%P_sl(1:3,1:3,i))
 
       significantSlipStress: if (dEq0(tau) .or. prm%omitDipoles) then
         d_hat = dst%Lambda_sl(i,en)
-        dot_rho_dip_formation(i) = 0.0_pREAL
+        rho_dot_dip_formation(i) = 0.0_pREAL
       else significantSlipStress
         d_hat = 3.0_pREAL*mu*prm%b_sl(i)/(16.0_pREAL*PI*abs(tau))
         d_hat = math_clip(d_hat, right = dst%Lambda_sl(i,en))
         d_hat = math_clip(d_hat, left  = prm%d_caron(i))
 
-        dot_rho_dip_formation(i) = 2.0_pREAL*(d_hat-prm%d_caron(i))/prm%b_sl(i) &
-                                 * stt%rho_mob(i,en)*abs_dot_gamma_sl(i)
+        rho_dot_dip_formation(i) = 2.0_pREAL*(d_hat-prm%d_caron(i))/prm%b_sl(i) &
+                                 * stt%rho_mob(i,en)*abs_gamma_dot_sl(i)
       end if significantSlipStress
 
       if (dEq(d_hat,prm%d_caron(i))) then
-        dot_rho_dip_climb(i) = 0.0_pREAL
+        rho_dot_dip_climb(i) = 0.0_pREAL
       else
         ! Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
         sigma_cl = dot_product(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
@@ -696,24 +696,24 @@ module function dislotwin_dotState(Mp,ph,en) result(dotState)
         end if
         v_cl = 2.0_pREAL*prm%omega*b_d**2*exp(-prm%Q_cl/(K_B*T)) &
              * (exp(abs(sigma_cl)*prm%b_sl(i)**3/(K_B*T)) - 1.0_pREAL)
-        dot_rho_dip_climb(i) = 4.0_pREAL*v_cl*stt%rho_dip(i,en) &
+        rho_dot_dip_climb(i) = 4.0_pREAL*v_cl*stt%rho_dip(i,en) &
                              / (d_hat-prm%d_caron(i))
       end if
     end do slipState
 
-    dot_rho_mob = abs_dot_gamma_sl/(prm%b_sl*dst%Lambda_sl(:,en)) &
-                - dot_rho_dip_formation &
-                - 2.0_pREAL*prm%d_caron/prm%b_sl * stt%rho_mob(:,en)*abs_dot_gamma_sl
+    rho_dot_mob = abs_gamma_dot_sl/(prm%b_sl*dst%Lambda_sl(:,en)) &
+                - rho_dot_dip_formation &
+                - 2.0_pREAL*prm%d_caron/prm%b_sl * stt%rho_mob(:,en)*abs_gamma_dot_sl
 
-    dot_rho_dip = dot_rho_dip_formation &
-                - 2.0_pREAL*prm%d_caron/prm%b_sl * stt%rho_dip(:,en)*abs_dot_gamma_sl &
-                - dot_rho_dip_climb
+    rho_dot_dip = rho_dot_dip_formation &
+                - 2.0_pREAL*prm%d_caron/prm%b_sl * stt%rho_dip(:,en)*abs_gamma_dot_sl &
+                - rho_dot_dip_climb
 
-    if (prm%sum_N_tw > 0) call kinetics_tw(Mp,T,abs_dot_gamma_sl,ph,en,dot_gamma_tw)
-    dot_f_tw = f_matrix*dot_gamma_tw/prm%gamma_char_tw
+    if (prm%sum_N_tw > 0) call kinetics_tw(Mp,T,abs_gamma_dot_sl,ph,en,gamma_dot_tw)
+    dot_f_tw = f_matrix*gamma_dot_tw/prm%gamma_char_tw
 
-    if (prm%sum_N_tr > 0) call kinetics_tr(Mp,T,abs_dot_gamma_sl,ph,en,dot_gamma_tr)
-    dot_f_tr = f_matrix*dot_gamma_tr/gamma_char_tr
+    if (prm%sum_N_tr > 0) call kinetics_tr(Mp,T,abs_gamma_dot_sl,ph,en,gamma_dot_tr)
+    dot_f_tr = f_matrix*gamma_dot_tr/gamma_char_tr
 
   end associate
 
@@ -840,7 +840,7 @@ end subroutine plastic_dislotwin_result
 ! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_sl(Mp,T,ph,en, &
-                            dot_gamma_sl,ddot_gamma_dtau_sl,tau_sl)
+                            gamma_dot_sl,dgamma_dot_dtau_sl,tau_sl)
 
   real(pREAL), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -850,13 +850,13 @@ pure subroutine kinetics_sl(Mp,T,ph,en, &
     ph, &
     en
   real(pREAL), dimension(param(ph)%sum_N_sl), intent(out) :: &
-    dot_gamma_sl
+    gamma_dot_sl
   real(pREAL), dimension(param(ph)%sum_N_sl), optional, intent(out) :: &
-    ddot_gamma_dtau_sl, &
+    dgamma_dot_dtau_sl, &
     tau_sl
 
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
-    ddot_gamma_dtau
+    dgamma_dot_dtau
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     tau, &
     stressRatio, &
@@ -885,7 +885,7 @@ pure subroutine kinetics_sl(Mp,T,ph,en, &
                      / prm%v_0
       v_run_inverse  = prm%B/(tau_eff*prm%b_sl)
 
-      dot_gamma_sl = sign(stt%rho_mob(:,en)*prm%b_sl/(v_wait_inverse+v_run_inverse),tau)
+      gamma_dot_sl = sign(stt%rho_mob(:,en)*prm%b_sl/(v_wait_inverse+v_run_inverse),tau)
 
       dV_wait_inverse_dTau = -1.0_pREAL * v_wait_inverse * prm%p * prm%q * Q_kB_T &
                            * (stressRatio**(prm%p-1.0_pREAL)) &
@@ -894,15 +894,15 @@ pure subroutine kinetics_sl(Mp,T,ph,en, &
       dV_run_inverse_dTau  = -1.0_pREAL * v_run_inverse/tau_eff
       dV_dTau              = -1.0_pREAL * (dV_wait_inverse_dTau+dV_run_inverse_dTau) &
                            / (v_wait_inverse+v_run_inverse)**2
-      ddot_gamma_dtau = dV_dTau*stt%rho_mob(:,en)*prm%b_sl
+      dgamma_dot_dtau = dV_dTau*stt%rho_mob(:,en)*prm%b_sl
     else where significantStress
-      dot_gamma_sl    = 0.0_pREAL
-      ddot_gamma_dtau = 0.0_pREAL
+      gamma_dot_sl    = 0.0_pREAL
+      dgamma_dot_dtau = 0.0_pREAL
     end where significantStress
 
   end associate
 
-  if (present(ddot_gamma_dtau_sl)) ddot_gamma_dtau_sl = ddot_gamma_dtau
+  if (present(dgamma_dot_dtau_sl)) dgamma_dot_dtau_sl = dgamma_dot_dtau
   if (present(tau_sl))             tau_sl             = tau
 
 end subroutine kinetics_sl
@@ -915,8 +915,8 @@ end subroutine kinetics_sl
 ! NOTE: Contrary to common convention, here the result (i.e. intent(out)) variables have to be put
 ! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics_tw(Mp,T,abs_dot_gamma_sl,ph,en,&
-                            dot_gamma_tw,ddot_gamma_dtau_tw)
+pure subroutine kinetics_tw(Mp,T,abs_gamma_dot_sl,ph,en,&
+                            gamma_dot_tw,dgamma_dot_dtau_tw)
 
   real(pREAL), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -926,15 +926,15 @@ pure subroutine kinetics_tw(Mp,T,abs_dot_gamma_sl,ph,en,&
     ph, &
     en
   real(pREAL), dimension(param(ph)%sum_N_sl), intent(in) :: &
-    abs_dot_gamma_sl
+    abs_gamma_dot_sl
   real(pREAL), dimension(param(ph)%sum_N_tw), intent(out) :: &
-    dot_gamma_tw
+    gamma_dot_tw
   real(pREAL), dimension(param(ph)%sum_N_tw), optional, intent(out) :: &
-    ddot_gamma_dtau_tw
+    dgamma_dot_dtau_tw
 
   real(pREAL) :: &
     tau, tau_r, tau_hat, &
-    dot_N_0, &
+    N_dot_0, &
     x0, V, &
     Gamma_sf, &
     mu, nu, &
@@ -964,18 +964,18 @@ pure subroutine kinetics_tw(Mp,T,abs_dot_gamma_sl,ph,en,&
         dP_dTau = prm%r(i) * (tau_hat/tau)**prm%r(i)/tau * P
 
         s = prm%fcc_twinNucleationSlipPair(1:2,i)
-        dot_N_0 = sum(abs_dot_gamma_sl(s(2:1:-1))*(stt%rho_mob(s,en)+stt%rho_dip(s,en)))/(prm%L_tw*3.0_pREAL)
+        N_dot_0 = sum(abs_gamma_dot_sl(s(2:1:-1))*(stt%rho_mob(s,en)+stt%rho_dip(s,en)))/(prm%L_tw*3.0_pREAL)
 
         P_ncs = 1.0_pREAL-exp(-prm%V_cs/(K_B*T)*(tau_r-tau))
         dP_ncs_dtau = prm%V_cs / (K_B * T) * (P_ncs - 1.0_pREAL)
 
         V = PI/4.0_pREAL*dst%Lambda_tw(i,en)**2*prm%t_tw(i)
-        dot_gamma_tw(i) = V*dot_N_0*P_ncs*P*prm%gamma_char_tw(i)
-        if (present(ddot_gamma_dtau_tw)) &
-          ddot_gamma_dtau_tw(i) = V*dot_N_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)*prm%gamma_char_tw(i)
+        gamma_dot_tw(i) = V*N_dot_0*P_ncs*P*prm%gamma_char_tw(i)
+        if (present(dgamma_dot_dtau_tw)) &
+          dgamma_dot_dtau_tw(i) = V*N_dot_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)*prm%gamma_char_tw(i)
       else
-        dot_gamma_tw(i) = 0.0_pREAL
-        if (present(ddot_gamma_dtau_tw)) ddot_gamma_dtau_tw(i) = 0.0_pREAL
+        gamma_dot_tw(i) = 0.0_pREAL
+        if (present(dgamma_dot_dtau_tw)) dgamma_dot_dtau_tw(i) = 0.0_pREAL
       end if
     end do
 
@@ -991,8 +991,8 @@ end subroutine kinetics_tw
 ! NOTE: Contrary to common convention, here the result (i.e. intent(out)) variables have to be put
 ! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics_tr(Mp,T,abs_dot_gamma_sl,ph,en,&
-                            dot_gamma_tr,ddot_gamma_dtau_tr)
+pure subroutine kinetics_tr(Mp,T,abs_gamma_dot_sl,ph,en,&
+                            gamma_dot_tr,dgamma_dot_dtau_tr)
 
   real(pREAL), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -1002,15 +1002,15 @@ pure subroutine kinetics_tr(Mp,T,abs_dot_gamma_sl,ph,en,&
     ph, &
     en
   real(pREAL), dimension(param(ph)%sum_N_sl), intent(in) :: &
-    abs_dot_gamma_sl
+    abs_gamma_dot_sl
   real(pREAL), dimension(param(ph)%sum_N_tr), intent(out) :: &
-    dot_gamma_tr
+    gamma_dot_tr
   real(pREAL), dimension(param(ph)%sum_N_tr), optional, intent(out) :: &
-    ddot_gamma_dtau_tr
+    dgamma_dot_dtau_tr
 
   real(pREAL) :: &
     tau, tau_r, tau_hat, &
-    dot_N_0, &
+    N_dot_0, &
     x0, V, &
     Gamma_sf, &
     mu, nu, &
@@ -1040,18 +1040,18 @@ pure subroutine kinetics_tr(Mp,T,abs_dot_gamma_sl,ph,en,&
         dP_dTau = prm%s(i) * (tau_hat/tau)**prm%s(i)/tau * P
 
         s = prm%fcc_twinNucleationSlipPair(1:2,i)
-        dot_N_0 = sum(abs_dot_gamma_sl(s(2:1:-1))*(stt%rho_mob(s,en)+stt%rho_dip(s,en)))/(prm%L_tr*3.0_pREAL)
+        N_dot_0 = sum(abs_gamma_dot_sl(s(2:1:-1))*(stt%rho_mob(s,en)+stt%rho_dip(s,en)))/(prm%L_tr*3.0_pREAL)
 
         P_ncs = 1.0_pREAL-exp(-prm%V_cs/(K_B*T)*(tau_r-tau))
         dP_ncs_dtau = prm%V_cs / (K_B * T) * (P_ncs - 1.0_pREAL)
 
         V = PI/4.0_pREAL*dst%Lambda_tr(i,en)**2*prm%t_tr(i)
-        dot_gamma_tr(i) = V*dot_N_0*P_ncs*P*gamma_char_tr
-        if (present(ddot_gamma_dtau_tr)) &
-          ddot_gamma_dtau_tr(i) = V*dot_N_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)*gamma_char_tr
+        gamma_dot_tr(i) = V*N_dot_0*P_ncs*P*gamma_char_tr
+        if (present(dgamma_dot_dtau_tr)) &
+          dgamma_dot_dtau_tr(i) = V*N_dot_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)*gamma_char_tr
       else
-        dot_gamma_tr(i) = 0.0_pREAL
-        if (present(ddot_gamma_dtau_tr)) ddot_gamma_dtau_tr(i) = 0.0_pREAL
+        gamma_dot_tr(i) = 0.0_pREAL
+        if (present(dgamma_dot_dtau_tr)) dgamma_dot_dtau_tr(i) = 0.0_pREAL
       end if
     end do
 

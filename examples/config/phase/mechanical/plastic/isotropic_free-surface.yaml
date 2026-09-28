@@ -7,7 +7,7 @@ references:
 
 output: [xi]
 
-dot_gamma_0: 0.001
+gamma_dot_0: 0.001
 n: 20.
 xi_0: 0.3e+6
 xi_inf: 0.6e+6

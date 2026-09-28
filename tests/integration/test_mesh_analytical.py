@@ -120,7 +120,7 @@ def load_setup(tmp_path, load_file, np_rng, n_D, polytope, BC_type, BC_point):
                  np.array([13, 16, 19, 22])
         label = 'edge' if n_D == 2 else 'face'
 
-    load_config['loadstep'][0]['boundary_conditions']['mechanical'].append(
+    load_config['loadstep'][0]['boundary_condition']['mechanical'].append(
                 {'label': label, x_dot: BC_val})
 
     zero_DOF = np.array([1, 2, 7])          if polytope == 'tri'  else \
@@ -130,7 +130,7 @@ def load_setup(tmp_path, load_file, np_rng, n_D, polytope, BC_type, BC_point):
     BC_DOF   -= 1
 
     if n_D == 3:
-        load_config['loadstep'][0]['boundary_conditions']['mechanical'].append(                     # Additional constraint in 3D
+        load_config['loadstep'][0]['boundary_condition']['mechanical'].append(                     # Additional constraint in 3D
                 {'label': 'fixed-z', 'u_dot': ['x', 'x', 0.0]})
 
     load_config['loadstep'][0]['discretization']['N'] = 1

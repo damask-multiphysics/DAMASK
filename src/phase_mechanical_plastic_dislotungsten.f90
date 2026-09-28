@@ -288,7 +288,7 @@ pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
   real(pREAL) :: &
     T                                                                                               !< temperature
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
-    dot_gamma, ddot_gamma_dtau
+    gamma_dot, dgamma_dot_dtau
   real(pREAL), dimension(3,3,param(ph)%sum_N_sl) :: &
     P_nS
 
@@ -299,13 +299,13 @@ pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
 
   associate(prm => param(ph))
 
-    call kinetics(Mp,T,ph,en, dot_gamma,ddot_gamma_dtau)
-    P_nS = merge(prm%P_nS_pos,prm%P_nS_neg, spread(spread(dot_gamma,1,3),2,3)>0.0_pREAL)            ! faster than 'merge' in loop
+    call kinetics(Mp,T,ph,en, gamma_dot,dgamma_dot_dtau)
+    P_nS = merge(prm%P_nS_pos,prm%P_nS_neg, spread(spread(gamma_dot,1,3),2,3)>0.0_pREAL)            ! faster than 'merge' in loop
     do i = 1, prm%sum_N_sl
-      Lp = Lp + dot_gamma(i)*prm%P_sl(1:3,1:3,i)
+      Lp = Lp + gamma_dot(i)*prm%P_sl(1:3,1:3,i)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                         + ddot_gamma_dtau(i) * prm%P_sl(k,l,i) * P_nS(m,n,i)
+                         + dgamma_dot_dtau(i) * prm%P_sl(k,l,i) * P_nS(m,n,i)
     end do
 
   end associate
@@ -329,54 +329,54 @@ module function dislotungsten_dotState(Mp,ph,en) result(dotState)
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     tau_eff, &
     v_cl, &
-    dot_rho_dip_formation, &
-    dot_rho_dip_climb, &
+    rho_dot_dip_formation, &
+    rho_dot_dip_climb, &
     d_hat
   real(pREAL) :: &
     mu, nu, T
 
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph), &
-            dot_rho_mob => dotState(indexDotState(ph)%rho_mob(1):indexDotState(ph)%rho_mob(2)), &
-            dot_rho_dip => dotState(indexDotState(ph)%rho_dip(1):indexDotState(ph)%rho_dip(2)), &
-            dot_gamma   => dotState(indexDotState(ph)%gamma_sl(1):indexDotState(ph)%gamma_sl(2)))
+            rho_dot_mob => dotState(indexDotState(ph)%rho_mob(1):indexDotState(ph)%rho_mob(2)), &
+            rho_dot_dip => dotState(indexDotState(ph)%rho_dip(1):indexDotState(ph)%rho_dip(2)), &
+            gamma_dot   => dotState(indexDotState(ph)%gamma_sl(1):indexDotState(ph)%gamma_sl(2)))
 
     mu = elastic_mu(ph,en,prm%isotropic_bound)
     nu = elastic_nu(ph,en,prm%isotropic_bound)
     T = thermal_T(ph,en)
 
     call kinetics(Mp,T,ph,en,&
-                  dot_gamma, tau = tau_eff)
+                  gamma_dot, tau = tau_eff)
 
-    dot_gamma = abs(dot_gamma)
+    gamma_dot = abs(gamma_dot)
 
-    where(dEq0(dot_gamma))
+    where(dEq0(gamma_dot))
       d_hat = dst%Lambda_sl(:,en)                                                                   ! upper limit
-      dot_rho_dip_formation = 0.0_pREAL
+      rho_dot_dip_formation = 0.0_pREAL
     else where
       d_hat = mu*prm%b_sl/(8.0_pREAL*PI*(1.0_pREAL-nu)*tau_eff)
       d_hat = math_clip(d_hat, right = dst%Lambda_sl(:,en))                                         ! upper limit
       d_hat = math_clip(d_hat, left  = prm%d_caron)                                                 ! lower limit
 
-      dot_rho_dip_formation = merge(dot_gamma * 2.0_pREAL*(d_hat-prm%d_caron)/prm%b_sl * stt%rho_mob(:,en), &
+      rho_dot_dip_formation = merge(gamma_dot * 2.0_pREAL*(d_hat-prm%d_caron)/prm%b_sl * stt%rho_mob(:,en), &
                                     0.0_pREAL, &
                                     prm%dipoleformation)
     end where
 
     where(dEq0(d_hat-prm%d_caron))
-      dot_rho_dip_climb = 0.0_pREAL
+      rho_dot_dip_climb = 0.0_pREAL
     else where
       v_cl = (3.0_pREAL*mu*prm%D_0*exp(-prm%Q_cl/(K_B*T))*prm%f_at/(2.0_pREAL*PI*K_B*T)) &
            * (1.0_pREAL/(d_hat+prm%d_caron))
-      dot_rho_dip_climb = (4.0_pREAL*v_cl*stt%rho_dip(:,en))/(d_hat-prm%d_caron)                      ! ToDo: Discuss with Franz: Stress dependency?
+      rho_dot_dip_climb = (4.0_pREAL*v_cl*stt%rho_dip(:,en))/(d_hat-prm%d_caron)                      ! ToDo: Discuss with Franz: Stress dependency?
     end where
 
-    dot_rho_mob = dot_gamma / (prm%b_sl*dst%Lambda_sl(:,en)) &                                      ! multiplication
-                - dot_rho_dip_formation &
-                - dot_gamma * 2.0_pREAL*prm%d_caron/prm%b_sl * stt%rho_mob(:,en)                    ! spontaneous annihilation of 2 edges
-    dot_rho_dip = dot_rho_dip_formation &
-                - dot_rho_dip_climb &
-                - dot_gamma * 2.0_pREAL*prm%d_caron/prm%b_sl * stt%rho_dip(:,en)                    ! spontaneous annihilation of an edge with a dipole
+    rho_dot_mob = gamma_dot / (prm%b_sl*dst%Lambda_sl(:,en)) &                                      ! multiplication
+                - rho_dot_dip_formation &
+                - gamma_dot * 2.0_pREAL*prm%d_caron/prm%b_sl * stt%rho_mob(:,en)                    ! spontaneous annihilation of 2 edges
+    rho_dot_dip = rho_dot_dip_formation &
+                - rho_dot_dip_climb &
+                - gamma_dot * 2.0_pREAL*prm%d_caron/prm%b_sl * stt%rho_dip(:,en)                    ! spontaneous annihilation of an edge with a dipole
 
   end associate
 
@@ -459,7 +459,7 @@ end subroutine plastic_dislotungsten_result
 ! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics(Mp,T,ph,en, &
-                         dot_gamma,ddot_gamma_dtau,tau)
+                         gamma_dot,dgamma_dot_dtau,tau)
 
   real(pREAL), dimension(3,3),                           intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -470,9 +470,9 @@ pure subroutine kinetics(Mp,T,ph,en, &
     en
 
   real(pREAL), dimension(param(ph)%sum_N_sl),           intent(out) :: &
-    dot_gamma
+    gamma_dot
   real(pREAL), dimension(param(ph)%sum_N_sl), optional, intent(out) :: &
-    ddot_gamma_dtau, &
+    dgamma_dot_dtau, &
     tau
 
   real(pREAL), dimension(param(ph)%sum_N_sl) :: &
@@ -505,20 +505,20 @@ pure subroutine kinetics(Mp,T,ph,en, &
             / (prm%omega*effectiveLength)
         t_k = effectiveLength * prm%B /(2.0_pREAL*prm%b_sl*tau_eff)                                 ! corrected eq. (14)
 
-        dot_gamma = b_rho * prm%h/(t_n + t_k) * merge(+1.0_pREAL,-1.0_pREAL, tau_pos>tau_neg)
+        gamma_dot = b_rho * prm%h/(t_n + t_k) * merge(+1.0_pREAL,-1.0_pREAL, tau_pos>tau_neg)
       else where
-        dot_gamma = 0.0_pREAL
+        gamma_dot = 0.0_pREAL
       end where
 
-      if (present(ddot_gamma_dtau)) then
+      if (present(dgamma_dot_dtau)) then
         where(tau_eff > tol_math_check)
           dtn = -1.0_pREAL * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pREAL-StressRatio_p)**(prm%q - 1.0_pREAL) &
               * StressRatio_pminus1 / prm%tau_Peierls
           dtk = -1.0_pREAL * t_k / tau_eff
 
-          ddot_gamma_dtau = -1.0_pREAL * dot_gamma * (dtn + dtk) / (t_n + t_k)
+          dgamma_dot_dtau = -1.0_pREAL * gamma_dot * (dtn + dtk) / (t_n + t_k)
         else where
-          ddot_gamma_dtau = 0.0_pREAL
+          dgamma_dot_dtau = 0.0_pREAL
         end where
       end if
 

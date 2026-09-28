@@ -9,7 +9,7 @@ submodule (phase:damage) anisobrittle
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pREAL) :: &
-      dot_o_0, &                                                                                    !< opening rate of cleavage planes
+      o_dot_0, &                                                                                    !< opening rate of cleavage planes
       p                                                                                             !< damage rate sensitivity
     real(pREAL), dimension(:), allocatable :: &
       s_crit, &                                                                                     !< critical displacement
@@ -73,7 +73,12 @@ module function anisobrittle_init() result(mySources)
         prm%sum_N_cl = sum(abs(N_cl))
 
         prm%p       = src%get_asReal('p')
-        prm%dot_o_0 = src%get_asReal('dot_o_0')
+        if (src%contains('dot_o_0')) then
+          prm%o_dot_0 = src%get_asReal('dot_o_0')
+          call IO_warning(10, 'dot_o_0', 'is deprecated in favor of', 'o_dot_0',emph=[1,3])
+        else
+          prm%o_dot_0 = src%get_asReal('o_dot_0')
+        end if
 
         prm%s_crit  = src%get_as1dReal('s_crit',requiredSize=size(N_cl))
         prm%g_crit  = src%get_as1dReal('g_crit',requiredSize=size(N_cl))
@@ -92,7 +97,7 @@ module function anisobrittle_init() result(mySources)
 
         ! sanity checks
         if (prm%p          <= 0.0_pREAL)  extmsg = trim(extmsg)//' p'
-        if (prm%dot_o_0    <= 0.0_pREAL)  extmsg = trim(extmsg)//' dot_o_0'
+        if (prm%o_dot_0    <= 0.0_pREAL)  extmsg = trim(extmsg)//' o_dot_0'
         if (any(prm%g_crit <  0.0_pREAL)) extmsg = trim(extmsg)//' g_crit'
         if (any(prm%s_crit <  0.0_pREAL)) extmsg = trim(extmsg)//' s_crit'
 
@@ -135,7 +140,7 @@ module subroutine anisobrittle_dotState(M_i, ph,en)
         traction = math_tensordot(M_i,prm%cleavage_systems(1:3,1:3,i,a))
 
         damageState(ph)%dotState(1,en) = damageState(ph)%dotState(1,en) &
-          + prm%dot_o_0 / prm%s_crit(a) &
+          + prm%o_dot_0 / prm%s_crit(a) &
             * (max(0.0_pREAL, abs(traction) - traction_crit)/traction_crit)**prm%p
       end do
     end do
@@ -197,7 +202,7 @@ module subroutine damage_anisobrittle_LiAndItsTangent(L_i, dL_i_dM_i, M_i, ph,en
       do i = 1, 3
         traction = math_tensordot(M_i,prm%cleavage_systems(1:3,1:3,i,a))
         if (abs(traction) > traction_crit + tol_math_check) then
-          udot = sign(1.0_pREAL,traction)* prm%dot_o_0 * ((abs(traction) - traction_crit)/traction_crit)**prm%p
+          udot = sign(1.0_pREAL,traction)* prm%o_dot_0 * ((abs(traction) - traction_crit)/traction_crit)**prm%p
           L_i = L_i + udot*prm%cleavage_systems(1:3,1:3,i,a)
           dudot_dt = sign(1.0_pREAL,traction)*udot*prm%p / (abs(traction) - traction_crit)
           forall (k=1:3,l=1:3,m=1:3,n=1:3) &

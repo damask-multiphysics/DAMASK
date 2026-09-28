@@ -41,9 +41,9 @@ def test_grid_thermal_large_strain(res_path,tmp_path,copy_files,assert_allclose,
             mechanical: spectral_basic
             thermal: spectral
           loadstep:
-            - boundary_conditions:
+            - boundary_condition:
                 mechanical:
-                  dot_F: [[0, 0, 0],
+                  F_dot: [[0, 0, 0],
                           [0, 0, 0],
                           [0, 0, 0]]
               discretization:
@@ -58,7 +58,7 @@ def test_grid_thermal_large_strain(res_path,tmp_path,copy_files,assert_allclose,
 
     compress = yaml.safe_load(
               '''
-              boundary_conditions:
+              boundary_condition:
                 mechanical:
                   F: [[.5, 0, 0],
                       [0, 1, 0],

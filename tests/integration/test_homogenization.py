@@ -152,7 +152,7 @@ def test_homogenization_fraction(tmp_path,assert_allclose,np_rng):
 
     F = [['x',0,0], [0,1.01+np_rng.random()*0.01,0.01+np_rng.random()*0.01], [0,0,'x']]
     P = [['0','x','x'], ['x','x','x'], ['x','x',0]]
-    loadstep = {'boundary_conditions':{'mechanical':{'P':P,'F':F}},
+    loadstep = {'boundary_condition':{'mechanical':{'P':P,'F':F}},
                 'discretization':{'t':10.,'N':20}}
     load_case['loadstep'].append(loadstep)
 

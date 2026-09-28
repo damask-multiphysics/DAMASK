@@ -5,9 +5,9 @@ solver:
   thermal: spectral
 
 loadstep:
-  - boundary_conditions:
+  - boundary_condition:
       mechanical:
-        dot_F: [[1.0e-3, 0, 0],
+        F_dot: [[1.0e-3, 0, 0],
                 [0,      x, 0],
                 [0,      0, x]]
         P: [[x, x, x],
@@ -17,9 +17,9 @@ loadstep:
       t: 10
       N: 40
     f_out: 4
-  - boundary_conditions:
+  - boundary_condition:
       mechanical:
-        dot_F: [[1.0e-3, 0, 0],
+        F_dot: [[1.0e-3, 0, 0],
                 [0,      x, 0],
                 [0,      0, x]]
         P: [[x, x, x],

@@ -47,7 +47,7 @@ module grid_utilities
   type, public :: tBCthermal                                                                        !< thermal boundary condition parameters
     real(pREAL)                   :: value = 0.0_pREAL                                              !< temperature [K] or rate [K/s]
     character(len=:), allocatable :: thermostat                                                     !< 'shift' or 'scale'
-    character(len=:), allocatable :: myType                                                         !< 'T' or 'dot_T'; unallocated = free
+    character(len=:), allocatable :: myType                                                         !< 'T' or 'T_dot'; unallocated = free
   end type tBCthermal
 
   type, public :: tSolutionParams

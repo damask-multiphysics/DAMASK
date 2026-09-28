@@ -164,11 +164,11 @@ subroutine grid_thermal_spectral_init(num_grid_thermal)
 
     call HDF5_read(tempN,groupHandle,'T',.false.)
     T = reshape(tempN,[cells(1),cells(2),cells3])
-    call HDF5_read(tempN,groupHandle,'T_lastinc',.false.)                                           ! ToDo 4.0: rename dataset name
+    call HDF5_read(tempN,groupHandle,'T_lastinc',.false.)
     T_lastinc = reshape(tempN,[cells(1),cells(2),cells3])
     T_staginc = T_lastinc
-    call HDF5_read(tempN,groupHandle,'dotT_lastinc',.false.)
-    T_dot_lastinc = reshape(tempN,[cells(1),cells(2),cells3])                                       ! ToDo 4.0: rename dataset name
+    call HDF5_read(tempN,groupHandle,'T_dot_lastinc',.false.)
+    T_dot_lastinc = reshape(tempN,[cells(1),cells(2),cells3])
     call HDF5_read(tmp,groupHandle,'T_aim',.false.)
     T_aim = tmp(1)
     call HDF5_read(tmp,groupHandle,'T_aim_lastinc',.false.)
@@ -315,7 +315,7 @@ subroutine grid_thermal_spectral_forward(cutBack, guess, Delta_t, Delta_t_prev, 
     if (present(thermal_BC)) then
       T_BC_current = thermal_BC
       select case (thermal_BC%myType)
-        case ('dot_T')
+        case ('T_dot')
           T_aimDot = thermal_BC%value
         case ('T')
           T_aimDot = (thermal_BC%value - T_aim_lastinc)/t_remaining
@@ -357,8 +357,8 @@ subroutine grid_thermal_spectral_restartWrite()
   fileHandle  = HDF5_openFile(CLI_jobName//'_restart.hdf5','a')
   groupHandle = HDF5_openGroup(fileHandle,'solver')
   call HDF5_write(reshape(T,[1,product(shape(T))]),groupHandle,'T')
-  call HDF5_write(reshape(T_lastinc,[1,product(shape(T_lastinc))]),groupHandle,'T_lastinc')         ! ToDo 4.0: rename dataset name
-  call HDF5_write(reshape(T_dot_lastinc,[1,product(shape(T_dot_lastinc))]),groupHandle,'dotT_lastinc') ! ToDo 4.0: rename dataset name
+  call HDF5_write(reshape(T_lastinc,[1,product(shape(T_lastinc))]),groupHandle,'T_lastinc')
+  call HDF5_write(reshape(T_dot_lastinc,[1,product(shape(T_dot_lastinc))]),groupHandle,'T_dot_lastinc')
   call HDF5_write([T_aim],        groupHandle,'T_aim')
   call HDF5_write([T_aim_lastinc],groupHandle,'T_aim_lastinc')
   call HDF5_closeGroup(groupHandle)

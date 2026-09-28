@@ -5,7 +5,7 @@ solver:
   thermal: spectral
 
 loadstep:
-  - boundary_conditions:
+  - boundary_condition:
       mechanical:
         F: [[1, 0, 0],
             [0, 1, 0],

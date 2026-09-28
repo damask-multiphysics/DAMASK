@@ -25,7 +25,7 @@ LOAD_YAML = """\
 solver: {{mechanical: spectral_polarization, thermal: spectral, electrical: spectral}}
 loadstep:
 - discretization: {{t: {time}, N: 1}}
-  boundary_conditions:
+  boundary_condition:
     mechanical:
       F:
       - [x, 0.0, 0.0]

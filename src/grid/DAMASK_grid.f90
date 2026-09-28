@@ -48,7 +48,7 @@ program DAMASK_grid
   type :: tLoadCase
     type(tRotation)          :: rot                                                                 !< rotation of BC
     type(tBCmech)            :: stress, &                                                           !< stress BC
-                                deformation                                                         !< deformation BC (dot_F, F, or L)
+                                deformation                                                         !< deformation BC (F_dot, F, or L)
     type(tBCthermal) ::         temperature                                                         !< thermal BC; unallocated = free
     type(tBCelectrical)      :: electric_field, &                                                   !< E field BC (E)
                                 current_density                                                     !< current density BC (J)
@@ -502,6 +502,7 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
       step_bc => load_step%get_dict('boundary_condition')
     else
       step_bc => load_step%get_dict('boundary_conditions')
+      call IO_warning(10, 'boundary_conditions', 'is deprecated in favor of', 'boundary_condition',emph=[1,3])
     end if
 
     step_mech => step_bc%get_dict('mechanical')
@@ -510,21 +511,27 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
       select case (step_mech%key(m))
         case ('L','dot_F','F_dot','F')                                                              ! assign values for the deformation BC matrix
           if (allocated(load_cases(l)%deformation%myType)) &
-            call IO_error(830_pI16, 'load case', l, 'only one of L, dot_F, or F allowed in mechanical BC', emph=[2])
+            call IO_error(830_pI16, 'load case', l, 'only one of L, F_dot, or F allowed in mechanical BC', emph=[2])
           load_cases(l)%deformation%myType = step_mech%key(m)
-          if (load_cases(l)%deformation%myType == 'F_dot') load_cases(l)%deformation%myType = 'dot_F'
+          if (load_cases(l)%deformation%myType == 'dot_F') then
+            call IO_warning(10, 'dot_F', 'is deprecated in favor of', 'F_dot',emph=[1,3])
+            load_cases(l)%deformation%myType = 'F_dot'
+          end if
           call get_masked_tensor(load_cases(l)%deformation%values,load_cases(l)%deformation%mask,step_mech%get_list(m))
         case ('dot_P','P','P_dot')
           if (load_cases(l)%stress%myType /= '') &
-            call IO_error(830_pI16, 'load case', l, 'only one of P or dot_P allowed in mechanical BC', emph=[2])
+            call IO_error(830_pI16, 'load case', l, 'only one of P or P_dot allowed in mechanical BC', emph=[2])
           load_cases(l)%stress%myType = step_mech%key(m)
-          if (load_cases(l)%stress%myType == 'P_dot') load_cases(l)%stress%myType = 'dot_P'
+          if (load_cases(l)%stress%myType == 'dot_P') then
+            call IO_warning(10, 'dot_P', 'is deprecated in favor of', 'P_dot',emph=[1,3])
+            load_cases(l)%stress%myType = 'P_dot'
+          end if
           call get_masked_tensor(load_cases(l)%stress%values,load_cases(l)%stress%mask,step_mech%get_list(m))
       end select
       call load_cases(l)%rot%fromAxisAngle(step_mech%get_as1dReal('R',defaultVal = real([0.0,0.0,1.0,0.0],pREAL)),degrees=.true.)
     end do readMech
     if (.not. allocated(load_cases(l)%deformation%myType)) &
-      call IO_error(830_pI16, 'load case', l, 'is incomplete: L, F_dot/dot_F, or F missing', emph=[2])
+      call IO_error(830_pI16, 'load case', l, 'is incomplete: L, F_dot, or F missing', emph=[2])
 
     if (step_bc%contains('electrical')) then
       step_electrical => step_bc%get_dict('electrical')
@@ -560,10 +567,14 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
       step_therm => step_bc%get_dict('thermal')
       readTherm: do m = 1, size(step_therm)
         select case (step_therm%key(m))
-          case ('T','dot_T')
+          case ('T','dot_T','T_dot')
             if (allocated(load_cases(l)%temperature%myType)) &
-              call IO_error(830_pI16, 'load case', l, 'only one of T or dot_T allowed in thermal BC', emph=[2])
+              call IO_error(830_pI16, 'load case', l, 'only one of T or T_dot allowed in thermal BC', emph=[2])
             load_cases(l)%temperature%myType = step_therm%key(m)
+            if (load_cases(l)%temperature%myType == 'dot_T') then
+              call IO_warning(10, 'dot_T', 'is deprecated in favor of', 'T_dot',emph=[1,3])
+              load_cases(l)%temperature%myType = 'T_dot'
+            end if
             load_cases(l)%temperature%value  = step_therm%get_asReal(m)
           case ('thermostat')
             load_cases(l)%temperature%thermostat = step_therm%get_asStr(m)
@@ -611,7 +622,7 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
         call IO_error(830_pI16, 'mixed boundary conditions allow rotation in load case', l, emph=[2])
 
       if (load_cases(l)%stress%myType == 'P')     print'(2x,a)', 'P / MPa:'
-      if (load_cases(l)%stress%myType == 'dot_P') print'(2x,a)', 'dot_P / MPa/s:'
+      if (load_cases(l)%stress%myType == 'P_dot') print'(2x,a)', 'P_dot / MPa/s:'
 
       if (load_cases(l)%stress%myType /= '') then
         do i = 1, 3; do j = 1, 3
@@ -639,7 +650,7 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
       end if
 
       if (allocated(load_cases(l)%current_density%myType)) then
-        print'(2x,a)', 'J / A/m^2:'
+        print'(2x,a)', 'J / A/m²:'
         do i = 1, 3
           if (load_cases(l)%current_density%mask(i)) then
             write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
@@ -653,7 +664,7 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
         if (load_cases(l)%temperature%myType == 'T') then
           print'(2x,a,1x,f0.3)', 'T / K:', load_cases(l)%temperature%value
         else
-          print'(2x,a,1x,f0.3)', 'dot_T / K/s:', load_cases(l)%temperature%value
+          print'(2x,a,1x,f0.3)', 'T_dot / K/s:', load_cases(l)%temperature%value
         end if
         print'(2x,a,1x,a)', 'thermal BC thermostat:', load_cases(l)%temperature%thermostat
       end if

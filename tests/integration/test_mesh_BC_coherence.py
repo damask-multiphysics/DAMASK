@@ -94,7 +94,7 @@ def load_dict(n_D, BC_values, BC_key, N = 1, t = 1.0, r = 1.0):
                 {'label': 'fix_u',   'u': [0.0, 'x', 'x']},
                 {'label': 'fix_w',   'u': ['x', 'x', 0.0]}]
 
-    d = {'boundary_conditions': {'mechanical': mech},
+    d = {'boundary_condition': {'mechanical': mech},
          'discretization': {'t': t, 'N': N, 'r': r},
          'f_out': N
         }

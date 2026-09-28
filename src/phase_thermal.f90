@@ -17,7 +17,7 @@ submodule(phase) thermal
     thermalState
 
   type :: tFieldQuantities
-    real(pREAL), dimension(:), allocatable :: T, dot_T
+    real(pREAL), dimension(:), allocatable :: T, T_dot
   end type tFieldQuantities
 
   type(tFieldQuantities), dimension(:), allocatable :: current
@@ -109,7 +109,7 @@ module subroutine thermal_init(phases)
   do ph = 1, size(phases)
     Nmembers = count(material_ID_phase == ph)
     allocate(current(ph)%T(Nmembers),source=T_ROOM)
-    allocate(current(ph)%dot_T(Nmembers),source=0.0_pREAL)
+    allocate(current(ph)%T_dot(Nmembers),source=0.0_pREAL)
 
     phase => phases%get_dict(ph)
     if (thermal_active) then
@@ -385,28 +385,28 @@ end function thermal_T
 !----------------------------------------------------------------------------------------------
 !< @brief Get rate of temperature (for use by non-thermal physics).
 !----------------------------------------------------------------------------------------------
-module function thermal_dot_T(ph,en) result(dot_T)
+module function thermal_T_dot(ph,en) result(T_dot)
 
   integer, intent(in) :: ph, en
-  real(pREAL) :: dot_T
+  real(pREAL) :: T_dot
 
 
-  dot_T = current(ph)%dot_T(en)
+  T_dot = current(ph)%T_dot(en)
 
-end function thermal_dot_T
+end function thermal_T_dot
 
 
 !----------------------------------------------------------------------------------------------
 !< @brief Set temperature
 !----------------------------------------------------------------------------------------------
-module subroutine phase_thermal_setField(T,dot_T, co,ce)
+module subroutine phase_thermal_setField(T,T_dot, co,ce)
 
-  real(pREAL), intent(in) :: T, dot_T
+  real(pREAL), intent(in) :: T, T_dot
   integer, intent(in) :: ce, co
 
 
   current(material_ID_phase(co,ce))%T(material_entry_phase(co,ce)) = T
-  current(material_ID_phase(co,ce))%dot_T(material_entry_phase(co,ce)) = dot_T
+  current(material_ID_phase(co,ce))%T_dot(material_entry_phase(co,ce)) = T_dot
 
 end subroutine phase_thermal_setField
 

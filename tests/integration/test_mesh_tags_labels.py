@@ -36,25 +36,25 @@ def res_path(res_path_base):
 def bc_setup(np_rng, n_D):
     """Randomized displacement boundary conditions."""
     # Randomly set displacement BC (v in 2D, w in 3D)
-    dot_u = ['x', 'x', 'x']
-    dot_u[int(n_D)-1] = np_rng.uniform(-1.e-2,+1.e-2)
+    u_dot = ['x', 'x', 'x']
+    u_dot[int(n_D)-1] = np_rng.uniform(-1.e-2,+1.e-2)
 
-    return dot_u
+    return u_dot
 
 
-def load_setup(load_config, mesh_file, np_rng, dot_u, n_D, key, label):
+def load_setup(load_config, mesh_file, np_rng, u_dot, n_D, key, label):
     """Randomized displacement boundary conditions."""
     # Set up load file
     # Use key 'label' or 'tag'. If the latter, retrieve the tag corresponding
     # to 'label' from the mesh file
 
     if key == 'label':
-        load_config['loadstep'][0]['boundary_conditions']['mechanical'][1] = \
-            {'label': label, 'dot_u': dot_u}
+        load_config['loadstep'][0]['boundary_condition']['mechanical'][1] = \
+            {'label': label, 'u_dot': u_dot}
     else:
         tag = get_tag_from_label(mesh_file, label)
-        load_config['loadstep'][0]['boundary_conditions']['mechanical'][1] = \
-            {'tag': tag, 'dot_u': dot_u}
+        load_config['loadstep'][0]['boundary_condition']['mechanical'][1] = \
+            {'tag': tag, 'u_dot': u_dot}
 
     return load_config
 
@@ -133,11 +133,11 @@ def test_mesh_tags_labels(assert_allclose,res_path, copy_files, tmp_path, np_rng
 
     load_config = damask.YAML.load(res_path/'load.yaml')
     mat_config = damask.ConfigMaterial.load(res_path/'material_base.yaml')
-    dot_u = bc_setup(np_rng, n_D)
+    u_dot = bc_setup(np_rng, n_D)
 
     material_setup(mat_config, np_rng).save(tmp_path/'material.yaml')
     for key in ['label', 'tag']:
-        load_setup(load_config, tmp_path/f'{mesh_file}.msh', np_rng, dot_u, n_D, key,
+        load_setup(load_config, tmp_path/f'{mesh_file}.msh', np_rng, u_dot, n_D, key,
                    label).save(tmp_path/f'load_{key}.yaml')
 
         """ Numerical solution """

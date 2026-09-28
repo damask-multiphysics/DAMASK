@@ -90,7 +90,7 @@ def test_density_initialization(res_path,tmp_path,np_rng):
    sigma_rho_u = 10**np_rng.uniform(13,15)
 
    load_case = damask.YAML(solver={'mechanical':'spectral_basic'},loadstep=[])
-   load_case['loadstep'].append({'boundary_conditions':{'mechanical':{'F':np.eye(3).tolist()}},
+   load_case['loadstep'].append({'boundary_condition':{'mechanical':{'F':np.eye(3).tolist()}},
                                  'discretization':{'t':1.,'N':1}})
    load_case.save(tmp_path/f'{load}.yaml')
 

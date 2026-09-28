@@ -184,7 +184,7 @@ phase:
         type: kinehardening
         output: [xi, chi, chi_flip, gamma_flip, gamma, sgn(gamma)]
         atol_gamma: 1e-8
-        dot_gamma_0: [0.001]
+        gamma_dot_0: [0.001]
         n: [20]
         xi_0: [31e6]
         xi_inf: [63e6]
@@ -292,7 +292,7 @@ phase:
         output: [xi_sl, gamma_sl]
         N_sl: [12]
         a_non-Schmid: [[0.1, 0.1, 0.1, 0.1, 0.1, 0.1]]
-        dot_gamma_0_sl: [0.001]
+        gamma_dot_0_sl: [0.001]
         n_sl: [20]
         a_sl: [2.0]
         xi_0_sl: [405.8e6]
@@ -309,8 +309,8 @@ phase:
         output: [xi_sl, gamma_sl, xi_tw, gamma_tw]
         N_sl: [3, 3, 6, 0, 6]
         N_tw: [6, 0, 0, 6]
-        dot_gamma_0_sl: [0.001, 0.001, 0.001, 0, 0.001]
-        dot_gamma_0_tw: [0.001, 0, 0, 0.001]
+        gamma_dot_0_sl: [0.001, 0.001, 0.001, 0, 0.001]
+        gamma_dot_0_tw: [0.001, 0, 0, 0.001]
         n_sl: [20, 20, 20, 1, 20]
         n_tw: [20, 1, 1, 20]
         a_sl: [2.25, 2.25, 2.25, 1.0, 2.25]

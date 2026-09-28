@@ -95,7 +95,7 @@ module function quadenergy_init() result(myChemicalEnergy)
       ! allocate fieldQuantities
       Nmembers = count(material_ID_phase == ph)
       allocate(current(ph)%C(prm%N_components,Nmembers),source=spread(prm%c_0,2,Nmembers))
-      allocate(current(ph)%dot_C(prm%N_components,Nmembers),source=0.0_pREAL)
+      allocate(current(ph)%C_dot(prm%N_components,Nmembers),source=0.0_pREAL)
       allocate(current(ph)%C0(prm%N_components,Nmembers),source=spread(prm%c_0,2,Nmembers))
 
     end associate

@@ -11,7 +11,7 @@ def res_path(res_path_base):
     return res_path_base/'grid_loadcase_rotation'
 
 
-equivalent_loadcases = [{'N':250,'freq':25,'t':500,'deformation_type':'dot_F',
+equivalent_loadcases = [{'N':250,'freq':25,'t':500,'deformation_type':'F_dot',
                          'deformation':[[1e-4,0,0,  0, 'x',0,  0,0,0],
                                         [ 'x',0,0,  0,1e-4,0,  0,0,0],
                                         [ 'x',0,0,  0,1e-4,0,  0,0,0],
@@ -39,7 +39,7 @@ def loadcase_string(loadcases):
     load_case = []
     for d,R in zip(loadcases['deformation'],loadcases['rotation']):
         P = [0 if m == 'x' else 'x' for m in d]
-        load_case.append([{'boundary_conditions': {'mechanical': {loadcases['deformation_type']: [d[0:3],d[3:6],d[6:9]],
+        load_case.append([{'boundary_condition': {'mechanical': {loadcases['deformation_type']: [d[0:3],d[3:6],d[6:9]],
                                                                   'P': [P[0:3],P[3:6],P[6:9]],
                                                                   'R': R}},
                            'discretization': {'t': loadcases['t'], 'N': loadcases['N']},

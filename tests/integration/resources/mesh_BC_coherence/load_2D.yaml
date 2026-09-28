@@ -1,6 +1,6 @@
 ---
 loadstep:
-  - boundary_conditions:
+  - boundary_condition:
       mechanical:
         - label: 'load'
           n/a: ['x', 'x', 'x']  # placeholder

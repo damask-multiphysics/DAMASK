@@ -4,9 +4,9 @@ solver:
   mechanical: n/a
 
 loadstep:
-  - boundary_conditions:
+  - boundary_condition:
       mechanical:
-        dot_F: [[1e-4, 0, 0],
+        F_dot: [[1e-4, 0, 0],
                 [0,    x, 0],
                 [0,    0, 0]]
         P: [[x, x, x],

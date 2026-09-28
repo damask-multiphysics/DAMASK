@@ -1,8 +1,8 @@
 ---
 loadstep:
-  - boundary_conditions:
+  - boundary_condition:
       mechanical:
         - label: 'fixed' # fixed edge/surface
-          dot_u: [0.0, 0.0, 0.0]
+          u_dot: [0.0, 0.0, 0.0]
     discretization: {t: 1, N: 1}
     f_out: 1

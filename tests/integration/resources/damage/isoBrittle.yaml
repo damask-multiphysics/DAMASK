@@ -5,9 +5,9 @@ solver:
   damage: spectral
 
 loadstep:
-  - boundary_conditions:
+  - boundary_condition:
       mechanical:
-        dot_F: [[1.0e-3, x, x],
+        F_dot: [[1.0e-3, x, x],
                 [0,      x, x],
                 [0,      0, x]]
         P: [[x, 0, 0],
@@ -18,9 +18,9 @@ loadstep:
       N: 200
     f_out: 201
 
-  - boundary_conditions:
+  - boundary_condition:
       mechanical:
-        dot_F: [[1.0e-3, x,   x],
+        F_dot: [[1.0e-3, x,   x],
                 [0.0,    x,   x],
                 [0.0,    0.0, x]]
         P: [[x, 0, 0],

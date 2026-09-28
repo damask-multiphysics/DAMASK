@@ -86,12 +86,12 @@ module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
   real(pREAL),   intent(out), dimension(3,3,3,3) :: &
     dLi_dTstar                                                                                      !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
 
-  real(pREAL) :: T, dot_T
+  real(pREAL) :: T, T_dot
   real(pREAL), dimension(3,3) :: Alpha
 
 
   T     = thermal_T(ph,me)
-  dot_T = thermal_dot_T(ph,me)
+  T_dot = thermal_T_dot(ph,me)
 
   associate(prm => param(kinematics_thermal_expansion_instance(ph)))
 
@@ -99,7 +99,7 @@ module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
     Alpha(1,1) = prm%Alpha_11%at(T)
     if (any(phase_lattice(ph) == ['hP','tI'])) Alpha(3,3) = prm%Alpha_33%at(T)
     Alpha = crystal_symmetrize_33(Alpha,phase_lattice(ph))
-    Li = dot_T * Alpha
+    Li = T_dot * Alpha
 
   end associate
   dLi_dTstar = 0.0_pREAL

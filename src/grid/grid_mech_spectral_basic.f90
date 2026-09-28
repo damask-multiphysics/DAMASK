@@ -203,7 +203,7 @@ subroutine grid_mechanical_spectral_basic_init(num_grid_mech)
     call HDF5_read(P_aim,groupHandle,'P_aim',.false.)
     call HDF5_read(F_aim,groupHandle,'F_aim',.false.)
     call HDF5_read(F_aim_lastinc,groupHandle,'F_aim_lastinc',.false.)
-    call HDF5_read(F_aimDot,groupHandle,'F_aimDot',.false.)
+    call HDF5_read(F_aimDot,groupHandle,'F_aim_dot',.false.)
     call HDF5_read(temp33n,groupHandle,'F')
     F = reshape(temp33n,[9,cells(1),cells(2),cells3])
     call HDF5_read(temp33n,groupHandle,'F_lastinc')
@@ -222,9 +222,9 @@ subroutine grid_mechanical_spectral_basic_init(num_grid_mech)
 
   restartRead2: if (CLI_restartInc /= -1) then
     print'(1x,a,1x,i0)', 'loading additional restart data of increment', CLI_restartInc
-    call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
-    call HDF5_read(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
-    call HDF5_read(C_minMaxAvg,groupHandle,'C_minMaxAvg',.false.)
+    call HDF5_read(C_volAvg,groupHandle,'C_avg_vol',.false.)
+    call HDF5_read(C_volAvgLastInc,groupHandle,'C_avg_vol_lastinc',.false.)
+    call HDF5_read(C_minMaxAvg,groupHandle,'C_avg_minmax',.false.)
 
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
@@ -316,7 +316,7 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
     if     (deformation_BC%myType=='L') then                                                        ! calculate F_aimDot from given L and current F
       F_aimDot = F_aimDot &
                + matmul(merge(.0_pREAL,deformation_BC%values,deformation_BC%mask),F_aim_lastinc)
-    elseif (deformation_BC%myType=='dot_F') then                                                    ! F_aimDot is prescribed
+    elseif (deformation_BC%myType=='F_dot') then                                                    ! F_aimDot is prescribed
       F_aimDot = F_aimDot &
                + merge(.0_pREAL,deformation_BC%values,deformation_BC%mask)
     elseif (deformation_BC%myType=='F') then                                                        ! aim at end of load case is prescribed
@@ -336,7 +336,7 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
 
   if (stress_BC%myType=='P')     P_aim = P_aim &
                                        + merge(.0_pREAL,(stress_BC%values - P_aim)/t_remaining,stress_BC%mask)*Delta_t
-  if (stress_BC%myType=='dot_P') P_aim = P_aim &
+  if (stress_BC%myType=='P_dot') P_aim = P_aim &
                                        + merge(.0_pREAL,stress_BC%values,stress_BC%mask)*Delta_t
 
   F = reshape(utilities_forwardTensorField(Delta_t,F_lastinc,Fdot, &                                ! estimate of F at end of time+Delta_t that matches rotated F_aim on average
@@ -400,10 +400,10 @@ subroutine grid_mechanical_spectral_basic_restartWrite()
     call HDF5_write(P_aim,groupHandle,'P_aim',.false.)
     call HDF5_write(F_aim,groupHandle,'F_aim',.false.)
     call HDF5_write(F_aim_lastinc,groupHandle,'F_aim_lastinc',.false.)
-    call HDF5_write(F_aimDot,groupHandle,'F_aimDot',.false.)
-    call HDF5_write(C_volAvg,groupHandle,'C_volAvg',.false.)
-    call HDF5_write(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
-    call HDF5_write(C_minMaxAvgRestart,groupHandle,'C_minMaxAvg',.false.)
+    call HDF5_write(F_aimDot,groupHandle,'F_aim_dot',.false.)
+    call HDF5_write(C_volAvg,groupHandle,'C_avg_vol',.false.)
+    call HDF5_write(C_volAvgLastInc,groupHandle,'C_avg_vol_lastinc',.false.)
+    call HDF5_write(C_minMaxAvgRestart,groupHandle,'C_avg_minmax',.false.)
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
   end if
