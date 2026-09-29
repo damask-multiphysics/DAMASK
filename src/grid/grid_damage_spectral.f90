@@ -182,6 +182,9 @@ subroutine grid_damage_spectral_init(num_grid_damage)
     call HDF5_read(tempN,groupHandle,'phi_lastinc',.false.)
     phi_lastinc = reshape(tempN,[cells(1),cells(2),cells3])
     phi_staginc = phi_lastinc
+
+    call HDF5_closeGroup(groupHandle)
+    call HDF5_closeFile(fileHandle)
   else
     phi = discretization_grid_getScalarInitialCondition('phi')
     phi_lastinc = phi(0:,0:,lbound(phi,3):)
