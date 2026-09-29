@@ -63,10 +63,10 @@ def material_setup(mat_config, np_rng):
     """
     Randomized material properties.
 
-    The stiffness matrix needs to be positive definite.
-    Here we ensure also a reasonable condition number because
-    agreement with the analytical solution is better in
-    that case.
+    We additionally constrain its condition number
+    to max(eigvals)/min(eigvals) < 100,
+    since well-conditioned systems typically exhibit
+    closer agreement with the analytical solution.
     """
     unstable = True
     while unstable:
@@ -82,7 +82,7 @@ def material_setup(mat_config, np_rng):
                       [ 0.0,  0.0,  0.0,  0.0,  0.0,  C_66]])
 
         eigvals = np.linalg.eigvalsh(C)
-        unstable = eigvals[0]/eigvals[-1] < 0.01
+        unstable = np.min(eigvals)/np.max(eigvals) < 0.01
     print('eigenvalues', eigvals)
 
     # Set up material file

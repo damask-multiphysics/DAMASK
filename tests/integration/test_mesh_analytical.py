@@ -8,8 +8,8 @@ import damask
 
     *** COMPARE DAMASK RESULTS TO ANALYTICAL SOLUTION ***
 
-    Compare the results from DAMASK to a reference (exact/analytical) solution
-    for a few simple, linear elastic cases.
+    Compare the results from DAMASK to an analytical solution for a few
+    simple, linear elastic cases.
 
     Parametrization:
      - Polytopes:
@@ -48,8 +48,8 @@ import damask
      - Magnitude of the displacement/force BC
      - DOF on which BC are applied
 
-    The exact (analytical) displacement solution is computed using the
-    exact stiffness matrices (as a function of elastic properties).
+    The analytical displacement solution is computed using the exact
+    stiffness matrices (as a function of elastic properties).
     Also provided analytical solutions for (small) strains, true (Cauchy)
     stresses, first Piola-Kirchhoff stresses and deformation gradients.
 
@@ -145,7 +145,7 @@ def material_setup(file_in, file_out, np_rng, xtropy):
 
     The stiffness matrix must be positive definite.
     We additionally constrain its condition number
-    to remain within a reasonable range,
+    to max(eigvals)/min(eigvals) < 100,
     since well-conditioned systems typically exhibit
     closer agreement with the analytical solution.
     """
@@ -190,7 +190,7 @@ def material_setup(file_in, file_out, np_rng, xtropy):
 
         nu_VR = (3*K_VR - 2*G_VR) / (6*K_VR + 2*G_VR)
 
-        unstable = eigvals[0]/eigvals[-1] < 0.01 or nu_VR > 0.48
+        unstable = np.min(eigvals)/np.max(eigvals) < 0.01 or nu_VR > 0.48
 
 
     # Set up material file
@@ -219,7 +219,7 @@ def material_setup(file_in, file_out, np_rng, xtropy):
 
 def analytical_sol(res_path, mesh_file, n_D, BC_vals, BC_DOF, zero_DOF, BC_type, polytope, elast_prop, \
                    chop = 1.0e-12):
-    """Exact (analytical) solution (3D)"""
+    """Analytical solution."""
     # 2D:
     #   - Tri:
     #     - Node {1} (DOF {1, 2}): u = v = 0 --> label 'fixed-fully'
