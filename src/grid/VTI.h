@@ -12,11 +12,12 @@
 
 #ifdef BOOST
 
-#include <cstdint>
+#include <concepts>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
-#include <string>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 #include "ISO_Fortran_binding.h"
@@ -75,11 +76,12 @@ public:
   /**
    * @brief Read a DataArray and return the values as a vector.
    *
-   * @tparam T    Target type.
+   * @tparam T    Target type (std::int32_t, std::int64_t, or double).
    * @param label Name of target attribute.
    * @return      Converted values.
    */
   template <typename T>
+    requires(std::same_as<T, std::int32_t> || std::same_as<T, std::int64_t> || std::same_as<T, double>)
   std::vector<T> read_dataset(const std::string_view label) const;
 
   /**

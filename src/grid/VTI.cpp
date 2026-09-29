@@ -78,6 +78,10 @@ void check_file_format(const pt::ptree& root) {
   const std::string compressor = get_attr(root, "compressor");
   if (!compressor.empty() && compressor != "vtkZLibDataCompressor")
     IO::error(VTK_ERROR, "compressor is not vtkZLibDataCompressor (got '" + compressor + "')");
+
+  const std::string header_type = get_attr(root, "header_type");
+  if (!header_type.empty() && header_type != "UInt32" && header_type != "UInt64")
+    IO::error(VTK_ERROR, "invalid header_type, (got '" + header_type + "')");
 }
 
 /**
@@ -220,6 +224,7 @@ std::vector<std::uint8_t> VTI::decode_uncompressed(const std::string_view b64_st
 }
 
 template <typename T>
+  requires(std::same_as<T, std::int32_t> || std::same_as<T, std::int64_t> || std::same_as<T, double>)
 std::vector<T> VTI::read_dataset(const std::string_view label) const {
   return cast_buffer<T>(read_dataset_raw(label));
 }
@@ -233,6 +238,7 @@ void VTI::read_geometry(std::span<int, VTI::DIM> cells,
                         std::span<double, VTI::DIM> geom_size,
                         std::span<double, VTI::DIM> origin,
                         std::vector<std::string>& labels) const {
+  labels.clear();
 
   auto parse_ints = [](const std::string& s) {
     std::istringstream is(s);
