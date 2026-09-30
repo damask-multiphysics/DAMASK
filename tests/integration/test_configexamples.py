@@ -158,7 +158,7 @@ def test_homogenization(damask_root,tmp_path,
     label = 'DAMASK'
     base_path = Path(damask_root/'examples/config/homogenization')
 
-    g = damask.GeomGrid(np.zeros([2,1,1]),np.ones(3))
+    g = damask.GeomGrid(np.zeros([2,1,1],int),np.ones(3))
 
     load_case = damask.YAML(solver={'mechanical':'spectral_basic'},loadstep=[])
     load_case['loadstep'].append({'boundary_condition':{'mechanical':{'F':np.eye(3).tolist()}},
@@ -265,7 +265,7 @@ def test_phase(damask_root,tmp_path,
     label = 'DAMASK'
     base_path = Path(damask_root/'examples/config/phase')
 
-    g = damask.GeomGrid(np.zeros([2,1,1]),np.ones(3))
+    g = damask.GeomGrid(np.zeros([2,1,1],int),np.ones(3))
 
     load_case = damask.YAML(solver={'mechanical':'spectral_basic'},loadstep=[])
     load_case['loadstep'].append({'boundary_condition':{'mechanical':{'F':np.eye(3).tolist()}},

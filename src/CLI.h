@@ -97,7 +97,7 @@ public:
    * @param[in]     argv        Argument vector
    * @param[in]     worldrank   MPI rank
    */
-  CLI(std::span<const char*> args, int* worldrank);
+  CLI(std::span<const char*> args, const int* worldrank);
 
   /** Print initialization text. */
   void init_print();

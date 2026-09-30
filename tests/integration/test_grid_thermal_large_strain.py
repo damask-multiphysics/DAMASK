@@ -30,7 +30,7 @@ def test_grid_thermal_large_strain(res_path,tmp_path,copy_files,assert_allclose,
     os.chdir(tmp_path)
     copy_files(res_path,tmp_path)
 
-    g = damask.GeomGrid(np.zeros(grid),np.ones(3)*1e-4)
+    g = damask.GeomGrid(np.zeros(grid,int),np.ones(3)*1e-4)
     T = np_rng.uniform(100.0,500.0,size=grid)
     g.initial_conditions['T'] = T
     g.save('equispaced')

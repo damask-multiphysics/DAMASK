@@ -12,10 +12,11 @@
 
 #ifdef BOOST
 
-#include <cstdint>
+#include <concepts>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
-#include <format> // IWYU pragma: keep
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -23,19 +24,12 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ptree_fwd.hpp>
 
-// Guideline Support Library is used when pointers own memory and need to be manually freed.
-// https://clang.llvm.org/extra/clang-tidy/checks/cppcoreguidelines/owning-memory.html
-namespace gsl {
-template <typename T>
-using owner = T;
-}
-
 namespace pt = boost::property_tree;
 namespace fs = std::filesystem;
 
 struct DecodedBuffer {
   std::string vtk_type;
-  std::vector<uint8_t> raw_bytes;
+  std::vector<std::uint8_t> raw_bytes;
 };
 
 /**
@@ -43,21 +37,23 @@ struct DecodedBuffer {
  */
 class VTI {
 public:
+  static constexpr std::size_t DIM = 3;
+
   /**
    * @brief Construct by reading and parsing a VTI file from disk.
+   *
    * @param file_path Path to a .vti file.
-   * @throws std::runtime_error on I/O or parse/validation errors.
+   * @throws std::runtime_error On I/O or parse/validation errors.
    */
   VTI(const fs::path& file_path);
 
   /**
-   * @brief Read a little-endian word of size @p n_bytes_per_word from @p p.
+   * @brief Read a little-endian word from @p word.
    *
-   * @param p           Pointer to the first byte of the word.
-   * @param n_bytes_per_word  Width of the word (4 or 8).
-   * @return            Zero-extended 64-bit unsigned integer result.
+   * @param word  Span holding a single word of size 4 or 8 bytes.
+   * @return      Zero-extended 64-bit unsigned integer result.
    */
-  static uint64_t read_word(const uint8_t* p, std::size_t n_bytes_per_word);
+  static std::uint64_t read_word(std::span<const std::uint8_t> word);
 
   /**
    * @brief Inflate and concatenate all compressed blocks in a VTI DataArray.
@@ -66,7 +62,7 @@ public:
    * @param n_bytes_per_word Word size (4 or 8).
    * @return            Vector with decoded uncompressed bytes
    */
-  static std::vector<uint8_t> decode_compressed_vti(const std::string& b64_string, std::size_t n_bytes_per_word);
+  static std::vector<std::uint8_t> decode_compressed(std::string_view b64_string, std::size_t n_bytes_per_word);
 
   /**
    * @brief Decode an uncompressed VTI Dataarray.
@@ -75,65 +71,43 @@ public:
    * @param n_bytes_per_word Word size (4 or 8).
    * @return            Vector with decoded bytes.
    */
-  static std::vector<uint8_t> decode_uncompressed_vti(const std::string& b64_string, std::size_t n_bytes_per_word);
+  static std::vector<std::uint8_t> decode_uncompressed(std::string_view b64_string, std::size_t n_bytes_per_word);
 
   /**
-   * @brief Read an integer DataArray into a Fortran pointer descriptor.
+   * @brief Read a DataArray and return the values as a vector.
    *
-   * @param name  Name of target attribute.
-   * @param desc  Pre-allocated descriptor to be filled by \c CFI_allocate.
+   * @tparam T    Target type (std::int32_t, std::int64_t, or double).
+   * @param label Name of target attribute.
+   * @return      Converted values.
    */
-  void read_dataset_int(const std::string_view name, CFI_cdesc_t* desc);
+  template <typename T>
+    requires(std::same_as<T, std::int32_t> || std::same_as<T, std::int64_t> || std::same_as<T, double>)
+  std::vector<T> read_dataset(const std::string_view label) const;
 
   /**
-   * @brief Read a floating-point DataArray into a Fortran pointer descriptor.
+   * @brief Extract grid size, physical extent, origin and cell data labels from a VTI file.
    *
-   * @param name  Name of target attribute.
-   * @param desc  Pre-allocated descriptor to be filled by \c CFI_allocate.
+   * @param cells       Number of cells along x/y/z (output).
+   * @param geom_size   Physical side lengths (output).
+   * @param origin      Origin coordinates (output).
+   * @param labels      Cell data labels (output).
    */
-  void read_dataset_real(const std::string_view name, CFI_cdesc_t* desc);
-
-  /**
-   * @brief Extract grid size, physical extent and origin from a VTI file.
-   *
-   * @param cells_ptr     Number of cells along x/y/z.
-   * @param geom_size_ptr  Physical side lengths.
-   * @param origin_ptr    Origin coordinates.
-   * @param labels_desc   Optional labels descriptor (may be nullptr).
-   */
-  void read_geometry(int* cells_ptr,
-                     double* geom_size_ptr,
+  void read_geometry(std::span<int, VTI::DIM> cells,
+                     std::span<double, VTI::DIM> geom_size,
                      // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-                     double* origin_ptr,
-                     CFI_cdesc_t* labels_desc);
+                     std::span<double, VTI::DIM> origin,
+                     std::vector<std::string>& labels) const;
 
   /**
    * @brief Locate a VTK DataArray inside the class VTKFile buffer and return its bytes.
    *
-   * @param array_name Name of the target DataArray.
-   * @return           Struct with vtk datatype and the raw decoded bytes.
+   * @param label Name of the target DataArray.
+   * @return      Struct with vtk datatype and the raw decoded bytes.
    */
-  DecodedBuffer parse_cell_data_array(const std::string_view array_name);
-  pt::ptree vti_tree;
-  fs::path file_path;
+  DecodedBuffer read_dataset_raw(const std::string_view label) const;
 
 private:
-  /**
-   * @brief Validate VTI file format.
-   *
-   * @param root The VTKFile root element of the property tree.
-   * @throws std::runtime_error if validation fails.
-   */
-  void check_file_format(const pt::ptree& root) const;
-
-  /**
-   * @brief Fetch an XML attribute, return an empty string if it doesn't exist.
-   *
-   * @param n    XML node.
-   * @param key  Attribute name.
-   * @return     A string with the attribute if it exists, otherwise an empty one.
-   */
-  std::string get_attr(const pt::ptree& n, const char* key) const;
+  pt::ptree tree;
 
   /**
    * @brief Decodes a Base-64 string using Boost.Beast.
@@ -142,73 +116,57 @@ private:
    * @return Vector with decoded bytes
    */
   static std::vector<std::uint8_t> decode_b64(std::string_view b64);
-
-  /**
-   * @brief Interpret a raw byte vector as a span of type T.
-   *
-   * @tparam T   Destination type.
-   * @param raw  Vector of raw bytes
-   * @return     Span of type T pointing into @p raw.
-   */
-  template <class T>
-  std::vector<T> view(const std::vector<uint8_t>& raw) const;
-
-  /**
-   * @brief Allocate a Fortran array and convert the VTK byte stream into it.
-   *
-   * @tparam T   Target element type (int or double)
-   *
-   * @param d     Decoded VTK Dataarray plus type tag.
-   * @param desc  Fortran descriptor whose base-address will receive the data.
-   */
-  template <typename T>
-  void allocate_and_convert(const DecodedBuffer& d, CFI_cdesc_t* desc);
 };
+
+// Explicit instantiation declarations: the definitions live in VTI.cpp.
+extern template std::vector<std::int32_t> VTI::read_dataset<std::int32_t>(std::string_view) const;
+extern template std::vector<std::int64_t> VTI::read_dataset<std::int64_t>(std::string_view) const;
+extern template std::vector<double> VTI::read_dataset<double>(std::string_view) const;
 
 extern "C" {
 /**
  * @brief C-interface constructor for the C++ VTI object.
  *
  * @param vti_path Path to VTI file
- * @return VTI*    VTI object pointer
+ * @return VTI*    Owning pointer to the created object; must be released with C_VTI_delete.
  */
-gsl::owner<VTI*> C_VTI_new(const CFI_cdesc_t* vti_path);
+VTI* C_VTI_new(const CFI_cdesc_t* vti_path);
 
 /**
  * @brief Read an integer DataArray into a Fortran pointer descriptor.
  *
- * @param vti   Previously initialized VTI object with allocated vti_tree.
- * @param name  Name of target attribute.
- * @param desc  Pre-allocated descriptor to be filled by \c CFI_allocate.
+ * @param vti       Previously initialized VTI object with allocated tree.
+ * @param label     Name of target attribute.
+ * @param array_out Pre-allocated descriptor to be filled by \c CFI_allocate.
  */
-void C_VTI_readDatasetInt(VTI* vti, const CFI_cdesc_t* label, CFI_cdesc_t* desc);
+void C_VTI_readDatasetInt(const VTI* vti, const CFI_cdesc_t* label, CFI_cdesc_t* array_out);
 
 /**
  * @brief Read a floating-point DataArray into a Fortran pointer descriptor.
  *
- * @param vti   Previously initialized VTI object with allocated vti_tree.
- * @param name  Name of target attribute.
- * @param desc  Pre-allocated descriptor to be filled by \c CFI_allocate.
+ * @param vti       Previously initialized VTI object with allocated tree.
+ * @param label     Name of target attribute.
+ * @param array_out Pre-allocated descriptor to be filled by \c CFI_allocate.
  */
-void C_VTI_readDatasetReal(VTI* vti, const CFI_cdesc_t* label, CFI_cdesc_t* desc);
+void C_VTI_readDatasetReal(const VTI* vti, const CFI_cdesc_t* label, CFI_cdesc_t* array_out);
 
 /**
  * @brief Extract grid size, physical extent and origin from a VTI file.
  *
- * @param vti            Previously initialized VTI object with allocated vti_tree.
- * @param cells          Number of cells along x/y/z.
- * @param geom_size      Physical side lengths.
- * @param origin         Origin coordinates.
- * @param labels_desc    Optional labels descriptor (may be nullptr).
+ * @param vti       Previously initialized VTI object with allocated tree.
+ * @param cells     Number of cells along x/y/z.
+ * @param geom_size Physical side lengths.
+ * @param origin    Origin coordinates.
+ * @param array_out Optional labels descriptor (may be nullptr).
  */
-void C_VTI_readGeometry(VTI* vti, int* cells, double* geom_size, double* origin, CFI_cdesc_t* labels_desc);
+void C_VTI_readGeometry(const VTI* vti, int* cells, double* geom_size, double* origin, CFI_cdesc_t* array_out);
 
 /**
  * @brief Destroy a VTI instance allocated via VTI__new.
  *
- * @param vti Pointer returned by C_VTI_new (ignored if nullptr).
+ * @param vti Owning pointer returned by C_VTI_new (ignored if nullptr).
  */
-void C_VTI_delete(gsl::owner<VTI*> vti);
+void C_VTI_delete(VTI* vti);
 }
 
 #endif

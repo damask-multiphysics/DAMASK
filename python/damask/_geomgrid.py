@@ -200,14 +200,16 @@ class GeomGrid:
                  material: np.ndarray):
         if material.ndim != 3:
             raise ValueError(f'invalid material shape {material.shape}')
-        if material.dtype not in [np.float32,np.float64, np.int32,np.int64]:
+
+        if material.dtype in [np.float32,np.float64]:
+            if np.all(material == material.astype(np.int64).astype(material.dtype)):
+                self._material = material.astype(np.int64)
+            else:
+                raise ValueError('material data contains non-integers')
+        elif material.dtype in [np.int32,np.int64]:
+            self._material = np.copy(material)
+        else:
             raise TypeError(f'invalid material data type "{material.dtype}"')
-
-        self._material = np.copy(material)
-
-        if self.material.dtype in [np.float32,np.float64] and \
-           np.all(self.material == self.material.astype(np.int64).astype(float)):
-            self._material = self.material.astype(np.int64)
 
 
     @property

@@ -21,7 +21,7 @@ temp_res_path = None
 
 
 @pytest.mark.parametrize('compress',[True,False])
-@pytest.mark.parametrize('dtype',['i4','i8','f4','f8'])
+@pytest.mark.parametrize('dtype',['i4','i8'])
 def test_grid_read_VTI(res_path,tmp_path,copy_files,h5py_dataset_iterator,assert_allclose,np_rng,
                         dtype,compress):
     global temp_res_path

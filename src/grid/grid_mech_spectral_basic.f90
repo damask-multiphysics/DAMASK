@@ -462,11 +462,7 @@ end subroutine converged
 subroutine form_residual(residual_subdomain, F, &
                          r, dummy, err_PETSc)
 
-#if PETSC_VERSION_MINOR<22
-  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
-#else
   DMDALocalInfo :: &
-#endif
     residual_subdomain
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: &
     F                                                                                               !< deformation gradient field

@@ -223,7 +223,7 @@ function grid_electrical_spectral_solution(incInfoIn) result(solution)
   call SNESSolve(SNES_electrical,PETSC_NULL_VEC,E_PETSc,err_PETSc); CHKERRQ(err_PETSc)
   call SNESGetConvergedReason(SNES_electrical,reason,err_PETSc);    CHKERRQ(err_PETSc)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<23)
+#if PETSC_VERSION_MINOR<23
   solution%converged = reason > SNES_CONVERGED_ITERATING
 #else
   solution%converged = reason%v > SNES_CONVERGED_ITERATING%v
@@ -403,11 +403,7 @@ end subroutine converged
 !--------------------------------------------------------------------------------------------------
 subroutine form_residual(residual_subdomain, x_vec, r_vec, dummy, err_PETSc)
 
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<22)
-  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
-#else
   DMDALocalInfo :: &
-#endif
     residual_subdomain
   real(pREAL), dimension(3,cells(1),cells(2),cells3), intent(in)  :: x_vec                          !< input E-field guess from PETSc
   real(pREAL), dimension(3,cells(1),cells(2),cells3), intent(out) :: r_vec                          !< output residual vector to PETSc

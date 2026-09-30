@@ -375,11 +375,7 @@ end subroutine grid_thermal_spectral_restartWrite
 !--------------------------------------------------------------------------------------------------
 subroutine form_residual(residual_subdomain,T,r,dummy,err_PETSc)
 
-#if PETSC_VERSION_MINOR<22
-  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
-#else
   DMDALocalInfo :: &
-#endif
     residual_subdomain
   real(pREAL), dimension(cells(1),cells(2),cells3), intent(in) :: &
     T                                                                                               !< temperature

@@ -48,6 +48,8 @@ constexpr int CLI_ERROR = 610;
 constexpr int INVALID_WORKING_DIRECTORY_ERROR = 640;
 constexpr int UUID_LEN = 36;
 
+namespace {
+
 std::string add_text_color(const std::array<int, 3>& rgb) {
   if (isatty(STDOUT_FILENO) && !IO_redirectedSTDOUT) {
     return "\033[38;2;" + std::to_string(rgb.at(0)) + ";" + std::to_string(rgb.at(1)) + ";" +
@@ -60,7 +62,9 @@ std::string reset_text_color() {
   return isatty(STDOUT_FILENO) && !IO_redirectedSTDOUT ? "\033[0m" : "";
 }
 
-CLI::CLI(std::span<const char*> args, int* worldrank) {
+} // namespace
+
+CLI::CLI(std::span<const char*> args, const int* worldrank) {
   std::string arg_geom, arg_load, arg_material, arg_numerics, arg_wd;
   std::string arg_jobname;
   int arg_rs = -1;
@@ -68,32 +72,36 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
   init_print();
 
   po::options_description flags(" Valid command line flags");
-  flags.add_options()("help,h", "show help");
-  flags.add_options()("geometry,g",
-                      po::value<std::string>(&arg_geom)->value_name("[ --geom ]")->required(),
-                      "geometry file");
-  flags.add_options()("loadcase,l",
-                      po::value<std::string>(&arg_load)->value_name("[ --load ]")->required(),
-                      "load case");
-  flags.add_options()("materialconfig,m",
-                      po::value<std::string>(&arg_material)->value_name("[ --material ]")->required(),
-                      "material config");
-  flags.add_options()("numericsconfig,n",
-                      po::value<std::string>(&arg_numerics)->value_name("[ --numerics ]"),
-                      "numerics config");
-  flags.add_options()("jobname,j",
-                      po::value<std::string>(&arg_jobname)->value_name("[ --job ]"),
-                      "job name");
-  flags.add_options()("workingdirectory,w",
-                      po::value<std::string>(&arg_wd)->value_name("[ --wd ]"),
-                      "working directory");
-  flags.add_options()("wd", po::value<std::string>(&arg_wd), "alias");
+  // clang-format off
+  flags.add_options()
+      ("help,h", "show help")
+      ("geometry,g",
+       po::value<std::string>(&arg_geom)->value_name("[ --geom ]")->required(),
+       "geometry file")
+      ("loadcase,l",
+       po::value<std::string>(&arg_load)->value_name("[ --load ]")->required(),
+       "load case")
+      ("materialconfig,m",
+       po::value<std::string>(&arg_material)->value_name("[ --material ]")->required(),
+       "material config")
+      ("numericsconfig,n",
+       po::value<std::string>(&arg_numerics)->value_name("[ --numerics ]"),
+       "numerics config")
+      ("jobname,j",
+       po::value<std::string>(&arg_jobname)->value_name("[ --job ]"),
+       "job name")
+      ("workingdirectory,w",
+       po::value<std::string>(&arg_wd)->value_name("[ --wd ]"),
+       "working directory")
+      ("wd", po::value<std::string>(&arg_wd), "alias");
 #if defined(GRID) || defined(TEST)
-  flags.add_options()("restart,r",
-                      po::value<int>(&arg_rs)->value_name("[ --rs ]"),
-                      "restart increment");
-  flags.add_options()("rs", po::value<int>(&arg_rs), "alias");
+  flags.add_options()
+      ("restart,r",
+       po::value<int>(&arg_rs)->value_name("[ --rs ]"),
+       "restart increment")
+      ("rs", po::value<int>(&arg_rs), "alias");
 #endif
+  // clang-format on
   po::variables_map vm;
 
   /**
@@ -101,10 +109,10 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
    *
    * Required for backward compatibility, remove for DAMASK 4.0
    *
-   * @param[in] path_str
+   * @param[in] arg
    */
   auto remove_leading_equal = [](const std::string& arg) -> std::string {
-    return !arg.empty() && arg.at(0) == '=' ? arg.substr(1) : arg;
+    return arg.starts_with('=') ? arg.substr(1) : arg;
   };
 
   /**
@@ -112,8 +120,7 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
    * @param[in] path_str
    */
   auto stem = [](const std::string& path_str) -> std::string {
-    fs::path p(path_str);
-    return p.stem().string();
+    return fs::path(path_str).stem().string();
   };
 
   /* Get username */
@@ -195,7 +202,7 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
   cout << " Host name: " << hostname << "\n";
   cout << " User name: " << get_username() << "\n\n";
   cout << " Command line call:  ";
-  for (auto& arg : args) {
+  for (const auto& arg : args) {
     cout << arg << " ";
   }
   cout << "\n";
@@ -204,7 +211,7 @@ CLI::CLI(std::span<const char*> args, int* worldrank) {
   cout << " Load case:          " << loadfile_path << "\n";
   cout << " Material config:    " << material_path << "\n";
   if (vm.count("numericsconfig")) {
-    cout << " Numerics config:  " << numerics_path << "\n";
+    cout << " Numerics config:    " << numerics_path << "\n";
   }
   cout << " Job name:           " << jobname << "\n";
   cout << " Job ID:             " << uuid << std::endl;
@@ -259,13 +266,7 @@ void CLI::init_print() {
 #else
   cout << " S. Balay et al., PETSc/TAO User Manual Revision " << PETSC_VERSION_MAJOR << "."
        << PETSC_VERSION_MINOR << "\n";
-#if PETSC_VERSION_MINOR == 19
-  cout << " https://doi.org/10.2172/1968587\n";
-#elif PETSC_VERSION_MINOR == 20
-  cout << " https://doi.org/10.2172/2205494\n";
-#elif PETSC_VERSION_MINOR == 21
-  cout << " https://doi.org/10.2172/2337606\n";
-#elif PETSC_VERSION_MINOR == 22
+#if PETSC_VERSION_MINOR == 22
   cout << " https://doi.org/10.2172/2476320\n";
 #elif PETSC_VERSION_MINOR == 23
   cout << " https://doi.org/10.2172/2565610\n";
@@ -380,7 +381,7 @@ extern "C" {
  * @param[in]     worldrank  MPI rank
  * @return CLI*              CLI object pointer
  */
-CLI* C_CLI_new(int* argc, const char* argv[], int* worldrank) {
+CLI* C_CLI_new(const int* argc, const char* argv[], const int* worldrank) {
   auto args = std::span(argv, *argc);
   // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
   return new CLI(args, worldrank);
@@ -405,7 +406,7 @@ CLI* C_CLI_new(int* argc, const char* argv[], int* worldrank) {
  * @param[out] stat      Status flag: 0 on success, 1 on allocation/copy failure
  */
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
-void C_CLI_getParsedArgs(CLI* cli,
+void C_CLI_getParsedArgs(const CLI* cli,
                          CFI_cdesc_t* geom,
                          CFI_cdesc_t* load,
                          CFI_cdesc_t* material,
@@ -417,22 +418,18 @@ void C_CLI_getParsedArgs(CLI* cli,
   /**
    * @brief Copy a C++ std::string into a Fortran C descriptor.
    *
-   * @param[in]  src   Source C++ string
-   * @param[out] dest  Destination Fortran descriptor to reallocate
-   * @return           status int 0 on success, 1 on failure
+   * @param[in]  src  Source C++ string
+   * @param[out] dst  Destination Fortran descriptor to reallocate
+   * @return          Status int 0 on success, 1 on failure
    */
   // NOLINTEND(bugprone-easily-swappable-parameters)
-  auto put_string = [](const std::string& src, CFI_cdesc_t* dest) -> int {
-    const char* src_c = src.c_str();
-    size_t len = std::strlen(src_c);
-    if (len != 0) {
-      if (CFI_allocate(dest, (CFI_index_t*)0, (CFI_index_t*)0, len) == 0) {
-        std::memcpy(dest->base_addr, src_c, len);
-        return 0;
-      }
+  auto put_string = [](const std::string& src, CFI_cdesc_t* dst) -> int {
+    if (src.empty())
       return 1;
-    }
-    return 1;
+    if (CFI_allocate(dst, (CFI_index_t*)0, (CFI_index_t*)0, src.size()) != 0)
+      return 1;
+    std::memcpy(dst->base_addr, src.data(), src.size());
+    return 0;
   };
 
   const std::pair<std::string, CFI_cdesc_t*> cli_args[] = {{cli->geom_path, geom},
@@ -465,11 +462,11 @@ void C_CLI_getParsedArgs(CLI* cli,
  * a C string via `C_CHAR`). If the destination buffer is shorter than the source,
  * it will truncate.
  *
- * @param[in]  src   C++ string to copy.
- * @param[out] dest  Pointer to the Fortran buffer
+ * @param[in]  src  C++ string to copy.
+ * @param[out] dst  Pointer to the Fortran buffer
  */
-static void strcopy_to_fortran(const std::string& src, char* dest) {
-  std::strncpy(dest, src.c_str(), src.length() + 1);
+static void strcopy_to_fortran(const std::string& src, char* dst) {
+  std::strncpy(dst, src.c_str(), src.length() + 1);
 }
 
 /**
@@ -488,7 +485,7 @@ static void strcopy_to_fortran(const std::string& src, char* dest) {
  * @param[out] stat      Status flag: always returns 0 here, failure will be implicit from
  *                       buffer error
  */
-void C_CLI_getParsedArgs(CLI* cli,
+void C_CLI_getParsedArgs(const CLI* cli,
                          char geom[],
                          char load[],
                          char material[],

@@ -20,7 +20,7 @@ module VTI
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Read integer dataset from a VTK image data (*.vti) file.
+!> @brief Read an integer CellData dataset from VTK image data (*.vti).
 !> @details https://vtk.org/Wiki/VTK_XML_Formats
 !--------------------------------------------------------------------------------------------------
 function VTI_readDataset_int(fileContent,label) result(dataset)
@@ -43,7 +43,7 @@ end function VTI_readDataset_int
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Read real dataset from a VTK image data (*.vti) file.
+!> @brief Read a real CellData dataset from VTK image data (*.vti).
 !> @details https://vtk.org/Wiki/VTK_XML_Formats
 !--------------------------------------------------------------------------------------------------
 function VTI_readDataset_real(fileContent,label) result(dataset)
@@ -66,7 +66,7 @@ end function VTI_readDataset_real
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Read dataset as raw data (base64 string) from a VTK image data (*.vti) file.
+!> @brief Read a CellData dataset as raw data (base64 string) from VTK image data (*.vti).
 !> @details https://vtk.org/Wiki/VTK_XML_Formats
 !--------------------------------------------------------------------------------------------------
 subroutine VTI_readDataset_raw(base64Str,dataType,headerType,compressed, &
@@ -136,7 +136,7 @@ end subroutine VTI_readDataset_raw
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Read cells, size, and origin, and cell data labels of an VTK image data (*.vti) file.
+!> @brief Read cells, size, and origin, and cell data labels from VTK image data (*.vti).
 !> @details https://vtk.org/Wiki/VTK_XML_Formats
 !--------------------------------------------------------------------------------------------------
 subroutine VTI_readGeometry(cells,geomSize,origin,labels, &
@@ -180,7 +180,7 @@ subroutine VTI_readGeometry(cells,geomSize,origin,labels, &
       if (.not. inImage) then
         if (index(fileContent(startPos:endPos),'<ImageData',kind=pI64) /= 0_pI64) then
           inImage = .true.
-          call cellsSizeOrigin(cells,geomSize,origin,fileContent(startPos:endPos))
+          call cells_size_origin(cells,geomSize,origin,fileContent(startPos:endPos))
         end if
       else
         if (index(fileContent(startPos:endPos),'<CellData',kind=pI64) /= 0_pI64) then
@@ -201,9 +201,9 @@ end subroutine VTI_readGeometry
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Determine size and origin from coordinates.
+!> @brief Determine size and origin from coordinates in header.
 !--------------------------------------------------------------------------------------------------
-subroutine cellsSizeOrigin(c,s,o,header)
+subroutine cells_size_origin(c,s,o,header)
 
   integer, dimension(3),     intent(out) :: c
   real(pREAL), dimension(3), intent(out) :: s,o
@@ -230,7 +230,7 @@ subroutine cellsSizeOrigin(c,s,o,header)
   call tokenize(getXMLValue(header,'Origin'),' ',temp)
   o = [(IO_strAsReal(temp(i)),i=1,3)]
 
-end subroutine cellsSizeOrigin
+end subroutine cells_size_origin
 
 
 !--------------------------------------------------------------------------------------------------
@@ -284,10 +284,6 @@ function as_Int(base64Str,headerType,compressed,dataType)
       as_Int = int(prec_bytesToC_INT32_T(asBytes(base64Str,headerType,compressed)))
     case('Int64')
       as_Int = int(prec_bytesToC_INT64_T(asBytes(base64Str,headerType,compressed)))
-    case('Float32')
-      as_Int = int(prec_bytesToC_FLOAT  (asBytes(base64Str,headerType,compressed)))
-    case('Float64')
-      as_Int = int(prec_bytesToC_DOUBLE (asBytes(base64Str,headerType,compressed)))
     case default
       call IO_error(844_pI16,'unknown data type',trim(dataType), emph=[2])
   end select
@@ -457,7 +453,7 @@ end function getXMLValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Check for supported file format variants.
+!> @brief Check if file format variant is supported.
 !--------------------------------------------------------------------------------------------------
 subroutine checkFileFormat(line)
 

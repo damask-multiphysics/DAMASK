@@ -1,4 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+/**
+ * @file test_CLI.cpp
+ * @brief Unit tests for src/CLI.cpp
+ *
+ * @author Daniel Otto de Mentock, Max‑Planck‑Institut für Nachhaltige Materialien GmbH
+ * @author Martin Diehl, KU Leuven
+ * @copyright
+ *   Max‑Planck‑Institut für Nachhaltige Materialien GmbH
+ */
+
 #include <gtest/gtest.h>
 #include <filesystem>
 #include <fstream>

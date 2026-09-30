@@ -71,9 +71,6 @@ module mesh_mechanical_FEM
 
 #if PETSC_VERSION_MINOR<23
   external :: &
-#if PETSC_VERSION_MINOR<22
-    SNESConvergedDefault, &
-#endif
     PetscFEGetDimension, &
     PetscFEGetQuadrature, &
     PetscSectionGetDof
@@ -158,11 +155,11 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   CHKERRQ(err_PETSc)
 #if PETSC_VERSION_MINOR>22
   call PetscDSGetDiscretization(mech_DS,0_pPETSCINT,obj,err_PETSc)
-  CHKERRQ(err_PETSc)
   PetscObjectSpecificCast(mech_FE,obj)
 #else
   call PetscDSGetDiscretization(mech_DS,0_pPETSCINT,mech_FE,err_PETSc)
 #endif
+  CHKERRQ(err_PETSc)
   call PetscFEGetQuadrature(mech_FE,mech_quad,err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscDSGetTotalDimension(mech_DS,cell_DoF,err_PETSc)
@@ -174,7 +171,6 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech discretization
-#if PETSC_VERSION_MINOR>21
   call PetscQuadratureGetData(mech_quad,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                               nQuadrature,PETSC_NULL_REAL_POINTER,qWeightsP,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -182,15 +178,6 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   call PetscQuadratureRestoreData(mech_quad,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                                   PETSC_NULL_INTEGER,PETSC_NULL_REAL_POINTER,qWeightsP, &
                                   err_PETSc)
-#else
-  call PetscQuadratureGetData(mech_quad,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
-                              nQuadrature,PETSC_NULL_REAL_POINTER,qWeightsP,err_PETSc)
-  CHKERRQ(err_PETSc)
-  qWeights = qWeightsP
-  call PetscQuadratureRestoreData(mech_quad,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
-                                  PETSC_NULL_INTEGER(1),PETSC_NULL_REAL_POINTER,qWeightsP, &
-                                  err_PETSc)
-#endif
   CHKERRQ(err_PETSc)
   if (.not. is_simplex) qWeights = qWeights(::dimPlex)                                              ! duplicates per component not needed
 

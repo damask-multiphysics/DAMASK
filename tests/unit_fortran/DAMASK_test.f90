@@ -71,6 +71,8 @@ program DAMASK_test
   call test_HDF5_utilities_run()
   write(IO_STDOUT,fmt='(a)') ok
 
+  call IO_warning(10,'this','is','just','a','warning', emph=[1,3,4])
+
   call quit(0)
 
 end program DAMASK_test

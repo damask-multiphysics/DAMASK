@@ -80,9 +80,6 @@ module discretization_mesh
 
 #if PETSC_VERSION_MINOR<23
   external :: &
-#if PETSC_VERSION_MINOR<22
-    DMAddField, &
-#endif
     PetscDualSpaceGetFunctional, &
     PetscFEDestroy, &
     PetscFEGetDimension, &
@@ -115,15 +112,11 @@ subroutine discretization_mesh_init()
   PetscDS   :: global_DS
   PetscFE   :: global_FE
   IS        :: label_values_IS, ID_material_IS, cells_IS                                            ! BC label values IS, 'Cell Sets' label/stratum values
-#if PETSC_VERSION_MINOR>=24
   IS        :: cell_types_IS                                                                        ! 'celltype' label IS
   PetscInt  :: n_polytopes                                                                          ! number of different polytopes in the mesh
   PetscInt,    dimension(:),     pointer     :: cell_types                                          ! array for cell_types_IS
   PetscInt,    dimension(:,:),   allocatable :: T_e                                                 ! element connectivity (node numbers in each cell)
-#else
   real(pREAL), dimension(:),     pointer     :: qPointsP                                            ! quadrature points coordinates
-  real(pREAL), dimension(:),     pointer     :: PETSC_NULL_REAL_POINTER => NULL()
-#endif
   PetscQuadrature :: quadrature                                                                     ! quadrature object
   PetscErrorCode  :: err_PETSc
 
@@ -140,6 +133,8 @@ subroutine discretization_mesh_init()
   character(pSTRLEN)              :: BC_label                                                       ! label (string, defined in mesh file)
   character(len=:),   allocatable :: PETSc_options, &                                               ! options to set up DM (from numerics file)
                                      fname, file_content                                            ! mesh file name/content
+  PetscInt :: dev_null_i1, dev_null_i2                                                              ! not needed after https://gitlab.com/petsc/petsc/-/commit/b59e0f5d4fcb03e82d68f162f04b63b31fb8d091
+  real(pREAL), dimension(:), pointer :: dev_null_r
 
 
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'; flush(IO_STDOUT)
@@ -342,17 +337,8 @@ subroutine discretization_mesh_init()
 
 !--------------------------------------------------------------------------------------------------
 ! set up geometry values (node coordinates, IP, volume, connectivity, material ID)
-#if PETSC_VERSION_MINOR>=24
-  call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                              mesh_maxNips,PETSC_NULL_REAL_POINTER, &
-                              PETSC_NULL_REAL_POINTER,err_PETSc)
-#elif PETSC_VERSION_MINOR>21
-  call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                              mesh_maxNips,qPointsP,PETSC_NULL_REAL_POINTER,err_PETSc)
-#else
-  call PetscQuadratureGetData(quadrature,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
-                              mesh_maxNips,qPointsP,PETSC_NULL_REAL_POINTER,err_PETSc)
-#endif
+  call PetscQuadratureGetData(quadrature,dev_null_i1,dev_null_i2,mesh_maxNips, &
+                              qPointsP,dev_null_r,err_PETSc)
   CHKERRQ(err_PETSc)
 
 #if PETSC_VERSION_MINOR>=24
@@ -368,13 +354,8 @@ subroutine discretization_mesh_init()
   call build_nodes_and_connectivity(x_n,p_s)
 #endif
 
-#if (PETSC_VERSION_MINOR==22 || PETSC_VERSION_MINOR==23)
-  call PetscQuadratureRestoreData(quadrature,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                                  PETSC_NULL_INTEGER,qPointsP,PETSC_NULL_REAL_POINTER,err_PETSc)
-#elif (PETSC_VERSION_MINOR<22)
-  call PetscQuadratureRestoreData(quadrature,PETSC_NULL_INTEGER(1),PETSC_NULL_INTEGER(1), &
-                                  PETSC_NULL_INTEGER(1),qPointsP,PETSC_NULL_REAL_POINTER,err_PETSc)
-#endif
+  call PetscQuadratureRestoreData(quadrature,dev_null_i1,dev_null_i2,mesh_maxNips, &
+                                  qPointsP,dev_null_r,err_PETSc)
   CHKERRQ(err_PETSc)
 
   call PetscQuadratureDestroy(quadrature,err_PETSc)
@@ -569,6 +550,8 @@ subroutine build_nodes_and_connectivity(x_n, p_s)
   PetscInt,    dimension(:), pointer     :: indices                                                 ! cell closure DoF indices
   integer,     dimension(:), allocatable :: node_map                                                ! PETSc to VTK node order mapping
 #endif
+  PetscInt :: dev_null_i1, dev_null_i2, dev_null_i3                                                 ! not needed after https://gitlab.com/petsc/petsc/-/commit/b59e0f5d4fcb03e82d68f162f04b63b31fb8d091
+  real(pREAL), dimension(:), pointer :: dev_null_r
 
 
   call DMGetDimension(geom,dimPlex,err_PETSc)
@@ -598,20 +581,17 @@ subroutine build_nodes_and_connectivity(x_n, p_s)
   call DMPlexGetHeightStratum(geom,0_pPETSCINT,cell_start,cell_end,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  allocate(node_coords(dimPlex))
   allocate(ref_coords(FE_dim))
   do basis = 0_pPETSCINT, FE_dim - 1_pPETSCINT, dimPlex                                             ! coordinates in the reference cell in [-1,+1]^d
     call PetscDualSpaceGetFunctional(dual_space,basis,quadrature,err_PETSc)
     CHKERRQ(err_PETSc)
-#if PETSC_VERSION_MINOR>21
-    call PetscQuadratureGetData(quadrature,dimPlex,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-#else
-    call PetscQuadratureGetData(quadrature,dimPlex,PETSC_NULL_INTEGER(1), &
-                                PETSC_NULL_INTEGER(1),&
-#endif
-                                node_coords,PETSC_NULL_REAL_POINTER,err_PETSc)
+    call PetscQuadratureGetData(quadrature,dev_null_i1,dev_null_i2,dev_null_i3, &
+                                node_coords,dev_null_r,err_PETSc)
     CHKERRQ(err_PETSc)
     ref_coords(basis+1_pPETSCINT:basis+dimPlex) = node_coords
+    call PetscQuadratureRestoreData(quadrature,dev_null_i1,dev_null_i2,dev_null_i3, &
+                                    node_coords,dev_null_r,err_PETSc)
+    CHKERRQ(err_PETSc)
   end do
 
   allocate(mapped_coords(FE_dim))
@@ -792,4 +772,3 @@ subroutine writeGeometry(x_p,x_n,T_e)
 end subroutine writeGeometry
 
 end module discretization_mesh
-

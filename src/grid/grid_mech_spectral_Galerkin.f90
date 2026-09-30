@@ -142,17 +142,6 @@ module grid_mechanical_spectral_Galerkin
       Vec, Pointer :: ctx
       PetscErrorCode :: ierr
     end subroutine MatShellGetContext
-
-#if PETSC_VERSION_MINOR<22
-    subroutine SNESSetJacobian(snes_mech,A,P,jac_callback,ctx,ierr)
-      use petscsnes
-      SNES :: snes_mech
-      Mat :: A, P
-      external :: jac_callback
-      integer :: ctx
-      PetscErrorCode :: ierr
-    end subroutine SNESSetJacobian
-#endif
 #endif
   end interface
 
@@ -540,13 +529,8 @@ end subroutine converged
 subroutine form_residual(residual_subdomain, F, &
                          r, dummy, err_PETSc)
 
-#if PETSC_VERSION_MINOR<22
-   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
-#else
   DMDALocalInfo :: &
-#endif
     residual_subdomain
-
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: &
     F                                                                                               !< deformation gradient field
   real(pREAL), dimension(3,3,cells(1),cells(2),cells3), intent(out) :: &
