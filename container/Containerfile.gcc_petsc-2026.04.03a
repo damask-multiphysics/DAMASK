@@ -1,0 +1,8 @@
+ARG REMOTE
+ARG VARIANT
+FROM ${REMOTE}/gcc_petsc-${VARIANT}:2026.04.03
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests \
+    clang-format && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*

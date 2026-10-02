@@ -1,0 +1,20 @@
+ARG VERSION
+ARG REMOTE
+FROM ${REMOTE}/gcc_base:${VERSION}
+
+ARG VARIANT
+ARG FLAGS
+ENV PETSC_ARCH=gcc_petsc-${VARIANT}
+
+RUN cd petsc && \
+    eval ./configure \
+    "${FLAGS}" \
+    --with-mpi-dir=/usr \
+    --with-fortran-bindings=1 --with-mpi-ftn-module=mpi --with-shared-libraries=1 \
+    --with-hdf5-dir=/usr/lib/x86_64-linux-gnu/hdf5/openmpi --with-hdf5-fortran-bindings=1 --with-hdf5-cxx-bindings=1 \
+    --with-fftw-dir=/usr \
+    --with-boost=1 && \
+    make && \
+    rm -rf ${PETSC_ARCH}/obj && \
+    echo ${PETSC_DIR}/${PETSC_ARCH}/lib > /etc/ld.so.conf.d/petsc.conf && \
+    ldconfig
