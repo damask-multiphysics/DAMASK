@@ -470,7 +470,6 @@ contains
 
 
 function parse_and_print_load_cases(load_steps, solver) result(load_cases)
-
 #ifndef __GFORTRAN__
   use prec
   use types
@@ -507,10 +506,11 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
 
     step_mech => step_bc%get_dict('mechanical')
     load_cases(l)%stress%myType=''
+    load_cases(l)%deformation%myType=''
     readMech: do m = 1, size(step_mech)
       select case (step_mech%key(m))
         case ('L','dot_F','F_dot','F')                                                              ! assign values for the deformation BC matrix
-          if (allocated(load_cases(l)%deformation%myType)) &
+          if (load_cases(l)%deformation%myType /= '') &
             call IO_error(830_pI16, 'load case', l, 'only one of L, F_dot, or F allowed in mechanical BC', emph=[2])
           load_cases(l)%deformation%myType = step_mech%key(m)
           if (load_cases(l)%deformation%myType == 'dot_F') then
@@ -530,8 +530,6 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
       end select
       call load_cases(l)%rot%fromAxisAngle(step_mech%get_as1dReal('R',defaultVal = real([0.0,0.0,1.0,0.0],pREAL)),degrees=.true.)
     end do readMech
-    if (.not. allocated(load_cases(l)%deformation%myType)) &
-      call IO_error(830_pI16, 'load case', l, 'is incomplete: L, F_dot, or F missing', emph=[2])
 
     if (step_bc%contains('electrical')) then
       step_electrical => step_bc%get_dict('electrical')
@@ -618,8 +616,6 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
       end do
       if (any(load_cases(l)%stress%mask .eqv. load_cases(l)%deformation%mask)) &
         call IO_error(830_pI16, 'mask consistency for mechanical violated in load case', l, emph=[2])
-      if (any(.not.(load_cases(l)%stress%mask .or. transpose(load_cases(l)%stress%mask)) .and. (math_I3<1))) &
-        call IO_error(830_pI16, 'mixed boundary conditions allow rotation in load case', l, emph=[2])
 
       if (load_cases(l)%stress%myType == 'P')     print'(2x,a)', 'P / MPa:'
       if (load_cases(l)%stress%myType == 'P_dot') print'(2x,a)', 'P_dot / MPa/s:'
@@ -700,8 +696,10 @@ function parse_and_print_load_cases(load_steps, solver) result(load_cases)
 end function parse_and_print_load_cases
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Interpret nested list as masked tensor of shape 3x3.
+!--------------------------------------------------------------------------------------------------
 subroutine get_masked_tensor(values,mask,tensor)
-
 #ifndef __GFORTRAN__
   use prec
   use types
@@ -729,7 +727,16 @@ subroutine get_masked_tensor(values,mask,tensor)
 end subroutine get_masked_tensor
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Interpret list as masked vector of shape 3x3.
+!--------------------------------------------------------------------------------------------------
 subroutine get_masked_vector(values,mask,vector)
+#ifndef __GFORTRAN__
+  use prec
+  use types
+
+  import, none
+#endif
 
   real(pREAL), intent(out), dimension(3) :: values
   logical,     intent(out), dimension(3) :: mask
