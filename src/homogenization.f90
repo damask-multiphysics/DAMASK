@@ -479,7 +479,7 @@ subroutine homogenization_forward()
 
 
   do ho = 1, size(material_name_homogenization)
-    homogState (ho)%state0 = homogState (ho)%state
+    homogState(ho)%state0 = homogState(ho)%state
     if (damageState_h(ho)%sizeState > 0) &
       damageState_h(ho)%state0 = damageState_h(ho)%state
   end do
