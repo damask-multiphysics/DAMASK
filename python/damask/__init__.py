@@ -39,3 +39,12 @@ from ._loadcasegrid    import LoadcaseGrid     # noqa
 from ._loadcasemesh    import LoadcaseMesh     # noqa
 from ._geomgrid        import GeomGrid         # noqa
 from ._result          import Result           # noqa
+try:
+    import gmsh
+    gmsh.initialize()
+    gmsh.option.set_number('General.Terminal', 0)
+except ModuleNotFoundError:
+    gmsh = None
+    GeomMesh = None
+if gmsh is not None:
+    from ._geommesh    import GeomMesh         # type: ignore[assignment] # noqa
