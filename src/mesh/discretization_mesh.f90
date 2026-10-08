@@ -123,10 +123,8 @@ subroutine discretization_mesh_init()
   PetscQuadrature :: quadrature                                                                     ! quadrature object
   PetscErrorCode  :: err_PETSc
 
-#if PETSC_VERSION_MINOR>25
-  logical :: r_int                                                                                  ! reduced integration flag
-#endif
-  logical                                  :: to_complete                                           ! perform label completion
+  logical                                  :: r_int, &                                              ! reduced integration flag
+                                              to_complete                                           ! perform label completion
   integer                                  :: p_s, &                                                ! shape function order
                                               n, m, k                                               ! loop / counters
   integer(MPI_INTEGER_KIND)                :: err_MPI
@@ -159,7 +157,7 @@ subroutine discretization_mesh_init()
 #if PETSC_VERSION_MINOR<23
   if (worldsize > 1) call IO_error(800_pI16, 'parallel simulations require PETSc >= 3.23')          ! not supported
 #endif
-!--------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! set up DMPlex
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,                      &
                                 ' -dm_plex_filename ' // CLI_geomFile // &
@@ -325,17 +323,12 @@ subroutine discretization_mesh_init()
 ! read numerics parameters
   num_solver => config_numerics%get_dict('solver',defaultVal=emptyDict)
   num_mesh   => num_solver%get_dict('mesh',defaultVal=emptyDict)
-  p_s = int(num_mesh%get_asInt('p_s',defaultVal=2),pPETSCINT)
-#if PETSC_VERSION_MINOR>25
+  p_s   = num_mesh%get_asInt('p_s',defaultVal=2)
   r_int = num_mesh%get_asBool('reduced_integration',defaultVal=.false.)
-  p_i = int(quadrature_order(p_s,int(dimPlex),r_int,is_simplex),pPETSCINT)
-#else
-  p_i = int(num_mesh%get_asInt('p_i',defaultVal=2),pPETSCINT)
-  if (.not. is_simplex) p_i = p_i + 1_pPETSCINT                                                     ! adjust for quad/hex (non-simplex)
-#endif
 
 !--------------------------------------------------------------------------------------------------
 ! set up quadrature, fields (mechanical, thermal...) and DS
+  p_i = int(quadrature_order(int(dimPlex),p_s,r_int,is_simplex),pPETSCINT)
 #if PETSC_VERSION_MINOR>=24
   if (is_simplex) then
     call PetscDTSimplexQuadrature(dimPlex,p_i,PETSCDTSIMPLEXQUAD_DEFAULT,quadrature,err_PETSc)
@@ -350,8 +343,8 @@ subroutine discretization_mesh_init()
 #endif
   CHKERRQ(err_PETSc)
 
-  PETSc_options = ' -petscspace_degree ' // IO_intAsStr(p_s) //     &
-                  ' -petscdualspace_lagrange_node_type equispaced   &
+  PETSc_options = ' -petscspace_degree ' // IO_intAsStr(p_s) //   &
+                  ' -petscdualspace_lagrange_node_type equispaced &
                   & -petscdualspace_lagrange_node_endpoints 1     '
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -486,14 +479,13 @@ subroutine discretization_mesh_init()
 end subroutine discretization_mesh_init
 
 
-#if PETSC_VERSION_MINOR>25
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate quadrature order based on element order and full/reduced integration flag
 !--------------------------------------------------------------------------------------------------
-integer function quadrature_order(p_s,dimPlex,r_int,is_simplex)
+integer function quadrature_order(dimPlex,p_s,r_int,is_simplex)
 
-  integer,   intent(in) :: p_s, &                                                                   ! shape function order
-                           dimPlex                                                                  ! dimension (2/3)
+  integer,   intent(in) :: dimPlex, &                                                               ! dimension (2/3)
+                           p_s                                                                      ! shape function order
   logical,   intent(in) :: r_int                                                                    ! reduced integration flag
   PetscBool, intent(in) :: is_simplex                                                               ! simplex (tri/tet) or not (quad/hex)
 
@@ -510,7 +502,6 @@ integer function quadrature_order(p_s,dimPlex,r_int,is_simplex)
   end if
 
 end function quadrature_order
-#endif
 
 
 !--------------------------------------------------------------------------------------------------
