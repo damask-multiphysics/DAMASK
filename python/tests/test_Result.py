@@ -110,6 +110,60 @@ def test_view_invalid_incstimes(default):
     with pytest.raises(ValueError):
         default.view(increments=0,times=0)
 
+def test_view_geometry(default):
+    on = default
+    off = on.view(geometry=False)
+
+    assert on.get('u_n') is not None and on.get('u_p') is not None
+    assert off.get('u_n') is None and off.get('u_p') is None
+
+    assert on.place('u_n') is not None and off.place('u_n') is None
+
+@pytest.mark.parametrize('mode',['cell','point'])
+def test_view_geometry_export_VTK(tmp_path,single_phase,mode):
+    fname = f'{single_phase.fname.stem}_inc00.{"vti" if mode == "cell" else "vtp"}'
+
+    single_phase.view(increments=0,geometry=True).export_VTK(mode=mode,target_dir=tmp_path,parallel=False)
+    assert 'u (m)' in VTK.load(tmp_path/fname).labels['Point Data']
+
+    single_phase.view(increments=0,geometry=False).export_VTK(mode=mode,target_dir=tmp_path,parallel=False)
+    if mode == 'cell':
+        assert VTK.load(tmp_path/fname).labels.get('Point Data') is None
+    if mode == 'point':
+        assert 'u (m)' not in VTK.load(tmp_path/fname).labels.get('Point Data')
+
+def test_view_geometry_export_XDMF(tmp_path,single_phase):
+    xdmf = tmp_path/f'{single_phase.fname.stem}.xdmf'
+
+    single_phase.view(geometry=True).export_XDMF(target_dir=tmp_path)
+    assert 'geometry/u_n' in open(xdmf).read()
+
+    single_phase.view(geometry=False).export_XDMF(target_dir=tmp_path)
+    assert 'geometry/u_n' not in open(xdmf).read()
+
+def test_view_geometry_export_DADF5(tmp_path,single_phase):
+    single_phase.view(geometry=True).export_DADF5(tmp_path/'with_geometry.hdf5')
+    single_phase.view(geometry=False).export_DADF5(tmp_path/'without_geometry.hdf5')
+
+    with h5py.File(tmp_path/'with_geometry.hdf5','r') as f:
+        assert sorted(f['increment_0/geometry'].keys()) == ['u_n','u_p']
+    with h5py.File(tmp_path/'without_geometry.hdf5','r') as f:
+        assert list(f['increment_0/geometry'].keys()) == []
+
+def test_result_without_displacements(tmp_path,single_phase):
+    single_phase.view(geometry=False).export_DADF5(tmp_path/'no_geometry.hdf5')
+
+    on = Result(tmp_path/'no_geometry.hdf5')
+    assert on._visible['geometry']                       # default
+    assert on.get('u_n') is None and on.place('u_n') is None
+    assert not any('u_n' in line for line in on.list_data())
+
+    on.view_more(geometry=True).export_XDMF(target_dir=tmp_path)
+    assert 'geometry/u_n' not in open(tmp_path/'no_geometry.xdmf').read()
+
+    on.view_more(geometry=True).export_VTK(target_dir=tmp_path,parallel=False)
+    assert 'u (m)' not in sum(VTK.load(tmp_path/f'{on.fname.stem}_inc00.vti').labels.values(),[])
+
 @pytest.mark.parametrize('inc',[0,10])
 @pytest.mark.parametrize('sign',[+1,-1])
 def test_view_approxtimes(default,inc,sign):
