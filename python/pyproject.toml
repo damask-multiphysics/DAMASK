@@ -44,6 +44,9 @@ dependencies = [
 readme = 'README.md'
 dynamic = ['version']
 
+[project.optional-dependencies]
+GeomMesh = ['gmsh>=4.10']
+
 [project.urls]
 homepage = 'https://damask-multiphysics.org'
 documentation = 'https://damask-multiphysics.org/documentation'
@@ -84,7 +87,7 @@ warn_unused_ignores = true
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-module = ['h5py', 'vtkmodules.*', 'wx']
+module = ['h5py', 'vtkmodules.*', 'wx', 'gmsh']
 ignore_missing_imports = true
 
 [tool.isort]

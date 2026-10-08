@@ -68,9 +68,9 @@ class GeomGrid:
     Geometry definition for grid solvers.
 
     Create and manipulate geometry definitions for storage as VTK ImageData
-    files ('.vti' extension). A grid has a physical size, a coordinate origin,
-    and contains the material ID (indexing an entry in 'material.yaml')
-    as well as initial condition fields.
+    files ('.vti' extension). A grid has a physical size, a coordinate
+    origin, and contains the field of material IDs (indexing an entry in the
+    material configuration) as well as optional initial condition fields.
     """
 
     def __init__(self,
