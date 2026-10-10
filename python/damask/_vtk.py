@@ -5,9 +5,10 @@ import os
 import threading
 from os import PathLike
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
+import numpy.typing as npt
 
 from ._typehints import StrSequence
 
@@ -261,8 +262,8 @@ class VTK:
 
     @classmethod
     def from_unstructured_grid(cls,
-                               nodes: np.ndarray,
-                               connectivity: np.ndarray,
+                               nodes: npt.NDArray[np.floating],
+                               connectivity: npt.NDArray[np.integer],
                                cell_type: Literal['TRIANGLE', 'TETRAHEDRON', 'QUADRILATERAL', 'HEXAHEDRON']
                               ) -> 'VTK':
         """
@@ -323,7 +324,7 @@ class VTK:
 
     @classmethod
     def from_poly_data(cls,
-                       points: np.ndarray) -> 'VTK':
+                       points: npt.NDArray[np.floating]) -> 'VTK':
         """
         Create VTK of type polyData.
 
@@ -536,7 +537,7 @@ class VTK:
 
     def set(self,
             label: str,
-            data: np.ndarray | np.ma.MaskedArray,
+            data: npt.NDArray[Any] | np.ma.MaskedArray,
             component_names: StrSequence | None = None,
             info: str | None = None) -> 'VTK':
         """
@@ -657,7 +658,7 @@ class VTK:
 
 
     def get(self,
-            label: str) -> np.ndarray:
+            label: str) -> npt.NDArray[Any]:
         """
         Get either cell or point data.
 

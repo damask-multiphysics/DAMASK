@@ -6,6 +6,7 @@ from typing import Union
 
 import gmsh
 import numpy as np
+import numpy.typing as npt
 from vtkmodules.util.numpy_support import vtk_to_numpy
 
 from . import grid as grid_, util
@@ -44,9 +45,9 @@ class GeomMesh:
     """
 
     def __init__(self,
-                 coordinates: np.ndarray,
-                 connectivity: np.ndarray,
-                 material: np.ndarray) -> None:
+                 coordinates: npt.NDArray[np.floating],
+                 connectivity: npt.NDArray[np.integer],
+                 material: npt.NDArray[np.integer]) -> None:
         """
         Create a mesh from node coordinates, element connectivity and material IDs.
 
@@ -295,7 +296,7 @@ class GeomMesh:
             del mesh
 
     @property
-    def coordinates(self) -> np.ndarray:
+    def coordinates(self) -> npt.NDArray[np.floating]:
         """Node coordinates, shape (N, dim)."""
         gmsh.model.set_current(self.id)
         node_tags, coords, _ = gmsh.model.mesh.get_nodes()
@@ -305,7 +306,7 @@ class GeomMesh:
 
 
     @property
-    def connectivity(self) -> np.ndarray:
+    def connectivity(self) -> npt.NDArray[np.integer]:
         """Element connectivity with 0-based node indices, shape (M, N_per_elem)."""
         gmsh.model.set_current(self.id)
         node_tags = gmsh.model.mesh.get_nodes()[0].astype(np.int64)
@@ -321,7 +322,7 @@ class GeomMesh:
 
 
     @property
-    def material(self) -> np.ndarray:
+    def material(self) -> npt.NDArray[np.integer]:
         """Material ID per element (0-based), shape (M,)."""
         gmsh.model.set_current(self.id)
         dim = gmsh.model.get_dimension()

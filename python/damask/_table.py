@@ -4,9 +4,10 @@ import re
 from os import PathLike
 from io import TextIOBase
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence, TextIO
+from typing import Any, Iterable, Mapping, Sequence, TextIO
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from . import util
@@ -18,7 +19,7 @@ class Table:
 
     def __init__(self,
                  shapes: Mapping[str,int | np.integer | tuple[int | np.integer,...]] = {},
-                 data: np.ndarray | pd.DataFrame | None = None,
+                 data: npt.NDArray[Any] | pd.DataFrame | None = None,
                  comments: str | Iterable[str] | None = None,
                  dtypes: Mapping[str,str | np.dtype] | None = None):
         """
@@ -213,7 +214,7 @@ class Table:
                 other: 'Table',
                 rtol: float = 1e-5,
                 atol: float = 1e-8,
-                equal_nan: bool = True) -> np.ndarray:
+                equal_nan: bool = True) -> npt.NDArray[np.bool_]:
         """
         Report where values are approximately equal to corresponding ones of other Table.
 
@@ -408,7 +409,7 @@ class Table:
 
 
     def get(self,
-            label: str) -> np.ndarray:
+            label: str) -> npt.NDArray[Any]:
         """
         Get column data.
 
@@ -429,7 +430,7 @@ class Table:
 
     def set(self,
             label: str,
-            data: np.ndarray,
+            data: npt.NDArray[Any],
             info: str | None = None) -> 'Table':
         """
         Add new or replace existing column data.

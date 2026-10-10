@@ -7,6 +7,7 @@ from typing import Sequence
 
 import h5py
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from scipy import interpolate, ndimage, spatial
 
@@ -29,7 +30,7 @@ class IcDict(dict):
         super().__init__()
         self.cells = cells
 
-    def __setitem__(self, k: str, v: float | np.ndarray):
+    def __setitem__(self, k: str, v: float | npt.NDArray[np.floating]):
         """
         Set a single initial condition key with validation and broadcasting.
 
@@ -74,10 +75,10 @@ class GeomGrid:
     """
 
     def __init__(self,
-                 material: np.ndarray,
+                 material: npt.NDArray[np.integer],
                  size: FloatSequence,
                  origin: FloatSequence = np.zeros(3),
-                 initial_conditions: dict[str,np.ndarray] | None = None,
+                 initial_conditions: dict[str,npt.NDArray[np.floating]] | None = None,
                  comments: str | Sequence[str] | None = None):
         """
         New geometry definition for grid solvers.
@@ -191,13 +192,13 @@ class GeomGrid:
 
 
     @property
-    def material(self) -> np.ndarray:
+    def material(self) -> npt.NDArray[np.integer]:
         """Material indices."""
         return self._material
 
     @material.setter
     def material(self,
-                 material: np.ndarray):
+                 material: npt.NDArray[np.integer]):
         if material.ndim != 3:
             raise ValueError(f'invalid material shape {material.shape}')
 
@@ -213,7 +214,7 @@ class GeomGrid:
 
 
     @property
-    def size(self) -> np.ndarray:
+    def size(self) -> npt.NDArray[np.floating]:
         """Edge lengths of grid in meter."""
         return self._size
 
@@ -226,7 +227,7 @@ class GeomGrid:
         self._size = np.array(size,np.float64)
 
     @property
-    def origin(self) -> np.ndarray:
+    def origin(self) -> npt.NDArray[np.floating]:
         """Vector to grid origin in meter."""
         return self._origin
 
@@ -240,12 +241,12 @@ class GeomGrid:
 
 
     @property
-    def initial_conditions(self) -> dict[str, np.ndarray]:
+    def initial_conditions(self) -> dict[str, npt.NDArray[np.floating]]:
         """Fields of initial conditions."""
         return self._ic
 
     @initial_conditions.setter
-    def initial_conditions(self, ic: dict[str, np.ndarray]):
+    def initial_conditions(self, ic: dict[str, npt.NDArray[np.floating]]):
         """Set initial conditions, broadcasting to the cell grid shape if necessary."""
         if not isinstance(ic, dict):
             raise TypeError('initial conditions must be a dictionary')
@@ -256,7 +257,7 @@ class GeomGrid:
 
 
     @property
-    def cells(self) -> np.ndarray:
+    def cells(self) -> npt.NDArray[np.integer]:
         """Cell counts along x,y,z direction."""
         return np.asarray(self.material.shape)
 
@@ -531,7 +532,7 @@ class GeomGrid:
     def from_Laguerre_tessellation(cls,
                                    cells: IntSequence,
                                    size: FloatSequence,
-                                   seeds: np.ndarray,
+                                   seeds: npt.NDArray[np.floating],
                                    weights: FloatSequence,
                                    material: IntSequence | None = None,
                                    periodic: bool = True):
@@ -590,7 +591,7 @@ class GeomGrid:
     def from_Voronoi_tessellation(cls,
                                   cells: IntSequence,
                                   size: FloatSequence,
-                                  seeds: np.ndarray,
+                                  seeds: npt.NDArray[np.floating],
                                   material: IntSequence | None = None,
                                   periodic: bool = True) -> 'GeomGrid':
         """
@@ -1113,7 +1114,7 @@ class GeomGrid:
 
 
     def assemble(self,
-                 idx: np.ndarray) -> 'GeomGrid':
+                 idx: npt.NDArray[np.integer]) -> 'GeomGrid':
         """
         Assemble new grid from index map.
 
@@ -1249,8 +1250,8 @@ class GeomGrid:
         -----
         If multiple material IDs are most frequent within a stencil, a random choice is taken.
         """
-        def most_frequent(stencil: np.ndarray,
-                          selection: np.ndarray | None,
+        def most_frequent(stencil: npt.NDArray[np.floating],
+                          selection: npt.NDArray[np.integer] | None,
                           rng: np.random.Generator):
             me = stencil[stencil.size//2]
             if selection is None or me in selection:

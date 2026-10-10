@@ -14,7 +14,7 @@ MyType = TypeVar('MyType', bound='Orientation')
 
 class DisorientationTuple(NamedTuple):
     disorientation: 'Orientation'
-    operators: np.ndarray
+    operators: npt.NDArray[np.integer]
 
 
 class AverageTuple(NamedTuple):
@@ -23,8 +23,8 @@ class AverageTuple(NamedTuple):
 
 
 class ToSSTTuple(NamedTuple):
-    vector_sst: np.ndarray
-    operator: np.ndarray
+    vector_sst: npt.NDArray[np.floating]
+    operator: npt.NDArray[np.integer]
 
 
 class Orientation(Rotation,Crystal):
@@ -275,7 +275,7 @@ class Orientation(Rotation,Crystal):
 
     @classmethod
     def from_quaternion(cls,
-                        q: Sequence[FloatSequence] | np.ndarray,
+                        q: Sequence[FloatSequence] | npt.NDArray[np.floating],
                         accept_homomorph: bool = False,
                         normalize: bool = False,
                         P: Literal[1, -1] = -1,
@@ -331,7 +331,7 @@ class Orientation(Rotation,Crystal):
 
     @classmethod
     def from_Euler_angles(cls,
-                          phi: np.ndarray,
+                          phi: npt.NDArray[np.floating],
                           degrees: bool = False,
                           *,
                           family: CrystalFamily | None = None,
@@ -383,7 +383,7 @@ class Orientation(Rotation,Crystal):
 
     @classmethod
     def from_axis_angle(cls,
-                        n_omega: np.ndarray,
+                        n_omega: npt.NDArray[np.floating],
                         degrees: bool = False,
                         normalize: bool = False,
                         P: Literal[1, -1] = -1,
@@ -437,7 +437,7 @@ class Orientation(Rotation,Crystal):
 
     @classmethod
     def from_basis(cls,
-                   basis: np.ndarray,
+                   basis: npt.NDArray[np.floating],
                    orthonormal: bool = True,
                    reciprocal: bool = False,
                    *,
@@ -489,7 +489,7 @@ class Orientation(Rotation,Crystal):
 
     @classmethod
     def from_matrix(cls,
-                    R: np.ndarray,
+                    R: npt.NDArray[np.floating],
                     normalize: bool = False,
                     *,
                     family: CrystalFamily | None = None,
@@ -538,8 +538,8 @@ class Orientation(Rotation,Crystal):
 
     @classmethod
     def from_parallel(cls,
-                      source: np.ndarray,
-                      target: np.ndarray,
+                      source: npt.NDArray[np.floating],
+                      target: npt.NDArray[np.floating],
                       active: bool = False,
                       *,
                       family: CrystalFamily | None = None,
@@ -597,7 +597,7 @@ class Orientation(Rotation,Crystal):
 
     @classmethod
     def from_Rodrigues_vector(cls,
-                              rho: np.ndarray,
+                              rho: npt.NDArray[np.floating],
                               normalize: bool = False,
                               P: Literal[1, -1] = -1,
                               *,
@@ -649,7 +649,7 @@ class Orientation(Rotation,Crystal):
 
     @classmethod
     def from_homochoric(cls,
-                        h: np.ndarray,
+                        h: npt.NDArray[np.floating],
                         P: Literal[1, -1] = -1,
                         *,
                         family: CrystalFamily | None = None,
@@ -698,7 +698,7 @@ class Orientation(Rotation,Crystal):
 
     @classmethod
     def from_cubochoric(cls,
-                        x: np.ndarray,
+                        x: npt.NDArray[np.floating],
                         P: Literal[1, -1] = -1,
                         *,
                         family: CrystalFamily | None = None,
@@ -799,8 +799,8 @@ class Orientation(Rotation,Crystal):
 
     @classmethod
     def from_ODF(cls,
-                 weights: np.ndarray,
-                 phi: np.ndarray,
+                 weights: npt.NDArray[np.floating],
+                 phi: npt.NDArray[np.floating],
                  shape: int | IntSequence | None = None,
                  degrees: bool = False,
                  fractions: bool = True,
@@ -1101,7 +1101,7 @@ class Orientation(Rotation,Crystal):
 
 
     @property
-    def in_FZ(self) -> np.bool_ | np.ndarray:
+    def in_FZ(self) -> np.bool_ | npt.NDArray[np.bool_]:
         """
         Check whether orientation falls into fundamental zone of own symmetry.
 
@@ -1146,7 +1146,7 @@ class Orientation(Rotation,Crystal):
 
 
     @property
-    def in_disorientation_FZ(self) -> np.ndarray:
+    def in_disorientation_FZ(self) -> npt.NDArray[np.bool_]:
         """
         Check whether orientation falls into fundamental zone of disorientations.
 
@@ -1277,7 +1277,7 @@ class Orientation(Rotation,Crystal):
 
 
     def disorientation_angle(self: MyType,
-                             other: MyType) -> np.ndarray:
+                             other: MyType) -> npt.NDArray[np.floating]:
         """
         Calculate disorientation angle between self and given other orientation.
 
@@ -1289,7 +1289,7 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        omega : np.ndarray
+        omega : npt.NDArray[np.floating]
             Disorientation angle.
 
         Notes
@@ -1404,7 +1404,7 @@ class Orientation(Rotation,Crystal):
     @overload
     def to_SST(self, vector: FloatSequence, proper: bool = False,
                return_operator: Literal[False] = False,
-               return_operators: bool = False) -> np.ndarray:
+               return_operators: bool = False) -> npt.NDArray[np.floating]:
         ...
     @overload
     def to_SST(self, vector: FloatSequence, proper: bool = False,
@@ -1415,7 +1415,7 @@ class Orientation(Rotation,Crystal):
                vector: FloatSequence,
                proper: bool = False,
                return_operator: bool = False,
-               return_operators: bool = False) -> np.ndarray | ToSSTTuple:
+               return_operators: bool = False) -> npt.NDArray[np.floating] | ToSSTTuple:
         """
         Rotate lab frame vector to ensure it falls into (improper or proper) standard stereographic triangle of crystal symmetry.
 
@@ -1462,7 +1462,7 @@ class Orientation(Rotation,Crystal):
 
     def in_SST(self,
                vector: FloatSequence,
-               proper: bool = False) -> np.bool_ | np.ndarray:
+               proper: bool = False) -> np.bool_ | npt.NDArray[np.bool_]:
         """
         Check whether given crystal frame vector falls into standard stereographic triangle of own symmetry.
 
@@ -1506,7 +1506,7 @@ class Orientation(Rotation,Crystal):
     def IPF_color(self,
                   vector: FloatSequence,
                   in_SST: bool = True,
-                  proper: bool = False) -> np.ndarray:
+                  proper: bool = False) -> npt.NDArray[np.floating]:
         """
         Map lab frame vector to RGB color within standard stereographic triangle of own symmetry.
 
@@ -1555,7 +1555,7 @@ class Orientation(Rotation,Crystal):
         if np.array(vector).shape[-1] != 3:
             raise ValueError('input is not a field of three-dimensional vectors')
 
-        vector_:np.ndarray = self.to_SST(vector,proper) if in_SST else \
+        vector_:npt.NDArray[np.floating] = self.to_SST(vector,proper) if in_SST else \
                              self @ np.broadcast_to(vector,self.shape+(3,))
 
         if self.standard_triangle is None:                                                          # direct exit for no symmetry
@@ -1593,7 +1593,7 @@ class Orientation(Rotation,Crystal):
 
     def to_lattice(self, *,
                    direction: FloatSequence | None = None,
-                   plane: FloatSequence | None = None) -> np.ndarray:                            # numpydoc ignore=PR01,PR02
+                   plane: FloatSequence | None = None) -> npt.NDArray[np.floating]:                 # numpydoc ignore=PR01,PR02
         """
         Calculate lattice vector corresponding to lab frame direction or plane normal.
 
@@ -1642,7 +1642,7 @@ class Orientation(Rotation,Crystal):
                  hkil: IntSequence | None = None,
                  with_symmetry: bool = False,
                  normalize: bool = True,
-                 ) -> np.ndarray:                                                                   # numpydoc ignore=PR01,PR02
+                 ) -> npt.NDArray[np.floating]:                                                     # numpydoc ignore=PR01,PR02
         """
         Calculate lab frame vector along lattice direction [uvw]/[uvtw] or plane normal (hkl)/(hkil).
 
@@ -1684,7 +1684,7 @@ class Orientation(Rotation,Crystal):
 
     def Schmid(self, *,
                N_slip: IntSequence | Literal['*'] | None = None,
-               N_twin: IntSequence | Literal['*'] | None = None) -> np.ndarray:            # numpydoc ignore=PR01,PR02
+               N_twin: IntSequence | Literal['*'] | None = None) -> npt.NDArray[np.floating]:       # numpydoc ignore=PR01,PR02
         u"""
         Calculate Schmid matrix P = d ⨂ n in the lab frame for selected deformation systems.
 
@@ -1808,9 +1808,9 @@ class Orientation(Rotation,Crystal):
                            )
 
 
-    def resolved_shear_stress(self, sigma: np.ndarray, *,
+    def resolved_shear_stress(self, sigma: npt.NDArray[np.floating], *,
                               N_slip: IntSequence | Literal['*'] | None = None,
-                              N_twin: IntSequence | Literal['*'] | None = None) -> npt.NDArray: # numpydoc ignore=PR01,PR02
+                              N_twin: IntSequence | Literal['*'] | None = None) -> npt.NDArray[np.floating]: # numpydoc ignore=PR01,PR02
         """
         Calculate resolved shear stress on slip or twin systems.
 
