@@ -8,23 +8,23 @@ set(_OPTIMIZATION_DEBUG      "-Og")
 set(_OPTIMIZATION_OFF        "-O0")
 set(_OPTIMIZATION_DEFENSIVE  "-O2 -mtune=native")
 set(_OPTIMIZATION_AGGRESSIVE "-O3 -march=native -funroll-loops -ftree-vectorize -flto")
-set(OPTIMIZATION_FLAGS_FORTRAN "${_OPTIMIZATION_${OPTIMIZATION}}")
+set(Fortran_OPTIMIZATION_FLAGS "${_OPTIMIZATION_${OPTIMIZATION}}")
 
 if(OPENMP)
-  set(OPENMP_FLAGS_FORTRAN "-fopenmp")
+  set(Fortran_OPENMP_FLAGS "-fopenmp")
 endif()
 
 if(CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 14)
-  set(FORTRAN_STANDARD_CHECK "-std=f2018 -pedantic-errors")
+  set(Fortran_STANDARD_CHECK "-std=f2018 -pedantic-errors")
 else()
-  set(FORTRAN_STANDARD_CHECK "-std=f2023 -pedantic-errors")
+  set(Fortran_STANDARD_CHECK "-std=f2023 -pedantic-errors")
 endif()
 
 #------------------------------------------------------------------------------------------------
 # Fine tuning compilation options
 #------------------------------------------------------------------------------------------------
 
-string(APPEND FORTRAN_COMPILE_FLAGS
+string(APPEND Fortran_COMPILE_FLAGS
   " -fPIE"                          # position independent code
   " -ffree-line-length-none"        # PETSc macros exceed line-length limits
   " -fimplicit-none"                # assume implicit none if not present
@@ -108,7 +108,7 @@ string(APPEND FORTRAN_COMPILE_FLAGS
 # Runtime debugging
 #------------------------------------------------------------------------------------------------
 
-string(APPEND FORTRAN_DEBUG_FLAGS
+string(APPEND Fortran_DEBUG_FLAGS
   " -ffpe-trap=invalid,zero,overflow"  # stop on FP exceptions (NaN remains silent)
   # " -ffpe-trap=precision,denormal,underflow"  # optional, more aggressive traps
 

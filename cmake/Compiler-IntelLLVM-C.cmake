@@ -6,10 +6,10 @@ set(_OPTIMIZATION_OFF        "-O0")
 set(_OPTIMIZATION_DEBUG      "${_OPTIMIZATION_OFF}")
 set(_OPTIMIZATION_DEFENSIVE  "-O2")
 set(_OPTIMIZATION_AGGRESSIVE "-O3 -fp-model strict -xHost") # -ipo/-flto break link
-set(OPTIMIZATION_FLAGS_C "${_OPTIMIZATION_${OPTIMIZATION}}")
+set(C_OPTIMIZATION_FLAGS "${_OPTIMIZATION_${OPTIMIZATION}}")
 
 if(OPENMP)
-  set(OPENMP_FLAGS_C "-fiopenmp")
+  set(C_OPENMP_FLAGS "-fiopenmp")
 endif()
 
 #------------------------------------------------------------------------------------------------

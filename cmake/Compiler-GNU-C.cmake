@@ -6,10 +6,10 @@ set(_OPTIMIZATION_DEBUG      "-Og")
 set(_OPTIMIZATION_OFF        "-O0")
 set(_OPTIMIZATION_DEFENSIVE  "-O2 -mtune=native")
 set(_OPTIMIZATION_AGGRESSIVE "-O3 -march=native -funroll-loops -ftree-vectorize -flto")
-set(OPTIMIZATION_FLAGS_C "${_OPTIMIZATION_${OPTIMIZATION}}")
+set(C_OPTIMIZATION_FLAGS "${_OPTIMIZATION_${OPTIMIZATION}}")
 
 if(OPENMP)
-  set(OPENMP_FLAGS_C "-fopenmp")
+  set(C_OPENMP_FLAGS "-fopenmp")
 endif()
 
 #------------------------------------------------------------------------------------------------

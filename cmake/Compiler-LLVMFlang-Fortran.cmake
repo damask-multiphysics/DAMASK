@@ -8,18 +8,18 @@ set(_OPTIMIZATION_OFF        "-O0")
 set(_OPTIMIZATION_DEBUG      "${_OPTIMIZATION_OFF}")
 set(_OPTIMIZATION_DEFENSIVE  "-O2 -mtune=native")
 set(_OPTIMIZATION_AGGRESSIVE "-O3 -march=native -funroll-loops -ftree-vectorize -flto")
-set(OPTIMIZATION_FLAGS_FORTRAN "${_OPTIMIZATION_${OPTIMIZATION}}")
+set(Fortran_OPTIMIZATION_FLAGS "${_OPTIMIZATION_${OPTIMIZATION}}")
 
 #if(OPENMP)
-#  set(OPENMP_FLAGS_FORTRAN "-fopenmp")
+#  set(Fortran_OPENMP_FLAGS "-fopenmp")
 #endif()
 
-set(FORTRAN_STANDARD_CHECK "-std=f2018 -pedantic")
+set(Fortran_STANDARD_CHECK "-std=f2018 -pedantic")
 
 #------------------------------------------------------------------------------------------------
 # Fine tuning compilation options
 #------------------------------------------------------------------------------------------------
 
-string(APPEND FORTRAN_COMPILE_FLAGS
+string(APPEND Fortran_COMPILE_FLAGS
   " -fPIE"                          # position independent code
 )

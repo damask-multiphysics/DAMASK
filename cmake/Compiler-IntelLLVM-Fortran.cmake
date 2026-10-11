@@ -8,20 +8,20 @@ set(_OPTIMIZATION_OFF        "-O0")
 set(_OPTIMIZATION_DEBUG      "${_OPTIMIZATION_OFF}")
 set(_OPTIMIZATION_DEFENSIVE  "-O2")
 set(_OPTIMIZATION_AGGRESSIVE "-O3 -fp-model strict -xHost -align array64byte") # -ipo/-flto break link
-set(OPTIMIZATION_FLAGS_FORTRAN "${_OPTIMIZATION_${OPTIMIZATION}}")
+set(Fortran_OPTIMIZATION_FLAGS "${_OPTIMIZATION_${OPTIMIZATION}}")
 
 if(OPENMP)
-  set(OPENMP_FLAGS_FORTRAN "-fiopenmp")
+  set(Fortran_OPENMP_FLAGS "-fiopenmp")
 endif()
 
-set(FORTRAN_STANDARD_CHECK "-stand f23 -fpscomp logicals -assume noold_unit_star")
+set(Fortran_STANDARD_CHECK "-stand f23 -fpscomp logicals -assume noold_unit_star")
 # -standard-semantics causes a bizarre increase in runtime on matesting (Intel(R) Xeon(R) CPU
 # X5670), o only enforce a logical representation that is compatible with C and enable to close the
 # output unit.
 # https://fortran-lang.discourse.group/t/performance-drop-when-using-intel-oneapi-with-standard-sematics-option/9944/5
 # https://community.intel.com/t5/Intel-Fortran-Compiler/Redirecting-File-STDOUT-and-STDERR-in-Intel-Fortran-Without/m-p/1550590
 
-string(APPEND FORTRAN_LINKER_FLAGS
+string(APPEND Fortran_LINKER_FLAGS
   " -shared-intel"   # link against shared Intel runtime libraries
   " -fc=ifx"         # force MPI wrapper to use ifx
 )
@@ -30,7 +30,7 @@ string(APPEND FORTRAN_LINKER_FLAGS
 # Fine tuning compilation options
 #------------------------------------------------------------------------------------------------
 
-string(APPEND FORTRAN_COMPILE_FLAGS
+string(APPEND Fortran_COMPILE_FLAGS
   " -no-ftz"                     # disable flush-underflow-to-zero (often enabled by -O[1-3])
 
   " -diag-disable"               # disable selected diagnostics...
@@ -59,7 +59,7 @@ string(APPEND FORTRAN_COMPILE_FLAGS
 # Runtime debugging
 #------------------------------------------------------------------------------------------------
 
-string(APPEND FORTRAN_DEBUG_FLAGS
+string(APPEND Fortran_DEBUG_FLAGS
   " -g"                              # generate symbolic debug information
   " -traceback"                      # source file traceback on severe runtime errors
   " -gen-interfaces"                 # generate interface blocks for each routine
@@ -82,14 +82,14 @@ string(APPEND FORTRAN_DEBUG_FLAGS
 )
 
 # Generate extra code after every function call to ensure that the floating-point (FP) stack is in the expected state
-# set(FORTRAN_DEBUG_FLAGS "${FORTRAN_DEBUG_FLAGS} -fp-stack-check") not available on ifx 2025.0.4
+# set(Fortran_DEBUG_FLAGS "${Fortran_DEBUG_FLAGS} -fp-stack-check") not available on ifx 2025.0.4
 # disable due to compiler bug https://community.intel.com/t5/Intel-Fortran-Compiler/false-positive-stand-f18-and-IEEE-SELECTED-REAL-KIND/m-p/1227336
 # enables warnings ...
-#set(FORTRAN_DEBUG_FLAGS "${FORTRAN_DEBUG_FLAGS} -warn")
+#set(Fortran_DEBUG_FLAGS "${Fortran_DEBUG_FLAGS} -warn")
 #   ... warnings are changed to errors
-#set(FORTRAN_DEBUG_FLAGS "${FORTRAN_DEBUG_FLAGS} errors")
+#set(Fortran_DEBUG_FLAGS "${Fortran_DEBUG_FLAGS} errors")
 #   ... warnings about Fortran standard violations are changed to errors
-#set(FORTRAN_DEBUG_FLAGS "${FORTRAN_DEBUG_FLAGS},stderrors")
+#set(Fortran_DEBUG_FLAGS "${Fortran_DEBUG_FLAGS},stderrors")
 # generate complete debugging information
 # Additional options
 # -heap-arrays:            Should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
