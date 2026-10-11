@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 ###################################################################################################
-# GNU Compiler
+# GNU Fortran (gfortran)
 ###################################################################################################
 set(Fortran_COMPILER_VERSION_MIN 12.1)
 
@@ -8,28 +8,23 @@ set(_OPTIMIZATION_DEBUG      "-Og")
 set(_OPTIMIZATION_OFF        "-O0")
 set(_OPTIMIZATION_DEFENSIVE  "-O2 -mtune=native")
 set(_OPTIMIZATION_AGGRESSIVE "-O3 -march=native -funroll-loops -ftree-vectorize -flto")
-
-if(DEFINED _OPTIMIZATION_${OPTIMIZATION})
-  set(OPTIMIZATION_FLAGS "${_OPTIMIZATION_${OPTIMIZATION}}")
-else()
-  message(FATAL_ERROR "Unknown OPTIMIZATION level: ${OPTIMIZATION}")
-endif()
+set(OPTIMIZATION_FLAGS_FORTRAN "${_OPTIMIZATION_${OPTIMIZATION}}")
 
 if(OPENMP)
-  set(OPENMP_FLAGS "-fopenmp")
+  set(OPENMP_FLAGS_FORTRAN "-fopenmp")
 endif()
 
 if(CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 14)
-  set(STANDARD_CHECK "-std=f2018 -pedantic-errors")
+  set(FORTRAN_STANDARD_CHECK "-std=f2018 -pedantic-errors")
 else()
-  set(STANDARD_CHECK "-std=f2023 -pedantic-errors")
+  set(FORTRAN_STANDARD_CHECK "-std=f2023 -pedantic-errors")
 endif()
 
 #------------------------------------------------------------------------------------------------
 # Fine tuning compilation options
 #------------------------------------------------------------------------------------------------
 
-string(APPEND COMPILE_FLAGS
+string(APPEND FORTRAN_COMPILE_FLAGS
   " -fPIE"                          # position independent code
   " -ffree-line-length-none"        # PETSc macros exceed line-length limits
   " -fimplicit-none"                # assume implicit none if not present
@@ -113,7 +108,7 @@ string(APPEND COMPILE_FLAGS
 # Runtime debugging
 #------------------------------------------------------------------------------------------------
 
-string(APPEND DEBUG_FLAGS
+string(APPEND FORTRAN_DEBUG_FLAGS
   " -ffpe-trap=invalid,zero,overflow"  # stop on FP exceptions (NaN remains silent)
   # " -ffpe-trap=precision,denormal,underflow"  # optional, more aggressive traps
 
