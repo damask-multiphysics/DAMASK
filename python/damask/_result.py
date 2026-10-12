@@ -31,10 +31,10 @@ chunk_size = 1024**2//8                                                         
 prefix_inc = 'increment_'
 
 class MappingsTuple(NamedTuple):
-    at_cell_ph: list[dict[str, npt.NDArray[Any]]]
-    in_data_ph: list[dict[str, npt.NDArray[Any]]]
-    at_cell_ho: dict[str, npt.NDArray[Any]]
-    in_data_ho: dict[str, npt.NDArray[Any]]
+    at_cell_ph: list[dict[str, npt.NDArray[np.integer]]]
+    in_data_ph: list[dict[str, npt.NDArray[np.integer]]]
+    at_cell_ho: dict[str, npt.NDArray[np.integer]]
+    in_data_ho: dict[str, npt.NDArray[np.integer]]
 
 
 class DatasetMetadata(dict):
