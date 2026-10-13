@@ -2,7 +2,7 @@ name: Grid and Mesh Solver
 on: [push]
 
 env:
-  PETSC_VERSION: '3.25.3'
+  PETSC_VERSION: '3.26.0'
   HOMEBREW_NO_ANALYTICS: 'ON'     # Make Homebrew installation a little quicker
   HOMEBREW_NO_AUTO_UPDATE: 'ON'
   HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK: 'ON'
@@ -13,11 +13,11 @@ jobs:
 
   ubuntu_gcc:
 
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     strategy:
       matrix:
-        gcc_v: [12, 13, 14]
+        gcc_v: [12, 13, 14, 15, 16]
       fail-fast: false
 
     env:

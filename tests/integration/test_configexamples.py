@@ -130,12 +130,12 @@ config_phase = \
 
 
 def test_coverage_homogenization(damask_root):
-    existing = set((damask_root/'examples/config/homogenization').glob('**/*.yaml'))
+    existing = set((damask_root/'config/homogenization').glob('**/*.yaml'))
 
     tested   = set()
     path = ['.'] + fields
     for combination in config_homogenization:
-        tested.update([damask_root/f'examples/config/homogenization/{path[i]}/{config}.yaml'
+        tested.update([damask_root/f'config/homogenization/{path[i]}/{config}.yaml'
                        for i,config in enumerate(combination) if config is not None])
 
     assert len(existing ^ tested) == 0, existing ^ tested
@@ -156,7 +156,7 @@ def test_homogenization(damask_root,tmp_path,
     load = 'none'
     material = 'material'
     label = 'DAMASK'
-    base_path = Path(damask_root/'examples/config/homogenization')
+    base_path = Path(damask_root/'config/homogenization')
 
     g = damask.GeomGrid(np.zeros([2,1,1],int),np.ones(3))
 
@@ -173,37 +173,37 @@ def test_homogenization(damask_root,tmp_path,
     N = int(config['homogenization'][label]['N_constituents'])
 
     config['homogenization'][label]['mechanical'] \
-        = damask.YAML.load(base_path/'mechanical'/f'{mechanical}.yaml')
+        = damask.YAML.load(base_path/f'mechanical/{mechanical}.yaml')
 
     if thermal is not None:
         config['homogenization'][label]['thermal'] \
-            = damask.YAML.load(base_path/'thermal'/f'{thermal}.yaml')
+            = damask.YAML.load(base_path/f'thermal/{thermal}.yaml')
         config['phase']['iso']['thermal'] = {'C_p':1, 'K_11':1}
         g.initial_conditions['T'] = 200.0
         load_case['solver']['thermal'] = 'spectral'
 
     if damage is not None:
         config['homogenization'][label]['damage'] \
-            = damask.YAML.load(base_path/'damage'/f'{damage}.yaml')
+            = damask.YAML.load(base_path/f'damage/{damage}.yaml')
         config['phase']['iso']['damage'] \
-            = damask.YAML.load(damask_root/'examples'/'config'/'phase'/'damage'/'isobrittle_generic.yaml')
+            = damask.YAML.load(damask_root/'config/phase/damage/isobrittle_generic.yaml')
         load_case['solver']['damage'] = 'spectral'
         g.initial_conditions['phi'] = 1.0
 
     if chemical is not None:
         config['homogenization'][label]['chemical'] \
-            = damask.YAML.load(base_path/'chemical'/f'{chemical}.yaml')
+            = damask.YAML.load(base_path/f'chemical/{chemical}.yaml')
         config['phase']['iso']['chemical'] \
-            = damask.YAML.load(damask_root/'examples'/'config'/'phase'/'chemical'/'quadenergy_example.yaml')
+            = damask.YAML.load(damask_root/'config/phase/chemical/quadenergy_example.yaml')
         load_case['solver']['chemical'] = 'FDM'
         for component in config['phase']['iso']['chemical']['species']:
             g.initial_conditions['mu_' + component] = 1.0
 
     if electrical is not None:
         config['homogenization'][label]['electrical'] \
-            = damask.YAML.load(base_path/'electrical'/f'{chemical}.yaml')
+            = damask.YAML.load(base_path/f'electrical/{chemical}.yaml')
         config['phase']['iso']['electrical'] \
-            = damask.YAML.load(damask_root/'examples'/'config'/'phase'/'electrical'/'isotropic.yaml')
+            = damask.YAML.load(damask_root/'config/phase/electrical/isotropic.yaml')
         load_case['solver']['electrical'] = 'spectral'
         load_case['loadstep'][0]['boundary_condition']['electrical'] = {'J': [0.0, 0.0, 0.0],
                                                                             'E': ['x', 'x', 'x']}
@@ -224,14 +224,14 @@ def test_homogenization(damask_root,tmp_path,
         assert set(output['increment_0']['homogenization'][label][k].keys()) == set(v)
 
 def test_coverage_phase(damask_root):
-    existing = set((damask_root/'examples/config/phase').glob('**/*.yaml'))
+    existing = set((damask_root/'config/phase').glob('**/*.yaml'))
 
     tested   = set()
     path = ['.','mechanical/elastic','mechanical/plastic','mechanical/eigen',
             'damage','thermal','thermal/source', 'chemical', 'electrical'
            ]
     for combination in config_phase:
-        tested.update([damask_root/f'examples/config/phase/{path[i]}/{config}.yaml'
+        tested.update([damask_root/f'config/phase/{path[i]}/{config}.yaml'
                        for i,config in enumerate(combination) if config is not None])
 
     assert len(existing ^ tested) == 0, existing ^ tested
@@ -263,7 +263,7 @@ def test_phase(damask_root,tmp_path,
     load = 'none'
     material='material'
     label = 'DAMASK'
-    base_path = Path(damask_root/'examples/config/phase')
+    base_path = Path(damask_root/'config/phase')
 
     g = damask.GeomGrid(np.zeros([2,1,1],int),np.ones(3))
 
@@ -277,37 +277,37 @@ def test_phase(damask_root,tmp_path,
     config['phase'][label] = damask.YAML.load(base_path/f'{lattice}.yaml')
     config['phase'][label]['mechanical'] = {}
     config['phase'][label]['mechanical']['elastic'] \
-        = damask.YAML.load(base_path/'mechanical'/'elastic'/f'{elastic}.yaml')
+        = damask.YAML.load(base_path/f'mechanical/elastic/{elastic}.yaml')
 
     if plastic is not None:
         config['phase'][label]['mechanical']['plastic'] \
-            = damask.YAML.load(base_path/'mechanical'/'plastic'/f'{plastic}.yaml')
+            = damask.YAML.load(base_path/f'mechanical/plastic/{plastic}.yaml')
 
     if eigen is not None:
         config['phase'][label]['mechanical']['eigen'] \
-            = [damask.YAML.load(base_path/'mechanical'/'eigen'/f'{eigen}.yaml')]
+            = [damask.YAML.load(base_path/f'mechanical/eigen/{eigen}.yaml')]
 
     if thermal is not None:
         config['phase'][label]['thermal'] \
-            = damask.YAML.load(base_path/'thermal'/f'{thermal}.yaml')
+            = damask.YAML.load(base_path/f'thermal/{thermal}.yaml')
         config['homogenization']['SX']['thermal'] = {'type':'pass'}
         g.initial_conditions['T'] = 200.0
         load_case['solver']['thermal'] = 'spectral'
 
     if source is not None:
         config['phase'][label]['thermal']['source'] \
-            = [damask.YAML.load(base_path/'thermal'/'source'/f'{source}.yaml')]
+            = [damask.YAML.load(base_path/f'thermal/source/{source}.yaml')]
 
     if damage is not None:
         config['phase'][label]['damage'] \
-            = damask.YAML.load(base_path/'damage'/f'{damage}.yaml')
+            = damask.YAML.load(base_path/f'damage/{damage}.yaml')
         config['homogenization']['SX']['damage'] = {'type':'pass'}
         load_case['solver']['damage'] = 'spectral'
         g.initial_conditions['phi'] = 1.0
 
     if chemical is not None:
         config['phase'][label]['chemical'] \
-            = damask.YAML.load(damask_root/'examples'/'config'/'phase'/'chemical'/f'{chemical}.yaml')
+            = damask.YAML.load(damask_root/f'config/phase/chemical/{chemical}.yaml')
         components = config['phase'][label]['chemical']['species']
         config['homogenization']['SX']['chemical'] = {'type':'pass'}
         for component in components:
@@ -316,7 +316,7 @@ def test_phase(damask_root,tmp_path,
 
     if electrical is not None:
         config['phase'][label]['electrical'] \
-            = damask.YAML.load(base_path/'electrical'/f'{electrical}.yaml')
+            = damask.YAML.load(base_path/f'electrical/{electrical}.yaml')
         config['homogenization']['SX']['electrical'] = {'type':'pass'}
         load_case['solver']['electrical'] = 'spectral'
         load_case['loadstep'][0]['boundary_condition']['electrical'] = {'J': [0.0, 0.0, 0.0],

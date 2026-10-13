@@ -1,0 +1,8 @@
+ARG MARC_VERSION
+ARG REMOTE
+FROM ${REMOTE}/marc_base:${MARC_VERSION}
+
+RUN mkdir -p -m 0700 ~/.ssh && ssh-keyscan -H git.damask-multiphysics.org >> ~/.ssh/known_hosts
+RUN --mount=type=ssh git clone git@git.damask-multiphysics.org:damask/DAMASK.git -b Marc${MARC_VERSION} /DAMASK
+RUN python3 /DAMASK/install/MarcMentat/MSC_modifications.py \
+    --editor=gted --marc-version=${MARC_VERSION} --damask-root=/DAMASK --marc-root=/opt/msc

@@ -1,0 +1,45 @@
+FROM intel/oneapi-toolkit:2026.1.0-devel-ubuntu26.04
+
+ARG MARC_VERSION
+ARG MSC_DIR
+ARG HDF5_PREFIX=/hdf5
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+ENV MARC_VERSION=${MARC_VERSION}
+ENV FCFLAGS='-fPIC -integer-size 64 -real-size 64 -qopenmp'
+ENV CFLAGS='-fPIC -qopenmp'
+ENV HDF5_DIR=${HDF5_PREFIX} \
+    HDF5_ROOT=${HDF5_PREFIX} \
+    PATH=${HDF5_PREFIX}/bin:$PATH \
+    LIBRARY_PATH=${HDF5_PREFIX}/lib:/opt/msc/mentat${MARC_VERSION}/scasystem/LX8664/lib:${LIBRARY_PATH} \
+    LD_LIBRARY_PATH=${HDF5_PREFIX}/lib:/opt/msc/mentat${MARC_VERSION}/scasystem/LX8664/lib:${LD_LIBRARY_PATH}
+
+RUN rm -f /etc/apt/sources.list.d/oneAPI.list
+RUN sed -i '/apt\.repos\.intel\.com/d' /etc/apt/sources.list
+RUN rm -f /etc/apt/sources.list.d/*oneapi*
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests \
+    ca-certificates git openssh-client make cmake \
+    python3 python-is-python3 python3-pytest \
+    python3-numpy python3-scipy python3-pandas python3-h5py python3-vtk9 python3-matplotlib python3-yaml \
+    xvfb libxcb1 libxcb-xinerama0 libpng-dev libxcb-util-dev libtirpc-dev \
+    libfyaml-dev libglu1-mesa libgl1 libglx-mesa0 libx11-6 ksh && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --branch hdf5_1.14.6 --depth 1 https://github.com/HDFGroup/hdf5.git /tmp/hdf5 && \
+    cd /tmp/hdf5 && CFLAGS="$CFLAGS" FCFLAGS="$FCFLAGS" FC=ifx CC=icx ./configure \
+      --prefix=${HDF5_PREFIX} \
+      --disable-parallel \
+      --enable-fortran \
+      --enable-build-mode=production && \
+    make -j"$(nproc)" && make install && rm -rf /tmp/hdf5
+
+SHELL ["/bin/bash", "-c"]
+
+COPY ${MSC_DIR} /tmp/marc${MARC_VERSION}
+RUN cd /tmp/marc${MARC_VERSION}/Marc${MARC_VERSION} && \
+    sh install.exe -a -i /opt/msc && \
+    rm -rf /tmp/marc${MARC_VERSION}
+RUN mkdir -p /opt/msc/flexlm/licenses && echo -e "SERVER mulicense2 000c294dd48c 1700\nUSE_SERVER" > /opt/msc/flexlm/licenses/license.dat

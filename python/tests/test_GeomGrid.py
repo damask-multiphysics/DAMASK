@@ -81,7 +81,7 @@ def test_invalid_no_material(np_rng,tmp_path):
     with pytest.raises(KeyError):
         GeomGrid.load(tmp_path/'no_materialpoint.vti')
 
-@pytest.mark.parametrize('dtype',[np.bool,np.complex128])
+@pytest.mark.parametrize('dtype',[np.bool_,np.complex128])
 def test_invalid_material_type(np_rng,dtype):
     with pytest.raises(TypeError):
         GeomGrid(np_rng.integers(5,size=[2,3,4]).astype(dtype),np.ones(3))

@@ -173,6 +173,9 @@ subroutine grid_thermal_spectral_init(num_grid_thermal)
     T_aim = tmp(1)
     call HDF5_read(tmp,groupHandle,'T_aim_lastinc',.false.)
     T_aim_lastinc = tmp(1)
+
+    call HDF5_closeGroup(groupHandle)
+    call HDF5_closeFile(fileHandle)
   else
     T = discretization_grid_getScalarInitialCondition('T')
     T_lastinc = T(0:,0:,lbound(T,3):)

@@ -164,6 +164,9 @@ subroutine grid_chemical_FDM_init(num_grid_chemical)
 
     call HDF5_read(tempN,groupHandle,'mu',.false.)
     mu_0 = reshape(tempN,[N_components,cells(1),cells(2),cells3])
+
+   call HDF5_closeGroup(groupHandle)
+   call HDF5_closeFile(fileHandle)
   else
     do com = 1, N_components
       mu_0(com,:,:,:) = discretization_grid_getScalarInitialCondition('mu_' // trim(material_name_species(com)))

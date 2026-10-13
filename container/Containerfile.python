@@ -1,0 +1,23 @@
+FROM docker.io/python:slim
+
+ENV PYTHONUNBUFFERED=1
+
+RUN python3 -m pip install --upgrade --root-user-action=ignore \
+    pip \
+    build \
+    setuptools \
+    pandas \
+    numpy \
+    scipy \
+    vtk \
+    h5py \
+    matplotlib \
+    PyYAML \
+    mypy \
+    pytest \
+    pytest-cov \
+    pytest-xdist \
+    plotly \
+    pandas-stubs \
+    scipy-stubs \
+    types-PyYAML
