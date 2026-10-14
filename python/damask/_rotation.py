@@ -3,7 +3,7 @@ import builtins
 import copy
 import re
 import sys
-from typing import Literal, NamedTuple, Sequence, TypeVar, Union
+from typing import Any, Literal, NamedTuple, Sequence, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -269,9 +269,9 @@ class Rotation:
 
 
     def __array__(self: MyType,
-                  dtype: npt.DTypeLike | None = None,
+                  dtype: np.dtype[np.floating[Any]] | None = None,
                   *,
-                  copy: bool | None = None) -> np.ndarray:
+                  copy: bool | None = None) -> npt.NDArray[np.floating]:
         """Initializer for numpy."""
         return np.asarray(self.quaternion,dtype) if util.version(np.__version__) < '2.0.0' else \
                np.asarray(self.quaternion,dtype,copy=copy)

@@ -1786,7 +1786,7 @@ class Result:
         """Mappings to place data spatially."""
         with h5py.File(self.fname,'r') as f:
 
-            at_cell_ph = []
+            at_cell_ph: list[dict[str, npt.NDArray[np.integer]]] = []
             in_data_ph = []
             for c in range(self.N_constituents):
                 at_cell_ph.append({label: np.where(self.phase[:,c] == label)[0] \
@@ -1794,8 +1794,8 @@ class Result:
                 in_data_ph.append({label: f['/'.join(['cell_to','phase'])]['entry'][at_cell_ph[c][label]][:,c] \
                                           for label in self._visible['phases']})
 
-            at_cell_ho = {label: np.where(self.homogenization[:] == label)[0] \
-                                 for label in self._visible['homogenizations']}
+            at_cell_ho: dict[str, npt.NDArray[np.integer]] = {label: np.where(self.homogenization[:] == label)[0] \
+                        for label in self._visible['homogenizations']}
             in_data_ho = {label: f['/'.join(['cell_to','homogenization'])]['entry'][at_cell_ho[label]] \
                                  for label in self._visible['homogenizations']}
 
