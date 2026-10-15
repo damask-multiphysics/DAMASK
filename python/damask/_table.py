@@ -351,13 +351,7 @@ class Table:
     @classmethod
     def load_ang(cls,
                  fname: FileHandleText,
-                 shapes = {'eu':3,
-                           'pos':2,
-                           'IQ':1,
-                           'CI':1,
-                           'ID':1,
-                           'intensity':1,
-                           'fit':1}) -> 'Table':
+                 shapes: dict[str,int] | None = None) -> 'Table':
         """
         Load from ANG file.
 
@@ -384,6 +378,9 @@ class Table:
         loaded : damask.Table
             Table data from file.
         """
+        if shapes is None:
+            shapes = {'eu':3, 'pos':2, 'IQ':1, 'CI':1, 'ID':1, 'intensity':1, 'fit':1}
+
         with util.open_text(fname) as f:
             f.seek(0)
             content = f.readlines()
@@ -606,7 +603,7 @@ class Table:
             Only provided if return_counts is True.
         """
         _,idx,inv,cnt = np.unique(
-            np.hstack([self.get(l) for l in self.labels]),
+            np.hstack([self.get(l).reshape((self.data.shape[0],-1)) for l in self.labels]),
             return_index=True,
             return_inverse=True,
             return_counts=True,

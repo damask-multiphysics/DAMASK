@@ -610,7 +610,7 @@ class VTK:
         if N_data == N_c:
             dup.vtk_data.GetCellData().AddArray(d)
 
-        if info is not None: dup.comments.append(f'{label}: {info}')
+        if info is not None: dup.comments += [f'{label}: {info}']
 
         return dup
 

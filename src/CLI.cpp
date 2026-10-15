@@ -274,6 +274,8 @@ void CLI::init_print() {
   cout << " https://doi.org/10.2172/2998643\n";
 #elif PETSC_VERSION_MINOR == 25
   cout << " https://doi.org/10.2172/3025790\n";
+#elif PETSC_VERSION_MINOR == 26
+  cout << " https://doi.org/10.2172/17154913\n";
 #endif
   cout << "\n";
 #endif

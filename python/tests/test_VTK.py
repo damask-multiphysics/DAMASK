@@ -295,3 +295,7 @@ def test_compare_reference_rectilinearGrid(assert_allclose,update,res_path):
         reference = VTK.load(res_path/'rectilinearGrid.vtr')
         assert rectilinearGrid.as_ASCII() == reference.as_ASCII()
         assert_allclose(rectilinearGrid.get('cell'),c)
+
+def test_set_preserves_comments_info(default):
+    v = default.set('f', np.ones(default.N_points), info='HELLO')
+    assert any('HELLO' in c for c in v.comments)

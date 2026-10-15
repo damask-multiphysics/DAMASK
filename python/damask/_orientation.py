@@ -220,7 +220,8 @@ class Orientation(Rotation,Crystal):
         matching_type = self.family == other.family and \
                         self.lattice == other.lattice and \
                         self.parameters == other.parameters
-        return np.logical_and(matching_type,super(self.__class__,self.reduced).isclose(other.reduced))
+        return np.logical_and(matching_type,
+                              super(self.__class__,self.reduced).isclose(other.reduced,rtol,atol,equal_nan))
 
     def allclose(self: MyType,
                  other: MyType,
@@ -1454,7 +1455,7 @@ class Orientation(Rotation,Crystal):
         loc   = np.where(ok)
         sort  = 0 if len(loc) == 1 else np.lexsort(loc[:0:-1])
 
-        if return_operator:
+        if return_operator or return_operators:
             return ToSSTTuple(poles[ok][sort].reshape(blend+(3,)), (np.vstack(loc[:1]).T)[sort].reshape(blend))
         else:
             return poles[ok][sort].reshape(blend+(3,))

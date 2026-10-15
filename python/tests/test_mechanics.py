@@ -18,7 +18,7 @@ def eigenvalues(T_sym):
 
 def maximum_shear(T_sym):
     w = eigenvalues(T_sym)
-    return (w[0] - w[2])*0.5
+    return (np.max(w) - np.min(w))*0.5
 
 
 def equivalent_strain_Mises(epsilon):

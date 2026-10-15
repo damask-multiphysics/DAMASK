@@ -316,3 +316,15 @@ def test_dict_equal_equal(d1,d2):
                                  ])
 def test_dict_equal_not_equal(d1,d2):
     assert not util.dict_equal(d1,d2)
+
+def test_open_text_close_on_exception(tmp_path):
+    fd = tmp_path/'x.txt'
+    fd.write_text('hi')
+    f = None
+    try:
+        with util.open_text(fd) as fhandle:
+            f = fhandle
+            raise ValueError('oops')
+    except ValueError:
+        pass
+    assert f is not None and f.closed

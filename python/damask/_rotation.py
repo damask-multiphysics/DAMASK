@@ -310,7 +310,9 @@ class Rotation:
             Exponent.
         """
         phi = np.arccos(self.quaternion[...,0:1])
-        p = self.quaternion[...,1:]/np.linalg.norm(self.quaternion[...,1:],axis=-1,keepdims=True)
+        divisor = np.linalg.norm(self.quaternion[...,1:],axis=-1,keepdims=True)
+        p = np.divide(self.quaternion[...,1:],divisor,np.zeros_like(self.quaternion[...,1:]),
+                      where=divisor > np.finfo(float).smallest_normal)
         return self.copy(Rotation(np.block([np.cos(exp*phi),np.sin(exp*phi)*p]))._standardize())
 
     def __ipow__(self: MyType,
@@ -1248,7 +1250,7 @@ class Rotation:
         cu = np.array(x,dtype=float)
         if cu.shape[:-2:-1] != (3,): raise ValueError(f'invalid shape: {cu.shape}')
         if abs(P) != 1: raise ValueError('P ∉ {-1,1}')
-        if np.abs(np.max(cu)) > np.pi**(2./3.) * 0.5+1.e-9:
+        if np.max(np.abs(cu)) > np.pi**(2./3.) * 0.5+1.e-9:
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'cubochoric coordinate outside of the cube\n{cu}')
 

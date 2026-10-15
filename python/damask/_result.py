@@ -82,10 +82,10 @@ def _times_to_increments(choice: list[str],
                          times: dict[int, float],
                          increments: list[str]) -> list[str]:
     """Return increments for specified simulation times."""
-    sorted_times = list(times.values())
-    atol = 1.e-2 * np.min(np.diff(sorted_times))
     if choice == ['*']:
         return increments
+    sorted_times = list(times.values())
+    atol = 1.e-2 * np.min(np.diff(sorted_times)) if len(sorted_times) > 1 else 1.e-9
     resolved = []
     for c in np.array(choice).astype(float):
         idx = np.searchsorted(sorted_times, c, side='left')

@@ -647,3 +647,8 @@ def test_OR_plot(assert_allclose,update,res_path,tmp_path,OR,pole):
     current = np.array(Image.open(tmp_path/fname))
     reference = np.array(Image.open(res_path/fname))
     assert_allclose(current,reference)
+
+def test_isclose_honors_tolerances():
+    o1 = Orientation.from_quaternion([1,0,0,0], family='cubic', lattice='cF')
+    o2 = Orientation.from_quaternion([np.cos(0.01),np.sin(0.01),0,0], family='cubic', lattice='cF')
+    assert o1.isclose(o2, rtol=1.0, atol=1.0)
