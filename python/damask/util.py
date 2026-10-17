@@ -26,6 +26,7 @@ from typing import TextIO as _TextIO
 
 import h5py as _h5py
 import numpy as _np
+from numpy import typing as _npt
 
 from . import version as _version
 from ._typehints import FileHandleText as _FileHandleText
@@ -328,7 +329,7 @@ def show_progress(iterable: _Iterable,
 
 
 def scale_to_coprime(v: _FloatSequence,
-                     N_significant: int = 9) -> _np.ndarray:
+                     N_significant: int = 9) -> _npt.NDArray[_np.integer]:
     """
     Scale vector to co-prime (relatively prime) integers.
 
@@ -367,10 +368,10 @@ def scale_to_coprime(v: _FloatSequence,
     return m
 
 
-def project_equal_angle(vector: _np.ndarray,
+def project_equal_angle(vector: _npt.NDArray[_np.floating],
                         direction: _Literal['x', 'y', 'z'] = 'z',                                   # noqa
                         normalize: bool = True,
-                        keepdims: bool = False) -> _np.ndarray:
+                        keepdims: bool = False) -> _npt.NDArray[_np.floating]:
     """
     Apply equal-angle projection to vector.
 
@@ -414,10 +415,10 @@ def project_equal_angle(vector: _np.ndarray,
     return _np.roll(_np.block([v[...,:2]/(1.0+_np.abs(v[...,2:3])),_np.zeros_like(v[...,2:3])]),
                     -shift if keepdims else 0,axis=-1)[...,:3 if keepdims else 2]
 
-def project_equal_area(vector: _np.ndarray,
+def project_equal_area(vector: _npt.NDArray[_np.floating],
                        direction: _Literal['x', 'y', 'z'] = 'z',                                    # noqa
                        normalize: bool = True,
-                       keepdims: bool = False) -> _np.ndarray:
+                       keepdims: bool = False) -> _npt.NDArray[_np.floating]:
     """
     Apply equal-area projection to vector.
 
@@ -464,7 +465,7 @@ def project_equal_area(vector: _np.ndarray,
 
 def hybrid_IA(dist: _FloatSequence,
               N: int,
-              rng: _RNGLike | _SeedLike | None = None) -> _np.ndarray:
+              rng: _RNGLike | _SeedLike | None = None) -> _npt.NDArray[_np.integer]:
     """
     Hybrid integer approximation.
 
@@ -689,7 +690,7 @@ def DREAM3D_cell_data_group(fname: str | _PathLike | _h5py.File,
         return get_cell_data_group(f, file_version)
 
 
-def _standardize_MillerBravais(idx: _IntSequence) -> _np.ndarray:
+def _standardize_MillerBravais(idx: _IntSequence) -> _npt.NDArray[_np.integer]:
     """
     Convert Miller-Bravais indices with missing component to standard (full) form.
 
@@ -704,7 +705,7 @@ def _standardize_MillerBravais(idx: _IntSequence) -> _np.ndarray:
     uvtw|hkil : numpy.ndarray, shape (...,4)
         Miller-Bravais indices of [uvtw] direction or (hkil) plane normal.
     """
-    def expand(v: _np.ndarray) -> _np.ndarray:
+    def expand(v: _npt.NDArray[_np.integer]) -> _npt.NDArray[_np.integer]:
         """Expand from 3 to 4 indices."""
         return _np.block([v[...,:2], -_np.sum(v[...,:2],axis=-1,keepdims=True), v[...,2:]])
 
@@ -733,7 +734,7 @@ def _standardize_MillerBravais(idx: _IntSequence) -> _np.ndarray:
 
 def Bravais_to_Miller(*,
                       uvtw: _IntSequence | None = None,
-                      hkil: _IntSequence | None = None) -> _np.ndarray:                             # numpydoc ignore=PR01,PR02
+                      hkil: _IntSequence | None = None) -> _npt.NDArray[_np.integer]:               # numpydoc ignore=PR01,PR02
     """
     Transform 4 Miller–Bravais indices to 3 Miller indices of crystal direction [uvw] or plane normal (hkl).
 
@@ -768,7 +769,7 @@ MillerBravais_to_Miller = Bravais_to_Miller
 
 def Miller_to_Bravais(*,
                       uvw: _IntSequence | None = None,
-                      hkl: _IntSequence | None = None) -> _np.ndarray:                               # numpydoc ignore=PR01,PR02
+                      hkl: _IntSequence | None = None) -> _npt.NDArray[_np.integer]:                # numpydoc ignore=PR01,PR02
     """
     Transform 3 Miller indices to 4 Miller–Bravais indices of crystal direction [uvtw] or plane normal (hkil).
 

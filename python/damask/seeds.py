@@ -4,6 +4,7 @@
 from typing import NamedTuple as _NamedTuple
 
 import numpy as _np
+from numpy import typing as _npt
 from scipy import spatial as _spatial
 
 from . import grid as _grid
@@ -22,15 +23,15 @@ class FromGridTuple(_NamedTuple):
     and cells and size using Voronoi tessellation.
     """
 
-    coordinates: _np.ndarray
-    materials: _np.ndarray
+    coordinates: _npt.NDArray[_np.floating]
+    materials: _npt.NDArray[_np.integer]
 
 
 
 def from_random(size: _FloatSequence,
                 N_seeds: int,
                 cells: _IntSequence | None = None,
-                rng: _RNGLike | _SeedLike | None = None) -> _np.ndarray:
+                rng: _RNGLike | _SeedLike | None = None) -> _npt.NDArray[_np.floating]:
     """
     Place seeds randomly in space.
 
@@ -71,7 +72,7 @@ def from_Poisson_disc(size: _FloatSequence,
                       N_candidates: int,
                       distance: float,
                       periodic: bool = True,
-                      rng: _RNGLike | _SeedLike | None = None) -> _np.ndarray:
+                      rng: _RNGLike | _SeedLike | None = None) -> _npt.NDArray[_np.floating]:
     """
     Place seeds following a Poisson disc distribution.
 

@@ -12,12 +12,14 @@ the following operations are required for tensorial data:
     - D1 = D3.reshape(cells+(-1,),order='C').reshape(-1,9,order='F')
 """
 
+from typing import Any as _Any
 from typing import Literal as _Literal
 from typing import NamedTuple as _NamedTuple
 from typing import Tuple as _Tuple
 from typing import overload as _overload
 
 import numpy as _np
+from numpy import typing as _npt
 from scipy import spatial as _spatial
 
 from ._typehints import FloatSequence as _FloatSequence
@@ -32,18 +34,18 @@ class CellsSizeOriginTuple(_NamedTuple):
     information.
     """
 
-    cells: _np.ndarray
-    size: _np.ndarray
-    origin: _np.ndarray
+    cells: _npt.NDArray[_np.integer]
+    size: _npt.NDArray[_np.floating]
+    origin: _npt.NDArray[_np.floating]
 
 class RegridTuple(_NamedTuple):
-    idx: _np.ndarray
-    size: _np.ndarray
+    idx: _npt.NDArray[_np.integer]
+    size: _npt.NDArray[_np.floating]
 
 
 def _unique(values: _FloatSequence,
             atol: float = 0.0,
-            repeats: bool = True) -> _np.ndarray:
+            repeats: bool = True) -> _npt.NDArray[_np.floating]:
     """
     Recursively establish the (average) unique values that differ by more than the given tolerance.
 
@@ -77,7 +79,7 @@ def _unique(values: _FloatSequence,
 
 def _ks(size: _FloatSequence,
         cells: _IntSequence,
-        first_order: bool = False) -> _np.ndarray:
+        first_order: bool = False) -> _npt.NDArray[_np.floating]:
     """
     Get wave numbers operator.
 
@@ -110,7 +112,7 @@ def _ks(size: _FloatSequence,
 
 
 def curl(size: _FloatSequence,
-         f: _np.ndarray) -> _np.ndarray:
+         f: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
     u"""
     Calculate curl of a vector or tensor field in Fourier space.
 
@@ -141,7 +143,7 @@ def curl(size: _FloatSequence,
 
 
 def divergence(size: _FloatSequence,
-               f: _np.ndarray) -> _np.ndarray:
+               f: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
     u"""
     Calculate divergence of a vector or tensor field in Fourier space.
 
@@ -168,7 +170,7 @@ def divergence(size: _FloatSequence,
 
 
 def gradient(size: _FloatSequence,
-             f: _np.ndarray) -> _np.ndarray:
+             f: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
     u"""
     Calculate gradient of a scalar or vector field in Fourier space.
 
@@ -196,7 +198,7 @@ def gradient(size: _FloatSequence,
 
 def coordinates0_point(cells: _IntSequence,
                        size: _FloatSequence,
-                       origin: _FloatSequence = _np.zeros(3)) -> _np.ndarray:
+                       origin: _FloatSequence = _np.zeros(3)) -> _npt.NDArray[_np.floating]:
     """
     Cell center positions (undeformed).
 
@@ -225,7 +227,7 @@ def coordinates0_point(cells: _IntSequence,
 
 
 def displacement_fluct_point(size: _FloatSequence,
-                             F: _np.ndarray) -> _np.ndarray:
+                             F: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
     """
     Cell center displacement field from fluctuation part of the deformation gradient field.
 
@@ -255,7 +257,7 @@ def displacement_fluct_point(size: _FloatSequence,
 
 
 def displacement_avg_point(size: _FloatSequence,
-                           F: _np.ndarray) -> _np.ndarray:
+                           F: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
     """
     Cell center displacement field from average part of the deformation gradient field.
 
@@ -276,7 +278,7 @@ def displacement_avg_point(size: _FloatSequence,
 
 
 def displacement_point(size: _FloatSequence,
-                       F: _np.ndarray) -> _np.ndarray:
+                       F: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
     """
     Cell center displacement field from deformation gradient field.
 
@@ -296,8 +298,8 @@ def displacement_point(size: _FloatSequence,
 
 
 def coordinates_point(size: _FloatSequence,
-                      F: _np.ndarray,
-                      origin: _FloatSequence = _np.zeros(3)) -> _np.ndarray:
+                      F: _npt.NDArray[_np.floating],
+                      origin: _FloatSequence = _np.zeros(3)) -> _npt.NDArray[_np.floating]:
     """
     Cell center positions.
 
@@ -318,7 +320,7 @@ def coordinates_point(size: _FloatSequence,
     return coordinates0_point(F.shape[:3],size,origin) + displacement_point(size,F)
 
 
-def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
+def cellsSizeOrigin_coordinates0_point(coordinates0: _npt.NDArray[_np.floating],
                                        ordered: bool = True,
                                        atol: float = 0.0) -> CellsSizeOriginTuple:
     """
@@ -385,7 +387,7 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
 
 def coordinates0_node(cells: _IntSequence,
                       size: _FloatSequence,
-                      origin: _FloatSequence = _np.zeros(3)) -> _np.ndarray:
+                      origin: _FloatSequence = _np.zeros(3)) -> _npt.NDArray[_np.floating]:
     """
     Nodal positions (undeformed).
 
@@ -410,7 +412,7 @@ def coordinates0_node(cells: _IntSequence,
 
 
 def displacement_fluct_node(size: _FloatSequence,
-                            F: _np.ndarray) -> _np.ndarray:
+                            F: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
     """
     Nodal displacement field from fluctuation part of the deformation gradient field.
 
@@ -430,7 +432,7 @@ def displacement_fluct_node(size: _FloatSequence,
 
 
 def displacement_avg_node(size: _FloatSequence,
-                          F: _np.ndarray) -> _np.ndarray:
+                          F: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
     """
     Nodal displacement field from average part of the deformation gradient field.
 
@@ -451,7 +453,7 @@ def displacement_avg_node(size: _FloatSequence,
 
 
 def displacement_node(size: _FloatSequence,
-                      F: _np.ndarray) -> _np.ndarray:
+                      F: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
     """
     Nodal displacement field from deformation gradient field.
 
@@ -471,8 +473,8 @@ def displacement_node(size: _FloatSequence,
 
 
 def coordinates_node(size: _FloatSequence,
-                     F: _np.ndarray,
-                     origin: _FloatSequence = _np.zeros(3)) -> _np.ndarray:
+                     F: _npt.NDArray[_np.floating],
+                     origin: _FloatSequence = _np.zeros(3)) -> _npt.NDArray[_np.floating]:
     """
     Nodal positions.
 
@@ -493,7 +495,7 @@ def coordinates_node(size: _FloatSequence,
     return coordinates0_node(F.shape[:3],size,origin) + displacement_node(size,F)
 
 
-def cellsSizeOrigin_coordinates0_node(coordinates0: _np.ndarray,
+def cellsSizeOrigin_coordinates0_node(coordinates0: _npt.NDArray[_np.floating],
                                       ordered: bool = True,
                                       atol: float = 0.0) -> CellsSizeOriginTuple:
     """
@@ -536,7 +538,7 @@ def cellsSizeOrigin_coordinates0_node(coordinates0: _np.ndarray,
     return CellsSizeOriginTuple(cells,size,origin)
 
 
-def point_to_node(cell_data: _np.ndarray) -> _np.ndarray:
+def point_to_node(cell_data: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
     """
     Interpolate periodic point data to nodal data.
 
@@ -557,7 +559,7 @@ def point_to_node(cell_data: _np.ndarray) -> _np.ndarray:
     return _np.pad(n,((0,1),(0,1),(0,1))+((0,0),)*len(cell_data.shape[3:]),mode='wrap')
 
 
-def node_to_point(node_data: _np.ndarray) -> _np.ndarray:
+def node_to_point(node_data: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floating]:
     """
     Interpolate periodic nodal data to point data.
 
@@ -578,7 +580,7 @@ def node_to_point(node_data: _np.ndarray) -> _np.ndarray:
     return c[1:,1:,1:]
 
 
-def coordinates0_valid(coordinates0: _np.ndarray,
+def coordinates0_valid(coordinates0: _npt.NDArray[_np.floating],
                        atol: float = 0.0) -> bool:
     """
     Check whether coordinates form a regular grid.
@@ -603,7 +605,7 @@ def coordinates0_valid(coordinates0: _np.ndarray,
         return False
 
 
-def ravel_index(idx: _np.ndarray) -> _np.ndarray:
+def ravel_index(idx: _npt.NDArray[_np.integer]) -> _npt.NDArray[_np.integer]:
     """
     Convert coordinate indices to flat indices.
 
@@ -640,7 +642,7 @@ def ravel_index(idx: _np.ndarray) -> _np.ndarray:
             + idx[:,:,:,2]*cells[0]*cells[1])
 
 
-def unravel_index(idx: _np.ndarray) -> _np.ndarray:
+def unravel_index(idx: _npt.NDArray[_np.integer]) -> _npt.NDArray[_np.integer]:
     """
     Convert flat indices to coordinate indices.
 
@@ -678,8 +680,8 @@ def unravel_index(idx: _np.ndarray) -> _np.ndarray:
                       ((idx_//cells[0])//cells[1])%cells[2]])
 
 
-def ravel(d_unraveled: _np.ndarray,
-          flatten: bool = False) -> _np.ndarray:
+def ravel(d_unraveled: _npt.NDArray[_Any],
+          flatten: bool = False) -> _npt.NDArray[_Any]:
     """
     Convert unraveled data (3D) to raveled representation (1D).
 
@@ -699,9 +701,9 @@ def ravel(d_unraveled: _np.ndarray,
     return (d.reshape(d.shape[:1]+(-1,)) if flatten else d)
 
 
-def unravel(d_raveled: _np.ndarray,
+def unravel(d_raveled: _npt.NDArray[_Any],
             cells: _IntSequence,
-            flatten: bool = False) -> _np.ndarray:
+            flatten: bool = False) -> _npt.NDArray[_Any]:
     """
     Convert raveled data (1D) to unraveled representation (3D).
 
@@ -725,26 +727,26 @@ def unravel(d_raveled: _np.ndarray,
 
 @_overload
 def regrid(size: _FloatSequence,
-           F: _np.ndarray,
+           F: _npt.NDArray[_np.floating],
            cells: _IntSequence,
            max_coeff: int = 3,
            max_candidates: int | None = 200,
-           return_size: _Literal[False] = False) -> _np.ndarray:
+           return_size: _Literal[False] = False) -> _npt.NDArray[_np.integer]:
     ...
 @_overload
 def regrid(size: _FloatSequence,
-           F: _np.ndarray,
+           F: _npt.NDArray[_np.floating],
            cells: _IntSequence,
            max_coeff: int = 3,
            max_candidates: int | None = 200,
            return_size: _Literal[True] = True) -> RegridTuple:
     ...
 def regrid(size: _FloatSequence,
-           F: _np.ndarray,
+           F: _npt.NDArray[_np.floating],
            cells: _IntSequence,
            max_coeff: int = 3,
            max_candidates: int | None = 200,
-           return_size: bool = False) -> _np.ndarray | RegridTuple:
+           return_size: bool = False) -> _npt.NDArray[_np.integer] | RegridTuple:
     """
     Map a deformed grid A back to a rectilinear grid B.
 
@@ -785,9 +787,9 @@ def regrid(size: _FloatSequence,
         If no orthogonal basis aligned with the average deformation gradient
         can be found.
     """
-    def shortest_linear_combinations(bases: _np.ndarray,
+    def shortest_linear_combinations(bases: _npt.NDArray[_np.floating],
                                      max_coeff: int,
-                                     max_candidates: int | None = None) -> _np.ndarray:
+                                     max_candidates: int | None = None) -> _npt.NDArray[_np.floating]:
         """
         Generate candidate vectors as linear combinations of basis vectors.
 
@@ -821,7 +823,7 @@ def regrid(size: _FloatSequence,
         return vecs
 
 
-    def shortest_aligned(vectors: _np.ndarray) -> dict:
+    def shortest_aligned(vectors: _npt.NDArray[_np.floating]) -> dict:
         """
         From a set of 3D vectors, find the shortest vector aligned with each global basis vector.
 
@@ -849,9 +851,9 @@ def regrid(size: _FloatSequence,
 
         return result
 
-    def repeat_points(points: _np.ndarray,
-                      repeats: _np.ndarray,
-                      shifts: _np.ndarray) -> _Tuple[_np.ndarray, _np.ndarray]:
+    def repeat_points(points: _npt.NDArray[_np.floating],
+                      repeats: _npt.NDArray[_np.integer],
+                      shifts: _npt.NDArray[_np.floating]) -> _Tuple[_npt.NDArray[_np.floating], _npt.NDArray[_np.integer]]:
         """
         Expand a point cloud by repeating it along x, y, z.
 
