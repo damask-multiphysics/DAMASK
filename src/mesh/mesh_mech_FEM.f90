@@ -70,8 +70,6 @@ module mesh_mechanical_FEM
   integer(kind(STATUS_OK)) :: status
   real(pREAL), parameter :: eps = 1.0e-18_pREAL
 
-
-
 #if PETSC_VERSION_MINOR<23
   external :: &
     PetscFEGetDimension, &
@@ -264,7 +262,6 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
       if (mechBC(boundary)%active(component) == BC_TYPE_U_DOT .or. &
           mechBC(boundary)%active(component) == BC_TYPE_U) then
         d = d + 1_pPETSCINT
-!       call ISCreateGeneral(PETSC_COMM_WORLD,1_pPETSCINT,[component-1_pPETSCINT],PETSC_COPY_VALUES, &
         call ISCreateGeneral(PETSC_COMM_SELF,1_pPETSCINT,[component-1_pPETSCINT],PETSC_COPY_VALUES, &
                              BC_comps_IS(d),err_PETSc)
         CHKERRQ(err_PETSc)
@@ -273,7 +270,6 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
         CHKERRQ(err_PETSc)
         call ISGetIndices(label_points_IS,label_points,err_PETSc)
         CHKERRQ(err_PETSc)
-!       call ISCreateGeneral(PETSC_COMM_WORLD,int(size(label_points),pPETSCINT),label_points, &
         call ISCreateGeneral(PETSC_COMM_SELF,int(size(label_points),pPETSCINT),label_points, &
                              PETSC_COPY_VALUES,BC_points_IS(d),err_PETSc)
         CHKERRQ(err_PETSc)
@@ -349,7 +345,7 @@ subroutine FEM_mechanical_init(mechBC,num_mesh)
   n_coords = size(x_n(1:dimPlex,:),kind=pPETSCINT)
   node_coords = pack(x_n(1:dimPlex,:), .true.)
   idx = [(d, d = 0_pPETSCINT, n_coords - 1_pPETSCINT)]
-  call VecSetValuesLocal(u_local,n_coords,idx,node_coords,INSERT_VALUES,err_PETSc)                ! initial node coordinates (undeformed; including ghost values)
+  call VecSetValuesLocal(u_local,n_coords,idx,node_coords,INSERT_VALUES,err_PETSc)                  ! initial node coordinates (undeformed; including ghost values)
   CHKERRQ(err_PETSc)
   call VecAssemblyBegin(u_local,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -895,7 +891,7 @@ subroutine FEM_mechanical_converged(snes,iter,x_norm,s_norm,f_norm,reason,dummy,
       CHKERRQ(err_PETSc)
       print '(1x,a,es10.3e2)', 'relative residual norm ||r|| / ||r_0|| >', rhs_tol
     else if (reason == SNES_DIVERGED_JACOBIAN_DOMAIN) then
-      print '(1x,a)', 'the jacobian evaluation ocurred outside the function''s domain'
+      print '(1x,a)', "the jacobian evaluation ocurred outside the function's domain"
     else if (reason == SNES_DIVERGED_USER) then
       print '(1x,a)', 'user-defined'
 #if PETSC_VERSION_MINOR>24

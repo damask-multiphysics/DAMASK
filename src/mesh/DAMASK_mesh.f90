@@ -7,9 +7,8 @@
 !> @details doing cutbacking, reporting statistics, writing
 !> results
 !--------------------------------------------------------------------------------------------------
-program DAMASK_mesh
 #include <petsc/finclude/petscsys.h>
-
+program DAMASK_mesh
   use prec
   use CLI
   use IO
@@ -99,7 +98,7 @@ program DAMASK_mesh
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
-  call FEM_Utilities_init()
+  call FEM_utilities_init()
   call FEM_mechanical_init(load_cases(1)%mechBC, num_mesh)
   call config_numerics_deallocate()
 
@@ -198,10 +197,6 @@ contains
 !> @brief Parse load cases data from YAML file, perform all necessary checks, and print it.
 !--------------------------------------------------------------------------------------------------
 function parse_and_print_load_cases(load_steps) result(load_cases)
-
-#ifndef __GFORTRAN__
-#include <petsc/finclude/petscsys.h>
-#endif
   use PetscDM
 #ifndef PETSC_EXPOSES_MPI
   use MPI_f08
@@ -311,10 +306,9 @@ function parse_and_print_load_cases(load_steps) result(load_cases)
       end if
       call MPI_Reduce(rank_has_bc, has_bc, 1_MPI_INTEGER_KIND, MPI_LOGICAL, MPI_LOR, &
                       0_MPI_INTEGER_KIND, MPI_COMM_WORLD, err_MPI)
-      if (worldrank == 0) then
-        if (.not. has_bc) &
+      if (worldrank == 0 .and. .not. has_bc) &
           call IO_error(812_pI16, 'label', trim(BC_label), 'not defined', emph = [2])
-      end if
+
 !--------------------------------------------------------------------------------------------------
 ! read BC data
       if (boundary /= 0) then                                                                       ! read from rank that has the appropriate label

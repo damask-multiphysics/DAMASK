@@ -154,8 +154,7 @@ subroutine discretization_mesh_init()
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'; flush(IO_STDOUT)
 
 #if PETSC_VERSION_MINOR<23
-  if (worldsize > 1) &
-    call IO_error(800_pI16, "parallel simulations require PETSc >= 3.23")                           ! not supported
+  if (worldsize > 1) call IO_error(800_pI16, 'parallel simulations require PETSc >= 3.23')          ! not supported
 #endif
 
 !--------------------------------------------------------------------------------------------------
@@ -194,12 +193,10 @@ subroutine discretization_mesh_init()
   call MPI_Reduce(int(cell_sets_size),m,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_SUM, &
                   0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
-  if (worldrank == 0) then
-    if (m == 0) &                                                                                   ! empty 'Cell Sets'
-      call IO_error(800_pI16,'missing definition of', &
-                              trim(merge('surface','volume ',dimPlex == 2_pPETSCINT)), &
-                              'group(s) for assigning material IDs')
-  end if
+  if (worldrank == 0 .and. m == 0) &                                                                ! empty 'Cell Sets'
+    call IO_error(800_pI16,'missing definition of', &
+                           trim(merge('surface','volume ',dimPlex == 2_pPETSCINT)), &
+                           'group(s) for assigning material IDs')
 
   call DMGetStratumSize(geom,'depth',dimPlex,mesh_nElems,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -289,10 +286,8 @@ subroutine discretization_mesh_init()
   call MPI_Reduce(int(mesh_nBoundaries),m,1_MPI_INTEGER_KIND,MPI_INTEGER,MPI_SUM, &
                   0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   call parallelization_chkerr(err_MPI)
-  if (worldrank == 0) then
-    if (m == 0) &
-      call IO_error(800_pI16,'no groups available for assigning boundary condition')
-  end if
+  if (worldrank == 0 .and. m == 0) &
+    call IO_error(800_pI16,'no groups available for assigning boundary condition')
 
 !--------------------------------------------------------------------------------------------------
 ! read mesh labels
@@ -314,7 +309,7 @@ subroutine discretization_mesh_init()
       call DMGetLabel(geom,BC_label,label,err_PETSc)
       CHKERRQ(err_PETSc)
       if (PetscObjectIsNull(label)) &
-        call IO_error(800_pI16, "cannot retrieve label", trim(BC_label), emph = [2])
+        call IO_error(800_pI16, 'cannot retrieve label', trim(BC_label), emph = [2])
       if (to_complete) then
         call DMPlexLabelComplete(geom,label,err_PETSc)
         CHKERRQ(err_PETSc)
