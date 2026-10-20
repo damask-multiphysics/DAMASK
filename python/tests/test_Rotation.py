@@ -89,22 +89,33 @@ def qu2om(qu):
     return om if _P < 0.0 else np.swapaxes(om,-1,-2)
 
 def qu2eu(qu):
-    """Quaternion to Bunge-Euler angles."""
-    q03 = qu[0]**2+qu[3]**2
-    q12 = qu[1]**2+qu[2]**2
-    chi = np.sqrt(q03*q12)
-    if   np.abs(q12) < 1.e-8:
-        eu = np.array([np.arctan2(-_P*2.0*qu[0]*qu[3],qu[0]**2-qu[3]**2), 0.0,  0.0])
-    elif np.abs(q03) < 1.e-8:
-        eu = np.array([np.arctan2(   2.0*qu[1]*qu[2],qu[1]**2-qu[2]**2), np.pi, 0.0])
+    """
+    Quaternion to Bunge-Euler angles.
+
+    References
+    ----------
+    E. Bernardes and S. Viollet, PLoS ONE 17(11):e0276302, 2022
+    https://doi.org/10.1371/journal.pone.0276302
+    """
+    abcd = np.array([qu[0], -_P*qu[3], -_P*qu[1], -_P*qu[2]])
+
+    eu = np.array([np.arctan2(abcd[1],abcd[0]),
+                   np.arccos(2*sum(abcd[:2]**2)/sum(abcd**2)-1),
+                   np.arctan2(-abcd[3],abcd[2])
+                  ])
+
+    if np.isclose(eu[1],0.0):
+        eu[0] *= 2
+        eu[2] = 0
+    elif np.isclose(eu[1],np.pi):
+        eu[0] = -2*eu[2]
+        eu[2] = 0
     else:
-        eu = np.array([np.arctan2((-_P*qu[0]*qu[2]+qu[1]*qu[3])*chi, (-_P*qu[0]*qu[1]-qu[2]*qu[3])*chi ),
-                       np.arctan2( 2.0*chi, q03-q12 ),
-                       np.arctan2(( _P*qu[0]*qu[2]+qu[1]*qu[3])*chi, (-_P*qu[0]*qu[1]+qu[2]*qu[3])*chi )])
-    # reduce Euler angles to definition range
-    eu[np.abs(eu)<1.e-6] = 0.0
-    eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
-    return eu
+        eu[::2] = [eu[0] - eu[2], eu[0] + eu[2]]
+
+    eu[np.logical_or(np.abs(eu)         < 1.e-6,
+                     np.abs(eu-2*np.pi) < 1.e-6)] = 0.
+    return np.where(eu < 0., eu%(np.pi*np.array([2.,1.,2.])),eu)
 
 def qu2ax(qu):
     """

@@ -1606,18 +1606,16 @@ class Rotation:
                        np.arctan2(-d,c),
                       ],axis=-1)
 
-        eu_sum  = eu[...,0] + eu[...,2]
-        eu_diff = eu[...,0] - eu[...,2]
-
         is_zero = np.isclose(eu[...,1],0.0)
         is_pi   = np.isclose(eu[...,1],np.pi)
         is_ok   = ~np.logical_or(is_zero,is_pi)
 
-        eu[...,0][is_zero] =  2*eu[...,0][is_zero]
+        eu[...,0][is_zero] *=2
         eu[...,0][is_pi]   = -2*eu[...,2][is_pi]
         eu[...,2][~is_ok]  = 0.0
-        eu[...,0][is_ok]   = eu_diff[is_ok]
-        eu[...,2][is_ok]   = eu_sum [is_ok]
+        eu_0_is_ok         = eu[...,0][is_ok]
+        eu[...,0][is_ok]   -= eu[...,2][is_ok]
+        eu[...,2][is_ok]   += eu_0_is_ok
 
         eu[np.logical_or(np.abs(eu)         < 1.e-6,
                          np.abs(eu-2*np.pi) < 1.e-6)] = 0.
