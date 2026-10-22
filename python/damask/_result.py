@@ -15,6 +15,7 @@ from typing import Any, Callable, Literal, NamedTuple, Sequence
 
 import h5py
 import numpy as np
+import numpy.typing as npt
 from numpy import ma
 from scipy import interpolate
 
@@ -30,10 +31,10 @@ chunk_size = 1024**2//8                                                         
 prefix_inc = 'increment_'
 
 class MappingsTuple(NamedTuple):
-    at_cell_ph: list[dict[str, np.ndarray]]
-    in_data_ph: list[dict[str, np.ndarray]]
-    at_cell_ho: dict[str, np.ndarray]
-    in_data_ho: dict[str, np.ndarray]
+    at_cell_ph: list[dict[str, npt.NDArray[np.integer]]]
+    in_data_ph: list[dict[str, npt.NDArray[np.integer]]]
+    at_cell_ho: dict[str, npt.NDArray[np.integer]]
+    in_data_ho: dict[str, npt.NDArray[np.integer]]
 
 
 class DatasetMetadata(dict):
@@ -68,7 +69,12 @@ class DatasetMetadata(dict):
         return not self == other
 
 
-def _read(dset_h5: h5py.Dataset) -> np.ndarray:
+_DatasetMap = dict[str, dict[str, DatasetMetadata]]
+_Mergeable  = collections.defaultdict[str, _DatasetMap]                                             # e.g. mergeable[field][dset_name][label]
+_Layout     = dict[str, _DatasetMap]                                                                # label -> field -> dset_name -> metadata
+
+
+def _read(dset_h5: h5py.Dataset) -> npt.NDArray[Any]:
     """Read a dataset and its metadata into a numpy.ndarray."""
     return np.array(dset_h5, dtype=np.dtype(dset_h5.dtype, metadata=dict(dset_h5.attrs.items())))
 
@@ -115,10 +121,10 @@ def _zeros_like(metadata: DatasetMetadata,
                     fill_value=fill_float if np.issubdtype(dtype, np.floating) else fill_int,
                     mask=True)
 
-def _is_mergeable(layout):
+def _is_mergeable(layout: _Layout) -> tuple[_Mergeable, _Mergeable]:
     """Determine if datasets can be merged."""
-    mergeable = collections.defaultdict(dict)
-    not_mergeable = collections.defaultdict(dict)
+    mergeable: _Mergeable = collections.defaultdict(dict)
+    not_mergeable: _Mergeable = collections.defaultdict(dict)
     for label, fields in layout.items():
         for field, datasets in fields.items():
             for dset_name,v in datasets.items():
@@ -699,7 +705,7 @@ class Result:
 
 
     @property
-    def coordinates0_point(self) -> np.ndarray:
+    def coordinates0_point(self) -> npt.NDArray[np.floating]:
         """Initial/undeformed cell center coordinates."""
         if self.structured:
             return grid.coordinates0_point(self.cells,self.size,self.origin).reshape(-1,3,order='F')
@@ -708,7 +714,7 @@ class Result:
                 return f['geometry/x_p'][()]
 
     @property
-    def coordinates0_node(self) -> np.ndarray:
+    def coordinates0_node(self) -> npt.NDArray[np.floating]:
         """Initial/undeformed nodal coordinates."""
         if self.structured:
             return grid.coordinates0_node(self.cells,self.size,self.origin).reshape(-1,3,order='F')
@@ -1560,7 +1566,7 @@ class Result:
         This function is implemented only for structured grids
         with one constituent and a single phase.
         """
-        def curl(f: DADF5Dataset, size: np.ndarray) -> DADF5Dataset:
+        def curl(f: DADF5Dataset, size: npt.NDArray[np.floating]) -> DADF5Dataset:
             return {
                     'data':  grid.curl(size,f['data']),
                     'label': f"curl({f['label']})",
@@ -1590,7 +1596,7 @@ class Result:
         This function is implemented only for structured grids
         with one constituent and a single phase.
         """
-        def divergence(f: DADF5Dataset, size: np.ndarray) -> DADF5Dataset:
+        def divergence(f: DADF5Dataset, size: npt.NDArray[np.floating]) -> DADF5Dataset:
             return {
                     'data':  grid.divergence(size,f['data']),
                     'label': f"divergence({f['label']})",
@@ -1620,7 +1626,7 @@ class Result:
         This function is implemented only for structured grids
         with one constituent and a single phase.
         """
-        def gradient(f: DADF5Dataset, size: np.ndarray) -> DADF5Dataset:
+        def gradient(f: DADF5Dataset, size: npt.NDArray[np.floating]) -> DADF5Dataset:
             return {
                     'data':  grid.gradient(size,f['data'] if len(f['data'].shape) == 4 else \
                                                         f['data'].reshape(f['data'].shape+(1,))),
@@ -1780,7 +1786,7 @@ class Result:
         """Mappings to place data spatially."""
         with h5py.File(self.fname,'r') as f:
 
-            at_cell_ph = []
+            at_cell_ph: list[dict[str, npt.NDArray[np.integer]]] = []
             in_data_ph = []
             for c in range(self.N_constituents):
                 at_cell_ph.append({label: np.where(self.phase[:,c] == label)[0] \
@@ -1788,8 +1794,8 @@ class Result:
                 in_data_ph.append({label: f['/'.join(['cell_to','phase'])]['entry'][at_cell_ph[c][label]][:,c] \
                                           for label in self._visible['phases']})
 
-            at_cell_ho = {label: np.where(self.homogenization[:] == label)[0] \
-                                 for label in self._visible['homogenizations']}
+            at_cell_ho: dict[str, npt.NDArray[np.integer]] = {label: np.where(self.homogenization[:] == label)[0] \
+                        for label in self._visible['homogenizations']}
             in_data_ho = {label: f['/'.join(['cell_to','homogenization'])]['entry'][at_cell_ho[label]] \
                                  for label in self._visible['homogenizations']}
 
@@ -2482,7 +2488,7 @@ class Result:
                     f: h5py.File,
                     inc: str,
                     kind: str,
-                    output: str | list[str] = '*'):
+                    output: str | list[str] = '*') -> _Layout:
         """
         Get the layout of visible groups/datasets for selected datasets.
 

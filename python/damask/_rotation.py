@@ -3,7 +3,7 @@ import builtins
 import copy
 import re
 import sys
-from typing import Literal, NamedTuple, Sequence, TypeVar, Union
+from typing import Any, Literal, NamedTuple, Sequence, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -15,8 +15,8 @@ from ._typehints import FloatSequence, IntSequence, RNGLike, SeedLike
 
 
 class AxisAngleTuple(NamedTuple):
-    axis: np.ndarray
-    angle: np.ndarray
+    axis: npt.NDArray[np.floating]
+    angle: npt.NDArray[np.floating]
 
 
 _P = -1
@@ -102,7 +102,7 @@ class Rotation:
         When passing in a Rotation from SciPy, it is interpreted
         passively even though SciPy uses an active convention.
         """
-        self.quaternion: np.ndarray
+        self.quaternion: npt.NDArray[np.floating]
 
         if (isinstance(rotation,ScipyRotation)):
             if util.version(scipy.__version__) >= '1.14.0':
@@ -269,9 +269,9 @@ class Rotation:
 
 
     def __array__(self: MyType,
-                  dtype: npt.DTypeLike | None = None,
+                  dtype: np.dtype[np.floating[Any]] | None = None,
                   *,
-                  copy: bool | None = None) -> np.ndarray:
+                  copy: bool | None = None) -> npt.NDArray[np.floating]:
         """Initializer for numpy."""
         return np.asarray(self.quaternion,dtype) if util.version(np.__version__) < '2.0.0' else \
                np.asarray(self.quaternion,dtype,copy=copy)
@@ -418,7 +418,7 @@ class Rotation:
 
 
     def __matmul__(self,
-                   other: np.ndarray) -> np.ndarray:
+                   other: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Return self@other.
 
@@ -664,7 +664,7 @@ class Rotation:
 
 
     def misorientation_angle(self: MyType,
-                             other: MyType) -> np.ndarray:
+                             other: MyType) -> npt.NDArray[np.floating]:
         """
         Calculate misorientation angle to other Rotation.
 
@@ -676,7 +676,7 @@ class Rotation:
 
         Returns
         -------
-        omega : np.ndarray
+        omega : npt.NDArray[np.floating]
             Misorientation angle.
         """
         blend = util.shapeblender( self.shape,other.shape)
@@ -739,7 +739,7 @@ class Rotation:
 
     def as_axis_angle(self,
                       degrees: bool = False,
-                      pair: bool = False) -> AxisAngleTuple | np.ndarray:
+                      pair: bool = False) -> AxisAngleTuple | npt.NDArray[np.floating]:
         """
         Represent as axis–angle pair.
 
@@ -764,7 +764,7 @@ class Rotation:
         >>> damask.Rotation(rotation=[1,0,0,0]).as_axis_angle(pair=True)
         AxisAngleTuple(axis=array([0., 0., 1.]), angle=array(0.))
         """
-        ax: np.ndarray = Rotation._qu2ax(self.quaternion)
+        ax: npt.NDArray[np.floating] = Rotation._qu2ax(self.quaternion)
         if degrees: ax[...,3] = np.degrees(ax[...,3])
         if pair:
             return AxisAngleTuple(ax[...,:3],ax[...,3])
@@ -868,7 +868,7 @@ class Rotation:
     # relax the conventions.
     @classmethod
     def from_quaternion(cls,
-                        q: Sequence[FloatSequence] | np.ndarray,
+                        q: Sequence[FloatSequence] | npt.NDArray[np.floating],
                         accept_homomorph: bool = False,
                         normalize: bool = False,
                         P: Literal[1, -1] = -1) -> 'Rotation':
@@ -920,7 +920,7 @@ class Rotation:
 
     @classmethod
     def from_Euler_angles(cls,
-                          phi: np.ndarray,
+                          phi: npt.NDArray[np.floating],
                           degrees: bool = False) -> 'Rotation':
         """
         Initialize from Bunge Euler angles.
@@ -960,7 +960,7 @@ class Rotation:
 
     @classmethod
     def from_axis_angle(cls,
-                        n_omega: np.ndarray,
+                        n_omega: npt.NDArray[np.floating],
                         degrees: bool = False,
                         normalize: bool = False,
                         P: Literal[1, -1] = -1) -> 'Rotation':
@@ -1011,7 +1011,7 @@ class Rotation:
 
     @classmethod
     def from_basis(cls,
-                   basis: np.ndarray,
+                   basis: npt.NDArray[np.floating],
                    orthonormal: bool = True,
                    reciprocal: bool = False) -> 'Rotation':
         """
@@ -1055,7 +1055,7 @@ class Rotation:
 
     @classmethod
     def from_matrix(cls,
-                    R: np.ndarray,
+                    R: npt.NDArray[np.floating],
                     normalize: bool = False) -> 'Rotation':
         """
         Initialize from rotation matrix.
@@ -1084,8 +1084,8 @@ class Rotation:
 
     @classmethod
     def from_parallel(cls,
-                      source: np.ndarray,
-                      target: np.ndarray,
+                      source: npt.NDArray[np.floating],
+                      target: npt.NDArray[np.floating],
                       active: bool = False ) -> 'Rotation':
         """
         Initialize from pairs of two orthogonal basis vectors.
@@ -1152,7 +1152,7 @@ class Rotation:
 
     @classmethod
     def from_Rodrigues_vector(cls,
-                              rho: np.ndarray,
+                              rho: npt.NDArray[np.floating],
                               normalize: bool = False,
                               P: Literal[1, -1] = -1) -> 'Rotation':
         """
@@ -1197,7 +1197,7 @@ class Rotation:
 
     @classmethod
     def from_homochoric(cls,
-                        h: np.ndarray,
+                        h: npt.NDArray[np.floating],
                         P: Literal[1, -1] = -1) -> 'Rotation':
         """
         Initialize from homochoric vector.
@@ -1228,7 +1228,7 @@ class Rotation:
 
     @classmethod
     def from_cubochoric(cls,
-                        x: np.ndarray,
+                        x: npt.NDArray[np.floating],
                         P: Literal[1, -1] = -1) -> 'Rotation':
         """
         Initialize from cubochoric vector.
@@ -1294,8 +1294,8 @@ class Rotation:
 
     @classmethod
     def from_ODF(cls,
-                 weights: np.ndarray,
-                 phi: np.ndarray,
+                 weights: npt.NDArray[np.floating],
+                 phi: npt.NDArray[np.floating],
                  shape: int | IntSequence | None = None,
                  degrees: bool = False,
                  fractions: bool = True,
@@ -1606,18 +1606,16 @@ class Rotation:
                        np.arctan2(-d,c),
                       ],axis=-1)
 
-        eu_sum  = eu[...,0] + eu[...,2]
-        eu_diff = eu[...,0] - eu[...,2]
-
         is_zero = np.isclose(eu[...,1],0.0)
         is_pi   = np.isclose(eu[...,1],np.pi)
         is_ok   = ~np.logical_or(is_zero,is_pi)
 
-        eu[...,0][is_zero] =  2*eu[...,0][is_zero]
+        eu[...,0][is_zero] *=2
         eu[...,0][is_pi]   = -2*eu[...,2][is_pi]
         eu[...,2][~is_ok]  = 0.0
-        eu[...,0][is_ok]   = eu_diff[is_ok]
-        eu[...,2][is_ok]   = eu_sum [is_ok]
+        eu_0_is_ok         = eu[...,0][is_ok]
+        eu[...,0][is_ok]   -= eu[...,2][is_ok]
+        eu[...,2][is_ok]   += eu_0_is_ok
 
         eu[np.logical_or(np.abs(eu)         < 1.e-6,
                          np.abs(eu-2*np.pi) < 1.e-6)] = 0.
@@ -2540,8 +2538,8 @@ class Rotation:
 
 
     @staticmethod
-    def _get_pyramid_order(xyz: np.ndarray,
-                           direction: Literal['forward', 'backward']) -> np.ndarray:
+    def _get_pyramid_order(xyz: npt.NDArray[np.floating],
+                           direction: Literal['forward', 'backward']) -> npt.NDArray[np.integer]:
         """
         Get order of the coordinates.
 

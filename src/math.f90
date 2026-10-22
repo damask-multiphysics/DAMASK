@@ -556,6 +556,53 @@ end subroutine math_invert
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Compute the Moore-Penrose pseudo-inverse via SVD.
+!> @details Singular values below max(atol, rtol * max(S)) are treated as zero and not inverted.
+!>          Provides the minimum-norm least-squares solution for rank-deficient systems, e.g.
+!>          when both off-diagonal shear components are stress-prescribed.
+!--------------------------------------------------------------------------------------------------
+pure function math_pseudoInverse(A, rtol, atol) result(A_pinv)
+
+  real(pREAL), intent(in), dimension(:,:)         :: A
+  real(pREAL), intent(in), optional               :: rtol, atol
+  real(pREAL), dimension(size(A,2),size(A,1))     :: A_pinv
+
+  integer :: m, n, mn, info, i, j
+  real(pREAL) :: S_max, S_tol
+  real(pREAL), dimension(size(A,1),size(A,2)) :: work_A
+  real(pREAL), dimension(size(A,1),size(A,1)) :: U
+  real(pREAL), dimension(size(A,2),size(A,2)) :: VT
+  real(pREAL), dimension(min(size(A,1),size(A,2))) :: S
+  real(pREAL), dimension(max(3*min(size(A,1),size(A,2)) + max(size(A,1),size(A,2)), &
+                         5*min(size(A,1),size(A,2)))) :: work
+
+  m = size(A,1)
+  n = size(A,2)
+  mn = min(m,n)
+
+  work_A = A
+  call dgesvd('A','A',m,n,work_A,m,S,U,m,VT,n,work,size(work),info)
+
+  A_pinv = 0.0_pREAL
+  if (info /= 0) return
+
+  S_max = maxval(S)
+  if (S_max <= 0.0_pREAL) return
+  S_tol = max(misc_optional(atol, 0.0_pREAL), misc_optional(rtol, 1.0e-5_pREAL) * S_max)
+
+  ! A^† = V * diag(1/S) * U^T  (over singular values above S_tol)
+  do i = 1, mn
+    if (S(i) > S_tol) then
+      do j = 1, n
+        A_pinv(j,:) = A_pinv(j,:) + VT(i,j) * (1.0_pREAL/S(i)) * U(:,i)
+      end do
+    end if
+  end do
+
+end function math_pseudoInverse
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Symmetrize a 3x3 matrix.
 !--------------------------------------------------------------------------------------------------
 pure function math_symmetric33(m)
@@ -1386,6 +1433,48 @@ subroutine math_selfTest()
   call math_invert(t99_2,e,t99)
   if (any(dNeq0(matmul(t99_2,t99)-math_eye(9),tol=1.0e-9_pREAL)) .or. e) &
     error stop 'math_invert(t99)'
+
+  pseudoInverse: block
+    real(pREAL), dimension(9,9) :: pinv99
+    real(pREAL), dimension(4,4) :: pinv44, t44
+    integer :: i
+
+    ! full-rank: pseudo-inverse equals inverse
+    t99 = t99 + 10.0_pREAL*math_eye(9)                                                              ! limit eigenvalues to avoid truncation
+    pinv99 = math_pseudoInverse(t99)
+    if (any(dNeq0(matmul(pinv99,t99)-math_eye(9),tol=1.0e-8_pREAL))) &
+      error stop 'math_pseudoInverse (full-rank: A^†A = I)'
+    if (any(dNeq0(matmul(t99,pinv99)-math_eye(9),tol=1.0e-8_pREAL))) &
+      error stop 'math_pseudoInverse (full-rank: AA^† = I)'
+
+    ! rank-deficient: Moore-Penrose conditions
+    t99_2 = 0.0_pREAL
+    do i = 1, 5
+      call random_number(r)
+      t99_2(i,i) = 0.5_pREAL + r
+    end do
+    call random_number(t99)
+    t99 = matmul(t99_2, t99)                                                                        ! rank(t99) <= 5
+    pinv99 = math_pseudoInverse(t99, rtol=1.0e-12_pREAL)
+    if (any(dNeq0(matmul(matmul(t99,pinv99),t99)-t99,tol=1.0e-7_pREAL))) &
+      error stop 'math_pseudoInverse (rank-deficient: A A^† A = A)'
+    if (any(dNeq0(matmul(matmul(pinv99,t99),pinv99)-pinv99,tol=1.0e-7_pREAL))) &
+      error stop 'math_pseudoInverse (rank-deficient: A^† A A^† = A^†)'
+    if (any(dNeq0(matmul(t99,pinv99)-transpose(matmul(t99,pinv99)),tol=1.0e-7_pREAL))) &
+      error stop 'math_pseudoInverse (rank-deficient: (A A^†)^T = A A^†)'
+
+    ! rank-deficient known result: diag(1,2,3,0)
+    t44 = 0.0_pREAL
+    t44(1,1) = 1.0_pREAL
+    t44(2,2) = 2.0_pREAL
+    t44(3,3) = 3.0_pREAL
+    pinv44 = math_pseudoInverse(t44, rtol=1.0e-12_pREAL)
+    if (dNeq(pinv44(1,1),1.0_pREAL,tol=1.0e-8_pREAL) .or. &
+        dNeq(pinv44(2,2),0.5_pREAL,tol=1.0e-8_pREAL) .or. &
+        dNeq(pinv44(3,3),1.0_pREAL/3.0_pREAL,tol=1.0e-8_pREAL) .or. &
+        dNeq0(pinv44(4,4),tol=1.0e-8_pREAL)) &
+      error stop 'math_pseudoInverse (known rank-deficient result)'
+  end block pseudoInverse
 
   if (any(dNeq(math_clip([4.0_pREAL,9.0_pREAL],5.0_pREAL,6.5_pREAL),[5.0_pREAL,6.5_pREAL]))) &
     error stop 'math_clip'

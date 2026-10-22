@@ -3,12 +3,13 @@ import math
 from typing import Literal
 
 import numpy as np
+import numpy.typing as npt
 
 from . import Rotation, util
 from ._typehints import BravaisLattice, CrystalFamily, CrystalKinematics, FloatSequence, IntSequence
 
 
-_kinematics: dict[BravaisLattice, dict[CrystalKinematics, list[np.ndarray]]] = {
+_kinematics: dict[BravaisLattice, dict[CrystalKinematics, list[npt.NDArray[np.integer]]]] = {
     'cF': {
         'slip': [np.array([
                    [ 0,+1,-1, +1,+1,+1],
@@ -266,7 +267,7 @@ lattice_symmetries: dict[BravaisLattice, CrystalFamily] = {
                 'cF': 'cubic',
                }
 
-orientation_relationships: dict[str, dict[str,list[np.ndarray]]] = {
+orientation_relationships: dict[str, dict[str,list[npt.NDArray[np.integer]]]] = {
   'KS': { # https://doi.org/10.1016/j.jallcom.2012.02.004
     'cF-->cI' : [
         np.repeat(np.array([
@@ -900,7 +901,7 @@ class Crystal():
 
 
     @property
-    def standard_triangle(self) -> dict[str, np.ndarray] | None:
+    def standard_triangle(self) -> dict[str, npt.NDArray[np.floating]] | None:
         """
         Return corners of the standard triangle.
 
@@ -1096,7 +1097,7 @@ class Crystal():
 
 
     @property
-    def basis_real(self) -> np.ndarray:
+    def basis_real(self) -> npt.NDArray[np.floating]:
         """
         Return orthogonal real space crystal basis.
 
@@ -1125,7 +1126,7 @@ class Crystal():
 
 
     @property
-    def basis_reciprocal(self) -> np.ndarray:
+    def basis_reciprocal(self) -> npt.NDArray[np.floating]:
         """
         Return reciprocal (dual) crystal basis.
 
@@ -1138,7 +1139,7 @@ class Crystal():
 
 
     @property
-    def lattice_points(self) -> np.ndarray:                                                         # type: ignore[return]
+    def lattice_points(self) -> npt.NDArray[np.floating]:                                           # type: ignore[return]
         """
         Return lattice points.
 
@@ -1168,7 +1169,7 @@ class Crystal():
 
     def to_lattice(self, *,
                    direction: FloatSequence | None = None,
-                   plane: FloatSequence | None = None) -> np.ndarray:                            # numpydoc ignore=PR01,PR02
+                   plane: FloatSequence | None = None) -> npt.NDArray[np.floating]:                 # numpydoc ignore=PR01,PR02
         """
         Calculate lattice vector corresponding to crystal frame direction or plane normal.
 
@@ -1196,7 +1197,7 @@ class Crystal():
                  uvw: IntSequence | None = None,
                  hkl: IntSequence | None = None,
                  uvtw: IntSequence | None = None,
-                 hkil: IntSequence | None = None) -> np.ndarray:                                 # numpydoc ignore=PR01,PR02
+                 hkil: IntSequence | None = None) -> npt.NDArray[np.floating]:                      # numpydoc ignore=PR01,PR02
         """
         Calculate crystal frame vector corresponding to lattice direction [uvw]/[uvtw] or plane normal (hkl)/(hkil).
 
@@ -1236,7 +1237,7 @@ class Crystal():
 
 
     def kinematics(self,
-                   mode: CrystalKinematics) -> dict[str, list[np.ndarray]]:
+                   mode: CrystalKinematics) -> dict[str, list[npt.NDArray[np.integer]]]:
         """
         Return crystal kinematics systems.
 
@@ -1273,7 +1274,7 @@ class Crystal():
 
 
     def characteristic_shear_twin(self,
-                                  N_twin: list[int] | Literal['*'] = '*') -> np.ndarray:
+                                  N_twin: list[int] | Literal['*'] = '*') -> npt.NDArray[np.floating]:
         """
         Return characteristic shear for twinning.
 
@@ -1371,12 +1372,12 @@ class Crystal():
         o_p = np.stack((o.to_frame(uvw=o_p[:,0] if o_l != 'hP' else util.Bravais_to_Miller(uvtw=o_p[:,0])),
                         o.to_frame(hkl=o_p[:,1] if o_l != 'hP' else util.Bravais_to_Miller(hkil=o_p[:,1]))),
                         axis=-2)
-        return (o_l,Rotation.from_parallel(source=m_p,target=o_p,active=True))
+        return (o_l,Rotation.from_parallel(source=m_p,target=o_p,active=True))                      # type: ignore[arg-type]
 
 
     def Schmid(self, *,
                N_slip: IntSequence | Literal['*'] | None = None,
-               N_twin: IntSequence | Literal['*'] | None = None) -> np.ndarray:            # numpydoc ignore=PR01,PR02
+               N_twin: IntSequence | Literal['*'] | None = None) -> npt.NDArray[np.floating]:       # numpydoc ignore=PR01,PR02
         u"""
         Calculate Schmid matrix P = d ⨂ n for selected deformation systems.
 

@@ -3,14 +3,15 @@
 
 from os import PathLike
 from collections.abc import Sequence
-from typing import Literal, BinaryIO, TextIO, TypedDict
+from typing import Any, Literal, BinaryIO, TextIO, TypedDict
 
 import numpy as np
+import numpy.typing as npt
 
 
-FloatSequence = np.ndarray | Sequence[float]
-IntSequence = np.ndarray | Sequence[int]
-StrSequence = np.ndarray | Sequence[str]
+FloatSequence = npt.NDArray[np.floating] | Sequence[float]
+IntSequence = npt.NDArray[np.integer] | Sequence[int]
+StrSequence = npt.NDArray[np.str_] | Sequence[str]
 
 FileHandleText = (
     TextIO
@@ -100,7 +101,7 @@ class Metadata(_Metadata):
 DADF5Dataset = TypedDict(
     'DADF5Dataset',
     {
-        'data': np.ndarray,
+        'data': npt.NDArray[Any],
         'label': str,
         'meta': Metadata,
     },

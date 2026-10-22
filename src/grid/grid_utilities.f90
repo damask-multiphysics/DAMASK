@@ -70,7 +70,9 @@ contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Solve masked compliance equation to adjust F to fulfill stress BC.
-!> @details Solves C_reduced * deltaF_reduced = rhs_reduced directly via LAPACK.
+!> @details Solves C_reduced * deltaF_reduced = rhs_reduced in the least-squares sense via
+!>          pseudo-inverse, which also handles rank-deficient systems, e.g. when both
+!>          off-diagonal shear components are stress-prescribed.
 !--------------------------------------------------------------------------------------------------
 function utilities_defGradAdjustment(rot_BC,mask_stress,C,delta_P) result(Delta_F)
 
@@ -80,11 +82,10 @@ function utilities_defGradAdjustment(rot_BC,mask_stress,C,delta_P) result(Delta_
   logical,       intent(in), dimension(3,3)         :: mask_stress                                  !< mask of stress BC
   real(pREAL),   intent(in), dimension(3,3)         :: delta_P                                      !< P_av - P_aim (right-hand side)
 
-  integer :: i, info
+  integer :: i
   logical, dimension(9)   :: mask_stressVector
   logical, dimension(9,9) :: mask
   integer :: size_reduced
-  integer,     dimension(:), allocatable :: ipiv
   real(pREAL), dimension(:),   allocatable :: rhs_reduced
   real(pREAL), dimension(:,:), allocatable :: c_reduced
 
@@ -98,10 +99,8 @@ function utilities_defGradAdjustment(rot_BC,mask_stress,C,delta_P) result(Delta_
     end do
     c_reduced = reshape(pack(math_3333to99(rot_BC%rotate(C)),mask),[size_reduced,size_reduced])
     rhs_reduced = pack(math_33to9(delta_P), mask_stressVector)
-    allocate(ipiv(size_reduced))
-    call dgesv(size_reduced, 1, c_reduced, size_reduced, ipiv, rhs_reduced, size_reduced, info)
-    if (info /= 0) error stop 'dgesv solver error in utilities_defGradAdjustment'
-    Delta_F = math_9to33(unpack(rhs_reduced, mask_stressVector, 0.0_pREAL))
+    Delta_F = math_9to33(unpack(matmul(math_pseudoInverse(c_reduced), rhs_reduced), &
+                                mask_stressVector, 0.0_pREAL))
   else
     Delta_F = 0.0_pREAL
   end if

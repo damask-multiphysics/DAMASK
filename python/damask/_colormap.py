@@ -50,7 +50,7 @@ class Colormap(mpl.colors.ListedColormap):
     """
 
     def __init__(self,
-                 colors: np.ndarray, name: str):
+                 colors: npt.NDArray[np.floating], name: str):
         """
         New colormap.
 
@@ -62,7 +62,7 @@ class Colormap(mpl.colors.ListedColormap):
             String to identify the colormap.
         """
         super().__init__(colors,name)
-        self.colors: np.ndarray = np.asarray(colors)
+        self.colors: npt.NDArray[np.floating] = np.asarray(colors)
 
 
     def __eq__(self,
@@ -322,7 +322,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def at(self,
-           fraction : float | FloatSequence) -> np.ndarray:
+           fraction : float | FloatSequence) -> npt.NDArray[np.floating]:
         """
         Interpolate color at fraction.
 
@@ -345,14 +345,14 @@ class Colormap(mpl.colors.ListedColormap):
         >>> 'rgb({},{},{})'.format(*cmap.at(fraction=0.5))
         'rgb(0.5,0.5,0.5)'
         """
-        return interp.interp1d(np.linspace(0,1,self.N),
+        return interp.interp1d(np.linspace(0,1,self.N),                                             # type: ignore[return-value]
                                self.colors,
                                axis=0,
                                assume_sorted=True)(np.asarray(fraction))
 
 
     def shade(self,
-              field: np.ndarray,
+              field: npt.NDArray[np.floating],
               bounds: FloatSequence | None = None,
               gap: float | None = None) -> Image.Image:
         """
@@ -481,8 +481,8 @@ class Colormap(mpl.colors.ListedColormap):
 
     @staticmethod
     def _interpolate_msh(frac: float,
-                         low: np.ndarray,
-                         high: np.ndarray) -> np.ndarray:
+                         low: npt.NDArray[np.floating],
+                         high: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Interpolate in Msh color space.
 

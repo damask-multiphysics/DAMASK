@@ -7,7 +7,7 @@ import damask
 @pytest.fixture
 def res_path(res_path_base):
     """Directory containing testing resources."""
-    return res_path_base/'grid_parse_loadcase'
+    return res_path_base/'grid_loadcase_parse'
 
 
 def final(delta_t,start,end):
@@ -69,6 +69,8 @@ def calculate_target(loadcase):
             F_new = rate_eng(delta_t,F[-1],to_masked_array(l['boundary_condition']['mechanical']['F_dot']))
         elif 'F' in l['boundary_condition']['mechanical']:
             F_new = final(delta_t,F[-1],to_masked_array(l['boundary_condition']['mechanical']['F']))
+        else:
+            F_new = final(delta_t,F[-1],to_masked_array([['x']*3]*3))
 
         P += P_new
         M += M_new
@@ -132,6 +134,10 @@ loadcases = [
               {'boundary_condition': {'mechanical': {'F_dot': [['x',  0,   0],  [  s, 'x', 0],  [  0,   0, 'x']],
                                                       'P':     [[ 0,  'x', 'x'], [ 'x', 0, 'x'], [ 'x', 'x', 0 ]]}},
                'discretization': {'t': 100,'N': 100,'r': 1.1},'f_out': 100}],
+             [{'boundary_condition': {'mechanical': {'P':     [[s*1e10,0,0],
+                                                               [0, 0,0],
+                                                               [0, 0,0]]}},
+               'discretization': {'t': 50,'N': 30}}],
             ]
 
 @pytest.mark.parametrize('solver',['spectral_basic',
@@ -150,13 +156,13 @@ def test_grid_parse_loadcase(tmp_path,res_path,copy_files,
     load_config = damask.YAML({'solver': {'mechanical': solver}, 'loadstep': loadcase})
     load_config.save(tmp_path/f'{load}.yaml')
 
-    cmd = f'damask_grid -l {load}.yaml -g {grid}.vti -m material.yaml -j {job}'
+    cmd = f'damask_grid -l {load}.yaml -g {grid}.vti -m material.yaml -j {job} -w {tmp_path}'
     if solver == 'FEM':
         petsc_options = '-pc_type none -snes_type newtontr'
         damask.YAML({'solver': {'grid': {'mechanical': {'PETSc_options':petsc_options}}}}).save(tmp_path/'numerics.yaml')
         cmd += ' -n numerics.yaml'
 
-    out, _ = damask.util.run(cmd,wd=tmp_path)
+    out, _ = damask.util.run(cmd)
     assert solver in out
 
     F_target,P_target,mask = calculate_target(loadcase)
