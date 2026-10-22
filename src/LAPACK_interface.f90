@@ -55,6 +55,23 @@ module LAPACK_interface
     end subroutine dgesv
 
     !----------------------------------------------------------------------------------------------
+    !> @brief Compute the singular value decomposition of a general matrix.
+    !----------------------------------------------------------------------------------------------
+    pure subroutine dgesvd(jobu,jobvt,m,n,a,lda,s,u,ldu,vt,ldvt,work,lwork,info)
+      use prec
+      implicit none(type,external)
+
+      character,   intent(in)                             :: jobu,jobvt
+      integer,     intent(in)                             :: m,n,lda,ldu,ldvt,lwork
+      real(pREAL), intent(inout), dimension(lda,n)        :: a
+      real(pREAL), intent(out),   dimension(min(m,n))     :: s
+      real(pREAL), intent(out),   dimension(ldu,m)        :: u
+      real(pREAL), intent(out),   dimension(ldvt,n)       :: vt
+      real(pREAL), intent(out),   dimension(max(1,lwork)) :: work
+      integer,     intent(out)                            :: info
+    end subroutine dgesvd
+
+    !----------------------------------------------------------------------------------------------
     !> @brief Compute the LU factorization of a general matrix.
     !----------------------------------------------------------------------------------------------
     pure subroutine dgetrf(m,n,a,lda,ipiv,info)
