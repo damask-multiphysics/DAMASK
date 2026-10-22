@@ -6,7 +6,7 @@ usage: MSC_modifications.py [-h] [--editor string] [--marc-root string] [--marc-
 
 where command is either 'install' or 'uninstall'
 
-Refer to https://damask.mpie.de/installation/source_code.html#msc-marc for complete installation instructions.
+Refer to https://damask-multiphysics.org/installation/source_code.html#msc-marc for complete installation instructions.
 
 Usually you will need to be root for this to work!
 
