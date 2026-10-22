@@ -404,10 +404,8 @@ class VTK:
 
         Notes
         -----
-        Loading VTKHDF files requires VTK 9.4 or later and presently supports
-        PolyData, UnstructuredGrid, and ImageData. Loading ImageData is untested
-        because VTK does not yet provide the functionality to write ImageData
-        into VTKHDF format.
+        Loading VTKHDF files requires VTK 9.4 or later for PolyData, UnstructuredGrid,
+        and ImageData and VTK 9.7 or later for RectilinearGrid.
         """
         if not Path(fname).expanduser().is_file():                                                  # vtk has a strange error handling
             raise FileNotFoundError(f'file "{fname}" not found')
@@ -520,13 +518,12 @@ class VTK:
 
         Notes
         -----
-        Saving as VTKHDF file requires VTK 9.4 or later and only supports
-        PolyData and UnstructuredGrid.
+        Saving as VTKHDF file requires VTK 9.4 or later for PolyData,
+        and UnstructuredGrid and VTK 9.7 or later for RectilinearGrid and
+        ImageData.
         """
         if not has_vtkhdf:
             raise NotImplementedError('save as VTKHDF requires VTK 9.4 or later')
-        if not isinstance(self.vtk_data, (vtkPolyData, vtkUnstructuredGrid)):
-            raise TypeError(f'unsupported vtk_data type "{type(self.vtk_data)}"')
 
         writer = vtkHDFWriter()
         ext = Path(fname).suffix
