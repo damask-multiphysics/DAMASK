@@ -470,7 +470,7 @@ update_revision:
     - export VERSION_RAW=$(git describe ${CI_COMMIT_SHA})
     - export VERSION=$(printf '%s\n' "$VERSION_RAW" | sed 's/^v//; s/-/+/; s/-g/./')
     - echo ${VERSION} > VERSION
-    - mv performance.txt statistics/
+    - mv ${CI_PROJECT_DIR}/performance.txt statistics/
     - git commit VERSION statistics --allow-empty -m "[skip ci] updated version information after successful test of $VERSION"
     - if [ ${CI_COMMIT_SHA} == $(git rev-parse HEAD^) ]; then git push --atomic --no-verify origin HEAD:development HEAD:master; fi
 
