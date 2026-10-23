@@ -443,7 +443,6 @@ grid_performance:
     - cmake --build build --parallel 4 --target install
     - source env/DAMASK.sh
   script:
-    - git clone -q https://damask_user:${TOKEN_STATISTICS}@git.damask-multiphysics.org/damask/statistics.git
     - ./statistics/measure_performance.py --input_dir examples/grid --tag ${CI_COMMIT_SHA} --output_dir statistics
     - cp statistics/performance.txt .
   artifacts:
@@ -451,10 +450,10 @@ grid_performance:
 
 
 ####################################################################################################
-# Update Repositories
+# Update Repository
 ####################################################################################################
 
-.update:
+update_revision:
   stage: update_repositories
   image:
     name: alpine/git
@@ -463,29 +462,17 @@ grid_performance:
     - git config --global user.name "testbot"
     - git config --global user.email "testbot@damask-multiphysics.org"
   rules: [if: $CI_COMMIT_BRANCH == 'development']
-
-update_statistics:
-  extends: .update
   dependencies:
     - grid_performance
-  script:
-    - git clone -q https://damask_user:${TOKEN_STATISTICS}@git.damask-multiphysics.org/damask/statistics.git
-    - cp performance.txt statistics/
-    - cd statistics
-    - git commit -m ${CI_PIPELINE_ID}_${CI_COMMIT_SHA} performance.txt
-    - git push
-
-update_revision:
-  extends: .update
   script:
     - cd $(mktemp -d)
     - git clone -b development -q https://damask_user:${TOKEN_DAMASK}@git.damask-multiphysics.org/damask/DAMASK.git .
     - export VERSION_RAW=$(git describe ${CI_COMMIT_SHA})
     - export VERSION=$(printf '%s\n' "$VERSION_RAW" | sed 's/^v//; s/-/+/; s/-g/./')
     - echo ${VERSION} > VERSION
-    - git commit VERSION --allow-empty -m "[skip ci] updated version information after successful test of $VERSION"
+    - mv performance.txt statistics/
+    - git commit VERSION statistics --allow-empty -m "[skip ci] updated version information after successful test of $VERSION"
     - if [ ${CI_COMMIT_SHA} == $(git rev-parse HEAD^) ]; then git push --atomic --no-verify origin HEAD:development HEAD:master; fi
-
 
 ####################################################################################################
 # Documentation
