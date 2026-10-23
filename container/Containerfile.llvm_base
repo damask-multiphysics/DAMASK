@@ -1,8 +1,8 @@
-FROM docker.io/ubuntu:resolute
+FROM docker.io/ubuntu:rolling
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests \
-    flang clang \
+    flang clang libomp-dev \
     build-essential cmake ninja-build pkg-config \
     git ca-certificates \
     libgtest-dev clang-tidy \

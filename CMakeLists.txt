@@ -154,6 +154,12 @@ else()
   set(OPTIMIZATION "${OPTIMIZATION}")
 endif()
 
+# Optimization levels, need to be defined in cmake/Compiler-<compiler>-<language>.cmake.
+set(OPTIMIZATION_LEVELS OFF DEBUG DEFENSIVE AGGRESSIVE)
+if(NOT OPTIMIZATION IN_LIST OPTIMIZATION_LEVELS)
+  message(FATAL_ERROR "Unknown OPTIMIZATION level: '${OPTIMIZATION}' (valid: ${OPTIMIZATION_LEVELS})")
+endif()
+
 # $OPENMP takes precedence over $BUILD_TYPE defaults
 if(OPENMP STREQUAL "" OR NOT DEFINED OPENMP)
   set(OPENMP "${PARALLEL}")
@@ -167,13 +173,18 @@ if(CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
 endif()
 
 
-if((CMAKE_Fortran_COMPILER_ID STREQUAL "GNU") OR
-   (CMAKE_Fortran_COMPILER_ID STREQUAL "IntelLLVM") OR
-   (CMAKE_Fortran_COMPILER_ID STREQUAL "LLVMFlang"))
-  include("${PROJECT_SOURCE_DIR}/cmake/Compiler-${CMAKE_Fortran_COMPILER_ID}.cmake")
-else()
-  message(FATAL_ERROR "Compiler '${CMAKE_Fortran_COMPILER_ID}' not supported")
-endif()
+# Select the compiler- and language-specific flag preset
+foreach(_language Fortran C CXX)
+  set(_compiler_id "${CMAKE_${_language}_COMPILER_ID}")
+  if(_compiler_id STREQUAL "AppleClang")
+    set(_compiler_id "Clang")
+  endif()
+  set(_preset "${PROJECT_SOURCE_DIR}/cmake/Compiler-${_compiler_id}-${_language}.cmake")
+  if(NOT EXISTS "${_preset}")
+    message(FATAL_ERROR "Compiler '${CMAKE_${_language}_COMPILER_ID}' for language '${_language}' is not supported")
+  endif()
+  include("${_preset}")
+endforeach()
 
 if(CMAKE_Fortran_COMPILER_VERSION VERSION_LESS Fortran_COMPILER_VERSION_MIN)
   message(FATAL_ERROR "Version '${CMAKE_Fortran_COMPILER_VERSION}' of '${CMAKE_Fortran_COMPILER_ID}' is not supported")
@@ -188,19 +199,22 @@ file(STRINGS "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/petsc/conf/petscvariables" PE
 string(REPLACE "PETSC_FC_INCLUDES = " "" PETSC_INCLUDES "${PETSC_INCLUDES}")
 message("PETSC_INCLUDES:\n${PETSC_INCLUDES}\n")
 
-set(CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${BUILDCMD_PRE} ${OPENMP_FLAGS} ${STANDARD_CHECK} ${OPTIMIZATION_FLAGS} ${COMPILE_FLAGS}")
-set(CMAKE_Fortran_LINK_EXECUTABLE           "${BUILDCMD_PRE} ${CMAKE_Fortran_COMPILER} ${OPENMP_FLAGS} ${OPTIMIZATION_FLAGS} ${LINKER_FLAGS}")
+set(CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${BUILDCMD_PRE} ${Fortran_OPENMP_FLAGS} ${Fortran_STANDARD_CHECK} ${Fortran_OPTIMIZATION_FLAGS} ${Fortran_COMPILE_FLAGS}")
+set(CMAKE_Fortran_LINK_EXECUTABLE           "${BUILDCMD_PRE} ${CMAKE_Fortran_COMPILER} ${Fortran_OPENMP_FLAGS} ${Fortran_OPTIMIZATION_FLAGS} ${Fortran_LINKER_FLAGS}")
 
-set(CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}} ${PETSC_INCLUDES}")   # zlib installed via PETSc
+set(CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}   "${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}}   ${C_OPENMP_FLAGS}   ${C_OPTIMIZATION_FLAGS}   ${C_COMPILE_FLAGS}")
+set(CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}} ${CXX_OPENMP_FLAGS} ${CXX_OPTIMIZATION_FLAGS} ${CXX_COMPILE_FLAGS}")
 
 if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
-  set(CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${DEBUG_FLAGS}")
-  set(CMAKE_Fortran_LINK_EXECUTABLE           "${CMAKE_Fortran_LINK_EXECUTABLE} ${DEBUG_FLAGS}")
+  set(CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${DEBUG_FLAGS} ${Fortran_DEBUG_FLAGS}")
+  set(CMAKE_Fortran_LINK_EXECUTABLE           "${CMAKE_Fortran_LINK_EXECUTABLE} ${DEBUG_FLAGS} ${Fortran_DEBUG_FLAGS}")
+  set(CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}       "${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}} ${DEBUG_FLAGS} ${C_DEBUG_FLAGS}")
+  set(CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}     "${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}} ${DEBUG_FLAGS} ${CXX_DEBUG_FLAGS}")
 endif()
 
 set(CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${PETSC_INCLUDES} ${BUILDCMD_POST}")
-set(CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}       "${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}}       ${PETSC_INCLUDES} ${BUILDCMD_POST}")
-set(CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}     "${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}}     ${PETSC_INCLUDES} ${BUILDCMD_POST}")
+set(CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}       "${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}} ${PETSC_INCLUDES} ${BUILDCMD_POST}")
+set(CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}     "${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}} ${PETSC_INCLUDES} ${BUILDCMD_POST}")
 
 set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} <LINK_FLAGS> <FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
 if(${GRID})

@@ -14,7 +14,7 @@ variables:
   MARC_VERSION: '2026.1'
   PETSC_GCC_LATEST: '2026.10.02'
   PETSC_ONEAPI_LATEST: '2026.10.01'
-  PETSC_LLVM_LATEST: '2026.04.04'
+  PETSC_LLVM_LATEST: '2026.10.11'
   PYTHON_LATEST: '2026.02.24'
 
 ####################################################################################################
@@ -314,7 +314,7 @@ unittest_oneapi:
 unittest_llvm:
   extends: [.unittest, .petsc_llvm_debug]
   before_script:
-    - sed -i 's/Fortran_COMPILER_VERSION_MIN .*)/Fortran_COMPILER_VERSION_MIN 20)/' cmake/Compiler-LLVMFlang.cmake
+    - sed -i 's/Fortran_COMPILER_VERSION_MIN .*)/Fortran_COMPILER_VERSION_MIN 20)/' cmake/Compiler-LLVMFlang-Fortran.cmake
     - cmake -B build -DTEST=ON -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
     - cmake --build build --target install
 
@@ -376,7 +376,7 @@ compile_llvm:
   stage: core
   extends: .petsc_llvm_debug
   before_script:
-    - sed -i 's/Fortran_COMPILER_VERSION_MIN .*)/Fortran_COMPILER_VERSION_MIN 20)/' cmake/Compiler-LLVMFlang.cmake
+    - sed -i 's/Fortran_COMPILER_VERSION_MIN .*)/Fortran_COMPILER_VERSION_MIN 20)/' cmake/Compiler-LLVMFlang-Fortran.cmake
   script:
     - cmake -DGRID=ON -DMESH=ON -B build -G Ninja && cmake --build build --parallel 4 --target install
 
