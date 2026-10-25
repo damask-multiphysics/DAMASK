@@ -42,6 +42,7 @@
 
 #include "CLI.h"
 #include "IO.h"
+#include "utils.h"
 
 namespace fs = std::filesystem;
 constexpr int CLI_ERROR = 610;
@@ -222,12 +223,10 @@ CLI::CLI(std::span<const char*> args, const int* worldrank) {
 
 void CLI::init_print() {
 #ifdef DEBUG
-  constexpr std::array<int, 3> RED = {255, 0, 0};
-  cout << add_text_color(RED);
+  cout << add_text_color(utils::RED);
   cout << "debug version - debug version - debug version - debug version - debug version\n";
 #else
-  constexpr std::array<int, 3> DAMASK_BLUE = {67, 128, 208};
-  cout << add_text_color(DAMASK_BLUE);
+  cout << add_text_color(utils::DAMASK_BLUE);
 #endif
   cout << R"(
      _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/    _/_/_/
@@ -239,17 +238,15 @@ void CLI::init_print() {
 )";
 
 #ifdef GRID
-  constexpr std::array<int, 3> DAMASK_GREEN = {123, 207, 68};
-  cout << add_text_color(DAMASK_GREEN);
+  cout << add_text_color(utils::DAMASK_GREEN);
   cout << " Grid solver\n\n";
 #elif defined(MESH)
-  constexpr std::array<int, 3> DAMASK_ORANGE = {230, 150, 68};
-  cout << add_text_color(DAMASK_ORANGE);
+  cout << add_text_color(utils::DAMASK_ORANGE);
   cout << " Mesh solver\n\n";
 #endif
 
 #ifdef DEBUG
-  cout << add_text_color(RED);
+  cout << add_text_color(utils::RED);
   cout << " debug version - debug version - debug version - debug version - debug version\n\n";
 #endif
 

@@ -18,8 +18,15 @@
 #include <cstdint> // IWYU pragma: keep
 #include <string_view>
 #include <vector>
+#include <array>
 
 namespace utils {
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define color_(name, r, g, b) \
+  constexpr std::array<int, 3> name{{(r), (g), (b)}}; // NOLINT(bugprone-macro-parentheses)
+#include "colors.def"
+#undef color_
 
 constexpr std::size_t STRLEN = 256;
 

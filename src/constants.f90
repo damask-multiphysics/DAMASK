@@ -44,4 +44,9 @@ module constants
     STATUS_FAIL_PHASE_ELECTRICAL
   end enum
 
+#define color_(name,r,g,b) \
+  integer, parameter, dimension(3) :: name = [r, g, b]
+#include "colors.def"
+#undef color_
+
 end module constants
