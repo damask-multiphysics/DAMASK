@@ -28,7 +28,7 @@ module FEM_utilities
 #endif
   private
 
-  logical,     public             :: cutBack = .false.                                              !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
+  logical, public :: cutBack = .false.                                                              !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
 
 !--------------------------------------------------------------------------------------------------
 ! field labels information
@@ -38,8 +38,8 @@ module FEM_utilities
 !--------------------------------------------------------------------------------------------------
 ! derived types
   type, public :: tSolutionState                                                                    !< return type of solution from FEM solver variants
-    logical :: converged      = .true.
-    PetscInt :: iter_needed   = 0_pPETSCINT
+    logical  :: converged   = .true.
+    PetscInt :: iter_needed = 0_pPETSCINT
   end type tSolutionState
 
   type, public :: tMechBC                                                                           !< boundary conditions data
@@ -83,10 +83,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Allocate all neccessary fields.
 !--------------------------------------------------------------------------------------------------
-subroutine FEM_utilities_init(num_mesh)
-
-  type(tDict), pointer, intent(in) :: num_mesh                                                      !< 'mesh' dictionary from numerics file
-
+subroutine FEM_utilities_init()
 
   print'(/,1x,a)',   '<<<+-  FEM_utilities init  -+>>>'; flush(IO_STDOUT)
 
@@ -96,13 +93,11 @@ end subroutine FEM_utilities_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate constitutive response.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_constitutiveResponse(status, Delta_t,forwardData)
+subroutine utilities_constitutiveResponse(status,Delta_t,forwardData)
 
   integer(kind(STATUS_OK)),  intent(out)  :: status
   real(pREAL), intent(in)                 :: Delta_t                                                !< loading time
   logical,     intent(in)                 :: forwardData                                            !< age results
-
-  integer(MPI_INTEGER_KIND) :: err_MPI
 
 
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
@@ -118,7 +113,7 @@ end subroutine utilities_constitutiveResponse
 !> @brief Assemble vector of external forces.
 !> @details Build the end-of-step aimed external forces.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_assembleFext(f_aim_vec, dm, mechBC, Delta_t)
+subroutine utilities_assembleFext(f_aim_vec,dm,mechBC,Delta_t)
 
   Vec,                         intent(inout) :: f_aim_vec                                           !< (local) end-of-step aimed forces
   DM,                          intent(in)    :: dm                                                  !< (local) DM
@@ -180,7 +175,7 @@ end subroutine utilities_assembleFext
 !> @brief assemble vector of displacement (Dirichlet) boundary conditions
 !> @details builds the end-of-step aimed displacement
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_assembleU(u_aim_vec, dm, mechBC, Delta_t)
+subroutine utilities_assembleU(u_aim_vec,dm,mechBC,Delta_t)
 
   Vec,                         intent(inout) :: u_aim_vec                                           !< aim displacement BC vector
   DM,                          intent(in)    :: dm                                                  !< DM (local)

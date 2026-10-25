@@ -1,0 +1,16 @@
+---
+loadstep:
+  - boundary_condition:
+      mechanical:
+        - label: 'origin'
+          u: [0.0, 0.0, 0.0]
+        - label: 'surf_bot'
+          u: ['x', 'x', 0.0]
+        - label: 'edge_bot_X'
+          u: ['x', 0.0, 'x']
+        - label: 'edge_bot_Y'
+          u: [0.0, 'x', 'x']
+    discretization:
+      t: 1
+      N: 4
+    f_out: 4

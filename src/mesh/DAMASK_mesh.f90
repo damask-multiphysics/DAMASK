@@ -7,9 +7,8 @@
 !> @details doing cutbacking, reporting statistics, writing
 !> results
 !--------------------------------------------------------------------------------------------------
-program DAMASK_mesh
 #include <petsc/finclude/petscsys.h>
-  use PetscDM
+program DAMASK_mesh
   use prec
   use CLI
   use IO
@@ -17,10 +16,14 @@ program DAMASK_mesh
   use parallelization
   use materialpoint
   use discretization_mesh
-  use FEM_Utilities
+  use FEM_utilities
   use mesh_mechanical_FEM
 
+#ifndef PETSC_EXPOSES_MPIF90
   implicit none(type,external)
+#else
+  implicit none
+#endif
 
   type :: tLoadCase
     real(pREAL) :: t             = 0.0_pREAL, &                                                     !< length of increment
@@ -51,8 +54,8 @@ program DAMASK_mesh
     unit_stat = 0                                                                                   !< file unit for statistics output
   type(tDict), pointer :: &
     num_solver => NULL(), &                                                                         !< dictionaries: solver
-    num_mesh => NULL(), &                                                                           !<               mechanical
-    load => NULL()                                                                                  !<               full load file
+    num_mesh   => NULL(), &                                                                         !<               mechanical
+    load       => NULL()                                                                            !<               full load file
   character(len=pSTRLEN) :: &
     inc_info                                                                                        !< report new step (iterations, cut backs, etc)
   integer :: &
@@ -95,7 +98,7 @@ program DAMASK_mesh
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
-  call FEM_Utilities_init(num_mesh)
+  call FEM_utilities_init()
   call FEM_mechanical_init(load_cases(1)%mechBC, num_mesh)
   call config_numerics_deallocate()
 
@@ -194,31 +197,36 @@ contains
 !> @brief Parse load cases data from YAML file, perform all necessary checks, and print it.
 !--------------------------------------------------------------------------------------------------
 function parse_and_print_load_cases(load_steps) result(load_cases)
-
-#ifndef __GFORTRAN__
-#include <petsc/finclude/petscsys.h>
   use PetscDM
-
+#ifndef PETSC_EXPOSES_MPI
+  use MPI_f08
+#endif
+#ifndef __GFORTRAN__
   use prec
   use types
   use IO
+  use parallelization
   use discretization_mesh
-  use FEM_Utilities
+  use FEM_utilities
   use mesh_mechanical_FEM
 
   import, only: tLoadCase
 #endif
 
-  type(tList), target, intent(in) :: load_steps                                                     !< full YAML file dictionary
+  type(tList),     target,      intent(in)   :: load_steps                                          !< full YAML file dictionary
   type(tLoadCase), allocatable, dimension(:) :: load_cases                                          !< array of all load cases
 
   integer :: &
     boundary, component, l, m, &                                                                    ! loop variables
     BC_tag                                                                                          ! tag used for BC
+  integer(MPI_INTEGER_KIND) :: &
+    err_MPI
   PetscInt :: &
     dimPlex                                                                                         ! mesh dimension (2D or 3D)
   real(pREAL) :: &
     BC_comp_value                                                                                   ! BC x/y/z component value from YAML load file
+  logical :: &
+    rank_has_bc, has_bc                                                                             ! BC owned by this rank
   logical, dimension(mesh_nBoundaries) :: &
     known_BC, &                                                                                     ! already read BC entries (repetition per load-step forbidden)
     use_label                                                                                       ! BC uses label or tag
@@ -271,93 +279,107 @@ function parse_and_print_load_cases(load_steps) result(load_cases)
       elseif (BC_mechanical%contains('label')) then
         BC_label = BC_mechanical%get_asStr('label')
         boundary = findloc(mesh_BCLabels, BC_label, dim = 1)
-        if (boundary == 0) &                                                                        ! label not defined in mesh file
-          call IO_error(812_pI16, 'label', trim(BC_label), 'not defined', emph = [2])
-        if (known_BC(boundary)) &                                                                   ! duplicated label/tag
-          call IO_error(812_pI16, 'duplicated entries: label', trim(BC_label), 'and tag', &
-                        mesh_boundariesIS(boundary), emph = [2,4])
-        known_BC(boundary) = .true.
-        use_label(boundary) = .true.
+        if (boundary == 0) then
+          rank_has_bc = .false.
+        else
+          if (known_BC(boundary)) &                                                                 ! duplicated label/tag
+            call IO_error(812_pI16, 'duplicated entries: label', trim(BC_label), 'and tag', &
+                          mesh_boundariesIS(boundary), emph = [2,4])
+          rank_has_bc = .true.
+          known_BC(boundary) = .true.
+          use_label(boundary) = .true.
+        end if
       else if (BC_mechanical%contains('tag')) then
         BC_tag = BC_mechanical%get_asInt('tag')
         boundary = findloc(mesh_boundariesIS, BC_tag, dim = 1)
-        if (boundary == 0) &                                                                        ! tag not defined in mesh file
-          call IO_error(812_pI16, 'tag', BC_tag, 'not defined', emph = [2])
-        if (known_BC(boundary)) &                                                                   ! duplicated tag/label
-          call IO_error(812_pI16, 'duplicated entries: tag', BC_tag, 'and label', &
-                        trim(mesh_BCLabels(boundary)), emph = [2, 4])
-        known_BC(boundary) = .true.
+        if (boundary == 0) then                                                                     ! tag not defined in mesh file
+          rank_has_bc = .false.
+        else
+          if (known_BC(boundary)) &                                                                 ! duplicated tag/label
+            call IO_error(812_pI16, 'duplicated entries: tag', BC_tag, 'and label', &
+                          trim(mesh_BCLabels(boundary)), emph = [2, 4])
+          rank_has_bc = .true.
+          known_BC(boundary) = .true.
+        end if
       else
         call IO_error(812_pI16, 'neither "label" nor "tag" given for boundary condition', m, emph=[2])
       end if
+      call MPI_Reduce(rank_has_bc, has_bc, 1_MPI_INTEGER_KIND, MPI_LOGICAL, MPI_LOR, &
+                      0_MPI_INTEGER_KIND, MPI_COMM_WORLD, err_MPI)
+      if (worldrank == 0 .and. .not. has_bc) &
+          call IO_error(812_pI16, 'label', trim(BC_label), 'not defined', emph = [2])
+
 !--------------------------------------------------------------------------------------------------
 ! read BC data
-      associate (BC => load_cases(l)%mechBC(boundary))
-        if (BC_mechanical%contains('u_dot')) then
-          BC_load_comps => BC_mechanical%get_list('u_dot')
-        else if (BC_mechanical%contains('dot_u')) then
-          BC_load_comps => BC_mechanical%get_list('dot_u')
-          call IO_warning(10, 'dot_u', 'is deprecated in favor of', 'u_dot',emph=[1,3])
-        end if
-        if (associated(BC_load_comps)) then
-          do component = 1, int(dimPlex)
-            if (BC_load_comps%get_asStr(component) /= 'x') then
-              BC%displacements(component) = BC_load_comps%get_asReal(component)
-              BC%active(component) = ior(BC%active(component), BC_TYPE_U_DOT)
-            end if
-          end do
-          nullify(BC_load_comps)
-        end if
-        if (BC_mechanical%contains('u')) then
-          BC_load_comps => BC_mechanical%get_list('u')
-          do component = 1, int(dimPlex)
-            if (BC_load_comps%get_asStr(component) /= 'x') then
-              BC%displacements(component) = BC_load_comps%get_asReal(component)
-              BC%active(component) = ior(BC%active(component), BC_TYPE_U)
-            end if
-          end do
-          nullify(BC_load_comps)
-        end if
-        if (BC_mechanical%contains('f_dot')) then
-          BC_load_comps => BC_mechanical%get_list('f_dot')
-        else if (BC_mechanical%contains('dot_f')) then
-          BC_load_comps => BC_mechanical%get_list('dot_f')
-          call IO_warning(10, 'dot_f', 'is deprecated in favor of', 'f_dot',emph=[1,3])
-        end if
-        if (associated(BC_load_comps)) then
-          do component = 1, int(dimPlex)
-            if (BC_load_comps%get_asStr(component) /= 'x') then
-              BC%forces(component) = BC_load_comps%get_asReal(component)
-              BC%active(component) = ior(BC%active(component), BC_TYPE_F_DOT)
-            end if
-          end do
-          nullify(BC_load_comps)
-        end if
-        if (BC_mechanical%contains('f')) then
-          BC_load_comps => BC_mechanical%get_list('f')
-          do component = 1, int(dimPlex)
-            if (BC_load_comps%get_asStr(component) /= 'x') then
-              BC%forces(component) = BC_load_comps%get_asReal(component)
-              BC%active(component) = ior(BC%active(component), BC_TYPE_F)
-            end if
-          end do
-          nullify(BC_load_comps)
-        end if
+      if (boundary /= 0) then                                                                       ! read from rank that has the appropriate label
+        associate (BC => load_cases(l)%mechBC(boundary))
+          if (BC_mechanical%contains('u_dot')) then
+            BC_load_comps => BC_mechanical%get_list('u_dot')
+          else if (BC_mechanical%contains('dot_u')) then
+            BC_load_comps => BC_mechanical%get_list('dot_u')
+            call IO_warning(10, 'dot_u', 'is deprecated in favor of', 'u_dot',emph=[1,3])
+          end if
+          if (associated(BC_load_comps)) then
+            do component = 1, int(dimPlex)
+              if (BC_load_comps%get_asStr(component) /= 'x') then
+                BC%displacements(component) = BC_load_comps%get_asReal(component)
+                BC%active(component) = ior(BC%active(component), BC_TYPE_U_DOT)
+              end if
+            end do
+            nullify(BC_load_comps)
+          end if
+          if (BC_mechanical%contains('u')) then
+            BC_load_comps => BC_mechanical%get_list('u')
+            do component = 1, int(dimPlex)
+              if (BC_load_comps%get_asStr(component) /= 'x') then
+                BC%displacements(component) = BC_load_comps%get_asReal(component)
+                BC%active(component) = ior(BC%active(component), BC_TYPE_U)
+              end if
+            end do
+            nullify(BC_load_comps)
+          end if
+          if (BC_mechanical%contains('f_dot')) then
+            BC_load_comps => BC_mechanical%get_list('f_dot')
+          else if (BC_mechanical%contains('dot_f')) then
+            BC_load_comps => BC_mechanical%get_list('dot_f')
+            call IO_warning(10, 'dot_f', 'is deprecated in favor of', 'f_dot',emph=[1,3])
+          end if
+          if (associated(BC_load_comps)) then
+            do component = 1, int(dimPlex)
+              if (BC_load_comps%get_asStr(component) /= 'x') then
+                BC%forces(component) = BC_load_comps%get_asReal(component)
+                BC%active(component) = ior(BC%active(component), BC_TYPE_F_DOT)
+              end if
+            end do
+            nullify(BC_load_comps)
+          end if
+          if (BC_mechanical%contains('f')) then
+            BC_load_comps => BC_mechanical%get_list('f')
+            do component = 1, int(dimPlex)
+              if (BC_load_comps%get_asStr(component) /= 'x') then
+                BC%forces(component) = BC_load_comps%get_asReal(component)
+                BC%active(component) = ior(BC%active(component), BC_TYPE_F)
+              end if
+            end do
+            nullify(BC_load_comps)
+          end if
 !--------------------------------------------------------------------------------------------------
 ! check valid BC definition
-        do component = 1, int(dimPlex)
-          if (popcnt(BC%active(component)) > 1) then
-            if (use_label(boundary)) then
-              call IO_error(812_pI16, 'more than one condition specified for component', &
-                            component, IO_EOL, 'in loadcase', l, '/ label', trim(BC_label), emph = [2,5,7])
-            else
-              call IO_error(812_pI16, 'more than one condition specified for component', &
-                            component, IO_EOL, 'in loadcase', l, '/ tag', BC_tag, emph = [2,5,7])
+          do component = 1, int(dimPlex)
+            if (popcnt(BC%active(component)) > 1) then
+              if (use_label(boundary)) then
+                call IO_error(812_pI16, 'more than one condition specified for component', &
+                              component, IO_EOL, 'in loadcase', l, '/ label', trim(BC_label), emph = [2,5,7])
+              else
+                call IO_error(812_pI16, 'more than one condition specified for component', &
+                              component, IO_EOL, 'in loadcase', l, '/ tag', BC_tag, emph = [2,5,7])
+              end if
             end if
-          end if
-        end do
-      end associate
+          end do
+        end associate
+      end if
     end do
+
 
 !--------------------------------------------------------------------------------------------------
 ! store discretization, time, scaling factor and frequency; check values
@@ -378,9 +400,9 @@ function parse_and_print_load_cases(load_steps) result(load_cases)
       load_cases(l)%f_out = huge(0)
     else
       load_cases(l)%f_out = load_step%get_asInt('f_out', defaultVal = 1)
+      if (load_cases(l)%f_out < 1) &
+        call IO_error(301_pI16, 'loadcase', l, 'has non-positive output frequency', 'f_out', emph = [2,4])
     end if
-    if (load_cases(l)%f_out < 1) &
-      call IO_error(301_pI16, 'loadcase', l, 'has non-positive output frequency', 'f_out', emph = [2,4])
 
     load_cases(l)%estimate_rate = (load_step%get_asBool('estimate_rate', defaultVal = .true.) .and. l>1)
 

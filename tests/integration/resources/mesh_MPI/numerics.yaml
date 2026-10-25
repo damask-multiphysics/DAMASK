@@ -3,4 +3,4 @@ solver:
     p_s: n/a
     p_i: n/a
     mechanical:
-      PETSc_options: -ksp_type fgmres -ksp_max_it 25 -pc_type ml -mg_levels_ksp_type chebyshev -mg_levels_pc_type sor -pc_ml_nullspace user
+      PETSc_options: -snes_atol 1.0e-5 -snes_rtol 1.0e-6 -snes_stol 1.0e-8

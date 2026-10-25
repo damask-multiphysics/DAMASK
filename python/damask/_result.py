@@ -703,7 +703,6 @@ class Result:
     def fields(self):
         return self._visible['fields']
 
-
     @property
     def coordinates0_point(self) -> npt.NDArray[np.floating]:
         """Initial/undeformed cell center coordinates."""
@@ -721,7 +720,6 @@ class Result:
         else:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_n'][()]
-
     @property
     def geometry0(self) -> VTK:
         """Initial/undeformed geometry."""
@@ -732,6 +730,15 @@ class Result:
                 return VTK.from_unstructured_grid(f['/geometry/x_n'][()],
                                                   f['/geometry/T_c'][()]-1,
                                                   f['/geometry/T_c'].attrs['VTK_TYPE'])
+
+    @property
+    def connectivity(self) -> npt.NDArray[np.integer] | None:
+        """Element connectivity."""
+        if not self.structured:
+            with h5py.File(self.fname,'r') as f:
+                return f['geometry/T_e'][()]
+        else:
+            return None
 
 
     def add_absolute(self, x: str):
