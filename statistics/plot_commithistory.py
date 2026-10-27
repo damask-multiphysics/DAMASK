@@ -229,5 +229,6 @@ outname = outdir/( 'commits'
                  +('_log' if args.log else ''))
 
 for f in args.format:
-    fig.write_html(outname.with_suffix('.html'),full_html=False,include_plotlyjs='cdn',include_mathjax='cdn') if f == 'html' else \
+    fig.write_html(outname.with_suffix('.html'),full_html=False,
+                   include_plotlyjs='cdn',include_mathjax='cdn',div_id=outname) if f == 'html' else \
     fig.write_image(outname.with_suffix(f'.{f}'))
