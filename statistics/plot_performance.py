@@ -89,11 +89,10 @@ compiler = df['compiler'].str.extract(
 )
 df['compiler'] = compiler['vendor']+' '+compiler['version']
 df['tag'] = df['tag'].str[:8]
-df.rename(columns={'tag':'commit',
-                   'OMP_NUM_THREADS':'OMP threads',
-                   'processor':'CPU',
-                   'N_proc':'CPU threads'},
-          inplace=True)
+df = df.rename(columns={'tag':'commit',
+                        'OMP_NUM_THREADS':'OMP threads',
+                        'processor':'CPU',
+                        'N_proc':'CPU threads'})
 
 logmargin = 1.5
 marker = dict(size=4, opacity=0.5)
@@ -164,6 +163,7 @@ for f in args.format:
             fig.write_html(outname.with_suffix('.html'),
                            full_html=False,
                            include_plotlyjs='cdn',
-                           include_mathjax='cdn')
+                           include_mathjax='cdn',
+                           div_id=outname)
         else:
             fig.write_image(outname.with_suffix(f'.{f}'))
