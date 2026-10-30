@@ -143,10 +143,9 @@ class Rotation:
 
         Create deep copy.
         """
-        dup = copy.deepcopy(self)
-        if rotation is not None:
-            dup.quaternion = Rotation(rotation).quaternion
-        return dup
+        if rotation is None:
+            return copy.deepcopy(self)
+        return copy.deepcopy(self, {id(self.quaternion): Rotation(rotation).quaternion})
 
     copy = __copy__
 
@@ -313,7 +312,8 @@ class Rotation:
         divisor = np.linalg.norm(self.quaternion[...,1:],axis=-1,keepdims=True)
         p = np.divide(self.quaternion[...,1:],divisor,np.zeros_like(self.quaternion[...,1:]),
                       where=divisor > np.finfo(float).smallest_normal)
-        return self.copy(Rotation(np.block([np.cos(exp*phi),np.sin(exp*phi)*p]))._standardize())
+        return self.copy(Rotation.from_quaternion(np.block([np.cos(exp*phi),np.sin(exp*phi)*p]),
+                                                  accept_homomorph=True,normalize=True))
 
     def __ipow__(self: MyType,
                  exp: float | int) -> MyType:
@@ -358,10 +358,10 @@ class Rotation:
             q_o = other.quaternion[...,0].reshape(s_o + (1,))
             p_o = other.quaternion[...,1:].reshape(s_o + (3,))
 
-            qmo = q_m*q_o
-            q = (qmo - np.einsum('...i,...i',p_m,p_o).reshape(qmo.shape))
+            q = q_m*q_o - np.einsum('...i,...i',p_m,p_o)[...,np.newaxis]
             p = q_m*p_o + q_o*p_m + _P * np.cross(p_m,p_o)
-            return self.copy(Rotation(np.block([q,p]))._standardize())
+            return self.copy(Rotation.from_quaternion(np.concatenate([q,p],axis=-1),
+                                                      accept_homomorph=True,normalize=True))
         else:
             raise TypeError('use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
 
@@ -685,12 +685,10 @@ class Rotation:
         s_m   = util.shapeshifter( self.shape,blend,mode='right')
         s_o   = util.shapeshifter(other.shape,blend,mode='left')
 
-        q_m = self.quaternion[...,0].reshape(s_m)
-        p_m = self.quaternion[...,1:].reshape(s_m + (3,))
-        q_o = other.quaternion[...,0].reshape(s_o)
-        p_o = other.quaternion[...,1:].reshape(s_o + (3,))
+        q_m = self.quaternion.reshape(s_m + (4,))
+        q_o = other.quaternion.reshape(s_o + (4,))
+        q_0 = np.abs(np.einsum('...i,...i', q_m, q_o))
 
-        q_0 = np.abs(q_m*q_o - np.einsum('...i,...i',p_m,-p_o))
         return 2.*np.arccos(np.clip(np.round(q_0,15),None,1.))
 
 
@@ -912,9 +910,10 @@ class Rotation:
         elif np.any(qu[...,0] < 0.):
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'quaternion with negative first (real) component\n{qu}')
+        norm = np.sqrt(np.einsum('...i,...i',qu,qu))
         if normalize:
-            qu /= np.linalg.norm(qu,axis=-1,keepdims=True)
-        elif not np.allclose(np.linalg.norm(qu,axis=-1),1.,rtol=1.e-8):
+            np.divide(qu,norm[...,np.newaxis],out=qu)
+        elif not np.allclose(norm,1.,rtol=1.e-12):
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'quaternion is not of unit length\n{qu}')
 
@@ -958,7 +957,7 @@ class Rotation:
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'Euler angles outside of [0..2π],[0..π],[0..2π]\n{eu}')
 
-        return cls(cls._eu2qu(eu))
+        return cls.from_quaternion(cls._eu2qu(eu),normalize=True)
 
     @classmethod
     def from_axis_angle(cls,
@@ -1009,7 +1008,7 @@ class Rotation:
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'axis–angle rotation axis is not of unit length\n{ax}')
 
-        return cls(cls._ax2qu(ax))
+        return cls.from_quaternion(cls._ax2qu(ax),normalize=True)
 
     @classmethod
     def from_basis(cls,
@@ -1053,7 +1052,7 @@ class Rotation:
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'orientation matrix has determinant ≠ 1\n{om}')
 
-        return cls(cls._om2qu(om))
+        return cls.from_quaternion(cls._om2qu(om),normalize=True)
 
     @classmethod
     def from_matrix(cls,
@@ -1195,7 +1194,7 @@ class Rotation:
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'Rodrigues vector rotation axis is not of unit length\n{ro}')
 
-        return cls(cls._ro2qu(ro))
+        return cls.from_quaternion(cls._ro2qu(ro),normalize=True)
 
     @classmethod
     def from_homochoric(cls,
@@ -1226,7 +1225,7 @@ class Rotation:
             with np.printoptions(threshold=sys.maxsize,precision=16,floatmode='fixed'):
                 raise ValueError(f'homochoric coordinate outside of the sphere\n{ho}')
 
-        return cls(cls._ho2qu(ho))
+        return cls.from_quaternion(cls._ho2qu(ho),normalize=True)
 
     @classmethod
     def from_cubochoric(cls,
@@ -1256,7 +1255,7 @@ class Rotation:
 
         ho = cls._cu2ho(cu) if P == -1 else cls._cu2ho(cu) * -1
 
-        return cls(cls._ho2qu(ho))
+        return cls.from_quaternion(cls._ho2qu(ho),normalize=True)
 
 
     @classmethod
@@ -1289,7 +1288,8 @@ class Rotation:
         """
         rng = np.random.default_rng(rng)
         q = rng.normal(size = (4 if shape is None else tuple(shape)+(4,) if hasattr(shape, '__iter__') else (shape,4)))
-        q /= np.linalg.norm(q,axis=-1,keepdims=True)                                                # assuming no division by zero
+        s = np.max(np.abs(q), axis=-1, keepdims=True)
+        q /= (s * np.sqrt(np.einsum('...i,...i',q_s := q/s, q_s)[...,np.newaxis]))
 
         return cls(q[:] if shape is None else q)._standardize()
 

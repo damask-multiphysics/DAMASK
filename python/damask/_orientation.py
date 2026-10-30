@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import copy
 import warnings
 from typing import Literal, NamedTuple, Sequence, Union, TypeVar, overload
 
@@ -137,21 +136,6 @@ class Orientation(Rotation,Crystal):
         """
         return util.srepr([Crystal.__repr__(self),
                            Rotation.__repr__(self)])
-
-
-    def __copy__(self: MyType,
-                 rotation: FloatSequence | Rotation | None = None) -> MyType:
-        """
-        Return deepcopy(self).
-
-        Create deep copy.
-        """
-        dup = copy.deepcopy(self)
-        if rotation is not None:
-            dup.quaternion = Rotation(rotation).quaternion
-        return dup
-
-    copy = __copy__
 
 
     def __eq__(self,                                                                                # type: ignore[override]

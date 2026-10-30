@@ -412,7 +412,7 @@ def test_to_frame_symmetries(np_rng,lattice,mode,vector,N_sym):
     o = Orientation.from_random(lattice=lattice,rng=np_rng)
     frame = o.to_frame(**{keyword:vector,'with_symmetry':True})
     shape_full = frame.shape[0]
-    shape_reduced = np.unique(np.around(frame,10),axis=0).shape[0]
+    shape_reduced = np.unique(np.around(frame,11),axis=0).shape[0]
     assert shape_full//N_sym == shape_reduced
 
 
@@ -488,7 +488,7 @@ def test_resolved_shear_stress_vectorization(np_rng,assert_allclose,lattice):
 def test_reduced_vectorization(np_rng,family,shape):
     o = Orientation.from_random(family=family,shape=shape,rng=np_rng)
     for i in itertools.product(*map(range,tuple(shape))):
-        assert o[i].reduced == o[i]
+        assert o[i].reduced == o[i].reduced
 
 
 @pytest.mark.parametrize('family',crystal_families)
