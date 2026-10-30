@@ -178,9 +178,11 @@ class Rotation:
         equal : numpy.ndarray
             Whether both arguments are equal.
         """
-        return NotImplemented if not isinstance(other, Rotation) else \
-               np.logical_or(np.all(self.quaternion ==     other.quaternion,axis=-1),
-                             np.all(self.quaternion == -1.*other.quaternion,axis=-1))
+        if isinstance(other, Rotation):
+            q = self.misorientation(other).quaternion
+            return np.all(q[...,1:] == 0, axis=-1) & (q[...,0] > 0)
+        else:
+            return NotImplemented
 
     def __ne__(self,                                                                                # type: ignore[override]
                other: object) -> npt.NDArray[np.bool_]:
@@ -199,51 +201,37 @@ class Rotation:
 
     def isclose(self: MyType,
                 other: MyType,
-                rtol: float = 1.e-5,
-                atol: float = 1.e-8,
-                equal_nan: bool = True) -> npt.NDArray[np.bool_]:
+                atol: float = 1.e-7) -> npt.NDArray[np.bool_]:
         """
-        Report where values are approximately equal to corresponding ones of other Rotation.
+        Report where misorientation angle to other Rotation is below a threshold.
 
         Parameters
         ----------
         other : Rotation
             Rotation to compare against.
-        rtol : float, optional
-            Relative tolerance of equality.
         atol : float, optional
-            Absolute tolerance of equality.
-        equal_nan : bool, optional
-            Consider matching NaN values as equal. Defaults to True.
+            Absolute tolerance of equality in radians.
 
         Returns
         -------
         mask : numpy.ndarray of bool, shape (self.shape)
             Mask indicating where corresponding rotations are close.
         """
-        s = self.quaternion
-        o = other.quaternion
-        return np.logical_or(np.all(np.isclose(s,    o,rtol,atol,equal_nan),axis=-1),
-                             np.all(np.isclose(s,-1.*o,rtol,atol,equal_nan),axis=-1))
+        return self.misorientation_angle(other) <= atol
+
 
     def allclose(self: MyType,
                  other: MyType,
-                 rtol: float = 1.e-5,
-                 atol: float = 1.e-8,
-                 equal_nan: bool = True) -> np.bool_:
+                 atol: float = 1.e-7) -> np.bool_:
         """
-        Test whether all values are approximately equal to corresponding ones of other Rotation.
+        Test whether all misorientation angles to other Rotation are below a threshold.
 
         Parameters
         ----------
         other : Rotation
             Rotation to compare against.
-        rtol : float, optional
-            Relative tolerance of equality.
         atol : float, optional
-            Absolute tolerance of equality.
-        equal_nan : bool, optional
-            Consider matching NaN values as equal. Defaults to True.
+            Absolute tolerance of equality in radians.
 
         Returns
         -------
@@ -251,7 +239,7 @@ class Rotation:
             Test whether all values are approximately equal to corresponding
             ones of other rotation.
         """
-        return np.all(self.isclose(other,rtol,atol,equal_nan))
+        return np.all(self.isclose(other,atol))
 
 
     @property
