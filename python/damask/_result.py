@@ -2054,7 +2054,7 @@ class Result:
                 delta.text="{} {} {}".format(*(self.size/self.cells)[::-1])
 
                 attributes.append(ET.SubElement(g, 'Attribute'))
-                attributes[-1].attrib = {'Name':          'u / m',
+                attributes[-1].attrib = {'Name':          'u (m)',
                                          'Center':        'Node',
                                          'AttributeType': 'Vector'}
                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
@@ -2073,7 +2073,7 @@ class Result:
                                 unit = f[dset_path].attrs['unit']
 
                                 attributes.append(ET.SubElement(g, 'Attribute'))
-                                attributes[-1].attrib = {'Name': '/'.join([kind,field,dset_name])+f' / {unit}',
+                                attributes[-1].attrib = {'Name': ':'.join([kind,field,dset_name])+f' ({unit})',
                                                          'Center':       'Cell',
                                                          'AttributeType': attribute_type_map.get(shape,'Matrix')}
                                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
