@@ -6,26 +6,26 @@ import damask
 
 """ ----------------------------------------------------------------------------
 
-    *** QUADRATURE ORDER EQUIVALENCE ***
+    *** ELEMENT & QUADRATURE ORDER CHECKS ***
 
     Ensure simulation results are correct (against an analytical solution) when
     using different combinations of element and integration order, including
     reduced integration if appropriate.
 
-    - test_mesh_quadrature
+    - test_mesh_quadrature_[2D/3D]
         Same mesh (#cells), increasing element and quadrature orders.
     - test_mesh_quadrature_ho (high order)
         With higher order elements, the same results can be obtained with
         coarser meshes.
-        The parametrized variable 'size' indicates the number of nodes along
-        the arch edges.
 
     Parametrization:
      - Element type:
        - Triangle (tri)
        - Quadrilateral (quad)
+       - Hexahedron (hex)
      - FE approximation order
        - 1 to 5 (tri & quad)
+       - 1 to 3 (hex)
      - Integration/quadrature order
        - Full
        - Reduced
@@ -38,8 +38,10 @@ import damask
      - One quarter, curved cantilever beam with inner/outer radii of 5/10 m.
 
     - Meshes:
-       - test_mesh_quadrature:
+       - test_mesh_quadrature_2D:
             760 elements (tri & quad) / 20 x 38 (quads)
+       - test_mesh_quadrature_3D:
+            512 elements (hex) / 8 x 16 x 4
        - test_mesh_quadrature_ho (quads)
             order 2: 6 x 14
             order 3: 6 x 12
@@ -49,13 +51,13 @@ import damask
     Reference solution:
      - Theory of Elasticity.
        S. Timoshenko & J. N. Goodier
-       McGraw-Hill, second Edition, 1951.
+       McGraw-Hill, second edition, 1951.
        Problem #31. Bending of a Curved Bar by a Force at the End.
 
      - The Finite Element Method: Its Basis and Fundamentals.
        O. C. Zienkiewicz, R. L. Taylor & J. Z. Zhu
        Butterworth-Heinemann, seventh edition, 2013.
-       Example 7.6. Circular beam subjected to end shear
+       Example 7.6. Circular beam subjected to end shear.
 
     Resources (in resources/mesh_quadrature):
     - Load (-l)
@@ -68,8 +70,10 @@ import damask
       - numerics.yaml
 
     Runtime:
-    - test_mesh_quadrature:     ~ 1 min 15 s
+    - test_mesh_quadrature_2D:  ~ 1 min 15 s
+    - test_mesh_quadrature_3D:  ~ 1 min
     - test_mesh_quadrature_ho:  < 10 s
+
     ------------------------------------------------------------------------ """
 
 
@@ -142,11 +146,10 @@ def numerics_setup(res_path, tmp_path, p_s, r_int):
     numerics_config.save(tmp_path/'numerics.yaml')
 
 
-""" Node indices in the mesh """
 def nodes_idx(el, order):
     """Indices of nodes belonging to each boundary.
 
-    The array 'st' containst the nodes corresponding to the four corner vertices
+    The array 'st' contains the node indices corresponding to the four corner vertices
 
         (a,0), (b,0), (0,a), (0,b),         a = 5, b = 10
 
@@ -159,11 +162,12 @@ def nodes_idx(el, order):
 
         st[0]: (a, 0)
         ...
-        st[0] + 4: first node within 'inn' boundary
+        st[0] + 4: first node within 'inn' boundary (skip 4 corners)
         ...
         st[0] + 4 + nn[0]: last+1 node within 'inn' boundary / first node within 'out' boundary
 
     "within" not considering the corner nodes.
+    For 'hex' meshes, +4 is replaced by +8 to account for the elements along the thickness.
 
     """
     if el == 'tri':
@@ -172,7 +176,10 @@ def nodes_idx(el, order):
     elif el == 'quad':
         st = np.array([0, 760, 3040, 6840, 12160])
         nn = np.array([37, 37, 19, 19])
-    else:
+    elif el == 'hex':
+        st  = np.array([0, 512, 4096])
+        nn  = np.array([15, 15, 7, 7])
+    elif el == 'ho':
         st = np.array([84, 288, 540, 512])
         nn = np.array([[13, 13, 5, 5],      # order 2
                        [11, 11, 5, 5],
@@ -180,19 +187,20 @@ def nodes_idx(el, order):
                        [ 7,  7, 3, 3]])     # order 5
 
     ss = order - 2 if el == 'ho' else order - 1
-    cs = st[ss] + 4 + np.concatenate(([0], np.cumsum(nn[ss] if el == 'ho' else nn)))
+    cs = st[ss] + np.concatenate(([0], np.cumsum(nn[ss] if el == 'ho' else nn))) + \
+         (8 if el == 'hex' else 4)
     idx = {
         'inn': np.concatenate(([st[ss]+0], np.arange(cs[0], cs[1]), [st[ss]+2])),
         'out': np.concatenate(([st[ss]+1], np.arange(cs[1], cs[2]), [st[ss]+3])),
         'bot': np.concatenate(([st[ss]+0], np.arange(cs[2], cs[3]), [st[ss]+1])),
-        'top': np.concatenate(([st[ss]+2], np.arange(cs[3], cs[4]), [st[ss]+3])),
+        'top': np.concatenate(([st[ss]+2], np.arange(cs[3], cs[4]), [st[ss]+3]))
     }
 
     return idx
 
 
 def displ_analytical(elast_prop, u0, edge, x_n, chop = 1.0e-12):
-    """ Analytical solution."""
+    """Analytical solution."""
     aa, bb = 5.0, 10.0
     EE, nu = elast_prop[0], elast_prop[0]
     NN = aa**2 - bb**2 + (aa**2 + bb**2) * np.log(bb / aa)
@@ -222,7 +230,7 @@ def displ_analytical(elast_prop, u0, edge, x_n, chop = 1.0e-12):
 
 
 def r_t_analytical(x_n, edge, a, b):
-    """ Polar coordinates (r,theta)."""
+    """Polar coordinates (r,theta)."""
     if edge == 'bot':
         r, t = x_n[:,0], 0.0
     elif edge == 'top':
@@ -240,7 +248,7 @@ def r_t_analytical(x_n, edge, a, b):
 
 
 def displ_damask(edge, x_n, u_n, chop = 1.0e-12):
-    """ DAMASK numerical solution."""
+    """DAMASK numerical solution."""
     a, b = 5.0, 10.0
 
     if edge == 'bot':
@@ -281,9 +289,8 @@ def damask_results(tmp_path, job):
                          [('tri',  i+1,  False)  for i in range(5)] +
                          [('quad',  1,   True)]                     +
                          [('quad', i+1,  False)  for i in range(5)])
->>>>>>> 4e9f1efc9 (Add test (II): high order elements)
-def test_mesh_quadrature(res_path, copy_files, tmp_path, np_rng,
-                         el, p_s, r_int):
+def test_mesh_quadrature_2D(res_path, copy_files, tmp_path, np_rng,
+                            el, p_s, r_int):
     mesh = f'curved_{el}'
     load = 'load_curved'
     job  = f'{mesh}_o{p_s}' + ('r' if r_int else 'f')
@@ -313,11 +320,39 @@ def test_mesh_quadrature(res_path, copy_files, tmp_path, np_rng,
         assert np.allclose(u_t_D, u_t, rtol = 1.0e-5, atol = 5.0e-3)
 
 
+
+@pytest.mark.parametrize(  'el,   p_s,  r_int',
+                         [('hex', i+1,  False)  for i in range(3)])
+def test_mesh_quadrature_3D(res_path, copy_files, tmp_path, np_rng,
+                            el, p_s, r_int):
+    mesh = f'curved_{el}'
+    load = 'load_curved'
+    job  = f'{mesh}_o{p_s}' + ('r' if r_int else 'f')
+
+    copy_files(res_path, tmp_path, [f'{mesh}.msh', 'numerics.yaml'])
+
+    u_BC = load_setup(damask.YAML.load(res_path/f'{load}.yaml'), tmp_path, np_rng)
+    elast_prop = material_setup(res_path/'material_base.yaml', tmp_path/'material.yaml', np_rng)
+    numerics_setup(res_path, tmp_path, p_s, r_int)
+
+    damask.util.run(f'damask_mesh -m material.yaml -l {load}.yaml -g {mesh}.msh ' +
+                    f'-n numerics.yaml -j {job}', wd = tmp_path)
+    x_n, u_n = damask_results(tmp_path, job)
+    idx = nodes_idx(el, p_s)
+
+    for edge in ['inn', 'out', 'bot']:
+        u_r_D, u_t_D = displ_damask(edge, x_n[idx[edge]], u_n[idx[edge]])
+        u_r,   u_t   = displ_exact(elast_prop, u_BC, edge, x_n[idx[edge]])
+
+        assert np.allclose(u_r_D, u_r, rtol = 1.0e-5, atol = 5.0e-3)
+        assert np.allclose(u_t_D, u_t, rtol = 1.0e-5, atol = 5.0e-3)
+
+
 @pytest.mark.parametrize(   'el,   p_s,   size',
                          [('quad', i+2,  15-2*i) for i in range(4)])
 def test_mesh_quadrature_ho(res_path, copy_files, tmp_path, np_rng,
                             el, p_s, size):
-    mesh = f'curved_{el}_ho_n{size}'
+    mesh = f'curved_{el}_ho_n{size}'    # size: number of nodes within 'inn'/'out' edges
     load = 'load_curved'
     job  = f'curved_{el}_ho_{p_s}f'
 
