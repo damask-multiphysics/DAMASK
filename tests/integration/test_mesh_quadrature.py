@@ -12,6 +12,14 @@ import damask
     using different combinations of element and integration order, including
     reduced integration if appropriate.
 
+    - test_mesh_quadrature
+        Same mesh (#cells), increasing element and quadrature orders.
+    - test_mesh_quadrature_ho (high order)
+        With higher order elements, the same results can be obtained with
+        coarser meshes.
+        The parametrized variable 'size' indicates the number of nodes along
+        the arch edges.
+
     Parametrization:
      - Element type:
        - Triangle (tri)
@@ -24,9 +32,19 @@ import damask
      - Boundary condition
        - Magnitude of the displacement
      - Elastic constants
+     - Mesh coarseness
 
     Geometry:
      - One quarter, curved cantilever beam with inner/outer radii of 5/10 m.
+
+    - Meshes:
+       - test_mesh_quadrature:
+            760 elements (tri & quad) / 20 x 38 (quads)
+       - test_mesh_quadrature_ho (quads)
+            order 2: 6 x 14
+            order 3: 6 x 12
+            order 4: 6 x 10
+            order 5: 4 x 8
 
     Reference solution:
      - Theory of Elasticity.
@@ -49,6 +67,9 @@ import damask
     - Numerics configuration (-n)
       - numerics.yaml
 
+    Runtime:
+    - test_mesh_quadrature:     ~ 1 min 15 s
+    - test_mesh_quadrature_ho:  < 10 s
     ------------------------------------------------------------------------ """
 
 
@@ -129,12 +150,12 @@ def nodes_idx(el, order):
 
         (a,0), (b,0), (0,a), (0,b),         a = 5, b = 10
 
-    The nodes along the four boundaries `inn`, `out`, `bot`, `top` are then numbered
+    The nodes along the four boundaries 'inn', 'out', 'bot', 'top' are then numbered
     in a contiguous way after these four.
 
     The mesh is the same for all simulations, and so is the number of nodes in each
-    boundary (array 'nn'). Higher-order nodes are not considered (it would simply add more
-    nodes for the assertion of results).
+    boundary (array 'nn'). Higher-order nodes are not considered (it would simply add
+    more nodes for the assertion of results).
 
         st[0]: (a, 0)
         ...
@@ -148,20 +169,26 @@ def nodes_idx(el, order):
     if el == 'tri':
         st = np.array([0, 0, 760, 2280, 4560])
         nn = np.array([17, 35, 11, 11])
-    else:
+    elif el == 'quad':
         st = np.array([0, 760, 3040, 6840, 12160])
         nn = np.array([37, 37, 19, 19])
+    else:
+        st = np.array([84, 288, 540, 512])
+        nn = np.array([[13, 13, 5, 5],      # order 2
+                       [11, 11, 5, 5],
+                       [ 9,  9, 5, 5],
+                       [ 7,  7, 3, 3]])     # order 5
 
-    cs = st[order-1] + 4 + np.concatenate(([0], np.cumsum(nn)))
+    ss = order - 2 if el == 'ho' else order - 1
+    cs = st[ss] + 4 + np.concatenate(([0], np.cumsum(nn[ss] if el == 'ho' else nn)))
     idx = {
-        'inn': np.concatenate(([st[order-1]+0], np.arange(cs[0], cs[1]), [st[order-1]+2])),
-        'out': np.concatenate(([st[order-1]+1], np.arange(cs[1], cs[2]), [st[order-1]+3])),
-        'bot': np.concatenate(([st[order-1]+0], np.arange(cs[2], cs[3]), [st[order-1]+1])),
-        'top': np.concatenate(([st[order-1]+2], np.arange(cs[3], cs[4]), [st[order-1]+3])),
+        'inn': np.concatenate(([st[ss]+0], np.arange(cs[0], cs[1]), [st[ss]+2])),
+        'out': np.concatenate(([st[ss]+1], np.arange(cs[1], cs[2]), [st[ss]+3])),
+        'bot': np.concatenate(([st[ss]+0], np.arange(cs[2], cs[3]), [st[ss]+1])),
+        'top': np.concatenate(([st[ss]+2], np.arange(cs[3], cs[4]), [st[ss]+3])),
     }
 
     return idx
-
 
 
 def displ_analytical(elast_prop, u0, edge, x_n, chop = 1.0e-12):
@@ -250,10 +277,11 @@ def damask_results(tmp_path, job):
     return x_n, u_n
 
 
-@pytest.mark.parametrize(  'el,    p_s,  r_int',    #     Time / Total: ~ 2 min
+@pytest.mark.parametrize(  'el,    p_s,  r_int',
                          [('tri',  i+1,  False)  for i in range(5)] +
                          [('quad',  1,   True)]                     +
                          [('quad', i+1,  False)  for i in range(5)])
+>>>>>>> 4e9f1efc9 (Add test (II): high order elements)
 def test_mesh_quadrature(res_path, copy_files, tmp_path, np_rng,
                          el, p_s, r_int):
     mesh = f'curved_{el}'
@@ -280,6 +308,33 @@ def test_mesh_quadrature(res_path, copy_files, tmp_path, np_rng,
             # while the others are off
             u_r,   u_t   = u_r[::2],   u_t[::2]
             u_r_D, u_t_D = u_r_D[::2], u_t_D[::2]
+
+        assert np.allclose(u_r_D, u_r, rtol = 1.0e-5, atol = 5.0e-3)
+        assert np.allclose(u_t_D, u_t, rtol = 1.0e-5, atol = 5.0e-3)
+
+
+@pytest.mark.parametrize(   'el,   p_s,   size',
+                         [('quad', i+2,  15-2*i) for i in range(4)])
+def test_mesh_quadrature_ho(res_path, copy_files, tmp_path, np_rng,
+                            el, p_s, size):
+    mesh = f'curved_{el}_ho_n{size}'
+    load = 'load_curved'
+    job  = f'curved_{el}_ho_{p_s}f'
+
+    copy_files(res_path, tmp_path, [f'{mesh}.msh', 'numerics.yaml'])
+
+    u_BC = load_setup(damask.YAML.load(res_path/f'{load}.yaml'), tmp_path, np_rng)
+    elast_prop = material_setup(res_path/'material_base.yaml', tmp_path/'material.yaml', np_rng)
+    numerics_setup(res_path, tmp_path, p_s, False)
+
+    damask.util.run(f'damask_mesh -m material.yaml -l {load}.yaml -g {mesh}.msh ' +
+                    f'-n numerics.yaml -j {job}', wd = tmp_path)
+    x_n, u_n = damask_results(tmp_path, job)
+    idx = nodes_idx('ho', p_s)
+
+    for edge in ['inn', 'out', 'bot', 'top']:
+        u_r_D, u_t_D = displ_damask(edge, x_n[idx[edge]], u_n[idx[edge]])
+        u_r,   u_t   = displ_exact(elast_prop, u_BC, edge, x_n[idx[edge]])
 
         assert np.allclose(u_r_D, u_r, rtol = 1.0e-5, atol = 5.0e-3)
         assert np.allclose(u_t_D, u_t, rtol = 1.0e-5, atol = 5.0e-3)
