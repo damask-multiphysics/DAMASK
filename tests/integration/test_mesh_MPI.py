@@ -83,7 +83,7 @@ def material_setup(mat_config,np_rng):
                       [ 0.0,  0.0,  0.0,  0.0,  0.0,  C_66]])
 
         eigvals = np.linalg.eigvalsh(C)
-        unstable = np.min(eigvals)/np.max(eigvals) < 0.01
+        unstable = eigvals[0] < 0. or eigvals[-1]/eigvals[0] > 100.
 
     # Set up material file
     mat_config['phase']['phase_0']['mechanical']['elastic'] = \

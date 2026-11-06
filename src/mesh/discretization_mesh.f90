@@ -480,7 +480,7 @@ end subroutine discretization_mesh_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculate quadrature order based on element order and full/reduced integration flag
+!> @brief Calculate quadrature order based on element order and full/reduced integration flag.
 !--------------------------------------------------------------------------------------------------
 integer function quadrature_order(dimPlex,p_s,r_int,is_simplex)
 

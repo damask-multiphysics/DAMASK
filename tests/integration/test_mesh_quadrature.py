@@ -83,67 +83,36 @@ def res_path(res_path_base):
     return res_path_base/'mesh_quadrature'
 
 
-def load_setup(load_config, tmp_path, np_rng):
+def load_setup(load_config, tmp_path, u_BC):
     """Randomized displacement boundary conditions."""
-    u_BC = -1.0e-3*np_rng.uniform(0.5,5.0)
     load_config['loadstep'][0]['boundary_condition']['mechanical'].append(
             {'label': 'bot', 'u': [u_BC, 'x', 'x']})
     load_config.save(tmp_path/'load_curved.yaml')
 
-    return u_BC
 
-
-def material_setup(file_in, file_out, np_rng):
-    """
-    Randomized material properties.
-
-    Use an isotropic material.
-
-    E  = (C_11-C_12)*(C_11+2*C_12)/(C_11+C_12)
-    nu = C_12/(C_11+C_12)
-
-    C_11 = E*(1-nu)/((1+nu)*(1-2*nu))
-    C_12 = E*nu/((1+nu)*(1-2*nu))
-    C_44 = nu/(2*(1+nu))
-
-    The stiffness matrix needs to be positive definite.
-    We additionally constrain its condition number
-    to max(eigvals)/min(eigvals) < 100,
-    since well-conditioned systems typically exhibit
-    closer agreement with the analytical solution.
-    """
-    unstable = True
-    while unstable:
-        E    = np_rng.uniform(0.5,10)
-        nu   = np_rng.uniform(0,0.375)
-        C_11 = E*(1-nu)/((1+nu)*(1-2*nu))
-        C_12 = E*nu/((1+nu)*(1-2*nu))
-        C_44 = E/(2*(1+nu))
-
-        C = np.array([[C_11, C_12, C_12,  0.0,  0.0,   0.0],
-                      [C_12, C_11, C_12,  0.0,  0.0,   0.0],
-                      [C_12, C_12, C_11,  0.0,  0.0,   0.0],
-                      [ 0.0,  0.0,  0.0, C_44,  0.0,   0.0],
-                      [ 0.0,  0.0,  0.0,  0.0,  C_44,  0.0],
-                      [ 0.0,  0.0,  0.0,  0.0,  0.0,  C_44]])
-        eigvals = np.linalg.eigvalsh(C)
-        unstable = np.min(eigvals)/np.max(eigvals) < 0.01
-
-    # Set up material file
-    mat_config = damask.ConfigMaterial.load(file_in)
+def material_setup(res_path, tmp_path, C):
+    """Set up material configuration."""
+    mat_config = damask.ConfigMaterial.load(res_path/'material_base.yaml')
     mat_config['phase']['phase_0']['mechanical']['elastic'] = \
-        {'type':'Hooke', 'C_11': C_11, 'C_12': C_12, 'C_44': C_44}
-    mat_config.save(file_out)
-
-    return np.array([E, nu])
+        {'type':'Hooke', 'C_11': C[0,0], 'C_12': C[0,1], 'C_44': C[3,3]}
+    mat_config.save(tmp_path/'material.yaml')
 
 
-def numerics_setup(res_path, tmp_path, p_s, r_int):
+def numerics_setup(res_path, tmp_path, p_s, r_int = None):
     """Update shape function and integration orders in numerics file."""
     numerics_config = damask.YAML.load(res_path/'numerics.yaml')
     numerics_config['solver']['mesh']['p_s'] = p_s
     if r_int: numerics_config['solver']['mesh']['reduced_integration'] = r_int
     numerics_config.save(tmp_path/'numerics.yaml')
+
+
+def elastic_constants(np_rng, isotropic_stiffness):
+    """Compute elasticity matrix."""
+    C = isotropic_stiffness(np_rng, [90.e9,130.e9], [55.e9,65.e9])
+    E = ((C[0,0]-C[0,1])*(C[0,0]+2*C[0,1]))/(C[0,0]+C[0,1])
+    nu = C[0,1]/(C[0,0]+C[0,1])
+
+    return C, E, nu
 
 
 def nodes_idx(el, order):
@@ -199,13 +168,12 @@ def nodes_idx(el, order):
     return idx
 
 
-def displ_analytical(elast_prop, u0, edge, x_n, chop = 1.0e-12):
-    """Analytical solution."""
+def displ_analytical(E, nu, u0, edge, x_n, chop = 1.0e-12):
+    """Displacements analytical solution in polar coordinates."""
     aa, bb = 5.0, 10.0
-    EE, nu = elast_prop[0], elast_prop[0]
     NN = aa**2 - bb**2 + (aa**2 + bb**2) * np.log(bb / aa)
-    PP = -u0 * NN * EE / np.pi / (aa**2 + bb**2)
-    PN = PP / (EE * NN)
+    PP = -u0 * NN * E / np.pi / (aa**2 + bb**2)
+    PN = PP / (E * NN)
     KK = PN * (1/2*(1-3*nu)*aa**2 - bb**2*(1+nu)/2 - (aa**2+bb**2)*(1-nu)*np.log(aa))
 
     rr, tt = r_t_analytical(x_n, edge, aa, bb)
@@ -289,7 +257,7 @@ def damask_results(tmp_path, job):
                          [('tri',  i+1,  False)  for i in range(5)] +
                          [('quad',  1,   True)]                     +
                          [('quad', i+1,  False)  for i in range(5)])
-def test_mesh_quadrature_2D(res_path, copy_files, tmp_path, np_rng,
+def test_mesh_quadrature_2D(res_path, copy_files, tmp_path, np_rng, isotropic_stiffness,
                             el, p_s, r_int):
     mesh = f'curved_{el}'
     load = 'load_curved'
@@ -297,8 +265,10 @@ def test_mesh_quadrature_2D(res_path, copy_files, tmp_path, np_rng,
 
     copy_files(res_path, tmp_path, [f'{mesh}.msh', 'numerics.yaml'])
 
-    u_BC = load_setup(damask.YAML.load(res_path/f'{load}.yaml'), tmp_path, np_rng)
-    elast_prop = material_setup(res_path/'material_base.yaml', tmp_path/'material.yaml', np_rng)
+    u_BC = np_rng.uniform(-5.e-3,-1.e-3)
+    load_setup(damask.YAML.load(res_path/f'{load}.yaml'), tmp_path, u_BC)
+    C, E, nu = elastic_constants(np_rng, isotropic_stiffness)
+    material_setup(res_path, tmp_path, C)
     numerics_setup(res_path, tmp_path, p_s, r_int)
 
     damask.util.run(f'damask_mesh -m material.yaml -l {load}.yaml -g {mesh}.msh ' +
@@ -308,7 +278,7 @@ def test_mesh_quadrature_2D(res_path, copy_files, tmp_path, np_rng,
 
     for edge in ['inn', 'out', 'bot', 'top']:
         u_r_D, u_t_D = displ_damask(edge, x_n[idx[edge]], u_n[idx[edge]])
-        u_r,   u_t   = displ_analytical(elast_prop, u_BC, edge, x_n[idx[edge]])
+        u_r,   u_t   = displ_analytical(E, nu, u_BC, edge, x_n[idx[edge]])
 
         if el == 'quad' and p_s == 1 and r_int:                                                     # hourglassing
             # In this particular case, every other node has the correct displacement,
@@ -323,7 +293,7 @@ def test_mesh_quadrature_2D(res_path, copy_files, tmp_path, np_rng,
 
 @pytest.mark.parametrize(  'el,   p_s,  r_int',
                          [('hex', i+1,  False)  for i in range(3)])
-def test_mesh_quadrature_3D(res_path, copy_files, tmp_path, np_rng,
+def test_mesh_quadrature_3D(res_path, copy_files, tmp_path, np_rng, isotropic_stiffness,
                             el, p_s, r_int):
     mesh = f'curved_{el}'
     load = 'load_curved'
@@ -331,8 +301,10 @@ def test_mesh_quadrature_3D(res_path, copy_files, tmp_path, np_rng,
 
     copy_files(res_path, tmp_path, [f'{mesh}.msh', 'numerics.yaml'])
 
-    u_BC = load_setup(damask.YAML.load(res_path/f'{load}.yaml'), tmp_path, np_rng)
-    elast_prop = material_setup(res_path/'material_base.yaml', tmp_path/'material.yaml', np_rng)
+    u_BC = np_rng.uniform(-5.e-3,-1.e-3)
+    load_setup(damask.YAML.load(res_path/f'{load}.yaml'), tmp_path, u_BC)
+    C, E, nu = elastic_constants(np_rng, isotropic_stiffness)
+    material_setup(res_path, tmp_path, C)
     numerics_setup(res_path, tmp_path, p_s, r_int)
 
     damask.util.run(f'damask_mesh -m material.yaml -l {load}.yaml -g {mesh}.msh ' +
@@ -342,7 +314,7 @@ def test_mesh_quadrature_3D(res_path, copy_files, tmp_path, np_rng,
 
     for edge in ['inn', 'out', 'bot']:
         u_r_D, u_t_D = displ_damask(edge, x_n[idx[edge]], u_n[idx[edge]])
-        u_r,   u_t   = displ_exact(elast_prop, u_BC, edge, x_n[idx[edge]])
+        u_r,   u_t   = displ_analytical(E, nu, u_BC, edge, x_n[idx[edge]])
 
         assert np.allclose(u_r_D, u_r, rtol = 1.0e-5, atol = 5.0e-3)
         assert np.allclose(u_t_D, u_t, rtol = 1.0e-5, atol = 5.0e-3)
@@ -350,7 +322,7 @@ def test_mesh_quadrature_3D(res_path, copy_files, tmp_path, np_rng,
 
 @pytest.mark.parametrize(   'el,   p_s,   size',
                          [('quad', i+2,  15-2*i) for i in range(4)])
-def test_mesh_quadrature_ho(res_path, copy_files, tmp_path, np_rng,
+def test_mesh_quadrature_ho(res_path, copy_files, tmp_path, np_rng, isotropic_stiffness,
                             el, p_s, size):
     mesh = f'curved_{el}_ho_n{size}'    # size: number of nodes within 'inn'/'out' edges
     load = 'load_curved'
@@ -358,9 +330,11 @@ def test_mesh_quadrature_ho(res_path, copy_files, tmp_path, np_rng,
 
     copy_files(res_path, tmp_path, [f'{mesh}.msh', 'numerics.yaml'])
 
-    u_BC = load_setup(damask.YAML.load(res_path/f'{load}.yaml'), tmp_path, np_rng)
-    elast_prop = material_setup(res_path/'material_base.yaml', tmp_path/'material.yaml', np_rng)
-    numerics_setup(res_path, tmp_path, p_s, False)
+    u_BC = np_rng.uniform(-5.e-3,-1.e-3)
+    load_setup(damask.YAML.load(res_path/f'{load}.yaml'), tmp_path, u_BC)
+    C, E, nu = elastic_constants(np_rng, isotropic_stiffness)
+    material_setup(res_path, tmp_path, C)
+    numerics_setup(res_path, tmp_path, p_s)
 
     damask.util.run(f'damask_mesh -m material.yaml -l {load}.yaml -g {mesh}.msh ' +
                     f'-n numerics.yaml -j {job}', wd = tmp_path)
@@ -369,7 +343,7 @@ def test_mesh_quadrature_ho(res_path, copy_files, tmp_path, np_rng,
 
     for edge in ['inn', 'out', 'bot', 'top']:
         u_r_D, u_t_D = displ_damask(edge, x_n[idx[edge]], u_n[idx[edge]])
-        u_r,   u_t   = displ_exact(elast_prop, u_BC, edge, x_n[idx[edge]])
+        u_r,   u_t   = displ_analytical(E, nu, u_BC, edge, x_n[idx[edge]])
 
         assert np.allclose(u_r_D, u_r, rtol = 1.0e-5, atol = 5.0e-3)
         assert np.allclose(u_t_D, u_t, rtol = 1.0e-5, atol = 5.0e-3)

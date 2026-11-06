@@ -150,53 +150,25 @@ def load_setup(np_rng, load_config, BC_values, n_D, scaling, key, version):
     return load_config
 
 
-def material_setup(mat_config, np_rng):
-    """
-    Randomized material properties.
-
-    The stiffness matrix must be positive definite.
-    We additionally constrain its condition number
-    to max(eigvals)/min(eigvals) < 100,
-    since well-conditioned systems typically exhibit
-    closer agreement with the analytical solution.
-    """
-    unstable = True
-    while unstable:
-        C_11 = C_33 = 90.e9 + 40.e9 * np_rng.random()
-        C_12 = C_13 = 55.e9 + 10.e9 * np_rng.random()
-        C_44 = C_66 = 0.5 * (C_11 - C_12)
-
-        C = np.array([[C_11, C_12, C_13,  0.0,  0.0,   0.0],
-                      [C_12, C_11, C_12,  0.0,  0.0,   0.0],
-                      [C_13, C_12, C_33,  0.0,  0.0,   0.0],
-                      [ 0.0,  0.0,  0.0, C_44,  0.0,   0.0],
-                      [ 0.0,  0.0,  0.0,  0.0,  C_44,  0.0],
-                      [ 0.0,  0.0,  0.0,  0.0,  0.0,  C_66]])
-
-        eigvals = np.linalg.eigvalsh(C)
-        unstable = np.min(eigvals)/np.max(eigvals) < 0.01
-    print('eigenvalues', eigvals)
-
-    # Set up material file
+def material_setup(mat_config, C, rng):
+    """Set up material configuration."""
     mat_config['phase']['phase_0']['mechanical']['elastic'] = \
-        {'type':'Hooke', 'C_11': C_11, 'C_12': C_12, 'C_44': C_44,
-                         'C_33': C_33, 'C_13': C_13, 'C_66': C_66}
-    mat_config = mat_config.material_add(phase = ['phase_0'],
-                                         O = damask.Rotation.from_random(1,rng=np_rng),
-                                         homogenization = 'SX')
-    return mat_config
-
+        {'type':'Hooke', 'C_11': C[0,0], 'C_12': C[0,1], 'C_44': C[3,3]}
+    return mat_config.material_add(phase = ['phase_0'],
+                                   O = damask.Rotation.from_random(1,rng=rng),
+                                   homogenization = 'SX')
 
 @pytest.mark.parametrize('n_D', [2, 3])
 @pytest.mark.parametrize('BC_type', ['u', 'f'])
 @pytest.mark.parametrize('scaling', ['linear', 'nonlin'])
-def test_mesh_BC_coherence(assert_allclose,res_path, copy_files, tmp_path, np_rng,
+def test_mesh_BC_coherence(assert_allclose,res_path, copy_files, tmp_path, np_rng, isotropic_stiffness,
                            n_D, BC_type, scaling, petsc_version):
     copy_files(res_path, tmp_path, [f'mesh_{n_D}D.msh', f'load_{n_D}D.yaml', 'numerics.yaml'])
 
     load_config = damask.LoadcaseMesh.load(tmp_path/f'load_{n_D}D.yaml')
     mat_config = damask.ConfigMaterial.load(res_path/'material_base.yaml')
-    material_setup(mat_config, np_rng).save(tmp_path/'material.yaml')
+    C = isotropic_stiffness(np_rng, [90.e9,130.e9], [55.e9,65.e9])
+    material_setup(mat_config, C, np_rng).save(tmp_path/'material.yaml')
     BC_values = BC_setup(np_rng, n_D, BC_type)
 
     """ Reference solution (version 0, x_dot)"""
@@ -225,12 +197,13 @@ def test_mesh_BC_coherence(assert_allclose,res_path, copy_files, tmp_path, np_rn
 @pytest.mark.parametrize('n_D', [2, 3])
 @pytest.mark.parametrize('BC_type', ['u', 'f'])
 @pytest.mark.parametrize('scaling', ['linear', 'nonlin'])
-def test_mesh_BC_coherence_cyclic(res_path, copy_files, tmp_path, np_rng,
+def test_mesh_BC_coherence_cyclic(res_path, copy_files, tmp_path, np_rng, isotropic_stiffness,
                                   n_D, BC_type, scaling, petsc_version):
     copy_files(res_path, tmp_path, [f'mesh_{n_D}D.msh', f'load_{n_D}D.yaml', 'numerics.yaml'])
 
     mat_config = damask.ConfigMaterial.load(res_path/'material_base.yaml')
-    material_setup(mat_config, np_rng).save(tmp_path/'material.yaml')
+    C = isotropic_stiffness(np_rng, [90.e9,130.e9], [55.e9,65.e9])
+    material_setup(mat_config, C, np_rng).save(tmp_path/'material.yaml')
     BC_values = BC_setup(np_rng, n_D, BC_type)
 
     """Numerical solution."""
