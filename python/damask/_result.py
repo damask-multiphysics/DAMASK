@@ -2314,6 +2314,7 @@ class Result:
                                            for k in range(n_cells)]))
                     case _:
                         raise ValueError('visualization not implemented for quadrilaterals with p_s > 3')
+
             elif cell_t == 'HEXAHEDRON':
                 match n_ips:
                     case  1:                                                                        # quad = 'o1r'
@@ -2449,7 +2450,6 @@ class Result:
                             ])
                     case  _:
                         raise ValueError('extrapolation not implemented for triangles with p_s > 3')
-
             elif cell_t == 'QUADRILATERAL':
                 match n_ips:
                     case 1:                                                                         # quad = 'o1r'
@@ -2482,6 +2482,103 @@ class Result:
                                          ])
                     case _:
                         raise ValueError('extrapolation not implemented for quadrilaterals with p_s > 2')
+
+            elif cell_t == 'TETRAHEDRON':
+                match n_ips:
+                    case 1:                                                                         # quad = 'o1f'
+                        coefs = np.array([[1]]*n_nodes)
+                    case 4:                                                                         # quad = 'o2f'
+                        c1, c2, c3 = (1+np.sqrt(5))/4, (1-np.sqrt(5))/4, (1+3*np.sqrt(5))/4
+                        coefs = np.array([
+                                          [c2, c2, c3, c2],
+                                          [c2, c3, c2, c2],
+                                          [c3, c2, c2, c2],
+                                          [c2, c2, c2, c3],
+                                          [c2, c1, c1, c2],
+                                          [c1, c1, c2, c2],
+                                          [c1, c2, c1, c2],
+                                          [c2, c2, c1, c1],
+                                          [c2, c1, c2, c1],
+                                          [c1, c2, c2, c1]
+                                         ])
+                    case _:
+                        raise ValueError('extrapolation not implemented for tetrahedra with p_s > 2')
+
+            elif cell_t == 'HEXAHEDRON':
+                match n_ips:
+                    case  1:                                                                        # quad = 'o1r'
+                        coefs = np.array([[1]*n_nodes])
+                    case  8:                                                                        # quad = 'o1f'
+                        c1p, c1m = (5+3*np.sqrt(3))/4, (5-3*np.sqrt(3))/4
+                        c2p, c2m = (np.sqrt(3)-1)/4, -(np.sqrt(3)+1)/4
+                        coefs = np.array([
+                                          [c1p, c2m, c2m, c2p, c2m, c2p, c2p, c1m],
+                                          [c2m, c2p, c2p, c1m, c1p, c2m, c2m, c2p],
+                                          [c2p, c1m, c2m, c2p, c2m, c2p, c1p, c2m],
+                                          [c2m, c2p, c1p, c2m, c2p, c1m, c2m, c2p],
+                                          [c2m, c1p, c2p, c2m, c2p, c2m, c1m, c2p],
+                                          [c2p, c2m, c1m, c2p, c2m, c1p, c2p, c2m],
+                                          [c1m, c2p, c2p, c2m, c2p, c2m, c2m, c1p],
+                                          [c2p, c2m, c2m, c1p, c1m, c2p, c2p, c2m]
+                                         ])
+                    case 27:                                                                        # quad = 'o2f'
+                        r15 = np.sqrt(15)
+                        c1p, c1m = 5*(5+r15)/108, 5*(5-r15)/108
+                        c2p, c2m = 5*(r15-4)/27, -5*(r15+4)/27
+                        c3p, c3m = 5*(35+9*r15)/108, 5*(35-9*r15)/108
+                        c4p, c4m = 2*(5+r15)/27, 2*(5-r15)/27
+                        c5p, c5m = 5*(4+r15)/18, 5*(4-r15)/18
+                        c6p, c6m = (r15-5)/9, -(r15+5)/9
+                        c7p, c7m = (5+r15)/6, (5-r15)/6
+                        c01, c02, c03, c04, c05 = -5/27, -8/27, 5/18, 4/9, -2/3
+                        coefs = np.full([27,27], 0.0)
+                        coefs[:20] = np.array([
+                            [c3p, c2m, c1p, c2m, c4p, c01, c1p, c01, c1m, c2m, c4p, c01, c4p, c02,
+                             c4m, c01, c4m, c2p, c1p, c01, c1m, c01, c4m, c2p, c1m, c2p, c3m],
+                            [c1p, c01, c1m, c01, c4m, c2p, c1m, c2p, c3m, c2m, c4p, c01, c4p, c02,
+                             c4m, c01, c4m, c2p, c3p, c2m, c1p, c2m, c4p, c01, c1p, c01, c1m],
+                            [c1m, c2p, c3m, c01, c4m, c2p, c1p, c01, c1m, c01, c4m, c2p, c4p, c02,
+                             c4m, c2m, c4p, c01, c1p, c01, c1m, c2m, c4p, c01, c3p, c2m, c1p],
+                            [c1p, c01, c1m, c2m, c4p, c01, c3p, c2m, c1p, c01, c4m, c2p, c4p, c02,
+                             c4m, c2m, c4p, c01, c1m, c2p, c3m, c01, c4m, c2p, c1p, c01, c1m],
+                            [c1p, c2m, c3p, c01, c4p, c2m, c1m, c01, c1p, c01, c4p, c2m, c4m, c02,
+                             c4p, c2p, c4m, c01, c1m, c01, c1p, c2p, c4m, c01, c3m, c2p, c1m],
+                            [c1m, c01, c1p, c2p, c4m, c01, c3m, c2p, c1m, c01, c4p, c2m, c4m, c02,
+                             c4p, c2p, c4m, c01, c1p, c2m, c3p, c01, c4p, c2m, c1m, c01, c1p],
+                            [c3m, c2p, c1m, c2p, c4m, c01, c1m, c01, c1p, c2p, c4m, c01, c4m, c02,
+                             c4p, c01, c4p, c2m, c1m, c01, c1p, c01, c4p, c2m, c1p, c2m, c3p],
+                            [c1m, c01, c1p, c01, c4p, c2m, c1p, c2m, c3p, c2p, c4m, c01, c4m, c02,
+                             c4p, c01, c4p, c2m, c3m, c2p, c1m, c2p, c4m, c01, c1m, c01, c1p],
+                            [  0,   0,   0,   0,   0,   0,   0,   0,   0, c5p, c6m, c03, c6m, c04,
+                             c6p, c03, c6p, c5m,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+                            [  0,   0,   0, c03, c6p, c5m,   0,   0,   0,   0,   0,   0, c6m, c04,
+                             c6p,   0,   0,   0,   0,   0,   0, c5p, c6m, c03,   0,   0,   0],
+                            [  0,   0,   0,   0,   0,   0,   0,   0,   0, c03, c6p, c5m, c6m, c04,
+                             c6p, c5p, c6m, c03,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+                            [  0,   0,   0, c5p, c6m, c03,   0,   0,   0,   0,   0,   0, c6m, c04,
+                             c6p,   0,   0,   0,   0,   0,   0, c03, c6p, c5m,   0,   0,   0],
+                            [  0,   0,   0,   0,   0,   0,   0,   0,   0, c03, c6m, c5p, c6p, c04,
+                             c6m, c5m, c6p, c03,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+                            [  0,   0,   0, c5m, c6p, c03,   0,   0,   0,   0,   0,   0, c6p, c04,
+                             c6m,   0,   0,   0,   0,   0,   0, c03, c6m, c5p,   0,   0,   0],
+                            [  0,   0,   0,   0,   0,   0,   0,   0,   0, c5m, c6p, c03, c6p, c04,
+                             c6m, c03, c6m, c5p,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+                            [  0,   0,   0, c03, c6m, c5p,   0,   0,   0,   0,   0,   0, c6p, c04,
+                             c6m,   0,   0,   0,   0,   0,   0, c5m, c6p, c03,   0,   0,   0],
+                            [  0, c5p,   0,   0, c6m,   0,   0, c03,   0,   0, c6m,   0,   0, c04,
+                               0,   0, c6p,   0,   0, c03,   0,   0, c6p,   0,   0, c5m,   0],
+                            [  0, c03,   0,   0, c6p,   0,   0, c5m,   0,   0, c6m,   0,   0, c04,
+                               0,   0, c6p,   0,   0, c5p,   0,   0, c6m,   0,   0, c03,   0],
+                            [  0, c5m,   0,   0, c6p,   0,   0, c03,   0,   0, c6p,   0,   0, c04,
+                               0,   0, c6m,   0,   0, c03,   0,   0, c6m,   0,   0, c5p,   0],
+                            [  0, c03,   0,   0, c6m,   0,   0, c5p,   0,   0, c6p,   0,   0, c04,
+                               0,   0, c6m,   0,   0, c5m,   0,   0, c6p,   0,   0, c03,   0],
+                        ])
+                        coefs[20,[ 4,13,22]] = coefs[22,[10,13,16]] = coefs[24,[12,13,14]] = np.array([c7p, c05, c7m])
+                        coefs[21,[ 4,13,22]] = coefs[23,[10,13,16]] = coefs[25,[12,13,14]] = np.array([c7m, c05, c7p])
+                        coefs[26,13] = 1.0
+                    case  _:
+                        raise ValueError('extrapolation not implemented for hexahedra with p_s > 2')
 
             if measures is not None:
                 weights_cfs = measures
