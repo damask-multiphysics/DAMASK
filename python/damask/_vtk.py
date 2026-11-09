@@ -489,6 +489,112 @@ class VTK:
                     case  _:
                         raise ValueError('Visualization not implemented for quadrilaterals with p_s > 3')
 
+            elif cell_type == 'TETRA':
+                match n_ips:
+                    case 1:                                                                         # quad = 'o1f'
+                        pass
+                    case 4:                                                                         # quad = 'o2f'
+                        idx = np.array([[6,5,2,9],[0,5,6,9],                                        # IP0
+                                        [1,5,4,8],[0,4,5,8],                                        # IP1
+                                        [0,8,5,9],[0,7,8,9],                                        # IP2
+                                        [7,8,9,3]])                                                 # IP3
+                    case _:
+                        raise ValueError('visualization not implemented for tetrahedra with p_s > 2')
+
+                T_e = np.vstack([connectivity[k,idx] for k in range(n_cells)]) if len(idx) else \
+                      connectivity
+
+            elif cell_type == 'HEXA':
+                match n_ips:
+                    case  1:                                                                        # quad= 'o1r'
+                        pass
+                    case  8:                                                                        # quad= 'o1f'
+                        ns = lambda k,l : np.sum(nodes[connectivity[k,l]],axis=0)/len(l)
+                        nodes_ = np.vstack([(ns(k,[0,1]), ns(k,[1,2]), ns(k,[2,3]), ns(k,[3,0]),
+                                             ns(k,[4,5]), ns(k,[5,6]), ns(k,[6,7]), ns(k,[7,4]),
+                                             ns(k,[0,4]), ns(k,[1,5]), ns(k,[2,6]), ns(k,[3,7]),
+                                             ns(k,[0,1,4,5]), ns(k,[1,2,5,6]), ns(k,[2,3,6,7]),
+                                             ns(k,[0,3,4,7]), ns(k,[0,1,2,3]), ns(k,[4,5,6,7]),
+                                             ns(k,np.arange(8)))
+                                            for k in range(n_cells)])
+                        n19p = lambda k,l : n_nodes+(27-8)*k+np.array(l)
+                        T_e = np.vstack([np.concatenate(
+                                          ([connectivity[k,0]], n19p(k,[0,16,3,8,12,18,15]),        # IP 0
+                                           n19p(k,[0]), [connectivity[k,1]], n19p(k,[1,16,12,9,13,18]),
+                                           n19p(k,[16,1]), [connectivity[k,2]], n19p(k,[2,18,13,10,14]),
+                                           n19p(k,[3,16,2]), [connectivity[k,3]], n19p(k,[15,18,14,11]),
+                                           n19p(k,[8,12,18,15]), [connectivity[k,4]], n19p(k,[4,17,7]),
+                                           n19p(k,[12,9,13,18,4]), [connectivity[k,5]], n19p(k,[5,17]),
+                                           n19p(k,[18,13,10,14,17,5]), [connectivity[k,6]], n19p(k,[6]),
+                                           n19p(k,[15,18,14,11,7,17,6]), [connectivity[k,7]])       # IP 3
+                                          ).reshape(-1,8) for k in range(n_cells)])
+                    case 27:                                                                        # quad= 'o2f'
+                        nd = lambda k,i,j,w : (nodes[connectivity[k,i]] + \w
+                                              *(nodes[connectivity[k,j]]-nodes[connectivity[k,i]]))
+                        nt = lambda i,j,w : i + w * (j - i)
+                        nodes_ = np.vstack([np.vstack(
+                                            (n_27 := nd(k,0,1,1/3), n_28 := nd(k,0,1,2/3),
+                                             nd(k,1,2,1/3), nd(k,1,2,2/3),
+                                             n_31 := nd(k,2,3,1/3), n_32 := nd(k,2,3,2/3),
+                                             nd(k,3,0,1/3), nd(k,3,0,2/3),
+                                             nt(n_27,n_32,1/3), nt(n_28,n_31,1/3),
+                                             nt(n_28,n_31,2/3), nt(n_27,n_32,2/3),
+                                             n_39:= nd(k,0,4,1/3), n_40 := nd(k,1,5,1/3),
+                                             n_41:= nd(k,2,6,1/3), n_42 := nd(k,3,7,1/3),
+                                             n_43 := nt(n_39,n_40,1/3), n_44 := nt(n_39,n_40,2/3),
+                                             nt(n_40,n_41,1/3), nt(n_40,n_41,2/3),
+                                             n_47 := nt(n_41,n_42,1/3), n_48 := nt(n_41,n_42,2/3),
+                                             nt(n_42,n_39,1/3), nt(n_42,n_39,2/3),
+                                             nt(n_43,n_48,1/3), nt(n_44,n_47,1/3),
+                                             nt(n_44,n_47,2/3), nt(n_43,n_48,2/3),
+                                             n_55 := nd(k,0,4,2/3), n_56 := nd(k,1,5,2/3),
+                                             n_57 := nd(k,2,6,2/3), n_58 := nd(k,3,7,2/3),
+                                             n_59 := nt(n_55,n_56,1/3), n_60 := nt(n_55,n_56,2/3),
+                                             nt(n_56,n_57,1/3), nt(n_56,n_57,2/3),
+                                             n_63 := nt(n_57,n_58,1/3), n_64 := nt(n_57,n_58,2/3),
+                                             nt(n_58,n_55,1/3), nt(n_58,n_55,2/3),
+                                             nt(n_59,n_64,1/3), nt(n_60,n_63,1/3),
+                                             nt(n_60,n_63,2/3), nt(n_59,n_64,2/3),
+                                             n_71 := nd(k,4,5,1/3), n_72 := nd(k,4,5,2/3),
+                                             nd(k,5,6,1/3), nd(k,5,6,2/3),
+                                             n_75 := nd(k,6,7,1/3), n_76 := nd(k,6,7,2/3),
+                                             nd(k,7,4,1/3), nd(k,7,4,2/3),
+                                             nt(n_71,n_76,1/3), nt(n_72,n_75,1/3),
+                                             nt(n_72,n_75,2/3), nt(n_71,n_76,2/3)))
+                                            for k in range(n_cells)])
+                        n56p = lambda k, l : n_nodes+(64-8)*k+np.array(l)
+                        T_e = np.vstack([np.concatenate(
+                                         ([connectivity[k,0]], n56p(k,[0,8,7,12,16,24,23]),         # IP 0
+                                          n56p(k,[0,1,9,8,16,17,25,24]),                            # IP 9
+                                          n56p(k,[1]), [connectivity[k,1]], n56p(k,[2,9,17,+13,+18,25]),
+                                          n56p(k,[7,8,11,6,23,24,27,22]),
+                                          n56p(k,[8,9,10,11,24,25,26,27]),
+                                          n56p(k,[9,2,3,10,25,18,19,26]),
+                                          n56p(k,[6,11,5]), [connectivity[k,3]], n56p(k,[22,27,21,15]),
+                                          n56p(k,[11,10,4,5,27,26,20,21]),
+                                          n56p(k,[10,3]), [connectivity[k,2]], n56p(k,[4,26,19,14,20]),
+                                          n56p(k,[12,16,24,23,28,32,40,39]),                        # IP 1
+                                          n56p(k,[16,17,25,24,32,33,41,40]),                        # IP 10
+                                          n56p(k,[17,13,18,25,33,29,34,41]),                        # IP 19
+                                          n56p(k,[23,24,27,22,39,40,43,38]),
+                                          n56p(k,[24,25,26,27,40,41,42,43]),
+                                          n56p(k,[25,18,19,26,41,34,35,42]),
+                                          n56p(k,[22,27,21,15,38,43,37,31]),
+                                          n56p(k,[27,26,20,21,43,42,36,37]),
+                                          n56p(k,[26,19,14,20,42,35,30,36]),
+                                          n56p(k,[28,32,40,39]), [connectivity[k,4]], n56p(k,[44,52,51]),
+                                          n56p(k,[32,33,41,40,44,45,53,52]),
+                                          n56p(k,[33,29,34,41,45]), [connectivity[k,5]], n56p(k,[46,53]),
+                                          n56p(k,[39,40,43,38,51,52,55,50]),
+                                          n56p(k,[40,41,42,43,52,53,54,55]),
+                                          n56p(k,[41,34,35,42,53,46,47,54]),
+                                          n56p(k,[38,43,37,31,50,55,49]), [connectivity[k,7]],      # IP 8
+                                          n56p(k,[43,42,36,37,55,54,48,49]),                        # IP 17
+                                          n56p(k,[42,35,30,36,54,47]), [connectivity[k,6]] ,n56p(k,[48]))
+                                         ).reshape(-1,8) for k in range(n_cells)])
+                    case  _:
+                        raise ValueError('visualization not implemented for hexahedra with p_s > 2')
+
             nodes_ = nodes if nodes_ is None else np.vstack((nodes, nodes_))
             T_e    = connectivity if T_e is None else T_e
 

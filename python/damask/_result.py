@@ -757,12 +757,6 @@ class Result:
                 return f['geometry/x_n'][()]
 
     @property
-    def cell_type(self) -> str:
-        """VTK Cell type."""
-        with h5py.File(self.fname,'r') as f:
-            return f['/geometry'].attrs['VTK_CELL_TYPE']
-
-    @property
     def connectivity(self) -> npt.NDArray[np.integer]:
         """Element connectivity."""
         with h5py.File(self.fname,'r') as f:
@@ -2241,6 +2235,29 @@ class Result:
                     case  _:
                         raise ValueError('visualization not implemented for quadrilaterals with p_s > 3')
 
+            elif cell_t == 'TETRAHEDRON':
+                match n_ips:
+                    case  1:                                                                        # quad = 'o1f'
+                        pass
+                    case  4:                                                                        # quad = 'o2f'
+                        nd = lambda k,n,l : data[n*k+np.array(l)]
+                        data_ = np.vstack([nd(k,4,[0,0,1,1,2,2,3]) for k in range(n_cells)])
+                    case _:
+                        raise ValueError('visualization not implemented for tetrahedra with p_s > 2')
+
+            elif cell_t == 'HEXAHEDRON':
+                match n_ips:
+                    case  1:                                                                        # quad = 'o1r'
+                        pass
+                    case  8:                                                                        # quad = 'o1f'
+                        idx = np.array([0,4,6,2,1,5,7,3])
+                    case 27:                                                                        # quad = 'o2f'
+                        idx = np.array([0, 9,18,3,12,21,6,15,24,    # z = -1/3
+                                        1,10,19,4,13,22,7,16,25,    # z =  0
+                                        2,11,20,5,14,23,8,17,26])   # z = +1/3
+                    case  _:
+                        raise ValueError('visualization not implemented for hexahedra with p_s > 2')
+
             # every case not handled returns original node data
             data_ = np.vstack([data[(n_ips)*k+idx] for k in range(n_cells)]) if len(idx) else \
                     data if data_ is None else data_
@@ -2292,6 +2309,53 @@ class Result:
                                            for k in range(n_cells)]))
                     case _:
                         raise ValueError('visualization not implemented for quadrilaterals with p_s > 3')
+
+            elif cell_t == 'HEXAHEDRON':
+                match n_ips:
+                    case  1:                                                                        # quad = 'o1r'
+                        pass
+                    case  8:                                                                        # quad = 'o1f'
+                        data_ = np.vstack(([(ns(k,[0,1]), ns(k,[1,2]), ns(k,[2,3]),
+                                             ns(k,[3,0]), ns(k,[4,5]), ns(k,[5,6]),
+                                             ns(k,[6,7]), ns(k,[7,4]), ns(k,[0,4]),
+                                             ns(k,[1,5]), ns(k,[2,6]), ns(k,[3,7]),
+                                             ns(k,[0,1,4,5]), ns(k,[1,2,5,6]),
+                                             ns(k,[2,3,6,7]), ns(k,[0,3,4,7]),
+                                             ns(k,[0,1,2,3]), ns(k,[4,5,6,7]),
+                                             ns(k,[0,1,2,3,4,5,6,7]))
+                                          for k in range(n_cells)]))
+                    case 27:                                                                        # quad = 'o2f'
+                        data_ = np.vstack(([(ns(k,[0,8,8,8]), ns(k,[1,8,8,8]),
+                                             ns(k,[1,9,9,9]), ns(k,[2,9,9,9]),
+                                             ns(k,[2,10,10,10]), ns(k,[3,10,10,10]),
+                                             ns(k,[3,11,11,11]), ns(k,[0,11,11,11]),
+                                             ns(k,[0,8,11,24,24,24]), ns(k,[1,8,9,24,24,24]),
+                                             ns(k,[2,9,10,24,24,24]), ns(k,[3,10,11,24,24,24]),
+                                             ns(k,[0,16,16,16]), ns(k,[1,17,17,17]),
+                                             ns(k,[2,18,18,18]), ns(k,[3,19,19,19]),
+                                             ns(k,[0,8,16,22,22,22]), ns(k,[1,8,17,22,22,22]),
+                                             ns(k,[1,9,17,21,21,21]), ns(k,[2,9,18,21,21,21]),
+                                             ns(k,[2,10,18,23,23,23]), ns(k,[3,10,19,23,23,23]),
+                                             ns(k,[3,11,19,20,20,20]), ns(k,[0,11,16,20,20,20]),
+                                             ns(k,[16,20,22,26,26,26]), ns(k,[17,21,22,26,26,26]),
+                                             ns(k,[18,21,23,26,26,26]), ns(k,[19,20,23,26,26,26]),
+                                             ns(k,[4,16,16,16]), ns(k,[5,17,17,17]),
+                                             ns(k,[6,18,18,18]), ns(k,[7,19,19,19]),
+                                             ns(k,[4,12,16,22,22,22]), ns(k,[5,12,17,22,22,22]),
+                                             ns(k,[5,13,17,21,21,21]), ns(k,[6,13,18,21,21,21]),
+                                             ns(k,[6,14,18,23,23,23]), ns(k,[7,14,19,23,23,23]),
+                                             ns(k,[7,15,19,20,20,20]), ns(k,[4,15,16,20,20,20]),
+                                             ns(k,[16,20,22,26,26,26]), ns(k,[17,21,22,26,26,26]),
+                                             ns(k,[18,21,23,26,26,26]), ns(k,[19,20,23,26,26,26]),
+                                             ns(k,[4,12,12,12]), ns(k,[5,12,12,12]),
+                                             ns(k,[5,13,13,13]), ns(k,[6,13,13,13]),
+                                             ns(k,[6,14,14,14]), ns(k,[7,14,14,14]),
+                                             ns(k,[7,15,15,15]), ns(k,[4,15,15,15]),
+                                             ns(k,[4,12,15,25,25,25]), ns(k,[5,12,13,25,25,25]),
+                                             ns(k,[6,13,14,25,25,25]), ns(k,[7,14,15,25,25,25]))
+                                          for k in range(n_cells)]))
+                    case _:
+                        raise ValueError('visualization not implemented for hexahedra with p_s > 2')
 
             # every case not handled returns original node data
             data_ = data if data_ is None else np.vstack((data, data_))
