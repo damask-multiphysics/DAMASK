@@ -769,15 +769,10 @@ class Result:
             return f['geometry/T_e'][()]
 
     @property
-    def geometry0(self) -> VTK:
-        """Initial/undeformed geometry."""
-        if self.structured:
-            return VTK.from_image_data(self.cells,self.size,self.origin)
-        else:
-            with h5py.File(self.fname,'r') as f:
-                return VTK.from_unstructured_grid(f['/geometry/x_n'][()],
-                                                  f['/geometry/T_c'][()]-1,
-                                                  f['/geometry/T_c'].attrs['VTK_TYPE'])
+    def cell_type(self) -> str:
+        """VTK Cell type."""
+        with h5py.File(self.fname,'r') as f:
+            return f['/geometry'].attrs['VTK_CELL_TYPE']
 
 
     def add_absolute(self, x: str):
@@ -2137,7 +2132,8 @@ class Result:
                    target_dir: str | PathLike | None = None,
                    fill_float: float = np.nan,
                    fill_int: int = 0,
-                   parallel: bool = True):
+                   parallel: bool = True,
+                   split: bool | None = True):
         """
         Export to VTK cell/point data.
 
@@ -2169,6 +2165,12 @@ class Result:
         parallel : bool, optional
             Write VTK files in parallel in a separate background process.
             Defaults to True.
+        split: bool, optional
+            Split cells down into linear elements. Each element gets assigned
+            the value of an integration point value (vtkCellData).
+            Existing IP values are used ("true" values plot); no averaging is done.
+            Only used for vtkUnstructuredGrid (mesh data).
+            Defaults to True.
         """
         def get_component_names(dataset):
             if 'systems' in dataset.dtype.metadata:
@@ -2182,9 +2184,122 @@ class Result:
             else:
                 return None
 
+        def map_point_data(r,
+                           data: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
+            """
+            Map integration point values to elements created during splitting.
+
+            Each element gets a single value; ParaView expects a single vtkCellData
+            value per cell. This value may be the same as the original value, if
+            the integration point lays within the new element, or an average of
+            surrounding integration points otherwise.
+            """
+            n_cells = r.connectivity.shape[0]
+            n_ips   = r.coordinates0_point.shape[0] // n_cells  # per cell
+            cell_t  = r.cell_type
+
+            data_ = None
+            idx = np.empty(0, dtype=np.int64)
+            if len(data.shape) == 1: data = data[:,np.newaxis]
+
+            if cell_t == 'TRIANGLE':
+                nd = lambda k,n,l : data[n*k+np.array(l)]
+                match n_ips:
+                    case  1:                                                                        # quad = 'o1f'
+                        pass
+                    case  3:                                                                        # quad = 'o2f'
+                        data_ = np.vstack([nd(k,3,[0,0,1,2]) for k in range(n_cells)])
+                    case  6:                                                                        # quad = 'o3f'
+                        data_ = np.vstack([nd(k,6,[0,1,1,2,2,3,4,4,5]) for k in range(n_cells)])
+                    case  7:                                                                        # quad = 'o4r'
+                        data_ = np.vstack([nd(k,7,[0,0,0,1,1,2,2,2,3,3,4,4,5,5,6,6])
+                                           for k in range(n_cells)])
+                    case 12:                                                                        # quad = 'o4f'
+                        data_ = np.vstack([nd(k,12,[0,0,1,1,2,3,4,5,6,6,7,8,8,9,10,11])
+                                           for k in range(n_cells)])
+                    case 15:                                                                        # quad = 'o5r'
+                        data_ = np.vstack([nd(k,15,[0,0,1,1,2,3,4,4,5,5,6,7,7,8,8,9,9,
+                                                    10,10,11,11,12,12,13,14])
+                                           for k in range(n_cells)])
+                    case 16:                                                                        # quad = 'o5f'
+                        data_ = np.vstack([nd(k,16,[0,0,0,1,1,1,2,2,2,2,3,4,4,5,6,7,7,
+                                                    8,9,10,11,12,13,14,15])
+                                           for k in range(n_cells)])
+                    case _:
+                        raise ValueError('visualization not implemented for triangles with p_s > 5')
+
+            elif cell_t == 'QUADRILATERAL':
+                match n_ips:
+                    case  1:                                                                        # quad = 'o1r'
+                        pass
+                    case  4:                                                                        # quad = 'o1f'
+                        idx = np.array([0,2,1,3])
+                    case  9:                                                                        # quad = 'o2f'
+                        idx = np.array([0,3,6,1,4,7,2,5,8])
+                    case 16:                                                                        # quad = 'o3f'
+                        idx = np.array([0,4,8,12,1,5,9,13,2,6,10,14,3,7,11,15])
+                    case  _:
+                        raise ValueError('visualization not implemented for quadrilaterals with p_s > 3')
+
+            # every case not handled returns original node data
+            data_ = np.vstack([data[(n_ips)*k+idx] for k in range(n_cells)]) if len(idx) else \
+                    data if data_ is None else data_
+
+            return np.squeeze(data_) if len(data_) > 1 else data_
+
+
+        def map_node_data(r, data:
+                          npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
+            """
+            Map nodal values from the original mesh onto new nodes added during splitting.
+
+            New nodes added (e.g. in-edge, in-face), if any, get assigned a weighted
+            average of the surrounding nodal values.
+            """
+            n_cells = r.connectivity.shape[0]
+            n_ips   = r.coordinates0_point.shape[0] // r.connectivity.shape[0] # per cell
+            cell_t  = r.cell_type
+
+            data_ = None
+            ns    = lambda k,l : np.array(np.sum(data[r.connectivity[k,np.array(l)]],axis=0)/len(l))
+
+            if cell_t == 'QUADRILATERAL':
+                match n_ips:
+                    case  1:                                                                        # quad = 'o1r'
+                        pass
+                    case  4:                                                                        # quad = 'o1f'
+                        data_ = np.vstack(([(ns(k,[0,1]), ns(k,[1,2]), ns(k,[2,3]), ns(k,[3,0]),
+                                             ns(k,[0,1,2,3]))
+                                          for k in range(n_cells)]))
+                    case  9:                                                                        # quad = 'o2f'
+                        data_ = np.vstack(([(ns(k,[0,4,4]), ns(k,[1,4,4]),
+                                             ns(k,[1,5,5]), ns(k,[2,5,5]),
+                                             ns(k,[2,6,6]), ns(k,[3,6,6]),
+                                             ns(k,[3,7,7]), ns(k,[0,7,7]),
+                                             ns(k,[0,4,7,8,8,8]), ns(k,[1,4,5,8,8,8]),
+                                             ns(k,[2,5,6,8,8,8]), ns(k,[3,6,7,8,8,8]))
+                                           for k in range(n_cells)]))
+                    case 16:                                                                        # quad = 'o3f'
+                        data_ = np.vstack(([(ns(k,[0,4,4,4]), ns(k,[4,5]), ns(k,[1,5,5,5]),
+                                             ns(k,[1,6,6,6]), ns(k,[6,7]), ns(k,[2,7,7,7]),
+                                             ns(k,[2,9,9,9]), ns(k,[8,9]), ns(k,[3,8,8,8]),
+                                             ns(k,[3,11,11,11]), ns(k,[10,11]),
+                                             ns(k,[0,10,10,10]), ns(k,[0,4,10,12,12,12]),
+                                             ns(k,[1,5,6,13,13,13]), ns(k,[2,7,9,15,15,15]),
+                                             ns(k,[3,8,11,14,14,14]), ns(k,[4,5,12,12,13,13]),
+                                             ns(k,[6,7,13,13,15,15]), ns(k,[8,9,14,14,15,15]),
+                                             ns(k,[10,11,12,12,14,14]), ns(k,[12,13,14,15]))
+                                           for k in range(n_cells)]))
+                    case _:
+                        raise ValueError('visualization not implemented for quadrilaterals with p_s > 3')
+
+            # every case not handled returns original node data
+            data_ = data if data_ is None else np.vstack((data, data_))
+
+            return data_
         match mode.lower():
             case 'cell':
-                v = self.geometry0
+                v = self.get_VTK_geometry0(split,extrapolation)
             case 'point':
                 v = VTK.from_poly_data(self.coordinates0_point)
             case _:
@@ -2210,12 +2325,19 @@ class Result:
             created = f.attrs['created']
             v.comments.append(f'{creator} ({created})')
 
-            for inc in util.show_progress(self._visible['increments']):
+            mapping = split and not (self.structured or 'T_c' in f['/geometry'].keys())
 
+            for inc in util.show_progress(self._visible['increments']):
                 dset_name = 'u_n' if mode.lower() == 'cell' else 'u_p'
                 if dset_name in _match(self._visible['geometry'],f[inc]['geometry']):
                     dataset = _read(f['/'.join([inc,'geometry',dset_name])])
+                    if mapping: dataset = map_node_data(self,dataset)
                     v = v.set(f'u ({dataset.dtype.metadata["unit"]})',dataset)                      # type: ignore[index]
+
+                if not split:   # skip cell fields
+                    v.save(out_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
+                           parallel=parallel)
+                    continue
 
                 for kind, suffixes_ in zip(['phase', 'homogenization'],[suffixes, ['']]):
                     mergeable, not_mergeable = _is_mergeable(self._get_layout(f,inc,kind,output))
@@ -2237,7 +2359,8 @@ class Result:
                             for name,dataset in d.items():
                                 v = v.set(':'.join([kind,field,name])\
                                           +f' ({dataset.dtype.metadata["unit"]})',                  # type: ignore[index]
-                                          dataset,component_names=get_component_names(dataset))
+                                          map_point_data(self,dataset) if mapping else dataset,
+                                          component_names=get_component_names(dataset))
 
                     for field, dsets in not_mergeable.items():
                         for dset_name, dset in dsets.items():
@@ -2254,7 +2377,8 @@ class Result:
                                 for name,dataset in d.items():
                                     v = v.set(':'.join([kind,field,label,name])\
                                               +f' ({dataset.dtype.metadata["unit"]})',              # type: ignore[index]
-                                              dataset,component_names=get_component_names(dataset))
+                                              map_point_data(self,dataset) if mapping else dataset,
+                                              component_names=get_component_names(dataset))
 
                 v.save(out_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
                        parallel=parallel)
@@ -2564,3 +2688,22 @@ class Result:
                                                                       ['creator', 'created', 'overwritten'])
 
         return layout.to_regular()
+
+
+    def get_VTK_geometry0(self,
+                         split: bool | None = True,
+                         extrapolate: Literal[None, 'average', 'weighted'] = None):
+        """Initial/undeformed geometry."""
+        if self.structured:
+            return VTK.from_image_data(self.cells,self.size,self.origin)
+        else:
+            with h5py.File(self.fname,'r') as f:
+                if 'T_c' in f['/geometry'].keys():                                                  # cells (MSC.Marc)
+                    return VTK.from_unstructured_grid(f['/geometry/x_n'][()],
+                                                      f['/geometry/T_c'][()]-1,
+                                                      f['/geometry/T_c'].attrs['VTK_TYPE'])
+                else:                                                                               # elements (mesh)
+                    return VTK.from_unstructured_grid(f['/geometry/x_n'][()],
+                                                      f['/geometry/T_e'][()],
+                                                      f['/geometry'].attrs['VTK_CELL_TYPE'],
+                                                      f['/geometry/x_p'][()] if split else None)
