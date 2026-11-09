@@ -2127,7 +2127,8 @@ class Result:
                    fill_float: float = np.nan,
                    fill_int: int = 0,
                    parallel: bool = True,
-                   split: bool | None = True):
+                   split: bool | None = True,
+                   extrapolation: Literal[None, 'average', 'weighted'] = None):
         """
         Export to VTK cell/point data.
 
@@ -2165,6 +2166,12 @@ class Result:
             Existing IP values are used ("true" values plot); no averaging is done.
             Only used for vtkUnstructuredGrid (mesh data).
             Defaults to True.
+        extrapolation: str, optional
+            Averaging method for extrapolating integration points values to nodes.
+            Converts all cell fields (vtkCellData) into nodal fields (vtkPointData).
+            Only used for vtkUnstructuredGrid (mesh data).
+            Mutually exclusive with "split".
+            Defaults to None.
         """
         def get_component_names(dataset):
             if 'systems' in dataset.dtype.metadata:
@@ -2234,7 +2241,6 @@ class Result:
                         idx = np.array([0,4,8,12,1,5,9,13,2,6,10,14,3,7,11,15])
                     case  _:
                         raise ValueError('visualization not implemented for quadrilaterals with p_s > 3')
-
             elif cell_t == 'TETRAHEDRON':
                 match n_ips:
                     case  1:                                                                        # quad = 'o1f'
@@ -2244,7 +2250,6 @@ class Result:
                         data_ = np.vstack([nd(k,4,[0,0,1,1,2,2,3]) for k in range(n_cells)])
                     case _:
                         raise ValueError('visualization not implemented for tetrahedra with p_s > 2')
-
             elif cell_t == 'HEXAHEDRON':
                 match n_ips:
                     case  1:                                                                        # quad = 'o1r'
@@ -2309,7 +2314,6 @@ class Result:
                                            for k in range(n_cells)]))
                     case _:
                         raise ValueError('visualization not implemented for quadrilaterals with p_s > 3')
-
             elif cell_t == 'HEXAHEDRON':
                 match n_ips:
                     case  1:                                                                        # quad = 'o1r'
@@ -2361,6 +2365,135 @@ class Result:
             data_ = data if data_ is None else np.vstack((data, data_))
 
             return data_
+
+
+        def map_point_to_node(r,
+                              data: npt.NDArray[np.floating],
+                              coefs: npt.NDArray[np.floating],
+                              weights_ovr: npt.NDArray[np.floating],
+                              weights_cf: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
+            """Extrapolate integration point values to nodes."""
+            conn  = r.connectivity
+            n_ips = r.coordinates0_point.shape[0] // conn.shape[0]
+
+            shp = np.hstack([r.coordinates0_node.shape[0], data.shape[1:]]) if len(data.shape) > 1 else \
+                  np.array(r.coordinates0_node.shape[0])
+            data_ = np.full(shp, 0.0)
+
+            for k in range(len(conn)):
+                data_[conn[k]] += weights_cf[k] * np.einsum('kp,p...->k...',coefs,data[n_ips*k:n_ips*(k+1)])
+            data_[np.abs(data_) < 1.0e-12] = 0.0
+
+            data_ = np.einsum('k...,k->k...',data_,weights_ovr)
+
+            return data_
+
+
+        def extrapolation_map(r,
+                              measures: npt.NDArray[np.floating] | None
+                             ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating],
+                                        npt.NDArray[np.floating]]:
+            """
+            Compute extrapolation (integration point to nodes) data.
+
+            The extrapolation matrix [M] maps integration point values [w] onto nodes [v] locally
+            (per cell), as [v] = [M].[w]. Since nodes may belong to more than one cell, averaging
+            per node is applied afterwards.
+
+            The averaging per node can be:
+            - 'average':  sum(v_i) / n, where v_i is the extrapolated nodal value per cell, and
+                            n is the number of cells each node belongs to; no weighting.
+            - 'weighted': sum(AV_i * v_i) / sum(AV_i), where AV_i is the cell area or volume.
+            """
+            conn    = r.connectivity
+            n_cells = conn.shape[0]
+            n_nodes = conn.shape[1] # per cell
+            n_ips   = r.coordinates0_point.shape[0] // n_cells  # per cell
+            cell_t  = r.cell_type
+
+            if cell_t == 'TRIANGLE':
+                match n_ips:
+                    case  1:                                                                        # quad = 'o1f'
+                        coefs = np.array([[1]*n_nodes])
+                    case  3:                                                                        # quad = 'o2f'
+                        coefs = np.array([
+                                          [ 5, -1, -1],
+                                          [-1, -1,  5],
+                                          [-1,  5, -1],
+                                          [ 2, -1,  2],
+                                          [-1,  2,  2],
+                                          [ 2,  2, -1]
+                                         ]) / 3
+                    case  6:                                                                        # quad = 'o3f'
+                        coefs = np.array([
+                            [-6.4472188335806125306e-4,  1.6953503611380798915e+0, -4.5313169228354077050e-1,
+                              1.0577887265617985536e-1, -4.5313169228354077050e-1,  1.0577887265617985536e-1],
+                            [-4.5313169228354077051e-1,  1.0577887265617985537e-1, -4.5313169228354077049e-1,
+                              1.0577887265617985538e-1, -6.4472188335806123877e-4,  1.6953503611380798915e+0],
+                            [-4.5313169228354077052e-1,  1.0577887265617985536e-1, -6.4472188335806123612e-4,
+                              1.6953503611380798915e+0, -4.5313169228354077050e-1,  1.0577887265617985536e-1],
+                            [-3.0755243845067495566e-1,  5.8426016291781492820e-1,  1.0886882174767909734e+0,
+                              3.1545996882590890951e-1, -6.4727064742775601286e-1, -3.3585263342083842569e-2],
+                            [-6.4727064742775601289e-1, -3.3585263342083842583e-2,  1.0886882174767909734e+0,
+                              3.1545996882590890951e-1, -3.0755243845067495565e-1,  5.8426016291781492821e-1],
+                            [ 1.0886882174767909734e+0,  3.1545996882590890949e-1, -6.4727064742775601287e-1,
+                             -3.3585263342083842595e-2, -3.0755243845067495563e-1,  5.8426016291781492820e-1],
+                            [ 1.0886882174767909734e+0,  3.1545996882590890951e-1, -3.0755243845067495564e-1,
+                              5.8426016291781492820e-1, -6.4727064742775601288e-1, -3.3585263342083842582e-2],
+                            [-6.4727064742775601287e-1, -3.3585263342083842570e-2, -3.0755243845067495565e-1,
+                              5.8426016291781492821e-1,  1.0886882174767909734e+0,  3.1545996882590890950e-1],
+                            [-3.0755243845067495565e-1,  5.8426016291781492819e-1, -6.4727064742775601288e-1,
+                             -3.3585263342083842584e-2,  1.0886882174767909734e+0,  3.1545996882590890951e-1],
+                            [ 5.1896020034060470749e-1, -1.8562686700727137416e-1,  5.1896020034060470749e-1,
+                             -1.8562686700727137415e-1,  5.1896020034060470749e-1, -1.8562686700727137416e-1]
+                            ])
+                    case  _:
+                        raise ValueError('extrapolation not implemented for triangles with p_s > 3')
+
+            elif cell_t == 'QUADRILATERAL':
+                match n_ips:
+                    case 1:                                                                         # quad = 'o1r'
+                        coefs = np.array([[1]])
+                    case 4:                                                                         # quad = 'o1f'
+                        mp5 = -0.5
+                        c1p, c1m = 1+0.5*np.sqrt(3), 1-0.5*np.sqrt(3)
+                        coefs = np.array([
+                                          [c1p, mp5, mp5, c1m],
+                                          [mp5, c1m, c1p, mp5],
+                                          [c1m, mp5, mp5, c1p],
+                                          [mp5, c1p, c1m, mp5]
+                                         ])
+                    case 9:                                                                         # quad = 'o2f'
+                        r15      = np.sqrt(15)
+                        c1p, c1m = 5*(4+r15)/18, 5*(4-r15)/18
+                        c2p, c2m = (r15-5)/9, -(r15+5)/9
+                        c3p, c3m = (5+r15)/6, (5-r15)/6
+                        c01, c02, c03 = 5/18, 4/9, -2/3
+                        coefs = np.array([
+                                          [c1p, c2p, c01, c2p, c02, c2m, c01, c2m, c1m],
+                                          [c01, c2m, c1m, c2p, c02, c2m, c1p, c2p, c01],
+                                          [c1m, c2m, c01, c2m, c02, c2p, c01, c2p, c1p],
+                                          [c01, c2p, c1p, c2m, c02, c2p, c1m, c2m, c01],
+                                          [  0,   0,   0, c3p, c03, c3m,   0,   0,   0],
+                                          [  0, c3m,   0,   0, c03,   0,   0, c3p,   0],
+                                          [  0,   0,   0, c3m, c03, c3p,   0,   0,   0],
+                                          [  0, c3p,   0,   0, c03,   0,   0, c3m,   0],
+                                          [  0,   0,   0,   0,   1,   0,   0,   0,   0],
+                                         ])
+                    case _:
+                        raise ValueError('extrapolation not implemented for quadrilaterals with p_s > 2')
+
+            if measures is not None:
+                weights_cfs = measures
+                weights_ovr = np.array([np.sum(measures[np.any(conn == k, axis=1)])
+                                        for k in range(r.coordinates0_node.shape[0])])
+            else:
+                weights_cfs = np.array([1]*len(conn))
+                weights_ovr = np.array([conn[conn == k].size for k in range(r.coordinates0_node.shape[0])])
+
+            return coefs, 1.0/weights_ovr, weights_cfs
+
+
         match mode.lower():
             case 'cell':
                 v = self.get_VTK_geometry0(split,extrapolation)
@@ -2384,6 +2517,17 @@ class Result:
         out_dir = Path.cwd() if target_dir is None else Path(target_dir)
         out_dir.mkdir(parents=True,exist_ok=True)
 
+        extrapolate = False
+        nodal_only  = False
+        if extrapolation is None:
+            nodal_only = not split
+        elif not split:
+            if extrapolation not in ['average', 'weighted']:
+                raise ValueError(f'invalid extrapolation mode "{extrapolation}"')
+            extrapolate = True
+            split = False
+            coefs, w_ovr, w_cf = extrapolation_map(self, None if extrapolation == 'average' else v.measures)
+
         with h5py.File(self.fname,'r') as f:
             creator = f.attrs['creator']
             created = f.attrs['created']
@@ -2398,7 +2542,7 @@ class Result:
                     if mapping: dataset = map_node_data(self,dataset)
                     v = v.set(f'u ({dataset.dtype.metadata["unit"]})',dataset)                      # type: ignore[index]
 
-                if not split:   # skip cell fields
+                if nodal_only:  # skip cell fields
                     v.save(out_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
                            parallel=parallel)
                     continue
@@ -2423,7 +2567,9 @@ class Result:
                             for name,dataset in d.items():
                                 v = v.set(':'.join([kind,field,name])\
                                           +f' ({dataset.dtype.metadata["unit"]})',                  # type: ignore[index]
-                                          map_point_data(self,dataset) if mapping else dataset,
+                                          map_point_to_node(self,dataset,coefs,w_ovr,w_cf) if extrapolate else \
+                                          map_point_data(self,dataset)                     if mapping     else \
+                                          dataset,
                                           component_names=get_component_names(dataset))
 
                     for field, dsets in not_mergeable.items():
@@ -2441,7 +2587,9 @@ class Result:
                                 for name,dataset in d.items():
                                     v = v.set(':'.join([kind,field,label,name])\
                                               +f' ({dataset.dtype.metadata["unit"]})',              # type: ignore[index]
-                                              map_point_data(self,dataset) if mapping else dataset,
+                                              map_point_to_node(self,dataset,coefs,w_ovr,w_cf) if extrapolate else \
+                                              map_point_data(self,dataset)                     if mapping     else \
+                                              dataset,
                                               component_names=get_component_names(dataset))
 
                 v.save(out_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
@@ -2770,4 +2918,5 @@ class Result:
                     return VTK.from_unstructured_grid(f['/geometry/x_n'][()],
                                                       f['/geometry/T_e'][()],
                                                       f['/geometry'].attrs['VTK_CELL_TYPE'],
-                                                      f['/geometry/x_p'][()] if split else None)
+                                                      f['/geometry/x_p'][()] if split else None,
+                                                      extrapolate)

@@ -217,6 +217,22 @@ class VTK:
         return labels
 
 
+    @property
+    def measures(self) -> npt.NDArray[np.floating] | None:
+        """Areas/volumes of all cells in vtkdata"""                                                 # noqa: D415
+        if isinstance(self.vtk_data,vtkUnstructuredGrid):
+            size_filter = vtkCellSizeFilter()
+            size_filter.SetInputData(self.vtk_data)
+            size_filter.Update()
+            m = size_filter.GetOutput().GetCellData().GetArray( \
+                    'Area' if self.vtk_data.GetCell(0).GetCellDimension() == 2 else 'Volume')
+            measures = np.array([m.GetValue(i) for i in range(m.GetNumberOfTuples())])
+        else:
+            measures = None
+
+        return measures
+
+
     @classmethod
     def from_image_data(cls,
                         cells: IntSequence,
@@ -268,7 +284,8 @@ class VTK:
                                nodes: npt.NDArray[np.floating],
                                connectivity: npt.NDArray[np.integer],
                                cell_type: str,
-                               points: npt.NDArray[np.floating] | None = None
+                               points: npt.NDArray[np.floating] | None = None,
+                               extrapolate: Literal[None, 'average', 'weighted'] = None
                               ) -> 'VTK':
         """
         Create VTK of type vtkUnstructuredGrid.
@@ -290,6 +307,8 @@ class VTK:
             all valid options.
         points: numpy.ndarray, shape(:,3), optional
             Spatial position of the integration points.
+        extrapolate: str, optional
+            Extrapolation averaging method.
 
         Returns
         -------
@@ -410,7 +429,7 @@ class VTK:
                                         [9,10,17],                                                  # IP14
                                         [7,8,16]])                                                  # IP15
                     case  _:
-                        raise ValueError('Visualization not implemented for triangles with p_s > 5')
+                        raise ValueError('visualization not implemented for triangles with p_s > 5')
 
                 T_e = np.vstack([connectivity[k,idx] for k in range(n_cells)]) if len(idx) else \
                       connectivity
@@ -487,7 +506,7 @@ class VTK:
                                            n21p(k,[14,5]), [connectivity[k,2]], n21p(k,[6]))        # IP 15
                                          ).reshape(-1,4) for k in range(n_cells)])
                     case  _:
-                        raise ValueError('Visualization not implemented for quadrilaterals with p_s > 3')
+                        raise ValueError('visualization not implemented for quadrilaterals with p_s > 3')
 
             elif cell_type == 'TETRA':
                 match n_ips:
@@ -529,8 +548,8 @@ class VTK:
                                            n19p(k,[15,18,14,11,7,17,6]), [connectivity[k,7]])       # IP 3
                                           ).reshape(-1,8) for k in range(n_cells)])
                     case 27:                                                                        # quad= 'o2f'
-                        nd = lambda k,i,j,w : (nodes[connectivity[k,i]] + \w
-                                              *(nodes[connectivity[k,j]]-nodes[connectivity[k,i]]))
+                        nd = lambda k,i,j,w : (nodes[connectivity[k,i]] + w \
+                                              * (nodes[connectivity[k,j]]-nodes[connectivity[k,i]]))
                         nt = lambda i,j,w : i + w * (j - i)
                         nodes_ = np.vstack([np.vstack(
                                             (n_27 := nd(k,0,1,1/3), n_28 := nd(k,0,1,2/3),
@@ -606,7 +625,7 @@ class VTK:
         if vtk_cell_type not in cell_types.keys():
             raise KeyError(f'unknown cell type {cell_type}')
 
-        if points is not None:
+        if points is not None and extrapolate is None:
             nodes, connectivity = split_elements(nodes, points, connectivity, vtk_cell_type)
 
         vtk_nodes = vtkPoints()
