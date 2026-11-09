@@ -755,6 +755,19 @@ class Result:
         else:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_n'][()]
+
+    @property
+    def cell_type(self) -> str:
+        """VTK Cell type."""
+        with h5py.File(self.fname,'r') as f:
+            return f['/geometry'].attrs['VTK_CELL_TYPE']
+
+    @property
+    def connectivity(self) -> npt.NDArray[np.integer]:
+        """Element connectivity."""
+        with h5py.File(self.fname,'r') as f:
+            return f['geometry/T_e'][()]
+
     @property
     def geometry0(self) -> VTK:
         """Initial/undeformed geometry."""
@@ -765,15 +778,6 @@ class Result:
                 return VTK.from_unstructured_grid(f['/geometry/x_n'][()],
                                                   f['/geometry/T_c'][()]-1,
                                                   f['/geometry/T_c'].attrs['VTK_TYPE'])
-
-    @property
-    def connectivity(self) -> npt.NDArray[np.integer] | None:
-        """Element connectivity."""
-        if not self.structured:
-            with h5py.File(self.fname,'r') as f:
-                return f['geometry/T_e'][()]
-        else:
-            return None
 
 
     def add_absolute(self, x: str):

@@ -102,7 +102,7 @@ subroutine discretization_mesh_init()
                p_i, &                                                                               ! integration order
                cell_sets_size, &                                                                    ! size of 'Cell Sets' label
                n_mesh_labels, &                                                                     ! total number of labels in mesh file
-               cell_end, point_start, &                                                             ! last cell/first point values
+               cell_start, cell_end, point_start, &                                                 ! first/last+1 cell, first point values
                j                                                                                    ! loop
   PetscBool :: has_label, &                                                                         ! label exists in the mesh
                is_simplex                                                                           ! simplex mesh (tri or tet elements)
@@ -121,6 +121,7 @@ subroutine discretization_mesh_init()
 #endif
   real(pREAL), dimension(:),   pointer     :: qPointsP                                              ! quadrature points coordinates
   PetscQuadrature :: quadrature                                                                     ! quadrature object
+  DMPolytopeType  :: cell_type                                                                      ! tri, quad, tet, hex
   PetscErrorCode  :: err_PETSc
 
   logical                                  :: to_complete                                           ! perform label completion
@@ -447,23 +448,31 @@ subroutine discretization_mesh_init()
     allocate(x_n_rank(3,size(l_to_g_rank)),source=0.0_pREAL)
     x_n_rank = x_n(:,l_to_g_rank)
 #if (PETSC_VERSION_MINOR>24 || (PETSC_VERSION_MINOR==24 && PETSC_VERSION_SUBMINOR>=1))
-    call writeGeometry(x_n_rank,x_p,T_e)
+    call DMPlexGetHeightStratum(geom,0_pPETSCINT,cell_start,PETSC_NULL_INTEGER,err_PETSc)
+    CHKERRQ(err_PETSc)
+    call DMPlexGetCellType(geom,cell_start,cell_type,err_PETSc)
+    CHKERRQ(err_PETSc)
+    call writeGeometry(reshape(x_p,[3,int(mesh_maxNips*mesh_nElems)]),x_n_rank,T_e,cell_type)
 #else
-    call writeGeometry(x_n_rank,x_p)
+    call writeGeometry(x_p,x_n_rank)
 #endif
 
     call discretization_init(int(materialAt),x_p,x_n_rank)
   else
 #if (PETSC_VERSION_MINOR>24 || (PETSC_VERSION_MINOR==24 && PETSC_VERSION_SUBMINOR>=1))
-    call writeGeometry(x_n,x_p,T_e)
+    call DMPlexGetHeightStratum(geom,0_pPETSCINT,cell_start,PETSC_NULL_INTEGER,err_PETSc)
+    CHKERRQ(err_PETSc)
+    call DMPlexGetCellType(geom,cell_start,cell_type,err_PETSc)
+    CHKERRQ(err_PETSc)
+    call writeGeometry(x_p,x_n,T_e,cell_type)
 #else
-    call writeGeometry(x_n,x_p)
+    call writeGeometry(x_p,x_n)
 #endif
 
     call discretization_init(int(materialAt),x_p,x_n)
   end if
 #else
-    call writeGeometry(x_n,x_p)
+    call writeGeometry(x_p,x_n)
 
     call discretization_init(int(materialAt),x_p,x_n)
 #endif
@@ -854,24 +863,44 @@ end function PETSc_to_VTK_node_order
 !--------------------------------------------------------------------------------------------------
 !> @brief Write all information needed for the DADF5 geometry.
 !--------------------------------------------------------------------------------------------------
-subroutine writeGeometry(x_n,x_p,T_e)
+#if (PETSC_VERSION_MINOR>24 || (PETSC_VERSION_MINOR==24 && PETSC_VERSION_SUBMINOR>=1))
+subroutine writeGeometry(x_p,x_n,T_e,polytope)
+#else
+subroutine writeGeometry(x_p,x_n)
+#endif
 
-  real(pREAL), dimension(:,:), intent(in)           :: x_n, &                                       !< mesh nodes coordinates (including high-order approximation)
-                                                       x_p                                          !< ip coordinates
-  PetscInt,    dimension(:,:), intent(in), optional :: T_e                                          !< element connectivity (node numbers in each cell)
+  real(pREAL),    dimension(:,:), intent(in) :: x_p, &                                              !< ip coordinates
+                                                x_n                                                 !< mesh nodes coordinates (including high-order approximation)
+#if (PETSC_VERSION_MINOR>24 || (PETSC_VERSION_MINOR==24 && PETSC_VERSION_SUBMINOR>=1))
+  PetscInt,       dimension(:,:), intent(in) :: T_e                                                 !< element connectivity (node numbers in each cell)
+  DMPolytopeType,                 intent(in) :: polytope                                            !< tri/quad/tex/hex
+
+  character(len=:), allocatable :: vtk_cell
+#endif
 
 
   call result_openJobFile()
   call result_closeGroup(result_addGroup('geometry'))
-
+  call result_addAttribute('description','connectivity and initial geometry','geometry')
+#if (PETSC_VERSION_MINOR>24 || (PETSC_VERSION_MINOR==24 && PETSC_VERSION_SUBMINOR>=1))
+  select case (polytope%v)
+  case (DM_POLYTOPE_TRIANGLE%v)
+    vtk_cell = 'TRIANGLE'
+  case (DM_POLYTOPE_QUADRILATERAL%v)
+    vtk_cell = 'QUADRILATERAL'
+  case (DM_POLYTOPE_TETRAHEDRON%v)
+    vtk_cell = 'TETRAHEDRON'
+  case (DM_POLYTOPE_HEXAHEDRON%v)
+    vtk_cell = 'HEXAHEDRON'
+  end select
+  call result_addAttribute('VTK_CELL_TYPE',vtk_cell,'geometry')
+#endif
   call result_writeDataset(x_n,'geometry','x_n','initial coordinates of the nodes','m')
-
   call result_writeDataset(x_p,'geometry','x_p', &
                            'initial coordinates of the materialpoints (cell centers)','m')
-
-  if (present(T_e)) &
-    call result_writeDataset(int(T_e),'geometry','T_e','connectivity matrix','1')
-
+#if (PETSC_VERSION_MINOR>24 || (PETSC_VERSION_MINOR==24 && PETSC_VERSION_SUBMINOR>=1))
+  call result_writeDataset(int(T_e),'geometry','T_e','connectivity matrix','1')
+#endif
   call result_closeJobFile()
 
 end subroutine writeGeometry

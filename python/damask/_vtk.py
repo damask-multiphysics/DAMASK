@@ -72,6 +72,9 @@ from vtkmodules.util.numpy_support import (
     numpy_to_vtkIdTypeArray,
     vtk_to_numpy,
 )
+from vtkmodules.vtkFiltersVerdict import (
+    vtkCellSizeFilter
+)
 
 from . import Colormap, Table, util
 from ._typehints import FloatSequence, IntSequence
@@ -306,18 +309,20 @@ class VTK:
         """
         vtk_nodes = vtkPoints()
         vtk_nodes.SetData(numpy_to_vtk(np.ascontiguousarray(nodes)))
-        cells = vtkCellArray()
-        cells.SetNumberOfCells(connectivity.shape[0])
+        # NEW CODE (VTK 6.2)
+        # vtk_cells = vtkCellArray()
+        # vtk_cells.SetData(connectivity.shape[1],numpy_to_vtkIdTypeArray(connectivity.astype(np.int64).ravel()))
+        vtk_cells = vtkCellArray()
+        vtk_cells.SetNumberOfCells(connectivity.shape[0])
         T = np.concatenate((np.ones((connectivity.shape[0],1),dtype=np.int64)*connectivity.shape[1],
                             connectivity),axis=1).ravel()
-        cells.SetCells(connectivity.shape[0],numpy_to_vtkIdTypeArray(T,deep=True))
-
+        vtk_cells.SetCells(connectivity.shape[0],numpy_to_vtkIdTypeArray(T,deep=True))
         vtk_data = vtkUnstructuredGrid()
         vtk_data.SetPoints(vtk_nodes)
         # gracefully accept 'VTK_QUAD', 'vtk_lagrange_quadrilateral', etc.
         cell_types = {'TRIA':VTK_LAGRANGE_TRIANGLE,    'QUAD':VTK_LAGRANGE_QUADRILATERAL,
                       'TETR':VTK_LAGRANGE_TETRAHEDRON, 'HEXA':VTK_LAGRANGE_HEXAHEDRON}
-        vtk_data.SetCells(cell_types[cell_type.split('_')[-1].upper()[:4]],cells)
+        vtk_data.SetCells(cell_types[cell_type.split('_')[-1].upper()[:4]],vtk_cells)
 
         return cls(vtk_data)
 
