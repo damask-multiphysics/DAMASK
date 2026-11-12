@@ -244,8 +244,10 @@ def open_text(fname: _FileHandleText,
     """
     if isinstance(fname, (str,_PathLike)):
         fhandle = open(_Path(fname).expanduser(),mode,newline=('\n' if mode == 'w' else None))
-        yield fhandle
-        fhandle.close()
+        try:
+            yield fhandle
+        finally:
+            fhandle.close()
     else:
         yield fname
 

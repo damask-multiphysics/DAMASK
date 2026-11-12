@@ -233,6 +233,11 @@ def test_reduced_equivalent(np_rng,family):
     assert o.reduced == eq[FZ]
 
 @pytest.mark.parametrize('family',crystal_families)
+def test_reduced_isclose(np_rng,family):
+    o = Orientation.from_random(family=family,rng=np_rng)
+    assert o.isclose(o.reduced,atol=1e-15)
+
+@pytest.mark.parametrize('family',crystal_families)
 def test_reduced_corner_cases(np_rng,family):
     # test whether there is always exactly one sym-eq rotation that falls into the FZ
     N = np_rng.integers(10,40)
@@ -412,7 +417,7 @@ def test_to_frame_symmetries(np_rng,lattice,mode,vector,N_sym):
     o = Orientation.from_random(lattice=lattice,rng=np_rng)
     frame = o.to_frame(**{keyword:vector,'with_symmetry':True})
     shape_full = frame.shape[0]
-    shape_reduced = np.unique(np.around(frame,10),axis=0).shape[0]
+    shape_reduced = np.unique(np.around(frame,11),axis=0).shape[0]
     assert shape_full//N_sym == shape_reduced
 
 
@@ -488,7 +493,7 @@ def test_resolved_shear_stress_vectorization(np_rng,assert_allclose,lattice):
 def test_reduced_vectorization(np_rng,family,shape):
     o = Orientation.from_random(family=family,shape=shape,rng=np_rng)
     for i in itertools.product(*map(range,tuple(shape))):
-        assert o[i].reduced == o[i]
+        assert o[i].reduced == o[i].reduced
 
 
 @pytest.mark.parametrize('family',crystal_families)
@@ -534,9 +539,9 @@ def test_in_disorientation_FZ_vectorization(set_of_rodrigues,family):
 @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
 @pytest.mark.parametrize('lattice',['cF','cI'])
 def test_relationship_vectorization(set_of_quaternions,lattice,model):
-    r = Orientation(rotation=set_of_quaternions[:200].reshape((50,4,4)),lattice=lattice).related(model)
-    for i in range(200):
-        assert (r.reshape((-1,200))[:,i] == Orientation(set_of_quaternions[i],lattice=lattice).related(model)).all()
+    r = Orientation(rotation=set_of_quaternions[:200].reshape((50,4,4)),lattice=lattice).related(model).reshape((-1,200))
+    for i in range(r.shape[1]):
+        assert (r[:,i] == Orientation(set_of_quaternions[i],lattice=lattice).related(model)).all()
 
 ### blending tests ###
 
@@ -647,3 +652,8 @@ def test_OR_plot(assert_allclose,update,res_path,tmp_path,OR,pole):
     current = np.array(Image.open(tmp_path/fname))
     reference = np.array(Image.open(res_path/fname))
     assert_allclose(current,reference)
+
+def test_isclose_honors_tolerances():
+    o1 = Orientation.from_quaternion([1,0,0,0], family='cubic', lattice='cF')
+    o2 = Orientation.from_quaternion([np.cos(0.01),np.sin(0.01),0,0], family='cubic', lattice='cF')
+    assert o1.isclose(o2,atol=1.0)

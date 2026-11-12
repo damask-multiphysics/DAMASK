@@ -52,6 +52,18 @@ def test_imageData(np_rng,tmp_path):
     vtk = VTK.load(tmp_path/'imageData.vtk','VTK_imageData')
     assert string == vtr.as_ASCII() == vtk.as_ASCII()
 
+@pytest.mark.xfail(util.version(vtkVersion.GetVTKVersion()) < '9.7.0',
+                   reason = 'not available in VTK < 9.7')
+def test_imageData_VTKHDF(np_rng,tmp_path):
+    cells = np_rng.integers(5,10,3)
+    size = np_rng.random(3) + 0.1
+    origin = np_rng.random(3) - 0.5
+    v = VTK.from_image_data(cells,size,origin)
+    v.save_VTKHDF(tmp_path/'imageData')
+    vtkhdf = VTK.load(tmp_path/'imageData.vtkhdf')
+    assert v.as_ASCII() == vtkhdf.as_ASCII()
+
+
 def test_rectilinearGrid(np_rng,tmp_path):
     g = np.sort(np_rng.random((3,10)))
     v = VTK.from_rectilinear_grid(g)
@@ -63,6 +75,16 @@ def test_rectilinearGrid(np_rng,tmp_path):
         f.write(string)
     vtk = VTK.load(tmp_path/'rectilinearGrid.vtk','VTK_rectilinearGrid')
     assert string == vtr.as_ASCII() == vtk.as_ASCII()
+
+@pytest.mark.xfail(util.version(vtkVersion.GetVTKVersion()) < '9.7.0',
+                   reason = 'not available in VTK < 9.7')
+def test_rectilinearGrid_VTKHDF(np_rng,tmp_path):
+    g = np.sort(np_rng.random((3,10)))
+    v = VTK.from_rectilinear_grid(g)
+    v.save_VTKHDF(tmp_path/'rectilinearGrid')
+    vtkhdf = VTK.load(tmp_path/'rectilinearGrid.vtkhdf')
+    assert v.as_ASCII() == vtkhdf.as_ASCII()
+
 
 def test_polyData(np_rng,tmp_path):
     points = np_rng.random((100,3))
@@ -85,6 +107,7 @@ def test_polyData_VTKHDF(np_rng,tmp_path):
     vtkhdf = VTK.load(tmp_path/'polyData.vtkhdf')
     # https://discourse.vtk.org/t/legacy-file-format-data-type-and-version/16299
     assert v.as_ASCII().replace('long','vtktypeint64') == vtkhdf.as_ASCII().replace('long','vtktypeint64')
+
 
 # https://defelement.org/elements/lagrange.html
 @pytest.mark.parametrize('cell_type,n_nodes',[
@@ -272,3 +295,7 @@ def test_compare_reference_rectilinearGrid(assert_allclose,update,res_path):
         reference = VTK.load(res_path/'rectilinearGrid.vtr')
         assert rectilinearGrid.as_ASCII() == reference.as_ASCII()
         assert_allclose(rectilinearGrid.get('cell'),c)
+
+def test_set_preserves_comments_info(default):
+    v = default.set('f', np.ones(default.N_points), info='HELLO')
+    assert any('HELLO' in c for c in v.comments)

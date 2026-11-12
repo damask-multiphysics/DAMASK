@@ -251,8 +251,9 @@ def test_sort():
     assert np.all(t.get('v')[:,0] == np.array([2,0]))
 
 def test_unique(np_rng):
-    x = np_rng.choice([True,False],size=(np_rng.integers(12,18),2))
+    x = np_rng.choice([1,0],size=(np_rng.integers(12,18),2))
     t = Table({'a':(1,),'b':(1,)},x,['random choices'])
+    t = t.set('tensor',np.ones([x.shape[0],3,3]))
     u,idx,inv,cnt = t.unique(
         return_index=True,
         return_inverse=True,

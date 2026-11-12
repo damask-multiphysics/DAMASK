@@ -1062,6 +1062,7 @@ def test_broadcastcomposition(np_rng,shape):
                                              (Rotation.from_Rodrigues_vector,  np.array([1,1,0,1])),
                                              (Rotation.from_homochoric,        np.array([2,2,2])),
                                              (Rotation.from_cubochoric,        np.array([1.1,0,0])),
+                                             (Rotation.from_cubochoric,        np.array([0,-1.1,0])),
                                             ])
 def test_invalid_value(function,invalid):
     with pytest.raises(ValueError):
@@ -1226,13 +1227,17 @@ def test_composition_inverse_invalid():
 
 def test_power(np_rng):
     a = Rotation.from_random(rng=np_rng)
-    r = (np_rng.random()-.5)*4
+    r = np_rng.uniform(-2.,2.)
     b = a**r
     a **= r
     assert a == b
 
-def test_invariant():
-    R = Rotation.from_random()
+def test_power_identity(np_rng):
+    a = Rotation()**np_rng.uniform(-2.,2.)
+    assert np.allclose(a.as_quaternion(), [1,0,0,0])
+
+def test_invariant(np_rng):
+    R = Rotation.from_random(rng=np_rng)
     assert (R/R).isclose(R*R**(-1)) and (R/R).isclose(Rotation())
 
 @pytest.mark.parametrize('shape',[None,2,(2,3),(2,2),(2,3,3,3)])

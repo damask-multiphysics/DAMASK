@@ -82,10 +82,10 @@ def _times_to_increments(choice: list[str],
                          times: dict[int, float],
                          increments: list[str]) -> list[str]:
     """Return increments for specified simulation times."""
-    sorted_times = list(times.values())
-    atol = 1.e-2 * np.min(np.diff(sorted_times))
     if choice == ['*']:
         return increments
+    sorted_times = list(times.values())
+    atol = 1.e-2 * np.min(np.diff(sorted_times)) if len(sorted_times) > 1 else 1.e-9
     resolved = []
     for c in np.array(choice).astype(float):
         idx = np.searchsorted(sorted_times, c, side='left')
@@ -166,6 +166,9 @@ class Result:
      executing "..."
     <BLANKLINE>
     increment_0 (0.0 s)
+      geometry
+        u_n / m: displacements of the nodes
+        u_p / m: displacements of the materialpoints (cell centers)
       phase
     ...
       homogenization
@@ -223,11 +226,12 @@ class Result:
                     fields += f['/'.join([self._increments[0],kind,label])].keys()
             self._fields = sorted(set(fields),key=util.natural_sort)                                # make unique
 
-        self._visible = {'increments':      self._increments,
-                         'phases':          self._phases,
-                         'homogenizations': self._homogenizations,
-                         'fields':          self._fields,
-                        }
+        self._visible: dict[str, Any] = {'increments':      self._increments,
+                                         'phases':          self._phases,
+                                         'homogenizations': self._homogenizations,
+                                         'fields':          self._fields,
+                                         'geometry':        True,
+                                        }
 
         self.fname = Path(fname).expanduser().absolute()
 
@@ -285,7 +289,8 @@ class Result:
                      times: float | Sequence[float] | Literal['*'] | bool | None = None,
                      phases: str | Sequence[str] | bool | None = None,
                      homogenizations: str | Sequence[str] | bool | None = None,
-                     fields: str | Sequence[str] | bool | None = None) -> "Result":
+                     fields: str | Sequence[str] | bool | None = None,
+                     geometry: bool | None = None) -> "Result":
         """
         Manage the visibility of the groups.
 
@@ -304,6 +309,8 @@ class Result:
             Names of homogenizations to select.
         fields : (list of) str, or bool, optional
             Names of fields to select.
+        geometry : bool, optional
+            Visibility of geometry (displacements).
         protected : bool, optional
             Protection status of existing data.
 
@@ -316,6 +323,13 @@ class Result:
             raise ValueError('"increments" and "times" are mutually exclusive')
 
         dup = self.copy()
+
+        if geometry is not None:
+            match action:
+                case 'set': dup._visible['geometry'] = geometry
+                case 'add': dup._visible['geometry'] = dup._visible['geometry'] or geometry
+                case 'del': dup._visible['geometry'] = dup._visible['geometry'] and not geometry
+
         for what,selected in zip(['increments','times','phases','homogenizations','fields'],
                                  [ increments,  times,  phases,  homogenizations,  fields ]):
             if  selected is None:
@@ -405,6 +419,7 @@ class Result:
              phases: str | Sequence[str] | bool | None = None,
              homogenizations: str | Sequence[str] | bool | None = None,
              fields: str | Sequence[str] | bool | None = None,
+             geometry: bool | None = None,
              protected: bool | None = None) -> "Result":
         """
         Set view.
@@ -425,6 +440,8 @@ class Result:
             Names of homogenizations to select.
         fields : (list of) str, or bool, optional
             Names of fields to select.
+        geometry : bool, optional
+            Visibility of geometry (displacements).
         protected : bool, optional
             Protection status of existing data.
 
@@ -446,8 +463,14 @@ class Result:
         >>> import damask
         >>> r = damask.Result(fname='my_file.hdf5')
         >>> r_t10to40 = r.view(times=r.times_in_range(start=10.0,end=40.0))
+
+        Get a view that omits the geometry (displacements):
+
+        >>> import damask
+        >>> r = damask.Result(fname='my_file.hdf5')
+        >>> r_no_geometry = r.view(geometry=False)
         """
-        dup = self._manage_view('set',increments,times,phases,homogenizations,fields)
+        dup = self._manage_view('set',increments,times,phases,homogenizations,fields,geometry)
         if protected is not None:
             if not protected:
                 logger.warning('Modification of existing datasets allowed!')
@@ -461,7 +484,8 @@ class Result:
                   times: float | Sequence[float] | Literal['*'] | bool | None = None,
                   phases: str | Sequence[str] | bool | None = None,
                   homogenizations: str | Sequence[str] | bool | None = None,
-                  fields: str | Sequence[str] | bool | None = None) -> "Result":
+                  fields: str | Sequence[str] | bool | None = None,
+                  geometry: bool | None = None) -> "Result":
         """
         Add to view.
 
@@ -481,6 +505,8 @@ class Result:
             Names of homogenizations to select.
         fields : (list of) str, or bool, optional
             Names of fields to select.
+        geometry : bool, optional
+            Visibility of geometry (displacements).
 
         Returns
         -------
@@ -496,7 +522,7 @@ class Result:
         >>> r_first = r_empty.view_more(increments=0)
         >>> r_first_and_last = r_first.view_more(increments=-1)
         """
-        return self._manage_view('add',increments,times,phases,homogenizations,fields)
+        return self._manage_view('add',increments,times,phases,homogenizations,fields,geometry)
 
 
     def view_less(self,*,
@@ -504,7 +530,8 @@ class Result:
                   times: float | Sequence[float] | Literal['*'] | bool | None = None,
                   phases: str | Sequence[str] | bool | None = None,
                   homogenizations: str | Sequence[str] | bool | None = None,
-                  fields: str | Sequence[str] | bool | None = None) -> "Result":
+                  fields: str | Sequence[str] | bool | None = None,
+                  geometry: bool | None = None) -> "Result":
         """
         Remove from view.
 
@@ -524,6 +551,8 @@ class Result:
             Names of homogenizations to select.
         fields : (list of) str, or bool, optional
             Names of fields to select.
+        geometry : bool, optional
+            Visibility of geometry (displacements).
 
         Returns
         -------
@@ -538,7 +567,7 @@ class Result:
         >>> r_all = damask.Result(fname='my_file.hdf5')
         >>> r_deformed = r_all.view_less(increments=0)
         """
-        return self._manage_view('del',increments,times,phases,homogenizations,fields)
+        return self._manage_view('del',increments,times,phases,homogenizations,fields,geometry)
 
 
     def view_all(self):
@@ -550,7 +579,7 @@ class Result:
         modified_view : damask.Result
             View with all attributes visible.
         """
-        return self.view(increments='*',phases='*',homogenizations='*',fields='*')
+        return self.view(increments='*',phases='*',homogenizations='*',fields='*',geometry=True)
 
 
     def rename(self,
@@ -650,6 +679,12 @@ class Result:
         with h5py.File(self.fname,'r') as f:
             for inc in self._visible['increments']:
                 msg.append(f'\n{inc} ({self._times[int(inc.split("_")[1])]} s)')
+                msg.append('  geometry')
+                for dset_name in f[inc]['geometry'] if self._visible['geometry'] else []:
+                    dset_h5 = f['/'.join([inc,'geometry',dset_name])]
+                    unit = dset_h5.attrs['unit']
+                    description = dset_h5.attrs['description']
+                    msg.append(f'    {dset_name} / {unit}: {description}')
                 for kind in ['phase','homogenization']:
                     msg.append(f'  {kind}')
                     for label in self._visible[kind+'s']:
@@ -1841,7 +1876,7 @@ class Result:
                 for kind in ['geometry', 'phase', 'homogenization']:
                     r[inc][kind] = util.NestedDefaultDict()
 
-                for dset_name in _match(output,f['/'.join([inc,'geometry'])]):
+                for dset_name in _match(output,f['/'.join([inc,'geometry'])] if self._visible['geometry'] else []):
                     r[inc]['geometry'][dset_name] = _read(f['/'.join([inc,'geometry',dset_name])])
 
                 for kind in ['phase','homogenization']:
@@ -1919,8 +1954,9 @@ class Result:
                 for kind in ['geometry', 'phase', 'homogenization']:
                     r[inc][kind] = util.NestedDefaultDict()
 
-                for dset_name in _match(output,f['/'.join([inc,kind := 'geometry'])]):
-                    r[inc][kind][dset_name] = ma.array(_read(f['/'.join([inc,kind,dset_name])]),fill_value = fill_float)
+                for dset_name in _match(output,f['/'.join([inc,'geometry'])] if self._visible['geometry'] else []):
+                    r[inc]['geometry'][dset_name] = ma.array(_read(f['/'.join([inc,'geometry',dset_name])]),
+                                                             fill_value = fill_float)
 
                 for kind, suffixes_ in zip(['phase', 'homogenization'],[suffixes, ['']]):
 
@@ -2053,15 +2089,16 @@ class Result:
                                 'Dimensions': '3'}
                 delta.text="{} {} {}".format(*(self.size/self.cells)[::-1])
 
-                attributes.append(ET.SubElement(g, 'Attribute'))
-                attributes[-1].attrib = {'Name':          'u / m',
-                                         'Center':        'Node',
-                                         'AttributeType': 'Vector'}
-                data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
-                data_items[-1].attrib = {'Format':     'HDF',
-                                         'Precision':  '8',
-                                         'Dimensions': '{} {} {} 3'.format(*(self.cells[::-1]+1))}
-                data_items[-1].text = f'{hdf5_link}:/{inc}/geometry/u_n'
+                if 'u_n' in _match(output,f[inc]['geometry'] if self._visible['geometry'] else []):
+                    attributes.append(ET.SubElement(g, 'Attribute'))
+                    attributes[-1].attrib = {'Name':          'u (m)',
+                                             'Center':        'Node',
+                                             'AttributeType': 'Vector'}
+                    data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
+                    data_items[-1].attrib = {'Format':     'HDF',
+                                             'Precision':  '8',
+                                             'Dimensions': '{} {} {} 3'.format(*(self.cells[::-1]+1))}
+                    data_items[-1].text = f'{hdf5_link}:/{inc}/geometry/u_n'
                 for kind in ['phase','homogenization']:
                     for label in self._visible[kind+'s']:
                         for field in _match(self._visible['fields'],f['/'.join([inc,kind,label])]):
@@ -2073,7 +2110,7 @@ class Result:
                                 unit = f[dset_path].attrs['unit']
 
                                 attributes.append(ET.SubElement(g, 'Attribute'))
-                                attributes[-1].attrib = {'Name': '/'.join([kind,field,dset_name])+f' / {unit}',
+                                attributes[-1].attrib = {'Name': ':'.join([kind,field,dset_name])+f' ({unit})',
                                                          'Center':       'Cell',
                                                          'AttributeType': attribute_type_map.get(shape,'Matrix')}
                                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
@@ -2171,8 +2208,10 @@ class Result:
 
             for inc in util.show_progress(self._visible['increments']):
 
-                u = _read(f['/'.join([inc,'geometry','u_n' if mode.lower() == 'cell' else 'u_p'])])
-                v = v.set('u (m)',u) # ad-hoc, should come from metadata
+                dset_name = 'u_n' if mode.lower() == 'cell' else 'u_p'
+                if dset_name in _match(self._visible['geometry'],f[inc]['geometry']):
+                    dataset = _read(f['/'.join([inc,'geometry',dset_name])])
+                    v = v.set(f'u ({dataset.dtype.metadata["unit"]})',dataset)                      # type: ignore[index]
 
                 for kind, suffixes_ in zip(['phase', 'homogenization'],[suffixes, ['']]):
                     mergeable, not_mergeable = _is_mergeable(self._get_layout(f,inc,kind,output))
@@ -2422,20 +2461,20 @@ class Result:
 
             for inc in util.show_progress(self._visible['increments']):
                 f_in.copy(inc,f_out,shallow=True)
-                if mapping is None:
-                    for label in ['u_p','u_n']:
-                        f_in[inc]['geometry'].copy(label,f_out[inc]['geometry'])
-                else:
-                    u_p = f_in[inc]['geometry']['u_p'][()][mapping_flat]
-                    f_out[inc]['geometry'].create_dataset('u_p',data=u_p)
-                    delta = self.size/np.array(mapping.shape)
-                    c_0_p = tuple([np.linspace(delta[i]/2,self.size[i]-delta[i]/2,mapping.shape[i]) for i in [0,1,2]])
-                    interpolator = interpolate.RegularGridInterpolator(c_0_p,np.reshape(u_p,tuple(cells)+(3,)),
-                                                                       fill_value=None,bounds_error=False,method='linear')
-                    c_0_n = grid.coordinates0_node(mapping.shape,self.size).reshape(-1,3)
-                    f_out[inc]['geometry'].create_dataset('u_n',data=interpolator(c_0_n))
-                    f_out[inc]['geometry/u_n'].attrs.update(f_in[inc]['geometry/u_n'].attrs)
-
+                if self._visible['geometry']:
+                    if mapping is None:
+                        for label in ['u_p','u_n']:
+                            f_in[inc]['geometry'].copy(label,f_out[inc]['geometry'])
+                    else:
+                        u_p = f_in[inc]['geometry']['u_p'][()][mapping_flat]
+                        f_out[inc]['geometry'].create_dataset('u_p',data=u_p)
+                        delta = self.size/np.array(mapping.shape)
+                        c_0_p = tuple([np.linspace(delta[i]/2,self.size[i]-delta[i]/2,mapping.shape[i]) for i in [0,1,2]])
+                        interpolator = interpolate.RegularGridInterpolator(c_0_p,np.reshape(u_p,tuple(cells)+(3,)),
+                                                                           fill_value=None,bounds_error=False,method='linear')
+                        c_0_n = grid.coordinates0_node(mapping.shape,self.size).reshape(-1,3)
+                        f_out[inc]['geometry'].create_dataset('u_n',data=interpolator(c_0_n))
+                        f_out[inc]['geometry/u_n'].attrs.update(f_in[inc]['geometry/u_n'].attrs)
 
                 for label in self._homogenizations:
                     f_in[inc]['homogenization'].copy(label,f_out[inc]['homogenization'],shallow=True)

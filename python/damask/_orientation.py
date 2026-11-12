@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import copy
 import warnings
 from typing import Literal, NamedTuple, Sequence, Union, TypeVar, overload
 
@@ -139,21 +138,6 @@ class Orientation(Rotation,Crystal):
                            Rotation.__repr__(self)])
 
 
-    def __copy__(self: MyType,
-                 rotation: FloatSequence | Rotation | None = None) -> MyType:
-        """
-        Return deepcopy(self).
-
-        Create deep copy.
-        """
-        dup = copy.deepcopy(self)
-        if rotation is not None:
-            dup.quaternion = Rotation(rotation).quaternion
-        return dup
-
-    copy = __copy__
-
-
     def __eq__(self,                                                                                # type: ignore[override]
                other: object) -> npt.NDArray[np.bool_]:
         """
@@ -171,12 +155,15 @@ class Orientation(Rotation,Crystal):
         equal : numpy.ndarray
             Whether both arguments are equal.
         """
-        if not isinstance(other, Orientation):
+        if isinstance(other, Orientation):
+            if self.family == other.family and self.lattice == other.lattice and self.parameters == other.parameters:
+                q = self.disorientation(other).quaternion
+                return np.all(q[...,1:] == 0, axis=-1) & (q[...,0] > 0)
+            else:
+                return np.zeros(self.misorientation(other).shape,dtype=bool)
+        else:
             return NotImplemented
-        matching_type = self.family == other.family and \
-                        self.lattice == other.lattice and \
-                        self.parameters == other.parameters
-        return np.logical_and(matching_type,super(self.__class__,self.reduced).__eq__(other.reduced))
+
 
     def __ne__(self,                                                                                # type: ignore[override]
                other: object) -> npt.NDArray[np.bool_]:
@@ -195,59 +182,26 @@ class Orientation(Rotation,Crystal):
 
     def isclose(self: MyType,
                 other: MyType,
-                rtol: float = 1.e-5,
-                atol: float = 1.e-8,
-                equal_nan: bool = True) -> npt.NDArray[np.bool_]:
+                atol: float = 1.e-7) -> npt.NDArray[np.bool_]:
         """
-        Report where values are approximately equal to corresponding ones of other Orientation.
+        Report where disorientation angle to other Orientation is below a threshold.
 
         Parameters
         ----------
         other : Orientation
             Orientation to compare against.
-        rtol : float, optional
-            Relative tolerance of equality.
         atol : float, optional
-            Absolute tolerance of equality.
-        equal_nan : bool, optional
-            Consider matching NaN values as equal. Defaults to True.
+            Absolute tolerance of equality in radians.
 
         Returns
         -------
         mask : numpy.ndarray of bool, shape (self.shape)
             Mask indicating where corresponding orientations are close.
         """
-        matching_type = self.family == other.family and \
-                        self.lattice == other.lattice and \
-                        self.parameters == other.parameters
-        return np.logical_and(matching_type,super(self.__class__,self.reduced).isclose(other.reduced))
-
-    def allclose(self: MyType,
-                 other: MyType,
-                 rtol: float = 1.e-5,
-                 atol: float = 1.e-8,
-                 equal_nan: bool = True) -> np.bool_:
-        """
-        Test whether all values are approximately equal to corresponding ones of other Orientation.
-
-        Parameters
-        ----------
-        other : Orientation
-            Orientation to compare against.
-        rtol : float, optional
-            Relative tolerance of equality.
-        atol : float, optional
-            Absolute tolerance of equality.
-        equal_nan : bool, optional
-            Consider matching NaN values as equal. Defaults to True.
-
-        Returns
-        -------
-        allclose : bool
-            Test whether all values are approximately equal to corresponding
-            ones of other orientation.
-        """
-        return np.all(self.isclose(other,rtol,atol,equal_nan))
+        if self.family == other.family and self.lattice == other.lattice and self.parameters == other.parameters:
+            return self.disorientation_angle(other) <= atol
+        else:
+            return np.zeros(self.misorientation(other).shape,dtype=bool)
 
 
     def __mul__(self: MyType,
@@ -1324,7 +1278,7 @@ class Orientation(Rotation,Crystal):
                 m2[mask3] = np.where(m4[mask3]<m1[mask3],m1[mask3],m4[mask3])
                 m1[mask3] = m3[mask3]
 
-                trace_max = np.maximum.reduce([trace_max,m1,(m1+m2)*np.sqrt(2.)/2.])
+                trace_max = np.maximum.reduce([trace_max,m1,(m1+m2)/np.sqrt(2.)])
 
             case 'hexagonal':
                 m1,m2,m3,m4 = np.split(q_abs,4,axis=-1)
@@ -1342,8 +1296,8 @@ class Orientation(Rotation,Crystal):
                 m1,m2,m3,m4 = np.split(q_abs,4,axis=-1)
 
                 trace_max = np.maximum.reduce([m1,m2,m3,m4,
-                                               (m1+m4)*np.sqrt(2.)/2.,
-                                               (m2+m3)*np.sqrt(2.)/2.])
+                                               (m1+m4)/np.sqrt(2.),
+                                               (m2+m3)/np.sqrt(2.)])
 
             case 'orthorhombic':
                 trace_max = np.maximum.reduce([q_abs[...,0:1],
@@ -1454,7 +1408,7 @@ class Orientation(Rotation,Crystal):
         loc   = np.where(ok)
         sort  = 0 if len(loc) == 1 else np.lexsort(loc[:0:-1])
 
-        if return_operator:
+        if return_operator or return_operators:
             return ToSSTTuple(poles[ok][sort].reshape(blend+(3,)), (np.vstack(loc[:1]).T)[sort].reshape(blend))
         else:
             return poles[ok][sort].reshape(blend+(3,))

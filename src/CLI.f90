@@ -13,6 +13,7 @@ module CLI
   use PETScSys
 
   use prec
+  use constants
   use parallelization
   use OS
   use IO
@@ -85,6 +86,8 @@ subroutine CLI_init()
 #define PETSC_DOI '10.2172/2998643'
 #elif PETSC_VERSION_MINOR==25
 #define PETSC_DOI '10.2172/3025790'
+#elif PETSC_VERSION_MINOR==26
+#define PETSC_DOI '10.2172/17154913'
 #endif
 #ifdef BOOST
   type(C_PTR) :: CLI_ = C_NULL_PTR
@@ -124,24 +127,24 @@ subroutine CLI_init()
   workingDirArg = OS_getCWD()
  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
 #ifdef DEBUG
-  print'(a)', IO_color([255,0,0])
+  print'(a)', IO_color(RED)
   print'(1x,a)', 'debug version - debug version - debug version - debug version - debug version'
 #endif
-  print'(a)', IO_color([67,128,208])
+  print'(a)', IO_color(DAMASK_BLUE)
   print'(1x,a)', '    _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/    _/_/_/'
   print'(1x,a)', '   _/    _/  _/    _/  _/_/  _/_/  _/    _/  _/        _/  _/            _/'
   print'(1x,a)', '  _/    _/  _/_/_/_/  _/  _/  _/  _/_/_/_/    _/_/    _/_/          _/_/'
   print'(1x,a)', ' _/    _/  _/    _/  _/      _/  _/    _/        _/  _/  _/            _/'
   print'(1x,a)', '_/_/_/    _/    _/  _/      _/  _/    _/  _/_/_/    _/    _/    _/_/_/'
 #if   defined(GRID)
-  print'(a)', IO_color([123,207,68])
+  print'(a)', IO_color(DAMASK_GREEN)
   print'(1x,a)', 'Grid solver'
 #elif defined(MESH)
-  print'(a)', IO_color([230,150,68])
+  print'(a)', IO_color(DAMASK_ORANGE)
   print'(1x,a)', 'Mesh solver'
 #endif
 #ifdef DEBUG
-  print'(a)', IO_color([255,0,0])
+  print'(a)', IO_color(RED)
   print'(1x,a)', 'debug version - debug version - debug version - debug version - debug version'
 #endif
   print'(a)', IO_color()

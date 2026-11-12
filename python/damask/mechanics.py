@@ -241,7 +241,7 @@ def maximum_shear(T_sym: _npt.NDArray[_np.floating]) -> _npt.NDArray[_np.floatin
     between the maximum and minium eigenvalue.
     """
     w = _tensor.eigenvalues(T_sym)
-    return (w[...,0] - w[...,2])*0.5
+    return (w[...,2] - w[...,0])*0.5
 
 
 def rotation(T: _npt.NDArray[_np.floating]) -> _rotation.Rotation:
