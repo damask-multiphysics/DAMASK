@@ -3930,3 +3930,9 @@ epoch	solver	wall time/s	system time/s	user time/s	memory/kB	tag	OMP_NUM_THREADS
 1794493540.399144	spectral_polarization	86.15	1.58	169.4	188068	a5948bb1af98cf9678661e1e8a259b64ed8363cc	2	IntelLLVM 2025.2.1	3.24.0	Linux 6.8.0-87-generic	Intel(R) Xeon(R) CPU E5-2687W v3 @ 3.10GHz	40
 1794493598.1635268	spectral_Galerkin	57.65	2.22	111.73	160676	a5948bb1af98cf9678661e1e8a259b64ed8363cc	2	IntelLLVM 2025.2.1	3.24.0	Linux 6.8.0-87-generic	Intel(R) Xeon(R) CPU E5-2687W v3 @ 3.10GHz	40
 1794493663.2986643	spectral_Galerkin	65.01	2.71	125.96	161440	a5948bb1af98cf9678661e1e8a259b64ed8363cc	2	IntelLLVM 2025.2.1	3.24.0	Linux 6.8.0-87-generic	Intel(R) Xeon(R) CPU E5-2687W v3 @ 3.10GHz	40
+1794604723.6052754	spectral_basic	56.48	0.63	111.05	169664	d8906e9716a0e917e4ac71ed77e0ecad3f15c6a7	2	IntelLLVM 2025.2.1	3.24.0	Linux 6.8.0-87-generic	Intel(R) Xeon(R) CPU E5-2687W v3 @ 3.10GHz	40
+1794604778.957141	spectral_basic	55.24	0.7	108.43	165888	d8906e9716a0e917e4ac71ed77e0ecad3f15c6a7	2	IntelLLVM 2025.2.1	3.24.0	Linux 6.8.0-87-generic	Intel(R) Xeon(R) CPU E5-2687W v3 @ 3.10GHz	40
+1794604865.5310245	spectral_polarization	86.46	1.36	170.27	186136	d8906e9716a0e917e4ac71ed77e0ecad3f15c6a7	2	IntelLLVM 2025.2.1	3.24.0	Linux 6.8.0-87-generic	Intel(R) Xeon(R) CPU E5-2687W v3 @ 3.10GHz	40
+1794604950.0447032	spectral_polarization	84.39	1.36	166.09	188416	d8906e9716a0e917e4ac71ed77e0ecad3f15c6a7	2	IntelLLVM 2025.2.1	3.24.0	Linux 6.8.0-87-generic	Intel(R) Xeon(R) CPU E5-2687W v3 @ 3.10GHz	40
+1794605007.529026	spectral_Galerkin	57.37	2.2	111.23	162848	d8906e9716a0e917e4ac71ed77e0ecad3f15c6a7	2	IntelLLVM 2025.2.1	3.24.0	Linux 6.8.0-87-generic	Intel(R) Xeon(R) CPU E5-2687W v3 @ 3.10GHz	40
+1794605066.0991917	spectral_Galerkin	58.46	2.22	113.39	158500	d8906e9716a0e917e4ac71ed77e0ecad3f15c6a7	2	IntelLLVM 2025.2.1	3.24.0	Linux 6.8.0-87-generic	Intel(R) Xeon(R) CPU E5-2687W v3 @ 3.10GHz	40
