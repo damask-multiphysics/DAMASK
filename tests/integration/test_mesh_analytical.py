@@ -8,8 +8,8 @@ import damask
 
     *** COMPARE DAMASK RESULTS TO ANALYTICAL SOLUTION ***
 
-    Compare the results from DAMASK to a reference (exact/analytical) solution
-    for a few simple, linear elastic cases.
+    Compare the results from DAMASK to an analytical solution for a few
+    simple, linear elastic cases.
 
     Parametrization:
      - Polytopes:
@@ -48,8 +48,8 @@ import damask
      - Magnitude of the displacement/force BC
      - DOF on which BC are applied
 
-    The exact (analytical) displacement solution is computed using the
-    exact stiffness matrices (as a function of elastic properties).
+    The analytical displacement solution is computed using the exact
+    stiffness matrices (as a function of elastic properties).
     Also provided analytical solutions for (small) strains, true (Cauchy)
     stresses, first Piola-Kirchhoff stresses and deformation gradients.
 
@@ -139,13 +139,32 @@ def load_setup(tmp_path, load_file, np_rng, n_D, polytope, BC_type, BC_point):
     return BC_val, BC_DOF, zero_DOF
 
 
-def material_setup(file_in, file_out, np_rng, xtropy):
+def material_setup(file_in, file_out, np_rng, xtropy, C_ij, lattice):
+    """Set up material configuration."""
+    mat_config = damask.ConfigMaterial.load(file_in)
+    mat_config['phase']['phase_0']['lattice'] = lattice
+    mat_config['phase']['phase_0']['mechanical']['elastic'] = \
+        {'type':'Hooke', 'C_11': C_ij[0], 'C_12': C_ij[1], 'C_44': C_ij[2],
+                         'C_33': C_ij[3], 'C_13': C_ij[4], 'C_66': C_ij[5]}
+    mat_config = mat_config.material_add(phase = ['phase_0'],
+                                         O = (damask.Rotation.from_random(rng=np_rng) if xtropy == 'iso' else
+                                              damask.Rotation()),
+                                         homogenization = 'SX')
+    mat_config.save(file_out)
+
+    # For debugging
+    np.set_printoptions(precision=12)
+    print('Orientation      ', mat_config['material'][0]['constituents'][0]['O'])
+    print('Lattice          ', mat_config['phase']['phase_0']['lattice'])
+
+
+def elastic_constants(np_rng, xtropy):
     """
     Randomized material properties.
 
     The stiffness matrix must be positive definite.
     We additionally constrain its condition number
-    to remain within a reasonable range,
+    to max(eigvals)/min(eigvals) < 100,
     since well-conditioned systems typically exhibit
     closer agreement with the analytical solution.
     """
@@ -190,36 +209,21 @@ def material_setup(file_in, file_out, np_rng, xtropy):
 
         nu_VR = (3*K_VR - 2*G_VR) / (6*K_VR + 2*G_VR)
 
-        unstable = eigvals[0]/eigvals[-1] < 0.01 or nu_VR > 0.48
+        unstable = eigvals[0] < 0. or eigvals[-1]/eigvals[0] > 100. or nu_VR > 0.48
 
-
-    # Set up material file
-    mat_config = damask.ConfigMaterial.load(file_in)
-    mat_config['phase']['phase_0']['lattice'] = lattice
-    mat_config['phase']['phase_0']['mechanical']['elastic'] = \
-        {'type':'Hooke', 'C_11': C_11, 'C_12': C_12, 'C_44': C_44,
-                         'C_33': C_33, 'C_13': C_13, 'C_66': C_66}
-    mat_config = mat_config.material_add(phase = ['phase_0'],
-                                         O = (damask.Rotation.from_random(rng=np_rng) if xtropy == 'iso' else
-                                              damask.Rotation()),
-                                         homogenization = 'SX')
-    mat_config.save(file_out)
-
-    # For debugging
+    C_ij = np.array([C_11, C_12, C_44, C_33, C_13, C_66])
     np.set_printoptions(precision=12)
-    print('Elastic constants', mat_config['phase']['phase_0']['mechanical']['elastic'])
+    print('Elastic constants', C_ij)
     print('[C] eigenvalues  ', eigvals)
     print('Anisotropy index ', 5*(G_V / G_R) + K_V / K_R - 6)
     print('Poisson ratio    ', nu_VR)
-    print('Orientation      ', mat_config['material'][0]['constituents'][0]['O'])
-    print('Lattice          ', mat_config['phase']['phase_0']['lattice'])
 
-    return np.array([C_11, C_12, C_44, C_33, C_13, C_66])
+    return C_ij, lattice
 
 
 def analytical_sol(res_path, mesh_file, n_D, BC_vals, BC_DOF, zero_DOF, BC_type, polytope, elast_prop, \
                    chop = 1.0e-12):
-    """Exact (analytical) solution (3D)"""
+    """Analytical solution."""
     # 2D:
     #   - Tri:
     #     - Node {1} (DOF {1, 2}): u = v = 0 --> label 'fixed-fully'
@@ -306,8 +310,10 @@ def analytical_sol(res_path, mesh_file, n_D, BC_vals, BC_DOF, zero_DOF, BC_type,
 def damask_results(tmp_path, job):
     """Retrieve numerical solution from DADF5 file"""
     res = damask.Result(tmp_path/f'{job}.hdf5').view(increments=-1)
+    P = res.get('P')
+    P[np.abs(P) < 1.0e-9*np.max(np.abs(P))] = 0.0
 
-    return res.get('u_n'), res.get('F'), res.get('P')
+    return res.get('u_n'), res.get('F'), P
 
 
 def results_assertion(n_D, polytope, u, u_d, F, F_d, P, P_d):
@@ -355,7 +361,9 @@ def test_mesh_analytical(res_path, copy_files, tmp_path, np_rng,
 
     BC_vals, BC_DOF, zero_DOF = load_setup(tmp_path, 'load.yaml', np_rng, n_D, polytope,
                                            BC_type, BC_point)
-    elast_prop = material_setup(res_path/'material_base.yaml', tmp_path/'material.yaml', np_rng, xtropy)
+    elast_prop, lattice = elastic_constants(np_rng, xtropy)
+    material_setup(res_path/'material_base.yaml', tmp_path/'material.yaml', np_rng,
+                   xtropy, elast_prop, lattice)
 
     uvw, F, P = analytical_sol(res_path, mesh, n_D, BC_vals, BC_DOF, zero_DOF,
                                BC_type, polytope, elast_prop)
@@ -369,7 +377,6 @@ def test_mesh_analytical(res_path, copy_files, tmp_path, np_rng,
     damask.util.run(f'damask_mesh -m material.yaml -l load.yaml -g {mesh}.msh ' +
                     f'-n numerics.yaml -j {job}', wd = tmp_path)
     uvw_damask, F_damask, P_damask = damask_results(tmp_path, job)
-    P_damask[np.abs(P_damask) < 1.0e-9*np.max(np.abs(P_damask))] = 0.0
 
     assert results_assertion(n_D, polytope, uvw, uvw_damask, F, F_damask, P, P_damask)
 

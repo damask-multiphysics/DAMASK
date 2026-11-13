@@ -59,40 +59,13 @@ def load_setup(load_config, mesh_file, np_rng, u_dot, n_D, key, label):
     return load_config
 
 
-def material_setup(mat_config, np_rng):
-    """
-    Randomized material properties.
-
-    The stiffness matrix needs to be positive definite.
-    Here we ensure also a reasonable condition number because
-    agreement with the analytical solution is better in
-    that case.
-    """
-    unstable = True
-    while unstable:
-        C_11 = C_33 = 70.e9 + 20.e9 * np_rng.random()
-        C_12 = C_13 = 60.e9 + 10.e9 * np_rng.random()
-        C_44 = C_66 = 0.5 * (C_11 - C_12)
-
-        C = np.array([[C_11, C_12, C_13,  0.0,  0.0,   0.0],
-                      [C_12, C_11, C_12,  0.0,  0.0,   0.0],
-                      [C_13, C_12, C_33,  0.0,  0.0,   0.0],
-                      [ 0.0,  0.0,  0.0, C_44,  0.0,   0.0],
-                      [ 0.0,  0.0,  0.0,  0.0,  C_44,  0.0],
-                      [ 0.0,  0.0,  0.0,  0.0,  0.0,  C_66]])
-
-        eigvals = np.linalg.eigvalsh(C)
-        unstable = eigvals[0]/eigvals[-1] < 0.01
-    print('eigenvalues', eigvals)
-
-    # Set up material file
+def material_setup(mat_config, C, rng):
+    """Set up material configuration."""
     mat_config['phase']['phase_0']['mechanical']['elastic'] = \
-        {'type':'Hooke', 'C_11': C_11, 'C_12': C_12, 'C_44': C_44,
-                         'C_33': C_33, 'C_13': C_13, 'C_66': C_66}
-    mat_config = mat_config.material_add(phase = ['phase_0'],
-                                         O = damask.Rotation.from_random(15,rng=np_rng),
-                                         homogenization = 'SX')
-    return mat_config
+        {'type':'Hooke', 'C_11': C[0,0], 'C_12': C[0,1], 'C_44': C[3,3]}
+    return mat_config.material_add(phase = ['phase_0'],
+                                   O = damask.Rotation.from_random(15,rng=rng),
+                                   homogenization = 'SX')
 
 
 def get_tag_from_label(mesh_file, label):
@@ -127,7 +100,7 @@ except EnvironmentError:
                           ('2', 'bicrystal_2D',  'tensionX'),
                           ('3', 'bicrystal_3D',  'tensionX'),
                           ('2', 'singleCrystal', 'tensionZ')])
-def test_mesh_tags_labels(assert_allclose,res_path, copy_files, tmp_path, np_rng,
+def test_mesh_tags_labels(assert_allclose,res_path, copy_files, tmp_path, np_rng, isotropic_stiffness,
                           n_D, mesh_file, label, petsc_version):
     copy_files(res_path, tmp_path, [f'{mesh_file}.msh', 'numerics.yaml'])
 
@@ -135,7 +108,8 @@ def test_mesh_tags_labels(assert_allclose,res_path, copy_files, tmp_path, np_rng
     mat_config = damask.ConfigMaterial.load(res_path/'material_base.yaml')
     u_dot = bc_setup(np_rng, n_D)
 
-    material_setup(mat_config, np_rng).save(tmp_path/'material.yaml')
+    C = isotropic_stiffness(np_rng, [70.e9,90.e9], [60.e9,70.e9])
+    material_setup(mat_config, C, np_rng).save(tmp_path/'material.yaml')
     for key in ['label', 'tag']:
         load_setup(load_config, tmp_path/f'{mesh_file}.msh', np_rng, u_dot, n_D, key,
                    label).save(tmp_path/f'load_{key}.yaml')

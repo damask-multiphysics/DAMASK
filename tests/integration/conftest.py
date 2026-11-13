@@ -245,6 +245,34 @@ pytest.petsc_version = petsc_version_
 def petsc_version():
     return petsc_version_
 
+@pytest.fixture
+def isotropic_stiffness():
+    """
+    Random isotropic stiffness matrix.
+
+    The stiffness matrix needs to be positive definite.
+    Condition number is constrained to to max(eigvals)/min(eigvals) < 100,
+    since well-conditioned systems typically exhibit closer agreement with
+    the analytical solution.
+    """
+    def C_func(rng, minmax_11, minmax_12):
+        unstable = True
+        while unstable:
+            C_11 = rng.uniform(minmax_11[0],minmax_11[1])
+            C_12 = rng.uniform(minmax_12[0],minmax_12[1])
+            C_44 = (C_11 - C_12)/2.
+
+            C = np.array([[C_11, C_12, C_12,  0.0,  0.0,   0.0],
+                          [C_12, C_11, C_12,  0.0,  0.0,   0.0],
+                          [C_12, C_12, C_11,  0.0,  0.0,   0.0],
+                          [ 0.0,  0.0,  0.0, C_44,  0.0,   0.0],
+                          [ 0.0,  0.0,  0.0,  0.0,  C_44,  0.0],
+                          [ 0.0,  0.0,  0.0,  0.0,  0.0,  C_44]])
+            eigvals = np.linalg.eigvalsh(C)
+            unstable = eigvals[0] < 0. or eigvals[-1]/eigvals[0] > 100.
+        return C
+    return C_func
+
 
 @pytest.fixture
 def set_of_quaternions(np_rng):

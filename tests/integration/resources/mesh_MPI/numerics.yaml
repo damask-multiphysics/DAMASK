@@ -1,6 +1,5 @@
 solver:
   mesh:
     p_s: n/a
-    p_i: n/a
     mechanical:
       PETSc_options: -snes_atol 1.0e-5 -snes_rtol 1.0e-6 -snes_stol 1.0e-8

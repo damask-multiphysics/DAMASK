@@ -1,0 +1,17 @@
+homogenization:
+  SX:
+    N_constituents: 1
+    mechanical: {type: pass}
+
+phase:
+  phase_0:
+    lattice: cF
+    mechanical:
+      elastic: {}
+
+material:
+  - constituents:
+      - O: [1.0, 0.0, 0.0, 0.0]
+        v: 1.0
+        phase: phase_0
+    homogenization: SX

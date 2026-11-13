@@ -74,7 +74,6 @@ def test_mesh_high_order_VTK(res_path, copy_files, tmp_path, polytope, order, el
     """Numerical solution."""
     numerics = damask.YAML.load(res_path/'numerics.yaml')
     numerics['solver']['mesh']['p_s'] = order
-    numerics['solver']['mesh']['p_i'] = order
     numerics.save(tmp_path/'numerics.yaml')
 
     damask.util.run(f'damask_mesh -l load.yaml -g {mesh} -m material.yaml ' +
