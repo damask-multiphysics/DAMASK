@@ -68,7 +68,7 @@ Crystal plasticity constitutive models, initially used in mean-field schemes, ha
 The implementation makes use of \texttt{PETSc}, which allows choosing from a large variety of numerical solution schemes.
 The \texttt{DMPlex} and \texttt{PetscFe} classes of \texttt{PETSc} are used to handle the spatial discretization and finite element formulation [@knepleybrownruppsmith13; @LangeEtAl2016; @BalayEtAl2026].
 \texttt{DAMASK} is built using \texttt{CMake} and depends only on a limited set of well-maintained open source libraries.
-This makes it possible to distribute it via binary packages popular across Linux distributions, allowing for an easy installation.
+This makes it possible to distribute it via binary packages across popular Linux distributions, allowing for an easy installation.
 The \texttt{mesh} solver is a command-line application that requires providing locations of files defining load, material configuration, geometry, and--optionally--numerical options upon invocation.
 While the material configuration is generic to \texttt{DAMASK}, the load case and the geometry definition are specific for the \texttt{mesh} solver.
 Load case, numerics, and material configuration are specified in \texttt{YAML} format.
