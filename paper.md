@@ -37,7 +37,7 @@ date: 26 August 2026
 
 # Summary
 \texttt{DAMASK}^®^ is a multiphysics simulation package for studying the deformation behavior of crystalline materials subjected to thermo--chemo--mechanical loads [@RotersEtAl2019].
-It contains models for mechanics, including anisotropic elasticity, crystal plasticity, and general inelastic deformations, as well as formulations for temperature evolution, fracture, and chemical diffusion.
+It contains models for mechanics--including anisotropic elasticity, crystal plasticity, and general inelastic deformations--as well as formulations for temperature evolution, fracture, and solid state diffusion.
 The modular structure of \texttt{DAMASK} allows using it with different solvers.
 While for hexahedral domains represented by regular voxel grids and subjected to periodic boundary conditions an open source framework is included in \texttt{DAMASK} since its first public release in 2011 [@ShanthrajEtAl2019], commercial Finite Element Method (FEM) solvers such as \texttt{MSC Marc} are needed for complex-shaped geometries and unstructured meshes [@GallardoBasileEtAl2023].
 Here, we present an open source FEM-based solver for such situations.
@@ -66,7 +66,7 @@ Crystal plasticity constitutive models, initially used in mean-field schemes, ha
 
 # Software design
 The implementation makes use of \texttt{PETSc}, which allows choosing from a large variety of numerical solution schemes.
-The \texttt{DMPlex} and \texttt{PetscFe} classes of \texttt{PETSc} are used to handle the spatial discretization and finite element formulation [@knepleybrownruppsmith13; @LangeEtAl2016; @BalayEtAl2026].
+The \texttt{DMPlex} and \texttt{PetscFE} classes of \texttt{PETSc} are used to handle the spatial discretization and finite element formulation [@knepleybrownruppsmith13; @LangeEtAl2016; @BalayEtAl2026].
 \texttt{DAMASK} is built using \texttt{CMake} and depends only on a limited set of well-maintained open source libraries.
 This makes it possible to distribute it via binary packages across popular Linux distributions, allowing for an easy installation.
 The \texttt{mesh} solver is a command-line application that requires providing locations of files defining load, material configuration, geometry, and--optionally--numerical options upon invocation.
