@@ -85,7 +85,7 @@ Earlier versions of the \texttt{mesh} solver have been used for previous studies
 All code suggested by \texttt{OpenCode} underwent careful review and manual adjustment, followed by an independent review before merge into the main branch.
 
 # Acknowledgements
-We acknowledge the contributions to \texttt{DAMASK}, in particular from S. Roongta, P. Eisenlohr, A. Jena, and D. Otto de Mentock and the support of the \texttt{PETSc} team, in particular of M. Knepley.
+We acknowledge the contributions to \texttt{DAMASK}, in particular those of S. Roongta, P. Eisenlohr, A. Jena, and D. Otto de Mentock, and the support of the \texttt{PETSc} team, in particular that of M. Knepley.
 This study has received financial support from the European Union’s Horizon Europe research and innovation programme under grant agreement No. 101091621 (\texttt{AddMorePower}).
 
 # References

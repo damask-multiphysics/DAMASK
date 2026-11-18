@@ -1,0 +1,11 @@
+---
+
+loadstep:
+  - boundary_condition:
+      mechanical:
+        - label: '-x'
+          u_dot: [0.0, 0.0, 0.0]
+        - label: '+x+z'
+          u: ['x', 'x',  -0.125]
+    discretization: {t: 50, N: 200}
+    f_out: 10
