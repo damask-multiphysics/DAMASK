@@ -1,0 +1,41 @@
+loadstep:
+- boundary_conditions:
+    mechanical:
+    - label: 'bot_surf'
+      u: ['x', 'x', 0.0]
+    - label: 'bot_pt1'
+      u: [0.0, 0.0, 0.0]
+    - label: 'bot_pt2'
+      u: ['x', 0.0, 'x']
+    - label: 'bot_pt4'
+      u: [0.0, 'x', 'x']
+    - label: 'top_surf'
+      u: ['x', 'x', 0.5]
+  discretization: {t: 10, N: 200}
+  f_out: 10
+
+# Fixing the whole bottom surface
+#
+#    - label: 'bot_surf'
+#      u: [0.0, 0.0, 0.0]
+#
+# may work fine too
+
+
+#
+#   bounding box size along x, y, z =  [1, 0.25, 5]         
+#                                                            ^  Y
+#   point labels at the bottom surface:                      |        /  Z
+#                                                                   /
+#     bot_pt1 at (0,0,0)                                pt4  o--------------------o  pt3
+#     bot_pt2 at (1,0,0)                                     |   /                |
+#     bot_pt3 at (1,0.25,0)                                  | /     bot_surf     |
+#     bot_pt4 at (0.25,0,0)                             pt1  o--------------------o  pt2    ---> X
+#
+#   the surface to fix/pull are in the XZ plane
+#
+#     bot_surf  u = [x, x, 0]
+#
+#     top_surf  u = [x, x, W]
+#
+#

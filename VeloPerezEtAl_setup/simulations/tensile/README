@@ -1,0 +1,47 @@
+################################################################################################################################
+
+neper -T -dim 3 -domain "cube(1,0.25,5)" -morpho "columnar(y)" -transform "cut(cylinder(-1.75,0,2.5,0,1,0,2),cylinder(2.75,0,2.5,0,1,0,2))" -regularization 0 -format geo -o bbbRND -n 64 -id 412238001
+
+# Some nodes are manually modified to remove tiny edges
+
+Meshing
+--------
+2D Front Delaunay
+3D Delaunay
+2D recomb Blossom
+[] Recombine (deselect)
+100 smoothing
+...
+1 element order
+
+-------------------- 5k  tetrahedra
+0.5 element size factor
+0.25 / 1.0  min/max
+
+
+-------------------- 10k  tetrahedra
+0.375 element size factor
+0.25 / 1.0  min/max
+
+
+-------------------- 14k  tetrahedra
+0.25 element size factor
+0.125 / 0.5 min/max
+
+
+-------------------- 25k  tetrahedra
+0.25 element size factor
+0.125 / 0.375 min/max
+
+
+-------------------- 50k  tetrahedra
+0.25 element size factor
+0.125 / 0.25 min/max
+
+
+-------------------- 100k  tetrahedra
+0.1875 element size factor
+0.125 / 0.25 min/max
+
+
+################################################################################################################################

@@ -1,0 +1,111 @@
+---
+homogenization:
+  isostrain:
+    N_constituents: 2
+    mechanical: {type: isostrain, output: [F, P]}
+
+phase:
+  IN625:
+    lattice: cF
+    mechanical:
+      elastic:
+        type: Hooke
+
+        references:
+          - Z. Wang et al.,
+            Materials Science and Engineering:A 674:406-412, 2016,
+            https://doi.org/10.1016/j.msea.2016.08.010,
+            fit to Tab. 2 (last 3 rows)
+
+        C_11: 243.9e+9
+        C_11,T: -5.410e+7
+
+        C_12: 157.0e+9
+        C_12,T: -9.352e+6
+
+        C_44: 117.9e+9
+        C_44,T: -2.798e+7
+
+        T_ref: 293.15
+      plastic:
+        type: dislotwin
+
+        references:
+          - N. Prabhu and M. Diehl,
+            Integrating Materials and Manufacturing Innovation 13:804-826, 2024,
+            https://doi.org/10.1007/s40192-024-00359-1,
+            Table 3(d)
+          - R. Madec and L.P. Kubin,
+            Acta Materialia 126:166-173, 2017,
+            https://doi.org/10.1016/j.actamat.2016.12.040,
+            Table 1 for Ni
+          - L.P. Kubin et al.,
+            Acta Materialia 56(20):6040-6049, 2008,
+            https://doi.org/10.1016/j.actamat.2008.08.012,
+            Table 1 (self and coplanar)
+
+        N_sl: [12]
+
+        b_sl: [2.48e-10]
+        rho_mob_0: [2.8e+12]
+        rho_dip_0: [1.0]
+        v_0: [1400.0]
+        Q_sl: [2.34e-19]
+        tau_0: [600.0e+6]
+        p_sl: [0.42]
+        q_sl: [1.55]
+        i_sl: [7.5]
+        D_a: 4.0
+        B: [0.001]
+        Q_cl: 5.4e-19
+        D: 1.08e-5
+
+        h_sl-sl: [0.122, 0.122, 0.672, 0.044, 0.102, 0.09, 0.168]
+  Ferrite:
+    lattice: cI
+    mechanical:
+      elastic:
+        type: Hooke
+
+        references:
+          - D.J. Dever,
+            Journal of Applied Physics 43(8):3293-3301, 1972,
+            https://doi.org/10.1063/1.1661710,
+            fit to Tab. II (T_min=25ºC, T_max=880ºC)
+
+        C_11: 232.2e+9
+        C_11,T: -4.683e+7
+        C_11,T^2: -5.988e+4
+
+        C_12: 136.4e+9
+        C_12,T: -1.970e+7
+        C_12,T^2: 3.760e+3
+
+        C_44: 117.0e+9
+        C_44,T: -2.015e+7
+        C_44,T^2: -7.485e+2
+
+        T_ref: 293.15
+      plastic:
+        type: phenopowerlaw
+
+        references:
+          - F.-J. Gallardo-Basile et al.,
+            Materials Science & Engineering A 881:145373, 2023,
+            https://doi.org/10.1016/j.msea.2023.145373,
+            Table 2, Fig. 19 indent II with contraints
+
+
+        N_sl: [12, 12, 24]
+
+        h_0_sl-sl: [1.0e+9, 1.0e+9, 1.0e+9]
+        gamma_dot_0_sl: [4.e-2, 4.e-2, 4.e-2]
+        n_sl: [20., 20., 20.]
+
+        xi_0_sl: [61.e+6, 54.e+6, 52.e+6]
+        xi_inf_sl: [277.e+6, 248.e+6, 237.e+6]
+        a_sl: [2.1, 2.1, 2.1]
+
+        h_sl-sl: [1.0, 1.4, 1.0, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
+                  1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4,
+                  1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4]
